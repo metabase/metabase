@@ -1,26 +1,19 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import TableBrowser from "metabase/browse/containers/TableBrowser";
-import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
-import Card from "metabase/components/Card";
-import EntityItem from "metabase/components/EntityItem";
-import { Grid } from "metabase/components/Grid";
+import { TableBrowser } from "metabase/browse/tables/TableBrowser";
+import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
-import * as Urls from "metabase/lib/urls";
+import { Databases } from "metabase/entities/databases";
+import { Schemas } from "metabase/entities/schemas";
+import { Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
 
-import {
-  BrowseContainer,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import { BrowseCard } from "../components/BrowseCard";
+import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseHeaderContent } from "../components/BrowseHeader.styled";
-
-import { SchemaGridItem, SchemaLink } from "./BrowseSchemas.styled";
+import { BrowseGrid } from "../components/BrowseGrid";
 
 const BrowseSchemasContainer = ({
   schemas,
@@ -32,10 +25,17 @@ const BrowseSchemasContainer = ({
   const { slug } = params;
   const dbId = Urls.extractEntityId(slug);
   return (
-    <BrowseContainer data-testid="browse-schemas">
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      data-testid="browse-schemas"
+    >
       <BrowseDataHeader />
-      <BrowseMain>
-        <BrowseSection direction="column">
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%" direction="column">
           {schemas.length === 1 ? (
             <TableBrowser
               schemas={schemas}
@@ -48,46 +48,37 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <BrowseHeaderContent>
+              <Flex align="center" pt="md" pr="sm" pb="sm">
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <Database.Name id={dbId} /> },
+                    { title: <Databases.Name id={dbId} /> },
                   ]}
                 />
-              </BrowseHeaderContent>
+              </Flex>
               {schemas.length === 0 ? (
                 <h2
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <Grid>
+                <BrowseGrid pt="lg">
                   {schemas.map((schema) => (
-                    <SchemaGridItem key={schema.id}>
-                      <SchemaLink
-                        to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
-                          schema.name,
-                        )}`}
-                      >
-                        <Card hoverable className={CS.px1}>
-                          <EntityItem
-                            name={schema.name}
-                            iconName="folder"
-                            // TODO: Is it necessary to support this color?
-                            // iconColor={color("accent2")}
-                            item={schema}
-                          />
-                        </Card>
-                      </SchemaLink>
-                    </SchemaGridItem>
+                    <BrowseCard
+                      key={schema.id}
+                      title={schema.name}
+                      icon="folder"
+                      to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
+                        schema.name,
+                      )}`}
+                    />
                   ))}
-                </Grid>
+                </BrowseGrid>
               )}
             </>
           )}
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 

@@ -1,12 +1,13 @@
+/* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { ResizableBox } from "react-resizable";
 
 import CS from "metabase/css/core/index.css";
-import { darken } from "metabase/lib/colors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
+import { darken } from "metabase/ui/colors";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
@@ -25,6 +26,8 @@ const propTypes = {
 const getOverflow = (isResizing) => (isResizing ? "hidden" : "auto");
 
 const Handle = forwardRef(function Handle(props, ref) {
+  const { handleAxis, ...rest } = props;
+
   return (
     <Flex
       align="center"
@@ -37,7 +40,7 @@ const Handle = forwardRef(function Handle(props, ref) {
         cursor: "row-resize",
       }}
       ref={ref}
-      {...props}
+      {...rest}
     >
       <Box
         w="6.25rem"

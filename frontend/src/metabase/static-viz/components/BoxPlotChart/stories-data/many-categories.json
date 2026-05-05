@@ -1,0 +1,144 @@
+[
+  {
+    "card": {
+      "display": "boxplot",
+      "visualization_settings": {
+        "graph.label_value_frequency": "fit",
+        "graph.goal_value": 21,
+        "graph.show_goal": true,
+        "boxplot.show_values_mode": "all",
+        "graph.show_values": true,
+        "boxplot.points_mode": "all",
+        "series_settings": {
+          "VAL": {
+            "color": "#51528D"
+          }
+        }
+      }
+    },
+    "data": {
+      "rows": [
+        ["Category Alpha", 10],
+        ["Category Alpha", 30],
+        ["Category Alpha", 50],
+        ["Category Beta", 15],
+        ["Category Beta", 35],
+        ["Category Beta", 55],
+        ["Category Gamma", 12],
+        ["Category Gamma", 32],
+        ["Category Gamma", 52],
+        ["Category Delta", 18],
+        ["Category Delta", 38],
+        ["Category Delta", 58],
+        ["Category Epsilon", 11],
+        ["Category Epsilon", 31],
+        ["Category Epsilon", 51],
+        ["Category Zeta", 16],
+        ["Category Zeta", 36],
+        ["Category Zeta", 56],
+        ["Category Eta", 13],
+        ["Category Eta", 33],
+        ["Category Eta", 53],
+        ["Category Theta", 19],
+        ["Category Theta", 39],
+        ["Category Theta", 59]
+      ],
+      "cols": [
+        {
+          "name": "CATEGORY",
+          "display_name": "CATEGORY",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "field_ref": [
+            "field",
+            "CATEGORY",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "source": "native"
+        },
+        {
+          "name": "VAL",
+          "display_name": "VAL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "field_ref": [
+            "field",
+            "VAL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "source": "native"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CATEGORY",
+            "display_name": "CATEGORY",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 13.75
+                }
+              }
+            }
+          },
+          {
+            "name": "VAL",
+            "display_name": "VAL",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "VAL",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 24,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 17,
+                  "q3": 51.5,
+                  "max": 59,
+                  "sd": 16.973764922732197,
+                  "avg": 34.25
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

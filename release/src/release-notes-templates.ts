@@ -19,56 +19,40 @@ JAR download: {{ee-download-url}}
 
 ## Changelog
 
-### Enhancements
-
-{{enhancements}}
-
-### Bug fixes
-
-{{bug-fixes}}
-
-### Already Fixed
-
-Issues confirmed to have been fixed in a previous release.
-
-{{already-fixed}}
-
-### Under the Hood
-
-{{under-the-hood}}
+[Full Changelog]({{changelog-url}})
 
 `;
 
 export const websiteChangelogTemplate = `
 ## Metabase {{version}}
 
-### Upgrading
+### Upgrading | {{generic-version}}
 
-#### Metabase Open Source
+#### Metabase Open Source | {{generic-version}}
 
 - Docker image: {{oss-docker-tag}}
-- JAR download: {{oss-download-url}}
+- [JAR download]({{oss-download-url}})
 
-#### Metabase Enterprise
+#### Metabase Enterprise | {{generic-version}}
 
 - Docker image: {{ee-docker-tag}}
-- JAR download: {{ee-download-url}}
+- [JAR download]({{ee-download-url}})
 
-### Enhancements
+### Enhancements | {{generic-version}}
 
 {{enhancements}}
 
-### Bug fixes
+### Bug fixes | {{generic-version}}
 
 {{bug-fixes}}
 
-### Already Fixed
+### Already Fixed | {{generic-version}}
 
 Issues confirmed to have been fixed in a previous release.
 
 {{already-fixed}}
 
-### Under the Hood
+### Under the Hood | {{generic-version}}
 
 {{under-the-hood}}
 

@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { invalidateTags, tag } from "./tags";
+import { invalidateTags, listTag, tag } from "./tags";
 
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -21,6 +21,7 @@ export const settingsApi = Api.injectEndpoints({
       }),
       transformResponse: (response: SettingDefinition[]) =>
         _.indexBy(response, "key") as SettingDefinitionMap,
+      providesTags: ["session-properties"],
     }),
     getSetting: builder.query<
       EnterpriseSettingValue,
@@ -51,8 +52,16 @@ export const settingsApi = Api.injectEndpoints({
         url: `/api/setting/${encodeURIComponent(key)}`,
         body: { value },
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+      invalidatesTags: (_, error, { key }) => {
+        return invalidateTags(error, [
+          tag("session-properties"),
+          ...(key === "uploads-settings" ? [listTag("database")] : []),
+          ...(key === "llm-anthropic-api-key" ? [listTag("llm-models")] : []),
+
+          // Enabling tenants creates the "all-external-users" permission group
+          ...(key === "use-tenants" ? [listTag("permissions-group")] : []),
+        ]);
+      },
     }),
     updateSettings: builder.mutation<void, Partial<EnterpriseSettings>>({
       query: (settings) => ({
@@ -61,7 +70,10 @@ export const settingsApi = Api.injectEndpoints({
         body: settings,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+        invalidateTags(error, [
+          tag("session-properties"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
   }),
 });

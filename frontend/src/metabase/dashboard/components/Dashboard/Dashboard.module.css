@@ -1,5 +1,10 @@
 .DashboardBody {
   flex: 1 0 auto;
+  background-color: var(--mb-color-background-secondary);
+
+  &.isEmbeddingSdk {
+    background-color: var(--mb-color-bg-dashboard);
+  }
 
   &.isEditingOrSharing {
     flex-basis: 0;
@@ -19,24 +24,26 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-  background-color: var(--mb-color-background);
-  border-bottom: 1px solid var(--mb-color-border);
+
+  &:not(.noBorder) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+
+  &:not(.isEmbeddingSdk) {
+    background-color: var(--mb-color-background-primary);
+  }
 
   &.isFullscreen {
     background-color: transparent;
-    border: none;
-  }
-
-  &.isNightMode {
-    color: var(--mb-color-text-white);
+    border-color: transparent;
   }
 }
 
 .DashboardLoadingAndErrorWrapper {
   min-height: 100%;
   height: 1px;
-  /* prevents header from scrolling so we can have a fixed sidebar */
 
+  /* prevents header from scrolling so we can have a fixed sidebar */
   &.isFullHeight {
     height: 100%;
   }
@@ -78,4 +85,13 @@
     margin: 0 auto;
     max-width: var(--dashboard-fixed-width);
   }
+}
+
+/* Make selected text invisible only during drag operations to preserve auto-scroll */
+:global(body.react-grid-layout-dragging ::selection) {
+  background: transparent;
+}
+
+:global(body.react-grid-layout-dragging ::-moz-selection) {
+  background: transparent;
 }

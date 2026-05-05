@@ -1,13 +1,16 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
   "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
   `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
+  (:refer-clojure :exclude [some select-keys every? mapv empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,19 +18,20 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonFactory JsonParser JsonParser$NumberType JsonToken)
+   (com.fasterxml.jackson.core
+    JsonFactory
+    JsonParser
+    JsonParser$NumberType
+    JsonToken)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -66,9 +70,9 @@
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
       (do (let [pretty-column (str/join "." (map #(str "'" % "'")
                                                  (drop-while nil? namespaced-col)))]
-            (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
-                       database-type
-                       pretty-column))
+            (log/debugf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
+                        database-type
+                        pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -132,24 +136,37 @@
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
      #(let [default            (.getString rs "COLUMN_DEF")
             no-default?        (contains? #{nil "NULL" "null"} default)
-            nullable           (.getInt rs "NULLABLE")
-            not-nullable?      (= 0 nullable)
-             ;; IS_AUTOINCREMENT could return nil
+            ;; leave room for "", or other strings to be nil (unknown)
+            nullable           ({"YES" true, "NO" false} (.getString rs "IS_NULLABLE"))
+            generated          (when (driver/database-supports? driver :describe-is-generated nil) ; if not supported, we might get an inaccurate answer from IS_GENERATEDCOLUMN (e.g clickhouse)
+                                 ({"YES" true, "NO" false} (.getString rs "IS_GENERATEDCOLUMN")))
+            ;; IS_AUTOINCREMENT could return nil
             auto-increment     (.getString rs "IS_AUTOINCREMENT")
             auto-increment?    (= "YES" auto-increment)
             no-auto-increment? (= "NO" auto-increment)
             column-name        (.getString rs "COLUMN_NAME")
-            required?          (and no-default? not-nullable? no-auto-increment?)]
+            ;; ambiguous, but preserves previous unknown == not nullable database-required behaviour
+            not-nullable       (= 0 (.getInt rs "NULLABLE"))
+            required?          (and no-default? not-nullable no-auto-increment?)]
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
+          :jdbc-type                  (.getInt rs "DATA_TYPE")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
+         ;; in the same way drivers are free to not return these attributes, and leave them undefined
+         ;; we should treat unknown values accordingly
+         (u/remove-nils
+          {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
+           ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
+           :database-default      (not-empty default)
+           :database-is-generated generated
+           :database-is-nullable  nullable})
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
 
-(defn ^:private fields-metadata
+(defn- fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
@@ -161,7 +178,7 @@
       ;;
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
-            ;; intented to fix syncing dynamic tables for snowflake.
+            ;; intended to fix syncing dynamic tables for snowflake.
             ;; currently there is a bug in snowflake jdbc (snowflake#1574) in which it doesn't return columns for dynamic tables
             jdbc-returns-no-field?        (volatile! true)
             jdbc-metadata                 (eduction
@@ -187,50 +204,54 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
-(def ^:private ^:dynamic *table-info*
-  "To be bound in [[describe-table-fields]] to convey table schema and name into [[describe-fields-xf]]. Reason
-  being, that describe-fields-xf is used in driver/describe-fields and driver/describe-table-fields, where transducer's
-  `col` arg is missing this information for the latter."
-  {})
-
 (defn describe-fields-xf
-  "Returns a transducer for computing metadata about the fields in `db`."
-  [driver db]
-  (map (fn [col]
-         (let [base-type (or (:base-type col) (database-type->base-type-or-warn
-                                               driver
-                                               [((some-fn :table-schema) col *table-info*)
-                                                ((some-fn :table-name)   col *table-info*)
-                                                (:name col)]
-                                               (:database-type col)))
-               semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
-               json? (isa? base-type :type/JSON)
-               database-position (some-> (:database-position col) int)]
-           (merge
-            (u/select-non-nil-keys col [:table-name
-                                        :pk?
-                                        :name
-                                        :database-type
-                                        :field-comment
-                                        :database-required
-                                        :database-is-auto-increment])
-            {:table-schema      (:table-schema col) ;; can be nil
-             :base-type         base-type
-             ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
-             :json-unfolding    json?}
-            (when database-position
-              {:database-position database-position})
-            (when semantic-type
-              {:semantic-type semantic-type})
-            (when (and json? (driver/database-supports? driver :nested-field-columns db))
-              {:visibility-type :details-only}))))))
+  "Returns a transducer for computing metadata about the fields in `db`.
+   Takes an optional map of `:table-schema` and `:table-name` to be used as fallbacks if they're not available in `col`"
+  ([driver db] (describe-fields-xf driver db {}))
+  ([driver db table-info]
+   (map (fn [col]
+          (let [base-type (or (:base-type col) (database-type->base-type-or-warn
+                                                driver
+                                                [((some-fn :table-schema) col table-info)
+                                                 ((some-fn :table-name)   col table-info)
+                                                 (:name col)]
+                                                (:database-type col)))
+                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
+                json? (isa? base-type :type/JSON)
+                database-position (some-> (:database-position col) int)]
+            (merge
+             (u/select-non-nil-keys col [:table-name
+                                         :pk?
+                                         :name
+                                         :database-type
+                                         :field-comment
+                                         :database-default
+                                         :database-required
+                                         :database-is-auto-increment
+                                         :database-is-generated
+                                         :database-is-nullable
+                                         :jdbc-type])
+             {:table-schema      (:table-schema col) ;; can be nil
+              :base-type         base-type
+              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
+              :json-unfolding    json?}
+             (when database-position
+               {:database-position database-position})
+             (when semantic-type
+               {:semantic-type semantic-type})
+             (when (and json? (driver/database-supports? driver :nested-field-columns db))
+               {:visibility-type :details-only
+                :preview-display false})))))))
 
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in a table, given the database `db`."
-  [driver db]
-  (comp
-   (describe-fields-xf driver db)
-   (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))
+  "Returns a transducer for computing metadata about the fields in a table"
+  [driver table]
+  (let [table-info (merge {:table-name (:name table)}
+                          (when (:schema table)
+                            {:table-schema (:schema table)}))]
+    (comp
+     (describe-fields-xf driver (driver-api/table->database table) table-info)
+     (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -241,13 +262,10 @@
 
 (defmethod describe-table-fields :sql-jdbc
   [driver conn table db-name-or-nil]
-  (binding [*table-info* (merge {:table-name (:name table)}
-                                (when (:schema table)
-                                  {:table-schema (:schema table)}))]
-    (into
-     #{}
-     (describe-table-fields-xf driver (table/database table))
-     (fields-metadata driver conn table db-name-or-nil))))
+  (into
+   #{}
+   (describe-table-fields-xf driver table)
+   (fields-metadata driver conn table db-name-or-nil)))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
 ;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
@@ -284,7 +302,7 @@
                          " it does not necessarily correspond to any actual names of anything in the data warehouse"
                          " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
                          " display name.")
-                    {:driver driver, :db-name db-name, :type qp.error-type/driver}))))
+                    {:driver driver, :db-name db-name, :type driver-api/qp.error-type.driver}))))
 
 (defmethod get-table-pks :sql-jdbc
   [driver ^Connection conn db-name-or-nil table]
@@ -353,7 +371,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
+    (let [sql (describe-fields-sql driver (assoc args :details (driver.conn/effective-details db)))]
       (try
         (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
                     (driver/prettify-native-form driver (first sql))
@@ -383,7 +401,7 @@
     []
     (eduction
      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
-     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (driver.conn/effective-details db)))))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -421,7 +439,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (:details db))))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (driver.conn/effective-details db))))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -442,15 +460,16 @@
                                               ;; when true, result is allowed to reflect approximate or out of data
                                               ;; values. when false, results are requested to be accurate
                                               false)]
-       (->> (vals (group-by :index_name (into []
-                                              ;; filtered indexes are ignored
-                                              (filter #(nil? (:filter_condition %)))
-                                              (jdbc/reducible-result-set index-info-rs {}))))
-            (keep (fn [idx-values]
-                    ;; we only sync columns that are either singlely indexed or is the first key in a composite index
-                    (when-let [index-name (some :column_name (sort-by :ordinal_position idx-values))]
+       (->> (group-by :index_name (into []
+                                        ;; filtered indexes are ignored
+                                        (filter #(nil? (:filter_condition %)))
+                                        (jdbc/reducible-result-set index-info-rs {})))
+            (keep (fn [[index-name idx-values]]
+                    ;; we only sync columns that are either singly indexed or is the first key in a composite index
+                    (when-let [column-name (some :column_name (sort-by :ordinal_position idx-values))]
                       {:type  :normal-column-index
-                       :value index-name})))
+                       :index-name index-name
+                       :value column-name})))
             set)))))
 
 (def ^:const max-nested-field-columns
@@ -459,7 +478,7 @@
 
 (def ^:private ^{:arglists '([s])} can-parse-datetime?
   "Returns whether a string can be parsed to an ISO 8601 datetime or not."
-  (mr/validator ::lib.schema.literal/string.datetime))
+  (mr/validator driver-api/schema.literal.string.datetime))
 
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
@@ -502,7 +521,7 @@
   [v path]
   (if-not (json-object? v)
     {}
-    (let [p (json-parser v)]
+    (with-open [p (json-parser v)]
       (loop [path      (or path [])
              field     nil
              res       (transient {})]
@@ -540,42 +559,62 @@
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
 
+(defn- lowest-common-denominator-type [acc-map second-map json-column]
+  (let [acc-type (get acc-map json-column)
+        second-type (get second-map json-column)]
+    (cond
+      (or (nil? acc-type)
+          (= (hash acc-type) (hash second-type)))
+      second-type
+
+      (nil? second-type)
+      acc-type
+
+      (every? #(isa? % Number) [acc-type second-type])
+      java.lang.Number
+
+      (every?
+       (fn [column-type]
+         (some (fn [allowed-type]
+                 (isa? column-type allowed-type))
+               [String Number Boolean java.time.LocalDateTime]))
+       [acc-type second-type])
+      java.lang.String
+
+      :else
+      nil)))
+
+(def ^:const max-nested-field-columns-factor
+  "Multiplier for intermediate type analysis working set limit.
+
+  During JSON schema inference, we process multiple JSON samples and reconcile their field types.
+  We allow the working set to grow to `(max-nested-field-columns * max-nested-field-columns-factor)` entries
+  before applying early termination."
+  10)
+
 (defn- describe-json-rf
   "Reducing function that takes a bunch of maps from json-map->types,
   and gets them to conform to the type hierarchy,
   going through and taking the lowest common denominator type at each pass,
-  ignoring the nils."
-  ([] nil)
+  ignoring the nils.
+  Short circuits after `(max-nested-field-columns * max-nested-field-columns-factor)` entries."
+  ([] {})
   ([acc-field-type-map] acc-field-type-map)
   ([acc-field-type-map second-field-type-map]
-   (into {}
-         (for [json-column (set/union (set (keys second-field-type-map))
-                                      (set (keys acc-field-type-map)))]
-           (cond
-             (or (nil? acc-field-type-map)
-                 (nil? (acc-field-type-map json-column))
-                 (= (hash (acc-field-type-map json-column))
-                    (hash (second-field-type-map json-column))))
-             [json-column (second-field-type-map json-column)]
-
-             (or (nil? second-field-type-map)
-                 (nil? (second-field-type-map json-column)))
-             [json-column (acc-field-type-map json-column)]
-
-             (every? #(isa? % Number) [(acc-field-type-map json-column)
-                                       (second-field-type-map json-column)])
-             [json-column java.lang.Number]
-
-             (every?
-              (fn [column-type]
-                (some (fn [allowed-type]
-                        (isa? column-type allowed-type))
-                      [String Number Boolean java.time.LocalDateTime]))
-              [(acc-field-type-map json-column) (second-field-type-map json-column)])
-             [json-column java.lang.String]
-
-             :else
-             [json-column nil])))))
+   (let [max-count (* max-nested-field-columns max-nested-field-columns-factor)]
+     (if (> (count acc-field-type-map) max-count)
+       (reduced acc-field-type-map)
+       (->>
+        (set/union (set (keys second-field-type-map))
+                   (set (keys acc-field-type-map)))
+        (reduce
+         (fn [acc json-column]
+           (if (> (count acc) max-count)
+             (reduced acc)
+             (let [merged-type (lowest-common-denominator-type acc-field-type-map second-field-type-map json-column)]
+               (assoc! acc json-column merged-type))))
+         (transient {}))
+        persistent!)))))
 
 (def field-type-map
   "Map from Java types for deserialized JSON (so small subset of Java types) to MBQL types.
@@ -616,33 +655,35 @@
    :type/Structured "text"})
 
 (defn- field-types->fields [field-types]
-  (let [valid-fields (for [[field-path field-type] (seq field-types)]
-                       (if (nil? field-type)
-                         nil
-                         (let [curr-type (get field-type-map field-type :type/*)]
-                           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                            :database-type     (db-type-map curr-type)
-                            :base-type         curr-type
-                            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
-                            :database-position 0
-                            :json-unfolding    false
-                            :visibility-type   :normal
-                            :nfc-path          field-path})))
-        field-hash   (apply hash-set (filter some? valid-fields))]
-    field-hash))
+  (->> (for [[field-path field-type] (seq field-types)
+             :when field-type]
+         (let [curr-type (get field-type-map field-type :type/*)]
+           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+            :database-type     (db-type-map curr-type)
+            :base-type         curr-type
+            ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
+            :database-position 0
+            :json-unfolding    false
+            :visibility-type   :normal
+            :nfc-path          field-path}))
+       (into #{})))
 
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
-  (let [table-fields (describe-table-fields driver conn table nil)
-        json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
-    (if-not (seq json-fields)
-      #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select :model/Field :table_id (u/the-id table)))
-            should-not-unfold?      (fn [field]
-                                      (when-let [existing-field (existing-fields-by-name (:name field))]
-                                        (false? (:json_unfolding existing-field))))]
-        (remove should-not-unfold? json-fields)))))
+  (let [fields-with-json-unfolding-disabled
+        (->> (t2/select-fn-set :name [:model/Field :name]
+                               :table_id (u/the-id table)
+                               :base_type :type/JSON
+                               :json_unfolding false)
+             ;; in a delay so we'll query only if there's at least one json field
+             (delay))]
+    (into #{}
+          (comp
+           (filter #(isa? (:base-type %) :type/JSON))
+           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
+           (describe-table-fields-xf driver table))
+          (describe-table-fields driver conn table nil))))
 
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
@@ -700,7 +741,7 @@
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
-  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
+  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (driver-api/name-for-logging table))
   (let [query       (sample-json-reducible-query driver jdbc-spec table json-fields pks)
         field-types (transduce (map json-map->types) describe-json-rf query)
         fields      (field-types->fields field-types)]

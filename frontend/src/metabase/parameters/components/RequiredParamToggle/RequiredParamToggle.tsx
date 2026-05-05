@@ -1,20 +1,26 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
-
-import S from "./RequiredParamToggle.module.css";
+import { LabelWithInfo } from "metabase/common/components/LabelWithInfo";
+import { Flex, Switch, Text } from "metabase/ui";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;
   uniqueId: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  disabledTooltip: ReactNode;
+  disabledTooltip: React.ReactNode;
+  parametersAreUserVisible?: boolean;
 }
 
 export function RequiredParamToggle(props: RequiredParamToggleProps) {
-  const { disabled, value, onChange, uniqueId, disabledTooltip } = props;
+  const {
+    disabled,
+    value,
+    onChange,
+    uniqueId,
+    disabledTooltip,
+    parametersAreUserVisible = true,
+  } = props;
   const id = `required_param_toggle_${uniqueId}`;
 
   return (
@@ -26,26 +32,18 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
         onChange={(event) => onChange(event.currentTarget.checked)}
       />
       <div>
-        <label className={S.SettingRequiredLabel} htmlFor={id}>
-          {t`Always require a value`}
-          {disabled && (
-            <HoverCard position="top-end" shadow="xs">
-              <HoverCard.Target>
-                <Icon name="info_filled" />
-              </HoverCard.Target>
-              <HoverCard.Dropdown w={320}>
-                <Stack p="md" gap="sm">
-                  {disabledTooltip}
-                </Stack>
-              </HoverCard.Dropdown>
-            </HoverCard>
-          )}
-        </label>
+        <LabelWithInfo
+          label={t`Always require a value`}
+          info={disabled ? disabledTooltip : undefined}
+          htmlFor={id}
+        />
 
-        <Text
-          mt="sm"
-          lh={1.2}
-        >{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</Text>
+        {parametersAreUserVisible && (
+          <Text
+            mt="sm"
+            lh={1.2}
+          >{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</Text>
+        )}
       </div>
     </Flex>
   );

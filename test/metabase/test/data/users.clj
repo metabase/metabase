@@ -69,14 +69,14 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (first (t2/insert-returning-instances! :model/User
-                                                   {:email        email
-                                                    :first_name   first-name
-                                                    :last_name    last-name
-                                                    :password     password
-                                                    :is_superuser superuser
-                                                    :is_qbnewb    true
-                                                    :is_active    active}))))))
+            (t2/insert-returning-instance! :model/User
+                                           {:email        email
+                                            :first_name   first-name
+                                            :last_name    last-name
+                                            :password     password
+                                            :is_superuser superuser
+                                            :is_qbnewb    true
+                                            :is_active    active})))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
@@ -152,10 +152,15 @@
 ;;; consistently fails for me when using [[metabase.test.http-client/authenticate]] instead of the code below. See #48489 for
 ;;; more info
 (mu/defn ^:private authenticate! :- ms/UUIDString
-  "Create a new `:model/Session` for one of the test users."
+  "Create a new `:model/Session` for one of the test users, linked to their password `:model/AuthIdentity`."
   [username :- TestUserName]
-  (let [session-key (session/generate-session-key)]
-    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
+  (let [session-key  (session/generate-session-key)
+        user-id      (user->id username)
+        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
+    (t2/insert! :model/Session (cond-> {:id (session/generate-session-id)
+                                        :key_hashed (session/hash-session-key session-key)
+                                        :user_id user-id}
+                                 auth-id (assoc :auth_identity_id auth-id)))
     session-key))
 
 (mu/defn username->token :- ms/UUIDString
@@ -176,25 +181,30 @@
   (locking tokens
     (reset! tokens {})))
 
-(def ^:private ^:dynamic *retrying-authentication*  false)
-
 (defn- client-fn [the-client username & args]
-  (try
-    (apply the-client (username->token username) args)
-    (catch ExceptionInfo e
-      (let [{:keys [status-code]} (ex-data e)]
-        (when-not (= status-code 401)
-          (throw e))
-        ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        ;;
-        ;; If we're already recursively retrying throw an Exception so we don't recurse forever.
-        (when *retrying-authentication*
-          (throw (ex-info (format "Failed to authenticate %s after two tries: %s" username (ex-message e))
-                          {:user username}
-                          e)))
-        (clear-cached-session-tokens!)
-        (binding [*retrying-authentication* true]
-          (apply client-fn the-client username args))))))
+  (letfn [(thunk []
+            (apply the-client (username->token username) args))
+          (rethrow-when-not-401 [e]
+            (when-not (= (:status-code (ex-data e)) 401)
+              (throw e)))]
+    (try
+      (thunk)
+      (catch ExceptionInfo e
+        (rethrow-when-not-401 e)
+        ;; first retry: get lock, then try again.
+        (locking tokens
+          (try
+            (thunk)
+            (catch ExceptionInfo e
+              (rethrow-when-not-401 e)
+              ;; second retry: clear cached session tokens, then try again one last time
+              (clear-cached-session-tokens!)
+              (try
+                (thunk)
+                (catch ExceptionInfo e
+                  (throw (ex-info (format "Failed to authenticate %s after three tries: %s" username (ex-message e))
+                                  {:user username}
+                                  e)))))))))))
 
 (defn- user-request
   [the-client user & args]
@@ -221,6 +231,11 @@
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
   (partial user-request client/client))
+
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request-full-response
+  "Like user-http-request but uses the full-response client so will return the http response instead of the body"
+  (partial user-request client/client-full-response))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request

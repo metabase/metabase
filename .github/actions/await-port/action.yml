@@ -1,4 +1,5 @@
-name: Wait for localhost port to be ready
+name: await-port
+description: Wait for localhost port to be ready
 
 inputs:
   port:

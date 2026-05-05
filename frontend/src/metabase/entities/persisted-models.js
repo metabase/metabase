@@ -8,8 +8,9 @@ import {
   useGetPersistedInfoQuery,
   useListPersistedInfoQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 
@@ -22,18 +23,18 @@ const getPersistedModelInfoByModelId = createSelector(
 /**
  * @deprecated use "metabase/api" instead
  */
-const PersistedModels = createEntity({
+export const PersistedModels = createEntity({
   name: "persistedModels",
   nameOne: "persistedModel",
   path: "/api/persist",
   schema: PersistedModelSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListPersistedInfoQuery,
-  },
+  }),
 
   api: {
     get: ({ id, type }, options, dispatch) => {
@@ -111,5 +112,3 @@ const useGetQuery = ({ id, type }, options) => {
 
   return type === "byModelId" ? persistedInfoByCard : persistedInfo;
 };
-
-export default PersistedModels;

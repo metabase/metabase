@@ -1,10 +1,9 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -34,13 +33,27 @@ function isConcreteFieldReference(
   return reference[0] === "field" || reference[0] === "expression";
 }
 
+export function isTextTagTarget(
+  target: ParameterTarget,
+): target is ParameterTextTarget {
+  return target[0] === "text-tag";
+}
+
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1] || target?.[0] === "text-tag") {
+  if (!target?.[1] || isTextTagTarget(target)) {
     return null;
   }
 
   const [, [type, tag]] = target;
   return type === "template-tag" ? tag : null;
+}
+
+export function getTextTagFromTarget(target: ParameterTarget) {
+  if (!target?.[1] || !isTextTagTarget(target)) {
+    return null;
+  }
+
+  return target[1];
 }
 
 /**
@@ -157,15 +170,28 @@ export function buildColumnTarget(
 
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
-): ParameterVariableTarget {
-  return ["variable", normalize(variable.mbql())];
+): ParameterVariableTarget | NativeParameterDimensionTarget {
+  const tag = variable.tag();
+  if (tag?.type === "temporal-unit") {
+    return ["dimension", variable.mbql(), { "stage-number": 0 }];
+  } else {
+    return ["variable", variable.mbql()];
+  }
 }
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 
-export function getParameterColumns(question: Question, parameter?: Parameter) {
+export type GetParameterColumnsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
+export function getParameterColumns(
+  question: Question,
+  parameter?: Parameter,
+  opts?: GetParameterColumnsOpts,
+) {
   // treat the dataset/model question like it is already composed so that we can apply
   // dataset/model-specific metadata to the underlying dimension options
   const query =
@@ -187,7 +213,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     return { query: nextQuery, columns };
   }
 
-  const availableColumns = getFilterableColumns(nextQuery);
+  const availableColumns = getFilterableColumns(nextQuery, opts);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
         columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
@@ -210,9 +236,12 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   }));
 }
 
-function getFilterableColumns(query: Lib.Query) {
+function getFilterableColumns(
+  query: Lib.Query,
+  opts?: GetParameterColumnsOpts,
+) {
   return Lib.stageIndexes(query).flatMap((stageIndex) => {
-    const columns = Lib.filterableColumns(query, stageIndex);
+    const columns = Lib.filterableColumns(query, stageIndex, opts);
     const groups = Lib.groupColumns(columns);
 
     return groups.flatMap((group) => {

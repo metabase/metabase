@@ -1,38 +1,41 @@
 import type { Location } from "history";
-import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { AppBanner } from "metabase/components/AppBanner";
+import { AppBanner } from "metabase/common/components/AppBanner";
 import {
   Archived,
   GenericError,
   KeyboardTriggeredErrorModal,
   NotFound,
   Unauthorized,
-} from "metabase/components/ErrorPages";
-import { UndoListing } from "metabase/containers/UndoListing";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+} from "metabase/common/components/ErrorPages";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
-import { initializeIframeResizer } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
+  getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
-import StatusListing from "metabase/status/components/StatusListing";
-import type { AppErrorDescriptor, State } from "metabase-types/store";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { StatusListing } from "metabase/status/components/StatusListing";
+import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
+import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -55,6 +58,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  isDataStudioApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -77,6 +81,7 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  isDataStudioApp: getIsDataStudioApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -88,12 +93,16 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
+  isDataStudioApp,
   isAppBarVisible,
   isNavBarEnabled,
   children,
   onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const applicationName = useSelector(getApplicationName);
+
+  usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
 
   useEffect(() => {
@@ -103,7 +112,7 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <KBarProvider>
+        <AppKBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
@@ -120,11 +129,11 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
+              <Metabot hide={isAdminApp || isDataStudioApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />
-        </KBarProvider>
+        </AppKBarProvider>
       </ScrollToTop>
     </ErrorBoundary>
   );

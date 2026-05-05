@@ -3,12 +3,9 @@
    [clojure.math.numeric-tower :as math]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.druid.query-processor :as druid.qp]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -21,8 +18,8 @@
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
   timestamps from Druid are already in UTC and don't need to be converted"
   [_]
-  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
-    (qp.timezone/results-timezone-id)))
+  (when-not (= (t/zone-id (driver-api/results-timezone-id)) (t/zone-id "UTC"))
+    (driver-api/results-timezone-id)))
 
 (defmulti ^:private post-process
   "Do appropriate post-processing on the results of a query based on the `query-type`."
@@ -103,7 +100,7 @@
            k))))))
 
 (defn- result-metadata [col-names]
-  ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
+  ;; rename any occurrences of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
   ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
   ;; units to int and rounding up approximate cardinality values.
   (let [fixed-col-names (for [col-name col-names]
@@ -120,7 +117,7 @@
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
     (when-not (seq getters)
       (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
-                      {:type    qp.error-type/driver
+                      {:type    driver-api/qp.error-type.driver
                        :results results})))
     (map (apply juxt getters) rows)))
 
@@ -137,9 +134,10 @@
                                   vec)
                              (-> result :results first keys))
         metadata           (result-metadata col-names)
-        annotate-col-names (map (comp keyword :name) (annotate/merged-column-info outer-query metadata))
+        annotate-col-names (map (comp keyword :name) (driver-api/merged-column-info outer-query (when-not mbql?
+                                                                                                  metadata)))
         rows               (result-rows result col-names annotate-col-names)
-        base-types         (transduce identity (annotate/base-type-inferer metadata) rows)
+        base-types         (transduce identity (driver-api/base-type-inferer metadata) rows)
         metadata           (update metadata :cols (partial map (fn [col base-type]
                                                                  (assoc col :base_type base-type)))
                                    base-types)]
@@ -153,17 +151,19 @@
     :as                                    mbql-query}
    respond]
   {:pre [query]}
-  (let [details    (:details (lib.metadata/database (qp.store/metadata-provider)))
+  (let [database   (-> (driver-api/metadata-provider) driver-api/database)
+        details    (driver.conn/effective-details database)
         query      (if (string? query)
                      (json/decode+kw query)
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
+        _          (driver.conn/track-connection-acquisition! details)
         results    (try
                      (execute* details query)
                      (catch Throwable e
                        (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                       {:type  qp.error-type/db
+                                       {:type  driver-api/qp.error-type.db
                                         :query query}
                                        e))))
         result     (try (post-process query-type projections
@@ -172,14 +172,14 @@
                                       results)
                         (catch Throwable e
                           (throw (ex-info (tru "Error post-processing Druid query results")
-                                          {:type    qp.error-type/driver
+                                          {:type    driver-api/qp.error-type.driver
                                            :results results}
                                           e))))]
     (try
       (reduce-results mbql-query result respond)
       (catch Throwable e
         (throw (ex-info (tru "Error reducing Druid query results")
-                        {:type           qp.error-type/driver
+                        {:type           driver-api/qp.error-type.driver
                          :results        results
                          :post-processed result}
                         e))))))

@@ -1,0 +1,1 @@
+export { OnClickOutsideWrapper } from "./OnClickOutsideWrapper";

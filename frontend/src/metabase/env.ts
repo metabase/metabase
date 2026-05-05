@@ -38,8 +38,3 @@ export const isChartsDebugLoggingEnabled = tryOrDefault(
   () => process.env.MB_LOG_CHARTS_DEBUG === "true",
   false,
 );
-
-export const isEmbeddingSdk = tryOrDefault(
-  () => !!process.env.IS_EMBEDDING_SDK,
-  false,
-);

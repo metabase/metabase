@@ -1,7 +1,6 @@
 import fs from "fs";
 
 import { graphql } from "@octokit/graphql";
-import _ from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
@@ -25,11 +24,16 @@ import {
 } from "./version-helpers";
 
 function isBackport(pullRequest: Issue) {
-  return pullRequest.title.includes('backport') ||
-    (
-      Array.isArray(pullRequest.labels) &&
-      pullRequest.labels.some((label) => label.name === 'was-backported')
-    );
+  return (
+    pullRequest.title.includes("backport") || hasLabel(pullRequest, "was-backport")
+  );
+}
+
+function hasLabel(issue: Issue, labelName: string) {
+  return (
+    Array.isArray(issue.labels) &&
+    issue.labels.some((label) => label.name === labelName)
+  );
 }
 
 const isNotNull = <T>(value: T | null): value is T => value !== null;
@@ -243,7 +247,7 @@ export async function setMilestoneForCommits({
   console.log('Next milestone:', nextMilestone.title);
 
   // figure out issue or PR
-  const PRsToCheck = _.uniq(
+  const PRsToCheck = uniq(
     commitMessages
       .flatMap(getPRsFromCommitMessage)
       .filter(isNotNull)
@@ -265,7 +269,7 @@ export async function setMilestoneForCommits({
     })));
   }
 
-  const uniqueIssuesToTag = _.uniq(issuesToTag);
+  const uniqueIssuesToTag = uniq(issuesToTag);
 
   console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
 
@@ -354,7 +358,7 @@ export async function checkMilestoneForRelease({
       })));
     }
 
-    const uniqueIssues = _.uniq(issueNumbers.filter(isNotNull));
+    const uniqueIssues = uniq(issueNumbers.filter(isNotNull));
     commitIssueMap[commit.sha] = uniqueIssues;
 
     uniqueIssues.forEach(issueNumber => {
@@ -598,4 +602,8 @@ async function addIssueToProject({
       )
       { projectV2Item { id } }
     }`);
+}
+
+function uniq<T>(array: T[]) {
+  return Array.from<T>(new Set(array));
 }

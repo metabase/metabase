@@ -1,8 +1,7 @@
 import {
   NativeEditor,
-  entityPickerModal,
-  entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
+  miniPicker,
   modal,
   openQuestionActions,
   popover,
@@ -27,14 +26,6 @@ export function assertQuestionIsBasedOnModel({
   cy.findByText(table).should("not.exist");
 }
 
-export function assertCreatedNestedQuery(modelId) {
-  cy.wait("@createCard").then(({ request }) => {
-    expect(request.body.dataset_query.query["source-table"]).to.equal(
-      `card__${modelId}`,
-    );
-  });
-}
-
 export function saveQuestionBasedOnModel({ modelId, name }) {
   cy.intercept("POST", "/api/card").as("createCard");
 
@@ -47,10 +38,6 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-
-  assertCreatedNestedQuery(modelId);
-
-  modal().findByText("Not now").click();
 }
 
 export function selectDimensionOptionFromSidebar(name) {
@@ -103,15 +90,15 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 
 export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Collections").click();
+  miniPicker().within(() => {
+    cy.findByText("Our analytics").click();
     cy.findByText(modelName).click();
   });
 }

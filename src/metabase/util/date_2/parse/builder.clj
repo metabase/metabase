@@ -1,11 +1,11 @@
 (ns metabase.util.date-2.parse.builder
-  "Utility functions for programatically building a `DateTimeFormatter`. Easier to understand than chaining a hundred
+  "Utility functions for programmatically building a `DateTimeFormatter`. Easier to understand than chaining a hundred
   Java calls and trying to keep the structure straight.
 
   The basic idea here is you pass a number of `sections` to `formatter` to build a `DateTimeFormatter` — see
   `metabase.util.date-2.parse` for examples. Most of these sections are simple wrappers around corresponding
   `DateTimeFormatterBuilder` -- see
-  https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html for documenation.
+  https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html for documentation.
 
   TODO - this is a prime library candidate."
   (:require

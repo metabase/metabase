@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
@@ -14,11 +14,7 @@ import {
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationSettings } from "metabase-types/api";
 
-const HIDDEN_SETTING_WIDGETS = [
-  "card.title",
-  "card.description",
-  "card.hide_empty",
-];
+const HIDDEN_SETTING_WIDGETS = ["card.title"];
 
 export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
@@ -47,9 +43,12 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         handleChangeSettings,
         true,
       );
-      return widgets.filter(
-        (widget) => !HIDDEN_SETTING_WIDGETS.includes(widget.id),
-      );
+      return widgets.filter((widget) => {
+        return (
+          typeof widget.id !== "string" ||
+          !HIDDEN_SETTING_WIDGETS.includes(widget.id)
+        );
+      });
     } catch (error) {
       setError(error as Error);
       return [];

@@ -1,15 +1,19 @@
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { isEmbedding } from "metabase/embedding/config";
 import { Icon, Popover, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
+import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
+import { DataPickerTarget } from "../NotebookDataPicker/DataPickerTarget";
 
 import S from "./DataStep.module.css";
 
@@ -20,11 +24,13 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepProps) => {
+  const { dataPickerOptions } = useNotebookContext();
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId
     ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
     : undefined;
+  const [isOpened, setIsOpened] = useState(() => !table);
   const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {
@@ -35,6 +41,7 @@ export const DataStep = ({
   }, [query, stageIndex]);
 
   const canSelectTableColumns = table && isRaw && !readOnly;
+  const isEmbed = isEmbedding();
 
   const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
@@ -51,22 +58,7 @@ export const DataStep = ({
 
   return (
     <NotebookCell color={color}>
-      <NotebookCellItem
-        color={color}
-        inactive={!table}
-        right={
-          canSelectTableColumns && (
-            <DataFieldPopover
-              query={query}
-              stageIndex={stageIndex}
-              updateQuery={updateQuery}
-            />
-          )
-        }
-        containerStyle={{ padding: 0 }}
-        rightContainerStyle={{ width: 37, padding: 0 }}
-        data-testid="data-step-cell"
-      >
+      {isOpened || !table || isEmbed ? (
         <NotebookDataPicker
           query={query}
           stageIndex={stageIndex}
@@ -74,10 +66,52 @@ export const DataStep = ({
           title={t`Pick your starting data`}
           canChangeDatabase
           hasMetrics
+          isOpened={isOpened}
+          setIsOpened={setIsOpened}
           isDisabled={readOnly}
           onChange={handleTableChange}
+          columnPicker={
+            <DataFieldPopover
+              query={query}
+              stageIndex={stageIndex}
+              updateQuery={updateQuery}
+            />
+          }
+          {...dataPickerOptions}
         />
-      </NotebookCellItem>
+      ) : (
+        <NotebookCellItem
+          color={color}
+          inactive={!table}
+          right={
+            canSelectTableColumns && (
+              <DataFieldPopover
+                query={query}
+                stageIndex={stageIndex}
+                updateQuery={updateQuery}
+              />
+            )
+          }
+          containerStyle={{ padding: 0 }}
+          rightContainerStyle={{ width: 37, padding: 0 }}
+          data-testid="data-step-cell"
+          disabled={readOnly}
+        >
+          <Tooltip
+            label={t`${METAKEY}+click to open in new tab`}
+            hidden={!table || readOnly}
+            events={{ hover: true, focus: false, touch: false }}
+          >
+            <DataPickerTarget
+              table={table}
+              query={query}
+              setIsOpened={setIsOpened}
+              stageIndex={stageIndex}
+              isDisabled={readOnly}
+            />
+          </Tooltip>
+        </NotebookCellItem>
+      )}
     </NotebookCell>
   );
 };
@@ -88,7 +122,7 @@ interface DataFieldPopoverProps {
   updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
-function DataFieldPopover({
+export function DataFieldPopover({
   query,
   stageIndex,
   updateQuery,

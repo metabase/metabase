@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackOnboardingChecklistOpened = () => {
   trackSimpleEvent({
@@ -16,7 +16,7 @@ export const trackAddDataModalOpened = (
   from: "getting-started" | "left-nav",
 ) => {
   trackSimpleEvent({
-    event: "data_add_clicked",
+    event: "data_add_modal_opened",
     triggered_from: from,
   });
 };

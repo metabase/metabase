@@ -80,6 +80,35 @@
           (t2/delete! :model/Notification (:id notification))
           (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
+(deftest delete-card-cleans-up-notifications-test
+  (testing "deleting a card should remove all associated notifications, both active and inactive"
+    (notification.tu/with-notification-cleanup!
+      (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
+                                                :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+        (let [active-notification   (models.notification/create-notification!
+                                     {:payload_type :notification/card
+                                      :payload      {:card_id card-id}
+                                      :creator_id   (mt/user->id :crowberto)}
+                                     []
+                                     [])
+              inactive-notification (models.notification/create-notification!
+                                     {:payload_type :notification/card
+                                      :payload      {:card_id card-id}
+                                      :active       false
+                                      :creator_id   (mt/user->id :crowberto)}
+                                     []
+                                     [])]
+          (testing "sanity: both notifications and notification cards exist"
+            (is (t2/exists? :model/Notification (:id active-notification)))
+            (is (t2/exists? :model/Notification (:id inactive-notification)))
+            (is (= 2 (t2/count :model/NotificationCard :card_id card-id))))
+          (t2/delete! :model/Card card-id)
+          (testing "both notifications should be removed when the card is deleted"
+            (is (not (t2/exists? :model/Notification (:id active-notification))))
+            (is (not (t2/exists? :model/Notification (:id inactive-notification)))))
+          (testing "notification card payloads should also be removed"
+            (is (not (t2/exists? :model/NotificationCard :card_id card-id)))))))))
+
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
@@ -106,8 +135,13 @@
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                             :event_name      (first (descendants :metabase/event))
+      ;; we derive other keywords into this hierarchy
+      ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
+      ;; for a long time
+      (let [random-event (first (filter (comp #{"event"} namespace)
+                                        (descendants :metabase/event)))
+            sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
+                                                                             :event_name      random-event
                                                                              :notification_id n-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 
@@ -362,3 +396,23 @@
       (testing "activate notification should restore triggers"
         (t2/update! :model/Notification id {:active true})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
+
+(deftest v-alerts-schedule-type-test
+  (mt/when-ee-evailable
+   (testing "schedule types"
+     (doseq [[schedule-type cron-schedule ui-display-type]
+             [["by the minute" "0 * * * * ? *"    :cron/builder] ;; every minute
+              ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
+              ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
+              ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
+              ["custom"        "0 0 0/4 * * ? *"   :cron/raw]     ;; every 4 hours starting at midnight #60427
+              ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
+              ["custom"        "0 * * * * ? *"    :cron/raw]]]
+       (notification.tu/with-card-notification
+         [notification {:subscriptions [{:type            :notification-subscription/cron
+                                         :cron_schedule   cron-schedule
+                                         :ui_display_type ui-display-type}]}]
+         (let [get-schedule-type (fn []
+                                   (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
+           (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
+             (is (= schedule-type (get-schedule-type))))))))))

@@ -1,7 +1,8 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -12,11 +13,11 @@ const DASHBOARD_TITLE = '"My test dash"';
 const setupPremium = async (opts?: Partial<SetupOpts>) => {
   return await setup({
     ...opts,
+    enterprisePlugins: ["whitelabel", "resource_downloads"],
     tokenFeatures: createMockTokenFeatures({
       // the `whitelabel` feature is needed to test #downloads=false
       whitelabel: true,
     }),
-    hasEnterprisePlugins: true,
     dashboardTitle: DASHBOARD_TITLE,
   });
 };
@@ -56,13 +57,18 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     it("should allow downloading the dashcards results when downloads are enabled", async () => {
       await setupPremium({ numberOfTabs: 1, hash: { downloads: "true" } });
 
-      expect(
-        screen.getByRole("button", { name: "Download results" }),
-      ).toBeInTheDocument();
+      const ellipsisIcon = screen.queryByLabelText("ellipsis icon");
+      expect(ellipsisIcon).toBeInTheDocument();
+      await userEvent.click(ellipsisIcon!);
+      await waitFor(() => {
+        expect(screen.getByLabelText("Download results")).toBeInTheDocument();
+      });
     });
 
     it("should not allow downloading the dashcards results when downloads are disabled", async () => {
       await setupPremium({ numberOfTabs: 1, hash: { downloads: "false" } });
+
+      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
 
       expect(
         screen.queryByRole("button", { name: "Download results" }),
@@ -73,6 +79,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       const { container } = await setupPremium({ numberOfTabs: 1 });
 
       expect(
+        // eslint-disable-next-line testing-library/no-node-access
         container.querySelector(`#${DASHBOARD_PDF_EXPORT_ROOT_ID}`),
       ).toBeInTheDocument();
     });
@@ -92,7 +99,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       await setupPremium({ hash: { locale: expectedLocale } });
 
       expect(
-        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
       ).toHaveLength(1);
     });
   });

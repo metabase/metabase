@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.params-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -46,8 +46,8 @@
         (testing (format "^%s %s" (some-> v class .getCanonicalName) (pr-str v))
           (let [results (qp/process-query
                          (assoc (mt/native-query
-                                  {:query  "SELECT ?"
-                                   :params [v]})
+                                 {:query  "SELECT ?"
+                                  :params [v]})
                                 :middleware {:format-rows? false}))]
             (is (= (or (:v expected) v)
                    (first (mt/first-row results))))

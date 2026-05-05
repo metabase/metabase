@@ -78,7 +78,7 @@
     (mt/with-user-locale "zz"
       (is (= "HOST"
              (str (get-in (setting/user-readable-values-map #{:public})
-                          [:engines :postgres :details-fields 0 :display-name])))))))
+                          [:engines :postgres :details-fields 0 :fields 0 :display-name])))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}

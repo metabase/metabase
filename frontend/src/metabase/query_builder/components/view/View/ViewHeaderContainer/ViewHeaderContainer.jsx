@@ -7,7 +7,7 @@ import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewTitleHeader } from "../../ViewHeader";
-import ViewSection, { ViewHeading } from "../../ViewSection";
+import { ViewHeading, ViewSection } from "../../ViewSection";
 
 import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
 

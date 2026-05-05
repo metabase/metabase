@@ -26,6 +26,10 @@
                     {:type        type
                      :status-code 400}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
@@ -47,6 +51,10 @@
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params

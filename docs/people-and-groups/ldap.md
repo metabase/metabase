@@ -6,7 +6,7 @@ title: LDAP
 
 Metabase supports authentication with Lightweight Directory Access Protocol (LDAP).
 
-You can find SSO options under **Admin settings** > **Settings** > **Authentication**.
+You can find SSO options under **Admin** > **Settings** > **Authentication**.
 
 ## Required LDAP attributes
 
@@ -24,11 +24,13 @@ Your LDAP directory must have the email field populated for each entry that will
 
 ## Enabling LDAP authentication
 
-In the **Admin settings** > **Settings** > **Authentication** tab, go to the LDAP section and click **Set up**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
+In the **Admin** > **Settings** > **Authentication** > **LDAP**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
 
 ## User provisioning
 
-When a person logs in via LDAP, Metabase can create a Metabase account for them automatically (if they don't already have a Metabase account).
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via LDAP.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 ## Server settings
 
@@ -88,7 +90,7 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 {% include plans-blockquote.html feature="LDAP advanced features" %}
 
-You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [data sandboxing][data-sandboxing-docs], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
+You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
 
 ## Troubleshooting login issues
 
@@ -100,9 +102,9 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../permissions/start.md).
 
-[data-sandboxing-docs]: ../permissions/data-sandboxes.md
+[row-and-column-security]: ../permissions/row-and-column-security.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/data-sandboxes.md#choosing-user-attributes-for-data-sandboxes
+[user-attributes-docs]: ../permissions/row-and-column-security.md#choosing-user-attributes-for-row-and-column-security
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

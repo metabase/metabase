@@ -17,24 +17,28 @@
    :created_at              true})
 
 (def field-defaults
-  {:description        nil
-   :table_id           true
-   :caveats            nil
-   :points_of_interest nil
-   :fk_target_field_id false
+  {:description                nil
+   :table_id                   true
+   :caveats                    nil
+   :points_of_interest         nil
+   :fk_target_field_id         false
+   :database_default           nil
    :database_is_auto_increment false
-   :updated_at         true
-   :active             true
-   :nfc_path           nil
-   :parent_id          false
-   :semantic_type      nil
-   :id                 true
-   :last_analyzed      true
-   :position           0
-   :visibility_type    :normal
-   :preview_display    true
-   :created_at         true
-   :json_unfolding     false})
+   :database_is_generated      false
+   :database_is_nullable       false
+   :database_is_pk             false
+   :updated_at                 true
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  false
+   :semantic_type              nil
+   :id                         true
+   :last_analyzed              true
+   :position                   0
+   :visibility_type            :normal
+   :preview_display            true
+   :created_at                 true
+   :json_unfolding             false})
 
 (def pulse-channel-defaults
   {:schedule_frame nil

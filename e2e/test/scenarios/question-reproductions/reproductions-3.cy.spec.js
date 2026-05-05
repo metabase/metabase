@@ -228,12 +228,16 @@ describe("issue 38176", () => {
         .blur();
 
       cy.wait("@updateQuestion");
+      cy.wait("@cardQuery");
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
+      cy.wait("@cardQuery");
 
       cy.findByRole("tab", { name: "History" }).click();
-      cy.findByText(/reverted to an earlier version/i).should("be.visible");
+      cy.findByText(/reverted to an earlier version/i, {
+        timeout: 10000,
+      }).should("be.visible");
     });
 
     cy.findByLabelText("Close").click();
@@ -258,7 +262,8 @@ describe("issue 38354", { tags: "@external" }, () => {
   it("should be possible to change source database (metabase#38354)", () => {
     H.openNotebook();
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -508,7 +513,7 @@ describe("issue 40435", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Product ID").click();
     H.queryBuilderHeader().findByText("Save").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal().last().findByText("Save").click();
     cy.wait("@updateCard");
     H.visualize();
@@ -558,6 +563,7 @@ describe(
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
         .findAllByRole("gridcell")
         .first()
         .then(($cell) => {
@@ -641,7 +647,7 @@ describe("issue 33439", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convert-timezone");
+      cy.findByText("Unsupported function convertTimezone");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -668,67 +674,11 @@ describe("issue 42244", () => {
       cy.findByText(COLUMN_NAME).realHover();
       cy.findByText("by month").should("be.visible").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Year").click();
     H.getNotebookStep("summarize")
       .findByText(`${COLUMN_NAME}: Year`)
       .should("be.visible");
-  });
-});
-
-describe("issue 42957", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("does not show collections that contain models from different tabs (metabase#42957)", () => {
-    H.createQuestion({
-      name: "Model",
-      type: "model",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    });
-
-    H.createCollection({ name: "Collection without models" }).then(
-      ({ body: collection }) => {
-        cy.wrap(collection.id).as("collectionId");
-      },
-    );
-
-    cy.get("@collectionId").then((collectionId) => {
-      H.createQuestion({
-        name: "Question",
-        type: "question",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        collection_id: collectionId,
-      });
-    });
-
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-
-      // wait for data to load
-      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
-
-      // open filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-    });
-
-    H.popover().findByLabelText("Saved questions").click();
-
-    H.entityPickerModal().within(() => {
-      // close filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-      H.entityPickerModalLevel(1).should(
-        "not.contain",
-        "Collection without models",
-      );
-    });
   });
 });
 
@@ -779,13 +729,13 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
 });
 
-describe.skip("issue 10493", () => {
+describe("issue 10493", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -885,13 +835,13 @@ describe("issue 32020", () => {
     H.startNewQuestion();
 
     cy.log("create joined question manually");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Details.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Details.name).click();
     });
     H.popover().findByText("ID").click();
@@ -911,14 +861,14 @@ describe("issue 32020", () => {
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText(question2Details.name).click();
-      cy.findByText("Max of Longitude").click();
+      cy.findByText("Q2 → Max of Longitude").click();
     });
 
     cy.log("visualize and check results");
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });
@@ -939,8 +889,8 @@ describe("issue 44071", () => {
   it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1096,9 +1046,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1122,9 +1072,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1169,7 +1119,7 @@ describe("issue 31960", () => {
     },
   };
 
-  // the dot that corresponds to July 10–16, 2022
+  // the dot that corresponds to July 10–16, 2025
   const dotIndex = 10;
   const rowCount = 11;
 
@@ -1186,23 +1136,21 @@ describe("issue 31960", () => {
     );
 
     H.getDashboardCard().within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
-      header: "July 10–16, 2022",
-      rows: [
-        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
-      ],
+      header: "July 13–19, 2025", // expect this to break when we shift years in the Sample Database
+      rows: [{ name: "Count", value: String(rowCount), secondaryValue: "0%" }],
     });
     H.getDashboardCard().within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 13–19, 2025")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1338,18 +1286,18 @@ describe("issue 43057", () => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
-      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.findByLabelText("Date").clear().type("November 18, 2027");
       cy.button("Add filter").click();
     });
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
 
     cy.log("set time to 00:00 and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .click();
     H.popover().within(() => {
       cy.button("Add time").click();
@@ -1359,12 +1307,12 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(1);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .should("be.visible");
 
     cy.log("remove time and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .click();
     H.popover().within(() => {
       cy.findByLabelText("Time").should("have.value", "00:00");
@@ -1374,7 +1322,7 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
   });
 });
@@ -1420,21 +1368,22 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q1").click();
+    H.miniPicker().should("exist");
+    cy.realType("Q1");
+    H.miniPicker().findByText("Q1").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q2").click();
+    cy.realType("Q2");
+    H.miniPicker().findByText("Q2").click();
 
     H.popover().findByText("Category").click();
     H.popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q3").click();
+    cy.realType("Q3");
+    H.miniPicker().findByText("Q3").click();
 
     H.popover().findByText("Category").should("be.visible");
     H.popover().findByText("Count").should("be.visible");
@@ -1442,8 +1391,8 @@ describe("issue 19894", () => {
     H.popover().findByText("Q1").click();
     H.popover().findByText("Q2").click();
 
-    H.popover().findByText("Category").should("be.visible");
-    H.popover().findByText("Sum of Price").should("be.visible");
+    H.popover().findByText("Q2 - Category → Category").should("be.visible");
+    H.popover().findByText("Q2 - Category → Sum of Price").should("be.visible");
 
     H.popover().findByText("Q1").click();
 
@@ -1471,7 +1420,10 @@ describe("issue 44637", () => {
     H.assertQueryBuilderRowCount(0);
     H.queryBuilderMain().findByText("No results!").should("exist");
     H.queryBuilderFooter().button("Visualization").click();
-    H.leftSidebar().icon("bar").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("bar").click();
+    });
     H.queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
       cy.findByText("Something's gone wrong").should("not.exist");
@@ -1479,1075 +1431,5 @@ describe("issue 44637", () => {
 
     H.queryBuilderFooter().icon("calendar").click();
     H.rightSidebar().findByText("Create event");
-  });
-});
-
-describe("issue 44668", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
-    H.createQuestion(
-      {
-        display: "bar",
-        query: {
-          aggregation: [["count"]],
-          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
-          "source-table": PEOPLE_ID,
-          limit: 5,
-        },
-        visualization_settings: {
-          "graph.metrics": ["count"],
-          "graph.dimensions": ["STATE"],
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openNotebook();
-
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: 'concat("abc_", [Count])',
-      name: "Custom String",
-      format: true,
-    });
-    H.popover().button("Done").click();
-
-    H.getNotebookStep("expression", { stage: 1 }).icon("add").click();
-    H.enterCustomColumnDetails({
-      formula: "[Count] * 2",
-      name: "Custom Number",
-    });
-    H.popover().button("Done").click();
-
-    H.visualize();
-
-    H.echartsContainer().within(() => {
-      cy.findByText("State").should("be.visible"); // x-axis
-      cy.findByText("Count").should("be.visible"); // y-axis
-
-      // x-axis values
-      ["AK", "AL", "AR", "AZ", "CA"].forEach((state) => {
-        cy.findByText(state).should("be.visible");
-      });
-    });
-
-    // Ensure custom columns weren't added as series automatically
-    H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
-
-    H.openVizSettingsSidebar();
-
-    // Ensure can use Custom Number as series
-    H.leftSidebar().findByText("Add another series").click();
-    H.queryBuilderMain()
-      .findByLabelText("Legend")
-      .within(() => {
-        cy.findByText("Count").should("exist");
-        cy.findByText("Custom Number").should("exist");
-      });
-    H.leftSidebar().within(() => {
-      cy.findByText("Add another series").should("not.exist");
-      cy.findByText("Add series breakout").should("not.exist");
-      cy.findByTestId("remove-Custom Number").click();
-    });
-    H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
-
-    H.leftSidebar().findByText("Add series breakout").click();
-    H.popover().within(() => {
-      cy.findByText("Count").should("exist");
-      cy.findByText("Custom Number").should("exist");
-      cy.findByText("Custom String").click();
-    });
-    H.queryBuilderMain()
-      .findByLabelText("Legend")
-      .within(() => {
-        ["68", "56", "49", "20", "90"].forEach((value) => {
-          cy.findByText(`abc_${value}`).should("exist");
-        });
-      });
-    H.leftSidebar().within(() => {
-      cy.findByText("Add another series").should("not.exist");
-      cy.findByText("Add series breakout").should("not.exist");
-    });
-  });
-});
-
-describe("issue 44974", { tags: "@external" }, () => {
-  const PG_DB_ID = 2;
-
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
-    H.withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
-      const questionDetails = {
-        name: "Question 44974 in Postgres DB",
-        database: PG_DB_ID,
-        query: {
-          "source-table": PEOPLE_ID,
-          limit: 1,
-        },
-      };
-
-      H.createQuestion(questionDetails, {
-        // Visit question to put it in recents
-        visitQuestion: true,
-      });
-
-      H.openOrdersTable({ mode: "notebook" });
-      H.join();
-
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
-        cy.findByText(questionDetails.name).should("not.exist");
-      });
-    });
-  });
-});
-
-describe("issue 38989", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be impossible to join with a table or question which is not in the same database (metabase#38989)", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PEOPLE_ID,
-          fields: [
-            ["field", PEOPLE.ID, { "base-type": "type/Number" }],
-            ["field", PEOPLE.EMAIL, { "base-type": "type/Text" }],
-          ],
-          joins: [
-            {
-              fields: "all",
-              alias: "Orders",
-              // This is not a valid table ID in the Sample Database
-              "source-table": 123,
-              strategy: "left-join",
-              condition: [
-                "=",
-                ["field", PEOPLE.ID, null],
-                ["field", ORDERS.USER_ID, { "join-alias": "Orders" }],
-              ],
-            },
-          ],
-        },
-      },
-      {
-        visitQuestion: true,
-      },
-    );
-
-    cy.findByTestId("query-builder-main")
-      .findByText("Show error details")
-      .click();
-
-    cy.findByTestId("query-builder-main")
-      .findByText(
-        /either it does not exist, or it belongs to a different Database/,
-      )
-      .should("exist");
-  });
-});
-
-describe("issue 39771", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should show tooltip for ellipsified text (metabase#39771)", () => {
-    H.createQuestion(
-      {
-        query: {
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              "CREATED_AT",
-              {
-                "base-type": "type/DateTime",
-                "temporal-unit": "quarter-of-year",
-              },
-            ],
-          ],
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                ORDERS.CREATED_AT,
-                {
-                  "base-type": "type/DateTime",
-                  "temporal-unit": "month",
-                },
-              ],
-            ],
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openNotebook();
-    H.getNotebookStep("summarize", { stage: 1 })
-      .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
-      .click();
-
-    H.popover().findByText("by quarter of year").realHover();
-
-    H.popover().then(([$popover]) => {
-      const popoverStyle = window.getComputedStyle($popover);
-      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
-
-      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
-        cy.findByText("by quarter of year").should("be.visible");
-
-        const tooltipStyle = window.getComputedStyle($tooltip);
-        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
-
-        // resort to asserting zIndex because should("be.visible") passes unexpectedly
-        expect(tooltipZindex).to.be.gte(popoverZindex);
-      });
-    });
-  });
-});
-
-describe("issue 45063", { tags: "@flaky" }, () => {
-  function createGuiQuestion({ sourceTableId }) {
-    const questionDetails = {
-      name: "Question",
-      query: {
-        "source-table": sourceTableId,
-      },
-    };
-    H.createQuestion(questionDetails, { wrapId: true });
-  }
-
-  function createGuiModel({ sourceTableId }) {
-    const mbqlModelDetails = {
-      name: "Model",
-      type: "model",
-      query: {
-        "source-table": sourceTableId,
-      },
-    };
-    H.createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
-  }
-
-  function createNativeModel({
-    tableName,
-    fieldId,
-    fieldName,
-    fieldSemanticType,
-  }) {
-    const nativeModelDetails = {
-      name: "Native Model",
-      type: "model",
-      native: {
-        query: `SELECT * FROM ${tableName}`,
-      },
-    };
-    H.createNativeQuestion(nativeModelDetails, {
-      wrapId: true,
-      idAlias: "modelId",
-    }).then(({ body: model }) => {
-      cy.log("populate result_metadata");
-      cy.request("POST", `/api/card/${model.id}/query`);
-      cy.log("map columns to database fields");
-      H.setModelMetadata(model.id, (field) => {
-        if (field.name === fieldName) {
-          return { ...field, id: fieldId, semantic_type: fieldSemanticType };
-        }
-        return field;
-      });
-    });
-  }
-
-  function setListValues({ fieldId }) {
-    cy.request("PUT", `/api/field/${fieldId}`, {
-      has_field_values: "list",
-    });
-  }
-
-  function setSearchValues({ fieldId }) {
-    cy.request("PUT", `/api/field/${fieldId}`, {
-      has_field_values: "search",
-    });
-  }
-
-  function setForeignKeyRemapping({
-    sourceFieldId,
-    targetFieldId,
-    remappedDisplayName,
-  }) {
-    cy.request("POST", `/api/field/${sourceFieldId}/dimension`, {
-      type: "external",
-      name: remappedDisplayName,
-      human_readable_field_id: targetFieldId,
-    });
-  }
-
-  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
-    H.tableHeaderClick(fieldDisplayName);
-    H.popover().findByText("Filter by this column").click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type(fieldValueLabel);
-      cy.findByText(fieldValueLabel).click();
-      cy.button("Add filter").click();
-    });
-    cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
-      .click();
-    H.popover().findByLabelText(fieldValueLabel).should("be.checked");
-  }
-
-  function verifySearchFilter({
-    fieldDisplayName,
-    fieldPlaceholder,
-    fieldValue,
-    fieldValueLabel,
-  }) {
-    H.tableHeaderClick(fieldDisplayName);
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByPlaceholderText(fieldPlaceholder).type(fieldValueLabel);
-    H.selectDropdown().findByText(fieldValueLabel).click();
-    cy.findByTestId("number-filter-picker")
-      .click()
-      .button("Add filter")
-      .click();
-    cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
-      .should("be.visible");
-  }
-
-  function verifyRemappedFilter({
-    visitCard,
-    fieldId,
-    fieldDisplayName,
-    fieldPlaceholder,
-    fieldValue,
-    fieldValueLabel,
-    expectedRowCount,
-  }) {
-    cy.log("list values");
-    cy.signInAsAdmin();
-    setListValues({ fieldId });
-    cy.signInAsNormalUser();
-    visitCard();
-    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
-    H.assertQueryBuilderRowCount(expectedRowCount);
-
-    cy.log("search values");
-    cy.signInAsAdmin();
-    setSearchValues({ fieldId });
-    cy.signInAsNormalUser();
-    visitCard();
-    verifySearchFilter({
-      fieldDisplayName,
-      fieldPlaceholder,
-      fieldValue,
-      fieldValueLabel,
-    });
-    H.assertQueryBuilderRowCount(expectedRowCount);
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  describe("type/PK -> type/Name remapping (metabase#45063)", () => {
-    it("should work with questions", () => {
-      createGuiQuestion({ sourceTableId: PEOPLE_ID });
-      verifyRemappedFilter({
-        visitCard: () => H.visitQuestion("@questionId"),
-        fieldId: PEOPLE.ID,
-        fieldDisplayName: "ID",
-        fieldPlaceholder: "Search by Name or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Hudson Borer",
-        expectedRowCount: 1,
-      });
-    });
-
-    it("should work with models", () => {
-      createGuiModel({ sourceTableId: PEOPLE_ID });
-      verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
-        fieldId: PEOPLE.ID,
-        fieldDisplayName: "ID",
-        fieldPlaceholder: "Search by Name or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Hudson Borer",
-        expectedRowCount: 1,
-      });
-    });
-
-    it("should work with native models", () => {
-      createNativeModel({
-        tableName: "PEOPLE",
-        fieldId: PEOPLE.ID,
-        fieldName: "ID",
-        fieldSemanticType: "type/PK",
-      });
-      verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
-        fieldId: PEOPLE.ID,
-        fieldDisplayName: "ID",
-        fieldPlaceholder: "Search by Name or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Hudson Borer",
-        expectedRowCount: 1,
-      });
-    });
-  });
-
-  describe("type/FK -> column remapping (metabase#45063)", () => {
-    beforeEach(() => {
-      setForeignKeyRemapping({
-        sourceFieldId: ORDERS.PRODUCT_ID,
-        targetFieldId: PRODUCTS.TITLE,
-        remappedDisplayName: "Product ID",
-      });
-    });
-
-    it("should work with questions", () => {
-      createGuiQuestion({ sourceTableId: ORDERS_ID });
-      verifyRemappedFilter({
-        visitCard: () => H.visitQuestion("@questionId"),
-        fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "Product ID",
-        fieldPlaceholder: "Search by Title or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Rustic Paper Wallet",
-        expectedRowCount: 93,
-      });
-    });
-
-    it("should work with models", () => {
-      createGuiModel({ sourceTableId: ORDERS_ID });
-      verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
-        fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "Product ID",
-        fieldPlaceholder: "Search by Title or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Rustic Paper Wallet",
-        expectedRowCount: 93,
-      });
-    });
-
-    it("should work with native models", () => {
-      createNativeModel({
-        tableName: "ORDERS",
-        fieldId: ORDERS.PRODUCT_ID,
-        fieldName: "PRODUCT_ID",
-        fieldSemanticType: "type/FK",
-      });
-      verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
-        fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "PRODUCT_ID",
-        fieldPlaceholder: "Search by Title or enter an ID",
-        fieldValue: 1,
-        fieldValueLabel: "Rustic Paper Wallet",
-        expectedRowCount: 93,
-      });
-    });
-  });
-});
-
-describe("issue 41464", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not overlap 'no results' and the loading state (metabase#41464)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          filter: [
-            ">",
-            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
-            1000,
-          ],
-        },
-        parameters: [],
-      },
-    });
-
-    cy.intercept(
-      {
-        method: "POST",
-        url: "/api/dataset",
-        middleware: true,
-      },
-      (req) => {
-        req.on("response", (res) => {
-          // Throttle the response to 50kbps
-          res.setThrottle(50);
-        });
-      },
-    );
-
-    cy.findByTestId("filter-pill")
-      .should("have.text", "Total is greater than 1000")
-      .icon("close")
-      .click();
-
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByTestId("loading-indicator").should("be.visible");
-      cy.findByText("No results!", { timeout: 500 }).should("not.exist");
-    });
-  });
-});
-
-describe.skip("issue 45359", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
-      "font-regular",
-    );
-    cy.intercept("/app/fonts/Lato/lato-v16-latin-700.woff2").as("font-bold");
-    cy.signInAsAdmin();
-  });
-
-  it("loads app fonts correctly (metabase#45359)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.getNotebookStep("data")
-      .findByText("Orders")
-      .should("have.css", "font-family", "Lato, sans-serif");
-
-    cy.get("@font-regular.all").should("have.length", 1);
-    cy.get("@font-regular").should(({ response }) => {
-      expect(response).to.include({ statusCode: 200 });
-    });
-
-    cy.get("@font-bold.all").should("have.length", 1);
-    cy.get("@font-bold").should(({ response }) => {
-      expect(response).to.include({ statusCode: 200 });
-    });
-
-    cy.document()
-      .then((document) => document.fonts.ready)
-      .then((fonts) => {
-        cy.wrap(fonts).invoke("check", "16px Lato").should("be.true");
-      });
-  });
-});
-
-describe("issue 45452", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should only have one scrollbar for the summarize sidebar (metabase#45452)", () => {
-    H.openOrdersTable();
-    H.summarize();
-
-    cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
-      const element = $el[0];
-      expectNoScrollbarContainer(element);
-    });
-
-    cy.findByTestId("summarize-breakout-column-list").then(($el) => {
-      const element = $el[0];
-      expectNoScrollbarContainer(element);
-    });
-
-    // the sidebar is the only element with a scrollbar
-    cy.findByTestId("sidebar-content").then(($el) => {
-      const element = $el[0];
-      expect(element.scrollHeight > element.clientHeight).to.be.true;
-      expect(element.offsetWidth > element.clientWidth).to.be.true;
-    });
-  });
-});
-
-describe("issue 41612", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("createQuestion");
-  });
-
-  it("should not ignore chart viz settings when viewing raw results as a table (metabase#41612)", () => {
-    H.visitQuestionAdhoc(
-      {
-        display: "line",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                ORDERS.CREATED_AT,
-                { "base-type": "type/DateTime", "temporal-unit": "month" },
-              ],
-            ],
-            "source-table": ORDERS_ID,
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.queryBuilderMain().findByLabelText("Switch to data").click();
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().button("Save").click();
-
-    cy.wait("@createQuestion").then((xhr) => {
-      const card = xhr.request.body;
-      expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
-        "count",
-      ]);
-      expect(card.visualization_settings["graph.dimensions"]).to.deep.equal([
-        "CREATED_AT",
-      ]);
-    });
-  });
-});
-
-describe("issue 36027", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    const CONCRETE_CREATED_AT_FIELD_REF = [
-      "field",
-      ORDERS.CREATED_AT,
-      { "base-type": "type/DateTime", "temporal-unit": "month" },
-    ];
-
-    const CREATED_AT_FIELD_REF = [
-      "field",
-      "CREATED_AT",
-      { "base-type": "type/DateTime", "temporal-unit": "month" },
-    ];
-
-    const BASE_QUERY = {
-      aggregation: [["count"]],
-      breakout: [CONCRETE_CREATED_AT_FIELD_REF],
-      "source-table": ORDERS_ID,
-    };
-
-    H.createQuestion({ query: BASE_QUERY }, { wrapId: true }).then(
-      (baseQuestionId) => {
-        H.createQuestion(
-          {
-            display: "waterfall",
-            query: {
-              aggregation: [
-                ["sum", ["field", "count", { "base-type": "type/Integer" }]],
-              ],
-              breakout: [CREATED_AT_FIELD_REF],
-              joins: [
-                {
-                  alias: "Q1",
-                  strategy: "left-join",
-                  "source-table": `card__${baseQuestionId}`,
-                  condition: [
-                    "<=",
-                    CREATED_AT_FIELD_REF,
-                    CONCRETE_CREATED_AT_FIELD_REF,
-                  ],
-                },
-              ],
-              "source-query": BASE_QUERY,
-            },
-            visualization_settings: {
-              "graph.dimensions": ["CREATED_AT"],
-              "graph.metrics": ["sum"],
-            },
-          },
-          { visitQuestion: true },
-        );
-      },
-    );
-  });
-
-  it("should use default metrics/dimensions if they're missing after removing some query clauses (metabase#36027)", () => {
-    H.openNotebook();
-    H.getNotebookStep("summarize", { stage: 1 })
-      .findByLabelText("Remove step")
-      .click({ force: true });
-    H.getNotebookStep("join", { stage: 1 })
-      .findByLabelText("Remove step")
-      .click({ force: true });
-    H.visualize();
-
-    H.echartsContainer().within(() => {
-      cy.findByText("Created At: Month").should("be.visible"); // x-axis
-      cy.findByText("Count").should("be.visible"); // y-axis
-
-      // x-axis values
-      ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
-        (state) => {
-          cy.findByText(state).should("be.visible");
-        },
-      );
-
-      // y-axis values
-      [
-        "0",
-        "3,000",
-        "6,000",
-        "9,000",
-        "12,000",
-        "15,000",
-        "18,000",
-        "21,000",
-      ].forEach((state) => {
-        cy.findByText(state).should("be.visible");
-      });
-    });
-  });
-});
-
-describe("issue 12586", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the run button overlay when an error occurs (metabase#12586)", () => {
-    H.openOrdersTable();
-    H.summarize();
-
-    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
-
-    H.rightSidebar().button("Done").click();
-    H.main()
-      .findByText("We're experiencing server issues")
-      .should("be.visible");
-    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
-  });
-});
-
-function expectNoScrollbarContainer(element) {
-  const hasScrollbarContainer =
-    element.scrollHeight <= element.clientHeight &&
-    element.offsetWidth > element.clientWidth;
-
-  expect(hasScrollbarContainer).to.be.false;
-}
-
-describe("issue 48829", () => {
-  const questionDetails = {
-    name: "Issue 48829",
-    query: {
-      "source-table": PRODUCTS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter from headers (metabase#48829)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.tableHeaderClick("Category");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.findByText("Add filter").click();
-    });
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter picker (metabase#48829)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.queryBuilderHeader()
-      .button(/Filter/)
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Category").click();
-      cy.findByText("Doohickey").click();
-      cy.button("Apply filter").click();
-    });
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after visiting a filtered question from a dashboard click action (metabase#48829)", () => {
-    // Set up dashboard
-    H.createDashboardWithQuestions({ questions: [questionDetails] }).then(
-      ({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
-      },
-    );
-
-    H.showDashboardCardActions();
-    H.editDashboard();
-    H.getDashboardCard().findByLabelText("Click behavior").click();
-
-    H.sidebar().within(() => {
-      cy.findByText("Title").click();
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Saved question").click();
-    });
-
-    H.entityPickerModal().findByText(questionDetails.name).click();
-    H.sidebar().findByTestId("click-mappings").findByText("Title").click();
-    H.popover().findByText("Title").click();
-    H.saveDashboard();
-
-    // Navigate to question using click action in dashboard
-    H.main().findByText("Rustic Paper Wallet").click();
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
-  });
-});
-
-describe("issue 50038", () => {
-  const QUESTION = {
-    name: "question with a very long name that will be too long to fit on one line which normally would result in some weird looking buttons with inconsistent heights",
-    query: {
-      "source-table": PRODUCTS_ID,
-    },
-  };
-
-  const OTHER_QUESTION = {
-    name: "question that also has a long name that is so long it will break in the button",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-
-    H.createQuestion(QUESTION, { wrapId: true, idAlias: "questionId" });
-    H.createQuestion(OTHER_QUESTION, {
-      wrapId: true,
-      idAlias: "otherQuestionId",
-    });
-
-    cy.get("@questionId").then((questionId) => {
-      cy.get("@otherQuestionId").then((otherQuestionId) => {
-        H.createQuestion(
-          {
-            name: "Joined question",
-            query: {
-              "source-table": `card__${questionId}`,
-              joins: [
-                {
-                  "source-table": `card__${otherQuestionId}`,
-                  fields: "all",
-                  strategy: "left-join",
-                  condition: [
-                    "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
-                  ],
-                },
-              ],
-            },
-          },
-          { visitQuestion: true },
-        );
-      });
-    });
-  });
-
-  function assertEqualHeight(selector, otherSelector) {
-    selector.invoke("outerHeight").then((height) => {
-      otherSelector.invoke("outerHeight").should("eq", height);
-    });
-  }
-
-  it("should not break data source and join source buttons when the source names are too long (metabase#50038)", () => {
-    H.openNotebook();
-    H.getNotebookStep("data").within(() => {
-      assertEqualHeight(
-        cy.findByText(QUESTION.name).parent().should("be.visible"),
-        cy.findByTestId("fields-picker").should("be.visible"),
-      );
-    });
-    H.getNotebookStep("join").within(() => {
-      assertEqualHeight(
-        cy
-          .findAllByText(OTHER_QUESTION.name)
-          .first()
-          .parent()
-          .should("be.visible"),
-        cy.findByTestId("fields-picker").should("be.visible"),
-      );
-    });
-  });
-});
-
-describe("issue 47940", () => {
-  const questionDetails = {
-    name: "Issue 47940",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 5,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("should be able to convert a question with date casting to a model", () => {
-    cy.log("create a question without any column casting");
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.wait("@cardQuery");
-
-    cy.log("add coercion");
-    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
-      semantic_type: "type/Category",
-      coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
-    });
-
-    cy.log("reload to get new query results with coercion applied");
-    cy.reload();
-    cy.wait("@cardQuery");
-
-    cy.log("turn into a model");
-    H.openQuestionActions();
-    H.popover().findByText("Turn into a model").click();
-    cy.findByRole("dialog").findByText("Turn this into a model").click();
-    cy.wait("@updateCard");
-
-    cy.log("verify there is a table displayed");
-    cy.findByTestId("visualization-root").should(
-      "contain",
-      "December 31, 1969, 4:00 PM",
-    );
-  });
-});
-
-describe("issue 53036", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  const questionDetails = {
-    name: "Issue 53036",
-    query: {
-      "source-table": PRODUCTS_ID,
-      limit: 5,
-      joins: [
-        {
-          fields: "all",
-          alias: "Orders",
-          "source-table": ORDERS_ID,
-          strategy: "left-join",
-          condition: [
-            "=",
-            ["field", PRODUCTS.ID, null],
-            ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
-          ],
-        },
-      ],
-    },
-  };
-
-  it("should keep buttons usable on mid size screen (metabase#53036)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    H.openNotebook();
-
-    cy.viewport(650, 800);
-
-    cy.log("try to click on add button - it fails is there is an overlap");
-
-    H.getNotebookStep("join").within(() => {
-      cy.icon("play").should("be.visible");
-      cy.icon("add").click();
-    });
-  });
-});
-
-describe("issue 57697", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
-    H.summarize();
-    H.sidebar()
-      .filter(":visible")
-      .within(() => {
-        cy.findByText("Price").should("be.visible");
-        cy.findByText("Price: Auto binned").should("not.exist");
-      });
   });
 });

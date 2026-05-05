@@ -7,13 +7,13 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { FormattingWidget } from "./FormattingWidget";
 
@@ -39,14 +39,14 @@ const setup = async () => {
     },
   );
 
-  await screen.findByText("Localization options");
+  await screen.findByText("Dates and times");
 };
 
-describe("PublicSharingSettingsPage", () => {
+describe("FormattingWidget", () => {
   it("should render a FormattingWidget", async () => {
     await setup();
     [
-      "Dates and Times",
+      "Dates and times",
       "Date style",
       "Abbreviate days and months",
       "Time style",
@@ -81,9 +81,9 @@ describe("PublicSharingSettingsPage", () => {
     const dateAbbreviateToggle = await screen.findByRole("switch");
     expect(dateAbbreviateToggle).not.toBeChecked();
 
-    const symbolRadio = within(currencyStyleWidget).getByLabelText(/symbol/i);
-    const codeRadio = within(currencyStyleWidget).getByLabelText(/code/i);
-    const nameRadio = within(currencyStyleWidget).getByLabelText(/name/i);
+    const symbolRadio = within(currencyStyleWidget).getByLabelText(/Symbol/);
+    const codeRadio = within(currencyStyleWidget).getByLabelText(/Code/);
+    const nameRadio = within(currencyStyleWidget).getByLabelText(/Name/);
 
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(symbolRadio).toHaveAttribute("value", "symbol");
@@ -96,12 +96,16 @@ describe("PublicSharingSettingsPage", () => {
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(nameRadio).toHaveAttribute("value", "name");
     expect(nameRadio).not.toBeChecked();
+
+    expect(
+      within(currencyStyleWidget).queryByLabelText(/Local symbol/),
+    ).not.toBeInTheDocument();
   });
 
   it("should update multiple settings", async () => {
     await setup();
     const blur = async () => {
-      const elementOutside = screen.getByText("Dates and Times");
+      const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
     };
 
@@ -163,5 +167,22 @@ describe("PublicSharingSettingsPage", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(6);
     });
+  });
+
+  it("should provide expected number separators (#61854)", async () => {
+    await setup();
+
+    const seperatorStyleInput = await screen.findByLabelText("Separator style");
+    await userEvent.click(seperatorStyleInput);
+
+    const [dropdown] = screen.getAllByRole("listbox");
+    const children = within(dropdown).getAllByRole("option");
+    expect(children.length).toBe(5);
+
+    expect(within(dropdown).getByText("100,000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100 000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100.000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100’000.00")).toBeInTheDocument();
   });
 });

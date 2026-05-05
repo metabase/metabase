@@ -1,3 +1,5 @@
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;
   onFullscreenChange: (
@@ -16,14 +18,8 @@ export type DashboardRefreshPeriodControls = {
   ) => void;
 };
 
-export type DashboardNightModeControls = {
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
-};
-
 export type DashboardDownloadControls = {
-  downloadsEnabled?: boolean;
+  downloadsEnabled?: EmbedResourceDownloadOptions;
 };
 
 export type DashboardFooterControls = {
@@ -36,7 +32,6 @@ export type DashboardLoaderWrapperProps = {
 
 export type DashboardDisplayOptionControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  DashboardNightModeControls &
   DashboardDownloadControls &
   DashboardLoaderWrapperProps &
   DashboardFooterControls;

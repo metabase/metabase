@@ -1,15 +1,17 @@
-import type * as React from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/components/EmptyState";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import type { InputProps } from "metabase/core/components/Input";
-import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { delay } from "metabase/lib/delay";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import type { InputProps } from "metabase/common/components/Input";
+import { Input } from "metabase/common/components/Input";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Checkbox, Flex, Text } from "metabase/ui";
+import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -19,14 +21,18 @@ import {
   OptionsList,
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
-import { isValidOptionItem } from "./utils";
+import {
+  getOptionDisplayName,
+  normalizeValuesToOptionKeys,
+  optionMatchesFilter,
+} from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
 function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
   options: Option[],
-): Option {
+): Option[] {
   const optionsMap = new Map(options.map((option) => [option[0], option]));
   return values
     .filter((value) => !optionsMap.has(value))
@@ -42,27 +48,69 @@ export const ListField = ({
   isDashboardFilter,
   isLoading,
 }: ListFieldProps) => {
-  const [selectedValues, setSelectedValues] = useState(new Set(value));
-  const [addedOptions, setAddedOptions] = useState<Option>(() =>
-    createOptionsFromValuesWithoutOptions(value, options),
+  const normalizedValue = useMemo(
+    () => normalizeValuesToOptionKeys(value, options),
+    [value, options],
+  );
+  const [selectedValues, setSelectedValues] = useState(
+    new Set(normalizedValue),
+  );
+  const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
+    createOptionsFromValuesWithoutOptions(normalizedValue, options),
   );
 
   const augmentedOptions = useMemo(() => {
     return [...options.filter((option) => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
-  const sortedOptions = useMemo(() => {
-    if (selectedValues.size === 0) {
-      return augmentedOptions;
-    }
+  const tc = useTranslateContent();
+  const sortByTranslation =
+    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
 
-    const [selected, unselected] = _.partition(augmentedOptions, (option) =>
-      selectedValues.has(option[0]),
-    );
+  const optionsHaveSomeTranslations = useMemo(
+    () => augmentedOptions.some(([option]) => tc(option) !== option),
+    [augmentedOptions, tc],
+  );
 
-    return [...selected, ...unselected];
+  /**
+   * Sorts options alphabetically, or by their translation if content
+   * translation is enabled. Selected options are sorted to the top. Since
+   * options are arrays, the last item in the array is used as the name of the
+   * option.
+   */
+  const sortOptions = useCallback(
+    (optionA: Option, optionB: Option) => {
+      const aSelected = selectedValues.has(optionA[0]),
+        bSelected = selectedValues.has(optionB[0]);
+
+      if (aSelected && !bSelected) {
+        return -1;
+      }
+      if (!aSelected && bSelected) {
+        return 1;
+      }
+
+      // If no options have translations, rely on the sorting that was already
+      // done in the backend
+      if (!optionsHaveSomeTranslations) {
+        return 0;
+      }
+
+      const aName = getOptionDisplayName(optionA),
+        bName = getOptionDisplayName(optionB);
+      return typeof aName === "string" && typeof bName === "string"
+        ? sortByTranslation(aName, bName)
+        : 0;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedValues is omitted from the deps so that selecting a value does not trigger re-sorting
+    [sortByTranslation],
+  );
+
+  const sortedOptions = useMemo(
+    () => augmentedOptions.sort(sortOptions),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [augmentedOptions.length]);
+    [augmentedOptions.length, sortOptions],
+  );
 
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
@@ -72,25 +120,10 @@ export const ListField = ({
     if (formattedFilter.length === 0) {
       return sortedOptions;
     }
-
-    return augmentedOptions.filter((option) => {
-      if (!option || option.length === 0) {
-        return false;
-      }
-
-      // option as: [id, name]
-      if (
-        option.length > 1 &&
-        option[1] &&
-        isValidOptionItem(option[1], formattedFilter)
-      ) {
-        return true;
-      }
-
-      // option as: [id]
-      return isValidOptionItem(option[0], formattedFilter);
-    });
-  }, [augmentedOptions, debouncedFilter, sortedOptions]);
+    return sortedOptions.filter((option) =>
+      optionMatchesFilter(option, formattedFilter, tc),
+    );
+  }, [debouncedFilter, sortedOptions, tc]);
 
   const selectedFilteredOptions = filteredOptions.filter(([value]) =>
     selectedValues.has(value),
@@ -111,10 +144,15 @@ export const ListField = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) => option[0] === filter)
+      !_.find(augmentedOptions, (option) =>
+        optionItemEqualsFilter(option[0], filter),
+      )
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
@@ -171,7 +209,7 @@ export const ListField = ({
               <Checkbox
                 variant="stacked"
                 label={
-                  <Text c="text-secondary">
+                  <Text c="text-secondary" lh="inherit">
                     {debouncedFilter ? t`Select these` : t`Select all`}
                   </Text>
                 }

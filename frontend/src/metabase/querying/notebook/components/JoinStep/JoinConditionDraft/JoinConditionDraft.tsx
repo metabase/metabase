@@ -6,7 +6,6 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { updateTemporalBucketing } from "../utils";
 
 import S from "./JoinConditionDraft.module.css";
 import { getDefaultJoinConditionOperator } from "./utils";
@@ -15,6 +14,7 @@ interface JoinConditionDraftProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
+  strategy: Lib.JoinStrategy;
   lhsTableName: string;
   rhsTable?: Lib.Joinable;
   rhsTableName: string | undefined;
@@ -22,13 +22,14 @@ interface JoinConditionDraftProps {
   isRemovable: boolean;
   onChange: (newCondition: Lib.JoinCondition) => void;
   onRemove?: () => void;
-  onLhsColumnChange?: (newLhsColumn: Lib.ColumnMetadata) => void;
+  onLhsExpressionChange?: (newLhsExpression: Lib.ExpressionClause) => void;
 }
 
 export function JoinConditionDraft({
   query,
   stageIndex,
   joinable,
+  strategy,
   lhsTableName,
   rhsTable,
   rhsTableName,
@@ -36,71 +37,92 @@ export function JoinConditionDraft({
   isRemovable,
   onChange,
   onRemove,
-  onLhsColumnChange,
+  onLhsExpressionChange,
 }: JoinConditionDraftProps) {
   const [operator, setOperator] = useState(() =>
     getDefaultJoinConditionOperator(query, stageIndex),
   );
-  const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
-  const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
+  const [lhsExpression, setLhsExpression] = useState<Lib.ExpressionClause>();
+  const [rhsExpression, setRhsExpression] = useState<Lib.ExpressionClause>();
+  const [lhsTemporalBucket, setLhsTemporalBucket] = useState<Lib.Bucket | null>(
+    null,
+  );
+  const [rhsTemporalBucket, setRhsTemporalBucket] = useState<Lib.Bucket | null>(
+    null,
+  );
   const [isLhsOpened, setIsLhsOpened] = useState(true);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
   const handleColumnChange = (
-    lhsColumn: Lib.ColumnMetadata | undefined,
-    rhsColumn: Lib.ColumnMetadata | undefined,
+    lhsExpression: Lib.ExpressionClause | undefined,
+    rhsExpression: Lib.ExpressionClause | undefined,
+    lhsTemporalBucket: Lib.Bucket | null,
+    rhsTemporalBucket: Lib.Bucket | null,
   ) => {
-    if (lhsColumn != null && rhsColumn != null) {
-      const newCondition = updateTemporalBucketing(
+    if (lhsExpression != null && rhsExpression != null) {
+      const newCondition = Lib.joinConditionUpdateTemporalBucketing(
         query,
         stageIndex,
-        Lib.joinConditionClause(
-          query,
-          stageIndex,
-          operator,
-          lhsColumn,
-          rhsColumn,
-        ),
-        [lhsColumn, rhsColumn],
+        Lib.joinConditionClause(operator, lhsExpression, rhsExpression),
+        lhsTemporalBucket ?? rhsTemporalBucket,
       );
       onChange(newCondition);
     }
   };
 
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    setLhsColumn(newLhsColumn);
+  const handleLhsExpressionChange = (
+    newLhsExpression: Lib.ExpressionClause,
+    newLhsTemporalBucket: Lib.Bucket | null,
+  ) => {
+    setLhsExpression(newLhsExpression);
+    setLhsTemporalBucket(newLhsTemporalBucket);
     setIsRhsOpened(true);
-    onLhsColumnChange?.(newLhsColumn);
-    handleColumnChange(newLhsColumn, rhsColumn);
+    onLhsExpressionChange?.(newLhsExpression);
+    handleColumnChange(
+      newLhsExpression,
+      rhsExpression,
+      newLhsTemporalBucket,
+      rhsTemporalBucket,
+    );
   };
 
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    setRhsColumn(newRhsColumn);
-    handleColumnChange(lhsColumn, newRhsColumn);
+  const handleRhsExpressionChange = (
+    newRhsExpression: Lib.ExpressionClause,
+    newRhsTemporalBucket: Lib.Bucket | null,
+  ) => {
+    setRhsExpression(newRhsExpression);
+    setRhsTemporalBucket(newRhsTemporalBucket);
+    handleColumnChange(
+      lhsExpression,
+      newRhsExpression,
+      lhsTemporalBucket,
+      newRhsTemporalBucket,
+    );
   };
 
   useLayoutEffect(() => {
-    setLhsColumn(undefined);
-    setRhsColumn(undefined);
+    setLhsExpression(undefined);
+    setRhsExpression(undefined);
     setIsLhsOpened(true);
     setIsRhsOpened(false);
   }, [rhsTable]);
 
   return (
     <Flex className={S.JoinConditionRoot}>
-      <Flex align="center" gap="xs" mih="47px" p="xs">
-        <Box ml={!lhsColumn ? "xs" : undefined}>
+      <Flex align="center" gap="xs" p="sm">
+        <Box>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
+            strategy={strategy}
             tableName={lhsTableName}
-            lhsColumn={lhsColumn}
-            rhsColumn={rhsColumn}
+            lhsExpression={lhsExpression}
+            rhsExpression={rhsExpression}
             isOpened={isLhsOpened}
-            isLhsColumn={true}
+            isLhsPicker={true}
             isReadOnly={isReadOnly}
-            onChange={handleLhsColumnChange}
+            onChange={handleLhsExpressionChange}
             onOpenChange={setIsLhsOpened}
           />
         </Box>
@@ -112,18 +134,19 @@ export function JoinConditionDraft({
           isConditionComplete={false}
           onChange={setOperator}
         />
-        <Box mr={!rhsColumn ? "xs" : undefined}>
+        <Box>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
+            strategy={strategy}
             tableName={rhsTableName}
-            lhsColumn={lhsColumn}
-            rhsColumn={rhsColumn}
+            lhsExpression={lhsExpression}
+            rhsExpression={rhsExpression}
             isOpened={isRhsOpened}
-            isLhsColumn={false}
+            isLhsPicker={false}
             isReadOnly={isReadOnly}
-            onChange={handleRhsColumnChange}
+            onChange={handleRhsExpressionChange}
             onOpenChange={setIsRhsOpened}
           />
         </Box>

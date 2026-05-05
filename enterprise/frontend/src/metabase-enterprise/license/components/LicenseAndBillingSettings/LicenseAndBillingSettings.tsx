@@ -2,20 +2,24 @@ import dayjs from "dayjs";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting, useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { BillingInfo } from "../BillingInfo";
 
@@ -23,7 +27,15 @@ const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
 const NO_UPSELL_FEATURE_HEY = "no-upsell";
 
-const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
+const getDescription = ({
+  tokenStatus,
+  hasToken,
+  airgapEnabled,
+}: {
+  tokenStatus?: TokenStatus;
+  hasToken: boolean;
+  airgapEnabled: boolean;
+}) => {
   if (!hasToken) {
     return t`Bought a license to unlock advanced functionality? Please enter it below.`;
   }
@@ -33,18 +45,23 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
         enter it below, otherwise please contact ${
+          /* eslint-disable i18next/no-literal-string */
           (
-            // eslint-disable-next-line i18next/no-literal-string
             <ExternalLink key="email" href="mailto:support@metabase.com">
               support@metabase.com
             </ExternalLink>
           )
+          /* eslint-enable i18next/no-literal-string */
         }`}
       </>
     );
   }
 
   const daysRemaining = dayjs(tokenStatus["valid-thru"]).diff(dayjs(), "days");
+
+  if (tokenStatus.valid && airgapEnabled) {
+    return t`Your token expires in ${daysRemaining} days.`;
+  }
 
   if (tokenStatus.valid && tokenStatus.trial) {
     return t`Your trial ends in ${daysRemaining} days. If you already have a license, please enter it below.`;
@@ -74,6 +91,8 @@ export const LicenseAndBillingSettings = () => {
     isUpdating,
   } = useLicense(sendActivatedToast);
 
+  const airgapEnabled = useSetting("airgap-enabled");
+
   const isInvalidToken =
     !!licenseError || (tokenStatus != null && !tokenStatus.valid);
 
@@ -97,7 +116,7 @@ export const LicenseAndBillingSettings = () => {
   }
 
   const hasToken = Boolean(!!token || settingDetails?.is_env_setting);
-  const description = getDescription(tokenStatus, hasToken);
+  const description = getDescription({ tokenStatus, hasToken, airgapEnabled });
 
   const shouldShowLicenseInput =
     !tokenStatus?.features?.includes(HOSTING_FEATURE_KEY);
@@ -105,45 +124,49 @@ export const LicenseAndBillingSettings = () => {
   const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
 
   return (
-    <Stack
-      data-testid="license-and-billing-content"
-      maw="36rem"
-      px="lg"
-      gap="lg"
-    >
-      <Box>
-        <BillingInfo
-          isStoreManagedBilling={isStoreManagedBilling}
-          hasToken={hasToken}
-          billingInfo={billingInfo}
-          error={!!billingError}
-        />
-      </Box>
+    <SettingsPageWrapper title={t`License`}>
+      <SettingsSection>
+        <Stack
+          data-testid="license-and-billing-content"
+          maw="36rem"
+          px="lg"
+          gap="lg"
+        >
+          <Box>
+            <BillingInfo
+              isStoreManagedBilling={isStoreManagedBilling}
+              hasToken={hasToken}
+              billingInfo={billingInfo}
+              error={!!billingError}
+            />
+          </Box>
 
-      {shouldShowLicenseInput && (
-        <Box>
-          <SettingHeader
-            id="license"
-            title={t`License`}
-            description={description}
-          />
-          <LicenseInput
-            disabled={settingDetails?.is_env_setting}
-            placeholder={
-              settingDetails?.is_env_setting
-                ? t`Using ${settingDetails?.env_name}`
-                : undefined
-            }
-            loading={isUpdating}
-            error={licenseError}
-            token={token ? String(token) : undefined}
-            onUpdate={updateToken}
-          />
-        </Box>
-      )}
+          {shouldShowLicenseInput && (
+            <Box>
+              <SettingHeader
+                id="license"
+                title={t`License`}
+                description={description}
+              />
+              <LicenseInput
+                disabled={settingDetails?.is_env_setting}
+                placeholder={
+                  settingDetails?.is_env_setting
+                    ? t`Using ${settingDetails?.env_name}`
+                    : undefined
+                }
+                loading={isUpdating}
+                error={licenseError}
+                token={token ? String(token) : undefined}
+                onUpdate={updateToken}
+              />
+            </Box>
+          )}
 
-      {tokenStatus?.valid && shouldUpsell && <UpsellSection />}
-    </Stack>
+          {tokenStatus?.valid && shouldUpsell && <UpsellSection />}
+        </Stack>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };
 

@@ -14,11 +14,14 @@ export type DatabaseSettings = {
 
 export type DatabaseFeature =
   | "actions"
+  | "actions/data-editing"
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
   | "convert-timezone"
   | "datetime-diff"
+  | "database-replication"
+  | "database-routing"
   | "dynamic-schema"
   | "expression-aggregations"
   | "expression-literals"
@@ -28,6 +31,7 @@ export type DatabaseFeature =
   | "expressions/integer"
   | "expressions/float"
   | "expressions/text"
+  | "expressions/today"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
@@ -35,6 +39,7 @@ export type DatabaseFeature =
   | "persist-models"
   | "persist-models-enabled"
   | "regex"
+  | "regex/lookaheads-and-lookbehinds"
   | "schemas"
   | "set-timezone"
   | "left-join"
@@ -49,7 +54,10 @@ export type DatabaseFeature =
   | "window-functions/offset"
   | "distinct-where"
   | "saved-question-sandboxing"
-  | "split-part";
+  | "split-part"
+  | "collate"
+  | "transforms/python"
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -58,6 +66,7 @@ export interface Database extends DatabaseData {
   creator_id?: number;
   timezone?: string;
   native_permissions: "write" | "none";
+  transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
   caveats?: string;
   points_of_interest?: string;
@@ -85,6 +94,7 @@ export interface DatabaseData {
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
+  write_data_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -114,18 +124,40 @@ export interface GetDatabaseRequest {
   exclude_uneditable_details?: boolean;
 }
 
+export interface GetDatabaseSettingsAvailableResponse {
+  settings: Record<string, DatabaseLocalSettingAvailability>;
+}
+
+export type DatabaseLocalSettingDisableReason = {
+  key: string;
+  message: string;
+};
+
+export type DatabaseLocalSettingAvailability =
+  | { enabled: true }
+  | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
+
+export type DatabaseConnectionType = "default" | "write-data";
+
+export type GetDatabaseHealthRequest = {
+  id: DatabaseId;
+  "connection-type"?: DatabaseConnectionType;
+};
+
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
-  include?: "table";
+  include?: "tables";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
   router_database_id?: DatabaseId;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabasesResponse {
@@ -142,6 +174,8 @@ export interface ListDatabaseSchemasRequest {
   id: DatabaseId;
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -149,6 +183,9 @@ export interface ListDatabaseSchemaTablesRequest {
   schema: string;
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
+  include_measures?: boolean;
 }
 
 export interface ListVirtualDatabaseTablesRequest {
@@ -161,6 +198,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
+  skip_fields?: boolean;
 }
 
 export interface CreateDatabaseRequest {
@@ -181,6 +219,7 @@ export interface UpdateDatabaseRequest {
   engine?: string;
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
+  write_data_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;

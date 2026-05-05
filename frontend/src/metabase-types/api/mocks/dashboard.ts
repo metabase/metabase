@@ -1,6 +1,7 @@
 import type {
   ActionDashboardCard,
   Dashboard,
+  DashboardParameterMapping,
   DashboardQueryMetadata,
   DashboardTab,
   QuestionDashboardCard,
@@ -23,6 +24,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   can_write: true,
   can_restore: false,
   can_delete: false,
+  can_set_cache_policy: true,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -76,7 +78,17 @@ export const createMockDashboardCard = (
   card: createMockCard(),
   created_at: "2020-01-01T12:30:30.000000",
   updated_at: "2020-01-01T12:30:30.000000",
+  inline_parameters: null,
   parameter_mappings: [],
+  ...opts,
+});
+
+export const createMockParameterMapping = (
+  opts?: Partial<DashboardParameterMapping>,
+): DashboardParameterMapping => ({
+  card_id: 1,
+  target: ["variable", ["template-tag", "foo"]],
+  parameter_id: "foo",
   ...opts,
 });
 
@@ -130,6 +142,7 @@ export const createMockVirtualDashCard = (
     row: 0,
     size_x: 1,
     size_y: 1,
+    inline_parameters: null,
     entity_id: createMockEntityId(),
     created_at: "2020-01-01T12:30:30.000000",
     updated_at: "2020-01-01T12:30:30.000000",
@@ -155,15 +168,18 @@ export const createMockTextDashboardCard = ({
     },
   });
 
-export const createMockHeadingDashboardCard = (
-  opts?: VirtualDashboardCardOpts & { text?: string },
-): VirtualDashboardCard =>
+type HeadingDashboardCardOpts = VirtualDashboardCardOpts & {
+  text?: string;
+};
+
+export const createMockHeadingDashboardCard = ({
+  text = "Heading Text",
+  ...opts
+}: HeadingDashboardCardOpts = {}): VirtualDashboardCard =>
   createMockVirtualDashCard({
     ...opts,
     card: createMockVirtualCard({ display: "heading" }),
-    visualization_settings: {
-      text: opts?.text ?? "Heading Text",
-    },
+    visualization_settings: { text },
   });
 
 export const createMockLinkDashboardCard = ({

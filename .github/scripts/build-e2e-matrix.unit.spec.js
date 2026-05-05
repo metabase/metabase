@@ -3,7 +3,7 @@ const { buildMatrix } = require("./build-e2e-matrix");
 describe("buildMatrix", () => {
   const options = {
     java: "11",
-    defaultRunner: "ubuntu-22.04",
+    defaultRunner: "${{ vars.DEFAULT_RUNNER_KEY }}",
   };
   const testBuildMatrix = (entry, chunks) =>
     buildMatrix(options, entry, chunks);
@@ -21,10 +21,10 @@ describe("buildMatrix", () => {
   });
 
   it("should apply default specs path when empty entry is provided", () => {
-    const result = testBuildMatrix("", 5);
+    const result = testBuildMatrix("", 6);
 
-    expect(result.regularChunks).toBe(2);
-    expect(result.config.length).toBe(5);
+    expect(result.regularChunks).toBe(3);
+    expect(result.config.length).toBe(6);
   });
 
   it("should name regular test groups sequentially", () => {
@@ -34,7 +34,9 @@ describe("buildMatrix", () => {
     );
 
     regularTests.forEach((test, index) => {
-      expect(test.name).toBe(`e2e-group-${index + 1}`);
+      expect(test.name).toBe(
+        `e2e-group-${String(index + 1).padStart(2, "0")}`,
+      );
     });
   });
 
@@ -43,9 +45,9 @@ describe("buildMatrix", () => {
 
     expect(result.regularChunks).toBe(0);
     expect(result.config.length).toBe(3);
-    expect(result.config[0].name).toBe("embedding-sdk");
-    expect(result.config[1].name).toBe("oss-subset");
-    expect(result.config[2].name).toBe("mongo");
+    expect(result.config[0].name).toBe("oss-subset");
+    expect(result.config[1].name).toBe("mongo");
+    expect(result.config[2].name).toBe("python");
   });
 
   it("should correctly calculate regularChunks for non-default spec pattern", () => {
@@ -83,15 +85,15 @@ describe("buildMatrix", () => {
   it("should return special test configs when default spec pattern is provided", () => {
     const result = testBuildMatrix("./e2e/test/scenarios/**/*.cy.spec.*", 50);
 
-    expect(result.config[47].name).toBe("embedding-sdk");
-    expect(result.config[48].name).toBe("oss-subset");
-    expect(result.config[49].name).toBe("mongo");
+    expect(result.config[47].name).toBe("oss-subset");
+    expect(result.config[48].name).toBe("mongo");
+    expect(result.config[49].name).toBe("python");
   });
 
   it("should not return special test configs when non-default spec pattern is provided", () => {
     const result = testBuildMatrix("test1.cy.spec.js,test2.cy.spec.js", 50);
 
     expect(result.config.length).toBe(1);
-    expect(result.config[0].name).toBe("e2e-group-1");
+    expect(result.config[0].name).toBe("e2e-group-01");
   });
 });

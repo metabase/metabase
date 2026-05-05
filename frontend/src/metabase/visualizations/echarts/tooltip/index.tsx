@@ -3,8 +3,12 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import {
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
+import { getCspNonce } from "metabase/utils/csp";
+import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
@@ -15,6 +19,7 @@ import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
 import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
+export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
 
 export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
@@ -68,13 +73,18 @@ export const getTooltipBaseOption = (
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
+      const echartsTooltipContainerSelector = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS}`;
+      const containerSelector = !isEmbeddingSdk()
+        ? echartsTooltipContainerSelector
+        : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
+
       let container = document.querySelector(
-        ".echarts-tooltip-container",
+        containerSelector,
       ) as HTMLDivElement;
 
       if (!container) {
         container = document.createElement("div");
-        container.classList.add("echarts-tooltip-container");
+        container.classList.add(ECHARTS_TOOLTIP_CONTAINER_CLASS);
         container.style.setProperty("overflow", "hidden");
         container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");
@@ -85,7 +95,13 @@ export const getTooltipBaseOption = (
           "calc(var(--mb-overlay-z-index) + 1)",
         );
 
-        document.body.append(container);
+        if (!isEmbeddingSdk()) {
+          document.body.append(container);
+        } else {
+          document
+            .getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+            ?.append(container);
+        }
       }
 
       return container;
@@ -118,7 +134,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
   const style = useMemo(
     () =>
       cssString !== null ? (
-        <style nonce={window.MetabaseNonce}>{cssString}</style>
+        <style nonce={getCspNonce()}>{cssString}</style>
       ) : null,
     [cssString],
   );
@@ -162,7 +178,7 @@ export const useCartesianChartSeriesColorsClasses = (
 
 export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
   const hexColors = useMemo(() => {
-    return getObjectValues(chartModel.nodeColors).filter(isNotNull);
+    return Object.values(chartModel.nodeColors).filter(isNotNull);
   }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);

@@ -135,14 +135,15 @@ describe("scenarios > visualizations > sankey", () => {
       "My Sankey chart",
     );
     cy.findByTestId("save-question-modal").findByText("Save").click();
-    H.modal().findByText("Saved! Add this to a dashboard?");
+
+    H.checkSavedToCollectionQuestionToast();
   });
 
   [false, true].forEach((devMode) => {
     it(`should render sankey charts in dashboard context - development-mode: ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
       H.createDashboard({

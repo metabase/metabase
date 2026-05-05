@@ -1,5 +1,5 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { modal } from "./e2e-ui-elements-helpers";
+import { modal, undoToast } from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -30,6 +30,10 @@ export function runNativeQuery({ wait = true } = {}) {
 
 export function runButtonOverlay() {
   return cy.findByTestId("run-button-overlay");
+}
+
+export function runButtonInOverlay() {
+  return runButtonOverlay().findByTestId("run-button");
 }
 
 /**
@@ -101,24 +105,29 @@ export const cypressWaitAll = function (commands) {
  */
 export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "number") {
-    visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
 function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
+  const metadataAlias = `${alias}-queryMetadata`;
 
   // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  cy.intercept("GET", `/api/card/**/${id}/query_metadata`).as(metadataAlias);
 
   cy.visit(`/question/${id}`);
 
+  cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
+
+  return cy.wrap(id);
 }
 
 /**
@@ -145,14 +154,10 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  *
  * @param {number} id
  */
-export function visitMetric(id, { hasDataAccess = true } = {}) {
+export function visitMetric(id) {
   const alias = "metricQuery" + id;
 
-  if (hasDataAccess) {
-    cy.intercept("POST", "/api/dataset").as(alias);
-  } else {
-    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
-  }
+  cy.intercept("POST", `/api/card/${id}/query`).as(alias);
 
   cy.visit(`/metric/${id}`);
 
@@ -278,6 +283,7 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
  * @param {boolean=} [options.addToDashboard]
  * @param {boolean=} [options.wrapId]
  * @param {string=} [options.idAlias]
+ * @param {Object=} [pickEntityOptions]
  */
 export function saveQuestion(
   name,
@@ -332,22 +338,24 @@ export function saveQuestion(
     const wasSavedToCollection = !body.dashboard_id;
 
     if (wasSavedToCollection) {
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText(/add this to a dashboard/i).should("be.visible");
+      checkSavedToCollectionQuestionToast(addToDashboard);
+    }
+  });
+}
 
-        if (addToDashboard) {
-          cy.button("Yes please!").click();
-        } else {
-          cy.button("Not now").click();
-        }
-      });
+export function checkSavedToCollectionQuestionToast(addToDashboard) {
+  undoToast().within(() => {
+    cy.findByText(/Saved/i).should("be.visible");
+
+    if (addToDashboard) {
+      cy.button(/Add this to a dashboard/i).click();
     }
   });
 }
 
 export function saveQuestionToCollection(
   name,
-  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  pickEntityOptions = { path: ["Our analytics"] },
   reqInfo,
 ) {
   saveQuestion(name, reqInfo, pickEntityOptions);
@@ -392,8 +400,12 @@ export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
  * @param {object} options
  * @param {Record<string, string>} options.params
  * @param {Record<string, string>} options.hash
+ * @param {(window: Window) => void} [options.onBeforeLoad]
  */
-export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
+export function visitPublicDashboard(
+  id,
+  { params = {}, hash = {}, onBeforeLoad } = {},
+) {
   const searchParams = new URLSearchParams(params).toString();
   const searchSection = searchParams ? `?${searchParams}` : "";
   const hashParams = new URLSearchParams(hash).toString();
@@ -404,7 +416,31 @@ export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
       cy.signOut();
       cy.visit({
         url: `/public/dashboard/${uuid}` + searchSection + hashSection,
+        onBeforeLoad,
       });
     },
   );
 }
+
+export const goToAuthOverviewPage = () => {
+  cy.findByTestId("admin-layout-sidebar")
+    .findByText("Overview") // auth overview page
+    .click();
+};
+
+/**
+ * This function exists to work around custom dynamic anchor creation.
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dom.js#L301-L312
+ *
+ * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
+ */
+export const onNextAnchorClick = (callback) => {
+  cy.window().then((window) => {
+    const originalClick = window.HTMLAnchorElement.prototype.click;
+
+    window.HTMLAnchorElement.prototype.click = function () {
+      callback(this);
+      window.HTMLAnchorElement.prototype.click = originalClick;
+    };
+  });
+};

@@ -1,16 +1,15 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { UpsellMetabaseBanner } from "metabase/admin/upsells";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { UpsellMetabaseBanner } from "metabase/common/components/upsells/UpsellMetabaseBanner";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
 import type {
   DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
+import { useSelector } from "metabase/redux";
 import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
@@ -56,7 +55,7 @@ export const LookAndFeelSettings = ({
   displayOptions,
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only appear to admins
   const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
     anchor: "customizing-the-appearance-of-static-embeds",
     utm: {
@@ -104,10 +103,10 @@ export const LookAndFeelSettings = ({
                   label: t`Use instance font`,
                   value: "",
                 },
-                ...availableFonts?.map((font) => ({
+                ...(availableFonts?.map((font) => ({
                   label: font,
                   value: font,
-                })),
+                })) ?? []),
               ]}
               onChange={(value) => {
                 onChangeDisplayOptions({
@@ -130,7 +129,6 @@ export const LookAndFeelSettings = ({
               value={displayOptions.theme ?? undefined}
               data={[...THEME_OPTIONS]}
               fullWidth
-              bg={color("bg-light")}
               onChange={(value: ThemeOptions) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
@@ -221,6 +219,7 @@ function getBorderLabel(resourceType: EmbedResourceType) {
     .returnType<string>()
     .with("dashboard", () => t`Dashboard border`)
     .with("question", () => t`Question border`)
+    .with("document", () => t`Document border`)
     .exhaustive();
 }
 

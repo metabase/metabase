@@ -4,10 +4,14 @@ import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
-import { BulkActionBar } from "metabase/components/BulkActionBar";
-import Modal from "metabase/components/Modal";
-import { BulkMoveModal } from "metabase/containers/MoveModal";
+import { BulkActionBar } from "metabase/common/components/BulkActionBar";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import {
+  type MovableItem,
+  isMovable,
+  useSetCollection,
+} from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
@@ -39,6 +43,7 @@ export const CollectionBulkActions = memo(
   }: CollectionBulkActionsProps) => {
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
+    const setCollection = useSetCollection();
 
     const isVisible = selected.length > 0 && selectedAction !== "confirm-move";
 
@@ -52,6 +57,12 @@ export const CollectionBulkActions = memo(
       setSelectedAction(null);
       setRememberedDestination(null);
       clearSelected();
+    };
+
+    const handleCancelModal = () => {
+      setSelectedItems(null);
+      setSelectedAction(null);
+      setRememberedDestination(null);
     };
 
     const tryOrClear = (promise: Promise<any>) =>
@@ -68,7 +79,9 @@ export const CollectionBulkActions = memo(
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map((item) => item.setCollection?.(destination)),
+            selectedItems
+              .filter(isMovable)
+              .map((item) => setCollection(item as MovableItem, destination)),
           ),
         );
       }
@@ -117,7 +130,7 @@ export const CollectionBulkActions = memo(
 
     // This is a little cheeky, but by virtue of the screens we show the BulkMoveModal, all
     // selected items should have the same collection id. yatta!
-    const recentAndSearchFilter = (item: CollectionPickerItem) =>
+    const recentAndSearchFilter = (item: OmniPickerItem) =>
       item.model === "collection" && item.id === collection.id;
 
     return (
@@ -145,19 +158,17 @@ export const CollectionBulkActions = memo(
         </BulkActionBar>
 
         {selectedItems && hasSelectedItems && selectedAction === "copy" && (
-          <Modal onClose={handleCloseModal}>
-            <CollectionCopyEntityModal
-              entityObject={selectedItems?.[0]}
-              onClose={handleCloseModal}
-              onSaved={handleCloseModal}
-            />
-          </Modal>
+          <CollectionCopyEntityModal
+            entityObject={selectedItems?.[0]}
+            onClose={handleCloseModal}
+            onSaved={handleCloseModal}
+          />
         )}
 
         {selectedItems && hasSelectedItems && selectedAction === "move" && (
           <BulkMoveModal
             selectedItems={selectedItems}
-            onClose={handleCloseModal}
+            onClose={handleCancelModal}
             onMove={handleBulkMove}
             initialCollectionId={
               isTrashedCollection(collection) ? "root" : collection.id

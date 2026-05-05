@@ -1,9 +1,9 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
-import { DataPermissionValue } from "../types";
+import { DataPermissionValue, type PermissionOption } from "../types";
 
-export const DATA_PERMISSION_OPTIONS = {
+export const DATA_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   unrestricted: {
     label: t`Can view`,
     value: DataPermissionValue.UNRESTRICTED,

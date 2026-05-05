@@ -1,9 +1,18 @@
+import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   createMockCard,
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 
-import { extendCardWithDashcardSettings, mergeSettings } from "./typed-utils";
+import {
+  extendCardWithDashcardSettings,
+  mergeSettings,
+  sanitizeDashcardSettings,
+} from "./typed-utils";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 describe("mergeSettings (metabase#14597)", () => {
   it("should merge with second overriding first", () => {
@@ -145,5 +154,115 @@ describe("extendCardWithDashcardSettings", () => {
     const result = extendCardWithDashcardSettings(card, undefined);
 
     expect(result.visualization_settings).toEqual({ foo: "bar" });
+  });
+
+  it("should omit settings that are hidden on dashboards (metabase#61112)", () => {
+    const card = createMockCard({
+      display: "bar" as const,
+      visualization_settings: { "graph.metrics": ["count"] },
+    });
+
+    const result = extendCardWithDashcardSettings(card, {
+      // non-dashboard settings that should be filtered out
+      "graph.dimensions": ["any_value"],
+      "graph.metrics": ["avg"],
+      // dashboard setting that should be preserved
+      "graph.goal_label": "goal label",
+    });
+
+    expect(result.visualization_settings).toEqual({
+      "graph.metrics": ["count"],
+      "graph.goal_label": "goal label",
+    });
+  });
+});
+
+describe("sanitizeDashcardSettings", () => {
+  it("should filter out settings with dashboard: false", () => {
+    const settings = {
+      "graph.dimensions": ["TAX"],
+      "graph.metrics": ["count"],
+      "graph.goal_label": "My Goal",
+      "card.title": "Custom Title",
+    };
+
+    const vizSettingsDefs = {
+      "graph.dimensions": { dashboard: false },
+      "graph.metrics": { dashboard: false },
+      "graph.goal_label": { dashboard: true },
+      "card.title": { dashboard: true },
+    } as any;
+
+    const result = sanitizeDashcardSettings(settings, vizSettingsDefs);
+
+    expect(result).toEqual({
+      "graph.goal_label": "My Goal",
+      "card.title": "Custom Title",
+    });
+  });
+
+  it("should keep settings that have no definition", () => {
+    const settings = {
+      "graph.dimensions": ["TAX"],
+      unknownSetting: "value",
+    };
+
+    const vizSettingsDefs = {
+      "graph.dimensions": { dashboard: false },
+    } as any;
+
+    const result = sanitizeDashcardSettings(settings, vizSettingsDefs);
+
+    expect(result).toEqual({
+      unknownSetting: "value",
+    });
+  });
+
+  it("should keep settings where dashboard is not explicitly false", () => {
+    const settings = {
+      "graph.dimensions": ["TAX"],
+      "graph.goal_value": 100,
+      "card.description": "Description",
+    };
+
+    const vizSettingsDefs = {
+      "graph.dimensions": { dashboard: false },
+      "graph.goal_value": {}, // no dashboard property
+      "card.description": { dashboard: undefined },
+    } as any;
+
+    const result = sanitizeDashcardSettings(settings, vizSettingsDefs);
+
+    expect(result).toEqual({
+      "graph.goal_value": 100,
+      "card.description": "Description",
+    });
+  });
+
+  it("should return empty object when all settings are dashboard: false", () => {
+    const settings = {
+      "graph.dimensions": ["TAX"],
+      "graph.metrics": ["count"],
+    };
+
+    const vizSettingsDefs = {
+      "graph.dimensions": { dashboard: false },
+      "graph.metrics": { dashboard: false },
+    } as any;
+
+    const result = sanitizeDashcardSettings(settings, vizSettingsDefs);
+
+    expect(result).toEqual({});
+  });
+
+  it("should handle empty settings", () => {
+    const settings = {};
+    const vizSettingsDefs = {
+      "graph.dimensions": { dashboard: false },
+    } as any;
+
+    const result = sanitizeDashcardSettings(settings, vizSettingsDefs);
+
+    expect(result).toEqual({});
   });
 });

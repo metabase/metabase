@@ -1,7 +1,7 @@
+import type { Dispatch, GetState } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getDatasetEditorTab,
@@ -20,8 +20,8 @@ export const onUpdateVisualizationSettings =
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
     const datasetEditorTab = getDatasetEditorTab(getState());
-    const isEditingDatasetMetadata =
-      queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+    const isEditingDatasetColumns =
+      queryBuilderMode === "dataset" && datasetEditorTab === "columns";
     const wasJustEditingModel =
       previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
     const changedSettings = Object.keys(settings);
@@ -32,7 +32,7 @@ export const onUpdateVisualizationSettings =
 
     if (
       !question ||
-      ((isEditingDatasetMetadata || wasJustEditingModel) &&
+      ((isEditingDatasetColumns || wasJustEditingModel) &&
         isColumnWidthResetEvent)
     ) {
       return;

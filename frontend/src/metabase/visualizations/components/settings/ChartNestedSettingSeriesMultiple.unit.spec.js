@@ -2,7 +2,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -26,7 +27,14 @@ function getSeries(display, index, changeSeriesName) {
         ["a", 1],
         ["b", 2],
       ],
-      cols: [{ name: "foo" }, { name: "bar" }],
+      cols: [
+        { name: "foo", display_name: "Foo", source: "breakout" },
+        {
+          name: `Test ${index}`,
+          display_name: `Test ${index}`,
+          source: "aggregation",
+        },
+      ],
     },
   };
 }
@@ -36,11 +44,13 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
     .fill(1)
     .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
   return renderWithProviders(
-    <DashboardChartSettings
-      series={series}
-      initial={{ section: "Display" }}
-      isDashboard={true}
-    />,
+    <MockDashboardContext>
+      <DashboardChartSettings
+        series={series}
+        initial={{ section: "Display" }}
+        isDashboard={true}
+      />
+    </MockDashboardContext>,
   );
 };
 

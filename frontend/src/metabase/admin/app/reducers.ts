@@ -1,14 +1,11 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { combineReducers } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_METABOT,
-} from "metabase/plugins";
+import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
+import { combineReducers } from "metabase/redux";
+import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import { refreshCurrentUser } from "metabase/redux/user";
-import type { AdminPath, AdminPathKey } from "metabase-types/store";
+import { isNotNull } from "metabase/utils/types";
 
 export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
@@ -21,6 +18,16 @@ export const getAdminPaths: () => AdminPath[] = () => {
       name: t`Databases`,
       path: "/admin/databases",
       key: "databases",
+    },
+    {
+      name: t`Embedding`,
+      path: "/admin/embedding",
+      key: "embedding",
+    },
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
     },
     {
       name: t`Table Metadata`,
@@ -46,12 +53,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       name: t`Tools`,
       path: "/admin/tools",
       key: "tools",
-    },
-    ...PLUGIN_METABOT.adminNavItem,
-    {
-      name: t`Troubleshooting`,
-      path: "/admin/troubleshooting",
-      key: "troubleshooting",
     },
   ];
 

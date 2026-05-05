@@ -74,7 +74,7 @@ describe("FormRadioGroup", () => {
   it("should show validation errors", async () => {
     // This is test used to test setting and unsetting the radio value, but userEvents 14
     // cause this to not work (we weren't able to unselect the radio). To simulate, we have
-    // repaced the logic with a nonsense validation object to error after setting the value
+    // replaced the logic with a nonsense validation object to error after setting the value
     const validationSchema = Yup.object({
       column: Yup.string().email("This should error"),
     });

@@ -3,12 +3,9 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import type { GroupId, Impersonation } from "metabase-types/api";
+import type { GroupId } from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
-
-export const getImpersonationKey = (impersonation: Impersonation) =>
-  `${impersonation.db_id}:${impersonation.group_id}`;
 
 export const getImpersonatedDatabaseId = ({
   databaseId,

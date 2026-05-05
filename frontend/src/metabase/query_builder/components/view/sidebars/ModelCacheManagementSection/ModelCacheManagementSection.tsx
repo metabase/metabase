@@ -5,7 +5,7 @@ import {
   useGetPersistedInfoByCardQuery,
   useRefreshModelCacheMutation,
 } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -79,7 +79,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-dark" : "text-light"}
+          c={canManageDB ? "text-primary" : "text-tertiary"}
           fz="md"
         >
           <Box>
@@ -93,7 +93,7 @@ export function ModelCacheManagementSection({ model }: Props) {
             <Button
               variant="subtle"
               p="xs"
-              c="text-dark"
+              c="text-primary"
               size="xs"
               onClick={() => onRefresh(model.id())}
             >

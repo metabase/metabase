@@ -13,7 +13,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -46,7 +45,7 @@
       (testing "table ID must exist or we get a 404"
         (is (= {:status 404
                 :body   "Not found."}
-               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+               (try (http/post (client/build-url (format "notify/db/%d" (mt/id)) {})
                                (merge {:accept       :json
                                        :content-type :json
                                        :form-params  {:table_id Integer/MAX_VALUE}}
@@ -56,7 +55,7 @@
       (testing "table name must exist or we get a 404"
         (is (= {:status 404
                 :body   "Not found."}
-               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+               (try (http/post (client/build-url (format "notify/db/%d" (mt/id)) {})
                                (merge {:accept       :json
                                        :content-type :json
                                        :form-params  {:table_name "IncorrectToucanFact"}}
@@ -71,7 +70,7 @@
                        ([payload] (post-api payload 200))
                        ([payload expected-code]
                         (mt/with-temporary-setting-values [api-key "test-api-key"]
-                          (mt/client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
+                          (mt/client :post expected-code (format "notify/db/%d" (mt/id))
                                      {:request-options api-headers}
                                      (merge {:synchronous? true}
                                             payload)))))]

@@ -19,7 +19,7 @@ on:
 jobs:
   workflow-summary:
     name: Stress test inputs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -34,7 +34,7 @@ jobs:
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
   frontend-unit-test-stress-test-flake-fix:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     name: Stress test frontend unit test flake fix
     steps:
@@ -43,17 +43,20 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Build cljs
-        run: yarn build:cljs
+        run: bun run build:cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
-          for i in {1..${{ github.event.inputs.burn_in }}}; do
-            yarn jest --runInBand --ci --silent --no-cache \
-              --testPathPattern '${{ github.event.inputs.spec }}' \
-              --testNamePattern '${{ github.event.inputs.grep }}'
+          for ((i=1; i<=BURN_IN; i++)); do
+            bun run jest --runInBand --ci --silent --no-cache \
+              --testPathPatterns "${SPEC}" \
+              --testNamePattern "${GREP}"
             if [[ "$?" != 0 ]]; then
               echo "Failed after $i attempts" && break;
             fi
           done
+
+        env:
+          BURN_IN: ${{ github.event.inputs.burn_in }}
+          SPEC: ${{ github.event.inputs.spec }}
+          GREP: ${{ github.event.inputs.grep }}

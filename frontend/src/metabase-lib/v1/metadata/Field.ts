@@ -1,15 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import dayjs from "dayjs";
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
-import { formatField, stripId } from "metabase/lib/formatting";
+import { formatField, stripId } from "metabase/utils/formatting";
 import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isAddress,
   isBoolean,
@@ -27,8 +24,6 @@ import {
   isStringLike,
   isSummable,
   isTime,
-  isTypeFK,
-  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   FieldFingerprint,
@@ -37,6 +32,7 @@ import type {
   FieldReference,
   FieldValuesType,
   FieldVisibilityType,
+  NormalizedField,
 } from "metabase-types/api";
 
 import Base from "./Base";
@@ -83,7 +79,7 @@ export default class Field extends Base {
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
 
-  getPlainObject(): IField {
+  getPlainObject(): NormalizedField {
     return this._plainObject;
   }
 
@@ -230,20 +226,6 @@ export default class Field extends Base {
   }
 
   /**
-   * Predicate to decide whether `this` is comparable with `field`.
-   *
-   * Currently only the MongoBSONID erroneous case is ruled out to fix the issue #49149. To the best of my knowledge
-   * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
-   * manner could disable some cases that users may depend on.
-   */
-  isComparableWith(field) {
-    return this.effective_type === "type/MongoBSONID" ||
-      field.effective_type === "type/MongoBSONID"
-      ? this.effective_type === field.effective_type
-      : true;
-  }
-
-  /**
    * @returns {FieldValues}
    */
   fieldValues() {
@@ -262,49 +244,16 @@ export default class Field extends Base {
     return getIconForField(this);
   }
 
-  reference() {
-    if (Array.isArray(this.id)) {
-      // if ID is an array, it's a MBQL field reference, typically "field"
-      return this.id;
-    } else if (this.field_ref) {
-      return this.field_ref;
-    } else {
-      return ["field", this.id, null];
-    }
-  }
-
-  // BREAKOUTS
-
-  /**
-   * Returns a default date/time unit for this field
-   */
-  getDefaultDateTimeUnit() {
-    try {
-      const fingerprint = this.fingerprint.type["type/DateTime"];
-      const days = dayjs(fingerprint.latest).diff(
-        dayjs(fingerprint.earliest),
-        "day",
-      );
-
-      if (Number.isNaN(days) || this.isTime()) {
-        return "hour";
-      }
-
-      if (days < 1) {
-        return "minute";
-      } else if (days < 31) {
-        return "day";
-      } else if (days < 365) {
-        return "week";
-      } else {
-        return "month";
-      }
-    } catch (e) {
-      return "day";
-    }
-  }
-
   // REMAPPINGS
+
+  static remappedField(fields: Field[]): Field | null {
+    const remappedFields = fields.map((field) => field.remappedField());
+    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
+    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
+      return remappedFields[0];
+    }
+    return null;
+  }
 
   remappedField() {
     return this.remappedInternalField() ?? this.remappedExternalField();
@@ -330,10 +279,12 @@ export default class Field extends Base {
       return this.metadata.field(displayFieldId);
     }
 
-    // this enables "implicit" remappings from type/PK to type/Name on the same table,
+    // enables "implicit" remapping from type/PK to type/Name on the same table,
+    // or type/FK to type/Name on the type/FK table;
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.name_field) {
-      return this.name_field;
+    const maybePkField = this.target ?? this;
+    if (maybePkField.name_field) {
+      return maybePkField.name_field;
     }
 
     return null;
@@ -401,29 +352,6 @@ export default class Field extends Base {
 
   isVirtual() {
     return typeof this.id !== "number";
-  }
-
-  isJsonUnfolded() {
-    const database = this.table?.database;
-    return this.json_unfolding ?? database?.details?.["json-unfolding"] ?? true;
-  }
-
-  canUnfoldJson() {
-    const database = this.table?.database;
-
-    return (
-      isa(this.base_type, TYPE.JSON) &&
-      database != null &&
-      database.hasFeature("nested-field-columns")
-    );
-  }
-
-  canCoerceType() {
-    return !isTypeFK(this.semantic_type) && is_coerceable(this.base_type);
-  }
-
-  coercionStrategyOptions(): string[] {
-    return coercions_for_type(this.base_type);
   }
 
   /**

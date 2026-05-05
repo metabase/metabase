@@ -10,20 +10,12 @@ import {
   useGetFieldValuesQuery,
 } from "metabase/api";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-} from "metabase/lib/entities";
-import {
   compose,
   createAction,
   createThunkAction,
   handleActions,
-  updateData,
   withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/lib/redux";
+} from "metabase/redux";
 import { FieldSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -31,6 +23,15 @@ import {
 } from "metabase/selectors/metadata";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  updateData,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -50,12 +51,12 @@ export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Fields = createEntity({
+export const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchFieldValues") {
         return {
@@ -67,7 +68,7 @@ const Fields = createEntity({
         useGetQuery: useGetFieldQuery,
       };
     },
-  },
+  }),
 
   api: {
     get: (entityQuery, options, dispatch) =>
@@ -256,5 +257,3 @@ const transformFieldValuesData = (data, table_id) => {
   // table_id is required for uniqueFieldId as it's a way to know if field is virtual
   return { id: field_id, ...rest, ...(table_id && { table_id }) };
 };
-
-export default Fields;

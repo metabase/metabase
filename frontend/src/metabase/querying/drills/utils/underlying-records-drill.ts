@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { msgid, ngettext } from "ttag";
 
-import { inflect } from "metabase/lib/formatting/strings";
+import { inflect } from "metabase/utils/formatting/strings";
 import type {
   Drill,
   QuestionChangeClickAction,
@@ -33,12 +33,14 @@ export const underlyingRecordsDrill: Drill<
       name: "underlying-records",
       title: actionTitle,
       section: "records",
-      icon: "table_spaced",
+      icon: "table",
       buttonType: "horizontal",
       question: () =>
         applyDrill(drill)
           .setDisplay("table")
-          .updateSettings({ "table.pivot": false }),
+          // Sometimes the "graph.dimensions" setting lingers around
+          // from a previous graph visualization, so we reset it here. (see metabase#55484)
+          .updateSettings({ "table.pivot": false, "graph.dimensions": [] }),
     },
   ];
 };

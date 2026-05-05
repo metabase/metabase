@@ -21,12 +21,16 @@
   }
 
   tbody > tr:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
   }
 
   td {
     border-bottom: 1px solid var(--mb-color-border);
     padding-inline: 0.75rem;
+  }
+
+  tbody > tr:last-of-type td {
+    border-bottom: none;
   }
 }
 

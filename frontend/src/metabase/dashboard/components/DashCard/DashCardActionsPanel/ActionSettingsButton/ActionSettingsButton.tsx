@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { setEditingDashcardId } from "metabase/dashboard/actions";
-import { connect } from "metabase/lib/redux";
-import type { ActionDashboardCard, Dashboard } from "metabase-types/api";
+import { connect } from "metabase/redux";
+import type { ActionDashboardCard } from "metabase-types/api";
 
 import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
 
@@ -12,7 +12,6 @@ const mapDispatchToProps = {
 };
 
 interface Props {
-  dashboard: Dashboard;
   dashcard: ActionDashboardCard;
   setEditingDashcardId: (dashcardId: number) => void;
 }

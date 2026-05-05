@@ -1,12 +1,12 @@
+import type { DraggedItem } from "metabase/redux/store/visualizer";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
-import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { ColumnsListItem } from "../DataImporter/ColumnsList/ColumnsListItem";
-import { WellItem } from "../VisualizationCanvas/WellItem";
+import { WellItem } from "../VisualizationCanvas/wells/WellItem";
 
 interface DragOverlayProps {
   item: DraggedItem;

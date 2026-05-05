@@ -11,6 +11,7 @@ interface FilterPickerFooterProps {
   isNew: boolean;
   isValid: boolean;
   withAddButton: boolean;
+  withSubmitButton: boolean;
   children?: ReactNode;
   onAddButtonClick: () => void;
 }
@@ -18,19 +19,27 @@ interface FilterPickerFooterProps {
 export function FilterPickerFooter({
   isNew,
   isValid,
-  withAddButton = false,
+  withAddButton,
+  withSubmitButton,
   children,
   onAddButtonClick,
 }: FilterPickerFooterProps) {
+  if (!isValidElement(children) && !withSubmitButton) {
+    return null;
+  }
+
   return (
     <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
       {isValidElement(children) ? children : <Box />}
-      <FilterSubmitButton
-        isNew={isNew}
-        isDisabled={!isValid}
-        withAddButton={withAddButton}
-        onAddButtonClick={onAddButtonClick}
-      />
+
+      {withSubmitButton && (
+        <FilterSubmitButton
+          isNew={isNew}
+          isDisabled={!isValid}
+          withAddButton={withAddButton}
+          onAddButtonClick={onAddButtonClick}
+        />
+      )}
     </Flex>
   );
 }

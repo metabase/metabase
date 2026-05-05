@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import {
   addIFrameDashCardToDashboard,
   addLinkDashCardToDashboard,
 } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Group, Icon, Menu } from "metabase/ui";
 
 export const AddLinkOrEmbedButton = () => {

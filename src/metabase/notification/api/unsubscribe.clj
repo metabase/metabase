@@ -38,6 +38,10 @@
       :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
       (name (:payload_type notification)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
   [_route-params
@@ -60,6 +64,10 @@
                                                              :object {:id notification-handler-id}})
   {:status :success :title (notification-name-by-handler-id notification-handler-id)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from notifications, with the hash given through email."
   [_route-params

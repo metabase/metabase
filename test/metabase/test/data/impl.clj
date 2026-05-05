@@ -260,7 +260,8 @@
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
-        old-field-values   (t2/select :model/FieldValues :field_id [:in (set (keys old-field-id->name))])]
+        old-field-values (when-let [field-ids (seq (keys old-field-id->name))]
+                           (t2/select :model/FieldValues :field_id [:in (set field-ids)]))]
     (t2/insert! :model/FieldValues
                 (for [{old-field-id :field_id, :as field-values} old-field-values
                       :let                                       [field-name (get old-field-id->name old-field-id)]]
@@ -382,3 +383,50 @@
               *db-id-fn*                #(u/the-id (db-fn))
               *dbdef-used-to-create-db* dbdef]
       (f))))
+
+(defn- log! [fmt & args]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println (apply format fmt args)))
+
+(defn drop-dataset!
+  "Drop a test dataset by driver and name. Resolves the dataset name to its definition
+   and calls [[metabase.test.data.interface/destroy-db!]].
+
+   Can be called from the REPL or via clojure -X:
+
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/drop-dataset! :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name]}]
+  (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    (log! "[%s] Dropping dataset '%s'..." (name driver) dataset-name)
+    (tx/destroy-db! driver dbdef)
+    (log! "[%s] Done." (name driver))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn test-drop-dataset
+  "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
+   Name lacks `!` because clojure -X cannot resolve function names ending in `!`.
+
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name] :as opts}]
+  (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    (log! "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name)
+    (if-not (tx/dataset-already-loaded? driver dbdef)
+      (log! "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)
+      (do
+        (log! "[%s] Dataset '%s' exists, proceeding with drop." (name driver) dataset-name)
+        (drop-dataset! opts)
+        (log! "[%s] Verifying dataset '%s' was deleted..." (name driver) dataset-name)
+        (if (tx/dataset-already-loaded? driver dbdef)
+          (do (log! "[%s] FAIL: dataset '%s' still exists after drop!" (name driver) dataset-name)
+              (System/exit 1))
+          (log! "[%s] PASS: dataset '%s' has been deleted." (name driver) dataset-name))))))

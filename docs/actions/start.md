@@ -1,5 +1,7 @@
 ---
 title: Actions overview
+redirect_from:
+  - /docs/latest/actions
 ---
 
 # Actions overview

@@ -29,18 +29,18 @@
      (dashboard-url 10) -> \"http://localhost:3000/dashboard/10\""
   ([^Integer id]
    (format "%s/dashboard/%d" (site-url) id))
-  ([^Integer id parameters]
+  ([^Integer id parameters & [tab-id]]
    (let [base-url   (dashboard-url id)
-         url-params (flatten
-                     (for [param parameters
-                           :let  [values (shared.params/param-val-or-default param)]]
-                       (for [value (if ((some-fn sequential? set? nil?) values)
-                                     values
-                                     [values])]
-                         (str (codec/url-encode (:slug param))
-                              "="
-                              (codec/url-encode value)))))]
-
+         url-params (cond-> (flatten
+                             (for [param parameters
+                                   :let  [values (shared.params/param-val-or-default param)]]
+                               (for [value (if ((some-fn sequential? set? nil?) values)
+                                             values
+                                             [values])]
+                                 (str (codec/url-encode (:slug param))
+                                      "="
+                                      (codec/url-encode value)))))
+                      tab-id (conj (str "tab=" tab-id)))]
      (str base-url (when (seq url-params)
                      (str "?" (str/join "&" url-params)))))))
 
@@ -50,6 +50,16 @@
      (card-url 10) -> \"http://localhost:3000/question/10\""
   [^Integer id]
   (format "%s/question/%d" (site-url) id))
+
+(def ^:dynamic *dashcard-parameters*
+  "Bind dashboard parameters for dashcard deeplinked urls"
+  {})
+
+(defn dashcard-url
+  "Build deep linking href for visualizer dashcards"
+  [{:keys [dashboard_id id dashboard_tab_id]}]
+  (str (dashboard-url dashboard_id *dashcard-parameters* dashboard_tab_id)
+       "#scrollTo=" id))
 
 (defn legacy-pulse-url
   "Return an appropriate URL for a legacy `Pulse` with ID.
@@ -103,3 +113,18 @@
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
   (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))
+
+(defn transform-job-url
+  "URL for a transform job."
+  [job-id]
+  (format "%s/data-studio/transforms/jobs/%s" (site-url) job-id))
+
+(defn transform-run-url
+  "URL for a transform's run tab."
+  [transform-id]
+  (format "%s/data-studio/transforms/%s/run" (site-url) transform-id))
+
+(defn security-center-url
+  "Url for the Security Center"
+  []
+  (format "%s/admin/security-center" (site-url)))

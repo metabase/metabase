@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
@@ -217,6 +218,85 @@
                                                                               :payload_type "notification/card"})
                    :creator_id)))))))
 
+(deftest notification-with-custom-template-test
+  (mt/with-model-cleanup [:model/Notification]
+    (testing "can create a notification with a template"
+      (let [template     (-> notification.tu/channel-template-email-with-handlebars-body
+                             (update :channel_type u/qualified-name)
+                             (update-in [:details :type] u/qualified-name))
+            notification (mt/user-http-request :crowberto :post 200 "notification"
+                                               {:payload_type  :notification/testing
+                                                :creator_id    (mt/user->id :crowberto)
+                                                :handlers      [(assoc @notification.tu/default-email-handler
+                                                                       :template notification.tu/channel-template-email-with-handlebars-body)]})
+            created-template (-> notification :handlers first :template)]
+        (is (=? template created-template))
+        (testing "and can update the template"
+          (let [updated-notification (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                           (update notification :handlers (fn [[handler]]
+                                                                                            [(assoc-in handler [:template :name] "New Name")])))
+                updated-template    (-> updated-notification :handlers first :template)]
+            (is (=? (-> created-template
+                        (assoc :name "New Name")
+                        (dissoc :updated_at :created_at))
+                    (dissoc updated-template :updated_at :created_at)))))
+
+        (testing "can delete the template"
+          (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                (update notification :handlers (fn [[handler]]
+                                                                 [(dissoc handler :template)])))
+          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+
+        (testing "and re-create it again"
+          (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                         (update notification :handlers (fn [[handler]]
+                                                                                          [(assoc handler
+                                                                                                  :template template
+                                                                                                  :template_id nil)])))
+                recreated-template (-> notification :handlers first :template)]
+            (is (=? template recreated-template))))))))
+
+(deftest api-rejects-handlebars-resource-templates-test
+  (let [resource-template {:name         "test"
+                           :channel_type "channel/email"
+                           :details      {:type    "email/handlebars-resource"
+                                          :subject "test"
+                                          :path    "metabase/channel/email/password_reset.hbs"}}]
+    (testing "POST /api/notification rejects handlebars-resource templates"
+      (mt/with-model-cleanup [:model/Notification]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (=? "invalid template"
+                  (mt/user-http-request :crowberto :post 400 "notification"
+                                        {:payload_type "notification/card"
+                                         :payload      {:card_id card-id}
+                                         :handlers     [{:channel_type "channel/email"
+                                                         :template     resource-template
+                                                         :recipients   [{:type    "notification-recipient/user"
+                                                                         :user_id (mt/user->id :crowberto)}]}]}))))))
+
+    (testing "POST /api/notification/send rejects handlebars-resource templates"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (is (=? "invalid template"
+                (mt/user-http-request :crowberto :post 400 "notification/send"
+                                      {:payload_type "notification/card"
+                                       :payload      {:card_id        card-id
+                                                      :send_condition "has_result"}
+                                       :handlers     [{:channel_type "channel/email"
+                                                       :template     resource-template
+                                                       :recipients   [{:type    "notification-recipient/user"
+                                                                       :user_id (mt/user->id :crowberto)}]}]})))))
+
+    (testing "PUT /api/notification/:id rejects handlebars-resource templates"
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type "channel/email"
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}]}]}]
+        (is (=? "invalid template"
+                (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
+                                      (update notification :handlers
+                                              (fn [[handler]]
+                                                [(assoc handler :template resource-template)])))))))))
+
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]
   (assert (= 1 (count subscriptions)))
@@ -353,8 +433,8 @@
         (testing "send to all handlers"
           (is (=? {:channel/email [{:message    (mt/malli=? some?)
                                     :recipients ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
+                   :channel/slack [{:blocks  (mt/malli=? some?)
+                                    :channel "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
@@ -378,8 +458,8 @@
       (testing "send to all handlers"
         (is (=? {:channel/email [{:message    (mt/malli=? some?)
                                   :recipients ["crowberto@metabase.com"]}]
-                 :channel/slack [{:attachments (mt/malli=? some?)
-                                  :channel-id  "#general"}]
+                 :channel/slack [{:blocks  (mt/malli=? some?)
+                                  :channel "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
                 (notification.tu/with-captured-channel-send!
                   (mt/user-http-request :crowberto :post 204 "notification/send"
@@ -396,7 +476,36 @@
                                                         :send_condition :has_result
                                                         :send_once false}
                                          :subscriptions [{:type          :notification-subscription/cron
-                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))
+
+    (testing "links disabled/enabled based on x-metabase-client header"
+      (let [notification-body {:handlers [{:channel_type :channel/email
+                                           :recipients   [{:type    :notification-recipient/user
+                                                           :user_id (mt/user->id :crowberto)}]}]
+                               :payload_type :notification/card
+                               :payload      {:card_id card-id
+                                              :send_condition :has_result
+                                              :send_once false}
+                               :subscriptions [{:type          :notification-subscription/cron
+                                                :cron_schedule "0 0 0 * * ?"}]}
+            has-link? (fn [client-header]
+                        (->> (notification.tu/with-captured-channel-send!
+                               (if client-header
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       {:request-options {:headers
+                                                                          {"x-metabase-client" client-header}}}
+                                                       notification-body)
+                                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                                       notification-body)))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "x-metabase-client header is embedding-sdk-react (modular embedding SDK): result email has no links"
+          (is (false? (has-link? "embedding-sdk-react"))))
+        (testing "x-metabase-client header is embedding-simple (modular embedding): result email has no links"
+          (is (false? (has-link? "embedding-simple"))))
+        (testing "no x-metabase-client header: result email has links"
+          (is (true? (has-link? nil))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
@@ -952,6 +1061,21 @@
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
                              :expected-subject "You’ve been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
+
+          (testing "when notification is archived (active -> inactive) with disable_links value:"
+            (let [has-link? (fn [disable_links]
+                              (notification.tu/with-card-notification
+                                [{noti-id :id :as notification} (assoc-in base-notification [:notification-card :disable_links] disable_links)]
+                                (->> (update-notification! noti-id notification {:active false})
+                                     first :body first :content
+                                     (re-find #"href=")
+                                     (= "href="))))]
+              (testing "false will keep links in the alert unsubscribe email"
+                (is (true? (has-link? false))))
+              (testing "nil will keep links in the alert unsubscribe email"
+                (is (true? (has-link? nil))))
+              (testing "true will remove all links in the alert unsubscribe email"
+                (is (false? (has-link? true))))))
 
           (testing "when notification is unarchived (inactive -> active)"
             (notification.tu/with-card-notification

@@ -86,7 +86,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Required Filters Dashboard").click();
 
     cy.location("search").should("eq", "?text=Bar");
@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
     H.editDashboard();
 
-    openFilterOptions("Text");
+    H.filterWidget({ isEditing: true, name: "Text" }).click();
 
     H.sidebar().within(() => {
       removeDefaultFilterValue("Bar");
@@ -106,10 +106,6 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
   });
 });
-
-function openFilterOptions(filterDisplayName) {
-  cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();
-}
 
 function removeDefaultFilterValue(value) {
   cy.findByDisplayValue(value).parent().find(".Icon-close").click();

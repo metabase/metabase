@@ -10,6 +10,9 @@
   [:map {:closed true}
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
+   ;; true if the current connection can make insert, update and delete operations. Only works for drivers that support
+   ;; :table-privileges feature
+   [:is_writable             {:optional true} [:maybe :boolean]]
    ;; for databases that store an estimated row count in system tables (e.g: postgres)
    [:estimated_row_count     {:optional true} [:maybe :int]]
    ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
@@ -36,8 +39,8 @@
    [:name              ::lib.schema.common/non-blank-string]
    [:database-type     [:maybe ::lib.schema.common/non-blank-string]] ; blank if the Field is all NULL & untyped, i.e. in Mongo
    [:base-type         ::lib.schema.common/base-type]
-   [:database-position ::lib.schema.common/int-greater-than-or-equal-to-zero]
-   [:position                   {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   [:database-position nat-int?]
+   [:position                   {:optional true} nat-int?]
    [:semantic-type              {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]
@@ -45,9 +48,13 @@
    [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
-   [:nfc-path                   {:optional true} [:any]]
+   ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
+   [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
    [:custom                     {:optional true} :map]
+   [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
+   [:database-is-generated      {:optional true} :boolean]
+   [:database-is-nullable       {:optional true} :boolean]
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
@@ -185,7 +192,8 @@
    2 #{:type/Number}
    3 #{:type/DateTime}
    4 #{:type/*}
-   5 #{:type/Text}})
+   5 #{:type/Text}
+   6 #{:type/Number :type/Text :type/DateTime}})
 
 (def ^:dynamic ^Long *latest-fingerprint-version*
   "The newest (highest-numbered) version of our Field fingerprints."

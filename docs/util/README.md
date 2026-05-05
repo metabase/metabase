@@ -7,13 +7,13 @@ Scripts for generating docs.
 From this directory, run:
 
 ```bash
-yarn install
+bun install
 ```
 
 Then:
 
 ```bash
-yarn generate-shortcuts
+bun run generate-shortcuts
 ```
 Docs will be written to:
 

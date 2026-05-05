@@ -8,11 +8,18 @@
   [data-orientation="vertical"] {
     padding: 0.6875rem 0.9375rem 0.6875rem 0.5rem;
   }
+
+  &[data-orientation="vertical"] {
+    .tabLabel {
+      text-align: left; /* "start" for some reason doesn't work properly */
+    }
+  }
 }
 
 .tab {
   color: var(--mb-color-text-primary);
   max-width: 100%;
+  justify-content: start;
 
   &:hover {
     border-color: var(--mb-color-background-hover);
@@ -24,13 +31,13 @@
   }
 
   &:disabled {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     opacity: 1;
   }
 
   &[data-active="true"] {
     color: var(--mb-color-text-brand);
-    border-color: var(--mb-color-background-brand);
+    border-color: var(--mb-color-brand);
   }
 }
 
@@ -41,6 +48,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+  text-align: center;
 }
 
 .tabSection[data-position="left"] {

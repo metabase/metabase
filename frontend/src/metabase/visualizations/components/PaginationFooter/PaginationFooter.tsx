@@ -3,9 +3,9 @@ import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -44,6 +44,7 @@ export const PaginationFooter = forwardRef<
   }: PaginationFooterProps,
   ref,
 ) {
+  const formatNumber = useNumberFormatter();
   const paginateMessage = useMemo(() => {
     const isOverLimit = limit === undefined && total >= HARD_ROW_LIMIT;
 
@@ -54,9 +55,9 @@ export const PaginationFooter = forwardRef<
     }
 
     return isOverLimit
-      ? t`Rows ${start + 1}-${end + 1} of first ${total}`
-      : t`Rows ${start + 1}-${end + 1} of ${total}`;
-  }, [total, start, end, limit, singleItem]);
+      ? t`Rows ${start + 1}-${end + 1} of first ${formatNumber(total)}`
+      : t`Rows ${start + 1}-${end + 1} of ${formatNumber(total)}`;
+  }, [total, start, end, limit, singleItem, formatNumber]);
 
   const handlePreviousPage = useCallback(
     (event: MouseEvent) => {
@@ -76,12 +77,7 @@ export const PaginationFooter = forwardRef<
 
   return (
     <PaginationFooterRoot
-      className={cx(
-        className,
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-      )}
+      className={cx(className, DashboardS.fullscreenNormalText)}
       data-testid={dataTestId}
       ref={ref}
     >

@@ -90,7 +90,10 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      H.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@total", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -104,7 +107,10 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+      H.moveDnDKitElementByAlias("@title", {
+        vertical: 15,
+        useMouseEvents: true,
+      });
 
       cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -159,7 +165,10 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      H.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
+      H.moveDnDKitElementByAlias("@prod-category", {
+        vertical: -360,
+        useMouseEvents: true,
+      });
 
       refreshResultsInHeader();
 
@@ -188,7 +197,10 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      H.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@user-address", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
 
       findColumnAtIndex("User → Address", -3);
 
@@ -197,7 +209,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -249,7 +261,7 @@ describe("scenarios > question > settings", () => {
       });
 
       H.openVizSettingsSidebar(); // open settings sidebar
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
@@ -257,7 +269,7 @@ describe("scenarios > question > settings", () => {
       H.popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
@@ -267,7 +279,7 @@ describe("scenarios > question > settings", () => {
       H.popover().within(() => {
         cy.icon("gear").click(); // open created_at column settings
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });
 
@@ -292,7 +304,7 @@ describe("scenarios > question > settings", () => {
 
       H.visitQuestionAdhoc(questionDetails);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       H.openVizSettingsSidebar();
@@ -311,19 +323,19 @@ describe("scenarios > question > settings", () => {
         });
 
       cy.findByDisplayValue("Normal").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
       cy.findByDisplayValue("US Dollar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("In every table cell").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 2.07");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
 
@@ -413,119 +425,127 @@ describe("scenarios > question > settings", () => {
         });
     });
 
-    it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
-      // products joined to orders with breakouts on 3 product columns followed by a custom column
-      H.createQuestion(
-        {
-          name: "repro 22563",
-          query: {
-            "source-query": {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  alias: "Products",
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    [
-                      "field",
-                      PRODUCTS.ID,
-                      {
-                        "join-alias": "Products",
-                      },
+    it(
+      "should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)",
+      { tags: "@skip" },
+      () => {
+        // products joined to orders with breakouts on 3 product columns followed by a custom column
+        H.createQuestion(
+          {
+            name: "repro 22563",
+            query: {
+              "source-query": {
+                "source-table": ORDERS_ID,
+                joins: [
+                  {
+                    alias: "Products",
+                    condition: [
+                      "=",
+                      ["field", ORDERS.PRODUCT_ID, null],
+                      [
+                        "field",
+                        PRODUCTS.ID,
+                        {
+                          "join-alias": "Products",
+                        },
+                      ],
                     ],
+                    "source-table": PRODUCTS_ID,
+                  },
+                ],
+                aggregation: [["count"]],
+                breakout: [
+                  [
+                    "field",
+                    PRODUCTS.CATEGORY,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
                   ],
-                  "source-table": PRODUCTS_ID,
-                },
-              ],
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "field",
-                  PRODUCTS.CATEGORY,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
+                  [
+                    "field",
+                    PRODUCTS.TITLE,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
+                  ],
+                  [
+                    "field",
+                    PRODUCTS.VENDOR,
+                    {
+                      "base-type": "type/Text",
+                      "join-alias": "Products",
+                    },
+                  ],
                 ],
-                [
-                  "field",
-                  PRODUCTS.TITLE,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
-                ],
-                [
-                  "field",
-                  PRODUCTS.VENDOR,
-                  {
-                    "base-type": "type/Text",
-                    "join-alias": "Products",
-                  },
-                ],
-              ],
-            },
-            expressions: {
-              two: ["+", 1, 1],
+              },
+              expressions: {
+                two: ["+", 1, 1],
+              },
             },
           },
-        },
-        { visitQuestion: true },
-      );
+          { visitQuestion: true },
+        );
 
-      const columnNames = [
-        "Products → Category",
-        "Products → Title",
-        "Products → Vendor",
-        "Count",
-        "two",
-      ];
+        const columnNames = [
+          "Products → Category",
+          "Products → Title",
+          "Products → Vendor",
+          "Count",
+          "two",
+        ];
 
-      H.tableInteractive().within(() => {
-        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
-      });
+        H.tableInteractive().within(() => {
+          columnNames.forEach((text) =>
+            cy.findByText(text).should("be.visible"),
+          );
+        });
 
-      H.openVizSettingsSidebar();
+        H.openVizSettingsSidebar();
 
-      cy.findByTestId("chartsettings-sidebar").within(() => {
-        columnNames.forEach((text) => cy.findByText(text).should("be.visible"));
-        cy.findByText("More Columns").should("not.exist");
+        cy.findByTestId("chartsettings-sidebar").within(() => {
+          columnNames.forEach((text) =>
+            cy.findByText(text).should("be.visible"),
+          );
+          cy.findByText("More Columns").should("not.exist");
 
-        cy.icon("eye_outline").first().click();
+          cy.icon("eye_outline").first().click();
 
-        cy.findByText("More columns").should("be.visible");
+          cy.findByText("More columns").should("be.visible");
 
-        // disable the first column
-        cy.findByTestId("disabled-columns")
-          .findByText("Products → Category")
-          .should("be.visible");
-        cy.findByTestId("visible-columns")
-          .findByText("Products → Category")
-          .should("not.exist");
-      });
+          // disable the first column
+          cy.findByTestId("disabled-columns")
+            .findByText("Products → Category")
+            .should("be.visible");
+          cy.findByTestId("visible-columns")
+            .findByText("Products → Category")
+            .should("not.exist");
+        });
 
-      H.tableInteractive().within(() => {
-        // the query should not have changed
-        cy.icon("play").should("not.exist");
-        cy.findByText("Products → Category").should("not.exist");
-      });
+        H.tableInteractive().within(() => {
+          // the query should not have changed
+          cy.icon("play").should("not.exist");
+          cy.findByText("Products → Category").should("not.exist");
+        });
 
-      cy.findByTestId("chartsettings-sidebar").within(() => {
-        cy.icon("add").click();
-        // re-enable the first column
-        cy.findByText("More columns").should("not.exist");
-        cy.findByTestId("visible-columns")
-          .findByText("Products → Category")
-          .should("be.visible");
-      });
+        cy.findByTestId("chartsettings-sidebar").within(() => {
+          cy.icon("add").click();
+          // re-enable the first column
+          cy.findByText("More columns").should("not.exist");
+          cy.findByTestId("visible-columns")
+            .findByText("Products → Category")
+            .should("be.visible");
+        });
 
-      H.tableInteractive().within(() => {
-        // the query should not have changed
-        cy.icon("play").should("not.exist");
-        cy.findByText("Products → Category").should("be.visible");
-      });
-    });
+        H.tableInteractive().within(() => {
+          // the query should not have changed
+          cy.icon("play").should("not.exist");
+          cy.findByText("Products → Category").should("be.visible");
+        });
+      },
+    );
   });
 
   describe("resetting state", () => {
@@ -537,11 +557,13 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
-      H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      H.pickEntity({ path: ["Our analytics"], select: false });
       H.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
-      H.modal().findByText("Yes please!").click();
+      H.checkSavedToCollectionQuestionToast(true);
+
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();
       });
@@ -550,9 +572,9 @@ describe("scenarios > question > settings", () => {
       H.openNavigationSidebar();
       H.browseDatabases().click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after

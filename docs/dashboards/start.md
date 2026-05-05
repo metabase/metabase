@@ -1,5 +1,7 @@
 ---
 title: Dashboards overview
+redirect_from:
+  - /docs/latest/dashboards
 ---
 
 # Dashboards overview

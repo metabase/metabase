@@ -6,10 +6,10 @@ import {
   useListUsersQuery,
   useReactivateUserMutation,
 } from "metabase/api";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 interface UserActivationModalInnerProps {
-  params: { userId: string };
+  params: { userId?: string };
   onClose: () => void;
 }
 
@@ -19,8 +19,11 @@ export const UserActivationModal = ({
   params,
   onClose,
 }: UserActivationModalInnerProps) => {
-  const userId = parseInt(params.userId, 10);
-  const { data } = useListUsersQuery({ include_deactivated: true });
+  const userId = parseInt(params.userId ?? "", 10);
+  const { data } = useListUsersQuery({
+    include_deactivated: true,
+    tenancy: "all",
+  });
 
   const user = useMemo(() => {
     const users = data?.data ?? [];

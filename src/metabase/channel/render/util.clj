@@ -1,6 +1,10 @@
 (ns metabase.channel.render.util
   (:require
    [clojure.string :as str]
+   [hiccup.core :refer [html]]
+   [metabase.channel.render.style :as style]
+   [metabase.parameters.shared :as shared.params]
+   [metabase.system.core :as system]
    [metabase.util :as u]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
@@ -178,3 +182,20 @@
      :cols viz-columns
      ;; Return in row-major format
      :rows (apply mapv vector unzipped-rows)}))
+
+(defn render-parameters
+  "Renders parameters as inline left-aligned spans for use inside a dashcard."
+  [parameters]
+  (html
+   (let [locale (system/site-locale)]
+     [:div {:style (style/style {:font-size "14px"
+                                 :font-weight 700
+                                 :padding-bottom "8px"})}
+      (for [{:keys [name] :as param} parameters]
+        [:div
+         {:style (style/style {:margin-bottom "4px"})}
+         [:span {:style (style/style {:color style/color-text-dark
+                                      :padding-right "8px"})}
+          name]
+         [:span {:style (style/style {:color style/color-text-medium})}
+          (shared.params/value-string param locale)]])])))

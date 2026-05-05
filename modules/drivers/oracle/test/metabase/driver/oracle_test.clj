@@ -11,24 +11,25 @@
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.env :as te]
+   [metabase.test.data.env :as te] ; codespell:ignore
    [metabase.test.data.interface :as tx]
    [metabase.test.data.oracle :as oracle.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -105,13 +106,14 @@
            (try (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
                                                                  :port 1521})
                 (catch Throwable e
-                  (driver/humanize-connection-error-message :oracle (.getMessage e))))))))
+                  (driver/humanize-connection-error-message :oracle (u/all-ex-messages e))))))))
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:name "host"}
-                      {:name "port"}
+      (let [expected [{:type :group
+                       :fields [{:name "host"}
+                                {:name "port"}]}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
@@ -157,8 +159,24 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
+                      {:name       "tunnel-known-hosts-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {"tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-value"
+                       :type       "textFile"
+                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                                    "tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-path"
+                       :type       "string"
+                       :visible-if {:tunnel-known-hosts-options "local"
+                                    "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
+                      {:name "write-data-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -166,7 +184,9 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
-        (is (= expected (mt/select-keys-sequentially expected actual)))))))
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
+        (is (=? expected actual))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -262,7 +282,7 @@
                    "FROM"
                    "  ("
                    "    SELECT"
-                   "      \"source\".\"s\" \"s\""
+                   "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
                    "      ("
                    "        SELECT"
@@ -270,7 +290,7 @@
                    "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
                    "        FROM"
                    "          \"public\".\"table\""
-                   "      ) \"source\""
+                   "      ) \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]
@@ -339,58 +359,58 @@
   (mt/test-driver :oracle
     (testing "Correct HoneySQL form should be generated"
       (mt/with-metadata-provider (mt/id)
-        (is (= (letfn [(id
-                         ([field-name database-type]
-                          (id oracle.tx/session-schema "test_data_venues" field-name database-type))
-                         ([table-name field-name database-type]
-                          (id nil table-name field-name database-type))
-                         ([schema-name table-name field-name database-type]
-                          (-> (h2x/identifier :field schema-name table-name field-name)
-                              (h2x/with-database-type-info database-type))))]
-                 {:select [:*]
-                  :from   [{:select
-                            [[(id "id" "number")
-                              [(h2x/identifier :field-alias "id")]]
-                             [(id "name" "varchar2")
-                              [(h2x/identifier :field-alias "name")]]
-                             [(id "category_id" "number")
-                              [(h2x/identifier :field-alias "category_id")]]
-                             [(id "latitude" "binary_double")
-                              [(h2x/identifier :field-alias "latitude")]]
-                             [(id "longitude" "binary_double")
-                              [(h2x/identifier :field-alias "longitude")]]
-                             [(id "price" "number")
-                              [(h2x/identifier :field-alias "price")]]]
-                            :from     [[(h2x/identifier :table oracle.tx/session-schema "test_data_venues")]]
-                            :join-by  [:left-join [[(h2x/identifier :table oracle.tx/session-schema "test_data_categories")
-                                                    [(h2x/identifier :table-alias "test_data_categories__via__cat")]]
-                                                   [:=
-                                                    (id "category_id" "number")
-                                                    (id "test_data_categories__via__cat" "id" "number")]]]
-                            :where    [:=
-                                       (id "test_data_categories__via__cat" "name" "varchar2")
-                                       "BBQ"]
-                            :order-by [[(id "id" "number") :asc]]}]
-                  :where  [:<= [:raw "rownum"] [:inline 100]]})
-               (#'sql.qp/mbql->honeysql
-                :oracle
-                (qp.preprocess/preprocess
-                 (mt/mbql-query venues
-                   {:source-table $$venues
-                    :order-by     [[:asc $id]]
-                    :filter       [:=
-                                   &test_data_categories__via__cat.categories.name
-                                   [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
-                    :fields       [$id $name $category_id $latitude $longitude $price]
-                    :limit        100
-                    :joins        [{:source-table $$categories
-                                    :alias        "test_data_categories__via__cat"
-                                    :strategy     :left-join
-                                    :condition    [:=
-                                                   $category_id
-                                                   &test_data_categories__via__cat.categories.id]
-                                    :fk-field-id  (mt/id :venues :category_id)
-                                    :fields       :none}]})))))))))
+        (is (=? (letfn [(id
+                          ([field-name database-type]
+                           (id oracle.tx/session-schema "test_data_venues" field-name database-type))
+                          ([table-name field-name database-type]
+                           (id nil table-name field-name database-type))
+                          ([schema-name table-name field-name database-type]
+                           (-> (h2x/identifier :field schema-name table-name field-name)
+                               (h2x/with-database-type-info database-type))))]
+                  {:select [:*]
+                   :from   [{:select
+                             [[(id "id" "number")
+                               [(h2x/identifier :field-alias "id")]]
+                              [(id "name" "varchar2")
+                               [(h2x/identifier :field-alias "name")]]
+                              [(id "category_id" "number")
+                               [(h2x/identifier :field-alias "category_id")]]
+                              [(id "latitude" "binary_double")
+                               [(h2x/identifier :field-alias "latitude")]]
+                              [(id "longitude" "binary_double")
+                               [(h2x/identifier :field-alias "longitude")]]
+                              [(id "price" "number")
+                               [(h2x/identifier :field-alias "price")]]]
+                             :from     [[(h2x/identifier :table oracle.tx/session-schema "test_data_venues")]]
+                             :join-by  [:left-join [[{:from [[(h2x/identifier :table oracle.tx/session-schema "test_data_categories")]]}
+                                                     [(h2x/identifier :table-alias "test_data_categories__via__cat")]]
+                                                    [:=
+                                                     (id "category_id" "number")
+                                                     (id "test_data_categories__via__cat" "id" "number")]]]
+                             :where    [:=
+                                        (id "test_data_categories__via__cat" "name" "varchar2")
+                                        "BBQ"]
+                             :order-by [[(id "id" "number") :asc]]}]
+                   :where  [:<= [:raw "rownum"] [:inline 100]]})
+                (#'sql.qp/mbql->honeysql
+                 :oracle
+                 (qp.preprocess/preprocess
+                  (mt/mbql-query venues
+                    {:source-table $$venues
+                     :order-by     [[:asc $id]]
+                     :filter       [:=
+                                    &test_data_categories__via__cat.categories.name
+                                    [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                     :fields       [$id $name $category_id $latitude $longitude $price]
+                     :limit        100
+                     :joins        [{:source-table $$categories
+                                     :alias        "test_data_categories__via__cat"
+                                     :strategy     :left-join
+                                     :condition    [:=
+                                                    $category_id
+                                                    &test_data_categories__via__cat.categories.id]
+                                     :fk-field-id  (mt/id :venues :category_id)
+                                     :fields       :none}]})))))))))
 
 (deftest oracle-connect-with-ssl-test
   ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
@@ -441,7 +461,7 @@
                                   tx/*database-name-override* "test-data"
                                   ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
                                   ;; results in errors because of column name formatting.
-                                  te/*test-drivers* (constantly #{:oracle})]
+                                  te/*test-drivers* (constantly #{:oracle})] ; codespell:ignore te
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
       (log/warn (u/format-color 'yellow
@@ -523,37 +543,44 @@
     [[(t/offset-date-time 2024 11 5 12 12 12)]
      [(t/offset-date-time 2024 11 6 13 13 13)]]]])
 
-(deftest date-column-filtering-test
-  (mt/test-driver
-    :oracle
-    (mt/dataset
-      date-cols-with-datetime-values
+(deftest ^:parallel date-column-filtering-test
+  (mt/test-driver :oracle
+    (mt/dataset date-cols-with-datetime-values
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
         (testing "Synced field is correctly mapped"
           (let [date-field (t2/select-one :model/Field
-                                          {:where [:and
-                                                   [:= :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))]
-                                                   [:= :name "date_with_time"]]})]
-            (are [key* expected-type] (= expected-type (key* date-field))
-              :base_type :type/DateTime
-              :database_type "DATE")))
-        (testing "Filtering with day temporal unit returns expected resutls"
-          (is (= [[2M "2024-11-06T13:13:13Z"]]
-                 (mt/rows
-                  (mt/run-mbql-query
-                    dates_with_time
-                    {:filter [:= [:field %date_with_time {:base-type :type/Date :temporal-unit :day}] "2024-11-06"]})))))
-        (testing "Filtering by datetime retuns expected results"
-          (is (= [[1M "2024-11-05T12:12:12Z"]]
-                 (mt/rows
-                  (mt/run-mbql-query
-                    dates_with_time
-                    {:filter [:= [:field %date_with_time {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
+                                          :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id))
+                                          :name "date_with_time")]
+            (is (=? {:base_type     :type/DateTime
+                     :database_type "DATE"}
+                    date-field))))))))
+
+(deftest ^:parallel date-column-filtering-test-2
+  (mt/test-driver :oracle
+    (mt/dataset date-cols-with-datetime-values
+      (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
+        (testing "Filtering with day temporal unit returns expected results"
+          (let [query (mt/mbql-query dates_with_time
+                        {:filter [:= [:field %date_with_time {:temporal-unit :day}] "2024-11-06"]})]
+            (mt/with-native-query-testing-context query
+              (is (= [[2M "2024-11-06T13:13:13Z"]]
+                     (mt/rows (qp/process-query query)))))))))))
+
+(deftest ^:parallel date-column-filtering-test-3
+  (mt/test-driver :oracle
+    (mt/dataset date-cols-with-datetime-values
+      (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
+        (testing "Filtering by datetime returns expected results"
+          (let [query (mt/mbql-query dates_with_time
+                        {:filter [:= [:field %date_with_time {:base-type :type/DateTime}] "2024-11-05T12:12:12"]})]
+            (mt/with-native-query-testing-context query
+              (is (= [[1M "2024-11-05T12:12:12Z"]]
+                     (mt/rows (qp/process-query query)))))))))))
 
 (deftest ^:parallel repro-49433-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
@@ -576,15 +603,15 @@
         date-cols-with-datetime-values
         (doseq [widget-type [:date/single :date/all-options]]
           (let [query (mt/native-query
-                        {:query "SELECT *
+                       {:query "SELECT *
                                FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\"
                                WHERE {{date_filter}}"
-                         :template-tags {"date_filter"
-                                         {:name         "date_filter"
-                                          :display-name "Date Filter"
-                                          :type         :dimension
-                                          :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
-                                          :widget-type  widget-type}}})
+                        :template-tags {"date_filter"
+                                        {:name         "date_filter"
+                                         :display-name "Date Filter"
+                                         :type         :dimension
+                                         :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
+                                         :widget-type  widget-type}}})
                 query-with-params (assoc query :parameters [{:type   widget-type
                                                              :target [:dimension [:template-tag "date_filter"]]
                                                              :value  "2024-11-06"}])]
@@ -595,7 +622,7 @@
 (deftest inline-local-date-time-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
                     (lib/aggregate (lib/count)))
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
@@ -628,15 +655,15 @@
       (mt/dataset
         date-cols-with-datetime-values
         (let [query (mt/native-query
-                      {:query "SELECT * FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\" WHERE {{date_filter}}"
-                       :template-tags
-                       {"date_filter"
-                        {:name         "date_filter"
-                         :display-name "Date Filter"
-                         :type         :dimension
-                         :widget-type :date/relative
-                         :dimension    [:field (mt/id
-                                                :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
+                     {:query "SELECT * FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\" WHERE {{date_filter}}"
+                      :template-tags
+                      {"date_filter"
+                       {:name         "date_filter"
+                        :display-name "Date Filter"
+                        :type         :dimension
+                        :widget-type :date/relative
+                        :dimension    [:field (mt/id
+                                               :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]}}})]
           (doseq [value ["past30days" "past3hours"]
                   :let [query-with-params (assoc query :parameters [{:type   :date/relative
                                                                      :value  value
@@ -648,7 +675,7 @@
 (deftest nest-window-functions-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           orders            (lib.metadata/table mp (mt/id :orders))
           orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
           orders-id         (lib.metadata/field mp (mt/id :orders :id))
@@ -663,3 +690,74 @@
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 (lib/breakout products-category))]
       (is (= 20 (count (mt/rows (qp/process-query query))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :oracle
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (seq test-tables) "ORDERS table should be found in privileges")
+            (is (every? :select test-tables))))
+        (testing "Owned tables should have full DML privileges"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (every? (fn [priv] (and (:insert priv) (:update priv) (:delete priv))) test-tables)
+                "Owner should have insert, update, and delete on owned tables")))))))
+(defn- do-with-nls-territory
+  "Execute `thunk` with all Oracle connections using the given `nls-territory` (e.g. \"ARGENTINA\").
+  Wraps `do-with-connection-with-options` to run ALTER SESSION on each connection."
+  [nls-territory thunk]
+  (let [orig-method (get-method sql-jdbc.execute/do-with-connection-with-options :oracle)]
+    (try
+      (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+        [driver db-or-id-or-spec options f]
+        (orig-method driver db-or-id-or-spec options
+                     (fn [^java.sql.Connection conn]
+                       (.execute (.createStatement conn)
+                                 (str "ALTER SESSION SET NLS_TERRITORY = '" nls-territory "'"))
+                       (f conn))))
+      (thunk)
+      (finally
+        (defmethod sql-jdbc.execute/do-with-connection-with-options :oracle
+          [driver db-or-id-or-spec options f]
+          (orig-method driver db-or-id-or-spec options f))))))
+
+(deftest day-of-week-nls-territory-test
+  (testing "day-of-week extraction should respect NLS_TERRITORY setting (#57794)"
+    (mt/test-driver :oracle
+      (mt/dataset date-cols-with-datetime-values
+        (do-with-nls-territory
+         "ARGENTINA"
+         (fn []
+           ;; 2024-11-05 is a Tuesday.
+           ;; With start-of-week = sunday, Tuesday should be day-of-week 3.
+           ;; The bug: Oracle's TO_CHAR(date, 'D') returns day numbers relative to NLS_TERRITORY.
+           ;; With ARGENTINA (Monday=1), TO_CHAR returns 2 for Tuesday, but the driver assumes
+           ;; Sunday=1 (AMERICA convention), so it incorrectly reports Tuesday as day 2 instead of 3.
+           (mt/with-temporary-setting-values [start-of-week :sunday]
+             (let [mp    (mt/metadata-provider)
+                   base  (lib/query mp (lib.metadata/table mp (mt/id :dates_with_time)))
+                   date  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                             {:is-main-group true} "Date With Time")
+                   query (-> base
+                             (lib/aggregate (lib/count))
+                             (lib.tu.notebook/add-breakout
+                              {:is-main-group true} "Date With Time"
+                              {:col-fn #(lib/with-temporal-bucket % :day-of-week)})
+                             (lib/filter (lib/= (lib/with-temporal-bucket date :day) "2024-11-05")))]
+               (mt/with-native-query-testing-context query
+                 (is (= [[3 1]]
+                        (mt/formatted-rows [int int] (qp/process-query query)))))))))))))

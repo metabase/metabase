@@ -1,17 +1,21 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupApiKeyEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { AuthSettingsPageTab } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { ApiKey, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { AuthenticationSettingsPage } from "../AuthenticationSettingsPage";
 
@@ -53,7 +57,7 @@ export const testApiKeys: ApiKey[] = [
 export const setup = async (
   extraSettings?: Partial<EnterpriseSettings>,
   isEnterprise = false,
-  tab = "authentication",
+  tab: AuthSettingsPageTab = "authentication",
 ) => {
   const settings = createMockSettings({
     "google-auth-enabled": false,
@@ -80,6 +84,8 @@ export const setup = async (
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
   setupApiKeyEndpoints(testApiKeys);
+  setupTokenStatusEndpoint({ valid: isEnterprise });
+  fetchMock.get("path:/api/ee/sso/oidc", []);
 
   renderWithProviders(
     <div>

@@ -1,9 +1,0 @@
-created_at: '2025-05-28T17:49:20.649159Z'
-description: Metabot instance for internal users.
-entities: []
-entity_id: metabotmetabotmetabot
-name: Metabot
-updated_at: '2025-05-28T17:49:20.649159Z'
-serdes/meta:
-- id: metabotmetabotmetabot
-  model: Metabot

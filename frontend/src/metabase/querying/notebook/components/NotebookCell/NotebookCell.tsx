@@ -12,11 +12,10 @@ const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
     <Flex
       className={cx(S.NotebookCell, className)}
       p={props.p ?? rem("14px")}
-      c={color}
       {...props}
       style={
         {
-          "--notebook-cell-color": color,
+          "--notebook-cell-color": `var(--mb-color-${color})`,
         } as CSSProperties
       }
     />
@@ -41,6 +40,7 @@ interface NotebookCellItemProps {
   "data-testid"?: string;
   ref?: React.Ref<HTMLDivElement>;
   className?: string;
+  hasPopover?: boolean;
 }
 
 export const NotebookCellItem = forwardRef<
@@ -56,6 +56,7 @@ export const NotebookCellItem = forwardRef<
     rightContainerStyle,
     children,
     readOnly,
+    hasPopover,
     className,
     ...restProps
   },
@@ -71,13 +72,15 @@ export const NotebookCellItem = forwardRef<
           [S.inactive]: inactive,
           [S.disabled]: disabled,
           [S.cursorPointer]:
-            (!inactive || restProps.onClick) && !readOnly && !disabled,
+            (!inactive || restProps.onClick) &&
+            !disabled &&
+            (!readOnly || hasPopover),
         },
         className,
       )}
       style={
         {
-          "--notebook-cell-item-container-color": color,
+          "--notebook-cell-item-container-color": `var(--mb-color-${color})`,
         } as CSSProperties
       }
       {...restProps}
@@ -98,7 +101,7 @@ export const NotebookCellItem = forwardRef<
           {
             padding: CONTAINER_PADDING,
             ...containerStyle,
-            "--notebook-cell-item-content-container-color": color,
+            "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
           } as CSSProperties
         }
       >
@@ -119,7 +122,7 @@ export const NotebookCellItem = forwardRef<
             {
               padding: CONTAINER_PADDING,
               ...rightContainerStyle,
-              "--notebook-cell-item-content-container-color": color,
+              "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
             } as CSSProperties
           }
         >

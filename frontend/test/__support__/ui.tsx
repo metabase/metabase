@@ -1,33 +1,41 @@
 import { Global } from "@emotion/react";
-import type { Reducer, Store } from "@reduxjs/toolkit";
+import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
+  renderHook,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { KBarProvider } from "kbar";
-import type * as React from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Route, Router, useRouterHistory } from "react-router";
+import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
+import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { RouterProvider } from "metabase/router";
+import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
-import { ThemeProvider } from "metabase/ui";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import { ThemeProvider, useMantineTheme } from "metabase/ui";
+import { mutateColors } from "metabase/ui/colors/colors";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { PUT } from "metabase/utils/api";
+import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";
 
@@ -196,7 +204,7 @@ export function getTestStoreAndWrapper({
   const store = getStore(
     reducers,
     initialState,
-    storeMiddleware,
+    storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => {
@@ -219,9 +227,17 @@ export function getTestStoreAndWrapper({
 
 /**
  * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains strictly only the base styles to act as CSS resets, without font files.
+ * Contains strictly only the base styles to act as CSS resets and css variables, without font files.
  **/
-const GlobalStylesForTest = () => <Global styles={baseStyle} />;
+const GlobalStylesForTest = () => {
+  const theme = useMantineTheme();
+
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
+
+  return <Global styles={[baseStyle, cssVariables]} />;
+};
 
 export function TestWrapper({
   children,
@@ -232,6 +248,8 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  displayTheme,
+  withCssVariables = false,
 }: {
   children: React.ReactElement;
   store: any;
@@ -241,23 +259,44 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
+  withCssVariables?: boolean;
 }): JSX.Element {
+  const handleUpdateColorScheme = useCallback(async (value: any) => {
+    await PUT("/api/setting/:key")({ key: "color-scheme", value });
+  }, []);
+
+  const [whitelabelColors, setWhitelabelColors] = useState(() =>
+    MetabaseSettings.applicationColors(),
+  );
+
+  const handleUpdateWhitelabelColors = useCallback((nextColors: any) => {
+    mutateColors(nextColors);
+    setWhitelabelColors(nextColors);
+  }, []);
+
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider
-          theme={theme}
-          mantineProviderProps={{ withCssVariables: false }}
-        >
-          <GlobalStylesForTest />
+        <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+          <ThemeProviderContext.Provider value={{ withCssVariables }}>
+            <ThemeProvider
+              theme={theme}
+              resolvedColorScheme={displayTheme ?? "light"}
+              whitelabelColors={whitelabelColors}
+              onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
+            >
+              <GlobalStylesForTest />
 
-          <MaybeKBar hasKBar={withKBar}>
-            <MaybeRouter hasRouter={withRouter} history={history}>
-              {children}
-            </MaybeRouter>
-          </MaybeKBar>
-          {withUndos && <UndoListing />}
-        </ThemeProvider>
+              <MaybeKBar hasKBar={withKBar}>
+                <MaybeRouter hasRouter={withRouter} history={history}>
+                  {children}
+                </MaybeRouter>
+              </MaybeKBar>
+              {withUndos && <UndoListing />}
+            </ThemeProvider>
+          </ThemeProviderContext.Provider>
+        </AppColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -272,11 +311,14 @@ function MaybeRouter({
   hasRouter: boolean;
   history?: History;
 }): JSX.Element {
-  if (!hasRouter) {
+  if (!hasRouter || !history) {
     return children;
   }
-
-  return <Router history={history}>{children}</Router>;
+  return (
+    <HistoryProvider history={history}>
+      <RouterProvider>{children}</RouterProvider>
+    </HistoryProvider>
+  );
 }
 
 function MaybeKBar({
@@ -289,7 +331,7 @@ function MaybeKBar({
   if (!hasKBar) {
     return children;
   }
-  return <KBarProvider>{children}</KBarProvider>;
+  return <AppKBarProvider>{children}</AppKBarProvider>;
 }
 
 function MaybeDNDProvider({
@@ -373,7 +415,8 @@ export const mockOffsetHeightAndWidth = (value = 50) => {
 };
 
 /**
- * jsdom doesn't have getBoundingClientRect, so we need to mock it
+ * jsdom doesn't have getBoundingClientRect, so we need to mock it for any components
+ * with virtualization to work in tests, like the entity picker
  */
 export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
   jest
@@ -411,13 +454,30 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+/**
+ * jsdom doesn't have MediaQueryList
+ */
+export const createMockMediaQueryList = (
+  opts?: Partial<MediaQueryList>,
+): MediaQueryList => ({
+  media: "",
+  matches: false,
+  onchange: jest.fn(),
+  dispatchEvent: jest.fn(),
+  addListener: jest.fn(),
+  addEventListener: jest.fn(),
+  removeListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  ...opts,
+});
+
 const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
-    {children}
-  </ThemeProvider>
+  <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
+    <ThemeProvider {...props}>{children}</ThemeProvider>
+  </ThemeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {
@@ -426,8 +486,8 @@ export function renderWithTheme(children: React.ReactElement) {
   });
 }
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export { renderWithTheme as render };
 
-// eslint-disable-next-line import/export -- we're intentionally overriding the render function
+// eslint-disable-next-line import/export -- intentionally overriding render from @testing-library/react
 export * from "@testing-library/react";

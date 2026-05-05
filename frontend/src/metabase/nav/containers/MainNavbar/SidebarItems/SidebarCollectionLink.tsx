@@ -2,12 +2,17 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { TreeNode } from "metabase/components/tree/TreeNode";
-import type { TreeNodeProps } from "metabase/components/tree/types";
-import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
+import { TreeNode } from "metabase/common/components/tree/TreeNode";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getIsTenantUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -41,11 +46,13 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       isSelected,
       hasChildren,
       onToggleExpand,
+      rightSection,
     }: Props,
     ref,
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>();
+    const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
       const justHovered = !wasHovered && isHovered;
@@ -70,17 +77,21 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         }
         switch (event.key) {
           case "ArrowRight":
-            !isExpanded && onToggleExpand();
+            if (!isExpanded) {
+              onToggleExpand();
+            }
             break;
           case "ArrowLeft":
-            isExpanded && onToggleExpand();
+            if (isExpanded) {
+              onToggleExpand();
+            }
             break;
         }
       },
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection);
+    const icon = getCollectionIcon(collection, { isTenantUser });
     const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
       collection as unknown as Collection,
     );
@@ -92,11 +103,11 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
-        onClick={onToggleExpand}
+        onClick={isSelected ? onToggleExpand : undefined}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >
-        <ExpandToggleButton hidden={!hasChildren}>
+        <ExpandToggleButton hidden={!hasChildren} onClick={onToggleExpand}>
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
@@ -108,6 +119,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
             <SidebarIcon {...icon} isSelected={isSelected} />
           </TreeNode.IconContainer>
           <NameContainer>{collection.name}</NameContainer>
+          {rightSection?.(collection as unknown as ITreeNodeItem)}
         </FullWidthLink>
       </CollectionNodeRoot>
     );

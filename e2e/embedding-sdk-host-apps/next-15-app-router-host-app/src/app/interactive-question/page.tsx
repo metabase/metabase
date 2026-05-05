@@ -1,6 +1,6 @@
 "use client";
 
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react/nextjs";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
@@ -17,7 +17,7 @@ export default function StaticDashboardPage() {
   }, [searchParams]);
 
   return (
-    <main style={{ padding: "1rem" }}>
+    <main style={{ padding: "1rem", width: "800px" }}>
       <h1 style={{ marginBottom: "4rem" }}>Interactive Question Example</h1>
       <InteractiveQuestion questionId={questionId} />
     </main>

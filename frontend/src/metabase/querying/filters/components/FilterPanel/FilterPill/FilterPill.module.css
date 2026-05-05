@@ -5,6 +5,11 @@
   background-color: color-mix(in srgb, var(--mb-color-filter) 20%, transparent);
   border-radius: 0.75rem;
   overflow-wrap: anywhere;
+
+  &.readOnly {
+    cursor: default;
+    pointer-events: none;
+  }
 }
 
 .icon {

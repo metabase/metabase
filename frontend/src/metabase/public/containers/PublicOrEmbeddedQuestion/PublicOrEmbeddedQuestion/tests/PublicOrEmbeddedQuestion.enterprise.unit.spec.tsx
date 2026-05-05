@@ -13,7 +13,6 @@ const QUESTION_NAME = "Public question";
 function setupEnterprise(opts?: Partial<SetupOpts>) {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
     questionName: QUESTION_NAME,
     uuid: FAKE_UUID,
   });
@@ -60,7 +59,7 @@ describe("PublicOrEmbeddedQuestion", () => {
       await userEvent.hover(getIcon("download"));
 
       expect(
-        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
       ).toHaveLength(0);
     });
   });

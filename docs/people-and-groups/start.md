@@ -2,6 +2,7 @@
 title: "People overview"
 redirect_from:
   - /docs/latest/administration-guide/sso
+  - /docs/latest/people-and-groups
 ---
 
 # People overview
@@ -43,6 +44,8 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
 - LDAP advanced features
   - [Group membership filter](./ldap.md#ldap-group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
+- [OIDC][oidc]
+  - [Keycloak][oidc-keycloak]
 - [SAML][saml]
   - [Auth0][saml-auth0]
   - [Microsoft Entra ID][azure-ad]
@@ -58,6 +61,8 @@ Create keys to authenticate API calls.
 
 Metabase supports user provisioning via the SCIM protocol.
 
+[oidc]: ./authenticating-with-oidc.md
+[oidc-keycloak]: ./oidc-keycloak.md
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
 [jwt]: ./authenticating-with-jwt.md
@@ -70,4 +75,3 @@ Metabase supports user provisioning via the SCIM protocol.
 [saml-google]: ./saml-google.md
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: https://www.metabase.com/glossary/sso
-

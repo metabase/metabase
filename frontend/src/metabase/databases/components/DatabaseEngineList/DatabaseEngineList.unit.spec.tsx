@@ -5,12 +5,12 @@ import {
   ELEVATED_ENGINES,
   MAX_INITIAL_ENGINES_SHOWN,
 } from "metabase/databases/constants";
-import type { Engine } from "metabase-types/api";
-import { createMockEngine } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { Engine } from "metabase-types/api";
+import { createMockEngine } from "metabase-types/api/mocks";
 
 import { DatabaseEngineList } from "./DatabaseEngineList";
 
@@ -109,6 +109,37 @@ describe("DatabaseEngineList", () => {
     expect(screen.getAllByRole("option")).toHaveLength(1);
     expect(screen.getByText("MongoDB")).toBeInTheDocument();
     expect(screen.queryByText("MySQL")).not.toBeInTheDocument();
+  });
+
+  it("should allow keyboard navigation", async () => {
+    const { onSelect } = setup();
+
+    const searchInput = screen.getByPlaceholderText("Search databases");
+    await userEvent.click(searchInput);
+
+    const [mysql, postgres, sqlServer] = screen.getAllByRole("option");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(mysql).toHaveAttribute("aria-selected", "true");
+    expect(mysql).toHaveAttribute("data-combobox-selected", "true");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(mysql).not.toHaveAttribute("aria-selected");
+    expect(mysql).not.toHaveAttribute("data-combobox-selected");
+    expect(postgres).toHaveAttribute("aria-selected", "true");
+    expect(postgres).toHaveAttribute("data-combobox-selected", "true");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(postgres).not.toHaveAttribute("aria-selected");
+    expect(postgres).not.toHaveAttribute("data-combobox-selected");
+    expect(sqlServer).toHaveAttribute("aria-selected", "true");
+    expect(sqlServer).toHaveAttribute("data-combobox-selected", "true");
+
+    // Pressing enter should submit the selected option
+    await userEvent.keyboard("{Enter}");
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("sqlserver");
   });
 
   it("should show no results message when search has no matches", async () => {

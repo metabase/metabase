@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -24,7 +25,8 @@
 
 (doseq [feature [:test/time-type
                  :test/timestamptz-type
-                 :test/dynamic-dataset-loading]]
+                 :test/dynamic-dataset-loading
+                 :test/uuids-in-create-table-statements]]
   (defmethod driver/database-supports? [:athena feature]
     [_driver _feature _database]
     false))
@@ -46,11 +48,9 @@
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
+   :dbname                        (some->> database-name (ddl.i/format-name driver))
    :catalog                       "AwsDataCatalog"
-   :workgroup                     "primary"
-   ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
-   ;; for [[metabase.driver.athena/fast-active-tables]] for more information.
-   :metabase.driver.athena/schema (some->> database-name (ddl.i/format-name driver))})
+   :workgroup                     "primary"})
 
 ;; TODO: We need a better way to have an isolated test environment for Athena
 ;; If other tables exist, the tests start to query them for some reason,
@@ -271,3 +271,10 @@
    {:keys [database-name], :as _dbdef} :- [:map [:database-name :string]]]
   (let [physical-name (ddl.i/format-name driver database-name)]
     (contains? (existing-databases) physical-name)))
+
+(mu/defmethod load-data/do-insert! :athena
+  [driver                    :- :keyword
+   ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
+   table-identifier
+   rows]
+  (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))

@@ -16,3 +16,17 @@ export function visitDatabase(id) {
   cy.visit(`/admin/databases/${id}`);
   return cy.wait("@loadDatabase");
 }
+
+// we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
+export function waitForDbSync(maxRetries = 10) {
+  if (maxRetries === 0) {
+    throw new Error("Timed out waiting for database sync");
+  }
+  cy.wait("@getDatabases").then(({ response }) => {
+    if (
+      response.body.data.some((db) => db.initial_sync_status !== "complete")
+    ) {
+      waitForDbSync(maxRetries - 1);
+    }
+  });
+}

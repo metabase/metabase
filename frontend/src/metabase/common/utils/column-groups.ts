@@ -7,6 +7,9 @@ export function getColumnGroupIcon(
   if (groupInfo.isSourceTable) {
     return "table";
   }
+  if (groupInfo.isSourceCard) {
+    return "table2";
+  }
   if (groupInfo.isFromJoin) {
     return "join_left_outer";
   }

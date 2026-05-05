@@ -1,15 +1,6 @@
-import type { WrappedResult } from "metabase/search/types";
+import type { SearchResult } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 
 export const createWrappedSearchResult = (
-  options: Partial<WrappedResult>,
-): WrappedResult => {
-  const result = createMockSearchResult(options);
-
-  return {
-    ...result,
-    getUrl: options.getUrl ?? (() => "/collection/root"),
-    getIcon: options.getIcon ?? (() => ({ name: "folder" })),
-    getCollection: options.getCollection ?? (() => result.collection),
-  };
-};
+  options: Partial<SearchResult>,
+): SearchResult => createMockSearchResult(options);

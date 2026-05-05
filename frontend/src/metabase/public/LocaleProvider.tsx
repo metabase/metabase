@@ -1,4 +1,5 @@
 import {
+  type Context,
   type PropsWithChildren,
   createContext,
   useEffect,
@@ -6,9 +7,13 @@ import {
 } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
+import { setLocaleHeader } from "metabase/utils/api";
+import {
+  type LocaleDataWithLanguage,
+  loadLocalization,
+} from "metabase/utils/i18n";
 
 interface LocaleProviderProps {
   locale?: string | null;
@@ -16,7 +21,10 @@ interface LocaleProviderProps {
 }
 
 /** context for the locale used in the sdk and in public/static from the #locale parameter  */
-export const FrontendLocaleContext = createContext<string | null>(null);
+export const FrontendLocaleContext = createContext({}) as unknown as Context<{
+  locale: string | null;
+  isLocaleLoading: boolean;
+}>;
 
 export const LocaleProvider = ({
   children,
@@ -54,7 +62,12 @@ export const LocaleProvider = ({
   }
 
   return (
-    <FrontendLocaleContext.Provider value={contextLocale}>
+    <FrontendLocaleContext.Provider
+      value={{
+        locale: contextLocale,
+        isLocaleLoading,
+      }}
+    >
       {/* The `DatesProvider` wrapping the app is not re-rendered when the locale changes
       so we need to wrap the children in another `DatesProvider` to ensure the locale is updated */}
       <DatesProvider>
@@ -79,7 +92,7 @@ export const getLocaleToUse = (
   if (!locale) {
     return "en";
   }
-  const [language, country] = locale.split("-");
+  const [language, country] = locale.split(/[-_]/);
 
   const normalizedLanguage = language.toLowerCase();
   const normalizedCountry = country?.toUpperCase();
@@ -109,3 +122,17 @@ export const getLocaleToUse = (
 
   return "en";
 };
+
+/**
+ * In static embeddings/public links, there is no user locale, since there is no user in static embeddings/public links.
+ * But we reset the locale to the site locale when `withInstanceLanguage` is called. This breaks static embeddings/public links
+ * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
+ * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
+ */
+export function setUserLocale(
+  translationsObject: LocaleDataWithLanguage,
+): void {
+  if (!isEmbeddingSdk()) {
+    window.MetabaseUserLocalization = translationsObject;
+  }
+}

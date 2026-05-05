@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
-import { hasCombinations } from "metabase/query_builder/components/expressions/CombineColumns";
-import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns/CombineColumns";
-import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
+import { useDispatch } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Title } from "metabase/ui";
 import type {
   ClickActionPopoverProps,
@@ -12,21 +9,20 @@ import type {
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
+import { trackColumnCombineViaColumnHeader } from "../../analytics";
+import { CombineColumns } from "../../components/expressions";
+
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
   drill,
 }) => {
-  const { query, stageIndex, column } = Lib.combineColumnDrillDetails(drill);
-  if (!hasCombinations(query, stageIndex)) {
-    return [];
-  }
-
-  const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
   const DrillPopover = ({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
+    const { query, stageIndex, column } = Lib.combineColumnDrillDetails(drill);
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const availableColumns = Lib.expressionableColumns(query, stageIndex);
     const dispatch = useDispatch();
 
     return (
@@ -37,9 +33,10 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
           >{t`Combine “${columnInfo.displayName}” with other columns`}</Title>
         </Box>
         <CombineColumns
-          column={column}
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
+          column={column}
           width={474}
           onSubmit={(name, expressionClause) => {
             const newQuery = Lib.expression(

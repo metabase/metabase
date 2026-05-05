@@ -98,7 +98,7 @@ export const createBrandingElement = (size: BrandingSize) => {
     brandingCopy.style.cssText = `
       font-family: "Lato", sans-serif;
       font-size: ${fz}px;
-      color: var(--mb-color-text-medium);
+      color: var(--mb-color-text-secondary);
       display: inline-block;
       margin-inline-end: ${m}px;
       vertical-align: middle;

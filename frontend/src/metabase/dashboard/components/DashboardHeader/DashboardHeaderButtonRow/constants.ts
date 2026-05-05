@@ -1,9 +1,8 @@
-import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
+import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 
 // Buttons visible in public dashboard
 export const DASHBOARD_DISPLAY_ACTIONS = [
   DASHBOARD_ACTION.REFRESH_WIDGET,
-  DASHBOARD_ACTION.NIGHT_MODE_TOGGLE,
   DASHBOARD_ACTION.FULLSCREEN_TOGGLE,
 ];
 
@@ -16,11 +15,6 @@ export const DASHBOARD_EDITING_ACTIONS = [
   DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
   DASHBOARD_ACTION.ADD_ACTION_ELEMENT,
   DASHBOARD_ACTION.EXTRA_EDIT_BUTTONS_MENU,
-];
-
-export const SDK_DASHBOARD_VIEW_ACTIONS = [
-  DASHBOARD_ACTION.EDIT_DASHBOARD,
-  ...DASHBOARD_DISPLAY_ACTIONS,
 ];
 
 export const DASHBOARD_VIEW_ACTIONS = [

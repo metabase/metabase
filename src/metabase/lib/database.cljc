@@ -1,14 +1,14 @@
 (ns metabase.lib.database
   (:require
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 (mu/defn database-id :- [:maybe ::lib.schema.id/database]
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[mbql.s/saved-questions-virtual-database-id]] (used in some situations for queries with a `:source-card`)
+  the [[metabase.lib.schema.id/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  `:source-card`)
 
     {:database -1337}
 
@@ -18,6 +18,4 @@
   (when-let [id (:database query)]
     (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id
-      (when-let [source-card-id (lib.util/source-card-id query)]
-        (when-let [card-metadata (lib.metadata/card query source-card-id)]
-          (:database-id card-metadata))))))
+      (some-> query lib.metadata.calculation/primary-source-card :database-id))))

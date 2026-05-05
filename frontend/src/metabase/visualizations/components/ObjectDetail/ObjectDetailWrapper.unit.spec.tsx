@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupTableEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {
@@ -7,16 +8,19 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
-import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
-import { createMockCard } from "metabase-types/api/mocks";
-import { createProductsTable } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
+import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
+import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
+import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createProductsTable } from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
 
 const DATABASE_ID = 1;
 
@@ -33,6 +37,8 @@ const MOCK_CARD = createMockCard({
 });
 
 async function setup(options?: Partial<ObjectDetailProps>) {
+  setupTableEndpoints(MOCK_TABLE);
+
   const state = createMockState({
     entities: createMockEntitiesState({
       questions: [MOCK_CARD],
@@ -68,6 +74,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
       viewPreviousObjectDetail={() => null}
       viewNextObjectDetail={() => null}
       closeObjectDetail={() => null}
+      isDashboard={false}
       {...options}
     />,
     { storeInitialState: state },
@@ -115,11 +122,11 @@ describe("Object Detail Wrapper", () => {
     // first tab should focus on the close button, since there's only
     // one element to show here.
     await userEvent.tab();
-    expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
+    expect(screen.getByLabelText("Close")).toHaveFocus();
 
-    // second tab should *keep* focus on the close button, not go
+    // second tab should *keep* focus inside the modal, not go
     // to the body
     await userEvent.tab();
-    expect(screen.getByTestId("object-detail-close-button")).toHaveFocus();
+    expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
   });
 });

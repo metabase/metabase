@@ -1,3 +1,6 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 import type { FlattenObjectKeys } from "../types/utils";
 
 import type { MetabaseComponentTheme } from "./MetabaseTheme";
@@ -26,12 +29,6 @@ export const COLLECTION_BROWSER_THEME_OPTIONS = {
 export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   // Overlays
   "--mb-overlay-z-index": "popover.zIndex",
-
-  // Tooltips
-  "--mb-color-tooltip-text": "tooltip.textColor",
-  "--mb-color-tooltip-background": "tooltip.backgroundColor",
-  "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
-  "--mb-color-tooltip-text-secondary": "tooltip.secondaryTextColor",
 
   // Dashboards
   "--mb-color-bg-dashboard": "dashboard.backgroundColor",

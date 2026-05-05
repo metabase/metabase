@@ -1,17 +1,23 @@
 (ns metabase.models.interface
+  "Stuff useful to ALL models.
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!                                                                                             !!!
+    !!! PLEASE DON'T ADD NEW TRANSFORMS HERE, GO PUT THEM IN RELEVANT MODULES THAT USE THEM INSTEAD !!!
+    !!!                                                                                             !!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.binning :as lib.binning]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -191,103 +197,30 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mlv2-query
-  "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
-  saving it, because it's not something that lends itself well to serialization."
-  [query]
-  (dissoc query :lib/metadata))
-
-(defn- deserialize-mlv2-query
-  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
-  [query]
-  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-                            ;; preserve the existing metadata provider.
-                            (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-                             (u/the-id (some #(get query %) [:database "database"]))))]
-    (lib/query metadata-provider query)))
-
-(mu/defn maybe-normalize-query
-  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
-  [in-or-out :- [:enum :in :out]
-   query]
-  (letfn [(normalize [query]
-            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MLv2 queries
-                      (case in-or-out
-                        :in  serialize-mlv2-query
-                        :out deserialize-mlv2-query)
-                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
-                      (case in-or-out
-                        :in  mbql.normalize/normalize
-                        :out mbql.normalize/normalize))]
-              (f query)))]
-    (cond-> query
-      (and (map? query) (seq query))
-      normalize)))
-
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
   letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
   [f]
-  (fn [query]
+  (fn [x]
     (try
-      (doall (f query))
+      (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
         nil))))
 
-(defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
-
-(defn- keywordize-temporal_units
-  [parameter]
-  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
-
-(defn normalize-card-parameters-list
-  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
-  [parameters]
-  (->> parameters
-       normalize-parameters-list
-       (mapv keywordize-temporal_units)))
-
-(def transform-metabase-query
-  "Transform for metabase-query."
-  {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
-
-(def transform-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
-
-(def transform-card-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-card-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
-
-(def transform-field-ref
+(def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
-   :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
+   :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
+              json-out-with-keywordization)})
 
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv #(-> %
-                          mbql.normalize/normalize-source-metadata
-                          ;; This is necessary, because in the wild, there may be cards created prior to this change.
-                          lib.temporal-bucket/ensure-temporal-unit-in-display-name
-                          lib.binning/ensure-binning-in-display-name)
-                     metadata))))
+    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -299,10 +232,23 @@
   {:in  u/qualified-name
    :out keyword})
 
+(def transform-trim
+  "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
+  {:in  str/trim
+   :out str/trim})
+
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(def transform-edn
+  "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
+   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  {:in  (fn [v] (cond (nil? v)    nil
+                      (string? v) v
+                      :else       (pr-str v)))
+   :out (fn [s] (when (string? s) (edn/read-string s)))})
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
@@ -312,6 +258,13 @@
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
+(mu/defn assert-optional-enum
+  "Assert that a value is one of the values in `enum` or `nil`."
+  [enum :- [:set :any]
+   value :- :any]
+  (when (some? value)
+    (assert-enum enum value)))
+
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?
@@ -320,27 +273,33 @@
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
 
+(defn transform-validator-with-fixes
+  "Like [[transform-validator]], but applies `fixes` (a fn of old-value->new-value) before validation on both read
+   and write. Use this when an enum has been renamed and old values may still exist in the database or in
+   serialization exports."
+  [tf assert-fn fixes]
+  (-> tf
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (fixes (f x))]
+                         (assert-fn out)
+                         out))))
+      (update :in (fn [f]
+                    (fn [x]
+                      (let [x (fixes x)]
+                        (assert-fn x)
+                        (f x)))))))
+
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
-  E.g: A keyword transfomer that throw an error if the value is not namespaced
+  E.g: A keyword transformer that throw an error if the value is not namespaced
     (transform-validator
       transform-keyword (fn [x]
       (when-not (-> x namespace some?)
         (throw (ex-info \"Value is not namespaced\")))))"
   [tf assert-fn]
-  (-> tf
-      ;; deserialization
-      (update :out (fn [f]
-                     (fn [x]
-                       (let [out (f x)]
-                         (assert-fn out)
-                         out))))
-      ;; serialization
-      (update :in (fn [f]
-                    (fn [x]
-                      (assert-fn x)
-                      (f x))))))
+  (transform-validator-with-fixes tf assert-fn identity))
 
 (def encrypted-json-in
   "Serialize encrypted json."
@@ -368,40 +327,108 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
+;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
+(mr/def ::viz-settings-ref
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :ref]
+   [:ref ::mbql.s/Reference]])
+
+(mr/def ::viz-settings-name
+  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
+
+    [:ref [:field 1 nil]]"
+  [:tuple
+   {:decode/normalize vec}
+   [:= {:decode/normalize keyword} :name]
+   :string])
+
+;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to modern MBQL clauses so things work correctly."
+   to MBQL 4 clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/decode mbql.normalize/normalize json/encode))
+            (some-> k
+                    u/qualified-name
+                    json/decode
+                    ((fn [x]
+                       (cond
+                         (not (sequential? x)) x
+                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
+                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
+                         :else                 (try
+                                                 (mbql.normalize/normalize x)
+                                                 (catch Throwable e
+                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   nil)))))
+                    json/encode))
           (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+            (into {} (for [[k v] column-settings
+                           ;; remove nil (bad) keys
+                           :let  [k (normalize-column-settings-key k)]
+                           :when (some? k)]
+                       [k (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
-                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
-                    "aggregation" "expression"}
+                 (#{"field-id"
+                    "fk->"
+                    "datetime-field"
+                    "joined-field"
+                    "binning-strategy"
+                    "field"
+                    "aggregation"
+                    "expression"}
                   (first form))))
           (normalize-mbql-clauses [form]
-            (walk/postwalk
-             (fn [form]
-               (try
-                 (cond-> form
-                   (mbql-field-clause? form) mbql.normalize/normalize)
-                 (catch Exception e
-                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                              (u/pprint-to-str 'red form)
-                              (ex-message e))
-                   form)))
-             form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
-      ;; "key" is an old unused value
-      true                                 (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
-      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses
-      ;; exclude graph.metrics from normalization as it may start with
-      ;; the word "expression" but it is not MBQL (metabase#15882)
-      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
+            (cond
+              (mbql-field-clause? form)
+              (try
+                (mbql.normalize/normalize form)
+                (catch Exception e
+                  (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                             (u/pprint-to-str 'red form)
+                             (ex-message e))
+                  form))
+
+              (sequential? form)
+              (into (empty form) (map normalize-mbql-clauses) form)
+
+              (map? form)
+              (into (empty form)
+                    (map (fn [[k v]]
+                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
+                           ;; something like "expression" then we don't want to accidentally treat it as an
+                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
+                           ;; tho :unamused:
+                           (let [column-names? (and (= k :columns)
+                                                    (sequential? v)
+                                                    (every? (complement mbql-field-clause?) v))]
+                             [k (cond-> v
+                                  (not column-names?) normalize-mbql-clauses)])))
+                    form)
+
+              :else
+              form))]
+    (->
+     viz-settings
+     (dissoc "column_settings" "graph.metrics")
+     walk/keywordize-keys
+     ;; "key" is an old unused value
+     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
+     (cond-> (get viz-settings "column_settings")
+       (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
+     normalize-mbql-clauses
+     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
+     ;; MBQL (metabase#15882)
+     (cond-> (get viz-settings "graph.metrics")
+       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
 
 (jm/def-json-migration migrate-viz-settings*)
 
@@ -471,6 +498,12 @@
     "Transform for compressed fields."
     {:in identity
      :out decompress})
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!!                                                                                             !!!
+;;; !!! PLEASE DON'T ADD NEW TRANSFORMS HERE, GO PUT THEM IN RELEVANT MODULES THAT USE THEM INSTEAD !!!
+;;; !!!                                                                                             !!!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;; --- predefined hooks
 
@@ -547,7 +580,6 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -613,12 +645,36 @@
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
 
+(defmulti can-query?
+  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
+  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
+  metadata.
+
+  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
+  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
+
+  The default implementation falls back to [[can-read?]] for backward compatibility."
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
+
+(defmethod can-query? :default
+  ;; Default implementation: fall back to can-read? for backward compatibility
+  ([instance]
+   (can-read? instance))
+  ([model pk]
+   (can-read? model pk)))
+
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write
   "Hydration method for `:can_write`."
   [instance]
   (can-write? instance))
+
+(methodical/defmethod t2/simple-hydrate [:default :can_query]
+  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+  [_model k instance]
+  (assoc instance k (can-query? instance)))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map
@@ -657,10 +713,12 @@
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
 (defmulti visible-filter-clause
-  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
-  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+  "Return a map with:
+   - :clause - honey SQL WHERE clause fragment to filter records visible to the user
+   - :with - optional vector of CTE definitions [[name query] ...] to be merged into the query
 
-  Defaults to returning a no-op false statement 0=1."
+  Uses the map of permission type->minimum permission-level for filtering.
+  Defaults to returning a no-op false statement {:clause [:= 0 1]}."
   {:arglists '([model column-or-exp user-info perm-type->perm-level])}
   dispatch-on-model)
 
@@ -709,13 +767,6 @@
   `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write model object-id] [read-or-write object] [perms-set])}
-  current-user-has-partial-permissions?
-  "Implementation of [[can-read?]]/[[can-write?]] for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of [[perms-objects-set]]. (`read-or-write` is either `:read` or
-  `:write` and passed to [[perms-objects-set]]; you'll usually want to partially bind it in the implementation map)."
-  (partial check-perms-with-fn 'metabase.permissions.models.permissions/set-has-partial-permissions-for-set?))
-
 (defmethod can-read? ::read-policy.always-allow
   ([_instance]
    true)
@@ -728,23 +779,11 @@
   ([_model _pk]
    true))
 
-(defmethod can-read? ::read-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :read instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :read model pk)))
-
 (defmethod can-read? ::read-policy.full-perms-for-perms-set
   ([instance]
    (current-user-has-full-permissions? :read instance))
   ([model pk]
    (current-user-has-full-permissions? :read model pk)))
-
-(defmethod can-write? ::write-policy.partial-perms-for-perms-set
-  ([instance]
-   (current-user-has-partial-permissions? :write instance))
-  ([model pk]
-   (current-user-has-partial-permissions? :write model pk)))
 
 (defmethod can-write? ::write-policy.full-perms-for-perms-set
   ([instance]
@@ -770,7 +809,7 @@
 
 (defmethod visible-filter-clause :default
   [_m _column-or-expression _user-info _perm-type->perm-level]
-  [:= [:inline 0] [:inline 1]])
+  {:clause [:= [:inline 0] [:inline 1]]})
 
 ;;;; [[to-json]]
 

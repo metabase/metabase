@@ -5,14 +5,29 @@ import { omit } from "underscore";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
-import { handleActions } from "metabase/lib/redux";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
+import { handleActions } from "metabase/redux";
+import {
+  INITIALIZE,
+  RESET,
+  SET_PARAMETER_VALUES,
+  SHOW_ADD_PARAMETER_POPOVER,
+  initialize,
+  reset,
+} from "metabase/redux/dashboard";
+import {
+  NAVIGATE_BACK_TO_DASHBOARD,
+  REVERT_CARD_TO_REVISION,
+} from "metabase/redux/query-builder";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -20,25 +35,18 @@ import type {
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,
   HIDE_ADD_PARAMETER_POPOVER,
-  INITIALIZE,
   REMOVE_PARAMETER,
-  RESET,
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   SET_SIDEBAR,
-  SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
@@ -48,11 +56,8 @@ import {
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
-  initialize,
   markCardAsSlow,
-  reset,
   setDashboardAttributes,
-  setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
 } from "./actions";
@@ -104,10 +109,6 @@ export const autoApplyFilters = createReducer(
     });
   },
 );
-
-export const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, (builder) => {
-  builder.addCase(setDisplayTheme, (_state, { payload }) => payload || null);
-});
 
 export const slowCards = createReducer(
   INITIAL_DASHBOARD_STATE.slowCards,
@@ -238,7 +239,7 @@ export const parameterValues = createReducer(
         type: string;
         payload: {
           id: ParameterId;
-          value: ParameterValueOrArray;
+          value: ParameterValueOrArray | undefined | null;
           isDraft: boolean;
         };
       }
@@ -252,7 +253,7 @@ export const parameterValues = createReducer(
       string,
       {
         type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
+        payload: ParameterValuesMap;
       }
     >(SET_PARAMETER_VALUES, (_state, { payload }) => {
       return payload;
@@ -310,29 +311,26 @@ export const dashboards = createReducer(
           [id]: newDashboard(state[id], attributes, isDirty),
         }),
       )
-      .addCase(addCardToDash, (state, { payload: dashcard }) => ({
-        ...state,
-        [dashcard.dashboard_id]: {
-          ...state[dashcard.dashboard_id],
-          dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
-        },
-      }))
+      .addCase(addCardToDash, (state, { payload: dashcard }) => {
+        state[dashcard.dashboard_id].dashcards.push(dashcard.id);
+      })
       .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
         const [{ dashboard_id }] = dashcards;
         const dashcardIds = dashcards.map(({ id }) => id);
-        return {
-          ...state,
-          [dashboard_id]: {
-            ...state[dashboard_id],
-            dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
-          },
-        };
+        state[dashboard_id].dashcards.push(...dashcardIds);
       })
       .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-        const draftDashboard = state[payload.dashboard.id];
+        const draftDashboard = state[payload.dashboard?.id];
         if (draftDashboard) {
           draftDashboard.collection_id = payload.dashboard.collection_id;
           draftDashboard.collection = payload.dashboard.collection;
+        }
+      })
+      .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+        const draftDashboard = state[payload.id];
+        if (draftDashboard) {
+          draftDashboard.collection_id = payload.collection_id;
+          draftDashboard.collection = payload.collection;
         }
       })
       .addMatcher(
@@ -347,18 +345,18 @@ export const dashboards = createReducer(
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(
-            state,
-            [payload.id, "embedding_params"],
-            payload.embedding_params,
-          ),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          dashboard.embedding_params = payload.embedding_params;
+          dashboard.embedding_type = payload.embedding_type;
+        },
       )
       .addMatcher(
         updateDashboardEnableEmbedding.matchFulfilled,
         (state, { payload }) => {
           const dashboard = state[payload.id];
           dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.embedding_type = payload.embedding_type;
           dashboard.initially_published_at = payload.initially_published_at;
         },
       );
@@ -378,7 +376,7 @@ export const loadingDashCards = createReducer(
         return {
           ...state,
           loadingIds,
-          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          loadingStatus: loadingIds.length > 0 ? "running" : "complete",
           startTime: loadingIds.length > 0 ? currentTime : null,
         };
       })
@@ -433,7 +431,7 @@ export const dashcardData = createReducer(
       })
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
-        if (dashcard_id && card_id) {
+        if (dashcard_id && card_id && result != null) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
       })
@@ -453,12 +451,12 @@ export const dashcardData = createReducer(
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        Revisions.actionTypes.REVERT,
+        REVERT_CARD_TO_REVISION,
         (state, action) => {
-          const { model_id } = action.payload;
-          if (model_id) {
+          const { id } = action.payload;
+          if (id != null) {
             for (const dashcardId in state) {
-              delete state[dashcardId][model_id];
+              delete state[dashcardId][id];
             }
           }
         },

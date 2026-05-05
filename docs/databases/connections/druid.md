@@ -6,11 +6,15 @@ title: Druid
 
 > Prefer the Druid JDBC connection.
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Edit connection details
 
 Fill out the fields for that database, and click **Save changes** at the bottom. You can edit these settings at any time. Just remember to save your changes.
+
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
 
 ### Display name
 
@@ -60,11 +64,17 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
+
 ## Model features
 
 There aren't (yet) any model features available for Druid.
 
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

@@ -8,7 +8,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { createMockBookmark } from "metabase-types/api/mocks";
 
 import { useBookmarkListQuery } from "./use-bookmark-list-query";

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-const jwt = require("jsonwebtoken");
 const process = require("process");
+
+const jwt = require("jsonwebtoken");
 
 const payload = process.argv[2];
 const METABASE_SECRET_KEY = process.argv[3];

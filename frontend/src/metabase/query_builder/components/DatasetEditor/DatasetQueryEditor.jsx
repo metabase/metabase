@@ -2,9 +2,9 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo, useMemo, useState } from "react";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Box } from "metabase/ui";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
@@ -25,11 +25,12 @@ const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
+  availableHeight: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   onSetDatabaseId: PropTypes.func,
 };
 
-function DatasetQueryEditor({
+function DatasetQueryEditorInner({
   question,
   isActive,
   height,
@@ -41,12 +42,12 @@ function DatasetQueryEditor({
   const [isResizing, setResizing] = useState(false);
 
   const resizableBoxProps = useMemo(() => {
-    // Disables resizing by removing a handle in "metadata" mode
+    // Disables resizing by removing a handle in "columns" mode
     const resizeHandles = isActive ? ["s"] : [];
 
     // The editor can change its size in two cases:
     // 1. By manually resizing the window with a handle
-    // 2. Automatically when editor mode is changed between "query" and "metadata"
+    // 2. Automatically when editor mode is changed between "query" and "columns"
     // For the 2nd case, we're smoothing the resize effect by adding a `transition` style
     // For the 1st case, we need to make sure it's not included, so resizing doesn't lag
     const style =
@@ -97,6 +98,6 @@ function DatasetQueryEditor({
   );
 }
 
-DatasetQueryEditor.propTypes = propTypes;
+DatasetQueryEditorInner.propTypes = propTypes;
 
-export default memo(DatasetQueryEditor);
+export const DatasetQueryEditor = memo(DatasetQueryEditorInner);

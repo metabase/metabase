@@ -1,6 +1,6 @@
 import { assoc } from "icepick";
 
-import { createAction, handleActions } from "metabase/lib/redux";
+import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
@@ -193,6 +193,7 @@ const initialState = {
   isFormulaExpanded: false,
   isDashboardModalOpen: false,
 };
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default handleActions(
   {
     [SET_ERROR]: {

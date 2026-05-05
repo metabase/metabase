@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru.automatic-insights
+  (:refer-clojure :exclude [not-empty])
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
@@ -7,7 +8,8 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (mu/defn automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Automatic insights appears:

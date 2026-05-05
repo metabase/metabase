@@ -1,23 +1,23 @@
-import { type JSX, type MouseEvent, forwardRef, useState } from "react";
+import { type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
-import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { useDispatch } from "metabase/lib/redux";
+import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
+import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;
   onResetFilters: () => void;
   canEdit: boolean;
-  dashboard: Dashboard;
   openSettingsSidebar: () => void;
 };
 
@@ -34,38 +34,56 @@ ForwardRefLink.displayName = "ForwardRefLink";
 const DashboardActionMenuInner = ({
   canResetFilters,
   onResetFilters,
-  onFullscreenChange,
-  isFullscreen,
-  dashboard,
   canEdit,
   location,
   openSettingsSidebar,
-}: DashboardActionMenuProps &
-  DashboardFullscreenControls &
-  WithRouterProps): JSX.Element => {
-  const dispatch = useDispatch();
+}: DashboardActionMenuProps & WithRouterProps) => {
+  const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
+    useDashboardContext();
   const [opened, setOpened] = useState(false);
+  const dispatch = useDispatch();
 
   const { refreshDashboard } = useRefreshDashboard({
-    dashboardId: dashboard.id,
-    parameterQueryParams: location.query,
-    refetchData: false,
+    dashboardId: dashboard?.id ?? null,
+    parameterQueryParams: location?.query,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
-    dashboard,
+    dashboard ?? undefined,
     refreshDashboard,
   );
 
+  const isDashboardSubscriptionSidebarOpen = useSelector(
+    getIsDashboardSubscriptionSidebarOpen,
+  );
+
+  const toggleSubscriptionSidebar = () =>
+    dispatch(
+      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
+    );
+
+  // solely for the dependency list below, so we don't ever have an undefined
+  const pathname = location?.pathname ?? "";
   useRegisterShortcut(
     [
       {
         id: "dashboard-send-to-trash",
-        perform: () => dispatch(push(`${location?.pathname}/archive`)),
+        perform: () => {
+          if (pathname) {
+            onChangeLocation(`${pathname}/archive`);
+          }
+        },
       },
     ],
-    [location.pathname],
+    [pathname],
   );
+
+  if (!dashboard) {
+    return null;
+  }
+
+  const canConfigureCaching =
+    dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
 
   return (
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
@@ -88,6 +106,11 @@ const DashboardActionMenuInner = ({
           </Menu.Item>
         )}
 
+        <DashboardSubscriptionMenuItem
+          dashboard={dashboard}
+          onClick={toggleSubscriptionSidebar}
+        />
+
         <Menu.Item
           leftSection={<Icon name="expand" />}
           onClick={(e: MouseEvent) =>
@@ -97,18 +120,16 @@ const DashboardActionMenuInner = ({
           {t`Enter fullscreen`}
         </Menu.Item>
 
-        {canEdit && (
-          <>
-            <Menu.Item
-              leftSection={<Icon name="gear" />}
-              onClick={openSettingsSidebar}
-            >
-              {t`Edit settings`}
-            </Menu.Item>
-
-            {moderationItems}
-          </>
+        {(canEdit || canConfigureCaching) && (
+          <Menu.Item
+            leftSection={<Icon name="gear" />}
+            onClick={openSettingsSidebar}
+          >
+            {t`Edit settings`}
+          </Menu.Item>
         )}
+
+        {canEdit && moderationItems}
 
         {canEdit && (
           <>

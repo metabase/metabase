@@ -5,8 +5,11 @@
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.stage :as lib.stage]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -43,28 +46,28 @@
           bucket-created (lib/with-temporal-bucket created-col (first (lib/available-temporal-buckets query created-col)))
           query (lib/breakout query bucket-created)]
       (is (=?
-           (complement :metabase.lib.field/binning)
+           (complement :lib/binning)
            (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
       (is (=?
-           (complement :metabase.lib.field/binning)
+           (complement :lib/binning)
            (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
       (is (=?
-           {:metabase.lib.field/binning {:strategy :default}}
+           {:lib/binning {:strategy :default}}
            (lib/breakout-column query -1 (first (lib/breakouts query)))))
       (is (=?
-           {:metabase.lib.field/binning {:strategy :default}}
+           {:lib/binning {:strategy :default}}
            (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
       (is (=?
-           (complement :metabase.lib.field/temporal-unit)
+           (complement :lib/temporal-unit)
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
       (is (=?
-           (complement :metabase.lib.field/temporal-unit)
+           (complement :lib/temporal-unit)
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
       (is (=?
-           {:metabase.lib.field/temporal-unit :minute}
+           {:lib/temporal-unit :minute}
            (lib/breakout-column query -1 (second (lib/breakouts query)))))
       (is (=?
-           {:metabase.lib.field/temporal-unit :minute}
+           {:lib/temporal-unit :minute}
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
 
 (deftest ^:parallel binning-equality-test
@@ -118,3 +121,27 @@
                                                        (m/find-first (comp #{binning-name} :display-name)
                                                                      (lib/available-binning-strategies
                                                                       $ first-stage-binned-column))))))))))))))
+
+(deftest ^:parallel match-named-field-ref-filter
+  (testing "fields referencing source expressions can still properly update binning strategies (#26202)"
+    (let [card-query (lib.tu.macros/mbql-query orders
+                       {:fields      [$total
+                                      [:expression "foo"]]
+                        :expressions {"foo" [:+ $total 0]}})
+          card-cols  (-> (lib/returned-columns (lib/query meta/metadata-provider card-query))
+                         (update 1 assoc
+                                 :semantic-type :type/Quantity
+                                 :fingerprint   (:fingerprint (meta/field-metadata :orders :total))))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:cards [{:id              1
+                                :dataset-query   card-query
+                                :result-metadata card-cols}]})
+          query      (lib/query mp (lib.metadata/card mp 1))
+          expr-col   (m/find-first #(= (:name %) "foo") (lib/breakoutable-columns query))]
+      (is (some? expr-col))
+      (is (=? [{:display-name "Auto bin"}
+               {:display-name "10 bins"}
+               {:display-name "50 bins"}
+               {:display-name "100 bins"}]
+              (lib/available-binning-strategies query expr-col))))))

@@ -1,13 +1,15 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
+  (:refer-clojure :exclude [mapv empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv empty? not-empty]])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -59,7 +61,7 @@
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                    (= qp.pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to

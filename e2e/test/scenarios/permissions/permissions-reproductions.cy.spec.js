@@ -15,7 +15,7 @@ const { nocollection } = USERS;
 const PG_DB_ID = 2;
 
 // NOTE: This issue wasn't specifically related to PostgreSQL. We simply needed to add another DB to reproduce it.
-describe.skip("issue 13347", { tags: "@external" }, () => {
+describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -61,14 +61,17 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
       cy.signIn("none");
 
       H.startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      test === "QB" ? cy.findByText("Q1").click() : cy.findByText("Q2").click();
+      if (test === "QB") {
+        cy.findByText("Q1").click();
+      } else {
+        cy.findByText("Q2").click();
+      }
 
       cy.wait("@dataset", { timeout: 5000 });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
   });
@@ -78,7 +81,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
@@ -149,7 +152,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 17777", () => {
+describe("issue 17777", { tags: "@skip" }, () => {
   function hideTables(tables) {
     cy.request("PUT", "/api/table", {
       ids: tables,
@@ -167,7 +170,7 @@ describe.skip("issue 17777", () => {
   it("should still be able to set permissions on individual tables, even though they are hidden in data model (metabase#17777)", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Permissions for the All Users group");
     cy.findByTextEnsureVisible("Sample Database").click();
 
@@ -205,9 +208,9 @@ describe("issue 19603", () => {
   it("archived subcollection should not show up in permissions (metabase#19603)", () => {
     cy.visit("/admin/permissions/collections");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First collection").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second collection").should("not.exist");
   });
 });
@@ -231,7 +234,7 @@ describe("issue 20436", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -267,12 +270,12 @@ describe("issue 20436", () => {
     cy.wait("@updatePermissions");
 
     cy.visit(url);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Query builder only");
   });
 });
 
-describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase##22449, metabase#22450)", () => {
+describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase#22449, metabase#22450)", () => {
   beforeEach(() => {
     H.restore();
   });
@@ -283,14 +286,17 @@ describe("UI elements that make no sense for users without data permissions (met
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("viz-settings-button");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
-    cy.icon("line").click();
-    cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-container").within(() => {
-      cy.icon("gear").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("line").click();
+      cy.findByTestId("Line-button").realHover();
+      cy.findByTestId("Line-container").within(() => {
+        cy.icon("gear").click();
+      });
     });
 
     cy.findByTextEnsureVisible("Line options");
@@ -299,7 +305,7 @@ describe("UI elements that make no sense for users without data permissions (met
       .should("have.attr", "data-disabled");
 
     cy.get("@saveButton").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You don't have permission to save this question.");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
@@ -312,7 +318,7 @@ describe("UI elements that make no sense for users without data permissions (met
 
   it("should not show visualization or question settings to users with block data permissions", () => {
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: { "view-data": "blocked" },
@@ -326,11 +332,14 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTextEnsureVisible("There was a problem with your question");
+    cy.findByTextEnsureVisible(
+      "Sorry, you don't have permission to run this query.",
+    );
 
-    cy.findByTestId("viz-settings-button").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("not.exist");
+    H.queryBuilderFooter()
+      .findByTestId("viz-settings-button")
+      .should("not.exist");
+    H.queryBuilderFooter().findByText("Visualization").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");
@@ -350,8 +359,8 @@ describe("issue 22473", () => {
 
   it("nocollection user should be able to view and unsubscribe themselves from a subscription", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    H.openSharingMenu("Subscriptions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    H.openDashboardMenu("Subscriptions");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
     cy.findByPlaceholderText("Enter user names or email addresses")
       .click()
@@ -364,7 +373,7 @@ describe("issue 22473", () => {
     cy.signIn("nocollection");
     cy.visit("/account/notifications");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard").should("exist");
     cy.findByTestId("notifications-list").within(() => {
       cy.findByLabelText("close icon").click();
@@ -372,7 +381,7 @@ describe("issue 22473", () => {
     H.modal().within(() => {
       cy.button("Unsubscribe").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard").should("not.exist");
   });
 });
@@ -394,7 +403,7 @@ describe("issue 22695 ", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -472,12 +481,12 @@ describe("issue 22727", () => {
     // We already have a reproduction that makes sure "Our analytics" is not offered when starting from an ad-hoc question (table).
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("31.44").click();
     H.popover().contains("=").click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByTestId("save-question-modal").then((modal) => {
@@ -519,9 +528,9 @@ describe("issue 23981", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       `${H.getFullName(nocollection)}'s Personal Collection`,
     ).click();
@@ -574,7 +583,7 @@ describe("issue 24966", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
     // Add user attribute to existing user

@@ -6,21 +6,22 @@ import {
   useGetPermissionsGroupQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const Groups = createEntity({
+export const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListPermissionsGroupsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -57,7 +58,7 @@ const Groups = createEntity({
 
   actions: {
     clearMember:
-      async ({ id }) =>
+      ({ id }) =>
       async (dispatch) => {
         await dispatch(
           entityCompatibleQuery(
@@ -83,5 +84,3 @@ const Groups = createEntity({
 const useGetQuery = ({ id }) => {
   return useGetPermissionsGroupQuery(id);
 };
-
-export default Groups;

@@ -1,11 +1,17 @@
 import { t } from "ttag";
 
+import { UpsellBanner } from "metabase/common/components/upsells/components";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
-import { UpsellBanner } from "./components";
-import { UPGRADE_URL } from "./constants";
+export const UpsellPermissions = ({ location }: { location: string }) => {
+  const campaign = "advanced-permissions";
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
 
-export const UpsellPermissions = ({ source }: { source: string }) => {
   const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
 
   if (hasAdvancedPermissions) {
@@ -17,8 +23,9 @@ export const UpsellPermissions = ({ source }: { source: string }) => {
       campaign="advanced-permissions"
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
-      source={source}
+      location={location}
       title={t`Get advanced permissions`}
+      onClick={triggerUpsellFlow}
     >
       {t`Granular control down to the row- and column-level security. Manage advanced permissions per user group, or even at the database level.`}
     </UpsellBanner>

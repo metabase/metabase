@@ -1,4 +1,5 @@
 (ns metabase.lib.column-group
+  (:refer-clojure :exclude [select-keys some])
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -12,7 +13,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some]]))
 
 (def ^:private GroupType
   [:enum
@@ -84,13 +86,30 @@
     :is-from-join           false
     :is-implicitly-joinable false}))
 
+(defn- join-display-name-duplicated?
+  "Returns true if more than one join in the current stage shares the same display name as `a-join`."
+  [query stage-number a-join]
+  (let [joins      (:joins (lib.util/query-stage query stage-number))
+        this-alias (:alias a-join)
+        this-name  (lib.metadata.calculation/display-name query stage-number a-join)]
+    (boolean
+     (some (fn [other-join]
+             (and (not= (:alias other-join) this-alias)
+                  (= (lib.metadata.calculation/display-name query stage-number other-join)
+                     this-name)))
+           joins))))
+
 (defmethod display-info-for-group-method :group-type/join.explicit
   [query stage-number {:keys [join-alias table-id card-id], :as _column-group}]
   (merge
    (or
     (when join-alias
-      (when-let [join (lib.join/resolve-join query stage-number join-alias)]
-        (lib.metadata.calculation/display-info query stage-number join)))
+      (when-let [join (lib.join/maybe-resolve-join query stage-number join-alias)]
+        (let [info (lib.metadata.calculation/display-info query stage-number join)]
+          ;; When multiple joins share the same display name, use the join alias to disambiguate (#37025)
+          (cond-> info
+            (join-display-name-duplicated? query stage-number join)
+            (assoc :display-name join-alias)))))
     (when table-id
       (when-let [table (lib.metadata/table query table-id)]
         (lib.metadata.calculation/display-info query stage-number table)))
@@ -108,8 +127,7 @@
    (when-let [;; TODO: This is clumsy and expensive; there is likely a neater way to find the full FK column.
               ;; Note that using `lib.metadata/field` is out - we need to respect metadata overrides etc. in models, and
               ;; `lib.metadata/field` uses the field's original status.
-              fk-column (->> (lib.util/query-stage query stage-number)
-                             (lib.metadata.calculation/visible-columns query stage-number)
+              fk-column (->> (lib.metadata.calculation/visible-columns query stage-number)
                              (m/find-first #(and (= (:id %) fk-field-id)
                                                  (= (lib.field.util/inherited-column-name %) fk-field-name)
                                                  (= (lib.join.util/current-join-alias %) fk-join-alias)
@@ -141,7 +159,7 @@
    :fk-join-alias (:fk-join-alias column-metadata)})
 
 (defmethod column-group-info-method :source/joins
-  [{:keys [table-id], :lib/keys [card-id], :as column-metadata}]
+  [{:keys [table-id], card-id :lib/card-id, :as col}]
   (merge
    {::group-type :group-type/join.explicit}
    ;; if we're in the process of BUILDING a join and using this in combination
@@ -149,7 +167,7 @@
    ;; joinable -- either the Card we're joining, or the Table we're joining. Prefer `:lib/card-id` because when we
    ;; join a Card the Fields might have `:table-id` but we want the entire Card to appear as one group. See #32493
    (or
-    (when-let [join-alias (lib.join.util/current-join-alias column-metadata)]
+    (when-let [join-alias (lib.join.util/current-join-alias col)]
       {:join-alias join-alias})
     (when card-id
       {:card-id card-id})

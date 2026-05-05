@@ -13,8 +13,8 @@ describe("scenarios > dashboard > chained filter", () => {
 
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
-      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();
 
@@ -71,6 +71,9 @@ describe("scenarios > dashboard > chained filter", () => {
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
       H.filterWidget().contains("Location").click();
+
+      cy.findByPlaceholderText(/search the list/i).should("be.visible");
+
       H.popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
@@ -111,7 +114,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("AK").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -145,7 +148,7 @@ describe("scenarios > dashboard > chained filter", () => {
       }
 
       H.filterWidget().contains("GA").click();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {

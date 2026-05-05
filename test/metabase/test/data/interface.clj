@@ -7,7 +7,12 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
   Tech debt issue: #39363"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -44,6 +49,10 @@
   :type           :string
   :database-local :only)
 
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -52,7 +61,7 @@
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
-(p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
+(p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
 
 (def ^:private FieldDefinitionSchema
   [:map {:closed true}
@@ -71,6 +80,8 @@
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
    [:pk?               {:optional true} [:maybe :boolean]]
+   [:default-expr      {:optional true} [:maybe :string]]
+   [:generated-expr    {:optional true} [:maybe :string]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
@@ -97,7 +108,12 @@
   [:and
    [:map {:closed true}
     [:database-name ms/NonBlankString] ; this must be unique
-    [:table-definitions [:sequential ValidTableDefinition]]]
+    [:table-definitions [:sequential ValidTableDefinition]]
+    [:options [:map {:closed true}
+               [:native-ddl {:optional true} [:sequential :any]]
+               ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
+               ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
+               [:disable-fk-checks {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -111,6 +127,18 @@
 (defmethod get-dataset-definition DatabaseDefinition
   [this]
   this)
+
+(defn- hash-dataset*
+  [^DatabaseDefinition db-def]
+  (let [db-def' (get-dataset-definition db-def)
+        ;; for routing tests (where hashes need to match despite content being different)
+        ;; it is important to be able to override the hash key
+        hash-key (:hash-key db-def' db-def')]
+    (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) hash-key))))))
+
+(def hash-dataset
+  "Provides a consistent hash for the DatabaseDefinition"
+  (memoize/ttl hash-dataset*))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
@@ -300,7 +328,9 @@
 (defn database-display-name-for-driver
   "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
   [driver database-name]
-  (format "%s (%s)" database-name (u/qualified-name driver)))
+  (if *use-routing-details*
+    (format "%s-routing (%s)" database-name (u/qualified-name driver))
+    (format "%s (%s)" database-name (u/qualified-name driver))))
 
 (mu/defmethod metabase-instance DatabaseDefinition :- [:maybe :map]
   [{:keys [database-name]} :- [:map [:database-name :string]]
@@ -317,7 +347,7 @@
   "Run [[metabase.test.data.interface/after-run]] methods for drivers."
   [_options]
   (doseq [driver (tx.env/test-drivers)
-          :when  (isa? driver/hierarchy driver ::test-extensions)]
+          :when (isa? driver/hierarchy driver ::test-extensions)]
     (log/infof "Running after-run hooks for %s..." driver)
     (after-run driver)))
 
@@ -396,7 +426,7 @@
 
 (defmethod create-and-grant-roles! ::test-extensions
   [_driver _details _roles _db-user _default-role]
-  nil)
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-roles!
   "Drops the given roles, and drops the database user if necessary"
@@ -406,7 +436,7 @@
 
 (defmethod drop-roles! ::test-extensions
   [_driver _details _roles _db-user]
-  nil)
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
@@ -426,6 +456,44 @@
      ~roles
      ~db-user
      ~default-role
+     (fn [] ~@body)))
+
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-db-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-db-user-if-exists! ::test-extensions
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-db-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details db-user f]
+  (try
+    (create-db-user! driver details db-user)
+    (f)
+    (finally
+      (drop-db-user-if-exists! driver details db-user))))
+
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
+     ~driver
+     ~details
+     ~db-user
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details
@@ -454,6 +522,122 @@
 (defmethod dataset-already-loaded? ::test-extensions
   [_driver _dbdef]
   false)
+
+(defmulti fake-sync-schema
+  "Return the schema name to use for fake sync Table rows. Returns nil by default.
+   Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
+   their session schema name."
+  {:arglists '([driver]), :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-schema ::test-extensions
+  [_driver]
+  nil)
+
+(defmulti fake-sync-table-name
+  "Return the table name to use for fake sync Table rows.
+   Default uses `db-qualified-table-name` (e.g., 'test_data_venues') for drivers
+   that share a single database across datasets (like Redshift, Oracle).
+   Drivers with separate databases per dataset (like Snowflake) should override
+   to return just the table name."
+  {:arglists '([driver database-name table-name]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-table-name ::test-extensions
+  [_driver database-name table-name]
+  (db-qualified-table-name database-name table-name))
+
+(defmulti fake-sync-database-type
+  "Return the database_type string for fake sync Field rows.
+   By default uses `sql.tx/field-base-type->sql-type` (the DDL type used to create columns).
+   Drivers where the reported type differs from the creation type (like Snowflake where
+   TEXT becomes VARCHAR, FLOAT becomes DOUBLE) should override to return what the
+   database actually reports in INFORMATION_SCHEMA."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-database-type ::test-extensions
+  [driver base-type]
+  ;; Default: use the DDL type (what we create columns with)
+  ((requiring-resolve 'metabase.test.data.sql/field-base-type->sql-type) driver base-type))
+
+(defmulti fake-sync-base-type
+  "Return the base_type for fake sync Field rows.
+   By default returns the base-type from the test definition unchanged.
+   Drivers where the reported type differs (like Snowflake where INTEGER columns
+   are reported as NUMBER with base_type :type/Number) should override."
+  {:arglists '([driver base-type]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-base-type ::test-extensions
+  [_driver base-type]
+  ;; Default: use the base-type from the test definition unchanged
+  base-type)
+
+(defmulti fake-sync-native-base-type
+  "Return the base_type for fake sync Field rows when using native database types.
+   Called when base-type is a map like {:native \"timestamptz\"} and no effective-type
+   is specified. By default returns :type/*, but drivers should override this to
+   return the base_type that sync would actually produce for that native type.
+   For example, Snowflake should map \"timestamptz\" -> :type/DateTimeWithLocalTZ."
+  {:arglists '([driver native-type-string]), :added "0.57.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-native-base-type ::test-extensions
+  [_driver _native-type]
+  ;; Default: return :type/* for unknown native types
+  :type/*)
+
+(defn on-master-or-release-branch?
+  "Returns true if running on master or a release-* branch.
+   Detection methods (in priority order):
+   1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
+   2. Git branch name via shell (local development)
+
+   Used to conditionally enable features like fake-sync that should be disabled
+   on master/release branches to ensure full test coverage."
+  []
+  (let [branch-name (or (System/getenv "GITHUB_REF_NAME")
+                        (try (-> (shell/sh "git" "rev-parse" "--abbrev-ref" "HEAD")
+                                 :out
+                                 str/trim)
+                             (catch Exception _ nil)))]
+    (boolean
+     (and branch-name
+          (or (= branch-name "master")
+              (str/starts-with? branch-name "release-"))))))
+
+(defmacro with-driver-supports-feature!
+  "Temporarily override `driver/database-supports?` to return a specific value for a driver/feature combo.
+   Useful for testing code paths that depend on driver features.
+
+   Example:
+     (with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+       (do-something-that-requires-real-sync))"
+  [[driver feature value] & body]
+  `(let [original-db-supports?# driver/database-supports?]
+     (with-redefs [driver/database-supports?
+                   (fn [driver-arg# feature-arg# db-arg#]
+                     (if (and (= driver-arg# ~driver) (= feature-arg# ~feature))
+                       ~value
+                       (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
+       ~@body)))
+
+(defmulti track-dataset
+  "Track the creation or the usage of the database.
+   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
+  {:arglists '([driver dbdef]) :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod track-dataset ::test-extensions
+  [_driver _dbdef]
+  nil)
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
@@ -518,7 +702,7 @@
   ([_ aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
    {:base_type     (case aggregation-type
-                     :count     :type/BigInteger
+                     :count :type/BigInteger
                      :cum-count :type/Decimal)
     :semantic_type :type/Quantity
     :name          "count"
@@ -533,13 +717,12 @@
    (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                             :type     :query
                                             :query    {:source-table table-id
-                                                       :aggregation  [[aggregation-type [:field-id field-id]]]
-                                                       :aggregation-idents {0 (u/generate-nano-id)}}})
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]}})
        first
        (merge (when (= aggregation-type :cum-count)
                 {:base_type     :type/Decimal
                  :semantic_type :type/Quantity}))
-       (dissoc :ident :lib/source-uuid :lib/source_uuid))))
+       (dissoc :lib/source-uuid :lib/source_uuid))))
 
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
@@ -553,6 +736,18 @@
   `field-name`."
   {:arglists '([driver table-name field-name]
                [driver table-name field-name sample-value])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 2 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -600,13 +795,19 @@
 (mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- ms/NonBlankString & table-definitions]
-  (mu/validate-throw
-   (ms/InstanceOfClass DatabaseDefinition)
-   (map->DatabaseDefinition
-    {:database-name     database-name
-     :table-definitions (for [table table-definitions]
-                          (dataset-table-definition table))})))
+  ([database-name :- ms/NonBlankString
+    table-definitions]
+   (dataset-definition database-name table-definitions {}))
+  ([database-name :- ms/NonBlankString
+    table-definitions
+    options]
+   (mu/validate-throw
+    (ms/InstanceOfClass DatabaseDefinition)
+    (map->DatabaseDefinition
+     {:database-name     database-name
+      :table-definitions (for [table table-definitions]
+                           (dataset-table-definition table))
+      :options           options}))))
 
 (defmacro defdataset
   "Define a new dataset to test against. Definition should be of the format
@@ -631,7 +832,37 @@
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-                                        (apply dataset-definition ~(name dataset-name) ~definition))))
+                                        (dataset-definition ~(name dataset-name) ~definition))))
+
+(p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
+  pretty/PrettyPrintable
+  (pretty [_]
+    (list `native-dataset-definition dataset-name table-definitions native-ddl)))
+
+(defn native-dataset-definition [dataset-name table-definitions native-ddl]
+  (NativeDatasetDefinition. dataset-name table-definitions native-ddl))
+
+(defmethod get-dataset-definition NativeDatasetDefinition
+  [^NativeDatasetDefinition this]
+  (dataset-definition
+   (.-dataset-name this)
+   (.-table-definitions this)
+   {:native-ddl (.-native-ddl this)}))
+
+(comment
+  (native-dataset-definition
+   "foobar"
+   [["categories"
+     [{:field-name "name" :base-type :type/Text}]
+     [["Asian"]
+      ["Burger"]]]
+    ["venues"
+     [{:field-name "name" :base-type :type/Text}
+      {:field-name "category_id" :base-type :type/Integer}]
+     [["Red Medicine" 1]
+      ["Stout Burgers & Beers" 2]
+      ["The Apple Pan" 2]]]]
+   [["create view " "arg1"]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            EDN Dataset Definitions                                             |
@@ -656,7 +887,7 @@
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
-                    (apply dataset-definition dataset-name file-contents)))]
+                    (dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
 (defmacro defdataset-edn
@@ -785,7 +1016,7 @@
       (-> fk-table
           (str/replace #"ies$" "y")
           (str/replace #"s$" "")
-          (str  \_ (flatten-field-name fk-dest-name))))))
+          (str \_ (flatten-field-name fk-dest-name))))))
 
 (mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
@@ -1042,7 +1273,7 @@
 (defmethod agg-venues-by-category-id :athena
   [_driver]
   "select category_id, array_agg(name)
-   from test_data.venues
+   from v3_test_data.venues
    group by category_id
    order by 1 asc
    limit 2;")
@@ -1066,3 +1297,15 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))

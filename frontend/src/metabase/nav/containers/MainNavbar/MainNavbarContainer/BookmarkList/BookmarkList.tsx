@@ -11,15 +11,16 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import CollapseSection from "metabase/components/CollapseSection";
-import { Sortable } from "metabase/core/components/Sortable";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { Sortable } from "metabase/common/components/Sortable";
+import { getIcon } from "metabase/common/utils/icon";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import CS from "metabase/css/core/index.css";
-import Bookmarks from "metabase/entities/bookmarks";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { Bookmarks } from "metabase/entities/bookmarks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
@@ -51,6 +52,7 @@ interface CollectionSidebarBookmarksProps {
 interface BookmarkItemProps {
   bookmark: Bookmark;
   index: number;
+  isDraggable?: boolean;
   isSorting: boolean;
   selectedItem?: SelectedItem;
   onSelect: () => void;
@@ -66,8 +68,14 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
   );
 }
 
+function getBookmarkModel(bookmark: Bookmark) {
+  // we should really fix this on the backend
+  return bookmark.card_type === "model" ? "dataset" : bookmark.type;
+}
+
 const BookmarkItem = ({
   bookmark,
+  isDraggable,
   isSorting,
   selectedItem,
   onSelect,
@@ -75,7 +83,17 @@ const BookmarkItem = ({
 }: BookmarkItemProps) => {
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
-  const icon = Bookmarks.objectSelectors.getIcon(bookmark);
+  const isTenantUser = useSelector(getIsTenantUser);
+
+  const icon = getIcon(
+    {
+      model: getBookmarkModel(bookmark),
+      display: bookmark.display,
+      authority_level: bookmark.authority_level,
+      is_remote_synced: bookmark.is_remote_synced,
+    },
+    { isTenantUser },
+  );
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =
@@ -92,6 +110,7 @@ const BookmarkItem = ({
         icon={icon}
         isSelected={isSelected}
         isDragging={isSorting}
+        isDraggable={isDraggable}
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
         right={
@@ -146,16 +165,14 @@ const BookmarkList = ({
 
   const bookmarkIds = bookmarks.map((b) => b.id);
 
-  const headerId = "headingForBookmarksSectionOfSidebar";
-
   return (
     <CollapseSection
-      aria-labelledby={headerId}
-      header={<SidebarHeading id={headerId}>{t`Bookmarks`}</SidebarHeading>}
+      header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
       initialState={initialState}
       iconPosition="right"
       iconSize={8}
-      headerClass={CS.mb1}
+      role="section"
+      aria-label={t`Bookmarks`}
       onToggle={onToggle}
     >
       <DndContext
@@ -172,6 +189,7 @@ const BookmarkList = ({
             {orderedBookmarks.map((bookmark, index) => (
               <BookmarkItem
                 bookmark={bookmark}
+                isDraggable={orderedBookmarks.length > 1}
                 isSorting={isSorting}
                 key={index}
                 index={index}

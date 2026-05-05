@@ -16,10 +16,6 @@
   flex: 1 0 auto;
 }
 
-.flexHalf {
-  flex: 0.5;
-}
-
 .flex1 {
   flex: 1;
 }
@@ -80,12 +76,12 @@
   align-items: flex-start;
 }
 
-.alignEnd {
-  align-items: flex-end;
-}
-
 .alignStretch {
   align-items: stretch;
+}
+
+.alignSelfStart {
+  align-self: flex-start;
 }
 
 .alignSelfEnd {
@@ -115,10 +111,6 @@
 
 .flexWrap {
   flex-wrap: wrap;
-}
-
-.flexReverse {
-  flex-direction: row-reverse;
 }
 
 /* Contents of elements inside flex items might not be wrapped correctly on IE11,

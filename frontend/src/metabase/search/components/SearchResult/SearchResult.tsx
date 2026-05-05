@@ -3,13 +3,13 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
-import type { WrappedResult } from "metabase/search/types";
 import { Group, Icon, Loader } from "metabase/ui";
-import type { SearchContext } from "metabase-types/api";
+import { modelToUrl } from "metabase/urls";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import type { SearchContext, SearchResult } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";
 
@@ -35,17 +35,23 @@ export function SearchResult({
   className,
   index,
   context = "search-app",
+  searchEngine,
+  searchRequestId,
+  searchTerm,
 }: {
-  result: WrappedResult;
+  result: SearchResult;
   compact?: boolean;
   showDescription?: boolean;
-  onClick?: (result: WrappedResult) => void;
+  onClick?: (result: SearchResult) => void;
   isSelected?: boolean;
   className?: string;
   index: number;
   context?: SearchContext;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
 }) {
-  const { name, model, description, moderated_status }: WrappedResult = result;
+  const { name, model, description, moderated_status }: SearchResult = result;
 
   const showXRayButton =
     result.model === "indexed-entity" &&
@@ -84,8 +90,17 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
-    onChangeLocation(result.getUrl());
+    trackSearchClick({
+      itemType: "item",
+      position: index,
+      context,
+      searchEngine: searchEngine || "unknown",
+      requestId: searchRequestId,
+      entityModel: result.model,
+      entityId: typeof result.id === "number" ? result.id : null,
+      searchTerm,
+    });
+    onChangeLocation(modelToUrl(result));
   };
 
   return (
@@ -113,7 +128,7 @@ export function SearchResult({
             role="heading"
             data-testid="search-result-item-name"
             truncate
-            href={!onClick ? result.getUrl() : undefined}
+            href={!onClick ? modelToUrl(result) : undefined}
           >
             {name}
           </ResultTitle>
@@ -161,7 +176,7 @@ export function SearchResult({
   );
 }
 
-const isItemActive = (result: WrappedResult) => {
+const isItemActive = (result: SearchResult) => {
   if (result.model !== "table") {
     return true;
   }
@@ -169,7 +184,7 @@ const isItemActive = (result: WrappedResult) => {
   return isSyncCompleted(result);
 };
 
-const isItemLoading = (result: WrappedResult) => {
+const isItemLoading = (result: SearchResult) => {
   if (result.model !== "database" && result.model !== "table") {
     return false;
   }

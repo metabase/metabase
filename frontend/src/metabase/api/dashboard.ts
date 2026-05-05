@@ -1,16 +1,19 @@
 import { PLUGIN_API } from "metabase/plugins";
+import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
+  GetValidDashboardFilterFieldsRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
@@ -29,14 +32,18 @@ import {
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
   provideParameterValuesTags,
+  provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
-    const updateDashboardPropertyMutation = <
+    const updateDashboardPropertiesMutation = <
       Key extends keyof UpdateDashboardRequest,
-    >() =>
+    >(
+      additionalTags: ReturnType<typeof listTag>[] = [],
+    ) =>
       builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
@@ -44,7 +51,11 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            idTag("dashboard", id),
+            ...additionalTags,
+          ]),
       });
 
     return {
@@ -59,6 +70,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
+        onQueryStarted: hydrateLegacyEntities([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
         query: ({ id, ignore_error }) => ({
@@ -68,6 +80,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
+        onQueryStarted: hydrateLegacyEntities(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -80,6 +93,7 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
@@ -105,6 +119,18 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/items`,
           body,
         }),
+      }),
+      getValidDashboardFilterFields: builder.query<
+        Record<FieldId, FieldId[]>,
+        GetValidDashboardFilterFieldsRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: `/api/dashboard/params/valid-filter-fields`,
+          params,
+        }),
+        providesTags: (_response, _error, { filtered, filtering }) =>
+          provideValidDashboardFilterFieldTags(filtered, filtering),
       }),
       createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
         query: (body) => ({
@@ -133,6 +159,7 @@ export const dashboardApi = Api.injectEndpoints({
             listTag("dashboard"),
             idTag("dashboard", id),
             tag("parameter-values"),
+            listTag("revision"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
@@ -178,10 +205,12 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("embed-dashboard"),
         ],
       }),
-      updateDashboardEnableEmbedding:
-        updateDashboardPropertyMutation<"enable_embedding">(),
-      updateDashboardEmbeddingParams:
-        updateDashboardPropertyMutation<"embedding_params">(),
+      updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
+        "enable_embedding" | "embedding_type"
+      >([listTag("embedding-hub-checklist")]),
+      updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
+        "embedding_params" | "embedding_type"
+      >(),
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: (params) => ({
           method: "GET",
@@ -234,6 +263,7 @@ export const {
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,
@@ -248,7 +278,9 @@ export const {
   endpoints: {
     getDashboard,
     deleteDashboardPublicLink,
+    createDashboard,
     createDashboardPublicLink,
+    updateDashboard,
     updateDashboardEnableEmbedding,
     updateDashboardEmbeddingParams,
   },

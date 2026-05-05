@@ -2,16 +2,16 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 import {
-  ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  SAMPLE_DB_ID,
+  PEOPLE_SOURCE_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -23,22 +23,27 @@ const metadata = createMockMetadata({
 
 type SetupOpts = {
   query?: Lib.Query;
+  fieldValues?: GetFieldValuesResponse;
   isExpanded?: boolean;
 };
 
 function setup({
   query: initialQuery = TEST_MULTISTAGE_QUERY,
+  fieldValues,
   isExpanded = true,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
+
+  if (fieldValues) {
+    setupFieldValuesEndpoint(fieldValues);
+  }
 
   function WrappedFilterHeader() {
     const [query, setQuery] = useState(initialQuery);
 
     const question = Question.create({
       metadata,
-      type: "query",
-      dataset_query: Lib.toLegacyQuery(query),
+      dataset_query: Lib.toJsQuery(query),
     });
 
     const handleQueryChange = (question: Question) => {
@@ -91,7 +96,9 @@ describe("QuestionFiltersHeader", () => {
   });
 
   it("should update a filter on the last stage", async () => {
-    const { getNextQuery, getFilterColumnNameForStage } = setup();
+    const { getNextQuery, getFilterColumnNameForStage } = setup({
+      fieldValues: PEOPLE_SOURCE_VALUES,
+    });
 
     await userEvent.click(screen.getByText("User → Source is Organic"));
     await userEvent.click(await screen.findByLabelText("Filter operator"));
@@ -118,7 +125,7 @@ describe("QuestionFiltersHeader", () => {
       values: [],
       options: {},
     });
-    expect(nextColumnName).toBe("People Via User ID Source");
+    expect(nextColumnName).toBe("User → Source");
   });
 
   it("should update a filter on the previous stage", async () => {
@@ -199,71 +206,47 @@ describe("QuestionFiltersHeader", () => {
  * Stage 1: Count by User.Source, filtered by Count > 5
  * Stage 2: Count by user.Source, filtered by User.Source = "Organic"
  */
-const TEST_MULTISTAGE_QUERY = createQuery({
-  metadata,
-  query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      filter: [
-        "=",
-        [
-          "field",
-          "PEOPLE__via__USER_ID__SOURCE",
-          {
-            "base-type": "type/Text",
-          },
-        ],
-        "Organic",
-      ],
-      "source-query": {
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            "PEOPLE__via__USER_ID__SOURCE",
-            {
-              "base-type": "type/Text",
-            },
-          ],
-        ],
-        filter: [
-          ">",
-          [
-            "field",
-            "count",
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-          5,
-        ],
-        "source-query": {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              PEOPLE.SOURCE,
-              {
-                "base-type": "type/Text",
-                "source-field": ORDERS.USER_ID,
-              },
-            ],
-          ],
-          filter: [
-            ">",
-            [
-              "field",
-              ORDERS.QUANTITY,
-              {
-                "base-type": "type/Integer",
-              },
-            ],
-            4,
+const TEST_MULTISTAGE_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count" }],
+      filters: [
+        {
+          type: "operator",
+          operator: ">",
+          args: [
+            { type: "column", sourceName: "ORDERS", name: "QUANTITY" },
+            { type: "literal", value: 4 },
           ],
         },
-      },
+      ],
+      breakouts: [{ type: "column", sourceName: "PEOPLE", name: "SOURCE" }],
     },
-  },
+    {
+      breakouts: [{ type: "column", name: "SOURCE" }],
+      filters: [
+        {
+          type: "operator",
+          operator: ">",
+          args: [
+            { type: "column", name: "count" },
+            { type: "literal", value: 5 },
+          ],
+        },
+      ],
+    },
+    {
+      filters: [
+        {
+          type: "operator",
+          operator: "=",
+          args: [
+            { type: "column", name: "SOURCE" },
+            { type: "literal", value: "Organic" },
+          ],
+        },
+      ],
+    },
+  ],
 });

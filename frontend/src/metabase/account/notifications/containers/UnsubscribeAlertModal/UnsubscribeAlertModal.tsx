@@ -6,10 +6,10 @@ import {
   useGetNotificationQuery,
   useUnsubscribeFromNotificationMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
-import { addUndo } from "metabase/redux/undo";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { Notification, User } from "metabase-types/api";
 
@@ -30,6 +30,7 @@ export const UnsubscribeAlertModal = ({
   const user = useSelector(getUser);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const {
     data: notification,
@@ -42,17 +43,15 @@ export const UnsubscribeAlertModal = ({
     const result = await unsubscribe(alert.id);
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`Successfully unsubscribed.` }));
+    sendToast({ message: t`Successfully unsubscribed.` });
 
     if (isCreator(alert, user)) {
       onClose();

@@ -9,6 +9,8 @@ import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
+import { useAddDataPermissions } from "./AddDataModal/use-add-data-permission";
+
 export const GettingStartedSection = ({
   nonEntityItem,
   onAddDataModalOpen,
@@ -17,6 +19,7 @@ export const GettingStartedSection = ({
   nonEntityItem: SelectedItem;
   onAddDataModalOpen: () => void;
 }>) => {
+  const { canPerformMeaningfulActions } = useAddDataPermissions();
   const [opened, { toggle }] = useDisclosure(true);
 
   const ONBOARDING_URL = "/getting-started";
@@ -29,7 +32,7 @@ export const GettingStartedSection = ({
         gap="sm"
         onClick={toggle}
         component={UnstyledButton}
-        c="text-medium"
+        c="text-secondary"
         mb="sm"
         className={CS.cursorPointer}
       >
@@ -43,9 +46,11 @@ export const GettingStartedSection = ({
         role="tabpanel"
         aria-expanded={opened}
       >
-        <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
-          {t`Add data`}
-        </PaddedSidebarLink>
+        {canPerformMeaningfulActions && (
+          <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
+            {t`Add your data`}
+          </PaddedSidebarLink>
+        )}
 
         <PaddedSidebarLink
           icon="learn"
@@ -53,7 +58,7 @@ export const GettingStartedSection = ({
           isSelected={isOnboardingPageSelected}
           onClick={() => trackOnboardingChecklistOpened()}
         >
-          {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
           {t`How to use Metabase`}
         </PaddedSidebarLink>
 

@@ -1,33 +1,29 @@
 import { t } from "ttag";
 
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
-import {
-  browseDatabase,
-  browseSchema,
-  tableRowsQuery,
-} from "metabase/lib/urls";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
-import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon, Text } from "metabase/ui";
+import { browseDatabase, browseSchema, tableRowsQuery } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { SearchResult } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
 
 type InfoTextAssetLinkProps = {
-  result: WrappedResult;
+  result: SearchResult;
   showLinks?: boolean;
 };
 
 const LinkSeparator = (
-  <Box component="span" c="text-medium">
+  <Box component="span" c="text-secondary">
     <Icon name="chevronright" size={8} />
   </Box>
 );
 
 const LoadingText = () => (
   <Text
-    color="text-1"
+    c="text-primary"
     span
     size="sm"
     truncate
@@ -132,7 +128,7 @@ export const InfoTextAssetLink = ({
   result,
   showLinks = true,
 }: InfoTextAssetLinkProps) => {
-  if (result.model === "table") {
+  if (result.model === "table" && result.collection?.name == null) {
     return <InfoTextTablePath showLinks={showLinks} result={result} />;
   }
 

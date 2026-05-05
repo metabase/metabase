@@ -4,7 +4,7 @@ import { setup } from "./setup";
 
 describe("DashboardEntityIdCard (EE without token)", () => {
   it("should return null", async () => {
-    setup({ hasEnterprisePlugins: true });
+    setup();
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });

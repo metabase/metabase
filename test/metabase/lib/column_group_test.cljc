@@ -5,7 +5,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as lib.join]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
@@ -55,7 +55,7 @@
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
-              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/breakouts}
+              ::lib.column-group/columns    [{:display-name "Name", :lib/source :source/table-defaults, :lib/breakout? true}
                                              {:display-name "Sum of ID", :lib/source :source/aggregations}]}]
             groups))
     (testing `lib/display-info
@@ -280,10 +280,10 @@
                     ::lib.column-group/group-type :group-type/join.explicit
                     ::lib.column-group/columns    [{:name                 "ID"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}
+                                                    :lib/join-alias "Cat"}
                                                    {:name                 "NAME"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}]}]
+                                                    :lib/join-alias "Cat"}]}]
                   groups)))
         (testing `lib/display-info
           (is (=? [{:name         "Cat"
@@ -317,7 +317,7 @@
               :card              (:categories (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}
              {:message           "Native Card"
-              :card              ((lib.tu/mock-cards) :categories/native)
+              :card              (:categories/native (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}]]
       (testing message
         (let [cols   (rhs-columns (lib.tu/venues-query) card)
@@ -353,7 +353,11 @@
                                                                 (meta/field-metadata :orders :id))])
                                        (lib/with-join-fields (for [field [:id :tax]]
                                                                (lib/ref (meta/field-metadata :orders field)))))))
-        columns      (lib/visible-columns query)
+        ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
+        ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
+        columns      (into []
+                           (lib.field.util/add-source-and-desired-aliases-xform query)
+                           (lib/visible-columns query))
         marked       (lib.equality/mark-selected-columns query -1 columns (lib/returned-columns query))
         user-cols    ["ID" "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE"
                       "STATE" "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
@@ -384,12 +388,12 @@
               (for [field-name ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX"
                                 "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]]
                 {:name field-name
-                 :lib/desired-column-alias (str "Orders__" field-name)
+                 :lib/desired-column-alias (str "Orders_2__" field-name)
                  :lib/source :source/joins})}
              (implicit product-cols "PRODUCTS__via__PRODUCT_ID__")
              (implicit user-cols    "PEOPLE__via__USER_ID__")
-             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__via__Orders__")
-             (implicit user-cols    "PEOPLE__via__USER_ID__via__Orders__")]
+             (implicit product-cols "PRODUCTS__via__PRODUCT_ID__via__Orders_2__")
+             (implicit user-cols    "PEOPLE__via__USER_ID__via__Orders_2__")]
             (lib/group-columns marked)))))
 
 (deftest ^:parallel self-joined-cards-duplicate-implicit-columns-test
@@ -400,7 +404,9 @@
                                                (first (lib/join-condition-rhs-columns query card nil nil)))])
 
           query (lib/join query clause)
-          cols (lib/visible-columns query)
+          cols (into []
+                     (lib.field.util/add-source-and-desired-aliases-xform query)
+                     (lib/visible-columns query))
           [_ _ _ product-1 _ product-2 :as groups] (lib/group-columns cols)]
       (is (=? [{:display-name "Mock Orders Card"
                 :is-from-join false,
@@ -415,10 +421,11 @@
                {:display-name "User"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "Product"
+               ;; we always use LONG display names when the column comes from a previous stage.
+               {:display-name "Mock orders card_2 → Product"
                 :is-from-join false,
                 :is-implicitly-joinable true}
-               {:display-name "User"
+               {:display-name "Mock orders card_2 → User"
                 :is-from-join false,
                 :is-implicitly-joinable true}]
               (map #(lib/display-info query %) groups)))
@@ -436,19 +443,19 @@
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE"}
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT"}]
               (::lib.column-group/columns product-1)))
-      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ID", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ADDRESS", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__EMAIL", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__PASSWORD", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__NAME", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__CITY", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__LONGITUDE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__STATE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__SOURCE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__BIRTH_DATE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__ZIP", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__LATITUDE", :fk-join-alias "Mock orders card"}
-               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card__CREATED_AT", :fk-join-alias "Mock orders card"}]
+      (is (=? [{:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ID", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ADDRESS", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__EMAIL", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__PASSWORD", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__NAME", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__CITY", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__LONGITUDE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__STATE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__SOURCE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__BIRTH_DATE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__ZIP", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__LATITUDE", :fk-join-alias "Mock orders card_2"}
+               {:lib/desired-column-alias "PEOPLE__via__USER_ID__via__Mock orders card_2__CREATED_AT", :fk-join-alias "Mock orders card_2"}]
               (::lib.column-group/columns product-2))))))
 
 (deftest ^:parallel column-group-order-test
@@ -466,7 +473,7 @@
       (is (=? [{::lib.column-group/group-type :group-type/main}
                ;; Explicit joins, ordered by join alias.
                {::lib.column-group/group-type :group-type/join.explicit
-                :join-alias                   "Orders"}
+                :join-alias                   "Orders_2"}
                {::lib.column-group/group-type :group-type/join.explicit
                 :join-alias                   "Reviews - Product"}
                ;; Implicit joins, ordered by the join alias and then the FK column name:
@@ -482,12 +489,31 @@
                 :fk-join-alias                nil
                 :fk-field-id                  (meta/id :orders :user-id)}
                {::lib.column-group/group-type :group-type/join.implicit
-                :fk-join-alias                "Orders"
+                :fk-join-alias                "Orders_2"
                 :fk-field-id                  (meta/id :orders :product-id)}
                {::lib.column-group/group-type :group-type/join.implicit
-                :fk-join-alias                "Orders"
+                :fk-join-alias                "Orders_2"
                 :fk-field-id                  (meta/id :orders :user-id)}
                {::lib.column-group/group-type :group-type/join.implicit
                 :fk-join-alias                "Reviews - Product"
                 :fk-field-id                  (meta/id :reviews :product-id)}]
               (lib/group-columns cols))))))
+
+(deftest ^:parallel multiple-joins-same-table-display-names-test
+  (testing "Multiple joins to the same table should have distinguishable display names (#37025)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))]))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          cols   (lib/visible-columns query)
+          groups (lib/group-columns cols)
+          infos  (mapv #(lib/display-info query %) groups)
+          join-infos (filterv :is-from-join infos)]
+      (is (= 2 (count join-infos))
+          "There should be two join column groups")
+      (is (not= (:display-name (first join-infos))
+                (:display-name (second join-infos)))
+          "Join column groups for the same table should have different display names"))))

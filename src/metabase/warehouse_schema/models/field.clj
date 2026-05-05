@@ -2,16 +2,17 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -20,22 +21,17 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- Type Mappings --------------------------------------------------
+(comment metabase.lib.schema.metadata/keep-me)
 
-(def visibility-types
-  "Possible values for `Field.visibility_type`."
-  #{:normal         ; Default setting.  field has no visibility restrictions.
-    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
-    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
-    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
+(p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
@@ -46,7 +42,7 @@
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
-    (when-let [k (keyword k)]
+    (when-let [k (some-> k keyword)]
       (when-not (some
                  (partial isa? k)
                  ancestor-types)
@@ -75,15 +71,18 @@
   {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-effective-type
+(def transform-field-effective-type
+  "Transform effective_type"
   {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-semantic-type
+(def transform-field-semantic-type
+  "Transform semantic_type"
   {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
    :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
 
-(def ^:private transform-field-coercion-strategy
+(def transform-field-coercion-strategy
+  "Transform coercion_strategy"
   {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
    :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
 
@@ -131,52 +130,115 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(def field-user-settings
+  "Set of user-settable values for a Field"
+  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
+    :caveats :points_of_interest :nfc_path :json_unfolding :settings})
+
+(defn- ensure-field-user-settings-exist-for-fk-target-field [field]
+  (let [q {:select [:id]
+           :from [:metabase_field]
+           :where [:and
+                   [:= :fk_target_field_id (:id field)]
+                   [:not [:in :id {:select [:field_id]
+                                   :from [:metabase_field_user_settings]}]]]}
+        sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
+    (t2/insert! :model/FieldUserSettings
+                (map (fn [{:keys [id]}] {:field_id id})
+                     (t2/query sql)))))
+
+(defn- sync-user-settings [field]
+  ;; we transparently prevent updates that would override user-set values
+  (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
+        updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
+    (t2.protocols/with-current field updated-field)))
+
 (t2/define-before-update :model/Field
   [field]
-  (u/prog1 field
-    (when (false? (:active (t2/changes <>)))
-      (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
-                                                                  :fk_target_field_id nil}))))
+  (when (false? (:active (t2/changes field)))
+    (ensure-field-user-settings-exist-for-fk-target-field field)
+    (let [k {:fk_target_field_id (:id field)}
+          upds {:semantic_type      nil
+                :fk_target_field_id nil}]
+      (t2/update! :model/Field k upds)
+      ;; we must explicitly clear user-set fks in this case
+      (t2/update! :model/FieldUserSettings k upds)))
+  (sync-user-settings field))
 
 (t2/define-before-delete :model/Field
   [field]
-  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
-  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ;; because parent_id contributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 
-(defn- field->db-id
-  [{table-id :table_id, {db-id :db_id} :table}]
-  (or db-id (database/table-id->database-id table-id)))
+(defn- field->table
+  "Get the Table for a Field, either from hydration or by fetching."
+  [instance]
+  (or (:table instance)
+      (t2/select-one :model/Table :id (:table_id instance))))
 
 (defmethod mi/can-read? :model/Field
+  ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
   ([instance]
-   (and (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (field->db-id instance)
-         (:table_id instance))
-        (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/create-queries
-         :query-builder
-         (field->db-id instance)
-         (:table_id instance))))
+   (mi/can-read? (field->table instance)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
+(defmethod mi/can-query? :model/Field
+  ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
+  ([instance]
+   (mi/can-query? (field->table instance)))
+  ([model pk]
+   (mi/can-query? (t2/select-one model pk))))
+
 (defenterprise current-user-can-write-field?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  "OSS implementation. Returns a boolean whether the current user can write the given field.
+   Checks both that the user is a superuser and that the parent table is editable (not in a
+   remote-synced collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
-  [_instance]
-  (mi/superuser?))
+  [instance]
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (remote-sync/table-editable? table)
+         (mi/superuser?))))
 
 (defmethod mi/can-write? :model/Field
   ([instance]
    (current-user-can-write-field? instance))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
+  "Batched hydration for :can_write on fields. First hydrates :table for all fields,
+   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
+   on each field. This avoids N+1 queries when checking permissions for multiple fields."
+  [_model k fields]
+  (let [fields-with-tables (t2/hydrate (remove nil? fields) :table)
+        ;; Get all unique collection IDs from the hydrated tables
+        collection-ids (->> fields-with-tables
+                            (keep (comp :collection_id :table))
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each field's table
+        fields-with-collection (for [field fields-with-tables
+                                     :let [table (:table field)
+                                           coll-id (:collection_id table)]]
+                                 (if (and table coll-id)
+                                   (assoc-in field [:table :collection]
+                                             {:id coll-id
+                                              :is_remote_synced (get collection-synced-map coll-id false)})
+                                   field))]
+    (mi/instances-with-hydrated-data
+     fields k
+     #(u/index-by :id mi/can-write? fields-with-collection)
+     :id
+     {:default false})))
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
@@ -190,7 +252,7 @@
   (t2/select [:model/FieldValues :field_id :values], :field_id id :type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
-  "Recusively find the field id for a nested field name, return nil if not found.
+  "Recursively find the field id for a nested field name, return nil if not found.
   Nested field here refer to a field that has another field as its parent_id, like nested field in Mongo DB.
 
   This is to differentiate from the json nested field in, which the path is defined in metabase_field.nfc_path."
@@ -266,15 +328,15 @@
 
   This does one important thing: if `:has_field_values` is already present and set to `:auto-list`, it is replaced by
   `:list` -- presumably because the frontend doesn't need to know `:auto-list` even exists?
-  See [[lib.field/infer-has-field-values]] for more info."
+  See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values (lib.metadata.jvm/instance->metadata field :metadata/column))]
+    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
-  `:list` (see [[infer-has-field-values]])."
+  `:list` (see [[lib/infer-has-field-values]])."
   [_model _k _field]
   true)
 
@@ -358,8 +420,8 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field]
-  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
@@ -392,19 +454,28 @@
         (disj this))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
-               :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
+               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
+               :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:fingerprint :fingerprint_version :last_analyzed]
+   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
-  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))]
-    (concat (serdes/storage-path-prefixes path)
-            ["fields" (str/join "." (map :id fields))])))
+  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
+        field-name    (str/join "." (map :id fields))]
+    (conj (serdes/storage-path-prefixes path)
+          {:label "fields"}
+          {:label field-name :key field-name})))

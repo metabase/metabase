@@ -1,0 +1,4 @@
+.TenantNameInput {
+  font-size: var(--mantine-font-size-lg);
+  padding: 0 var(--mantine-spacing-md);
+}

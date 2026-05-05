@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
@@ -30,7 +30,9 @@ const useDashboardRedirect = () => {
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
-  useEffect(() => {
+  // This redirect must live inside a useLayoutEffect to prevent the browser from painting a frame of <HomeContent>
+  // before firing the redirect (metabase#69917)
+  useLayoutEffect(() => {
     if (dashboardId && !isLoading && !dashboard?.archived) {
       dispatch(
         replace({
@@ -45,12 +47,14 @@ const useDashboardRedirect = () => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [
-              updateUserSetting({
-                key: "dismissed-custom-dashboard-toast",
-                value: true,
-              }),
-            ],
+            action: () => {
+              dispatch(
+                updateUserSetting({
+                  key: "dismissed-custom-dashboard-toast",
+                  value: true,
+                }),
+              );
+            },
             actionLabel: t`Got it`,
             canDismiss: false,
           }),

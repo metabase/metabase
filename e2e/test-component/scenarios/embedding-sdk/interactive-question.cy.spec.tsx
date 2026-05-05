@@ -1,500 +1,234 @@
-import { useDisclosure } from "@mantine/hooks";
-import {
-  InteractiveQuestion,
-  type MetabaseQuestion,
-} from "@metabase/embedding-sdk-react";
-import { type ComponentProps, useState } from "react";
+const { H } = cy;
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  FIRST_COLLECTION_ENTITY_ID,
-  FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ENTITY_ID,
-  THIRD_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import {
-  METABASE_INSTANCE_URL,
-  createQuestion,
-  popover,
-  tableAllFieldsHiddenImage,
-  tableHeaderClick,
-  tableInteractive,
-} from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { modal, popover } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
-import {
-  mountInteractiveQuestion,
-  mountSdkContent,
-  mountSdkContentAndAssertNoKnownErrors,
-} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button, Modal } from "metabase/ui";
-const { H } = cy;
-
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
-type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
 
 describe("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    createQuestion({
-      name: "47563",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-        breakout: [["field", ORDERS.PRODUCT_ID, null]],
-        limit: 2,
+    H.createNativeQuestion(
+      {
+        name: "SQL Orders",
+        native: { query: "select * from ORDERS limit 5" },
       },
-    }).then(({ body: question }) => {
-      cy.wrap(question.id).as("questionId");
-      cy.wrap(question.entity_id).as("questionEntityId");
-    });
-
+      {
+        wrapId: true,
+        idAlias: "sqlQuestionId",
+      },
+    );
     cy.signOut();
 
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("should show question content", () => {
-    mountInteractiveQuestion();
+  it("should be able to drill SQL question (EMB-273)", () => {
+    cy.get<number>("@sqlQuestionId").then((sqlQuestionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={sqlQuestionId} withParameters />,
+      );
+    });
 
     getSdkRoot().within(() => {
-      cy.findByText("Product ID").should("be.visible");
-      cy.findByText("Max of Quantity").should("be.visible");
-    });
-  });
+      cy.findByText("SQL Orders").should("be.visible");
+      H.assertTableRowsCount(5);
 
-  it("should show a watermark in development mode", () => {
-    cy.intercept("/api/session/properties", (req) => {
-      req.continue((res) => {
-        res.body["token-features"]["development-mode"] = true;
-      });
-    });
-
-    mountInteractiveQuestion();
-
-    getSdkRoot().within(() => {
-      cy.findByTestId("development-watermark").should("exist");
-    });
-  });
-
-  it("should not fail on aggregated question drill", () => {
-    mountInteractiveQuestion();
-
-    cy.wait("@cardQuery").then(({ response }) => {
-      expect(response?.statusCode).to.equal(202);
-    });
-
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("cell-data").last().click();
-
-    cy.on("uncaught:exception", (error) => {
-      expect(
-        error.message.includes(
-          "Error converting :aggregation reference: no aggregation at index 0",
-        ),
-      ).to.be.false;
-    });
-
-    popover().findByText("See these Orders").click();
-
-    cy.icon("warning").should("not.exist");
-  });
-
-  it("should be able to hide columns from a table", () => {
-    mountInteractiveQuestion();
-
-    cy.wait("@cardQuery").then(({ response }) => {
-      expect(response?.statusCode).to.equal(202);
-    });
-
-    const firstColumnName = "Product ID";
-    const lastColumnName = "Max of Quantity";
-    const columnNames = [firstColumnName, lastColumnName];
-
-    columnNames.forEach((columnName) => {
-      tableInteractive().findByText(columnName).should("be.visible");
-
-      tableHeaderClick(columnName);
-
-      popover()
-        .findByTestId("click-actions-sort-control-formatting-hide")
+      // Drill down to "See these Orders"
+      cy.get("[data-dataset-index=0] > [data-column-id='PRODUCT_ID']")
+        .should("have.text", "14")
         .click();
-
-      const lastColumnName = "Max of Quantity";
-
-      if (columnName !== lastColumnName) {
-        tableInteractive().findByText(columnName).should("not.exist");
-      } else {
-        tableInteractive().should("not.exist");
-
-        tableAllFieldsHiddenImage()
-          .should("be.visible")
-          .should("have.attr", "src")
-          .and("include", METABASE_INSTANCE_URL);
-      }
-    });
-  });
-
-  it("can save a question to a default collection", () => {
-    mountInteractiveQuestion();
-
-    saveInteractiveQuestionAsNewQuestion({
-      entityName: "Orders",
-      questionName: "Sample Orders 1",
-    });
-
-    cy.wait("@createCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("Sample Orders 1");
-      expect(response?.body.collection_id).to.equal(null);
-    });
-  });
-
-  it("can save a question to a selected collection", () => {
-    mountInteractiveQuestion();
-
-    saveInteractiveQuestionAsNewQuestion({
-      entityName: "Orders",
-      questionName: "Sample Orders 2",
-      collectionPickerPath: ["Our analytics", "First collection"],
-    });
-
-    cy.wait("@createCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("Sample Orders 2");
-      expect(response?.body.collection_id).to.equal(FIRST_COLLECTION_ID);
-    });
-  });
-
-  it("can save a question to a pre-defined collection", () => {
-    mountInteractiveQuestion({
-      targetCollection: Number(THIRD_COLLECTION_ID),
-    });
-
-    saveInteractiveQuestionAsNewQuestion({
-      entityName: "Orders",
-      questionName: "Sample Orders 3",
-    });
-
-    cy.wait("@createCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("Sample Orders 3");
-      expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
-    });
-  });
-
-  it("can save a question to their personal collection", () => {
-    cy.intercept("/api/user/current").as("getUser");
-
-    mountInteractiveQuestion({
-      targetCollection: "personal",
-    });
-
-    cy.wait("@getUser").then(({ response: userResponse }) => {
-      saveInteractiveQuestionAsNewQuestion({
-        entityName: "Orders",
-        questionName: "Sample Orders 3",
+      H.popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+        cy.button(">").click();
       });
-      const userCollection = userResponse?.body.personal_collection_id;
-      cy.wait("@createCard").then(({ response }) => {
-        expect(response?.statusCode).to.equal(200);
-        expect(response?.body.name).to.equal("Sample Orders 3");
-        expect(response?.body.collection_id).to.equal(userCollection);
-      });
+      H.assertTableRowsCount(4);
     });
   });
 
-  it("can add a filter via the FilterPicker component", () => {
-    cy.intercept("GET", "/api/card/*").as("getCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  it("should be able to edit a native question with the QueryEditor", () => {
+    cy.intercept("GET", "/api/database").as("schema");
 
-    const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
-      <Box p="lg">
-        <InteractiveQuestion questionId={questionId}>
-          <Box>
-            <InteractiveQuestion.FilterDropdown />
-            <InteractiveQuestion.QuestionVisualization />
-          </Box>
-        </InteractiveQuestion>
-      </Box>
+    cy.get("@sqlQuestionId").then((sqlQuestionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={sqlQuestionId} withParameters />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("SQL Orders").should("be.visible");
+      H.assertTableRowsCount(5);
+
+      cy.findByTestId("notebook-button").click();
+      cy.findByTestId("native-query-editor").should("be.visible");
+      cy.wait("@schema");
+
+      H.NativeEditor.value().should("equal", "select * from ORDERS limit 5");
+      cy.findByRole("textbox").should("be.visible").click();
+
+      H.NativeEditor.type("{movetoend}{backspace}10");
+
+      H.NativeEditor.clickOnRun();
+
+      cy.button("Visualize").should("be.visible").click();
+
+      H.assertTableRowsCount(10);
+    });
+  });
+
+  it("should be able to create a native question with the QueryEditor", () => {
+    cy.intercept("GET", "/api/database?can-query=true").as("schema");
+
+    mountSdkContent(
+      <InteractiveQuestion questionId="new-native" withParameters />,
     );
 
-    cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<TestSuiteComponent questionId={questionId} />);
-    });
-
-    cy.wait("@getCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-    });
-
-    getSdkRoot().findByText("Filter").click();
-
-    popover().within(() => {
-      cy.findByText("User ID").click();
-      cy.findByPlaceholderText("Enter an ID").type("12");
-      cy.findByText("Add filter").click();
-
-      cy.findByText("User ID is 12").should("be.visible");
-      cy.findByText("Add another filter").should("be.visible");
-    });
-  });
-
-  it("can create questions via the SaveQuestionForm component", () => {
-    const TestComponent = ({
-      questionId,
-      onBeforeSave,
-      onSave,
-    }: InteractiveQuestionProps) => {
-      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
-
-      const handleSave = (
-        question: MetabaseQuestion | undefined,
-        context: { isNewQuestion: boolean },
-      ) => {
-        if (context.isNewQuestion) {
-          onSave(question?.name ?? "");
-        }
-
-        close();
-      };
-
-      return (
-        <InteractiveQuestion
-          questionId={questionId}
-          isSaveEnabled
-          onBeforeSave={onBeforeSave}
-          onSave={handleSave}
-        >
-          <Box p="lg">
-            <Button onClick={toggle}>Save</Button>
-          </Box>
-
-          {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
-              <InteractiveQuestion.SaveQuestionForm onCancel={close} />
-            </Modal>
-          )}
-
-          {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
-        </InteractiveQuestion>
-      );
-    };
-
-    const onBeforeSaveSpy = cy.spy().as("onBeforeSaveSpy");
-    const onSaveSpy = cy.spy().as("onSaveSpy");
-
-    cy.get("@questionId").then((questionId) => {
-      mountSdkContent(
-        <TestComponent
-          questionId={questionId}
-          onBeforeSave={onBeforeSaveSpy}
-          onSave={onSaveSpy}
-        />,
-      );
-    });
-
-    saveInteractiveQuestionAsNewQuestion({
-      entityName: "Orders",
-      questionName: "Sample Orders 4",
-    });
-
-    cy.wait("@createCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("Sample Orders 4");
-    });
-
-    cy.get("@onBeforeSaveSpy").should("have.been.calledOnce");
-    cy.get("@onSaveSpy").should("have.been.calledWith", "Sample Orders 4");
-  });
-
-  it("should not crash when clicking on Summarize (metabase#50398)", () => {
-    mountInteractiveQuestion();
-
-    cy.wait("@cardQuery").then(({ response }) => {
-      expect(response?.statusCode).to.equal(202);
-    });
-
     getSdkRoot().within(() => {
-      // Open the default summarization view in the sdk
-      cy.findByText("1 summary").click();
-    });
+      cy.findByTestId("native-query-editor")
+        .should("be.visible")
+        .find(".cm-placeholder")
+        .should("be.visible");
 
-    popover().findByText("Add another summary").click();
+      cy.wait("@schema");
 
-    // Expect the default summarization view to be there.
-    cy.findByTestId("aggregation-picker").should("be.visible");
+      // Wait for the Sample database to auto-select
+      cy.findByText("Sample Database").should("be.visible");
 
-    cy.on("uncaught:exception", (error) => {
-      expect(error.message.includes("Stage 1 does not exist")).to.be.false;
-    });
-  });
+      H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
-  it("does not contain known console errors (metabase#48497)", () => {
-    cy.get<number>("@questionId").then((questionId) => {
-      mountSdkContentAndAssertNoKnownErrors(
-        <InteractiveQuestion questionId={questionId} />,
-      );
+      H.NativeEditor.clickOnRun();
+
+      cy.button("Visualize").should("be.visible").click();
+
+      H.assertTableRowsCount(10);
     });
   });
 
-  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
-    const successTestCases = [
-      {
-        name: "correct entity ID",
-        questionIdAlias: "@questionEntityId",
-      },
-      {
-        name: "correct number ID",
-        questionIdAlias: "@questionId",
-      },
-    ];
-
-    const failureTestCases = [
-      {
-        name: "wrong entity ID",
-        questionId: "VFCGVYPVtLzCtt4teeoW4",
-      },
-      {
-        name: "one too many entity ID character",
-        questionId: "VFCGVYPVtLzCtt4teeoW49",
-      },
-      {
-        name: "wrong number ID",
-        questionId: 9999,
-      },
-    ];
-
-    successTestCases.forEach(({ name, questionIdAlias }) => {
-      it(`should load question content for ${name}`, () => {
-        cy.get(questionIdAlias).then((questionId) => {
-          mountInteractiveQuestion({ questionId });
-        });
-
-        getSdkRoot().within(() => {
-          cy.findByText("Product ID").should("be.visible");
-          cy.findByText("Max of Quantity").should("be.visible");
-        });
-      });
+  describe("alerts button", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      cy.signOut();
     });
 
-    failureTestCases.forEach(({ name, questionId }) => {
-      it(`should show an error message for ${name}`, () => {
-        mountInteractiveQuestion(
-          { questionId },
-          { shouldAssertCardQuery: false },
+    it("should be able to create, edit, and delete alerts", () => {
+      cy.get<number>("@sqlQuestionId").then((sqlQuestionId) => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={sqlQuestionId} withAlerts />,
         );
-
-        getSdkRoot().within(() => {
-          const expectedErrorMessage = `Question ${questionId} not found. Make sure you pass the correct ID.`;
-          cy.findByRole("alert").should("have.text", expectedErrorMessage);
-          cy.findByText("Product ID").should("not.exist");
-          cy.findByText("Max of Quantity").should("not.exist");
-        });
       });
-    });
-  });
 
-  it("should select sensible display for new questions (EMB-308)", () => {
-    mountSdkContent(<InteractiveQuestion questionId="new" />);
-    cy.log("Select data");
-    H.popover().findByRole("link", { name: "Orders" }).click();
+      cy.log("alerts button is visible and clickable");
+      getSdkRoot().button("Alerts").should("be.visible").click();
 
-    cy.log("Select summarization");
-    H.getNotebookStep("summarize")
-      .findByText("Pick a function or metric")
-      .click();
-    H.popover().findByRole("option", { name: "Count of rows" }).click();
-
-    cy.log("Select grouping");
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover().findByRole("heading", { name: "Created At" }).click();
-
-    cy.log("Set limit");
-    const LIMIT = 2;
-    cy.button("Row limit").click();
-    cy.findByPlaceholderText("Enter a limit")
-      .type(LIMIT.toString())
-      .realPress("Tab");
-
-    cy.log("Visualize");
-    H.visualize();
-    H.cartesianChartCircle().should("have.length", LIMIT);
-  });
-
-  it("can change target collection to a different entity id without crashing (metabase#57438)", () => {
-    const TestComponent = () => {
-      const [targetCollection, setTargetCollection] = useState<string | null>(
-        FIRST_COLLECTION_ENTITY_ID!,
-      );
-
-      return (
-        <div>
-          <div>id = {targetCollection}</div>
-
-          <InteractiveQuestion
-            questionId="new"
-            targetCollection={targetCollection}
-            onSave={() => {}}
-            isSaveEnabled
-          />
-
-          <div
-            onClick={() => setTargetCollection(SECOND_COLLECTION_ENTITY_ID!)}
-          >
-            use second collection
-          </div>
-        </div>
-      );
-    };
-
-    mountSdkContent(<TestComponent />);
-
-    getSdkRoot().within(() => {
-      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
-
-      cy.log("click on the button to switch target collection");
-      cy.findByText("use second collection").click();
-      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
-    });
-
-    cy.log("close any existing open popovers to reduce flakes");
-    cy.get("body").type("{esc}");
-
-    getSdkRoot().within(() => {
-      cy.log("open the data picker");
-      cy.findByText("Pick your starting data").click();
-
-      cy.log("ensure that the interactive question still works");
-      H.popover().findByRole("link", { name: "Orders" }).click();
-      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
-    });
-  });
-
-  it("should not show any sdk error when showing a question in strict mode", () => {
-    cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
-        strictMode: true,
+      cy.log("alerts modal is open");
+      modal().within(() => {
+        cy.findByRole("heading", { name: "New alert" }).should("be.visible");
+        cy.button("Done").click();
       });
+      modal().should("not.exist");
+
+      cy.log("alerts list modal");
+      getSdkRoot().button("Alerts").should("be.visible").click();
+      modal().within(() => {
+        cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
+        cy.findByText("Alert when this has results").should("be.visible");
+        cy.findByText("admin@metabase.test").should("be.visible");
+        cy.findByText("Check daily at 8:00 AM").should("be.visible").click();
+
+        cy.findByRole("heading", { name: "Edit alert" }).should("be.visible");
+        // The second input is a hidden input, so we need to ignore it.
+        cy.findAllByDisplayValue("daily").first().click();
+      });
+
+      popover().findByRole("option", { name: "weekly" }).click();
+      modal().within(() => {
+        cy.button("Save changes").click();
+        cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
+        cy.findByText("Check on Monday at 8:00 AM").should("be.visible");
+      });
+
+      cy.log("delete the alert");
+      modal().within(() => {
+        cy.findByText("Check on Monday at 8:00 AM").realHover();
+        cy.button("Delete this alert").click();
+
+        cy.findByRole("heading", { name: "Delete this alert?" }).should(
+          "be.visible",
+        );
+        cy.button("Delete it").click();
+      });
+
+      cy.log("the alert is deleted");
+      getSdkRoot().button("Alerts").should("be.visible").click();
+      modal().findByRole("heading", { name: "New alert" }).should("be.visible");
+    });
+  });
+
+  describe("NavigationBackButton component", () => {
+    it("should show NavigationBackButton after drilling and allow navigating back", () => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={ORDERS_QUESTION_ID}>
+          <InteractiveQuestion.NavigationBackButton />
+          <InteractiveQuestion.Title />
+          <InteractiveQuestion.QuestionVisualization />
+        </InteractiveQuestion>,
+      );
 
       getSdkRoot().within(() => {
-        H.assertElementNeverExists({
-          shouldNotExistSelector: "[data-testid='sdk-error-container']",
-          successSelector: "[data-testid='table-header']",
-          rejectionMessage:
-            "sdk errors should not show up when rendering an interactive question in strict mode",
-          pollInterval: 20,
-          timeout: 15000,
-        });
+        cy.findByText("Orders").should("be.visible");
 
-        cy.log("should show the question's visualization");
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
+        cy.log(
+          "NavigationBackButton should not be visible initially (no navigation history)",
+        );
+        cy.findByText(/Back to/).should("not.exist");
+
+        cy.log("Perform a drill on the first row's Product ID");
+        H.tableInteractiveBody().findAllByText("14").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        cy.log("NavigationBackButton should now be visible");
+        cy.findByText("Back to Orders").should("be.visible");
+
+        cy.log("Click the back button to return to the original question");
+        cy.findByText("Back to Orders").click();
+
+        cy.log("Should be back at the original question");
+        cy.findByText("Orders").should("be.visible");
+
+        cy.log("NavigationBackButton should be hidden again");
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should show NavigationBackButton after drilling even with title=false (metabase#68556)", () => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={ORDERS_QUESTION_ID} title={false} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.log("Title should not be visible");
+        cy.findByText("Orders").should("not.exist");
+
+        cy.log("NavigationBackButton should not be visible initially");
+        cy.findByText(/Back to/).should("not.exist");
+
+        cy.log("Perform a drill on the first row's Product ID");
+        H.tableInteractiveBody().findAllByText("14").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        cy.log("NavigationBackButton should be visible after drill");
+        cy.findByText("Back to Orders").should("be.visible");
+
+        cy.log("Click back");
+        cy.findByText("Back to Orders").click();
+
+        cy.log("NavigationBackButton should be hidden again");
+        cy.findByText(/Back to/).should("not.exist");
       });
     });
   });

@@ -3,24 +3,42 @@
   align-items: center;
   padding: 4px 6px;
   border-radius: 99px;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   transition: background 300ms linear;
+  cursor: pointer;
 
   &:hover {
-    background-color: color-mix(in srgb, var(--mb-color-bg-medium), black 5%);
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-background-tertiary),
+      black 5%
+    );
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-focus);
+    outline-offset: 1px;
   }
 }
 
 .ToggleIcon {
   display: flex;
   padding: 4px 8px;
-  cursor: pointer;
   background-color: transparent;
-  color: inherit;
   border-radius: 99px;
+  outline: none;
+  cursor: pointer;
 
   &.active {
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+  }
+}
+
+.InnerLabel {
+  color: var(--mb-color-text-secondary);
+  transition: 300ms;
+
+  &.activeLabel {
+    color: var(--mb-color-text-primary-inverse);
   }
 }

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 
@@ -60,12 +60,14 @@ function setup({
 
   renderWithProviders(
     <NumberFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}
       filter={filter}
       isNew={!filter}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

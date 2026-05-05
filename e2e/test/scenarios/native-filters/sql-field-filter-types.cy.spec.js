@@ -17,7 +17,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
   function openDateFilterPicker(isFilterRequired) {
     const selector = isFilterRequired
       ? cy.findByText("Select a default value…")
-      : cy.get("fieldset");
+      : H.filterWidget();
 
     return selector.click();
   }
@@ -243,9 +243,11 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
       ([subType, { searchTerm, value, representativeResult }], index) => {
         FieldFilter.setWidgetType(subType);
 
-        searchTerm
-          ? FieldFilter.pickDefaultValue(searchTerm, value, "Update filter")
-          : FieldFilter.addDefaultStringFilter(value);
+        if (searchTerm) {
+          FieldFilter.pickDefaultValue(searchTerm, value, "Update filter");
+        } else {
+          FieldFilter.addDefaultStringFilter(value);
+        }
 
         SQLFilter.runQuery();
 
@@ -264,6 +266,10 @@ describe(
   () => {
     const dialect = "postgres";
     const tableName = "many_data_types";
+
+    function assertScalarValue(value) {
+      cy.findByTestId("scalar-value").findByText(value).should("be.visible");
+    }
 
     beforeEach(() => {
       H.restore(`${dialect}-writable`);
@@ -285,7 +291,6 @@ describe(
         field: "Boolean",
       });
       H.saveQuestion("SQL", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -315,6 +320,35 @@ describe(
   },
 );
 
-function assertScalarValue(value) {
-  cy.findByTestId("scalar-value").findByText(value).should("be.visible");
-}
+describe("scenarios > filters > sql filters > variable > Boolean", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to define boolean variables in the query", () => {
+    cy.log("new query");
+    H.startNewNativeQuestion();
+    SQLFilter.enterParameterizedQuery(
+      "select id from products [[where category = (case when {{boolean}} then 'Gadget' else 'Widget' end)]]",
+    );
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Boolean");
+
+    cy.log("assert that it works for an ad-hoc query");
+    H.filterWidget().click();
+    H.popover().button("Add filter").click();
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(53);
+
+    cy.log("assert that it works for a saved query");
+    H.saveQuestion("SQL");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByLabelText("False").click();
+      cy.button("Update filter").click();
+    });
+    H.runNativeQuery({ wait: false });
+    H.assertQueryBuilderRowCount(54);
+  });
+});

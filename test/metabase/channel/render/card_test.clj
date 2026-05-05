@@ -6,10 +6,9 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
-   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -40,9 +39,9 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-one
+        (is (some? (lib.util.match/match-lite
                      (render-pulse-card card)
-                     [:img _])))))))
+                     [:img _] true)))))))
 
 (deftest ^:parallel render-error-test
   (testing "gives us a proper error if we have erroring card"
@@ -108,7 +107,7 @@
 
 (deftest ^:parallel detect-pulse-chart-type-test-5
   (testing "Progress charts are correctly identified"
-    (is (= :progress
+    (is (= :javascript_visualization
            (channel.render/detect-pulse-chart-type {:display :progress}
                                                    {}
                                                    {:cols [{:base_type :type/Number}]
@@ -137,9 +136,7 @@
                                                                          {:base_type :type/Number}]
                                                                   :rows [["A" 2]
                                                                          ["B" 3]]}))
-      :row
       :funnel
-      :progress
       :table)))
 
 (deftest ^:parallel detect-pulse-chart-type-test-8
@@ -222,73 +219,68 @@
 (deftest ^:parallel table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
     (mt/dataset test-data
-      (let [card-eid (u/generate-nano-id)]
-        (mt/with-temp [:model/Card {base-card-id :id
-                                    base-query :dataset_query} {:dataset_query
-                                                                {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :orders)
-                                                                            :expressions  {"Tax Rate" [:/
-                                                                                                       [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                       [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                            :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                           [:expression "Tax Rate"]]
-                                                                            :limit        10}}}
-                       :model/Card {model-card-id  :id
-                                    model-query    :dataset_query
-                                    model-metadata :result_metadata
-                                    :as            model-card} {:type            :model
-                                                                :entity_id       card-eid
-                                                                :dataset_query   {:type     :query
-                                                                                  :database (mt/id)
-                                                                                  :query    {:source-table (format "card__%s" base-card-id)}}
-                                                                :result_metadata [{:name         "TAX"
-                                                                                   :display_name "Tax"
-                                                                                   :ident        (lib/model-ident (mt/ident :orders :tax)
-                                                                                                                  card-eid)
-                                                                                   :base_type    :type/Float}
-                                                                                  {:name         "TOTAL"
-                                                                                   :display_name "Total"
-                                                                                   :ident        (lib/model-ident (mt/ident :orders :total)
-                                                                                                                  card-eid)
-                                                                                   :base_type    :type/Float}
-                                                                                  {:name          "Tax Rate"
-                                                                                   :display_name  "Tax Rate"
-                                                                                   :ident         (-> base-query
-                                                                                                      (get-in [:query :expression-idents "Tax Rate"])
-                                                                                                      (lib/model-ident card-eid))
-                                                                                   :base_type     :type/Float
-                                                                                   :semantic_type :type/Percentage
-                                                                                   :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
-                       :model/Card {question-query :dataset_query
-                                    :as            question-card} {:dataset_query {:type     :query
-                                                                                   :database (mt/id)
-                                                                                   :query    {:source-table (format "card__%s" model-card-id)}}}]
-        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
-        ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
-        ;; the significant digits in the formatter, we'll need to modify this test as well.
-          (letfn [(create-comparison-results [query-results card]
-                    (let [expected      (mapv (fn [row]
-                                                (format "%.2f%%" (* 100 (peek row))))
-                                              (get-in query-results [:data :rows]))
-                          rendered-card (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card nil query-results)
-                          doc           (hiccup->hickory (:content rendered-card))
-                          rows          (hik.s/select (hik.s/tag :tr) doc)
-                          tax-rate-col  2]
-                      {:expected expected
-                       :actual   (mapcat (fn [row]
-                                           (:content (nth row tax-rate-col)))
-                                         (map :content (rest rows)))}))]
-            (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
-              (let [query-results (qp/process-query
-                                   (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
-                    {:keys [expected actual]} (create-comparison-results query-results model-card)]
-                (is (= expected actual))))
-            (testing "A question based on a model will use the underlying model's metadata"
-              (let [query-results (qp/process-query question-query)
-                    {:keys [expected actual]} (create-comparison-results query-results question-card)]
-                (is (= expected actual))))))))))
+      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query
+                                                     {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :orders)
+                                                                 :expressions  {"Tax Rate" [:/
+                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                            [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                [:expression "Tax Rate"]]
+                                                                 :limit        10}}}
+                     :model/Card {model-card-id  :id
+                                  model-query    :dataset_query
+                                  model-metadata :result_metadata
+                                  :as            model-card} {:type            :model
+                                                              :dataset_query   {:type     :query
+                                                                                :database (mt/id)
+                                                                                :query    {:source-table (format "card__%s" base-card-id)}}
+                                                              :result_metadata [{:name         "TAX"
+                                                                                 :display_name "Tax"
+                                                                                 :base_type    :type/Float}
+                                                                                {:name         "TOTAL"
+                                                                                 :display_name "Total"
+                                                                                 :base_type    :type/Float}
+                                                                                {:name          "Tax Rate"
+                                                                                 :display_name  "Tax Rate"
+                                                                                 :base_type     :type/Float
+                                                                                 :semantic_type :type/Percentage
+                                                                                 :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                     :model/Card {question-query :dataset_query
+                                  :as            question-card} {:dataset_query {:type     :query
+                                                                                 :database (mt/id)
+                                                                                 :query    {:source-table (format "card__%s" model-card-id)}}}]
+        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an integer
+        ;; value. IDK if this is what we want long term, but this captures the current logic. If we do extend the
+        ;; significant digits in the formatter, we'll need to modify this test as well.
+        (letfn [(create-comparison-results [query-results card]
+                  (is (=? [{:name "TAX"}
+                           {:name "TOTAL"}
+                           {:name "Tax Rate", :semantic_type :type/Percentage}]
+                          (map #(select-keys % [:name :semantic_type])
+                               (get-in query-results [:data :cols]))))
+                  (let [expected      (mapv (fn [row]
+                                              (format "%.2f%%" (* 100 (peek row))))
+                                            (get-in query-results [:data :rows]))
+                        rendered-card (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card nil query-results)
+                        doc           (hiccup->hickory (:content rendered-card))
+                        rows          (hik.s/select (hik.s/tag :tr) doc)
+                        tax-rate-col  2]
+                    {:expected expected
+                     :actual   (mapcat (fn [row]
+                                         (:content (nth row tax-rate-col)))
+                                       (map :content (rest rows)))}))]
+          (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
+            (let [query-results (qp/process-query
+                                 (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
+                  {:keys [expected actual]} (create-comparison-results query-results model-card)]
+              (is (= expected actual))))
+          (testing "A question based on a model will use the underlying model's metadata"
+            (let [query-results (qp/process-query question-query)
+                  {:keys [expected actual]} (create-comparison-results query-results question-card)]
+              (is (= expected actual)))))))))
 
 (deftest title-should-be-an-a-tag-test
   (testing "the title of the card should be an <a> tag so you can click on title using old outlook clients (#12901)"
@@ -301,10 +293,25 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (some? (lib.util.match/match-one rendered-card-content
-                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+          (is (lib.util.match/match-lite rendered-card-content
+                [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
+                true)))))))
 
-(deftest visualizer-href-includes-scroll
+(deftest href-includes-scroll
+  (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+    (mt/with-temp [:model/Card           card {:name          "A Card"
+                                               :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Dashboard      dashboard {}
+                   :model/DashboardCard  dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
+                                                                                (channel.render/defaulted-timezone card)
+                                                                                card
+                                                                                dc1
+                                                                                (qp/process-query (:dataset_query card))
+                                                                                {:channel.render/include-title? true}))
+              expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href)))))))
   (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
@@ -318,4 +325,63 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _})))))))))
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest render-card-with-abbreviated-dates-test
+  (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"}}]
+      (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "select current_date as \"created_at\", 1 \"val\""}}
+                                       :display                :table
+                                       :visualization_settings {:column_settings {"[\"name\",\"created_at\"]" {:date_abbreviate true}}
+                                                                "table.pivot_column" "created_at"
+                                                                "table.cell_column" "val"}}]
+        (let [result (qp/process-query
+                      (assoc (:dataset_query card)
+                             :middleware {:process-viz-settings? true
+                                          :js-int-to-string?     false}))
+              ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                              card
+                                                              result
+                                                              400
+                                                              {:channel.render/include-title? true})]
+          (is (pos? (alength ba)) "PNG byte array should not be empty"))))))
+
+(deftest render-card-with-day-date-style-test
+  (testing "Static-viz should render without error when date formatting contains day (metabase#27105)"
+    (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "select current_date::date, 1"}}
+                                     :display                :table
+                                     :visualization_settings {:column_settings {"[\"name\",\"CAST(CURRENT_DATE AS DATE)\"]" {:date_style "dddd, MMMM D, YYYY"}}
+                                                              "table.pivot_column" "CAST(CURRENT_DATE AS DATE)"
+                                                              "table.cell_column" "1"}}]
+      (let [result (qp/process-query
+                    (assoc (:dataset_query card)
+                           :middleware {:process-viz-settings? true
+                                        :js-int-to-string?     false}))
+            ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                            card
+                                                            result
+                                                            400
+                                                            {:channel.render/include-title? true})]
+        (is (pos? (alength ba)) "PNG byte array should not be empty")))))
+
+(deftest render-card-with-unused-column-test
+  (testing "Static-viz render does not throw when there is an unused returned column (metabase#27427)"
+    (let [q (mt/mbql-query orders
+              {:aggregation [[:count] [:sum $total]]
+               :breakout    [!year.created_at]})]
+      (mt/with-temp [:model/Card card {:dataset_query          q
+                                       :display                :bar
+                                       :visualization_settings {"graph.dimensions" ["CREATED_AT"]
+                                                                "graph.metrics"    ["count"]}}]
+        (let [result (qp/process-query q)]
+          ;; The original bug (metabase#27427) caused a divide-by-zero crash when extra columns
+          ;; were returned but not referenced in graph.metrics. We verify the render completes
+          ;; without throwing — the JS static-viz may produce an error card in test environments
+          ;; where the full rendering pipeline isn't available.
+          (is (some? (channel.render/render-pulse-card-for-display
+                      (channel.render/defaulted-timezone card) card result
+                      {:channel.render/include-title? true}))))))))

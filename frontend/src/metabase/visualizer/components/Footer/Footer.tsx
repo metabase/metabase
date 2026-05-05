@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
 import {
   getDatasets,
@@ -14,11 +13,13 @@ import type { VisualizationDisplay } from "metabase-types/api";
 
 import { VisualizationPicker } from "../VisualizationPicker";
 import { useVisualizerUi } from "../VisualizerUiContext";
+import { trackVisualizerSettingsClicked } from "../analytics";
 
 import S from "./Footer.module.css";
 
 export function Footer({ className }: { className?: string }) {
-  const { setVizSettingsSidebarOpen } = useVisualizerUi();
+  const { setVizSettingsSidebarOpen, isVizSettingsSidebarOpen } =
+    useVisualizerUi();
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
   const datasets = useSelector(getDatasets);
@@ -41,11 +42,9 @@ export function Footer({ className }: { className?: string }) {
         <Button
           ml="auto"
           data-testid="visualizer-settings-button"
+          aria-pressed={isVizSettingsSidebarOpen}
           onClick={() => {
-            trackSimpleEvent({
-              event: "visualizer_settings_clicked",
-              triggered_from: "visualizer-modal",
-            });
+            trackVisualizerSettingsClicked();
 
             setVizSettingsSidebarOpen((isOpen) => !isOpen);
           }}

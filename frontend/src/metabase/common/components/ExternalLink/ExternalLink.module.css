@@ -1,0 +1,23 @@
+.ButtonLink {
+  display: inline-flex;
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-primary-inverse);
+  align-items: center;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+
+  &:hover {
+    opacity: 0.88;
+    transition: all 200ms linear;
+  }
+}
+
+.LinkRoot {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.LinkRoot:focus-visible {
+  outline: 2px solid var(--mb-color-brand);
+}

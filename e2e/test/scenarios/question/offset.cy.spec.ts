@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { uuid } from "metabase/lib/uuid";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import { uuid } from "metabase/utils/uuid";
 import type {
   Aggregation,
   Breakout,
@@ -86,7 +87,7 @@ describe("scenarios > question > offset", () => {
     });
 
     // Skipped because we want to disable offset() in custom columns for now
-    it.skip("suggests and allows using offset()", () => {
+    it("suggests and allows using offset()", { tags: "@skip" }, () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
@@ -146,61 +147,65 @@ describe("scenarios > question > offset", () => {
     });
 
     // Skipped because we want to disable offset() in custom columns for now
-    it.skip("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
-      const offsettedColumnName = "xyz";
-      const expression = `Offset([${offsettedColumnName}], -1)`;
-      const prefixLength = "Offset([x".length;
-      const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        expressions: {
-          [offsettedColumnName]: [
-            "offset",
-            createOffsetOptions(offsettedColumnName),
-            ORDERS_TOTAL_FIELD_REF,
-            -1,
-          ],
-        },
-        "order-by": [["asc", ORDERS_ID_FIELD_REF]],
-        limit: 5,
-      };
+    it(
+      "does not allow to use offset-based column in other clauses (metabase#42764)",
+      { tags: "@skip" },
+      () => {
+        const offsettedColumnName = "xyz";
+        const expression = `Offset([${offsettedColumnName}], -1)`;
+        const prefixLength = "Offset([x".length;
+        const prefix = expression.substring(0, prefixLength);
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [offsettedColumnName]: [
+              "offset",
+              createOffsetOptions(offsettedColumnName),
+              ORDERS_TOTAL_FIELD_REF,
+              -1,
+            ],
+          },
+          "order-by": [["asc", ORDERS_ID_FIELD_REF]],
+          limit: 5,
+        };
 
-      H.createQuestion({ query }, { visitQuestion: true });
+        H.createQuestion({ query }, { visitQuestion: true });
 
-      cy.log("custom column drills");
-      const rowIndex = 1;
-      const columnIndex = 9;
-      const columnsCount = 10;
-      const cellIndex = rowIndex * columnsCount + columnIndex;
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByRole("gridcell").eq(cellIndex).click();
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+        cy.log("custom column drills");
+        const rowIndex = 1;
+        const columnIndex = 9;
+        const columnsCount = 10;
+        const cellIndex = rowIndex * columnsCount + columnIndex;
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        cy.findAllByRole("gridcell").eq(cellIndex).click();
+        cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
-      H.openNotebook();
+        H.openNotebook();
 
-      cy.log("custom column expressions");
-      H.getNotebookStep("expression").icon("add").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      H.popover().button("Cancel").click();
+        cy.log("custom column expressions");
+        H.getNotebookStep("expression").icon("add").click();
+        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
+        H.popover().button("Cancel").click();
 
-      cy.log("custom filter expressions");
-      cy.icon("filter").click();
-      H.popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      H.popover().button("Cancel").click();
-      cy.realPress("Escape");
+        cy.log("custom filter expressions");
+        cy.icon("filter").click();
+        H.popover().findByText("Custom Expression").click();
+        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
+        H.popover().button("Cancel").click();
+        cy.realPress("Escape");
 
-      cy.log("custom aggregation expressions");
-      cy.icon("sum").click();
-      H.popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
-      H.popover().button("Cancel").click();
-      cy.realPress("Escape");
+        cy.log("custom aggregation expressions");
+        cy.icon("sum").click();
+        H.popover().findByText("Custom Expression").click();
+        verifyInvalidColumnName(offsettedColumnName, prefix, expression);
+        H.popover().button("Cancel").click();
+        cy.realPress("Escape");
 
-      cy.log("sort clause");
-      H.getNotebookStep("sort").icon("add").click();
-      H.popover().should("not.contain", offsettedColumnName);
-    });
+        cy.log("sort clause");
+        H.getNotebookStep("sort").icon("add").click();
+        H.popover().should("not.contain", offsettedColumnName);
+      },
+    );
   });
 
   describe("filters", () => {
@@ -272,40 +277,31 @@ describe("scenarios > question > offset", () => {
       });
     });
 
-    it("does not work without a breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-      };
+    it(
+      "does not preview sql without a breakout (metabase#47819)",
+      { tags: "@skip" },
+      () => {
+        cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
 
-      H.createQuestion({ query }, { visitQuestion: true });
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
+          limit: 5,
+        };
 
-      verifyQuestionError(
-        "Window function requires either breakouts or order by in the query",
-      );
-    });
+        H.createQuestion({ query }, { visitQuestion: true });
 
-    it.skip("does not preview sql without a breakout (metabase#47819)", () => {
-      cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
+        H.openNotebook();
 
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-        limit: 5,
-      };
+        cy.findByLabelText("View SQL").click();
+        cy.wait("@sqlPreview");
 
-      H.createQuestion({ query }, { visitQuestion: true });
-
-      H.openNotebook();
-
-      cy.findByLabelText("View SQL").click();
-      cy.wait("@sqlPreview");
-
-      cy.findByTestId("native-query-preview-sidebar").should(
-        "not.contain",
-        "Error generating the query.",
-      );
-    });
+        cy.findByTestId("native-query-preview-sidebar").should(
+          "not.contain",
+          "Error generating the query.",
+        );
+      },
+    );
 
     it("works with a single breakout", () => {
       const query: StructuredQuery = {
@@ -319,8 +315,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2022", ""],
-        ["May 2022", "52.76"],
+        ["April 2025", ""],
+        ["May 2025", "52.76"],
       ]);
 
       H.openNotebook();
@@ -340,8 +336,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2026", ""],
-        ["March 2026", "30,759.47"],
+        ["April 2029", ""],
+        ["March 2029", "30,759.47"],
       ]);
     });
 
@@ -359,15 +355,15 @@ describe("scenarios > question > offset", () => {
       verifyNoQuestionError();
       verifyTableContent([
         [
-          "February 2026",
+          "February 2029",
           "52,249.59",
-          "February 2025",
+          "February 2028",
           "51,634.16",
-          "April 2025",
+          "April 2028",
           "51,347.1",
-          "September 2025",
+          "September 2028",
           "50,597.16",
-          "January 2026",
+          "January 2029",
           "48,260.76",
         ],
       ]);
@@ -384,9 +380,9 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2022", "", "", "", ""],
-        ["May 2022", "", "52.76", "", ""],
-        ["June 2022", "339.14", "203.57", "493.51", "229.5"],
+        ["April 2025", "", "", "", ""],
+        ["May 2025", "", "52.76", "", ""],
+        ["June 2025", "339.14", "203.57", "493.51", "229.5"],
       ]);
     });
 
@@ -402,15 +398,15 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["May 2022", "Doohickey", "339.14", ""],
-        ["June 2022", "Doohickey", "482.56", "339.14"],
-        ["July 2022", "Doohickey", "1,160.83", "482.56"],
-        ["August 2022", "Doohickey", "751.29", "1,160.83"],
-        ["September 2022", "Doohickey", "802.49", "751.29"],
-        ["October 2022", "Doohickey", "1,553.37", "802.49"],
-        ["November 2022", "Doohickey", "1,728.4", "1,553.37"],
-        ["December 2022", "Doohickey", "2,213.47", "1,728.4"],
-        ["January 2023", "Doohickey", "1,939.99", "2,213.47"],
+        ["May 2025", "Doohickey", "339.14", ""],
+        ["June 2025", "Doohickey", "482.56", "339.14"],
+        ["July 2025", "Doohickey", "1,160.83", "482.56"],
+        ["August 2025", "Doohickey", "751.29", "1,160.83"],
+        ["September 2025", "Doohickey", "802.49", "751.29"],
+        ["October 2025", "Doohickey", "1,553.37", "802.49"],
+        ["November 2025", "Doohickey", "1,728.4", "1,553.37"],
+        ["December 2025", "Doohickey", "2,213.47", "1,728.4"],
+        ["January 2026", "Doohickey", "1,939.99", "2,213.47"],
       ]);
     });
 
@@ -418,8 +414,8 @@ describe("scenarios > question > offset", () => {
       const breakoutName = "Created At";
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -462,8 +458,8 @@ describe("scenarios > question > offset", () => {
       ];
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -548,7 +544,7 @@ describe("scenarios > question > offset", () => {
         table: "Product",
         field: "Category",
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByLabelText("Custom column").last().click();
 
       H.enterCustomColumnDetails({
@@ -557,7 +553,7 @@ describe("scenarios > question > offset", () => {
       });
       H.popover().findByText("Done").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().icon("filter").click();
       H.popover().findByText("Custom Expression").click();
 
@@ -566,7 +562,7 @@ describe("scenarios > question > offset", () => {
       });
       H.popover().findByText("Done").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().icon("sort").click();
       H.popover().findByText(OFFSET_SUM_TOTAL_AGGREGATION_NAME).click();
       H.getNotebookStep("sort", { stage: 1, index: 0 })
@@ -577,8 +573,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["April 2025", "Gadget", "15,713", "31,426.01"],
-        ["September 2025", "Gadget", "15,017.31", "30,034.62"],
+        ["April 2028", "Gadget", "15,713", "31,426.01"],
+        ["September 2028", "Gadget", "15,017.31", "30,034.62"],
       ]);
     });
   });
@@ -625,14 +621,14 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["Doohickey", "2022", "9,031.56", ""],
-        ["Gadget", "2022", "10,672.63", ""],
-        ["Gizmo", "2022", "9,929.32", ""],
-        ["Widget", "2022", "12,523.37", ""],
-        ["Doohickey", "2023", "43,069.14", "9,031.56"],
-        ["Gadget", "2023", "54,960.62", "10,672.63"],
-        ["Gizmo", "2023", "48,130.71", "9,929.32"],
-        ["Widget", "2023", "59,095.56", "12,523.37"],
+        ["Doohickey", "2025", "9,031.56", ""],
+        ["Gadget", "2025", "10,672.63", ""],
+        ["Gizmo", "2025", "9,929.32", ""],
+        ["Widget", "2025", "12,523.37", ""],
+        ["Doohickey", "2026", "43,069.14", "9,031.56"],
+        ["Gadget", "2026", "54,960.62", "10,672.63"],
+        ["Gizmo", "2026", "48,130.71", "9,929.32"],
+        ["Widget", "2026", "59,095.56", "12,523.37"],
       ]);
 
       H.openNotebook();
@@ -683,14 +679,14 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["Doohickey", "2022", "", "9,031.56"],
-        ["Gadget", "2022", "", "10,672.63"],
-        ["Gizmo", "2022", "", "9,929.32"],
-        ["Widget", "2022", "", "12,523.37"],
-        ["Doohickey", "2023", "9,031.56", "43,069.14"],
-        ["Gadget", "2023", "10,672.63", "54,960.62"],
-        ["Gizmo", "2023", "9,929.32", "48,130.71"],
-        ["Widget", "2023", "12,523.37", "59,095.56"],
+        ["Doohickey", "2025", "", "9,031.56"],
+        ["Gadget", "2025", "", "10,672.63"],
+        ["Gizmo", "2025", "", "9,929.32"],
+        ["Widget", "2025", "", "12,523.37"],
+        ["Doohickey", "2026", "9,031.56", "43,069.14"],
+        ["Gadget", "2026", "10,672.63", "54,960.62"],
+        ["Gizmo", "2026", "9,929.32", "48,130.71"],
+        ["Widget", "2026", "12,523.37", "59,095.56"],
       ]);
 
       H.openNotebook();
@@ -747,9 +743,9 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["2022", "5", "5", ""],
-        ["2023", "5", "5", "5"],
-        ["2024", "5", "5", "5"],
+        ["2025", "5", "5", ""],
+        ["2026", "5", "5", "5"],
+        ["2027", "5", "5", "5"],
       ]);
     });
   });
@@ -786,14 +782,14 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["Doohickey from products", "2022", "9,031.56", ""],
-          ["Gadget from products", "2022", "10,672.63", ""],
-          ["Gizmo from products", "2022", "9,929.32", ""],
-          ["Widget from products", "2022", "12,523.37", ""],
-          ["Doohickey from products", "2023", "43,069.14", "9,031.56"],
-          ["Gadget from products", "2023", "54,960.62", "10,672.63"],
-          ["Gizmo from products", "2023", "48,130.71", "9,929.32"],
-          ["Widget from products", "2023", "59,095.56", "12,523.37"],
+          ["Doohickey from products", "2025", "9,031.56", ""],
+          ["Gadget from products", "2025", "10,672.63", ""],
+          ["Gizmo from products", "2025", "9,929.32", ""],
+          ["Widget from products", "2025", "12,523.37", ""],
+          ["Doohickey from products", "2026", "43,069.14", "9,031.56"],
+          ["Gadget from products", "2026", "54,960.62", "10,672.63"],
+          ["Gizmo from products", "2026", "48,130.71", "9,929.32"],
+          ["Widget from products", "2026", "59,095.56", "12,523.37"],
         ]);
 
         H.openNotebook();
@@ -830,14 +826,14 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["Doohickey", "2022", "9,031.56", ""],
-          ["Gadget", "2022", "10,672.63", ""],
-          ["Gizmo", "2022", "9,929.32", ""],
-          ["Widget", "2022", "12,523.37", ""],
-          ["Doohickey", "2023", "43,069.14", "9,031.56"],
-          ["Gadget", "2023", "54,960.62", "10,672.63"],
-          ["Gizmo", "2023", "48,130.71", "9,929.32"],
-          ["Widget", "2023", "59,095.56", "12,523.37"],
+          ["Doohickey", "2025", "9,031.56", ""],
+          ["Gadget", "2025", "10,672.63", ""],
+          ["Gizmo", "2025", "9,929.32", ""],
+          ["Widget", "2025", "12,523.37", ""],
+          ["Doohickey", "2026", "43,069.14", "9,031.56"],
+          ["Gadget", "2026", "54,960.62", "10,672.63"],
+          ["Gizmo", "2026", "48,130.71", "9,929.32"],
+          ["Widget", "2026", "59,095.56", "12,523.37"],
         ]);
 
         H.openNotebook();
@@ -896,9 +892,9 @@ describe("scenarios > question > offset", () => {
         verifyNoQuestionError();
 
         verifyTableContent([
-          ["2", "1", "ab", "2022", "42,156.87", ""],
-          ["2", "1", "ab", "2023", "205,256.02", "42,156.87"],
-          ["2", "1", "ab", "2024", "510,045.03", "205,256.02"],
+          ["2", "1", "ab", "2025", "42,156.87", ""],
+          ["2", "1", "ab", "2026", "205,256.02", "42,156.87"],
+          ["2", "1", "ab", "2027", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -957,9 +953,9 @@ describe("scenarios > question > offset", () => {
         verifyNoQuestionError();
 
         verifyTableContent([
-          ["2022", "2", "1", "ab", "42,156.87", ""],
-          ["2023", "2", "1", "ab", "205,256.02", "42,156.87"],
-          ["2024", "2", "1", "ab", "510,045.03", "205,256.02"],
+          ["2025", "2", "1", "ab", "42,156.87", ""],
+          ["2026", "2", "1", "ab", "205,256.02", "42,156.87"],
+          ["2027", "2", "1", "ab", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -998,9 +994,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "Doohickey from products", "9,031.56", ""],
-          ["2022", "Gadget from products", "10,672.63", ""],
-          ["2022", "Gizmo from products", "9,929.32", ""],
+          ["2025", "Doohickey from products", "9,031.56", ""],
+          ["2025", "Gadget from products", "10,672.63", ""],
+          ["2025", "Gizmo from products", "9,929.32", ""],
         ]);
 
         H.openNotebook();
@@ -1036,9 +1032,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "Doohickey", "9,031.56", ""],
-          ["2022", "Gadget", "10,672.63", ""],
-          ["2022", "Gizmo", "9,929.32", ""],
+          ["2025", "Doohickey", "9,031.56", ""],
+          ["2025", "Gadget", "10,672.63", ""],
+          ["2025", "Gizmo", "9,929.32", ""],
         ]);
 
         H.openNotebook();
@@ -1075,9 +1071,9 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          ["2022", "2", "42,156.87", ""],
-          ["2023", "2", "205,256.02", "42,156.87"],
-          ["2024", "2", "510,045.03", "205,256.02"],
+          ["2025", "2", "42,156.87", ""],
+          ["2026", "2", "205,256.02", "42,156.87"],
+          ["2027", "2", "510,045.03", "205,256.02"],
         ]);
 
         H.openNotebook();
@@ -1121,16 +1117,16 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["5", "2022", "5", ""],
-        ["5", "2023", "5", "5"],
-        ["5", "2024", "5", "5"],
-        ["5", "2025", "5", "5"],
+        ["5", "2025", "5", ""],
         ["5", "2026", "5", "5"],
-        ["4.8", "2022", "4.8", ""],
-        ["4.8", "2023", "4.8", "4.8"],
-        ["4.8", "2024", "4.8", "4.8"],
-        ["4.8", "2025", "4.8", "4.8"],
+        ["5", "2027", "5", "5"],
+        ["5", "2028", "5", "5"],
+        ["5", "2029", "5", "5"],
+        ["4.8", "2025", "4.8", ""],
         ["4.8", "2026", "4.8", "4.8"],
+        ["4.8", "2027", "4.8", "4.8"],
+        ["4.8", "2028", "4.8", "4.8"],
+        ["4.8", "2029", "4.8", "4.8"],
       ]);
     });
 
@@ -1168,8 +1164,8 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["2026", "0", "Affiliate", "3,443.41", ""],
-        ["2026", "0", "Facebook", "4,014.21", ""],
+        ["2029", "0", "Affiliate", "3,443.41", ""],
+        ["2029", "0", "Facebook", "4,014.21", ""],
       ]);
     });
   });
@@ -1178,7 +1174,6 @@ describe("scenarios > question > offset", () => {
     const segmentName = "Orders < 100";
     H.createSegment({
       name: segmentName,
-      // @ts-expect-error convert helper to ts
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
       definition: {
@@ -1230,14 +1225,14 @@ describe("scenarios > question > offset", () => {
 
     verifyNoQuestionError();
     verifyTableContent([
-      ["2026", "0", "Affiliate", "1,303.43", ""],
-      ["2026", "0", "Facebook", "1,835.1", ""],
+      ["2029", "0", "Affiliate", "1,303.43", ""],
+      ["2029", "0", "Facebook", "1,835.1", ""],
     ]);
   });
 
   it("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
-    const ORDERS_SCALAR_METRIC: H.StructuredQuestionDetails = {
+    const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
       name: metricName,
       type: "metric",
       description: "A metric",
@@ -1255,9 +1250,30 @@ describe("scenarios > question > offset", () => {
       display: "scalar",
     };
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      H.visitMetric(card.id),
-    );
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+      H.createQuestion(
+        {
+          name: "Question with metric",
+          type: "question",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["metric", metric.id]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        { visitQuestion: true },
+      );
+    });
 
     H.openNotebook();
 
@@ -1268,7 +1284,9 @@ describe("scenarios > question > offset", () => {
 
     H.visualize();
 
-    cy.findByTestId("chart-container").should("contain", "January 2024");
+    H.echartsContainer().within(() => {
+      cy.contains("January 2027").should("be.visible");
+    });
   });
 });
 
@@ -1335,9 +1353,9 @@ function verifyLineChart({
   }
 }
 
-function verifyTableContent(rows: string[][]) {
-  const columnsCount = rows[0].length;
-  const pairs = rows.flatMap((row, rowIndex) => {
+function verifyTableContent(dataRows: string[][]) {
+  const columnsCount = dataRows[0].length;
+  const pairs = dataRows.flatMap((row, rowIndex) => {
     return row.map((text, cellIndex) => {
       const index = rowIndex * columnsCount + cellIndex;
       return { index, text };
@@ -1345,21 +1363,19 @@ function verifyTableContent(rows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
+    cy.log("index", index);
+    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }
 
 function verifyTableCellContent(index: number, text: string) {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  cy.findAllByRole("gridcell").eq(index).should("have.text", text);
-}
-
-function verifyQuestionError(error: string) {
-  cy.findByTestId("query-builder-main").within(() => {
-    cy.findByText("There was a problem with your question").should("exist");
-    cy.findByText("Show error details").click();
-    cy.findByText(error).should("exist");
-  });
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  H.tableInteractiveBody()
+    .findByTestId("center-center-quadrant")
+    .findAllByRole("gridcell")
+    .eq(index)
+    .should("have.text", text);
 }
 
 function verifyNoQuestionError() {
@@ -1420,7 +1436,7 @@ function addCustomColumn({
   if (actionButtonsGroup === "first") {
     cy.findAllByTestId("action-buttons").first().icon("add_data").click();
   } else {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().icon("add_data").click();
   }
 

@@ -1,10 +1,12 @@
+import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useBookmarkListQuery } from "metabase/common/hooks";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import { getDashboard } from "metabase/dashboard/selectors";
-import Bookmark from "metabase/entities/bookmarks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context/context";
+import { Bookmarks } from "metabase/entities/bookmarks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useDispatch } from "metabase/redux";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
+
+import { trackDashboardBookmarked } from "../analytics";
 
 export interface DashboardBookmarkProps {
   isBookmarked: boolean;
@@ -12,10 +14,8 @@ export interface DashboardBookmarkProps {
 
 export const DashboardBookmark = (): JSX.Element | null => {
   const { data: bookmarks = [] } = useBookmarkListQuery();
-
+  const { dashboard } = useDashboardContext();
   const dispatch = useDispatch();
-
-  const dashboard = useSelector(getDashboard);
 
   const isBookmarked = dashboard
     ? getIsBookmarked({
@@ -27,14 +27,15 @@ export const DashboardBookmark = (): JSX.Element | null => {
   const handleCreateBookmark = () => {
     if (dashboard) {
       const id = dashboard.id;
-      dispatch(Bookmark.actions.create({ id, type: "dashboard" }));
+      dispatch(Bookmarks.actions.create({ id, type: "dashboard" }));
+      trackDashboardBookmarked();
     }
   };
 
   const handleDeleteBookmark = () => {
     if (dashboard) {
       const id = dashboard.id;
-      dispatch(Bookmark.actions.delete({ id, type: "dashboard" }));
+      dispatch(Bookmarks.actions.delete({ id, type: "dashboard" }));
     }
   };
 

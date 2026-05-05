@@ -16,7 +16,7 @@ on:
         description: 'Seconds (Number of seconds after which next iteration will not start)'
       test:
         description: 'Test or namespace to run'
-        default: metabase.query-processor-test.generative-test/execution-with-cards-test
+        default: metabase.query-processor.generative-test/execution-with-cards-test
       ref:
         description: 'Ref to run generative tests on'
         default: qgen-ms2
@@ -24,7 +24,7 @@ on:
 # TODO: Consider renaming the job in next milestones
 jobs:
   generative-query-test:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 90
     name: Generative Query Test
     env:
@@ -40,8 +40,6 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: generative-query-test
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
@@ -49,7 +47,7 @@ jobs:
         run: clojure -X:dev:ci:test:ee:ee-dev :only '${{ inputs.test }}'
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"

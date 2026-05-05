@@ -1,34 +1,36 @@
-import type { Location } from "history";
 import { type ComponentType, useEffect, useState } from "react";
 import { withRouter } from "react-router";
-import { replace } from "react-router-redux";
-import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetDatabaseQuery } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import { GenericError } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { GenericError } from "metabase/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import title from "metabase/hoc/Title";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import {
+  PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DB_ROUTING,
+  PLUGIN_TABLE_EDITING,
+  PLUGIN_WRITABLE_CONNECTION,
+} from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
-import type {
-  DatabaseData,
-  DatabaseId,
-  Database as DatabaseType,
-} from "metabase-types/api";
+import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
-import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
@@ -38,7 +40,6 @@ interface DatabaseEditAppProps {
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
-  location: Location;
 }
 
 const mapDispatchToProps = {
@@ -51,14 +52,16 @@ function DatabaseEditAppInner({
   params,
   updateDatabase,
   deleteDatabase,
-  location,
 }: DatabaseEditAppProps) {
-  const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
   const databaseId = parseInt(params.databaseId, 10);
+  const fromEmbeddingSetupGuide = new URLSearchParams(
+    window.location.search,
+  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
 
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number>();
   const {
     currentData: database,
@@ -66,12 +69,22 @@ function DatabaseEditAppInner({
     error,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
+
   useEffect(
     function pollDatabaseWhileSyncing() {
       const isSyncing = database?.initial_sync_status === "incomplete";
       setPollingInterval(isSyncing ? 2000 : undefined);
+
+      if (
+        fromEmbeddingSetupGuide &&
+        database?.initial_sync_status === "complete"
+      ) {
+        setShowReturnModal(true);
+      }
     },
-    [database?.initial_sync_status],
+    [database?.initial_sync_status, fromEmbeddingSetupGuide],
   );
 
   const crumbs = _.compact([
@@ -79,14 +92,7 @@ function DatabaseEditAppInner({
     database?.name && [database?.name],
   ]);
 
-  const [isPermissionModalOpened, setIsPermissionModalOpened] = useState(false);
-  useMount(() => {
-    if (location.query.created) {
-      setIsPermissionModalOpened(true);
-      dispatch(replace(location.pathname));
-    }
-  });
-  const onPermissionModalClose = () => setIsPermissionModalOpened(false);
+  usePageTitle(database?.name || "");
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
@@ -110,9 +116,23 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
+                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                    database={database}
+                  />
+
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
+                    updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                    database={database}
+                  />
+
+                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}
                   />
 
@@ -126,18 +146,20 @@ function DatabaseEditAppInner({
                     deleteDatabase={deleteDatabase}
                   />
                 </Flex>
-
-                <NewDatabasePermissionsModal
-                  opened={isPermissionModalOpened}
-                  onClose={onPermissionModalClose}
-                  database={database}
-                />
               </>
             )}
           </LoadingAndErrorWrapper>
         </Box>
       </ErrorBoundary>
       {children}
+      {fromEmbeddingSetupGuide && (
+        <ReturnToSetupGuideModal
+          opened={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          title={t`Database connected!`}
+          message={t`Your database has been added and synced. Return to the setup guide to continue.`}
+        />
+      )}
     </>
   );
 }
@@ -145,7 +167,4 @@ function DatabaseEditAppInner({
 export const DatabaseEditApp = _.compose(
   withRouter,
   connect(undefined, mapDispatchToProps),
-  title(
-    ({ database }: { database: DatabaseData }) => database && database.name,
-  ),
 )(DatabaseEditAppInner);

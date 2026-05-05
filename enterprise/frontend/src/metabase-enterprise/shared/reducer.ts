@@ -1,8 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { GTAPApi } from "metabase/services";
-import type { UserAttribute } from "metabase-types/api";
+import type { UserAttributeKey } from "metabase-types/api";
 
 export const fetchUserAttributes = createAsyncThunk(
   "metabase-enterprise/shared/FETCH_USER_ATTRIBUTES",
@@ -10,7 +10,7 @@ export const fetchUserAttributes = createAsyncThunk(
 );
 
 export interface EnterpriseSharedState {
-  attributes: UserAttribute[] | null;
+  attributes: UserAttributeKey[] | null;
 }
 
 const initialState: EnterpriseSharedState = {

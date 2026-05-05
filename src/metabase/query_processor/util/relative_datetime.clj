@@ -2,7 +2,6 @@
   "Utility function for server side relative datetime computation."
   (:require
    [java-time.api :as t]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -42,4 +41,7 @@
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
     (h2x/cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
-    ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver [:relative-datetime amount unit])))
+    ((-> 'metabase.driver.sql.query-processor/->honeysql
+         requiring-resolve
+         var-get
+         (get-method [:sql :relative-datetime])) driver [:relative-datetime amount unit])))

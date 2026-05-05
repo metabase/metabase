@@ -8,7 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- param ^QueryParameterValue [type-name v]
+(defn param
+  "Constructs a QueryParameterValue wrapper that hints a sql type via the type-name (mapping to StandardSQLTypeName)."
+  ^QueryParameterValue [type-name v]
   (.build (doto (QueryParameterValue/newBuilder)
             (.setType (StandardSQLTypeName/valueOf type-name))
             (.setValue (some-> v str)))))
@@ -16,6 +18,8 @@
 (defmulti ^:private ->QueryParameterValue
   {:arglists '(^QueryParameterValue [v])}
   class)
+
+(defmethod ->QueryParameterValue QueryParameterValue [v] v)
 
 (defmethod ->QueryParameterValue :default
   [v]

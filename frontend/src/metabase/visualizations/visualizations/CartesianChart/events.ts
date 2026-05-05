@@ -1,15 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatChangeWithSign } from "metabase/lib/formatting";
-import { getObjectKeys } from "metabase/lib/objects";
+import { isNative } from "metabase/common/utils/card";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatChangeWithSign } from "metabase/utils/formatting";
+import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,
   parseTimestamp,
-} from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
+} from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
@@ -33,6 +34,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/guards";
 import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
 import type {
+  AxisFormatter,
   BaseCartesianChartModel,
   BaseSeriesModel,
   ChartDataset,
@@ -63,8 +65,8 @@ import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
@@ -139,7 +141,15 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    let dimensionValue = datum[X_AXIS_DATA_KEY];
+
+    if (isDate(dimensionColumn) && dimensionValue != null) {
+      const parsed = parseTimestamp(dimensionValue);
+      if (parsed.isValid()) {
+        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
+      }
+    }
+
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
@@ -229,7 +239,11 @@ const computeDiffWithPreviousPeriod = (
   const currentDate = getXAxisDataForComparison(datum);
   const previousValue = previousDatum?.[seriesModel.dataKey];
 
-  if (previousValue == null || currentValue == null || currentDate == null) {
+  if (
+    typeof previousValue !== "number" ||
+    typeof currentValue !== "number" ||
+    currentDate == null
+  ) {
     return null;
   }
 
@@ -247,7 +261,7 @@ const computeDiffWithPreviousPeriod = (
     getDaylightSavingsChangeTolerance(xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
-  // specially, because there are fewer days in this period due to Feburary
+  // specially, because there are fewer days in this period due to February
   // being shorter than a normal month (89 days in a normal year, 90 days in a
   // leap year).
   if (!isOneIntervalAgo && unit === "quarter") {
@@ -270,15 +284,23 @@ export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
+  onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
-  const hasCombinedCards = series.length > 1;
   const hasBrushableDimension =
     settings["graph.x_axis.scale"] != null &&
     !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
 
+  if (!hasBrushableDimension) {
+    return false;
+  }
+
+  if (onBrush) {
+    return true;
+  }
+
+  const hasCombinedCards = series.length > 1;
   return (
     !!onChangeCardAndRun &&
-    hasBrushableDimension &&
     !hasCombinedCards &&
     (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
@@ -607,6 +629,9 @@ const getSeriesOnlyTooltipRowColor = (
   return seriesModel.color;
 };
 
+const signs = ["+", "-"] as const;
+type Sign = (typeof signs)[number];
+
 export const getStackedTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -637,8 +662,24 @@ export const getStackedTooltipModel = (
       };
     });
 
-  // Reverse rows as they appear reversed on the stacked chart to match the order
-  stackSeriesRows.reverse();
+  type SeriesSlice = { total: number; series: typeof stackSeriesRows };
+  let stackSeriesRowsBySign: Record<Sign, SeriesSlice> = {
+    "+": { total: 0, series: [] },
+    "-": { total: 0, series: [] },
+  };
+  stackSeriesRowsBySign = stackSeriesRows.reduce((acc, row) => {
+    if (typeof row.value !== "number") {
+      return acc;
+    }
+    const sign = row.value < 0 ? "-" : "+";
+    const slice = acc[sign];
+    slice.series.push(row);
+    slice.total += row.value;
+    return acc;
+  }, stackSeriesRowsBySign);
+
+  // Reverse positive rows as they appear reversed on the stacked chart to match the order
+  stackSeriesRowsBySign["+"].series.reverse();
 
   const formatter = (value: unknown) =>
     String(
@@ -661,21 +702,45 @@ export const getStackedTooltipModel = (
     }),
   );
 
-  const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
-    .filter((row) => row.value != null)
-    .map((tooltipRow) => {
-      return {
-        isFocused: tooltipRow.isFocused,
-        name: tooltipRow.name,
-        markerColorClass: tooltipRow.color
-          ? getMarkerColorClass(tooltipRow.color)
-          : undefined,
-        values: [
-          formatter(tooltipRow.value),
-          formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
-        ],
-      };
-    });
+  const hasPositivesAndNegatives =
+    stackSeriesRowsBySign["+"].total > 0 &&
+    stackSeriesRowsBySign["-"].total < 0;
+
+  const formattedSeriesRows: EChartsTooltipRow[] = signs
+    .map((sign) => {
+      const slice = stackSeriesRowsBySign[sign];
+      return [
+        ...slice.series
+          .filter((row) => row.value != null)
+          .map((tooltipRow) => {
+            return {
+              isFocused: tooltipRow.isFocused,
+              name: tooltipRow.name,
+              markerColorClass: tooltipRow.color
+                ? getMarkerColorClass(tooltipRow.color)
+                : undefined,
+              values: [
+                formatter(tooltipRow.value),
+                formatPercent(
+                  slice.total
+                    ? (getPercent(slice.total, tooltipRow.value) ?? 0)
+                    : 0,
+                ),
+              ],
+            };
+          }),
+        ...(hasPositivesAndNegatives
+          ? [
+              {
+                name: sign === "-" ? t`Total negative` : t`Total positive`,
+                markerColorClass: " ",
+                values: [formatter(slice.total)],
+              },
+            ]
+          : []),
+      ];
+    })
+    .flat();
 
   const additionalColumnsRows = getAdditionalTooltipRowsData(
     chartModel,
@@ -698,7 +763,9 @@ export const getStackedTooltipModel = (
           name: t`Total`,
           values: [
             formatter(rowsTotal),
-            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+            hasPositivesAndNegatives
+              ? ""
+              : formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
           ],
         }
       : undefined,
@@ -816,6 +883,7 @@ export const getTimelineEventsHoverData = (
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
+  formatGoal?: AxisFormatter,
 ) => {
   const element = event.event.event.target as Element;
 
@@ -823,13 +891,15 @@ export const getGoalLineHoverData = (
     return null;
   }
 
+  const goalValue = settings["graph.goal_value"] ?? "";
+
   return {
     element,
     data: [
       {
         col: null,
         key: settings["graph.goal_label"] ?? "",
-        value: settings["graph.goal_value"] ?? "",
+        value: formatGoal ? formatGoal(goalValue) : goalValue,
       },
     ],
   };

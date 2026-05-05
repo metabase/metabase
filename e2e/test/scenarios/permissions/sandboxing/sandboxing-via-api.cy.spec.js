@@ -27,38 +27,42 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       cy.visit("/admin/people");
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").first().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit user").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").click();
+      cy.findByTestId("admin-people-list-table")
+        .icon("ellipsis")
+        .first()
+        .click();
+      H.popover().findByText("Edit user").click();
+      H.modal().within(() => {
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("3");
+        cy.findByText("Update").click();
+      });
     });
 
     it("should add key attributes to a new user", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Invite someone").click();
-      cy.findByPlaceholderText("Johnny").type("John");
-      cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
-        "john@smith.test",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+      cy.button("Invite someone").click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText("Johnny").type("John");
+        cy.findByPlaceholderText("Appleseed").type("Smith");
+        cy.findByPlaceholderText("nicetoseeyou@email.com").type(
+          "john@smith.test",
+        );
+
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("1");
+        cy.findAllByText("Create").click();
+        cy.button("Done").click();
+      });
     });
   });
 
@@ -71,7 +75,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
@@ -200,7 +204,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -224,10 +228,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modifyPermission("collection", 0, "Row and column security");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
+      H.modal().findByPlaceholderText("Pick a user attribute").click();
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
@@ -265,7 +269,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -362,9 +366,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.openOrdersTable({ mode: "notebook" });
       H.summarize({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
 
       cy.log(
@@ -386,9 +390,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.visualize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by User → ID");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("11"); // Sum of orders for user with ID #1
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed();
@@ -416,6 +420,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 [
                   [">", ["field", ORDERS.DISCOUNT, null], 0],
                   ["field", ORDERS.DISCOUNT],
+                  // no idea why this is here, a `case` subclause only has two args, this actually makes this invalid.
                   null,
                 ],
               ],
@@ -507,7 +512,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
         // Find saved question in "Our analytics"
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -516,16 +521,16 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           // Click on the first bar in a graph (Category: "Doohickey")
           H.chartPathWithFillColor("#509EE3").eq(0).click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Product → Category is Doohickey");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
         H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
@@ -594,7 +599,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(QUESTION_NAME).click();
 
       cy.wait("@cardQuery");
@@ -603,14 +608,14 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         // Click on the first bar in a graph (Category: "Doohickey")
         H.chartPathWithFillColor("#509EE3").eq(0).click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See these Orders").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → Category is Doohickey");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
@@ -712,6 +717,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
                 name: "sandbox",
                 type: "number",
+                default: "1",
               },
             },
           },
@@ -738,6 +744,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
                 name: "sandbox",
                 type: "text",
+                default: "Widget",
               },
             },
           },
@@ -764,7 +771,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.get("[data-testid=cell-data]")
           .contains("Awesome Concrete Shoes")
           .click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/View details/i).click();
 
         cy.log(
@@ -817,7 +824,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
 
         // Title of the first order for User ID = 1
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Awesome Concrete Shoes");
 
         cy.signOut();
@@ -887,7 +894,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
 
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -899,13 +906,13 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           // Click on the second bar in a graph (Category: "Widget")
           H.chartPathWithFillColor("#509EE3").eq(1).click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
 
         cy.wait("@dataset").then((xhr) => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
         H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has over 2000
         H.assertDatasetReqIsSandboxed({ requestAlias: "@dataset" });
@@ -933,7 +940,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      H.popover().findByText("Sandboxed").click();
+      H.popover().findByText("Row and column security").click();
       cy.button("Change").click();
       H.modal()
         .findByText(
@@ -943,7 +950,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       H.modal().findByText("Select a question").click();
 
-      H.entityPickerModal().findByText(QUESTION_NAME).click();
+      H.pickEntity({ path: ["Our analytics", QUESTION_NAME], select: true });
       H.modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);
@@ -957,17 +964,17 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       createJoinedQuestion("14766_joined");
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("14766_joined").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a function or metric").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Products? → ID/).click();
 
       H.visualize((response) => {
@@ -1011,9 +1018,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       cy.button("Done").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Subtotal").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65").should("not.exist");
       H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
@@ -1087,9 +1094,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Twitter");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals");
       H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
     });
@@ -1106,7 +1113,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       cy.signInAsSandboxedUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
+      H.openDashboardMenu("Subscriptions");
 
       // should forward to email since that is the only one setup
       H.sidebar().findByText("Email this dashboard").should("exist");
@@ -1140,68 +1147,64 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
 
-    it(
-      "unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)",
-      { tags: "@flaky" },
-      () => {
-        H.remapDisplayValueToFK({
-          display_value: ORDERS.USER_ID,
-          name: "User ID",
-          fk: PEOPLE.NAME,
-        });
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
+      H.remapDisplayValueToFK({
+        display_value: ORDERS.USER_ID,
+        name: "User ID",
+        fk: PEOPLE.NAME,
+      });
 
-        // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
-        cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
-          table_id: REVIEWS_ID,
-          special_type: "type/FK",
-          name: "PRODUCT_ID",
-          fk_target_field_id: ORDERS.ID,
-          display_name: "Product ID",
-        });
+      // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
+      cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+        table_id: REVIEWS_ID,
+        special_type: "type/FK",
+        name: "PRODUCT_ID",
+        fk_target_field_id: ORDERS.ID,
+        display_name: "Product ID",
+      });
 
-        cy.sandboxTable({
-          table_id: ORDERS_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-          },
-        });
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+      });
 
-        cy.sandboxTable({
-          table_id: PEOPLE_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
-          },
-        });
+      cy.sandboxTable({
+        table_id: PEOPLE_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
+        },
+      });
 
-        cy.sandboxTable({
-          table_id: REVIEWS_ID,
-          attribute_remappings: {
-            attr_uid: [
-              "dimension",
-              [
-                "fk->",
-                ["field-id", REVIEWS.PRODUCT_ID],
-                ["field-id", ORDERS.USER_ID],
-              ],
+      cy.sandboxTable({
+        table_id: REVIEWS_ID,
+        attribute_remappings: {
+          attr_uid: [
+            "dimension",
+            [
+              "fk->",
+              ["field-id", REVIEWS.PRODUCT_ID],
+              ["field-id", ORDERS.USER_ID],
             ],
-          },
-        });
-        cy.signOut();
-        cy.signInAsSandboxedUser();
+          ],
+        },
+      });
+      cy.signOut();
+      cy.signInAsSandboxedUser();
 
-        H.openReviewsTable({
-          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-        });
-        H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
-        H.assertDatasetReqIsSandboxed();
+      H.openReviewsTable({
+        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
+      });
+      H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
+      H.assertDatasetReqIsSandboxed();
 
-        // Add positive assertion once this issue is fixed
-      },
-    );
+      // Add positive assertion once this issue is fixed
+    });
 
     it(
       "sandboxed user should receive sandboxed dashboard subscription",
@@ -1232,7 +1235,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar()
           .findByPlaceholderText("Enter user names or email addresses")
@@ -1259,7 +1262,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-        H.popover().findByText("Edit sandboxed access").click();
+        H.popover().findByText("Edit row and column security").click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
           .findByLabelText("Category")

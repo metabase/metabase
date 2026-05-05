@@ -124,7 +124,7 @@ describe("LocaleProvider", () => {
 
   it("should make useLocale return the correct locale", async () => {
     const TestComponent = () => {
-      const locale = useLocale();
+      const { locale } = useLocale();
       return <div>{locale}</div>;
     };
 
@@ -164,6 +164,8 @@ const mockLocaleJsonResponse = (locale: string) => {
 
 async function waitForLocaleJson(locale: string) {
   await waitFor(() => {
-    expect(fetchMock.done(`/app/locales/${locale}.json`)).toBe(true);
+    expect(fetchMock.callHistory.done(`/app/locales/${locale}.json`)).toBe(
+      true,
+    );
   });
 }

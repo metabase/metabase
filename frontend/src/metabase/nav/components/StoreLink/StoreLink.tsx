@@ -1,17 +1,22 @@
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 
-import { StoreIcon, StoreIconRoot, StoreIconWrapper } from "./StoreLink.styled";
+import S from "./StoreLink.module.css";
 
 const StoreLink = () => {
   return (
     <Tooltip label={t`Explore paid features`}>
-      <StoreIconRoot href="https://metabase.com/upgrade">
-        <StoreIconWrapper>
-          <StoreIcon name="store" size={20} />
-        </StoreIconWrapper>
-      </StoreIconRoot>
+      <ExternalLink
+        href="https://metabase.com/upgrade"
+        data-testid="store-link"
+        className={S.root}
+      >
+        <Flex align="center" justify="center" className={S.iconWrapper}>
+          <Icon name="store" size={20} />
+        </Flex>
+      </ExternalLink>
     </Tooltip>
   );
 };

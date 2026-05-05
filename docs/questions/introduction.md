@@ -13,32 +13,17 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 ## Creating a new question
 
-You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor:
+You can create a new question from scratch, or build off of an existing question. To create a question from scratch click on **+ New** and select how you want to query your data:
 
-### Query builder
+- **+ New > Question** to create a question using the graphical query builder. See [Query builder](../questions/query-builder/editor.md).
+  ![Query builder editor](./images/editor.png)
 
-![Query builder editor](./images/editor.png)
+- **+ New > SQL/Native query** to create a question using the native/SQL query editor. See [Native editor](../questions/native-editor/writing-sql.md).
 
-Selecting **Question** will take you to the [editor in the graphical query builder](./query-builder/editor.md).
+  ![Native editor](./images/native-editor.png)
 
-### Native editor
-
-![Native editor](./images/native-editor.png)
-
-Selecting **SQL/native code** will open the [native code editor](./native-editor/writing-sql.md).
-
-Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
-
-### From an existing question
-
-You can also build a new question from an existing question. You won't overwrite the existing question, so feel free to play around. You can use either the [query builder](./query-builder/editor.md) or the [native code editor](./native-editor/referencing-saved-questions-in-queries.md).
-
-Some kinds of saved questions, however, can't be used as source data:
-
-- Druid questions
-- Mongo questions
-- Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
-- Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
+  Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+  You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
 
 ## Saving questions
 
@@ -46,11 +31,21 @@ Once you've built your query and [visualized its results](./visualizations/visua
 
 ### Saving questions to dashboards
 
-Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tab, then save the dashboard.
+Questions that live in a dashboard are only visible in that dashboard. These questions can't be used in other dashboards. When you save a question to a dashboard, you'll need to arrange the card on one of the dashboard's tabs, then save the dashboard.
 
 ### Saving questions to collections
 
-Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. To save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+
+### Checking for breaking changes
+
+{% include plans-blockquote.html feature="Checking for breaking changes" %}
+
+When a question, model, or metric is saved, Metabase will try to detect whether the changes you made would break any dependent entities. For example, if you removed a column from a question that other questions rely on, Metabase will warn you that those downstream questions will break.
+
+![Check dependencies](./images/check-dependencies.png)
+
+Currently, Metabase will look for broken column references. If you rename or remove a column, Metabase will likely flag the change as breaking downstream entities. But Metabase can't detect other types of changes like changing the column type or computation logic as breaking changes.
 
 ## Moving questions from collections to dashboards (and vice versa)
 

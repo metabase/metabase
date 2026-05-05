@@ -1,16 +1,15 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
   type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
   type PermissionSubject,
   type SchemaEntityId,
@@ -22,24 +21,26 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import type { Group, GroupsPermissions } from "metabase-types/api";
-
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const UNABLE_TO_DOWNLOAD_RESULTS = t`Groups with Block data access can't download results`;
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {
-    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+    return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
   }
 
   if (isBlockedAccess) {
-    return UNABLE_TO_DOWNLOAD_RESULTS;
+    return Messages.UNABLE_TO_DOWNLOAD_RESULTS;
   }
 
   return null;
 };
 
-export const DOWNLOAD_PERMISSION_OPTIONS = {
+export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,

@@ -6,10 +6,35 @@ import {
   usePersistModelMutation,
   useUnpersistModelMutation,
 } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { hasFeature } from "metabase/common/utils/database";
 import { Switch, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
+
+function getTooltipLabel({
+  userCanPersist,
+  isModelPersistenceSupported,
+  isModelPersistenceEnabled,
+}: {
+  userCanPersist: boolean;
+  isModelPersistenceSupported: boolean;
+  isModelPersistenceEnabled: boolean;
+}): string | null {
+  if (!userCanPersist) {
+    return t`You don't have permission to modify model persistence`;
+  }
+
+  if (!isModelPersistenceSupported) {
+    return t`Model persistence is not supported for this database`;
+  }
+
+  if (!isModelPersistenceEnabled) {
+    return t`Model persistence is disabled for this database`;
+  }
+
+  return null;
+}
 
 export function ModelCacheToggle({
   persistedModel,
@@ -37,13 +62,20 @@ export function ModelCacheToggle({
   const isPersisted = persistedModel && persistedModel.state !== "off";
   const modelId = model.id();
   const userCanPersist = model.canManageDB();
-  const canPersistDatabase = database?.settings?.["persist-models-enabled"];
+  const isModelPersistenceEnabled =
+    database?.settings?.["persist-models-enabled"] ?? false;
 
-  if (!canPersistDatabase || !userCanPersist) {
-    const tooltipLabel = !canPersistDatabase
-      ? t`Model persistence is disabled for this database`
-      : t`You don't have permission to modify model persistence`;
+  const isModelPersistenceSupported = database
+    ? hasFeature(database, "persist-models")
+    : false;
 
+  const tooltipLabel = getTooltipLabel({
+    userCanPersist,
+    isModelPersistenceSupported,
+    isModelPersistenceEnabled,
+  });
+
+  if (tooltipLabel) {
     return (
       <Tooltip label={tooltipLabel}>
         {/* need this div so that disabled input doesn't swallow pointer events */}

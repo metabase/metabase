@@ -2,16 +2,19 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/core/components/NumericInput";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { NumericInput } from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { type NumberValue, parseNumber } from "metabase/lib/number";
-import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { Box, type ComboboxItem } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
+import { isNotNull } from "metabase/utils/types";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterValue,
@@ -30,7 +33,7 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
-  parameter?: Parameter;
+  parameter: Parameter;
 };
 
 export function NumberInputWidget({
@@ -44,15 +47,11 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = deserializeNumberParameterValue(value);
+  const arrayValue = deserializeNumberParameterValue(parameter.type, value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(NumberValue | undefined)[]>(arrayValue);
+    useState<NumberFilterValue[]>(arrayValue);
 
-  const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(isNotNull);
-  const isValid =
-    (arity === "n" || unsavedArrayValue.length <= arity) &&
-    (allValuesUnset || allValuesSet);
+  const allValuesUnset = unsavedArrayValue.every((value) => value == null);
   const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
   const isRequired = parameter?.required;
 
@@ -80,7 +79,10 @@ export function NumberInputWidget({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid || (isRequired && isEmpty)) {
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
       return;
     }
 
@@ -99,9 +101,9 @@ export function NumberInputWidget({
       onSubmit={handleSubmit}
     >
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
-          <MultiAutocomplete
+          <MultiAutocompleteWithTranslation
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             data={options}
             placeholder={placeholder}
@@ -123,7 +125,7 @@ export function NumberInputWidget({
               onChange={(_newValue, newValueText) => {
                 setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
+                  newUnsavedValue[i] = parseNumber(newValueText);
                   return newUnsavedValue;
                 });
               }}
@@ -141,7 +143,7 @@ export function NumberInputWidget({
           unsavedValue={unsavedArrayValue}
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
-          isValid={isValid}
+          isValid
         />
       </Footer>
     </Box>

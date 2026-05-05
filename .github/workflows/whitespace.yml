@@ -6,16 +6,15 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
+  merge_group:
 
 jobs:
   whitespace-linter:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
     - uses: actions/checkout@v4
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'whitespace-linter'
-    - run: clojure -T:whitespace-linter lint
+    - run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
       name: Run Whitespace Linter

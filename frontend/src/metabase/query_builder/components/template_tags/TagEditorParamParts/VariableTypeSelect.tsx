@@ -25,9 +25,27 @@ const OPTIONS: Array<{ value: TemplateTagType; label: string }> = [
     },
   },
   {
+    value: "boolean",
+    get label() {
+      return t`Boolean`;
+    },
+  },
+  {
     value: "dimension",
     get label() {
       return t`Field Filter`;
+    },
+  },
+  {
+    value: "temporal-unit",
+    get label() {
+      return t`Time grouping`;
+    },
+  },
+  {
+    value: "table",
+    get label() {
+      return t`Table`;
     },
   },
 ];

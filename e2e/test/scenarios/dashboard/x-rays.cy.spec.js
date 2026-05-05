@@ -19,17 +19,17 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.visit("/");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Try out these sample x-rays to see what Metabase can do.",
     ).should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A summary of/).should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A glance at/).should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A look at/).should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Some insights about/).should("not.exist");
   });
 
@@ -70,16 +70,16 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .eq(23) // Random dot
       .click({ force: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Automatic insights…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
     // x-rays take long time even locally - that can timeout in CI so we have to extend it
     cy.wait("@dataset", { timeout: 30000 });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "A closer look at number of Orders where Created At is in March 2024 and Category is Gadget",
+      "A closer look at number of Orders where Created At is in March 2027 and Category is Gadget",
     );
     cy.icon("warning").should("not.exist");
   });
@@ -157,13 +157,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
       H.chartPathWithFillColor("#509EE3").first().click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Automatic insights…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
       cy.wait("@xray");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("null").should("not.exist");
     });
   });
@@ -177,15 +177,21 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.button("Save this").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Your dashboard was saved");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See it").click();
+    cy.log(
+      "'See it' link should be displayed both in the header and in the toast",
+    );
+    H.undoToast()
+      .should("contain", "Your dashboard was saved")
+      .and("contain", "See it");
+
+    cy.findByTestId("automatic-dashboard-header").within(() => {
+      cy.findByRole("link", { name: "See it" }).should("be.visible").click();
+    });
 
     cy.url().should("contain", "a-look-at-orders");
 
     cy.findAllByTestId("dashcard").contains("18,760");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
 
     H.openNavigationSidebar();
@@ -231,20 +237,20 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.wait("@geojson", { timeout });
 
     // confirm results of "Total transactions" card are present
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760", timeout);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total transactions").click();
 
     // confirm we're in the query builder with the same results
     cy.url().should("contain", "/question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760");
 
     cy.go("back");
 
     // add a parameter filter to the auto dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State", timeout).click();
 
     cy.findByPlaceholderText("Search the list").type("GA{enter}");
@@ -252,15 +258,15 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.button("Add filter").click();
 
     // confirm results of "Total transactions" card were updated
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463", timeout);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total transactions").click();
 
     // confirm parameter filter is applied as filter in query builder
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → State is GA");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463");
   });
 
@@ -401,6 +407,49 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     getDashcardByTitle("Sales by coordinates")
       .findByText("Leaflet")
       .should("exist");
+  });
+
+  it("should work on questions with breakout by day-of-week and null semantic type (metabase#23820)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+    H.createQuestion(
+      {
+        name: "23820",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    H.cartesianChartCircle()
+      .eq(3) // Wednesday
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Automatic insights…").click();
+      cy.findByText("X-ray").click();
+    });
+
+    cy.wait("@dataset");
+
+    H.main().within(() => {
+      cy.findByText(
+        "A closer look at number of Orders where day of week of Created At is Wednesday",
+      ).should("be.visible");
+    });
+
+    getDashcardByTitle("A look at Created At fields").should("exist");
+
+    getDashcardByTitle("A look at the number of Orders").should("exist");
   });
 });
 

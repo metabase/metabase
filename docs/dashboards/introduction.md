@@ -23,11 +23,23 @@ You can add [filter widgets to dashboards](./filters.md) that filter data identi
 
 You can make as many dashboards as you want. Go nuts.
 
+## Example dashboard
+
+Every new Metabase comes with an example dashboard, **E-commerce insights**, in the **Examples** collection (though your admin can turn off or delete the examples). The example dashboard is yours to explore and play with.
+
 ## How to create a dashboard
 
-In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+{% include youtube.html id='W-i9E5_Wjmw' %}
+
+1. In the top right of the screen, click the **+ New** > **Dashboard**.
+2. Give your new dashboard a name and a description.
+3. Choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in.
+4. Click **Create**, and Metabase will take you to your shiny new dashboard.
+5. Next, you'll need to add some questions (charts) to the dashboard, see [Adding or saving questions to the dashboard](#adding-or-saving-questions-to-a-dashboard).
 
 ## Adding or saving questions to a dashboard
+
+To get some charts on a dashboard, you'll need to [create questions](../questions/introduction.md) (Metabase word for chart or query) and then add them, to the dashboard.
 
 You can add questions that are saved to collections, or save questions directly to a dashboard.
 
@@ -66,7 +78,7 @@ Each text card has two modes: writing and previewing. When you click to focus on
 
 ![Markdown](images/markdown.png)
 
-You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
+You can use [Markdown](https://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
 ![Result](images/result.png)
 
@@ -98,11 +110,15 @@ To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 
 ## Link cards
 
-![Dashboards with link cards](./images/dashboard-with-link-cards.png)
-
 Link cards are specialized cards that let you search and link to other items in your Metabase. You can also use them for external links. Useful for pointing people to other resources relevant to your dashboard.
 
-To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
+![Dashboards with link cards](./images/dashboard-with-link-cards.png)
+
+To add a link card to a dashboard:
+
+1. When viewing a dashboard, click the **pencil** icon to enter dashboard editing mode;
+2. Click the **link** (paper clip) icon to add a link card.
+3. On the link card, click the input field to search your Metabase for an item to link to, or paste an external link.
 
 Link cards support variables so you can use dashboard filters to update values in the link card's URL. For example, you could include a variable in a URL using double braces, like so:
 
@@ -159,7 +175,7 @@ You can add multiple tabs to a dashboard to keep your cards organized.
 
 ### Duplicate a tab
 
-When in dashboard edit mode, you can duplicate a tab and all the its cards by clicking on the down arrow next to the tab that you want to copy.
+When in dashboard edit mode, you can duplicate a tab and all its cards by clicking on the down arrow next to the tab that you want to copy.
 
 ### Moving cards between tabs
 
@@ -179,7 +195,7 @@ Duplication only includes the dashboard, its card layout, filters, and (optional
 
 To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
 
-### Editing cards
+### Moving cards around
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
@@ -193,6 +209,8 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card. You can only replace a question with another question, not another type of card (like a text card).
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
+
+To edit the cards themselves, see [Editing dashboard cards](#editing-dashboard-cards).
 
 ### Dashboard sections
 
@@ -227,6 +245,13 @@ You can change the width of a dashboard by going into the three dots menu in the
 - **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
 
+## Editing dashboard cards
+
+To edit a card's:
+
+- **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
+- **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
+
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
@@ -258,7 +283,7 @@ If you want to revert a dashboard card to its original visualization settings (i
 
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
-3. Click the **palette icon** to bring up the visualization settings for that card. 
+3. Click the **palette icon** to bring up the visualization settings for that card.
 4. Click **Reset to defaults** (bottom right).
 5. Click **Done** to save the card's visualization settings.
 6. Click **Save** to save the dashboard.
@@ -274,9 +299,7 @@ If you don't see the palette icon, you'll need to:
 
 After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up to date throughout the day.
 
-To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions). Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
-
-![Night mode](images/dark-mode.png)
+To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
 
 ## Auto refresh
 
@@ -302,20 +325,19 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
 ## Exporting results from a dashboard
 
-See [Exporting results](../questions/exporting-results.md).
+You can export the entire dashboard as PDF, or export results of individual questions on the dashboard. See [Exporting results](../questions/exporting-results.md).
 
 ## Configuring a dashboard through its URL
 
-You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
+You can amend the URL of a dashboard to automatically enter fullscreen or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
 
 To configure a dashboard using its URL, you can add the following optional keywords:
 
 - `fullscreen`
-- `night`
 - `refresh`
 
 Here's an example URL:
@@ -324,7 +346,7 @@ Here's an example URL:
 https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
 ```
 
-The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
+The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
 
 There is one important limitation with the `fullscreen` option: for security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
 

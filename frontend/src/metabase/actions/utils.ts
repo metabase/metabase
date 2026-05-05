@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
@@ -169,8 +169,7 @@ export const getFormTitle = (action: WritebackAction): string => {
 
 function hasDataFromExplicitAction(result: any) {
   const isInsert = result["created-row"];
-  const isUpdate =
-    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isUpdate = result["rows-affected"] > 0 || result["rows-updated"] > 0;
   const isDelete = result["rows-deleted"]?.[0] > 0;
   return !isInsert && !isUpdate && !isDelete;
 }

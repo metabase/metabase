@@ -16,6 +16,40 @@
 
 (def ^:private ^:dynamic *definitions* nil)
 
+(defn- sanitize-schema-name
+  "Sanitize schema names to match OpenAPI's required pattern: ^[a-zA-Z0-9.\\-_]+$
+   Only replaces characters that are invalid in OpenAPI schema names."
+  [s]
+  (-> s
+      ;; ~1 is JSON Pointer encoding for / - decode first
+      (str/replace "~1" "/")
+      ;; Replace only invalid characters, keeping . and - which are valid
+      (str/replace "!" "_BANG_")
+      (str/replace "=" "_EQ_")
+      (str/replace "<" "_LT_")
+      (str/replace ">" "_GT_")
+      (str/replace "*" "_STAR_")
+      (str/replace "+" "_PLUS_")
+      (str/replace "/" "_SLASH_")))
+
+(defn- sanitize-ref
+  "Sanitize $ref paths to use sanitized schema names."
+  [schema]
+  (cond-> schema
+    (:$ref schema)
+    (update :$ref (fn [r]
+                    (str/replace r #"#/components/schemas/(.+)"
+                                 (fn [[_ schema-name]]
+                                   (str "#/components/schemas/" (sanitize-schema-name schema-name))))))))
+
+(defn- path->operation-id
+  "Generate an operationId from method and path, e.g. :get + '/api/action/{id}' -> 'get-api-action-id'"
+  [method full-path]
+  (str (name method)
+       (-> full-path
+           (str/replace #"[{}]" "")
+           (str/replace #"/" "-"))))
+
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
   (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
@@ -38,25 +72,27 @@
   to be?"
   [schema :- :map]
   (try
-    (let [schema (-> schema
+    ;; Helper to recursively fix nested schemas and strip :optional (which is only
+    ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
+    (let [fix-nested #(dissoc (fix-json-schema %) :optional)
+          ;; Sanitize definition keys
+          sanitize-definitions (fn [defs]
+                                 (into {}
+                                       (map (fn [[k v]]
+                                              [(sanitize-schema-name k) (fix-nested v)]))
+                                       defs))
+          schema (-> schema
+                     sanitize-ref
                      (m/update-existing :description str)
                      (m/update-existing :type keyword)
-                     (m/update-existing :definitions #(update-vals % fix-json-schema))
-                     (m/update-existing :oneOf #(mapv fix-json-schema %))
-                     (m/update-existing :anyOf #(mapv fix-json-schema %))
-                     (m/update-existing :allOf #(mapv fix-json-schema %))
+                     (m/update-existing :definitions sanitize-definitions)
+                     (m/update-existing :oneOf #(mapv fix-nested %))
+                     (m/update-existing :anyOf #(mapv fix-nested %))
+                     (m/update-existing :allOf #(mapv fix-nested %))
                      (m/update-existing :additionalProperties (fn [additional-properties]
                                                                 (cond-> additional-properties
-                                                                  (map? additional-properties) fix-json-schema))))]
+                                                                  (map? additional-properties) fix-nested))))]
       (cond
-        ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
-        ;; it needs to be cleaned up to be presented in OpenAPI viewers
-        (and (:oneOf schema)
-             (= (second (:oneOf schema)) {:type :null}))
-        (fix-json-schema (merge (first (:oneOf schema))
-                                (select-keys schema [:description :default])
-                                {:optional true}))
-
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
         (let [schema (update schema :allOf (partial remove (partial = {})))]
@@ -78,7 +114,7 @@
                                                    [(u/qualified-name k) (fix-json-schema v)]))
                                             properties))))
 
-        (= (:type schema) :array)
+        (and (= (:type schema) :array) (:items schema))
         (update schema :items (fn [items]
                                 ;; apparently `:tuple` creates multiple `:items` entries... I don't think this is
                                 ;; correct. I think we're supposed to use `:prefixItems` instead. See
@@ -86,6 +122,9 @@
                                 (if (sequential? items)
                                   (mapv fix-json-schema items)
                                   (fix-json-schema items))))
+
+        (and (= (:type schema) :array) (false? (:items schema)))
+        (dissoc schema :items)
 
         :else
         schema))
@@ -95,7 +134,7 @@
                       e)))))
 
 (defn- mjs-collect-definitions
-  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  "We transform json-schema in a few different places, but we need to collect all definitions in a single one."
   [malli-schema]
   (let [jss (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*
@@ -127,6 +166,34 @@
                   schema))
               (mc/children schema))))))
 
+(def ^:private default-response-schema
+  "Default response schema for OpenAPI endpoints. This is used when the endpoint does not specify a response schema."
+  {"2XX" {:description "Successful response"}
+   "4XX" {:description "Client error response"}
+   "5XX" {:description "Server error response"}})
+
+(mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
+  "Convert a Malli schema to an OpenAPI response schema.
+
+  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema.
+
+  If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
+  is used for documentation instead of the actual schema. This allows streaming endpoints to document the
+  JSON content they return while validating that the return value is a StreamingResponse instance."
+  [schema]
+  (let [resolved-schema (mr/resolve-schema schema)
+        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
+        content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
+                            schema)
+        jss-schema      (mjs-collect-definitions content-schema)]
+    {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
+               (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
+
+(comment
+
+  (mjs-collect-definitions :metabase.timeline.api.timeline/Timeline)
+  (schema->response-obj :metabase.timeline.api.timeline/Timeline))
+
 (mu/defn- path-item :- :metabase.api.open-api/path-item
   "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
 
@@ -134,28 +201,34 @@
   [full-path :- string?
    form      :- :metabase.api.macros/parsed-args]
   (try
-    (let [method                    (:method form)
-          route-params              (when-let [schema (get-in form [:params :route :schema])]
-                                      (schema->params* schema (constantly :path) nil))
-          query-params              (when-let [schema (get-in form [:params :query :schema])]
-                                      (schema->params* schema (constantly :query) nil))
-          params                    (concat
-                                     (for [param route-params]
-                                       (assoc param :in :path))
-                                     query-params)
-          ctype                     (if (get-in form [:metadata :multipart])
-                                      "multipart/form-data"
-                                      "application/json")
-          body-schema               (some-> (if (= ctype "multipart/form-data")
-                                              (multipart-schema form)
-                                              (get-in form [:params :body :schema]))
-                                            mjs-collect-definitions
-                                            fix-json-schema)]
+    (let [method          (:method form)
+          route-params    (when-let [schema (get-in form [:params :route :schema])]
+                            (schema->params* schema (constantly :path) nil))
+          query-params    (when-let [schema (get-in form [:params :query :schema])]
+                            (schema->params* schema (constantly :query) nil))
+          params          (concat
+                           (for [param route-params]
+                             (assoc param :in :path))
+                           query-params)
+          ctype           (if (get-in form [:metadata :multipart])
+                            "multipart/form-data"
+                            "application/json")
+          body-schema     (some-> (if (= ctype "multipart/form-data")
+                                    (multipart-schema form)
+                                    (get-in form [:params :body :schema]))
+                                  mjs-collect-definitions
+                                  fix-json-schema)
+          response-schema (:response-schema form)
+          deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
-      (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
+      (cond-> {:operationId (path->operation-id method full-path)
+               :summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
-               :parameters params}
-        body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}})))
+               :parameters params
+               :responses  default-response-schema}
+        body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
+        response-schema (update :responses merge (schema->response-obj response-schema))
+        deprecated?     (assoc :deprecated true)))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
                                    (:method form)
@@ -173,6 +246,11 @@
                       {:full-path full-path, :form form, :definitions @*definitions*}
                       e)))))
 
+(defn- strip-trailing-slash
+  "Remove trailing slash from a string, but keep root paths like '/api' unchanged."
+  [s]
+  (str/replace s #"/$" ""))
+
 (mu/defn open-api-spec :- :metabase.api.open-api/spec
   "Create an OpenAPI spec for then `endpoints` in a namespace. Note this returns an incomplete OpenAPI object;
   use [[metabase.api.open-api/root-open-api-object]] to get something complete."
@@ -183,7 +261,8 @@
              (map (fn [endpoint]
                     (let [local-path (-> (get-in endpoint [:form :route :path])
                                          (str/replace #"/:([^/]+)" "/{$1}"))
-                          full-path  (str prefix local-path)
+                          full-path  (-> (str prefix local-path)
+                                         strip-trailing-slash)
                           method     (get-in endpoint [:form :method])]
                       {full-path {method (assoc (path-item full-path (:form endpoint))
                                                 :tags [prefix])}})))
@@ -198,7 +277,7 @@
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series"))
+   (:form (metabase.api.macros/find-route 'metabase.queries-rest.api.card :get "/:id/series")))
 
-   (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
-       fix-json-schema)))
+  (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
+      fix-json-schema))

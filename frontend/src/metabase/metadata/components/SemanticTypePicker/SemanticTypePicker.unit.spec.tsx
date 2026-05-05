@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Field, FieldId, FieldReference } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
@@ -99,7 +99,7 @@ const setup = ({
 };
 
 describe("SemanticTypePicker", () => {
-  describe("depreacted semantic types", () => {
+  describe("deprecated semantic types", () => {
     it("does not show deprecated semantic types", async () => {
       setup({ fieldId: TEMPORAL_FIELD.id });
 
@@ -140,11 +140,11 @@ describe("SemanticTypePicker", () => {
     });
   });
 
-  it("shows Category semantic type for boolean field's", async () => {
+  it("hides Category semantic type for boolean field's", async () => {
     setup({ fieldId: BOOLEAN_FIELD.id });
 
     await assertSemanticTypesVisibility({
-      visibleTypes: ["Category"],
+      hiddenTypes: ["Category"],
     });
   });
 

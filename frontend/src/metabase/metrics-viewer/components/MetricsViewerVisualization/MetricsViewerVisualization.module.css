@@ -1,0 +1,13 @@
+.chartWrapper {
+  flex: 1;
+}
+
+.chart {
+  background-color: var(--mb-color-background-primary);
+  overflow: hidden;
+  height: 100%;
+
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}

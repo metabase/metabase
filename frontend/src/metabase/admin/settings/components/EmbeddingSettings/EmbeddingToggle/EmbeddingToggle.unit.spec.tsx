@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -40,7 +40,7 @@ const setup = async ({
 
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValues);
-  setupUpdateSettingEndpoint();
+  setupUpdateSettingsEndpoint();
 
   renderWithProviders(
     <EmbeddingToggle
@@ -91,7 +91,7 @@ describe("EmbeddingToggle", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
-      expect(body).toEqual({ value: true });
+      expect(body).toEqual({ "enable-embedding-static": true });
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
@@ -103,7 +103,7 @@ describe("EmbeddingToggle", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
-      expect(body).toEqual({ value: false });
+      expect(body).toEqual({ "enable-embedding-static": false });
     });
   });
 

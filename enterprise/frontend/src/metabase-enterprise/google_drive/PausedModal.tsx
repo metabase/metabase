@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useSetting, useStoreUrl } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import { Box, Button, Modal, Stack, Text } from "metabase/ui";
@@ -11,6 +11,7 @@ import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 import databaseError from "./database-error.svg?component";
 
 function PausedModal({ onClose }: { onClose: () => void }) {
+  const storeUrl = useStoreUrl("account/storage");
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
@@ -20,9 +21,9 @@ function PausedModal({ onClose }: { onClose: () => void }) {
         <Text size="lg" fw="bold">
           {t`Couldn't upload the file, storage is full`}
         </Text>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {isAdmin
-            ? // eslint-disable-next-line no-literal-metabase-strings -- admin only
+            ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
               t`Add more storage to your Metabase or connect a database to store the uploaded files.`
             : t`Please contact your admin to add more storage.`}
         </Text>
@@ -33,7 +34,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
               <Button
                 variant="filled"
                 component={ExternalLink}
-                href="https://store.metabase.com"
+                href={storeUrl}
                 target="_blank"
               >
                 {t`Add more storage`}
@@ -75,7 +76,7 @@ export const FileUploadErrorModal = ({
   }
 
   return (
-    <_FileUploadErrorModal onClose={onClose} fileName={fileName}>
+    <_FileUploadErrorModal onClose={onClose} fileName={fileName} opened>
       {children}
     </_FileUploadErrorModal>
   );

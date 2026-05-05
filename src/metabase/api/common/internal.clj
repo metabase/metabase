@@ -1,6 +1,7 @@
 (ns metabase.api.common.internal
   "Internal functions used by [[metabase.api.common]]."
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
@@ -25,6 +26,11 @@
             (catch Exception _ x)) x))
    form))
 
+(defn- all-non-nil
+  [sequence]
+  (when (every? some? sequence)
+    sequence))
+
 (defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
@@ -32,18 +38,30 @@
                      (eval schema)
                          (catch Exception _ #_:clj-kondo/ignore
                                 (requiring-resolve-form schema)))
-        schema-type (mc/type schema)]
+        schema-type (mc/type schema)
+        {regex :api/regex} (mc/properties schema)]
     [schema-type
-     (condp = schema-type
-       ;; can use any regex directly
-       :re       (first (mc/children schema))
-       :keyword  #"[\S]+"
-       'pos-int? #"[0-9]+"
-       :int      #"-?[0-9]+"
-       'int?     #"-?[0-9]+"
-       :uuid     u/uuid-regex
-       'uuid?    u/uuid-regex
-       nil)]))
+     (or regex
+         (condp = schema-type
+           :or       (some->> (map (comp second ->matching-regex) (mc/children schema))
+                              all-non-nil
+                              (map str)
+                              (str/join "|")
+                              re-pattern)
+           ;; can use any regex directly
+           :re       (first (mc/children schema))
+           :enum     (some->> (mc/children schema)
+                              (map name)
+                              all-non-nil
+                              (str/join "|")
+                              re-pattern)
+           :keyword  #"[\S]+"
+           'pos-int? #"[0-9]+"
+           :int      #"-?[0-9]+"
+           'int?     #"-?[0-9]+"
+           :uuid     u/uuid-regex
+           'uuid?    u/uuid-regex
+           nil))]))
 
 (p.types/defprotocol+ EndpointResponse
   "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it

@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Link from "metabase/core/components/Link";
-import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
+import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticSkeleton";
 
@@ -12,7 +12,7 @@ export const CardActionMenuContainer = styled.div`
   top: 0.3125rem;
   right: 0.3125rem;
   z-index: 3;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   visibility: hidden;
 `;
 
@@ -39,7 +39,7 @@ export const CardRoot = styled(
   padding: ${(props) => (props.isPreview ? "0" : "0.5rem 0")};
   border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 
   &:hover {
     ${CardActionMenuContainer} {

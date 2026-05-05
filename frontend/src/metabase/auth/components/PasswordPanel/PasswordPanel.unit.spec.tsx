@@ -8,12 +8,12 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import MetabaseSettings from "metabase/lib/settings";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import MetabaseSettings from "metabase/utils/settings";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { PasswordPanel } from "./PasswordPanel";
 
@@ -61,7 +61,7 @@ describe("PasswordPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(fetchMock.done("path:/api/session")).toBe(true);
+      expect(fetchMock.callHistory.done("path:/api/session")).toBe(true);
     });
   });
 

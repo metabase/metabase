@@ -4,7 +4,8 @@ import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
-import { formatValue, singularize } from "metabase/lib/formatting";
+import { singularize } from "metabase/utils/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type Question from "metabase-lib/v1/Question";
 import { canRunAction } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -15,6 +16,7 @@ import {
   isPK,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Table as ApiTable,
   DatasetColumn,
   DatasetData,
   TableId,
@@ -120,7 +122,7 @@ export const getIdValue = ({
 };
 
 export function getSingleResultsRow(data: DatasetData) {
-  return data.rows.length === 1 ? data.rows[0] : null;
+  return data.rows.length === 1 ? data.rows[0] : undefined;
 }
 
 export const getSinglePKIndex = (cols: DatasetColumn[]) => {
@@ -174,3 +176,41 @@ export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
 
 export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
   isImplicitUpdateAction(action) && !action.archived;
+
+export function getApiTable(
+  table: Table | undefined | null,
+): ApiTable | undefined {
+  if (!table) {
+    return undefined;
+  }
+
+  const apiTable: ApiTable = {
+    ...table.getPlainObject(),
+    fields: table.original_fields,
+  } as ApiTable;
+
+  return apiTable;
+}
+
+export function getRowUrl(
+  question: Question,
+  columns: DatasetColumn[],
+  table: ApiTable | undefined,
+  rowId: string | number,
+): string | undefined {
+  const pks = columns.filter(isPK);
+
+  if (pks.length !== 1) {
+    return undefined;
+  }
+
+  if (question.type() === "model") {
+    return `/model/${question.slug()}/detail/${rowId}`;
+  }
+
+  if (typeof table?.id === "number") {
+    return `/table/${table.id}/detail/${rowId}`;
+  }
+
+  return undefined;
+}

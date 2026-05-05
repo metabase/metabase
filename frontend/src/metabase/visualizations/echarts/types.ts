@@ -14,12 +14,23 @@ export type EChartsSeriesMouseEvent<TDatum = unknown> = {
   };
   dataIndex?: number;
   seriesId?: string;
+  seriesName?: string;
   name?: string;
   value: any;
   dataType?: string;
   seriesType: string;
   data: TDatum;
 };
+
+export type EChartsSeriesBrushEvent = {
+  areas: BrushAreaParam[];
+};
+
+export function isLineXBrushRange(
+  range: BrushAreaParam["range"],
+): range is number[] {
+  return Array.isArray(range) && typeof range[0] === "number";
+}
 
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {
   areas: BrushAreaParam[];

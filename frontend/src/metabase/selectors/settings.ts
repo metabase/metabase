@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
+import type { State } from "metabase/redux/store";
 import type { TokenStatus, Version } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(
@@ -33,17 +33,43 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-export const getStoreUrl = (path = "") => {
-  return `https://store.metabase.com/${path}`;
-};
+export type StorePaths =
+  /** store main page */
+  | ""
+  /** checkout page */
+  | "checkout"
+  /** plans management page */
+  | "account/manage/plans"
+  /** development instance specific upsell */
+  | "account/new-dev-instance"
+  /** redirects to the specific instance storage management page */
+  | "account/storage"
+  /** EE, self-hosted upsell that communicates back with the instance */
+  | "checkout/upgrade/self-hosted"
+  /** transforms add-ons management page */
+  | "account/transforms";
+
+const DEFAULT_STORE_URL = "https://store.metabase.com/";
+
+export function getStoreUrl(state: State, path: StorePaths = "") {
+  try {
+    const storeUrl = getSetting(state, "store-url");
+    const url = new URL(path, storeUrl);
+    return url.toString();
+  } catch {
+    return DEFAULT_STORE_URL;
+  }
+}
 
 export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
+
+export const CROWDIN_URL = "https://crowdin.com/project/metabase-i18n";
 
 export type UtmProps = {
   utm_source?: string;
@@ -135,7 +161,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/utils/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 
@@ -180,3 +206,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getTokenStatus = (state: State): TokenStatus | null =>
+  getSetting(state, "token-status");

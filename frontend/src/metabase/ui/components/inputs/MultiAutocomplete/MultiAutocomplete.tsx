@@ -11,8 +11,12 @@ import {
   Tooltip,
   type __InputWrapperProps,
   extractStyleProps,
+  getParsedComboboxData,
+  isOptionsGroup,
 } from "@mantine/core";
+import cx from "classnames";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Icon } from "../../icons";
@@ -35,15 +39,25 @@ export type MultiAutocompleteProps = BoxProps &
     autoFocus?: boolean;
     rightSection?: ReactNode;
     nothingFoundMessage?: ReactNode;
+    classNames?: {
+      pill?: string;
+      input?: string;
+    };
     "aria-label"?: string;
     "data-testid"?: string;
     parseValue?: (rawValue: string) => string | null;
     renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
     renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
+    sortComparator?: (a: string, b: string) => number;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
   };
 
+/**
+ * Base multi-value autocomplete component. For most use cases, prefer
+ * {@link MultiAutocompleteWithTranslation} from `metabase/common/components/MultiAutocomplete`
+ * which adds content translation and translation-aware sorting.
+ */
 export function MultiAutocomplete({
   value,
   data = [],
@@ -63,6 +77,7 @@ export function MultiAutocomplete({
   autoFocus,
   rightSection,
   nothingFoundMessage,
+  classNames,
   maxDropdownHeight,
   dropdownOpened,
   defaultDropdownOpened,
@@ -74,6 +89,7 @@ export function MultiAutocomplete({
   parseValue = defaultParseValue,
   renderValue = defaultRenderValue,
   renderOption,
+  sortComparator,
   onChange,
   onSearchChange,
   onDropdownOpen,
@@ -81,6 +97,31 @@ export function MultiAutocomplete({
   onOptionSubmit,
   ...otherProps
 }: MultiAutocompleteProps) {
+  const sortedData = useMemo(() => {
+    const parsedData = getParsedComboboxData(data);
+    if (!sortComparator) {
+      return parsedData;
+    }
+
+    return parsedData
+      .map((item) => {
+        if (isOptionsGroup(item)) {
+          return {
+            ...item,
+            items: [...item.items].sort((a, b) =>
+              sortComparator(a.value, b.value),
+            ),
+          };
+        }
+        return item;
+      })
+      .sort((a, b) => {
+        const aValue = isOptionsGroup(a) ? a.group : a.value;
+        const bValue = isOptionsGroup(b) ? b.group : b.value;
+        return sortComparator(aValue, bValue);
+      });
+  }, [data, sortComparator]);
+
   const {
     combobox,
     pillValues,
@@ -100,7 +141,7 @@ export function MultiAutocomplete({
     handleOptionSubmit,
   } = useMultiAutocomplete({
     values: value,
-    data,
+    data: sortedData,
     parseValue,
     onChange,
     onSearchChange,
@@ -112,11 +153,11 @@ export function MultiAutocomplete({
     <Tooltip
       label={
         <Text c="inherit" maw="20rem">
-          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you’re searching for has commas — and if it itself includes quotes, use backslashes like this: “searching, you see, is a \\“simple\\” thing.”`}
+          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you're searching for has commas — and if it itself includes quotes, use backslashes like this: "searching, you see, is a \\"simple\\" thing."`}
         </Text>
       }
     >
-      <Icon c="text-light" name="info_filled" />
+      <Icon c="text-tertiary" name="info" />
     </Tooltip>
   );
 
@@ -132,11 +173,12 @@ export function MultiAutocomplete({
         <Combobox.DropdownTarget>
           <PillsInput
             {...styleProps}
+            classNames={{ input: classNames?.input }}
             label={label}
             description={description}
             error={error}
             required={required}
-            rightSection={rightSection ?? infoIcon}
+            rightSection={rightSection === undefined ? infoIcon : rightSection}
             withAsterisk={withAsterisk}
             labelProps={labelProps}
             descriptionProps={descriptionProps}
@@ -151,7 +193,7 @@ export function MultiAutocomplete({
                 value !== null ? (
                   <Pill
                     key={valueIndex}
-                    className={S.pill}
+                    className={cx(S.pill, classNames?.pill)}
                     removeButtonProps={{ "aria-label": t`Remove` }}
                     withRemoveButton
                     onClick={(event) => handlePillClick(event, valueIndex)}

@@ -200,19 +200,21 @@
              (validate-id "v49.2024-01-01T10:30:00"))))
 
     (testing "invalid date components should throw an error"
-      (are [msg id]
-           (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Invalid change set\."
-            (validate-id "v49.2024-30-01T10:30:00")
-            msg)
-        "invalid month"  "v49.2024-13-01T10:30:00"
-        "invalid day"    "v49.2024-01-32T10:30:00"
-        "invalid hour"   "v49.2024-01-01T25:30:00"
-        "invalid minute" "v49.2024-01-01T10:60:00"
-        "invalid second" "v49.2024-01-01T10:30:60"))))
+      (let [validate-id-strict (fn [id]
+                                 (validate-file (io/file "049_update_migrations.yaml")
+                                                (mock-change-set :id id)))]
+        (are [msg id]
+             (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"non-timestamp ID formats"
+              (validate-id-strict id))
+          "invalid month"  "v49.2024-13-01T10:30:00"
+          "invalid day"    "v49.2024-01-32T10:30:00"
+          "invalid hour"   "v49.2024-01-01T25:30:00"
+          "invalid minute" "v49.2024-01-01T10:60:00"
+          "invalid second" "v49.2024-01-01T10:30:60")))))
 
-(deftest validate-id-in-file-test
+(deftest ^:parallel validate-id-in-file-test
   (letfn [(validate-id [id file]
             (validate-file (io/file file) (mock-change-set :id id)))]
     (testing "001_update_migrations.yaml"
@@ -228,7 +230,6 @@
           clojure.lang.ExceptionInfo
           #"Change set IDs are in the wrong file"
           (validate-id "v56.2024-01-01T10:30:00" file)))))
-
     (testing "later versions"
       (is (= :ok
              (validate-id "v56.2024-01-01T10:30:00" "056_update_migrations.yaml")))
@@ -286,7 +287,7 @@
     (testing "missing rollback key fails"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid change set\."
+           #"Rollback is required but not present\."
            (validate (update (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [{:sql {:sql "select 1"}}])
                              :changeSet dissoc :rollback)))))
     (testing "nil rollback is allowed"

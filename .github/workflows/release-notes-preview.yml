@@ -11,7 +11,7 @@ on:
 
 jobs:
   preview-release-notes:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
     - name: Fail early on the incorrect version format
@@ -23,9 +23,11 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
       env:
@@ -34,16 +36,21 @@ jobs:
         AWS_S3_DOWNLOADS_BUCKET: test_bucket
       with:
         script: | # js
-          const { getChangelog } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const R = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
           const version = '${{ inputs.version }}';
 
-          const notes = await getChangelog({
+          const issues = await R.getMilestoneIssues({
             version,
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,
+          });
+
+          const notes = R.getWebsiteChangelog({
+            version,
+            issues,
           });
 
           fs.writeFileSync(`release-notes-preview-${version}.md`, notes);

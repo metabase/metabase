@@ -3,9 +3,10 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -16,24 +17,11 @@
                                 (when (lib.metadata.protocols/metadata-provider? existing)
                                   existing))
                               (qp.store/metadata-provider))]
-    ;; removing `:lib/converted?` will keep MLv2 from doing a bunch of extra transformations to something that's already
-    ;; a well-formed pMBQL query, we don't need that and it actually ends up breaking some stuff
-    ;; TODO: Get the library to a stable state, where `lib/query` is idempotent, then this can be dropped.
-    (lib/query metadata-provider (dissoc query :lib.convert/converted?))))
+    (lib/query metadata-provider query)))
 
-(def ^:private NormalizedQuery
-  [:and
-   [:map
-    [:database ::lib.schema.id/database]
-    [:lib/type {:optional true} [:= :mbql/query]]
-    [:type     {:optional true} [:= :internal]]]
-   [:fn
-    {:error/message "valid pMBQL query or :internal audit query"}
-    (some-fn :lib/type :type)]])
-
-(mu/defn normalize-preprocessing-middleware :- NormalizedQuery
+(mu/defn normalize-preprocessing-middleware :- ::lib.schema/query
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
-  keywords. Convert query to pMBQL if needed."
+  keywords. Convert query to MBQL 5 if needed."
   [query :- [:map [:database ::lib.schema.id/database]]]
   (try
     (u/prog1 (normalize* query)

@@ -1,0 +1,1 @@
+export { LastEditInfoLabel } from "./LastEditInfoLabel";

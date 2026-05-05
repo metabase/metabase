@@ -1,8 +1,8 @@
 import _userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
-import { render, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import {
@@ -48,14 +48,16 @@ function setup({
   const onChange = jest.fn();
   const onBack = jest.fn();
 
-  render(
+  renderWithProviders(
     <TimeFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}
       filter={filter}
       isNew={!filter}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

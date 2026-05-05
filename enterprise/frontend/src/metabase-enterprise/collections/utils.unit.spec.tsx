@@ -2,11 +2,11 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   filterOutItemsFromInstanceAnalytics,
@@ -75,7 +75,7 @@ describe("Collections plugin utils", () => {
     });
 
     it("should return the default icon for a regular question", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
     describe("enterprise icons", () => {
@@ -88,7 +88,23 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official collection", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
-        ).toEqual({ name: "official_collection", color: "saturated-yellow" });
+        ).toEqual({
+          name: "official_collection",
+          color: "saturated-yellow",
+          tooltip: "Official collection",
+        });
+      });
+
+      it("should return the correct icon for a remote synced collection", () => {
+        expect(
+          getIcon({ model: "collection", is_remote_synced: true }),
+        ).toEqual({ name: "synced_collection" });
+      });
+
+      it("should return the correct icon for a remote synced entity", () => {
+        expect(getIcon({ model: "dashboard", is_remote_synced: true })).toEqual(
+          { name: "dashboard" },
+        );
       });
 
       it("official collection in search", () => {
@@ -103,7 +119,7 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official model", () => {
         expect(
           getIcon({ model: "dataset", moderated_status: "verified" }),
-        ).toEqual({ name: "model" });
+        ).toEqual({ name: "model_with_badge" });
       });
     });
   });

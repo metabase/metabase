@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";

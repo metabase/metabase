@@ -1,22 +1,26 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
   type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
-export const DETAILS_PERMISSION_OPTIONS = {
+export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   no: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
@@ -50,6 +54,7 @@ export const buildDetailsPermission = (
   entityId: EntityId,
   groupId: number,
   isAdmin: boolean,
+  isExternal: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
@@ -89,11 +94,15 @@ export const buildDetailsPermission = (
     permission: DataPermission.DETAILS,
     type: DataPermissionType.DETAILS,
     value,
-    isDisabled: isAdmin,
+    isDisabled: isAdmin || isExternal,
     isHighlighted: isAdmin,
     warning,
     confirmations,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : isExternal
+        ? Messages.EXTERNAL_USERS_NO_ACCESS_DATABASE
+        : null,
     options: [DETAILS_PERMISSION_OPTIONS.no, DETAILS_PERMISSION_OPTIONS.yes],
   };
 };

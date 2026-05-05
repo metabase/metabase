@@ -3,26 +3,21 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { DashboardAlertListItem } from "metabase/account/notifications/types";
-import Link from "metabase/core/components/Link";
-import { formatTitle } from "metabase/lib/notifications";
-import { canArchiveLegacyAlert, formatChannel } from "metabase/lib/pulse";
-import * as Urls from "metabase/lib/urls";
+import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
+import { Link } from "metabase/common/components/Link";
+import { formatTitle } from "metabase/notifications/utils";
+import { canArchiveLegacyAlert, formatChannel } from "metabase/pulse";
+import { Box, Flex, Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Channel, User } from "metabase-types/api";
 
-import {
-  NotificationCardRoot,
-  NotificationContent,
-  NotificationDescription,
-  NotificationIcon,
-  NotificationMessage,
-} from "./DashboardNotificationCard.styled";
+import S from "./DashboardNotificationCard.module.css";
 
 type Props = {
-  listItem: DashboardAlertListItem;
+  listItem: DashboardSubscriptionListItem;
   user: User;
-  onUnsubscribe: (listItem: DashboardAlertListItem) => void;
-  onArchive: (listItem: DashboardAlertListItem) => void;
+  onUnsubscribe: (listItem: DashboardSubscriptionListItem) => void;
+  onArchive: (listItem: DashboardSubscriptionListItem) => void;
   isEditable: boolean;
 };
 
@@ -49,8 +44,14 @@ export const DashboardNotificationCard = ({
   }, [listItem, onArchive]);
 
   return (
-    <NotificationCardRoot>
-      <NotificationContent>
+    <Flex
+      className={S.root}
+      align="center"
+      px="lg"
+      py="md"
+      bg="background-primary"
+    >
+      <Box flex="1 1 auto">
         {dashboardEntityLink ? (
           <Link variant="brandBold" to={dashboardEntityLink}>
             {formatTitle(listItem)}
@@ -58,33 +59,53 @@ export const DashboardNotificationCard = ({
         ) : (
           formatTitle(listItem)
         )}
-        <NotificationDescription>
+        <Flex wrap="wrap" mt="xs">
           {item.channels.map((channel, index) => (
-            <NotificationMessage key={index}>
+            <Text
+              key={index}
+              component="span"
+              className={S.message}
+              c="text-secondary"
+              fz="sm"
+              lh="0.875rem"
+            >
               {getChannelMessage(channel)}
-            </NotificationMessage>
+            </Text>
           ))}
-          <NotificationMessage data-server-date>
+          <Text
+            component="span"
+            className={S.message}
+            c="text-secondary"
+            fz="sm"
+            lh="0.875rem"
+            data-server-date
+          >
             {formatCreatorMessage(item, user.id)}
-          </NotificationMessage>
-        </NotificationDescription>
-      </NotificationContent>
+          </Text>
+        </Flex>
+      </Box>
 
       {isEditable && !hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
       )}
       {isEditable && hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />
       )}
-    </NotificationCardRoot>
+    </Flex>
   );
 };
 

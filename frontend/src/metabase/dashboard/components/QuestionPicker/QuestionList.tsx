@@ -7,25 +7,31 @@ import {
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SelectList } from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { usePagination } from "metabase/common/hooks/use-pagination";
+import { getIcon } from "metabase/common/utils/icon";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
-import Search from "metabase/entities/search";
-import { isEmbeddingSdk } from "metabase/env";
-import { usePagination } from "metabase/hooks/use-pagination";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { Search } from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type { CardId, CollectionId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  CollectionItem,
+  SearchResult,
+} from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
+import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface QuestionListProps {
   searchText: string;
@@ -80,7 +86,7 @@ export function QuestionList({
           ...(showOnlyPublicCollections && {
             filter_items_in_personal_collection: "exclude" as const,
           }),
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -96,7 +102,7 @@ export function QuestionList({
     !isSearching
       ? {
           id: collectionId,
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -108,7 +114,7 @@ export function QuestionList({
   const error = isSearching ? searchError : itemsError;
   const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
-  const list = useMemo(() => {
+  const list: (SearchResult | CollectionItem)[] = useMemo(() => {
     return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
@@ -143,9 +149,9 @@ export function QuestionList({
                 label: S.QuestionListItemLabel,
               }}
               className={S.QuestionListItem}
-              name={item.getName()}
+              name={item.name}
               icon={{
-                name: item.getIcon().name,
+                name: getIcon(item).name,
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}
@@ -160,14 +166,11 @@ export function QuestionList({
                 size="41px"
                 aria-label={t`Visualize another way`}
                 onClick={() => {
-                  trackSimpleEvent({
-                    event: "visualize_another_way_clicked",
-                    triggered_from: "question-list",
-                  });
+                  trackVisualizeAnotherWayClicked();
                   setVisualizerModalCardId(Number(item.id));
                 }}
               >
-                <Icon name="add_data" />
+                <Icon name="lineandbar" />
               </ActionIcon>
             </Tooltip>
           </Flex>

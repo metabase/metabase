@@ -619,7 +619,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
-      assertFilterName("Sum of Quantity is less than 350", { stage: 1 });
+      assertFilterName("Sum of QUANTITY is less than 350", { stage: 1 });
       H.visualize();
       H.assertQueryBuilderRowCount(115);
     });
@@ -645,7 +645,7 @@ describe("scenarios > filters > filter sources", () => {
 });
 
 function addNewFilter() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 }
 

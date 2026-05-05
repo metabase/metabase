@@ -1,11 +1,11 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/ui/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
   position: relative;
   margin: 0 6px;
   top: 2px;

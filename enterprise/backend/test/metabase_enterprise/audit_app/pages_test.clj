@@ -8,7 +8,7 @@
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.classloader.core :as classloader]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -143,3 +143,18 @@
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
+
+(deftest works-over-dataset-api
+  (testing "FE queries work over dataset api (#64383)"
+    (mt/with-premium-features #{:audit-app}
+      (let [response (mt/user-http-request :crowberto :post 202
+                                           "dataset"
+                                           {:limit 1
+                                            :type :internal,
+                                            :fn "metabase-enterprise.audit-app.pages.queries/bad-table",
+                                            :args [nil nil nil "last_run_at" "desc"],
+                                            :offset 0,
+                                            :parameters []})]
+        (is (=? {:status "completed"
+                 :row_count integer?}
+                response))))))

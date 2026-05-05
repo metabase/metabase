@@ -28,13 +28,13 @@ export function assertSdkInteractiveQuestionOrdersUsable() {
   cy.log("1. shows a table");
   tableInteractive().within(() => {
     cy.findByText("Total").should("be.visible");
-    cy.findByText("37.65").should("be.visible");
+    cy.findAllByText("37.65").first().should("be.visible");
   });
 
   cy.findByTestId("chart-type-selector-button").click();
 
   cy.log("2. can switch to a trend chart");
-  cy.findByRole("menu").within(() => {
+  cy.findByRole("listbox").within(() => {
     cy.findByText("Trend").click();
   });
 

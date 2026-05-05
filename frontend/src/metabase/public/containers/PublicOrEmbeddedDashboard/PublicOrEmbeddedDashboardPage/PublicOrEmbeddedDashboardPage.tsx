@@ -1,77 +1,98 @@
 import type { WithRouterProps } from "react-router";
 
-import {
-  useDashboardUrlParams,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
+import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
-import { SetTitle } from "metabase/hoc/Title";
-import { useSelector } from "metabase/lib/redux";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
-import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
-import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
+import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
+import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
+
+const PublicOrEmbeddedDashboardPageInner = ({
+  location,
+  router,
+}: WithRouterProps) => {
+  useDashboardLocationSync({ location });
+  useDashboardUrlQuery(router, location);
+
+  return <PublicOrEmbeddedDashboardView />;
+};
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
-  const { location, router } = props;
+  const dispatch = useDispatch();
+
+  const { location, params } = props;
+  const { uuid, token } = params;
+
   const parameterQueryParams = props.location.query;
 
-  const { dashboardId } = usePublicDashboardEndpoints(props);
+  const dashboardId = uuid || token;
 
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams,
-  });
+  usePublicEndpoints({ uuid, token });
 
-  useDashboardUrlQuery(router, location);
+  useSetEmbedFont({ location });
 
   const {
     background,
     bordered,
-    hasNightModeToggle,
-    downloadsEnabled,
-    hideParameters,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    theme,
     titled,
+    downloadsEnabled,
     locale,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
+    hide_parameters,
+    theme,
+  } = useEmbedFrameOptions({ location });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
-  const dashboard = useSelector(getDashboardComplete);
-
   return (
-    <>
-      <SetTitle title={dashboard?.name} />
-      <PublicOrEmbeddedDashboard
-        dashboardId={dashboardId}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        background={background}
-        bordered={bordered}
-        downloadsEnabled={downloadsEnabled}
-        theme={theme}
-        titled={titled}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-        locale={canWhitelabel ? locale : undefined}
-        withFooter={true}
-      />
-    </>
+    <LocaleProvider
+      locale={canWhitelabel ? locale : undefined}
+      shouldWaitForLocale
+    >
+      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+        <DashboardContextProvider
+          dashboardId={dashboardId}
+          hideParameters={hide_parameters}
+          theme={theme}
+          background={background}
+          bordered={bordered}
+          downloadsEnabled={downloadsEnabled}
+          titled={titled}
+          parameterQueryParams={parameterQueryParams}
+          cardTitled={true}
+          withFooter={true}
+          getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+          navigateToNewCardFromDashboard={null}
+          onError={(error) => {
+            dispatch(setErrorPage(error));
+          }}
+          isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
+          dashcardMenu={({ dashcard, result }) =>
+            downloadsEnabled?.results &&
+            isQuestionCard(dashcard.card) &&
+            !!result?.data &&
+            !result?.error && (
+              <PublicOrEmbeddedDashCardMenu
+                result={result}
+                dashcard={dashcard}
+              />
+            )
+          }
+          dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+        >
+          <PublicOrEmbeddedDashboardPageInner {...props} />
+        </DashboardContextProvider>
+      </EmbeddingEntityContextProvider>
+    </LocaleProvider>
   );
 };

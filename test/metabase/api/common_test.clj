@@ -9,6 +9,7 @@
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -59,6 +60,13 @@
   (testing "check that 404 is returned otherwise"
     (is (= (four-oh-four)
            (-> (my-mock-api-fn)
+               (update-in [:headers "Last-Modified"] string?)))))
+
+  (testing "check-404 can return a custom message"
+    (is (= (assoc (four-oh-four) :body "Custom not found.")
+           (-> (mock-api-fn
+                (fn [_]
+                  (api/check-404 nil (tru "Custom not found."))))
                (update-in [:headers "Last-Modified"] string?)))))
 
   (testing "let-404 should return nil if test fails"
@@ -136,6 +144,26 @@
       (underive :event/write-permission-failure ::permission-failure-event)
       (underive :event/update-permission-failure ::permission-failure-event)
       (underive :event/create-permission-failure ::permission-failure-event))))
+
+;;; ---------------------------------------- query-check tests ----------------------------------------
+
+(deftest query-check-returns-object-when-user-has-query-permissions-test
+  (testing "query-check returns object when user has query permissions"
+    (mt/with-temp [:model/Card card {}]
+      (with-redefs [mi/can-query? (constantly true)]
+        (is (= card (api/query-check card)))))))
+
+(deftest query-check-throws-403-when-user-lacks-query-permissions-test
+  (testing "query-check throws 403 when user lacks query permissions"
+    (mt/with-temp [:model/Card card {}]
+      (with-redefs [mi/can-query? (constantly false)]
+        (is (thrown-with-msg? ExceptionInfo #"permissions"
+                              (api/query-check card)))))))
+
+(deftest query-check-throws-404-for-nil-object-test
+  (testing "query-check throws 404 for nil object"
+    (is (thrown-with-msg? ExceptionInfo #"Not found"
+                          (api/query-check nil)))))
 
 (deftest present-items-works
   (testing "order is preserved"

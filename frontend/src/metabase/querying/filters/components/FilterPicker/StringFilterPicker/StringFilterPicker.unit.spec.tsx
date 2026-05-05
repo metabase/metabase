@@ -11,7 +11,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   PEOPLE,
@@ -59,12 +59,14 @@ function setup({
 
   renderWithProviders(
     <StringFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}
       filter={filter}
       isNew={!filter}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

@@ -4,14 +4,13 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useSetting } from "metabase/common/hooks";
-import { Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
 import {
   BillingExternalLink,
-  BillingExternalLinkIcon,
   BillingInfoCard,
   BillingInfoRowContainer,
   BillingInternalLink,
@@ -61,7 +60,7 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-        <BillingExternalLinkIcon size="16" name="external" />
+        <Icon ml="sm" size="16" name="external" />
       </BillingExternalLink>
     );
   }
@@ -97,7 +96,11 @@ function BillingInfoRow({
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
       <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
-        <Text c="text-md" maw="15rem" data-testid={`billing-info-key-${id}`}>
+        <Text
+          c="text-secondary"
+          maw="15rem"
+          data-testid={`billing-info-key-${id}`}
+        >
           {lineItem.name}
         </Text>
         <BillingInfoValue

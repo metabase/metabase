@@ -1,13 +1,15 @@
-import { goBack, push } from "react-router-redux";
+import type { ComponentProps } from "react";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import TimelineEvents from "metabase/entities/timeline-events";
-import Timelines from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSetArchive } from "metabase/common/hooks";
+import { TimelineEvents } from "metabase/entities/timeline-events";
+import { Timelines } from "metabase/entities/timelines";
+import { connect, useDispatch } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
@@ -33,20 +35,27 @@ const timelineEventProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-  onArchive: async (event: TimelineEvent, timeline?: Timeline) => {
-    await dispatch(TimelineEvents.actions.setArchived(event, true));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
   },
 });
+
+function EditEventModalContainer(props: ComponentProps<typeof EditEventModal>) {
+  const archive = useSetArchive();
+  const dispatch = useDispatch();
+  const onArchive = async (event: TimelineEvent, timeline?: Timeline) => {
+    await archive({ id: event.id, model: "timeline-event" }, true);
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
+  };
+  return <EditEventModal {...props} onArchive={onArchive} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.load(timelineProps),
   TimelineEvents.load(timelineEventProps),
   connect(null, mapDispatchToProps),
-)(EditEventModal);
+)(EditEventModalContainer);

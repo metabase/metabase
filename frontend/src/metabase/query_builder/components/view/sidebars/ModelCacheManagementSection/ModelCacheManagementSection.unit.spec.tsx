@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
@@ -110,7 +110,7 @@ describe("ModelCacheManagementSection", () => {
     fireEvent.click(await screen.findByLabelText("refresh icon"));
 
     // get, post, get
-    await waitFor(() => expect(fetchMock.calls().length).toBe(3));
+    await waitFor(() => expect(fetchMock.callHistory.calls().length).toBe(3));
   });
 
   it("displays 'error' state correctly", async () => {
@@ -131,7 +131,7 @@ describe("ModelCacheManagementSection", () => {
     fireEvent.click(await screen.findByLabelText("refresh icon"));
 
     // get, post, get
-    await waitFor(() => expect(fetchMock.calls().length).toBe(3));
+    await waitFor(() => expect(fetchMock.callHistory.calls().length).toBe(3));
   });
 
   it("disables refresh when DB management is not available to the user", async () => {

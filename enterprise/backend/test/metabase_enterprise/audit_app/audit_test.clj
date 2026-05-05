@@ -11,29 +11,36 @@
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.nio.file Files OpenOption)
+   (java.util.jar JarEntry JarOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(defmacro with-audit-db-restoration [& body]
+(defn do-with-audit-db-restoration! [thunk]
+  (mbc/ensure-audit-db-installed!)
+  (try
+    (thunk)
+    (finally
+      (mbc/ensure-audit-db-installed!))))
+
+(defmacro with-audit-db-restoration! [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
-  `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (clojure.pprint/print-table (t2/select [:model/Database :id :name]))
-     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
-       (mbc/ensure-audit-db-installed!)
-       (try
-         ~@body
-         (finally
-           (mbc/ensure-audit-db-installed!))))))
+  `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -44,7 +51,7 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
@@ -53,19 +60,29 @@
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
+
+    (testing "Cards in the audit collection have non-empty :result_metadata after installation"
+      (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
+                                               :database_id audit/audit-db-id)
+            audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]
+        (is (seq audit-cards))
+        (is (empty? audit-cards-no-metadata)
+            (str "Cards without :result_metadata: "
+                 (pr-str (mapv :name audit-cards-no-metadata))))))
 
     (testing "Audit DB starts with no permissions for all users"
       (is (= {:perms/manage-database       :no
               :perms/download-results      :one-million-rows
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
-              :perms/create-queries        :no}
-             (-> (data-perms/data-permissions-graph :db-id audit/audit-db-id :audit? true)
+              :perms/create-queries        :no
+              :perms/transforms            :no}
+             (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
@@ -116,7 +133,7 @@
   (t2/delete! :model/Database :id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
-    (with-audit-db-restoration
+    (with-audit-db-restoration!
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")
@@ -128,7 +145,7 @@
              (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
-          "no sync occured even when called directly for audit db."))))
+          "no sync occurred even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]
@@ -173,6 +190,66 @@
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
 
+(deftest views-checksum-works-for-jar-resources-test
+  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource "migrations/instance_analytics_views"
+        entries  [["users/v1/postgres-users.sql"           "select 1;"]
+                  ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
+        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
+    (try
+      (with-open [out (-> jar-path
+                          (Files/newOutputStream (into-array OpenOption []))
+                          io/output-stream
+                          JarOutputStream.)]
+        (doseq [[rel sql] entries]
+          (.putNextEntry out (JarEntry. (str resource "/" rel)))
+          (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+          (.closeEntry out)))
+      (with-redefs [io/resource (fn [path]
+                                  (when (= path resource)
+                                    jar-url))]
+        (is (= expected (#'ee-audit/views-checksum))))
+      (finally
+        (Files/deleteIfExists jar-path)))))
+
+(deftest views-checksum-detects-rename-test
+  (testing "renaming a file changes the checksum (path is part of the hash)"
+    (let [make-jar (fn [entries]
+                     (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar"
+                                                          (make-array java.nio.file.attribute.FileAttribute 0))
+                           resource "migrations/instance_analytics_views"]
+                       (with-open [out (-> jar-path
+                                           (Files/newOutputStream (into-array OpenOption []))
+                                           io/output-stream
+                                           JarOutputStream.)]
+                         (doseq [[rel sql] entries]
+                           (.putNextEntry out (JarEntry. (str resource "/" rel)))
+                           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+                           (.closeEntry out)))
+                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+          [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
+          [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
+      (try
+        (let [checksum-a (with-redefs [io/resource (constantly url-a)]
+                           (#'ee-audit/views-checksum))
+              checksum-b (with-redefs [io/resource (constantly url-b)]
+                           (#'ee-audit/views-checksum))]
+          (is (not= checksum-a checksum-b)))
+        (finally
+          (Files/deleteIfExists jar-a)
+          (Files/deleteIfExists jar-b))))))
+
+(deftest views-checksum-not-recorded-when-sync-fails-test
+  (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
+    (let [checksum 12345]
+      (ee.audit.settings/last-analytics-views-checksum! 0)
+      (with-redefs [ee-audit/views-checksum (constantly checksum)
+                    sync/sync-database! (fn [& _]
+                                          (throw (Exception. "sync failed")))]
+        (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
+        (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
+
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
     (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}
@@ -187,6 +264,31 @@
                    :model/Table {single-table-id :id} {:db_id audit-db-id
                                                        :schema "public"
                                                        :name "ORDERS"}
+
+                   ;; Create another table that has a two lower case versions
+                   ;; one without a nil schema
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "accounts"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema nil
+                                   :name "accounts"}
+
+                   ;; Create another table that has both upper and lower case schemas
+                   ;; and table names
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "friends"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "PUBLIC"
+                                   :name "FRIENDS"}
+
+                   :model/Table {no-schema-table :id} {:db_id audit-db-id
+                                                       :schema nil
+                                                       :name "products"}
+
                    ;; Create fields with both uppercase and lowercase names
                    :model/Field {upper-field-id :id} {:table_id upper-table-id
                                                       :name "EMAIL"}
@@ -212,6 +314,14 @@
       (testing "Tables without lowercase versions should be converted to lowercase"
         (is (= "orders"
                (t2/select-one-fn :name :model/Table :id single-table-id))))
+
+      (testing "Tables with nil schemas should not be changed if a table with a schema exists"
+        (is (= 2
+               (t2/count :model/Table {:where [:= :name "accounts"]}))))
+
+      (testing "Tables with nil schemas have their schema set to \"public\""
+        (is (= "public"
+               (t2/select-one-fn :schema :model/Table :id no-schema-table))))
 
       (testing "Fields with existing lowercase versions should not be modified"
         (is (= "EMAIL"

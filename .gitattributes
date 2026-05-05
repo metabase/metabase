@@ -1,0 +1,9 @@
+# Custom merge driver for per-release YAML migration files.
+# Treats each changeset as an atomic unit to avoid conflicts within changesets.
+# Only applies to per-release *_update_migrations.yaml files — directory-based
+# migrations (e.g. 060/*.yaml) have one file per migration and don't need this.
+# Execute this in your shell to enable custom merge driver:
+# echo '\n[include]\npath=../.gitconfig' >> .git/config
+#
+# TODO (Bryan 12/12/25) -- reenable this when we can completely verify correctness
+# resources/migrations/*_update_migrations.yaml merge=yaml-migrations

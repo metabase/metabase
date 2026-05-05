@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "12.10.0.jre11"}}}
+ {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "13.2.1.jre11"}}}

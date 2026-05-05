@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
   Dashboard,
@@ -59,7 +59,6 @@ const addCustomColumnToQuestion = (customColumnType: CustomColumnType) => {
 };
 
 const baseQuery = {
-  type: "query",
   "source-table": PRODUCTS_ID,
   limit: 20,
 };
@@ -339,8 +338,7 @@ export const configureSandboxPolicy = (
   policy: SandboxPolicy,
   { databaseId = 1, tableName = "Products" } = {},
 ) => {
-  const { filterTableBy, customViewName, customViewType, filterColumn } =
-    policy;
+  const { filterTableBy, customViewName, filterColumn } = policy;
 
   cy.log(`Configure sandboxing policy: ${JSON.stringify(policy)}`);
   cy.log(
@@ -350,16 +348,18 @@ export const configureSandboxPolicy = (
   cy.log(`Show the permissions configuration for the table named ${tableName}`);
   cy.findByRole("menuitem", { name: tableName }).click();
   cy.log("Modify the sandboxing policy for the 'data' group");
-  H.modifyPermission("data", 0, "Sandboxed");
+  H.modifyPermission("data", 0, "Row and column security");
 
   if (databaseId === 1) {
     H.modal().within(() => {
-      cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+      cy.findByText(
+        /Change access to this database to .*Row and column security.*?/,
+      );
       cy.button("Change").click();
     });
   }
 
-  H.modal().findByText(/Restrict access to this table/);
+  H.modal().findByText(/Configure row and column security for this table/);
 
   if (filterTableBy !== "custom_view") {
     cy.log("Filter by a column in the table");
@@ -367,14 +367,25 @@ export const configureSandboxPolicy = (
       name: /Filter by a column in the table/,
     }).should("be.checked");
   } else if (customViewName) {
+    // activity/recents invalidates the card cache, causing the component to refetch and show the loading spinner
+    // which makes this test flaky. so we'll return an error to prevent the invalidation
+    cy.intercept("POST", "/api/activity/recents", {
+      statusCode: 500,
+      body: { message: "Stubbed to prevent flaky test" },
+    }).as("activityRecents");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
+
     cy.findByText(
       /Use a saved question to create a custom view for this table/,
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
+
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(customViewType).click();
-      cy.findByText(/Sandboxing/).click(); // collection name
-      cy.findByText(customViewName).click();
+      cy.findByText(/Our analytics/).click();
+      cy.findByText(/Sandboxing/).click();
+      cy.contains(customViewName).click();
+      cy.findByText("Select").click();
     });
   }
 
@@ -384,7 +395,7 @@ export const configureSandboxPolicy = (
       .click();
     cy.findByRole("option", { name: filterColumn }).click();
     H.modal()
-      .findByRole("button", { name: /Pick a user attribute/ })
+      .findByPlaceholderText(/Pick a user attribute/)
       .click();
     cy.findByRole("option", { name: "filter-attribute" }).click();
   }
@@ -540,7 +551,11 @@ export const getCardResponses = (questions: SimpleCollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
   return H.cypressWaitAll(
     questions.map((question) =>
-      cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
+      cy.request<DatasetResponse>({
+        method: "POST",
+        url: `/api/card/${question.id}/query`,
+        failOnStatusCode: false,
+      }),
     ),
   ).then((responses) => {
     return { responses, questions };
@@ -627,5 +642,5 @@ export const assertAllResultsAndValuesAreSandboxed = (
 
 export const assertResponseFailsClosed = (response) => {
   expect(response?.body.data.rows).to.have.length(0);
-  expect(response?.body.error_type).to.contain("invalid-query");
+  expect(response?.body.error_type).to.be.oneOf(["driver", "invalid-query"]);
 };

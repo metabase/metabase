@@ -7,7 +7,7 @@ const displayNameForColumn = (column) =>
   column ? column.display_name || column.name : "[Unknown]";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingColumns extends Component {
+export class ChartNestedSettingColumns extends Component {
   render() {
     const { object, objects, onChangeEditingObject } = this.props;
     if (object) {

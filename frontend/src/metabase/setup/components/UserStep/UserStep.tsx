@@ -1,18 +1,17 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { UserInfo } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { UserInfo } from "metabase/redux/store";
 
 import { submitUser } from "../../actions";
 import { getIsHosted, getUser } from "../../selectors";
 import { useStep } from "../../useStep";
-import { validatePassword } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import type { NumberedStepProps } from "../types";
 
-import { StepDescription } from "./UserStep.styled";
+import S from "./UserStep.module.css";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("user_info");
@@ -39,17 +38,12 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   return (
     <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
-        <StepDescription>
+        <div className={S.StepDescription}>
           {t`We know you’ve already created one of these.`}{" "}
           {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
-        </StepDescription>
+        </div>
       )}
-      <UserForm
-        user={user}
-        isHosted={isHosted}
-        onValidatePassword={validatePassword}
-        onSubmit={handleSubmit}
-      />
+      <UserForm user={user} isHosted={isHosted} onSubmit={handleSubmit} />
     </ActiveStep>
   );
 };

@@ -2,11 +2,14 @@
 title: SQL editor
 redirect-from:
   - /docs/latest/users-guide/writing-sql
+  - /docs/latest/questions/native-editor
 ---
 
 # SQL editor
 
 If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
+
+You can also use [Metabot](../../ai/metabot.md) to generate SQL from natural language. Just ask Metabot to "Write a SQL query that..." and describe what you want to know about your data.
 
 ## What's SQL?
 
@@ -54,9 +57,24 @@ This is due to limitations of JDBC that interprets a single question mark `?` as
 
 You can format your SQL queries by clicking on the "document" icon in the editor sidebar.
 
-| Before format                                                         | After format                                                        |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| ![a SQL query before formatting](../images/before-sql-formatting.png) | ![a SQL query after formatting](../images/after-sql-formatting.png) |
+**Before format**:
+
+```sql
+select sum(subtotal),
+  created_at from orders group by created_at;
+```
+
+**After format**:
+
+```sql
+SELECT
+  sum(subtotal),
+  created_at
+FROM
+  orders
+GROUP BY
+  created_at;
+```
 
 The formatter works only for SQL queries, and isn’t available for SQLite and SQL Server.
 
@@ -66,7 +84,7 @@ If you or someone else wrote a SQL query that includes [variables][variable-glos
 
 ![SQL filter](../images/SQL-filter-widget.png)
 
-Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
+Writing SQL queries that use variables or parameters can be powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
 
 ## Snippets
 
@@ -75,6 +93,16 @@ You can use [Snippets](snippets.md) to save, reuse, and share SQL code across mu
 ## How Metabase executes SQL queries
 
 When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
+
+## The native query editor is designed for reading data, not writing it
+
+The native SQL editor is designed for asking questions about your data. Don't use the editor for:
+
+- Multi-statement queries
+- Stored procedures and function calls
+- DDL statements (like `CREATE`, `ALTER`, or `DROP`)
+
+Depending on your connection's privileges, some of the above actions may work, but none are officially supported, and we recommend against using the native query editor for these tasks.
 
 ## Question version history
 
@@ -88,7 +116,7 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 ![Explore results button](../images/explore-results.png)
 
-## Drill-though in SQL questions
+## Drill-through in SQL questions
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
@@ -106,7 +134,7 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 
 [learn-sql]: https://www.metabase.com/learn/sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
-[sample-database-gloss]: https://www.metabase.com/glossary/sample_database
+[sample-database-gloss]: https://www.metabase.com/glossary/sample-database
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable

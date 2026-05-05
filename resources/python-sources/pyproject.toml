@@ -1,0 +1,8 @@
+[project]
+name = "metabase-python-deps"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    # Keep these in the format "library==X.Y.Z", we parse it with a regex.
+    "sqlglot==28.6.0",
+]

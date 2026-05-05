@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   overflow-y: auto;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   height: 100%;
 
   ${(props) =>
@@ -25,10 +25,4 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
   overflow: hidden;
   border-radius: 1rem;
   border: 2px solid var(--mb-color-border);
-`;
-
-export const TabWrapper = styled.main`
-  display: grid;
-  grid-template-rows: auto 1fr;
-  width: calc(min(65rem, 100vw));
 `;

@@ -16,7 +16,19 @@ const Example = () => {
       authConfig={authConfig}
       // [<endignore>]
       loaderComponent={() => <div>Analytics is loading...</div>}
-      errorComponent={({ message }) => <div>There was an error: {message}</div>}
+      errorComponent={({ type, message, onClose }) => {
+        switch (type) {
+          case "fixed":
+            return (
+              <div style={{ position: "fixed", left: 0, right: 0, bottom: 0 }}>
+                There was an error: {message}. <span onClick={onClose}>X</span>
+              </div>
+            );
+          case "relative":
+          default:
+            return <div>There was an error: {message}</div>;
+        }
+      }}
     >
       <StaticDashboard dashboardId={1} />
     </MetabaseProvider>

@@ -1,27 +1,11 @@
 (ns metabase.analytics.settings
   (:require
    [java-time.api :as t]
-   [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-(defsetting prometheus-server-port
-  (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
-                     " and served from `localhost:<port>/metrics`."))
-  :type       :integer
-  :visibility :internal
-  ;; settable only through environmental variable
-  :setter     :none
-  :getter     (fn reading-prometheus-port-setting []
-                (let [parse (fn [raw-value]
-                              (if-let [parsed (parse-long raw-value)]
-                                parsed
-                                (log/warnf "MB_PROMETHEUS_SERVER_PORT value of '%s' is not parseable as an integer." raw-value)))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -33,8 +17,7 @@
   :doc        false)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (setting/application-name-for-setting-descriptions appearance/application-name))
+  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve..")
   :type       :boolean
   :default    true
   :visibility :public
@@ -107,3 +90,11 @@
   :type       :boolean
   :export?    true
   :setter     #'-non-table-chart-generated!)
+
+(defsetting analytics-pii-retention-enabled
+  (deferred-tru (str "Enable logging of embed path, query parameters, user agent, and IP address of who views your "
+                     "internal data and embeds. This information will be shown in your usage analytics."))
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    true)

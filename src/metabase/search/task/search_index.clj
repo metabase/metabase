@@ -8,8 +8,8 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
-   [metabase.util.queue :as queue]
-   [metabase.util.quick-task :as quick-task])
+   [metabase.tracing.core :as tracing]
+   [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -19,6 +19,7 @@
 
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
+(def ^:private cluster-lock-name ::search-index-lock)
 
 (def init-job-key
   "Key used to define and trigger a job that ensures there is an active index."
@@ -34,16 +35,35 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (cluster-lock/with-cluster-lock ::search-init-lock
-      (search/init-index! {:force-reset? false, :re-populate? false}))))
+    (tracing/with-span :search "search.task.init" {}
+      (cluster-lock/with-cluster-lock cluster-lock-name
+        (search/init-index! {:force-reset? false, :re-populate? false})))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (search/reindex!))
+  (cluster-lock/with-cluster-lock cluster-lock-name
+    (search/reindex! {:async? false})))
+
+;; Atom holding a promise that is delivered when the background init thread finishes.
+;; nil when no init has been started — [[wait-for-init!]] returns immediately in that case.
+(defonce ^:private init-promise (atom nil))
+
+(defn wait-for-init!
+  "Block until the background search index initialization has completed.
+   No-op if init has not been started (e.g. in unit tests)."
+  []
+  (some-> @init-promise deref))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
-  (quick-task/submit-task! (init!)))
+  (let [p (promise)]
+    (reset! init-promise p)
+    (doto (Thread. ^Runnable (fn []
+                               (try
+                                 (init!)
+                                 (finally
+                                   (deliver p true)))))
+      .start)))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
@@ -65,4 +85,5 @@
   (ingestion/start-listener!))
 
 (comment
-  (task/job-exists? reindex-job-key))
+  (task/job-exists? reindex-job-key)
+  (task/trigger-now! reindex-job-key))

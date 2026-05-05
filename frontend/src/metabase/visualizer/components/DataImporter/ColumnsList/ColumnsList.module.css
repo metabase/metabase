@@ -3,10 +3,10 @@
   border-radius: var(--default-border-radius);
 }
 
-.close {
+.ActionsButton {
   visibility: hidden;
 }
 
-.parent:hover .close {
+.parent:hover .ActionsButton {
   visibility: visible;
 }

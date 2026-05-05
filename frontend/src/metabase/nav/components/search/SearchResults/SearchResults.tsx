@@ -3,25 +3,26 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
-import EmptyState from "metabase/components/EmptyState";
-import Search from "metabase/entities/search";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import {
-  DEFAULT_SEARCH_LIMIT,
-  SEARCH_DEBOUNCE_DURATION,
-} from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
+import { Search } from "metabase/entities/search";
 import {
   EmptyStateContainer,
   ResultsContainer,
   ResultsFooter,
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
+import { useDispatch } from "metabase/redux";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
-import { Loader, Stack, Text } from "metabase/ui";
+import { Loader } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
+import {
+  DEFAULT_SEARCH_LIMIT,
+  SEARCH_DEBOUNCE_DURATION,
+} from "metabase/utils/constants";
 import type {
   CollectionItem,
   SearchModel,
@@ -50,12 +51,7 @@ export type SearchResultsProps = {
 };
 
 export const SearchLoadingSpinner = () => (
-  <Stack p="xl" align="center">
-    <Loader size="lg" data-testid="loading-indicator" />
-    <Text size="xl" color="text-light">
-      {t`Loading…`}
-    </Text>
-  </Stack>
+  <Loader size="lg" data-testid="loading-indicator" label={t`Loading…`} />
 );
 
 export const SearchResults = ({
@@ -123,8 +119,8 @@ export const SearchResults = ({
     if (item && typeof item !== "function") {
       if (onEntitySelect) {
         onEntitySelect(Search.wrapEntity(item, dispatch));
-      } else if (item && item.getUrl) {
-        dispatch(push(item.getUrl()));
+      } else if (item && modelToUrl(item)) {
+        dispatch(push(modelToUrl(item)));
       }
     }
   };
@@ -168,6 +164,7 @@ export const SearchResults = ({
                 onClick={onClick}
                 index={index}
                 context="search-bar"
+                searchTerm={searchText}
               />
             </li>
           );

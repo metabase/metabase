@@ -8,7 +8,7 @@ import type { DatabaseData, User } from "metabase-types/api";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-export function configurDbRoutingViaAPI({
+export function configureDbRoutingViaAPI({
   router_database_id,
   user_attribute,
 }: {
@@ -29,13 +29,13 @@ export function createDestinationDatabasesViaAPI({
   router_database_id: number;
   databases: DatabaseData[];
 }) {
-  cy.request("POST", "/api/ee/database-routing/mirror-database", {
+  cy.request("POST", "/api/ee/database-routing/destination-database", {
     router_database_id,
-    mirrors: databases,
+    destinations: databases,
   });
 }
 
-export const BASE_POSTGRES_MIRROR_DB_INFO = {
+export const BASE_POSTGRES_DESTINATION_DB_INFO = {
   is_on_demand: false,
   is_full_sync: true,
   is_sample: false,

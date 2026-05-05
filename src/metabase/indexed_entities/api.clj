@@ -5,7 +5,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -13,7 +14,9 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{(mbql.normalize/normalize-field-ref ref)} :field_ref) f)
+  (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
+                                            :field_ref)
+                                      f)
                                  f))
                        metadata)]
     (let [type-slot (case t
@@ -30,6 +33,10 @@
                      :ref         ref
                      :fields      metadata}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create ModelIndex."
   [_route-params
@@ -58,6 +65,14 @@
       (model-index/add-values! model-index)
       (t2/select-one :model/ModelIndex :id (:id model-index)))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params
@@ -70,6 +85,10 @@
                        :status-code 400})))
     (t2/select :model/ModelIndex :model_id model_id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
   [{:keys [id]} :- [:map
@@ -82,6 +101,10 @@
                        :status-code 400})))
     model-index))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
   [{:keys [id]} :- [:map

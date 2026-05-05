@@ -2,17 +2,27 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
+import { Markdown } from "metabase/common/components/Markdown";
+import {
   HoverParent,
   PopoverDefaultIcon,
   PopoverHoverTarget,
-} from "metabase/components/MetadataInfo/InfoIcon";
-import { Popover } from "metabase/components/MetadataInfo/Popover";
-import AccordionList from "metabase/core/components/AccordionList";
-import Markdown from "metabase/core/components/Markdown";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { useSelector } from "metabase/lib/redux";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+} from "metabase/common/components/MetadataInfo/InfoIcon";
+import { Popover } from "metabase/common/components/MetadataInfo/Popover";
+import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/querying/components/expressions";
+import {
+  clausesForMode,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -32,9 +42,11 @@ export interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   allowCustomExpressions?: boolean;
+  allowMetrics?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -50,15 +62,25 @@ type MetricListItem = Lib.MetricDisplayInfo & {
   selected: boolean;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
-
-type Section = {
-  name?: string;
-  key: string;
-  items: ListItem[];
-  icon?: string;
-  type?: string;
+type MeasureListItem = Lib.MeasureDisplayInfo & {
+  type: "measure";
+  measure: Lib.MeasureMetadata;
+  name: string;
+  selected: boolean;
 };
+
+type ExpressionClauseListItem = {
+  type: "expression-clause";
+  clause: Lib.MBQLClauseFunctionConfig;
+  displayName: string;
+};
+
+type Item =
+  | OperatorListItem
+  | MetricListItem
+  | MeasureListItem
+  | ExpressionClauseListItem;
+type Section = BaseSection<Item>;
 
 export function AggregationPicker({
   className,
@@ -68,24 +90,37 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
+  allowMetrics = true,
   onClose,
   onQueryChange,
   onBack,
+  readOnly,
 }: AggregationPickerProps) {
+  const tc = useTranslateContent();
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
     : undefined;
   const initialOperator = getInitialOperator(query, stageIndex, operators);
+  const [searchText, setSearchText] = useState("");
+  const isSearching = searchText !== "";
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+    isExpressionEditorInitiallyOpen({
+      query,
+      stageIndex,
+      clause,
+      operators,
+      readOnly,
+    }),
   );
+  const [initialExpressionClause, setInitialExpressionClause] =
+    useState<Lib.DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
-  // MLv2 can figure out that "Average" operator is used.
+  // Lib can figure out that "Average" operator is used.
   // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
     isEditingExpression ? null : initialOperator,
@@ -115,10 +150,20 @@ export function AggregationPicker({
     [query, stageIndex, clause, clauseIndex, onQueryChange],
   );
 
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
+  );
+
+  const availableMetrics = useMemo(
+    () => (allowMetrics ? Lib.availableMetrics(query, stageIndex) : []),
+    [query, stageIndex, allowMetrics],
+  );
+
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const metrics = Lib.availableMetrics(query, stageIndex);
+    const measures = Lib.availableMeasures(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const supportsCustomExpressions = database?.hasFeature(
@@ -138,11 +183,22 @@ export function AggregationPicker({
       });
     }
 
-    if (metrics.length > 0) {
+    if (measures.length > 0) {
+      sections.push({
+        key: "measures",
+        name: t`Measures`,
+        items: measures.map((measure) =>
+          getMeasureListItem(query, stageIndex, measure, clauseIndex),
+        ),
+        icon: "ruler",
+      });
+    }
+
+    if (availableMetrics.length > 0) {
       sections.push({
         key: "metrics",
         name: t`Metrics`,
-        items: metrics.map((metric) =>
+        items: availableMetrics.map((metric) =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
@@ -150,12 +206,22 @@ export function AggregationPicker({
     }
 
     if (allowCustomExpressions && supportsCustomExpressions) {
+      if (isSearching) {
+        sections.push({
+          key: "expression-clauses",
+          name: t`Custom Expressions`,
+          icon: "function" as const,
+          items: clausesForMode("aggregation").map(getExpressionClauseListItem),
+          alwaysSortLast: true,
+        });
+      }
       sections.push({
         key: "custom-expression",
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
         type: "action",
+        alwaysSortLast: true,
       });
     }
 
@@ -167,10 +233,12 @@ export function AggregationPicker({
     clauseIndex,
     operators,
     allowCustomExpressions,
+    isSearching,
+    availableMetrics,
   ]);
 
   const checkIsItemSelected = useCallback(
-    (item: ListItem) => item.selected,
+    (item: Item) => "selected" in item && item.selected,
     [],
   );
 
@@ -187,10 +255,35 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleExpressionSelect = useCallback(
+    (clause?: Lib.DefinedClauseName) => {
+      if (clause) {
+        setInitialExpressionClause(clause);
+      }
+      openExpressionEditor();
+    },
+    [openExpressionEditor],
+  );
+
   const handleResetOperator = useCallback(() => {
     setOperator(null);
     onBack?.();
   }, [onBack]);
+
+  const handleChangeSearchText = useCallback(
+    (searchText: string) => {
+      setSearchText(searchText);
+
+      if (searchText.trim().endsWith("(")) {
+        const name = searchText.trim().slice(0, -1);
+        const clause = getClauseDefinition(name);
+        if (clause) {
+          handleExpressionSelect(clause.name);
+        }
+      }
+    },
+    [handleExpressionSelect],
+  );
 
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -212,15 +305,32 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleMeasureSelect = useCallback(
+    (item: MeasureListItem) => {
+      onSelect(item.measure);
+      onClose?.();
+    },
+    [onSelect, onClose],
+  );
+
   const handleChange = useCallback(
-    (item: ListItem) => {
+    (item: Item) => {
       if (item.type === "operator") {
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
         handleMetricSelect(item);
+      } else if (item.type === "measure") {
+        handleMeasureSelect(item);
+      } else if (item.type === "expression-clause") {
+        handleExpressionSelect(item.clause.name);
       }
     },
-    [handleOperatorSelect, handleMetricSelect],
+    [
+      handleOperatorSelect,
+      handleMetricSelect,
+      handleMeasureSelect,
+      handleExpressionSelect,
+    ],
   );
 
   const handleSectionChange = useCallback(
@@ -241,18 +351,65 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) => tc(item.displayName),
+    [tc],
+  );
+
+  const renderItemIcon = useCallback(
+    (item: Item) => {
+      if (item.type !== "metric" && item.type !== "measure") {
+        return null;
+      }
+
+      if (!item.description) {
+        return null;
+      }
+
+      return (
+        <Flex pr="sm" align="center">
+          <Popover
+            position="right"
+            content={
+              <Box p="md">
+                <Markdown disallowHeading unstyleLinks>
+                  {tc(item.description)}
+                </Markdown>
+              </Box>
+            }
+          >
+            <span aria-label={t`More info`}>
+              <PopoverDefaultIcon name="empty" size={18} />
+              <PopoverHoverTarget name="info" size={18} />
+            </span>
+          </Popover>
+        </Flex>
+      );
+    },
+    [tc],
+  );
+
   if (isEditingExpression) {
     return (
       <ExpressionWidget
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
+        availableMetrics={availableMetrics}
         name={displayInfo?.displayName}
         clause={clause}
         withName
         expressionMode="aggregation"
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        expressionIndex={clauseIndex}
+        header={
+          <ExpressionWidgetHeader
+            onBack={readOnly ? undefined : closeExpressionEditor}
+          />
+        }
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialExpressionClause={initialExpressionClause}
+        readOnly={readOnly}
       />
     );
   }
@@ -285,23 +442,22 @@ export function AggregationPicker({
   }
 
   return (
-    <Box className={className} c="summarize" data-testid="aggregation-picker">
-      <AccordionList
-        sections={sections}
-        onChange={handleChange}
-        onChangeSection={handleSectionChange}
-        itemIsSelected={checkIsItemSelected}
-        renderItemName={renderItemName}
-        renderItemDescription={omitItemDescription}
-        renderItemExtra={renderItemIcon}
-        renderItemWrapper={renderItemWrapper}
-        // disable scrollbars inside the list
-        style={{ overflow: "visible" }}
-        maxHeight={Infinity}
-        withBorders
-        globalSearch
-      />
-    </Box>
+    <AccordionList<Item, Section>
+      data-testid="aggregation-picker"
+      style={{ color: "var(--mb-color-summarize)" }}
+      sections={sections}
+      onChange={handleChange}
+      onChangeSection={handleSectionChange}
+      onChangeSearchText={handleChangeSearchText}
+      itemIsSelected={checkIsItemSelected}
+      renderItemName={renderItemName}
+      renderItemDescription={omitItemDescription}
+      renderItemExtra={renderItemIcon}
+      renderItemWrapper={renderItemWrapper}
+      maxHeight={Infinity}
+      itemTestId="dimension-list-item"
+      globalSearch
+    />
   );
 }
 
@@ -324,42 +480,8 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: ListItem) {
-  return item.displayName;
-}
-
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
-}
-
-function renderItemIcon(item: ListItem) {
-  if (item.type !== "metric") {
-    return null;
-  }
-
-  if (!item.description) {
-    return null;
-  }
-
-  return (
-    <Flex pr="sm" align="center">
-      <Popover
-        position="right"
-        content={
-          <Box p="md">
-            <Markdown disallowHeading unstyleLinks>
-              {item.description}
-            </Markdown>
-          </Box>
-        }
-      >
-        <span aria-label={t`More info`}>
-          <PopoverDefaultIcon name="empty" size={18} />
-          <PopoverHoverTarget name="info_filled" size={18} />
-        </span>
-      </Popover>
-    </Flex>
-  );
 }
 
 function omitItemDescription() {
@@ -377,12 +499,23 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | undefined,
-  operators: Lib.AggregationOperator[],
-): boolean {
+function isExpressionEditorInitiallyOpen({
+  query,
+  stageIndex,
+  clause,
+  operators,
+  readOnly,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  clause: Lib.AggregationClause | undefined;
+  operators: Lib.AggregationOperator[];
+  readOnly?: boolean;
+}): boolean {
+  if (readOnly) {
+    return true;
+  }
+
   if (!clause) {
     return false;
   }
@@ -423,6 +556,38 @@ function getMetricListItem(
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
+  };
+}
+
+function getMeasureListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  measure: Lib.MeasureMetadata,
+  clauseIndex?: number,
+): MeasureListItem {
+  const measureInfo = Lib.displayInfo(
+    query,
+    stageIndex,
+    measure,
+  ) as Lib.MeasureDisplayInfo;
+  return {
+    ...measureInfo,
+    type: "measure",
+    name: measureInfo.displayName,
+    measure,
+    selected:
+      clauseIndex != null &&
+      measureInfo.aggregationPositions?.includes(clauseIndex) === true,
+  };
+}
+
+function getExpressionClauseListItem(
+  clause: Lib.MBQLClauseFunctionConfig,
+): ExpressionClauseListItem {
+  return {
+    type: "expression-clause",
+    clause,
+    displayName: clause.displayName,
   };
 }
 

@@ -49,12 +49,14 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
-   #?@(:cljs
-       [[metabase.util :as u]])
+   #?(:clj [metabase.util.performance :refer [for]]
+      :cljs [metabase.util :as u])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; Table (entity) Types
 
@@ -181,6 +183,7 @@
 (derive :type/Comment :type/Text)
 
 (derive :type/PostgresEnum :type/TextLike)
+(derive :type/PostgresBitString :type/TextLike)
 
 (derive :type/OracleCLOB :type/Text)
 (derive :type/OracleCLOB :type/Large)
@@ -190,15 +193,25 @@
 (derive :type/Temporal :type/*)
 (derive :type/Temporal :type/field-values-unsupported)
 
-(derive :type/Date :type/Temporal)
+;;; Note that we cannot just make `:type/DateTime` inherit from `:type/Date` and/or `:type/Time` because these are
+;;; effectively distinct types in many databases, for example you must use different functions for
+;;; extracting/truncating a `DATE` versus a `DATETIME` column in BigQuery. See
+;;; https://metaboat.slack.com/archives/C0645JP1W81/p1749678607860649?thread_ts=1749678551.101819&cid=C0645JP1W81 for
+;;; more discussion.
+
+(derive :type/HasDate :type/Temporal) ; common ancestor of types with a date component
+(derive :type/HasTime :type/Temporal) ; common ancestor of types with a time component
+
+(derive :type/Date :type/HasDate)
 ;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
 
-(derive :type/Time :type/Temporal)
+(derive :type/Time :type/HasTime)
 (derive :type/TimeWithTZ :type/Time)
 (derive :type/TimeWithLocalTZ :type/TimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
 (derive :type/TimeWithZoneOffset :type/TimeWithTZ) ; a column that stores its timezone offset
 
-(derive :type/DateTime :type/Temporal)
+(derive :type/DateTime :type/HasDate)
+(derive :type/DateTime :type/HasTime)
 (derive :type/DateTimeWithTZ :type/DateTime)
 (derive :type/DateTimeWithLocalTZ :type/DateTimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
 (derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
@@ -343,6 +356,7 @@
 
 (derive :Coercion/Bytes->Temporal :Coercion/*)
 (derive :Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/Bytes->Temporal)
+(derive :Coercion/ISO8601Bytes->Temporal :Coercion/Bytes->Temporal)
 
 (derive :Coercion/Number->Temporal :Coercion/*)
 (derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
@@ -362,23 +376,33 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(def ^:private SnakeCasedField
-  "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
+(mr/def ::snake-cased-type-info
+  "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
   [:map
    [:base_type :any]])
 
 (mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
-  relating to a moment in time."
+  relating to a moment in time.
+
+  DEPRECATED: Prefer MBQL 5 + [[metabase.lib.schema.expression/type-of]] (if you only have the clause)
+  or [[metabase.lib.metadata.calculation/type-of]] (if you have the query and stage number as well) going forward."
+  {:deprecated "0.57.0"}
   [tyype                                                  :- :keyword
-   {base-type :base_type, effective-type :effective_type} :- SnakeCasedField]
-  (some #(isa? % tyype) [base-type effective-type]))
+   {base-type :base_type, effective-type :effective_type} :- ::snake-cased-type-info]
+  (if (nil? effective-type)
+    (isa? base-type tyype)
+    (isa? effective-type tyype)))
 
 (mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
-  relating to a moment in time."
-  [field :- SnakeCasedField]
+  relating to a moment in time.
+
+  DEPRECATED: Prefer using MBQL 5 + [[metabase.lib.types.isa/temporal?]] going forward."
+  {:deprecated "0.57.0"}
+  [field :- ::snake-cased-type-info]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (field-is-type? :type/Temporal field))
 
 (def ^:private assignable-hierarchy
@@ -415,14 +439,10 @@
     (= y :type/*)     nil
     (assignable? x y) y
     (assignable? y x) x
-    ;; if we haven't had a match yet, recursively try using parent types.
+    ;; if we haven't had a match yet, pick the common ancestor that itself has the most ancestors.
     :else
-    (some (fn [x']
-            (some (fn [y']
-                    (when-not (= [x' y'] [x y])
-                      (most-specific-common-ancestor* x' y')))
-                  (cons y (parents y))))
-          (cons x (parents x)))))
+    (let [common-ancestors (set/intersection (ancestors x) (ancestors y))]
+      (first (sort-by #(- (count (ancestors %))) common-ancestors)))))
 
 (defn most-specific-common-ancestor
   "Return the most-specific type that is an ancestor of both `x` and `y`.
@@ -467,6 +487,7 @@
 (coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/ISO8601Bytes->Temporal :type/* :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 
@@ -507,7 +528,7 @@
                  (select-keys (coercion-hierarchies/non-descending-strategies) [base-type]))
          not-empty)))
 
-(defn ^:export is_coerceable
+(defn ^:export is-coerceable
   "Returns a boolean of whether a field base-type has any coercion strategies available."
   [base-type]
   (boolean (not-empty (coercion-possibilities (keyword base-type)))))
@@ -517,7 +538,7 @@
   [coercion]
   (coercion-hierarchies/effective-type-for-strategy coercion))
 
-(defn ^:export coercions_for_type
+(defn ^:export coercions-for-type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
   [base-type]

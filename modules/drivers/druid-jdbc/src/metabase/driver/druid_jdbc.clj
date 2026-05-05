@@ -1,27 +1,26 @@
 (ns metabase.driver.druid-jdbc
+  (:refer-clojure :exclude [mapv])
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.secrets.core :as secret]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.sql ResultSet Types)
-   (java.time LocalDateTime ZonedDateTime LocalDate)))
+   (java.time LocalDate LocalDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +38,7 @@
           :subname     (str "url=" host ":" port "/druid/v2/sql/avatica/;transparent_reconnection=true")}
          (when auth-enabled
            {:user auth-username
-            :password (secret/value-as-string driver db-details "auth-password")})
+            :password (driver-api/secret-value-as-string driver db-details "auth-password")})
          (when (some? (driver/report-timezone))
            {:sqlTimeZone (driver/report-timezone)
             :timeZone (driver/report-timezone)})))
@@ -157,18 +156,33 @@
                    ::json_value)]
     [operator parent-identifier (h2x/literal (str/join "." (cons "$" (rest nfc-path))))]))
 
+(defmethod driver.sql/json-field-length :druid-jdbc
+  [_driver json-field-identifier]
+  [:length [:to_json_string json-field-identifier]])
+
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
-    (if-not (lib.field/json-field? stored-field)
+    (if-not (driver-api/json-field? stored-field)
       identifier
-      (if (or (::sql.qp/forced-alias opts)
-              (= ::add/source (::add/source-table opts)))
-        (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference the
+        ;; projected column directly instead of re-applying extraction, which
+        ;; would derive the wrong column name through nested projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
                        identifier)))))
@@ -186,7 +200,7 @@
 
 (defmethod driver/dbms-version :druid-jdbc
   [_driver database]
-  (let [{:keys [host port]} (:details database)]
+  (let [{:keys [host port]} (driver.conn/effective-details database)]
     (try (let [version (-> (http/get (format "%s:%s/status" host port))
                            :body
                            json/decode

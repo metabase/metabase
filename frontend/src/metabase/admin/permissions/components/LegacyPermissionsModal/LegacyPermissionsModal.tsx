@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
-import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { useSelector } from "metabase/lib/redux";
+import { useModalOpen } from "metabase/common/hooks/use-modal-open";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 

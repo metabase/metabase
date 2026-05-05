@@ -8,8 +8,7 @@ import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
 export interface SelectItemProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
-    BoxProps {
+  extends Omit<HTMLAttributes<HTMLDivElement>, "style">, BoxProps {
   disabled?: boolean;
   size?: MantineSize;
   selected?: boolean;
@@ -35,6 +34,7 @@ export const SelectItem = forwardRef(function SelectItem(
       gap="sm"
       flex={1}
       aria-selected={selected}
+      wrap="nowrap"
       {...props}
     />
   );

@@ -3,10 +3,11 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -25,8 +26,13 @@
     "v_fields"
     "v_query_log"
     "v_tables"
+    "v_tenants"
     "v_tasks"
-    "v_view_log"})
+    "v_task_runs"
+    "v_view_log"
+    "v_metabot_conversations"
+    "v_metabot_messages"
+    "v_ai_usage_log"})
 
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.
@@ -70,4 +76,4 @@
                                                           {:status-code 400})))
             view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
         (doseq [table view-tables]
-          (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

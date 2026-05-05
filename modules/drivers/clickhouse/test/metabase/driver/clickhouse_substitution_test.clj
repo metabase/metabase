@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
@@ -44,10 +44,10 @@
           [(t/format "yyyy-MM-dd HH:mm:ss" ldt)])
         (get-test-table
           [rows native-type]
-          ["test_table"
-           [{:field-name "d"
-             :base-type {:native native-type}}]
-           (map ->clickhouse-input rows)])
+          [["test_table"
+            [{:field-name "d"
+              :base-type {:native native-type}}]
+            (map ->clickhouse-input rows)]])
         (->iso-str
           [^LocalDateTime ldt]
           (t/format "yyyy-MM-dd'T'HH:mm:ss'Z'" ldt))]
@@ -171,10 +171,10 @@
           [(t/format "yyyy-MM-dd" ld)])
         (get-test-table
           [rows native-type]
-          ["test_table"
-           [{:field-name "d"
-             :base-type {:native native-type}}]
-           (map ->clickhouse-input rows)])
+          [["test_table"
+            [{:field-name "d"
+              :base-type {:native native-type}}]
+            (map ->clickhouse-input rows)]])
         (->iso-str
           [^LocalDate ld]
           (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))]
@@ -270,19 +270,19 @@
         (let [db         "mb_vars_null_dates"
               now-ld     (local-date-now)
               now-ldt    (local-date-time-now)
-              table      ["test_table"
-                          [{:field-name "d"
-                            :base-type {:native "Nullable(Date)"}}
-                           {:field-name "d32"
-                            :base-type {:native "Nullable(Date32)"}}
-                           {:field-name "dt"
-                            :base-type {:native "Nullable(DateTime)"}}
-                           {:field-name "dt64"
-                            :base-type {:native "Nullable(DateTime64)"}}]
-                          [;; row 1
-                           [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
-                          ;; row 2
-                           [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]
+              table      [["test_table"
+                           [{:field-name "d"
+                             :base-type {:native "Nullable(Date)"}}
+                            {:field-name "d32"
+                             :base-type {:native "Nullable(Date32)"}}
+                            {:field-name "dt"
+                             :base-type {:native "Nullable(DateTime)"}}
+                            {:field-name "dt64"
+                             :base-type {:native "Nullable(DateTime64)"}}]
+                           [;; row 1
+                            [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
+                            ;; row 2
+                            [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]]
               first-row  [[(->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt) nil]]
               second-row [[nil (->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt)]]]
           (mt/dataset
@@ -336,34 +336,75 @@
                                         :target ["variable" ["template-tag" "x"]]
                                         :id uuid}]}))))))))
 
+(deftest ^:parallel clickhouse-field-filter-unix-millis-coercion-test
+  (mt/test-driver :clickhouse
+    (mt/with-clock clock
+      (testing "Field filter on a UInt64 column coerced to UNIX milliseconds->DateTime generates valid SQL (#70901)"
+        (let [now   (local-date-time-now)
+              ->epoch-millis (fn [^LocalDateTime ldt]
+                               (.toEpochMilli (.toInstant (.atZone ldt (java.time.ZoneId/of "UTC")))))]
+          (mt/dataset
+            (mt/dataset-definition "milliseconds_db"
+                                   [["milliseconds_table"
+                                     [{:field-name        "time"
+                                       :base-type         {:native "UInt64"}
+                                       :effective-type    :type/Instant
+                                       :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
+                                      {:field-name "name"
+                                       :base-type  :type/Text}]
+                                     [[(->epoch-millis (.minusDays now 2)) "Event A"]
+                                      [(->epoch-millis (.minusHours now 24)) "Event B"]
+                                      [(->epoch-millis (.plusHours now 1)) "Event C"]
+                                      [(->epoch-millis (.plusDays now 2)) "Event D"]]]])
+            (let [uuid  (str (random-uuid))
+                  query {:database   (mt/id)
+                         :type       "native"
+                         :native     {:collection    "milliseconds-table"
+                                      :template-tags {:date_filter {:id           uuid
+                                                                    :name         "time"
+                                                                    :display-name "Time"
+                                                                    :type         "dimension"
+                                                                    :dimension    ["field" (mt/id :milliseconds-table :time) nil]
+                                                                    :required     true}}
+                                      :query "SELECT * FROM `milliseconds_db`.`milliseconds_table` WHERE {{date_filter}}"}
+                         :parameters [{:type   "date/all-options"
+                                       :value  "past7days"
+                                       :target ["dimension" ["template-tag" "date_filter"]]
+                                       :id     uuid}]}]
+              (is (= [[1 1574982000000 "Event A"]
+                      [2 1575068400000 "Event B"]]
+                     (mt/rows (qp/process-query query)))))))))))
+
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
-    (mt/dataset
-      (mt/dataset-definition "uuid_filter_db"
-                             ["uuid_filter_table"
-                              [{:field-name "uuid"
-                                :base-type {:native "UUID"}
-                                :semantic-type :type/PK}
-                               {:field-name "value"
-                                :base-type :type/Integer}]
-                              [[#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f1" 10]
-                               [#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f2" 20]]])
-      (let [query {:database   (mt/id)
-                   :type       :native
-                   :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
-                                :template-tags {"uuid" {:type         :dimension
-                                                        :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
-                                                        :default      ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]
-                                                        :name         "uuid"
-                                                        :display-name "UUID"
-                                                        :widget-type  "id"}}}
-                   :parameters [{:type   "id"
-                                 :target [:dimension [:template-tag "uuid"]]
-                                 :value  ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]}]}]
-        (is (= [[20]]
-               (mt/formatted-rows [int]
-                                  (qp/process-query query))))
-        (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
-                    "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('89c77143-0c9a-4686-b241-5b21b9ab44f2' AS UUID))")
-               (:query (qp.compile/compile-with-inline-parameters query))))))))
+    (let [uuid-1 #uuid "3127abff-e634-4114-a015-59893b49ae74"
+          uuid-2 #uuid "a65e1a3b-4710-4136-b5b7-63a747e17a5a"]
+      (mt/dataset
+        (mt/dataset-definition "uuid_filter_db"
+                               [["uuid_filter_table"
+                                 [{:field-name "uuid"
+                                   :base-type {:native "UUID"}
+                                   :semantic-type :type/PK}
+                                  {:field-name "value"
+                                   :base-type :type/Integer}]
+                                 [[uuid-1 10]
+                                  [uuid-2 20]]]])
+        (let [query {:database   (mt/id)
+                     :type       :native
+                     :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
+                                  :template-tags {"uuid" {:type         :dimension
+                                                          :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
+                                                          :default      [(str uuid-2)]
+                                                          :name         "uuid"
+                                                          :display-name "UUID"
+                                                          :widget-type  "id"}}}
+                     :parameters [{:type   "id"
+                                   :target [:dimension [:template-tag "uuid"]]
+                                   :value  [(str uuid-2)]}]}]
+          (is (= [[20]]
+                 (mt/formatted-rows [int]
+                                    (qp/process-query query))))
+          (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
+                      (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
+                 (:query (qp.compile/compile-with-inline-parameters query)))))))))
 

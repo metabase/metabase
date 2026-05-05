@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -45,9 +44,14 @@ interface PreviewQueryButtonOpts {
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  return (
-    isNative &&
-    question.canRun() &&
-    (question.legacyNativeQuery() as NativeQuery).hasVariableTemplateTags()
-  );
+  if (!isNative) {
+    return false;
+  }
+
+  const nativeQuestion = question.legacyNativeQuery() as NativeQuery;
+
+  const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();
+  const hasSnippets = nativeQuestion.hasSnippets();
+
+  return question.canRun() && (hasVariableTemplateTags || hasSnippets);
 };

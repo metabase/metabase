@@ -2,25 +2,35 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting, useAdminSettings } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
-import { EmbeddingSdkLegaleseModal } from "../EmbeddingSdkLegaleseModal";
+import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
+
+export type EmbeddingSettingKey =
+  | "enable-embedding-static"
+  | "enable-embedding-sdk"
+  | "enable-embedding-interactive"
+  | "enable-embedding-simple";
 
 export type EmbeddingToggleProps = {
-  settingKey:
-    | "enable-embedding-static"
-    | "enable-embedding-sdk"
-    | "enable-embedding-interactive";
+  settingKey: EmbeddingSettingKey;
+  dependentSettingKeys?: EmbeddingSettingKey[];
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
   settingKey,
+  dependentSettingKeys = [],
+  labelPosition = "left",
   ...switchProps
 }: EmbeddingToggleProps) {
-  const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
+  const { value, settingDetails } = useAdminSetting(settingKey);
+  const { values: dependentSettingsValues, updateSettings } =
+    useAdminSettings(dependentSettingKeys);
+
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
+  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
 
   const [
     isLegaleseModalOpen,
@@ -28,23 +38,31 @@ export function EmbeddingToggle({
   ] = useDisclosure(false);
 
   if (settingDetails?.is_env_setting) {
-    return (
-      <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
-    );
+    return <Text c="text-secondary">{t`Set via environment variable`}</Text>;
   }
-  const isEnabled = Boolean(value);
-  const isEmbeddingToggle = settingKey === "enable-embedding-sdk";
 
-  const handleChange = (newValue: boolean) => {
-    if (showSdkEmbedTerms && isEmbeddingToggle && newValue) {
+  const isEnabled =
+    Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
+
+  const isEmbeddingToggle =
+    settingKey === "enable-embedding-sdk" ||
+    settingKey === "enable-embedding-simple";
+
+  const handleChange = (checked: boolean) => {
+    const shouldShowEmbedTerms =
+      (settingKey === "enable-embedding-sdk" && showSdkEmbedTerms) ||
+      (settingKey === "enable-embedding-simple" && showSimpleEmbedTerms);
+
+    if (shouldShowEmbedTerms && isEmbeddingToggle && checked) {
       openLegaleseModal();
       return;
     }
 
-    updateSetting({
-      key: settingKey,
-      value: newValue,
-    });
+    const settingKeys = [settingKey, ...dependentSettingKeys];
+
+    updateSettings(
+      Object.fromEntries(settingKeys.map((key) => [key, checked])),
+    );
   };
 
   return (
@@ -52,7 +70,7 @@ export function EmbeddingToggle({
       <Switch
         label={isEnabled ? t`Enabled` : t`Disabled`}
         size="sm"
-        labelPosition="left"
+        labelPosition={labelPosition}
         checked={isEnabled}
         wrapperProps={{
           "data-testid": "switch-with-env-var",
@@ -62,8 +80,10 @@ export function EmbeddingToggle({
           handleChange(event.currentTarget.checked);
         }}
       />
+
       {isEmbeddingToggle && (
-        <EmbeddingSdkLegaleseModal
+        <EmbeddingLegaleseModal
+          setting={settingKey}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />

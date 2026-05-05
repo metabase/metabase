@@ -51,10 +51,14 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.core.memoize :as memoize]
+   [clojure.main]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.h2 :as dev.h2]
+   [dev.malli :as dev.malli]
    [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
@@ -70,6 +74,7 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor.compile :as qp.compile]
@@ -94,7 +99,10 @@
 
 (comment
   debug-qp/keep-me
-  model-tracking/keep-me)
+  model-tracking/keep-me
+  dev.h2/keep-me)
+
+(apply require clojure.main/repl-requires)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]
@@ -105,6 +113,8 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.malli
+  visualize-schema!]
  [dev.migrate
   migrate!
   rollback!
@@ -149,7 +159,7 @@
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
                        #_:clj-kondo/ignore
-                       (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+                       (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
                            (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException _
@@ -339,7 +349,9 @@
     (do
       ;; prevent things like dereferencing metabase.api.common/*current-user-permissions-set* from triggering the check
       ;; by calling `next-method` *twice*. To reduce the performance impact, just call it with the first instance.
-      (maybe-realize (next-method model strategy k [(first instances)]))
+      ;; we do this for each model because e.g. we may have one `:RootCollection` and several `:Collection`s.
+      (doseq [[_instance-model instances] (group-by t2/model instances)]
+        (maybe-realize (next-method model strategy k [(first instances)])))
       ;; Now we can actually run the hydration with the full set of instances and make sure no more DB calls happened.
       (t2/with-call-count [call-count]
         (let [res (maybe-realize (next-method model strategy k instances))]
@@ -456,3 +468,9 @@
   (mt/initialize-if-needed! :test-users)
   ;; seed test db
   (mt/id))
+
+(defn reset-static!
+  "Reset static and template caches to pick up new js"
+  []
+  ((requiring-resolve 'stencil.loader/invalidate-cache))
+  (memoize/memo-clear! @(requiring-resolve 'metabase.server.routes.index/load-inline-js)))

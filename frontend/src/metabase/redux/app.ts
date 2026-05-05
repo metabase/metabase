@@ -5,18 +5,19 @@ import {
 } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
-import {
-  isSmallScreen,
-  openInBlankWindow,
-  shouldOpenInBlankWindow,
-} from "metabase/lib/dom";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/redux";
 import type {
+  DetailViewState,
   Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import {
+  isSmallScreen,
+  openInBlankWindow,
+  shouldOpenInBlankWindow,
+} from "metabase/utils/dom";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -31,8 +32,7 @@ interface LocationChangeAction {
   };
 }
 
-export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
-
+const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
@@ -41,34 +41,35 @@ export function setErrorPage(error: any) {
   };
 }
 
-interface IOpenUrlOptions {
-  blank?: boolean;
-  event?: Event;
-  blankOnMetaOrCtrlKey?: boolean;
-  blankOnDifferentOrigin?: boolean;
+const RESET_ERROR_PAGE = "metabase/app/RESET_ERROR_PAGE";
+export function resetErrorPage() {
+  return {
+    type: RESET_ERROR_PAGE,
+  };
 }
 
-export const openUrl =
-  (url: string, options: IOpenUrlOptions = {}) =>
-  (dispatch: Dispatch) => {
-    if (shouldOpenInBlankWindow(url, options)) {
-      openInBlankWindow(url);
-    } else {
-      dispatch(push(url));
-    }
-  };
+export const openUrl = (url: string) => (dispatch: Dispatch) => {
+  if (shouldOpenInBlankWindow(url)) {
+    openInBlankWindow(url);
+  } else {
+    dispatch(push(url));
+  }
+};
 
 const errorPage = handleActions(
   {
     [SET_ERROR_PAGE]: (_, { payload }) => payload,
+    [RESET_ERROR_PAGE]: () => null,
     [LOCATION_CHANGE]: () => null,
   },
   null,
 );
 
 // regexr.com/7r89i
-// A word boundary is added to /model so it doesn't match /browse/models
-const PATH_WITH_COLLAPSED_NAVBAR = /\/(model\b|question|dashboard|metabot).*/;
+// Word boundaries are added so partial matches don't collapse the navbar
+// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
+const PATH_WITH_COLLAPSED_NAVBAR =
+  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (
@@ -117,6 +118,21 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
+export const SET_DETAIL_VIEW = "metabase/app/SET_DETAIL_VIEW";
+
+export const setDetailView = createAction<DetailViewState | null>(
+  SET_DETAIL_VIEW,
+);
+
+const detailView = handleActions(
+  {
+    [SET_DETAIL_VIEW]: {
+      next: (_oldState, { payload: newState }) => newState,
+    },
+  },
+  null,
+);
+
 const tempStorageSlice = createSlice({
   name: "tempStorage",
   initialState: {} as TempStorage,
@@ -137,6 +153,7 @@ export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
+  detailView,
   errorPage,
   isNavbarOpen,
   isDndAvailable: (initValue: unknown) => {

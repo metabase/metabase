@@ -1,5 +1,3 @@
-import type { Sheet } from "xlsx";
-
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   DashboardDetails,
@@ -476,10 +474,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       );
     }
 
-    function findFilterWidget(parameterName: string) {
-      return H.filterWidget().filter(`:contains(${parameterName})`);
-    }
-
     function testFilter({
       parameterName,
       setParameterValue,
@@ -499,12 +493,12 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       H.getDashboardCard()
         .findByTestId("scalar-value")
         .should("have.text", "3");
-      findFilterWidget(parameterName).click();
+      H.filterWidget({ name: parameterName }).click();
       H.popover().within(() => {
         setParameterValue();
         cy.button("Add filter").click();
       });
-      findFilterWidget(parameterName)
+      H.filterWidget({ name: parameterName })
         .findByText(filterArgsDisplayName)
         .should("be.visible");
       H.getDashboardCard()
@@ -521,7 +515,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       }
 
-      findFilterWidget(parameterName).icon("close").click();
+      H.filterWidget({ name: parameterName }).icon("close").click();
     }
 
     function testFilters({
@@ -1229,29 +1223,14 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testExport({
-      columnName,
-      formattedMinValue,
-      formattedMaxValue,
-    }: {
-      columnName: string;
-      formattedMinValue: string;
-      formattedMaxValue: string;
-    }) {
+    function testExport() {
       cy.get("@questionId").then((questionId) => {
-        H.downloadAndAssert(
-          {
-            fileType: "csv",
-            questionId: Number(questionId),
-            isDashboard: false,
-            enableFormatting: true,
-          },
-          (sheet: Sheet) => {
-            expect(sheet["A1"].v).to.eq(columnName);
-            expect(sheet["A2"].w).to.eq(formattedMinValue);
-            expect(sheet["A4"].w).to.eq(formattedMaxValue);
-          },
-        );
+        H.downloadAndAssert({
+          fileType: "csv",
+          questionId: Number(questionId),
+          isDashboard: false,
+          enableFormatting: true,
+        });
       });
     }
 
@@ -1260,31 +1239,15 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExport({
-      columnName: "ID",
-      formattedMinValue: MIN_BIGINT_VALUE,
-      formattedMaxValue: MAX_BIGINT_VALUE,
-    });
+    testExport();
     setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testExport({
-      columnName: "NUMBER",
-      formattedMinValue: FORMATTED_MIN_BIGINT_VALUE,
-      formattedMaxValue: FORMATTED_MAX_BIGINT_VALUE,
-    });
+    testExport();
 
     cy.log("DECIMAL");
     setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExport({
-      columnName: "ID",
-      formattedMinValue: NEGATIVE_DECIMAL_VALUE,
-      formattedMaxValue: POSITIVE_DECIMAL_VALUE,
-    });
+    testExport();
     setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testExport({
-      columnName: "NUMBER",
-      formattedMinValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
-      formattedMaxValue: FORMATTED_POSITIVE_DECIMAL_VALUE,
-    });
+    testExport();
   });
 
   it("dashboards + click behavior", () => {

@@ -1,27 +1,37 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import Modal from "metabase/components/Modal";
-import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
-import Collections from "metabase/entities/collections/collections";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useInitialCollectionId } from "metabase/collections/hooks";
+import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
+import { Modal } from "metabase/common/components/Modal";
+import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import {
+  LegacyStaticEmbeddingModal,
+  type LegacyStaticEmbeddingModalProps,
+} from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
+import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { currentOpenModal } from "metabase/selectors/ui";
+import { getCurrentOpenModalState } from "metabase/selectors/ui";
+import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
-  const currentNewModal = useSelector(currentOpenModal);
-  const dispatch = useDispatch();
-  const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
+  const { pathname } = useLocation();
+  const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
+    getCurrentOpenModalState,
   );
+  const dispatch = useDispatch();
+  const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
@@ -35,12 +45,17 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     dispatch(closeModal());
   }, [dispatch]);
 
+  useEffect(() => {
+    // Hide the modals on location change
+    handleModalClose();
+  }, [handleModalClose, pathname]);
+
   useRegisterShortcut(
     [
       {
         id: "shortcuts-modal",
         perform: () => {
-          if (currentNewModal) {
+          if (currentNewModalId) {
             handleModalClose();
           } else {
             dispatch(setOpenModal("help"));
@@ -48,10 +63,10 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         },
       },
     ],
-    [currentNewModal],
+    [currentNewModalId],
   );
 
-  switch (currentNewModal) {
+  switch (currentNewModalId) {
     case "collection":
       return (
         <CreateCollectionModal
@@ -77,11 +92,36 @@ export const NewModals = withRouter((props: WithRouterProps) => {
           />
         </Modal>
       );
+    case "embed": {
+      const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
+      return (
+        <SdkIframeEmbedSetupModal
+          opened
+          initialState={props?.initialState}
+          onClose={handleModalClose}
+        />
+      );
+    }
+    case STATIC_LEGACY_EMBEDDING_TYPE: {
+      const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
+
+      return (
+        <LegacyStaticEmbeddingModal
+          experience={props?.experience}
+          dashboardId={props?.dashboardId}
+          questionId={props?.questionId}
+          parentInitialState={props?.parentInitialState}
+          onClose={handleModalClose}
+        />
+      );
+    }
+    case "upgrade":
+      return <UpgradeModal opened onClose={handleModalClose} />;
     default:
       return (
         <PaletteShortcutsModal
           onClose={handleModalClose}
-          open={currentNewModal === "help"}
+          open={currentNewModalId === "help"}
         />
       );
   }

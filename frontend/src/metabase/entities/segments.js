@@ -3,27 +3,26 @@ import {
   useGetSegmentQuery,
   useListSegmentsQuery,
 } from "metabase/api";
-import { color } from "metabase/lib/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const Segments = createEntity({
+export const Segments = createEntity({
   name: "segments",
   nameOne: "segment",
   path: "/api/segment",
   schema: SegmentSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListSegmentsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -50,17 +49,9 @@ const Segments = createEntity({
         dispatch,
         segmentApi.endpoints.updateSegment,
       ),
-    delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(id, dispatch, segmentApi.endpoints.deleteSegment),
   },
 
   objectActions: {
-    setArchived: (
-      { id },
-      archived,
-      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
-    ) => Segments.actions.update({ id }, { archived, revision_message }),
-
     // NOTE: DELETE not currently implemented
     delete: null,
   },
@@ -68,23 +59,8 @@ const Segments = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
   },
-
-  objectSelectors: {
-    getName: (segment) => segment && segment.name,
-    getUrl: (segment) =>
-      Urls.tableRowsQuery(
-        segment.database_id,
-        segment.table_id,
-        null,
-        segment.id,
-      ),
-    getColor: (segment) => color("filter"),
-    getIcon: (segment) => ({ name: "segment" }),
-  },
 });
 
 const useGetQuery = ({ id }, options) => {
   return useGetSegmentQuery(id, options);
 };
-
-export default Segments;

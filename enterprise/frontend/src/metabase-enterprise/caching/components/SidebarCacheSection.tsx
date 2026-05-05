@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
@@ -20,14 +20,14 @@ export const SidebarCacheSection = ({
   const id = useMemo(() => getItemId(model, item), [model, item]);
   const configurableModels = useMemo(() => [model], [model]);
 
-  const { configs, loading, error } = useCacheConfigs({
-    configurableModels,
+  const { configs, isLoading, error } = useCacheConfigs({
+    model: configurableModels,
     id,
   });
 
   const targetConfig = useMemo(() => {
     const id = getItemId(model, item);
-    return _.findWhere(configs, { model, model_id: id });
+    return _.findWhere(configs ?? [], { model, model_id: id });
   }, [configs, model, item]);
   const savedStrategy = targetConfig?.strategy;
 
@@ -36,7 +36,7 @@ export const SidebarCacheSection = ({
   const labelId = "question-caching-policy-label";
 
   return (
-    <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
+    <DelayedLoadingAndErrorWrapper delay={0} loading={isLoading} error={error}>
       <Flex align="center" justify="space-between">
         <span id={labelId}>{t`When to get new results`}</span>
         <FormLauncher

@@ -1,10 +1,10 @@
 import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
-
 import { type KeyboardShortcutId, shortcuts } from "../shortcuts";
 import type { ShortcutAction } from "../types";
+
+import { trackKeyboardShortcutPerformed } from "./analytics";
 
 export type RegisterShortcutProps = {
   id: KeyboardShortcutId;
@@ -37,10 +37,7 @@ export const useRegisterShortcut = (
           perform: (action: ActionImpl, event?: KeyboardEvent) => {
             perform(action, event);
             if (event) {
-              trackSimpleEvent({
-                event: "keyboard_shortcut_performed",
-                event_detail: id,
-              });
+              trackKeyboardShortcutPerformed(id);
             }
           },
           ...rest,

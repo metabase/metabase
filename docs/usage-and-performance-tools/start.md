@@ -1,5 +1,7 @@
 ---
 title: "Tools overview"
+redirect_from:
+  - /docs/latest/usage-and-performance-tools
 ---
 
 # Tools overview

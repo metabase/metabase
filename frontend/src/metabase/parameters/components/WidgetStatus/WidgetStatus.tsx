@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Tooltip, rem } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 
 import type { Status } from "./types";
 
@@ -11,14 +11,6 @@ type Props = {
   status: Status;
   onClick?: () => void;
 };
-
-const COMPACT_BUTTON_PADDING = 4;
-
-/**
- * Account for compact button's padding, so that the placement of this component's root element
- * is the same regardless of whether the button is rendered or not.
- */
-const BUTTON_MARGIN = -COMPACT_BUTTON_PADDING;
 
 export const WidgetStatus = ({
   className,
@@ -42,35 +34,43 @@ export const WidgetStatus = ({
     >
       {status === "clear" && (
         <Tooltip label={t`Clear`}>
-          <Button
+          <Box
             aria-label={t`Clear`}
-            color={highlighted ? undefined : "text-medium"}
-            size="compact-md"
-            leftSection={<Icon name="close" />}
-            m={rem(BUTTON_MARGIN)}
-            radius="md"
-            variant="subtle"
+            h={24}
+            pt={4}
+            pb={4}
             onClick={handleClick}
-          />
+            role="button"
+          >
+            <Icon
+              name="close"
+              c={highlighted ? undefined : "text-secondary"}
+              size={16}
+            />
+          </Box>
         </Tooltip>
       )}
 
       {status === "reset" && (
         <Tooltip label={t`Reset filter to default state`}>
-          <Button
+          <Box
             aria-label={t`Reset filter to default state`}
-            color={highlighted ? undefined : "text-medium"}
-            size="compact-md"
-            leftSection={<Icon name="revert" />}
-            m={rem(BUTTON_MARGIN)}
-            radius="md"
-            variant="subtle"
+            h={24}
+            pt={4}
+            pb={4}
             onClick={handleClick}
-          />
+            role="button"
+          >
+            <Icon
+              name="revert"
+              c={highlighted ? undefined : "text-secondary"}
+              size={16}
+            />
+          </Box>
         </Tooltip>
       )}
 
-      {status === "empty" && <Icon name="chevrondown" />}
+      {status === "empty" && <Icon size={16} name="chevrondown" />}
 
       {status === "none" && <Icon name="empty" />}
     </Flex>

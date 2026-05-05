@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
+import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { useAdminSetting } from "metabase/api/utils";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Box,
   type BoxProps,
@@ -12,11 +13,14 @@ import {
   Stack,
   Switch,
   TextInput,
+  type TextProps,
   Textarea,
 } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  SettingDefinition,
+  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -55,6 +59,7 @@ type InputDetails =
 export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   name: S;
   title?: string;
+  titleProps?: TextProps;
   description?: React.ReactNode;
   hidden?: boolean;
   disabled?: boolean;
@@ -69,6 +74,7 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
  */
 export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   title,
+  titleProps,
   description,
   name,
   inputType,
@@ -87,6 +93,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const displayValue = settingDetails?.value ?? initialValue;
 
   const handleChange = (newValue: EnterpriseSettingValue) => {
     if (newValue === initialValue) {
@@ -104,6 +111,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       <SettingHeader
         id={name}
         title={title}
+        titleProps={titleProps}
         description={description ?? settingDescription}
       />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
@@ -111,7 +119,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       ) : (
         <BasicAdminSettingInput
           name={name}
-          value={initialValue}
+          value={displayValue}
           onChange={handleChange}
           options={options}
           placeholder={placeholder}
@@ -183,6 +191,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => handleChange(e.target.checked)}
           label={switchLabel ?? (localValue ? t`Enabled` : t`Disabled`)}
           w="auto"
+          size="sm"
           disabled={disabled}
         />
       );
@@ -265,3 +274,29 @@ export const SetByEnvVar = ({ varName }: { varName: string }) => {
     </Box>
   );
 };
+
+type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
+  settingKey: S;
+  settingDetails: SettingDefinition<S> | undefined;
+  children: React.ReactNode;
+};
+
+export function SetByEnvVarWrapper<SettingName extends SettingKey>({
+  settingKey,
+  settingDetails,
+  children,
+}: SetByEnvVarWrapperProps<SettingName>) {
+  if (isSettingSetFromEnvVar(settingDetails)) {
+    return (
+      <Box mb="lg">
+        <SettingHeader
+          id={settingKey}
+          title={settingDetails.display_name}
+          description={settingDetails.description}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Box>
+    );
+  }
+  return children;
+}

@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import { Box, Flex } from "metabase/ui";
 
 import DataSelectorSectionHeaderS from "./DataSelectorSectionHeader.module.css";

@@ -1,19 +1,20 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen, within } from "__support__/ui";
-import { METAKEY } from "metabase/lib/browser";
-import { checkNotNull } from "metabase/lib/types";
+import { fireEvent, getIcon, screen } from "__support__/ui";
 import type { IconName } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 import {
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -23,22 +24,45 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
+const findAggregationOperator = (
+  query: Lib.Query,
+  operatorShortName: string,
+) => {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const operator = operators.find(
+    (operator) =>
+      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};
+
 const createQueryWithFields = (columnNames: string[]) => {
-  const query = createQuery();
-  const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map((name) => findColumn("ORDERS", name));
-  return Lib.withFields(query, 0, columns);
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: columnNames.map((name) => ({
+          type: "column",
+          sourceName: "ORDERS",
+          name,
+        })),
+      },
+    ],
+  });
 };
 
 const createQueryWithAggregation = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const count = findAggregationOperator(query, "count");
   const aggregation = Lib.aggregationClause(count);
   return Lib.aggregate(query, 0, aggregation);
 };
 
 const createQueryWithBreakout = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.breakoutableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const column = findColumn("ORDERS", "TAX");
@@ -47,13 +71,14 @@ const createQueryWithBreakout = () => {
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({
-    hasEnterprisePlugins: false,
     ...opts,
   });
 }
 
 const setupEmptyQuery = () => {
-  const question = Question.create({ databaseId: SAMPLE_DB_ID });
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+  });
   const query = question.query();
   return setup({ step: createMockNotebookStep({ query }) });
 };
@@ -80,15 +105,10 @@ describe("DataStep", () => {
   it("should render without a table selected", async () => {
     setupEmptyQuery();
 
-    const modal = await screen.findByTestId("entity-picker-modal");
+    expect(await screen.findByTestId("mini-picker")).toBeInTheDocument(); // popover
     expect(
-      await within(modal).findByText("Pick your starting data"),
-    ).toBeInTheDocument();
-
-    // Ensure the table picker not open
-    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
-    expect(await within(modal).findByText("Products")).toBeInTheDocument();
-    expect(await within(modal).findByText("People")).toBeInTheDocument();
+      await screen.findByPlaceholderText(/search for tables and more/i),
+    ).toBeInTheDocument(); // search input
   });
 
   it("should render with a selected table", () => {
@@ -262,17 +282,12 @@ describe("DataStep", () => {
       );
     });
 
-    it("should not show the tooltip when there is no table selected", async () => {
+    it("should show a search input when no data is selected", async () => {
       setupEmptyQuery();
 
-      const modal = await screen.findByTestId("entity-picker-modal");
-      const closeButton = await screen.findByRole("button", { name: /close/i });
-
-      await userEvent.click(closeButton);
-      expect(modal).not.toBeInTheDocument();
-
-      await userEvent.hover(screen.getByText("Pick your starting data"));
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      expect(
+        await screen.findByPlaceholderText(/search for tables and more/i),
+      ).toBeInTheDocument();
     });
 
     it("meta click should open the data source in a new window", () => {
@@ -310,16 +325,14 @@ describe("DataStep", () => {
       mockWindowOpen.mockClear();
     });
 
-    it("regular click should open the entity picker", async () => {
+    it("regular click should open the mini picker", async () => {
       const { mockWindowOpen } = setup();
 
       const dataSource = screen.getByText("Orders");
 
       fireEvent.click(dataSource);
 
-      expect(
-        await screen.findByTestId("entity-picker-modal"),
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId("mini-picker")).toBeInTheDocument();
       expect(mockWindowOpen).not.toHaveBeenCalled();
     });
   });

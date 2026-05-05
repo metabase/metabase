@@ -37,7 +37,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
     H.echartsContainer()
       .findByText("Count")
@@ -239,7 +239,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
@@ -553,7 +553,13 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.log("Drag and drop the first y-axis field to the last position");
       cy.findAllByTestId("chart-setting-select").then((initial) => {
-        H.dragField(0, 1);
+        cy.findByTestId("chart-settings-widget-graph.metrics").within(() => {
+          cy.findAllByTestId("drag-handle").first().as("dragElement");
+          H.moveDnDKitElementByAlias("@dragElement", {
+            vertical: 50,
+            useMouseEvents: true,
+          });
+        });
 
         cy.findAllByTestId("chart-setting-select").should((content) => {
           expect(content[0].value).to.eq(initial[0].value); // Created At: Month
@@ -607,7 +613,7 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
     });
 
@@ -670,6 +676,171 @@ describe("scenarios > visualizations > line chart", () => {
     H.echartsContainer().within(() => {
       cy.get("text").contains("Quantity").should("be.visible");
       cy.findByText(X_AXIS_VALUE);
+    });
+  });
+
+  it("should format goal tooltip value to match y-axis tick formatting", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 5000,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","sum"]': {
+            number_style: "currency",
+            currency: "USD",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("$50.0k").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("$5,000.00").should("exist");
+    });
+  });
+
+  it("should support formatting goal tooltip value as a percent", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 123.4567,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","count"]': {
+            number_style: "percent",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("50.0k%").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("12,345.67%").should("exist");
+    });
+  });
+
+  describe("with tracking", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should split series into panels and render each series in its own panel", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["avg", ["field", ORDERS.QUANTITY, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.findAllByTestId("legend-item").should("have.length", 2);
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findByText("Display").click();
+        cy.findByText("Stack series").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "stack_series_enabled",
+        triggered_from: "viz_settings",
+      });
+
+      H.echartsContainer().within(() => {
+        cy.findByText("60,000").should("be.visible");
+        cy.findByText("8").should("be.visible");
+      });
+
+      H.splitPanelAxisLines().should("have.length", 2);
+
+      H.cartesianChartCircleWithColor("#88BF4D");
+      H.cartesianChartCircleWithColor("#A989C5");
+
+      // Change series color while split panels are active
+      H.leftSidebar().findByText("Data").click();
+      H.openSeriesSettings("Sum of Total");
+
+      H.popover().within(() => {
+        cy.findByTestId("color-selector-button").button().click();
+      });
+
+      H.popover()
+        .should("have.length", 2)
+        .last()
+        .within(() => {
+          cy.findByLabelText("#EF8C8C").realClick();
+        });
+
+      H.popover().within(() => {
+        cy.icon("bar").click();
+      });
+
+      H.popover().within(() => {
+        cy.findByText("Formatting").click();
+        cy.findByPlaceholderText("$").type("$").blur();
+      });
+
+      H.leftSidebar().within(() => {
+        cy.button("Done").click();
+      });
+
+      H.echartsContainer().findByText("$60,000").should("be.visible");
+
+      // Tooltip
+      H.cartesianChartCircle().first().trigger("mousemove");
+      H.assertEChartsTooltip({
+        rows: [
+          { name: "Sum of Total", value: "$52.76" },
+          { name: "Average of Quantity", value: "2" },
+        ],
+        blurAfter: true,
+      });
+
+      // Brush
+      cy.findByTestId("query-visualization-root")
+        .trigger("mousedown", 180, 200)
+        .trigger("mousemove", 180, 200)
+        .trigger("mouseup", 400, 200);
+
+      H.chartPathWithFillColor("#EF8C8C").should("be.visible");
+      H.cartesianChartCircleWithColor("#A989C5");
     });
   });
 });

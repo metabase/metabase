@@ -39,7 +39,7 @@ case(isEmpty([Feedback]), true, false)
 
 You can combine `isEmpty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
 
-For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` is has a non-empty value. The custom expression to do it is:
+For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` has a non-empty value. The custom expression to do it is:
 
 ```
 case(isEmpty([Feedback]), "No feedback.", [Feedback])
@@ -133,6 +133,6 @@ case(isEmpty([Feedback]), "No feedback.", [Feedback])
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
-[notebook-editor-def]: https://www.metabase.com/glossary/query_builder
+[notebook-editor-def]: https://www.metabase.com/glossary/query-builder
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

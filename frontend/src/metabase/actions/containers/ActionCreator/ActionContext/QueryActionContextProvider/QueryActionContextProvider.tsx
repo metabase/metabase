@@ -27,8 +27,7 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
-export interface QueryActionContextProviderProps
-  extends ActionContextProviderProps<WritebackQueryAction> {
+export interface QueryActionContextProviderProps extends ActionContextProviderProps<WritebackQueryAction> {
   metadata: Metadata;
   databaseId?: DatabaseId;
 }
@@ -194,7 +193,10 @@ function QueryActionContextProvider({
 
   const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
     const nextQuestion = nextQuery.question();
-    const parameters = getTemplateTagParametersFromCard(nextQuestion.card());
+    const parameters = getTemplateTagParametersFromCard(
+      nextQuestion.card(),
+      nextQuestion.metadata(),
+    );
     setQuestion(nextQuestion.setParameters(parameters));
   }, []);
 

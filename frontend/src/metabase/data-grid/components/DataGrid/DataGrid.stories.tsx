@@ -1,12 +1,19 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
+import { getStore } from "__support__/entities-store";
 import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Checkbox, Flex } from "metabase/ui";
 
 import { DataGrid } from "./DataGrid";
@@ -25,14 +32,21 @@ export default {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
-        <Story />
-      </div>
+      <MetabaseReduxProvider store={store}>
+        <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
+          <Story />
+        </div>
+      </MetabaseReduxProvider>
     ),
   ],
 } as Meta<typeof DataGrid>;
 
 type Story = StoryFn<typeof DataGrid>;
+
+const initialState = createMockState({
+  settings: createMockSettingsState(),
+});
+const store = getStore(publicReducers, initialState, []);
 
 const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
   return {
@@ -232,6 +246,7 @@ export const CombinedFeatures: Story = () => {
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
       variant: "indexExpand",
+      expandedIndex: undefined,
       getBackgroundColor: (rowIndex: number) =>
         rowIndex % 2 === 0 ? "#f0f0f0" : "transparent",
     }),
@@ -327,14 +342,8 @@ export const SelectableRows: Story = () => {
     [],
   );
 
-  const tableProps = useDataGridInstance({
-    data: sampleData,
-    columnsOptions: columns,
-    columnPinning: { left: ["row_selection"] },
-    enableRowSelection: true,
-    rowSelection,
-    onRowSelectionChange: setRowSelection,
-    columnRowSelectOptions: {
+  const columnRowSelectOptions = useMemo<ColumnOptions<SampleDataType>>(
+    () => ({
       id: "row_selection",
       name: "Row Selection",
       accessorFn: (row) => row.id,
@@ -360,7 +369,17 @@ export const SelectableRows: Story = () => {
           </Flex>
         </BaseCell>
       ),
-    },
+    }),
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
+    columnRowSelectOptions,
   });
 
   return <DataGrid {...tableProps} />;

@@ -586,6 +586,70 @@ describe("scenarios > visualizations > table column settings", () => {
       _hideColumn(testData2);
       _showColumn(testData2);
     });
+
+    it("should be able to show and hide columns in a multi-stage query with custom columns (metabase#35067)", () => {
+      H.createQuestion(
+        {
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/Integer",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+              ],
+            },
+            expressions: {
+              CC: ["*", 2, ["field", "count", { "base-type": "type/Integer" }]],
+            },
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+      openSettings();
+
+      const countColumn = {
+        column: "Count",
+        columnName: "Count",
+        table: "summaries",
+        sanityCheck: "CC",
+        needsScroll: false,
+      };
+
+      const productIdColumn = {
+        column: "Product → ID",
+        columnName: "Product → ID",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      const customColumn = {
+        column: "CC",
+        columnName: "CC",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      _hideColumn(countColumn);
+      _showColumn(countColumn);
+      _removeColumn(countColumn);
+      _addColumn(countColumn);
+      _hideColumn(productIdColumn);
+      _showColumn(productIdColumn);
+      _removeColumn(productIdColumn);
+      _addColumn(productIdColumn);
+      _hideColumn(customColumn);
+      _showColumn(customColumn);
+    });
   });
 
   describe("nested structured questions", () => {
@@ -745,7 +809,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const taxColumn = {
-          column: "Tax",
+          column: `Question ${card.id} → Tax`,
           columnName: `Question ${card.id} → Tax`,
           table: "test question 2",
           scrollTimes: 3,
@@ -767,7 +831,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const mathColumn = {
-          column: "Math",
+          column: `Question ${card.id} → Math`,
           columnName: `Question ${card.id} → Math`,
           table: "test question",
           needsScroll: false,
@@ -819,6 +883,219 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(taxColumn);
       _removeColumn(taxColumn);
       _addColumn(taxColumn);
+    });
+  });
+
+  it("should handle duplicated values in table.columns viz settings (metabase#62053)", () => {
+    const nativeQuestionWithDuplicatedColumns = {
+      display: "table",
+      native: {
+        query: "SELECT ID, TAX FROM ORDERS LIMIT 5",
+      },
+      visualization_settings: {
+        "table.columns": [
+          {
+            name: "ID",
+            enabled: true,
+          },
+          // Duplicate ID column entry
+          {
+            name: "ID",
+            enabled: true,
+          },
+          {
+            name: "TAX",
+            enabled: true,
+          },
+        ],
+      },
+    };
+
+    H.createNativeQuestion(nativeQuestionWithDuplicatedColumns, {
+      visitQuestion: true,
+    });
+
+    // Verify the table renders correctly despite duplicated viz settings
+    visualization().should("be.visible");
+
+    // Verify expected columns are visible
+    visualization().findAllByText("ID").should("have.length", 1);
+    visualization().findByText("TAX").should("exist");
+
+    // Open settings to verify column settings work
+    openSettings();
+
+    // Verify that column controls are displayed correctly
+    visibleColumns()
+      .should("exist")
+      .within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByTestId("ID-hide-button").should("exist");
+
+        cy.findByText("TAX").should("exist");
+        cy.findByTestId("TAX-hide-button").should("exist");
+      });
+  });
+
+  describe("column pinning", () => {
+    describe("column reordering between pinned and unpinned sections", () => {
+      it("should allow reordering a column from the unpinned section into the pinned section", () => {
+        H.createQuestion(
+          {
+            query: { "source-table": ORDERS_ID },
+            visualization_settings: {
+              "table.freeze_columns": true,
+              "table.freeze_columns_count": 1,
+            },
+          },
+          { visitQuestion: true },
+        );
+
+        cy.findByTestId("header-pinned-quadrant")
+          .findAllByTestId("header-cell")
+          .should("have.length", 1)
+          .first()
+          .should("contain.text", "ID");
+
+        H.tableHeaderColumn("User ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", { horizontal: -50 });
+
+        cy.findByTestId("header-pinned-quadrant")
+          .findAllByTestId("header-cell")
+          .should("have.length", 1)
+          .first()
+          .should("contain.text", "User ID");
+      });
+
+      it("should allow reordering a column from the pinned section into the unpinned section", () => {
+        H.createQuestion(
+          {
+            query: { "source-table": ORDERS_ID },
+            visualization_settings: {
+              "table.freeze_columns": true,
+              "table.freeze_columns_count": 2,
+            },
+          },
+          { visitQuestion: true },
+        );
+
+        cy.findByTestId("header-pinned-quadrant")
+          .findAllByTestId("header-cell")
+          .should("have.length", 2)
+          .then((cells) => {
+            expect(cells.eq(0)).to.contain("ID");
+            expect(cells.eq(1)).to.contain("User ID");
+          });
+
+        H.tableHeaderColumn("ID").as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", { horizontal: 400 });
+
+        cy.findByTestId("header-pinned-quadrant")
+          .findAllByTestId("header-cell")
+          .then((cells) => {
+            expect(cells.eq(0)).to.contain("User ID");
+            expect(cells.eq(1)).to.contain("Product ID");
+          });
+      });
+    });
+
+    describe("column resizing with pinning limits", () => {
+      it("should unpin/re-pin the last pinned column when resizing exceeds/fits 90% of container width", () => {
+        H.createQuestion(
+          {
+            query: { "source-table": ORDERS_ID },
+            visualization_settings: {
+              "table.freeze_columns": true,
+              "table.freeze_columns_count": 4,
+            },
+          },
+          { visitQuestion: true },
+        );
+
+        cy.findByTestId("header-pinned-quadrant")
+          .findAllByTestId("header-cell")
+          .should("have.length", 4);
+
+        cy.findByTestId("table-scroll-container")
+          .invoke("width")
+          .then((containerWidth) => {
+            const moveX = containerWidth * 0.7;
+            H.resizeTableColumn("ID", moveX);
+
+            cy.findByTestId("header-pinned-quadrant")
+              .findAllByTestId("header-cell")
+              .should("have.length", 2);
+
+            H.resizeTableColumn("ID", -moveX);
+
+            cy.findByTestId("header-pinned-quadrant")
+              .findAllByTestId("header-cell")
+              .should("have.length", 4);
+
+            // allow resizing columns in the pinned section without affecting pinning when within limits
+            H.resizeTableColumn("ID", 30);
+            cy.findByTestId("header-pinned-quadrant")
+              .findAllByTestId("header-cell")
+              .should("have.length", 4);
+          });
+      });
+    });
+  });
+
+  it("should respect date_style column setting for week temporal unit", () => {
+    const questionWithWeekBreakout = {
+      display: "table",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(questionWithWeekBreakout, { visitQuestion: true });
+
+    // Open visualization settings
+    H.openVizSettingsSidebar();
+
+    // Click on the "Created At: Week" column to open its settings
+    H.leftSidebar().findByTestId("Created At: Week-settings-button").click();
+
+    // Change date style to M/D/YYYY
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^1\/31\/2018/)
+      .click();
+
+    // Verify the formatting changed to numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d+\/\d+\/\d{4} – \d+\/\d+\/\d{4}/); // Format like "1/1/2025 - 1/7/2025"
+    });
+
+    // Change date style to YYYY/M/D
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^2018\/1\/31/)
+      .click();
+
+    // Verify the formatting changed to day-first numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\/\d+\/\d+ – \d{4}\/\d+\/\d+/); // Format like "2025/1/1 - 2025/1/7"
+    });
+
+    H.popover().findByText("YYYY.M.D").click();
+    // Verify separator formatting changed
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\.\d+\.\d+ – \d{4}\.\d+\.\d+/); // Format like "2025.1.1 - 2025.1.7"
     });
   });
 });

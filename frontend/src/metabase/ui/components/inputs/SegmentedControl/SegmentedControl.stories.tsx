@@ -71,6 +71,6 @@ export const Color = {
       },
     ],
     color: "brand",
-    c: "var(--mb-color-text-white)",
+    c: "var(--mb-color-text-primary-inverse)",
   },
 };

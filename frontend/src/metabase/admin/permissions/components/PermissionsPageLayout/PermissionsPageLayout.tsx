@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
@@ -15,13 +14,12 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
+import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
 import {
@@ -30,7 +28,6 @@ import {
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { PermissionsGraph } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,
@@ -43,12 +40,17 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+export type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections"
+  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
   confirmBar?: ReactNode;
-  diff?: PermissionsGraph;
+  diff?: PermissionsGraphDiff;
   isDirty?: boolean;
   onSave?: () => void;
   onLoad?: () => void;
@@ -91,7 +93,10 @@ export function PermissionsPageLayout({
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
-  const clearSaveError = () => dispatch(clearPermissionsSaveError());
+
+  const clearSaveError = () => {
+    dispatch(clearPermissionsSaveError());
+  };
 
   const handleToggleHelpReference = useCallback(() => {
     dispatch(toggleHelpReference());
@@ -116,20 +121,18 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <Modal isOpen={saveError != null}>
-          <ModalContent
-            title={t`There was an error saving`}
-            formModal
-            onClose={clearSaveError}
-          >
-            <p className={CS.mb4}>{saveError}</p>
-            <div className={cx(CS.mlAuto)}>
-              <Button onClick={clearSaveError}>{t`OK`}</Button>
-            </div>
-          </ModalContent>
-        </Modal>
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
 
-        <LeaveConfirmationModal isEnabled={!!isDirty} route={route} />
+        <ConfirmModal
+          opened={saveError != null}
+          onClose={clearSaveError}
+          onConfirm={clearSaveError}
+          title={t`There was an error saving`}
+          message={saveError}
+          confirmButtonText={t`OK`}
+          confirmButtonProps={{ variant: "outline" }}
+          closeButtonText={null}
+        />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

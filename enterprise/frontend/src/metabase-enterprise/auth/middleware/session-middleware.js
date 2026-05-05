@@ -2,7 +2,7 @@ import Cookies from "js-cookie";
 import { replace } from "react-router-redux";
 
 import { logout, refreshSession } from "metabase/auth/actions";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
 export const COOKIE_POOLING_TIMEOUT = 3000;
@@ -15,6 +15,15 @@ const getRedirectUrl = () => {
   return redirectUrlParam != null && isSameOrSiteUrlOrigin(redirectUrlParam)
     ? redirectUrlParam
     : null;
+};
+
+const preventImmedidateRedirect = () => {
+  // defer to login page to redirect if sent directly. `getIsLoggedIn` returns if a session cookie
+  // is present, but does not validate. in the case of an invalid token at the start of an OAuth
+  // flow, the user can get stuck with a "Account linking requires an authenticated session" error
+  // without an obvious way to remedy. by defering the the login page we can ensure cookie validation
+  // and give the user a chance to re-auth if needed.
+  return window.location.pathname.startsWith("/auth/login");
 };
 
 export const createSessionMiddleware = (
@@ -32,7 +41,7 @@ export const createSessionMiddleware = (
       // get the redirect url before refreshing the session because after the refresh the url will be reset
       const redirectUrl = getRedirectUrl();
 
-      if (wasLoggedIn && !!redirectUrl) {
+      if (wasLoggedIn && !!redirectUrl && !preventImmedidateRedirect()) {
         store.dispatch(replace(redirectUrl));
       }
 

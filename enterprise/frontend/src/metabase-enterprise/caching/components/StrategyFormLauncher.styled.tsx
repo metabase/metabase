@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
@@ -60,7 +59,9 @@ export const StyledLauncher = styled.div<
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
   background-color: ${({ forRoot }) =>
-    forRoot ? color("bg-medium") : color("bg-white")};
+    forRoot
+      ? "var(--mb-color-background-tertiary)"
+      : "var(--mb-color-background-primary)"};
   ${({ forRoot }) =>
     !forRoot &&
     css`

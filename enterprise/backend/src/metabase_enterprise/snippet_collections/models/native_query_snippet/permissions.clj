@@ -3,9 +3,9 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as snippets]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -20,7 +20,7 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
+    (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
@@ -31,9 +31,10 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
+    (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
-    (has-parent-collection-perms? snippet :write)))
+    (has-parent-collection-perms? snippet :write)
+    (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
   ([model id]
    (can-write? (t2/select-one [model :collection_id] :id id))))
 
@@ -42,17 +43,19 @@
   :feature :snippet-collections
   [_model m]
   (and
-   (not (perms-util/sandboxed-user?))
+   (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? m :write)))
+   (has-parent-collection-perms? m :write)
+   (remote-sync/model-editable? :model/NativeQuerySnippet m)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
   :feature :snippet-collections
   [snippet changes]
   (and
-   (not (perms-util/sandboxed-user?))
+   (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
-       (has-parent-collection-perms? changes :write))))
+       (has-parent-collection-perms? changes :write))
+   (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))

@@ -1,0 +1,17 @@
+.section {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rightSection[data-position="right"] {
+  min-width: 0;
+  overflow: hidden;
+  flex-basis: 40%;
+  justify-content: start;
+}
+
+.leftSection {
+  min-width: 0;
+  overflow: hidden;
+  flex-basis: 60%;
+}

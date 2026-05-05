@@ -1,5 +1,5 @@
 import type { LineSeriesOption } from "echarts/charts";
-import type { MarkLine1DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
+import type { MarkLine2DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
 import type { IconName } from "metabase/ui/components/icons/Icon/icons";
 import { Icons } from "metabase/ui/components/icons/Icon/icons";
@@ -37,10 +37,16 @@ function svgToImageUri(svgString: string) {
   return `image://${svgToDataUri(svgString)}`;
 }
 
+export interface SplitPanelYExtent {
+  topY: number;
+  bottomY: number;
+}
+
 export const getTimelineEventsSeries = (
   timelineEventsModel: TimelineEventsModel,
   selectedEventsIds: TimelineEventId[],
   { fontFamily, getColor, theme }: RenderingContext,
+  splitPanelYExtent?: SplitPanelYExtent,
 ): LineSeriesOption | null => {
   const { fontSize } = theme?.cartesian?.label ?? {};
 
@@ -48,40 +54,48 @@ export const getTimelineEventsSeries = (
     return null;
   }
 
-  const timelineEventsData: MarkLine1DDataItemOption[] =
-    timelineEventsModel.map(({ date, events }) => {
-      const isSelected = events.some((event) =>
-        selectedEventsIds.includes(event.id),
-      );
+  const timelineEventsData = timelineEventsModel.map(({ date, events }) => {
+    const isSelected = events.some((event) =>
+      selectedEventsIds.includes(event.id),
+    );
 
-      const color = getColor(isSelected ? "brand" : "text-light");
-      const iconName =
-        events.length === 1 ? (events[0].icon as IconName) : "star";
+    const color = getColor(isSelected ? "brand" : "text-tertiary");
+    const iconName =
+      events.length === 1 ? (events[0].icon as IconName) : "star";
 
-      const iconSvg = setSvgColor(Icons[iconName].source, color);
-      const dataUri = svgToImageUri(iconSvg);
+    const iconSvg = setSvgColor(Icons[iconName].source, color);
+    const dataUri = svgToImageUri(iconSvg);
 
-      return {
-        name: TIMELINE_EVENT_DATA_NAME,
-        xAxis: date,
-        symbolSize: 16,
-        symbolOffset: [0, 12],
-        symbolRotate: 0,
-        symbol: dataUri,
-        lineStyle: isSelected ? { color: getColor("brand") } : undefined,
-        label: {
-          show: events.length > 1,
-          formatter: () => String(events.length),
-          position: "start",
-          padding: [0, 0, 0, 24],
-          hideOverlap: true,
-          color,
-          fontSize,
-          fontWeight: CHART_STYLE.axisTicks.weight,
-          fontFamily,
-        },
-      };
-    });
+    const itemProps = {
+      name: TIMELINE_EVENT_DATA_NAME,
+      symbolSize: 16,
+      symbolOffset: [0, 12],
+      symbolRotate: 0,
+      symbol: dataUri,
+      lineStyle: isSelected ? { color: getColor("brand") } : undefined,
+      label: {
+        show: events.length > 1,
+        formatter: () => String(events.length),
+        position: "start" as const,
+        padding: [0, 0, 0, 24],
+        hideOverlap: true,
+        color,
+        fontSize,
+        fontWeight: CHART_STYLE.axisTicks.weight,
+        fontFamily,
+      },
+    };
+
+    if (splitPanelYExtent) {
+      const markLineData: MarkLine2DDataItemOption = [
+        { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
+        { ...itemProps, xAxis: date, y: splitPanelYExtent.bottomY },
+      ];
+      return markLineData;
+    }
+
+    return { ...itemProps, xAxis: date };
+  });
 
   return {
     id: TIMELINE_EVENT_SERIES_ID,
@@ -114,7 +128,7 @@ export const getTimelineEventsSeries = (
       symbol: "none",
       lineStyle: {
         type: "solid",
-        // eslint-disable-next-line no-color-literals
+        // eslint-disable-next-line metabase/no-color-literals
         color: "rgba(105, 110, 123, 0.2)",
         width: 2,
       },

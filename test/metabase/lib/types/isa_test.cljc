@@ -38,54 +38,44 @@
                                           orderable-columns))]
     (testing "effective type"
       (is (=? [{:name "NAME"
-                :lib/desired-column-alias "NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}
                {:name "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}]
               (columns-of-type :type/Text))))
     (testing "semantic type"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (columns-of-type :Relation/*))))
-    (testing "experssions"
+    (testing "expressions"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"
                 :semantic-type :type/Latitude
                 :effective-type :type/Float}
                {:name "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"
                 :semantic-type :type/Longitude
                 :effective-type :type/Float}
                {:name "PRICE"
-                :lib/desired-column-alias "PRICE"
                 :semantic-type :type/Category
                 :effective-type :type/Integer}
                {:name "myadd"
-                :lib/desired-column-alias "myadd"
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (filter lib.types.isa/numeric? orderable-columns))))))
@@ -101,7 +91,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
-             {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Float,             :negative :type/Price}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
@@ -148,14 +138,17 @@
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
+  (is (true? (lib.types.isa/string? {:effective-type :type/Text :semantic-type :type/SerializedJSON})))
+  (is (false? (lib.types.isa/string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))))
 
-(deftest ^:parallel valid-filter-for?-test
+(deftest ^:parallel numeric?-test
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type nil})))
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
+  (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
+
+(deftest ^:parallel compatible-type?-test
   #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
+  (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/compatible-type?
                                                        {:base-type      base-lhs
                                                         :effective-type eff-lhs}
                                                        {:base-type      base-rhs
@@ -169,9 +162,52 @@
     true  :type/Integer :type/Quantity  :type/Float :type/Number
     true  :type/Float   :type/Number    :type/Float :type/Price
 
-    true  :type/DateTime :type/Temporal :type/Time  :type/Temporal
+    true  :type/Date     :type/Date     :type/Date     :type/Date
+    true  :type/Date     :type/Date     :type/DateTime :type/DateTime
+    false :type/DateTime :type/DateTime :type/Date     :type/Date
+    true  :type/DateTime :type/DateTime :type/DateTime :type/DateTimeWithTZ
+    true  :type/Time     :type/Time     :type/Time     :type/TimeWithTZ
+
+    true  :type/Boolean :type/Boolean :type/Boolean :type/Boolean
 
     false :type/String   :type/Text      :type/Integer  :type/Number
     false :type/Integer  :type/Number    :type/String   :type/Text
-    false :type/DateTime :type/Temporal  :type/String   :type/Text
-    false :type/String   :type/Text      :type/DateTime :type/Temporal))
+    false :type/DateTime :type/DateTime  :type/String   :type/Text
+    false :type/String   :type/Text      :type/DateTime :type/DateTime
+    false :type/Boolean  :type/Boolean   :type/String   :type/Text
+    false :type/DateTime :type/DateTime  :type/Time     :type/Time
+    false :type/Time     :type/Time      :type/Date     :type/Date
+
+    false :type/PostgresEnum      :type/PostgresEnum      :type/PostgresBitString :type/PostgresBitString
+    false :type/PostgresBitString :type/PostgresBitString :type/PostgresEnum      :type/PostgresEnum))
+
+(deftest ^:parallel effective-type-fallback-test
+  (are [expected predicate column] (= expected (predicate column))
+    true lib.types.isa/date-or-datetime? {:base-type :type/DateTime}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/DateTime :base-type :type/String}
+
+    true lib.types.isa/date-or-datetime? {:base-type :type/Date}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/Date :base-type :type/String}
+
+    false lib.types.isa/date-or-datetime? {:base-type :type/String}
+    false lib.types.isa/date-or-datetime? {:effective-type :type/Location :base-type :type/String}
+
+    true lib.types.isa/date-without-time? {:base-type :type/Date}
+    true lib.types.isa/date-or-datetime? {:effective-type :type/Date :base-type :type/String}
+
+    false lib.types.isa/date-without-time? {:base-type :type/String}
+    false lib.types.isa/date-without-time? {:base-type :type/DateTime}
+    false lib.types.isa/date-without-time? {:effective-type :type/String :base-type :type/String}
+    false lib.types.isa/date-without-time? {:effective-type :type/DateTime :base-type :type/String}
+
+    true  lib.types.isa/date-with-time? {:base-type :type/DateTime}
+    true  lib.types.isa/date-with-time? {:effective-type :type/DateTime :base-type :type/String}
+    false lib.types.isa/date-with-time? {:base-type :type/Date}
+    false lib.types.isa/date-with-time? {:base-type :type/String}
+    false lib.types.isa/date-with-time? {:effective-type :type/Date :base-type :type/String}
+
+    true lib.types.isa/time? {:base-type :type/Time}
+    true lib.types.isa/time? {:effective-type :type/Time :base-type :type/String}
+
+    false lib.types.isa/time? {:base-type :type/String}
+    false lib.types.isa/time? {:effective-type :type/String :base-type :type/String}))

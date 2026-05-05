@@ -3,10 +3,10 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import IconWrapper from "metabase/components/IconWrapper";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { getAccentColors } from "metabase/lib/colors/groups";
+import { Flex } from "metabase/ui";
+import { getAccentColors } from "metabase/ui/colors/groups";
 
 import {
   OptionsIcon,
@@ -14,7 +14,7 @@ import {
 } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeriesMultiple extends Component {
+export class ChartNestedSettingSeriesMultiple extends Component {
   render() {
     const {
       objects,
@@ -59,6 +59,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
               >
                 <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
+                    withinPortal={false}
                     value={settings.color}
                     colors={getAccentColors()}
                     onChange={(value) =>
@@ -70,7 +71,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     value={settings.title}
-                    subtitle={
+                    description={
                       seriesCardName === settings.title ? "" : seriesCardName
                     }
                     onBlurChange={(e) =>
@@ -81,7 +82,12 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     data-testid="series-name-input"
                   />
                   {objects.length > 1 ? (
-                    <IconWrapper className={cx(CS.ml1, CS.p1)}>
+                    <Flex
+                      align="center"
+                      justify="center"
+                      bdrs={6}
+                      className={cx(CS.ml1, CS.p1)}
+                    >
                       <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
@@ -93,7 +99,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                           )
                         }
                       />
-                    </IconWrapper>
+                    </Flex>
                   ) : null}
                 </div>
                 {objectSettingsWidgets &&

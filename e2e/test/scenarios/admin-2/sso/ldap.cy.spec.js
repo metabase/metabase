@@ -25,7 +25,7 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Success").should("exist");
     });
 
@@ -37,7 +37,8 @@ describe(
       cy.button("Save changes").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findAllByRole("link", { name: "Authentication" }).first().click();
+      H.goToAuthOverviewPage();
+
       getLdapCard().findByText("Active").should("exist");
     });
 
@@ -61,7 +62,7 @@ describe(
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("User Provisioning")
+        .findByText(/User Provisioning/i)
         .should("not.exist");
     });
 
@@ -104,7 +105,7 @@ describe(
     it("shouldn't be possible to save a non-integer port (#13313)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByLabelText(/LDAP Port/)
+      cy.findByLabelText(/LDAP Port/i)
         .parent()
         .parent()
         .as("portSection");
@@ -125,7 +126,7 @@ describe(
 
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Success").should("exist");
     });
 
@@ -173,7 +174,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
     });
 
@@ -182,7 +183,7 @@ describe(
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByTestId("ldap-user-provisioning-enabled?-setting")
-        .findByText("Enabled")
+        .findByText(/^Disabled/)
         .click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
@@ -194,9 +195,9 @@ describe(
       cy.signOut();
       cy.visit("/auth/login");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Username or email address").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("be.visible");
     });
 
@@ -235,17 +236,21 @@ describe(
 );
 
 const getLdapCard = () => {
-  return cy.findByText("LDAP").parent().parent();
+  return cy
+    .findByTestId("admin-layout-content")
+    .findByText("LDAP")
+    .parent()
+    .parent();
 };
 
 const enterLdapPort = (value) => {
-  H.typeAndBlurUsingLabel(/LDAP Port/, value);
+  H.typeAndBlurUsingLabel(/LDAP Port/i, value);
 };
 
 const enterLdapSettings = () => {
-  H.typeAndBlurUsingLabel(/LDAP Host/, "localhost");
-  H.typeAndBlurUsingLabel(/LDAP Port/, "389");
+  H.typeAndBlurUsingLabel(/LDAP Host/i, "localhost");
+  H.typeAndBlurUsingLabel(/LDAP Port/i, "389");
   H.typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
   H.typeAndBlurUsingLabel("Password", "adminpass");
-  H.typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
+  H.typeAndBlurUsingLabel(/User search base/i, "ou=users,dc=example,dc=org");
 };

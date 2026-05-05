@@ -22,11 +22,16 @@ interface TestInputProps {
 }
 
 function TestInput({ defaultValue = "", onChange }: TestInputProps) {
-  const [value, setValue] = useState(defaultValue);
+  const [value, setValue] = useState<number | string>(defaultValue);
 
-  const handleChange = (value: number | "") => {
+  // onChange returns either a valid number or string edge cases like "", ".", or "15."
+  const handleChange = (value: number | string) => {
     setValue(value);
-    onChange?.(value);
+    if (typeof value === "number") {
+      onChange?.(value);
+    } else if (value === "") {
+      onChange?.("");
+    }
   };
 
   return <NumberInput label="Number" value={value} onChange={handleChange} />;
@@ -72,9 +77,19 @@ describe("NumberInput", () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Number");
-    await userEvent.type(input, "abc");
+    await userEvent.type(input, ".abc");
     await userEvent.tab();
 
     expect(onChange).toHaveBeenCalledWith("");
+  });
+
+  it("should not trigger onChange for invalid values", async () => {
+    const { onChange } = setup();
+
+    const input = screen.getByLabelText("Number");
+    await userEvent.type(input, "abc");
+    await userEvent.tab();
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

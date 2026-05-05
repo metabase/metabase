@@ -6,7 +6,7 @@ redirect_from:
 
 # Events and timelines
 
-A lot of discussions around data have a moment when someone asks a question related to a specific point in time: "Wait, what's the spike in March again?", or "When did the new widget launch?"
+A lot of discussions around data have a moment when someone has a question related to a specific point in time: "Wait, what's the spike in March again?", or "When did the new widget launch?"
 
 Events and timelines are a way to capture that chronological knowledge and make it available when you need it, in context (that is, when you're viewing a chart). Events are a great way to store institutional knowledge about what happened and when, so people (including yourself three months from now) won't have to figure out (again) why the line chart spiked back in March.
 
@@ -46,6 +46,8 @@ Once you create an event, the event will show up in charts in the collection, pr
 You'll see an icon along the x-axis that plots the event. A vertical line will extend from the event to show when the data plotted on the chart intersects with the event.
 
 ![An event on a chart](./images/example-event.png)
+
+You can't add a timeline with events to the [Library](../data-studio/library.md).
 
 ## Adding events when viewing a question
 

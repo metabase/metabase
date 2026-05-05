@@ -1,0 +1,13 @@
+.list {
+  &::before {
+    display: none;
+  }
+}
+
+.closeButton {
+  visibility: hidden;
+}
+
+.tab:hover .closeButton {
+  visibility: visible;
+}

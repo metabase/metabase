@@ -3,18 +3,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
-import NormalCollections, {
+import {
+  Collections,
   getExpandedCollectionsById,
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
-import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
+
+import { createEntity } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const SnippetCollections = createEntity({
+export const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
@@ -23,35 +24,21 @@ const SnippetCollections = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`snippet collections`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: _.mapObject(
-    NormalCollections.api,
+    Collections.api,
     (request) =>
       (opts, ...rest) =>
         request({ ...opts, namespace: "snippets" }, ...rest),
   ),
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      SnippetCollections.actions.update(
-        { id },
-        { archived },
-        undo(opts, "folder", archived ? "archived" : "unarchived"),
-      ),
-
-    setCollection: ({ id }, collection, opts) =>
-      SnippetCollections.actions.update(
-        { id },
-        { parent_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "folder", "moved"),
-      ),
-
     delete: null, // not implemented
   },
 
@@ -66,10 +53,6 @@ const SnippetCollections = createEntity({
     getFetched: (state, props) =>
       getFetched(state, props) || getObject(state, props),
   }),
-
-  objectSelectors: {
-    getIcon: () => ({ name: "folder" }),
-  },
 
   getAnalyticsMetadata() {
     return undefined; // not tracking
@@ -91,5 +74,3 @@ const useGetQuery = (query, options) => {
 function useListQuery(query, options) {
   return useListCollectionsQuery({ ...query, namespace: "snippets" }, options);
 }
-
-export default SnippetCollections;

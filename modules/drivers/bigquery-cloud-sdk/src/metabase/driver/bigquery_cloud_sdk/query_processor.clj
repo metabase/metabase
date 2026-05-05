@@ -1,30 +1,27 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some not-empty]])
   (:import
    (com.google.cloud.bigquery
     Field
@@ -43,6 +40,8 @@
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.driver.common.parameters/keep-me)
+
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
   letters, numbers, and underscores, cannot start with a number, and for project-id, can be at most 30 characters long."
@@ -60,13 +59,17 @@
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
-  (when (qp.store/initialized?)
-    (when-let [{:keys [details], driver :engine, :as database} (lib.metadata/database (qp.store/metadata-provider))]
+  (when (driver-api/initialized?)
+    (when-let [{driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
       ;; this is mostly here to catch tests that do something dumb like try to run a BigQuery tests with a MBQL query
       ;; targeting the H2 test database
       (when driver
         (assert (isa? driver/hierarchy driver :bigquery-cloud-sdk) "Sanity check: Database is not a BigQuery database"))
-      (let [project-id-override (:project-id details)
+      ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
+      ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
+      ;; project ID. If they don't, [[bigquery.common/populate-project-id-from-credentials!]] will log a warning.
+      (let [details             (driver.conn/default-details database)
+            project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
                                   (when (and (some? proj-id-1) (not= proj-id-1 proj-id-2))
@@ -226,7 +229,7 @@
 
 (defmulti ^:private temporal-type
   {:arglists '([x])}
-  mbql.u/dispatch-by-clause-name-or-class
+  driver-api/dispatch-by-clause-name-or-class
   :hierarchy #'temporal-type-hierarchy)
 
 (defmethod temporal-type LocalDate      [_] :date)
@@ -269,7 +272,8 @@
 
 (defmethod temporal-type ::h2x/identifier
   [identifier]
-  (:bigquery-cloud-sdk/temporal-type (meta identifier)))
+  (or (:bigquery-cloud-sdk/temporal-type (meta identifier))
+      (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -293,7 +297,7 @@
     nil
 
     (integer? id-or-name)
-    (temporal-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+    (temporal-type (driver-api/field (driver-api/metadata-provider) id-or-name))
 
     effective-type
     (base-type->temporal-type effective-type)
@@ -304,7 +308,8 @@
 (defmethod temporal-type :case
   [[_case & rezt]]
   ;; Following logic for picking a type is taken from
-  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]] (now replaced by
+  ;; lib [[metabase.lib.metadata.calculation/type-of-method]]).
   (loop [[cond-or-else expr & rezt*] rezt]
     (when (and expr (not= :else cond-or-else))
       (if-some [t (temporal-type expr)]
@@ -329,12 +334,12 @@
   calling [[->temporal-type]]); and should return a Honey SQL form."
   {:arglists '([target-type x])}
   (fn [target-type x]
-    [target-type (mbql.u/dispatch-by-clause-name-or-class x)])
+    [target-type (driver-api/dispatch-by-clause-name-or-class x)])
   :hierarchy #'temporal-type-hierarchy)
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-                  {:type qp.error-type/invalid-query})))
+                  {:type driver-api/qp.error-type.invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -381,7 +386,7 @@
                       target-type)
           (let [expr (if-let [report-zone (when (or (= current-type :timestamp)
                                                     (= target-type :timestamp))
-                                            (qp.timezone/requested-timezone-id))]
+                                            (driver-api/requested-timezone-id))]
                        [target-type x (h2x/literal report-zone)]
                        [target-type x])]
             (with-temporal-type expr target-type)))
@@ -439,7 +444,7 @@
 (defn- trunc
   "Generate a SQL call an appropriate truncation function, depending on the temporal type of `expr`."
   [unit expr]
-  [::trunc expr unit (qp.timezone/requested-timezone-id)])
+  [::trunc expr unit (driver-api/requested-timezone-id)])
 
 (def ^:private valid-date-extract-units
   #{:dayofweek :day :dayofyear :week :isoweek :month :quarter :year :isoyear})
@@ -493,7 +498,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (extract* unit expr (qp.timezone/requested-timezone-id)) nil))
+      (with-temporal-type (extract* unit expr (driver-api/requested-timezone-id)) nil))
 
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
@@ -535,7 +540,7 @@
 
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week]
   [_driver _unit expr]
-  (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
+  (trunc (keyword (format "week(%s)" (name (driver-api/setting-get-value-of-type :keyword :start-of-week)))) expr))
 
 ;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso]
@@ -552,16 +557,21 @@
         (h2x/with-database-type-info "timestamp")
         (with-temporal-type :timestamp))))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk :nanoseconds]
+  [driver _ expr]
+  (sql.qp/unix-timestamp->honeysql driver :microseconds [:div expr 1000]))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [datetime     (fn [x target-timezone]
                        [:datetime x target-timezone])
         hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (h2x/is-of-type? hsql-form "timestamp")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? hsql-form "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form
-          [:timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))])
+          [:timestamp hsql-form (or source-timezone (driver-api/results-timezone-id))])
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
@@ -666,30 +676,36 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
-  [_driver [_ nfc-path]]
-  nfc-path)
+(defn- with-base-temporal-type
+  [[_ _id-or-name {:keys [base-type]} :as clause]]
+  (if (not (instance? clojure.lang.IObj clause))
+    clause
+    (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field id-or-name {::add/keys [source-table source-alias], :as opts} :as field-clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+  [driver [_field id-or-name opts :as field-clause]]
+  (let [source-table (get opts driver-api/qp.add.source-table)
+        source-alias (get opts driver-api/qp.add.source-alias)
+        parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
       ;; attach temporal type info to the field clause, this will get attached to the resulting [[h2x/identifier]] by
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
-      (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
+      (let [field-clause (-> field-clause
+                             (with-temporal-type (temporal-type field-clause))
+                             with-base-temporal-type)
             stored-field  (when (integer? id-or-name)
-                            (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                            (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (lib.field/json-field? stored-field)
+        (if (and (driver-api/json-field? stored-field)
                  (or (::sql.qp/forced-alias opts)
-                     (= source-table ::add/source)))
-          (keyword source-alias)
+                     (= source-table driver-api/qp.add.source)))
+          (h2x/identifier :field-alias source-alias)
           result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
@@ -710,7 +726,7 @@
     (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                          (pr-str db-type))
                     {:found db-type
-                     :type  qp.error-type/invalid-query}))))
+                     :type  driver-api/qp.error-type.invalid-query}))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit]]
@@ -839,7 +855,7 @@
 (defn- adjust-order-by-clause
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
-   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; Following code ensures that only selected columns (with exception of those coming from different source than
    ;; this source table and having no binning and no bucketing) are forced to use aliases.
    ;;
    ;; This solves Bigquery's inability to use expression from group by in order by.
@@ -849,8 +865,8 @@
    ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
    ;; tables. Problem is solved by qualifying that order by field.
    (if (and
-        (::add/desired-alias opts)
-        (or (not (pos-int? (::add/source-table opts)))
+        (driver-api/qp.add.desired-alias opts)
+        (or (not (pos-int? (driver-api/qp.add.source-table opts)))
             (:binning opts)
             (:temporal-unit opts)))
      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
@@ -952,7 +968,7 @@
   (let [current-type (temporal-type expr)]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-                      {:type qp.error-type/invalid-query}))))
+                      {:type driver-api/qp.error-type.invalid-query}))))
   ;; [[add-interval-form]] might return something of a different type than `target-type`, depending on unit... in that
   ;; case, just wrap the original `::add-interval` clause in a `cast` expression instead.
   (let [new-form (add-interval-form (->temporal-type target-type expr) amount unit)]
@@ -975,8 +991,8 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (get-in outer-query [:query :source-table])]
-                             (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id)))
+           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
+                             (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
                            sql.qp/source-query-alias)
            :mbql?      true)))
 
@@ -1007,7 +1023,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_driver]
-  [::current-moment nil (qp.timezone/requested-timezone-id)])
+  [::current-moment nil (driver-api/requested-timezone-id)])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
   [driver _clause]
@@ -1026,13 +1042,13 @@
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword
    {:keys [field], :as field-filter} :- [:map
-                                         [:field ::lib.schema.metadata/column]]]
+                                         [:field driver-api/schema.metadata.column]]]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
-                                                             (let [request-time-zone-id (qp.timezone/requested-timezone-id)]
+                                                             (let [request-time-zone-id (driver-api/requested-timezone-id)]
                                                                (map (fn [arg]
                                                                       (if (instance? java.time.temporal.Temporal arg)
                                                                         ;; Since we add the zone as part of the

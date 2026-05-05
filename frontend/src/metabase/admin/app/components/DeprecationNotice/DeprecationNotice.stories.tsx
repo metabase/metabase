@@ -18,7 +18,6 @@ export const Default: StoryObj<DeprecationNoticeProps> = {
   },
 
   args: {
-    hasSlackBot: true,
     hasDeprecatedDatabase: true,
     isEnabled: true,
   },

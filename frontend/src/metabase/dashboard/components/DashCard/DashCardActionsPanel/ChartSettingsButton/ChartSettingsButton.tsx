@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { Modal } from "metabase/ui";
-import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
@@ -14,14 +13,12 @@ import { DashCardActionButton } from "../DashCardActionButton";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
 export function ChartSettingsButton({
   series,
-  dashboard,
   dashcard,
   onReplaceAllVisualizationSettings,
 }: Props) {
@@ -56,7 +53,6 @@ export function ChartSettingsButton({
         <DashboardChartSettings
           series={series}
           onChange={onReplaceAllVisualizationSettings}
-          dashboard={dashboard}
           dashcard={dashcard}
           onClose={close}
         />

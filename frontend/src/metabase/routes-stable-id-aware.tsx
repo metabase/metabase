@@ -2,17 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 
-import {
-  type BaseEntityId,
-  isBaseEntityID,
-} from "metabase-types/api/entity-id";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import {
   type TranslateEntityIdResponse,
   useTranslateEntityIdQuery,
 } from "./api/entity-id";
-import { NotFound } from "./components/ErrorPages";
-import { LoadingAndErrorWrapper } from "./components/LoadingAndErrorWrapper";
 type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
 type ParamType = "param" | "search";
 
@@ -149,7 +146,3 @@ export function createEntityIdRedirect(config: {
 
   return Component;
 }
-
-export const canBeEntityId = (id: string): id is BaseEntityId => {
-  return isBaseEntityID(id);
-};

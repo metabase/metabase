@@ -1,0 +1,1 @@
+export { MetabotLogo } from "./MetabotLogo";

@@ -1,5 +1,9 @@
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { ColorName } from "metabase/ui/colors/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import type { NotebookDataPickerProps } from "./components/NotebookDataPicker";
 
 export type NotebookStepType =
   | "data"
@@ -35,6 +39,7 @@ export interface NotebookStep {
   next: NotebookStep | null;
   previous: NotebookStep | null;
   previewQuery?: Lib.Query | null;
+  allowPopoverWhenReadOnly?: boolean;
 }
 
 export interface NotebookStepAction {
@@ -42,11 +47,18 @@ export interface NotebookStepAction {
   action: (args: { openStep: (id: string) => void }) => void;
 }
 
+export type NotebookDataPickerOptions = Pick<
+  NotebookDataPickerProps,
+  "shouldDisableItem"
+> & {
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
+};
+
 export interface NotebookStepProps {
   step: NotebookStep;
   query: Lib.Query;
   stageIndex: number;
-  color: string;
+  color: ColorName;
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
@@ -56,7 +68,7 @@ export interface NotebookStepProps {
 export interface NotebookStepHeaderProps {
   step: NotebookStep;
   title: string;
-  color: string;
+  color: ColorName;
   canRevert: boolean;
   onRevert?: () => void;
 }

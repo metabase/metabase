@@ -1,5 +1,8 @@
 import { useMemo } from "react";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { type ItemWithName, getName } from "metabase/utils/name";
+
 import type { EntityDefinition, EntityId, EntityType } from "./rtk-query";
 
 interface Props {
@@ -10,14 +13,15 @@ interface Props {
 /**
  * @deprecated use "metabase/api" instead
  */
-export const EntityName = <Entity, EntityWrapper>({
+export const EntityName = <Entity extends ItemWithName, EntityWrapper>({
   entityType,
   entityId,
 }: Props) => {
+  const tc = useTranslateContent();
+
   const entityDefinition: EntityDefinition<Entity, EntityWrapper> =
     useMemo(() => {
-      // dynamic require due to circular dependencies
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require due to circular dependencies
       const entitiesDefinitions = require("metabase/entities");
       return entitiesDefinitions[entityType];
     }, [entityType]);
@@ -38,5 +42,5 @@ export const EntityName = <Entity, EntityWrapper>({
     return null;
   }
 
-  return <span>{entityDefinition.objectSelectors.getName(entity)}</span>;
+  return <span>{tc(getName(entity))}</span>;
 };

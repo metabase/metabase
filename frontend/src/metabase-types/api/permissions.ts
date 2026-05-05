@@ -1,8 +1,4 @@
 import type {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import type {
   CollectionId,
   DatabaseId,
   SchemaName,
@@ -10,7 +6,41 @@ import type {
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";
-import type { UserAttribute } from "./user";
+import type { UserAttributeKey } from "./user";
+
+export enum DataPermission {
+  VIEW_DATA = "view-data",
+  CREATE_QUERIES = "create-queries",
+  DOWNLOAD = "download",
+  DATA_MODEL = "data-model",
+  DETAILS = "details",
+  TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
+}
+
+export enum DataPermissionValue {
+  BLOCKED = "blocked",
+  CONTROLLED = "controlled",
+  IMPERSONATED = "impersonated",
+  LEGACY_NO_SELF_SERVICE = "legacy-no-self-service",
+  NO = "no",
+  QUERY_BUILDER = "query-builder",
+  QUERY_BUILDER_AND_NATIVE = "query-builder-and-native",
+  SANDBOXED = "sandboxed",
+  UNRESTRICTED = "unrestricted",
+  // download specific values
+  NONE = "none",
+  LIMITED = "limited",
+  FULL = "full",
+  // details specific values
+  YES = "yes",
+  // data model specific values
+  ALL = "all",
+  //collections
+  WRITE = "write",
+  READ = "read",
+  //NONE = "none", //shared with download above
+}
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;
@@ -51,12 +81,17 @@ export type DownloadTablePermission =
   | DownloadPermission
   | { [key: TableId]: DownloadPermission };
 
+export type TransformsPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
+
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
   [DataPermission.DATA_MODEL]?: DataModelPermissions;
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
+  [DataPermission.TRANSFORMS]?: TransformsPermission;
 };
 
 export type DataModelPermissions = {
@@ -122,7 +157,7 @@ export type GroupTableAccessPolicy = {
   table_id: number;
   card_id: number | null;
   attribute_remappings: {
-    [key: UserAttribute]: DimensionRef;
+    [key: UserAttributeKey]: DimensionRef;
   };
   permission_id: number | null;
 };
@@ -130,5 +165,10 @@ export type GroupTableAccessPolicy = {
 export type Impersonation = {
   db_id: DatabaseId;
   group_id: GroupId;
-  attribute: UserAttribute;
+  attribute: UserAttributeKey;
 };
+
+export type DataSegregationStrategy =
+  | "row-column-level-security"
+  | "connection-impersonation"
+  | "database-routing";

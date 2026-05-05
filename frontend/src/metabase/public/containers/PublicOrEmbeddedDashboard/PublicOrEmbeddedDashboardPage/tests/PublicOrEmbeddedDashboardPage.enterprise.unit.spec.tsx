@@ -1,7 +1,8 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 
 import { type SetupOpts, setup } from "./setup";
@@ -11,7 +12,6 @@ const DASHBOARD_TITLE = '"My test dash"';
 const setupEnterprise = async (opts?: Partial<SetupOpts>) => {
   return await setup({
     ...opts,
-    hasEnterprisePlugins: true,
     dashboardTitle: DASHBOARD_TITLE,
   });
 };
@@ -41,15 +41,19 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     it("should allow downloading the dashcards results when downloads are enabled", async () => {
       await setupEnterprise({ numberOfTabs: 1, hash: { downloads: "true" } });
 
-      expect(
-        screen.getByRole("button", { name: "Download results" }),
-      ).toBeInTheDocument();
+      const ellipsisIcon = screen.queryByLabelText("ellipsis icon");
+      expect(ellipsisIcon).toBeInTheDocument();
+      await userEvent.click(ellipsisIcon!);
+      await waitFor(() => {
+        expect(screen.getByLabelText("Download results")).toBeInTheDocument();
+      });
     });
 
     it("should use the container used for pdf exports", async () => {
       const { container } = await setupEnterprise({ numberOfTabs: 1 });
 
       expect(
+        // eslint-disable-next-line testing-library/no-node-access
         container.querySelector(`#${DASHBOARD_PDF_EXPORT_ROOT_ID}`),
       ).toBeInTheDocument();
     });
@@ -69,7 +73,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       await setupEnterprise({ hash: { locale: expectedLocale } });
 
       expect(
-        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
       ).toHaveLength(0);
     });
   });

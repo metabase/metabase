@@ -11,7 +11,8 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/redux";
+import type { Dispatch, State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -19,11 +20,10 @@ import Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   Dashboard,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";
@@ -38,7 +38,7 @@ import {
 interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  parameterValues: { [id: string]: ParameterValueOrArray };
+  parameterValues: ParameterValuesMap;
 }
 
 interface StateProps {

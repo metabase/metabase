@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.api-test :as api.database-test]
+   [metabase.warehouses-rest.api-test :as api.database-test]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
@@ -97,7 +97,12 @@
                                                       :percent-url    0.0
                                                       :percent-email  0.0
                                                       :percent-state  0.0
-                                                      :average-length 13.532}}}
+                                                      :average-length 13.532
+                                                      :max-length     23.0
+                                                      :min-length     7.0
+                                                      :mode-fraction  4.0E-4
+                                                      :top-3-fraction 0.0012
+                                                      :percent-blank  0.0}}}
               :base_type        :type/Text}
              (-> (field db "PEOPLE" "NAME")
                  ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in

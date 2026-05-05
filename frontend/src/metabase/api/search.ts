@@ -1,8 +1,9 @@
-import { trackSearchRequest } from "metabase/search/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
+import { trackSearchRequest } from "./analytics";
 import { Api } from "./api";
 import { provideSearchItemListTags } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const searchApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -14,12 +15,12 @@ export const searchApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
-      onQueryStarted: (args, { queryFulfilled }) => {
+      onQueryStarted: (args, { queryFulfilled, requestId }) => {
         if (args.context) {
           const start = Date.now();
-          queryFulfilled.then(({ data }) => {
+          return handleQueryFulfilled(queryFulfilled, (data) => {
             const duration = Date.now() - start;
-            trackSearchRequest(args, data, duration);
+            trackSearchRequest(args, data, duration, requestId);
           });
         }
       },

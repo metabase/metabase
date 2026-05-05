@@ -1,9 +1,22 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { CurrencyStyle } from "metabase/utils/formatting";
+
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
+
+export interface OidcAuthProvider {
+  type: "oidc";
+  key: string;
+  "login-prompt": string;
+  "sso-url": string;
+}
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -24,15 +37,87 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
+export const engineKeys = [
+  "athena",
+  "bigquery-cloud-sdk",
+  "clickhouse",
+  "databricks",
+  "druid-jdbc",
+  "druid",
+  "mongo",
+  "mysql",
+  "oracle",
+  "postgres",
+  "presto-jdbc",
+  "redshift",
+  "snowflake",
+  "sparksql",
+  "sqlite",
+  "sqlserver",
+  "starburst",
+  "vertica",
+] as const;
+
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
+export type EngineKey = (typeof engineKeys)[number];
+
+export type ContainerStyleType = "grid" | "component";
+export type ContainerStyle = [ContainerStyleType, string];
+
+export function isContainerStyle(value: unknown): value is ContainerStyle {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    (value[0] === "grid" || value[0] === "component") &&
+    typeof value[1] === "string"
+  );
+}
+
+export interface DatabaseFieldGroup {
+  type: "group";
+  "container-style": unknown;
+  fields: EngineField[];
+}
+
+export type DatabaseFieldOrGroup = EngineField | DatabaseFieldGroup;
+
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineField[];
+  "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
+  "extra-info": {
+    "db-routing-info": {
+      text: string;
+    };
+    providers?: DatabaseProvider[];
+  } | null;
 }
 
 export interface EngineField {
@@ -107,6 +192,8 @@ export type ScheduleDayType =
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
+
 export interface FontFile {
   src: string;
   fontWeight: number;
@@ -157,6 +244,7 @@ export type GdrivePayload = {
   error?: string;
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -165,7 +253,9 @@ const tokenStatusFeatures = [
   "collection-cleanup",
   "config-text-file",
   "content-management",
+  "content-translation",
   "content-verification",
+  "data-complexity-score",
   "dashboard-subscription-filters",
   "database-auth-providers",
   "disable-password-login",
@@ -173,8 +263,11 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
-  "embedding-iframe-sdk",
+  "embedding-simple",
+  "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
@@ -192,11 +285,20 @@ const tokenStatusFeatures = [
   "sso-ldap",
   "sso-saml",
   "sso",
+  "transforms-basic",
+  "transforms-python",
   "upload-management",
   "whitelabel",
 ] as const;
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
+export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
+export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
+
+interface TokenStatusStoreUsers {
+  email: string;
+}
 
 export interface TokenStatus {
   status: TokenStatusStatus;
@@ -205,6 +307,7 @@ export interface TokenStatus {
   "error-details"?: string;
   trial?: boolean;
   features?: TokenStatusFeature[];
+  "store-users"?: TokenStatusStoreUsers[];
 }
 
 export type DayOfWeekId =
@@ -221,19 +324,27 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "disable_password_login",
+  "cloud_custom_smtp",
+  "content_translation",
   "content_verification",
+  "data-complexity-score",
+  "disable_password_login",
   "embedding",
   "embedding_sdk",
-  "embedding_iframe_sdk",
+  "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
+  "sso_slack",
   "session_timeout_config",
   "whitelabel",
   "serialization",
@@ -243,13 +354,26 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
-  "query_reference_validation",
   "cache_preemptive",
-  "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
+  "ai_entity_analysis",
   "database_routing",
-  "development-mode",
+  "development_mode",
+  "etl_connections",
+  "etl_connections_pg",
+  "table_data_editing",
+  "remote_sync",
+  "dependencies",
+  "semantic_search",
+  "transforms-python",
+  "transforms-basic",
+  "library",
+  "support-users",
+  "tenants",
+  "writable_connection",
+  "admin_security_center",
+  "ai_controls",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -258,6 +382,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -280,8 +407,6 @@ export type SettingDefinitionMap<
 > = {
   [K in T]: SettingDefinition<K>;
 };
-
-export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
   id: string;
@@ -309,24 +434,33 @@ export type CustomGeoJSONMap = {
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
-  "admin-email": string;
+  "admin-email": string | null;
+  "email-from-address-override": string | null;
+  "email-smtp-host-override": string | null;
+  "email-smtp-port-override": 465 | 587 | 2525 | null;
+  "email-smtp-security-override": "ssl" | "tls" | "starttls" | null;
+  "email-smtp-username-override": string | null;
+  "email-smtp-password-override": string | null;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls" | null;
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-embedding-static": boolean;
   "enable-embedding-sdk": boolean;
+  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -334,6 +468,7 @@ interface InstanceSettings {
   "show-homepage-xrays": boolean;
   "site-name": string;
   "site-uuid": string;
+  "smtp-override-enabled": boolean;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
@@ -351,20 +486,19 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
+  "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
+  "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
-  "jwt-configured"?: boolean;
-  "jwt-enabled"?: boolean;
   "premium-embedding-token": string | null;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
-  "saml-identity-provider-uri": string | null;
+  "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -372,14 +506,26 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
+  "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
+  "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
-  "ee-openai-api-key"?: string;
+  "llm-openai-api-key"?: string;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-api-base-url"?: string | null;
+  "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -387,7 +533,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
 
@@ -395,6 +540,9 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
+  "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;
@@ -411,7 +559,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
-  "ee-ai-features-enabled"?: boolean;
+  "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
@@ -419,7 +567,7 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<string, Engine>;
+  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -446,7 +594,9 @@ interface PublicSettings {
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
   "ldap-group-membership-filter"?: string;
   "ldap-user-provisioning-enabled?": boolean;
+  "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -458,6 +608,17 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "metabot-name": string;
+  "metabot-icon": string | null;
+  "metabot-show-illustrations": boolean;
+  "metabot-limit-unit": MetabotLimitType;
+  "metabot-limit-reset-rate": MetabotLimitPeriod;
+  "metabot-quota-reached-message": string | null;
+  "metabot-chat-system-prompt": string | null;
+  "metabot-nlq-system-prompt": string | null;
+  "metabot-sql-system-prompt": string | null;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -467,11 +628,13 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "update-channel": UpdateChannel;
+  "tracing-enabled": boolean;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {
@@ -480,15 +643,21 @@ export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
-  "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
+  "expand-collections-in-nav"?: boolean;
+  "expand-library-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
+  "sdk-iframe-embed-setup-settings"?: Pick<
+    SdkIframeEmbedSetupSettings,
+    "theme" | "useExistingUserSession"
+  > | null;
+  "color-scheme"?: string;
 };
 
 /**
@@ -534,9 +703,32 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type SearchEngineSettingValue = "semantic" | "appdb" | "in-place";
+
+export type DatabaseReplicationConnections = Record<
+  DatabaseId,
+  { connection_id: string }
+>;
+
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "remote-sync-enabled"?: boolean | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-type"?: RemoteSyncType | null;
+  "remote-sync-auto-import"?: boolean | null;
+  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -546,15 +738,74 @@ export interface EnterpriseSettings extends Settings {
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
   "landing-page"?: string;
-  "ee-ai-features-enabled"?: boolean;
-  "ee-openai-api-key"?: string;
-  "ee-openai-model"?: string;
-  "saml-user-provisioning-enabled?"?: boolean;
+  "llm-openai-api-key"?: string;
+  "llm-openai-model"?: string;
+  "llm-metabot-configured?"?: boolean | null;
+  "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
+  "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
-  "jwt-identity-provider-uri"?: string | null;
+  "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
+  "jwt-user-provisioning-enabled?": boolean;
+  "jwt-identity-provider-uri": string | null;
+  "jwt-shared-secret": string | null;
+  "jwt-attribute-email": string | null;
+  "jwt-attribute-firstname": string | null;
+  "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
+  "jwt-attribute-tenant": string | null;
+  "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
+  "saml-enabled": boolean;
+  "saml-configured": boolean;
+  "saml-user-provisioning-enabled?": boolean;
+  "saml-identity-provider-uri": string | null;
+  "saml-identity-provider-issuer": string | null;
+  "saml-identity-provider-certificate": string | null;
+  "saml-application-name": string | null;
+  "saml-keystore-path": string | null;
+  "saml-keystore-password": string | null;
+  "saml-keystore-alias": string | null;
+  "saml-attribute-email": string | null;
+  "saml-attribute-firstname": string | null;
+  "saml-attribute-lastname": string | null;
+  "saml-attribute-tenant": string | null;
+  "saml-attribute-group": string | null;
+  "saml-group-sync": boolean | null;
+  "saml-group-mappings": Record<string, GroupId[]> | null;
+  "database-replication-enabled": boolean | null;
+  "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-prefix"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
+  "python-runner-timeout-seconds"?: number | null;
+  "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-metabot-provider"?: string | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
+  "llm-proxy-configured?"?: boolean | null;
+  "metabot-slack-signing-secret"?: string | null;
+  "slack-connect-enabled"?: boolean | null;
+  "slack-connect-client-id"?: string | null;
+  "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

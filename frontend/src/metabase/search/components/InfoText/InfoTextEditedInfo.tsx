@@ -3,11 +3,10 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
-import { getRelativeTime } from "metabase/lib/time";
-import { isNotNull } from "metabase/lib/types";
-import type { WrappedResult } from "metabase/search/types";
 import { Text, Tooltip } from "metabase/ui";
-import type { UserListResult } from "metabase-types/api";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
+import { isNotNull } from "metabase/utils/types";
+import type { SearchResult, UserListResult } from "metabase-types/api";
 
 import {
   LastEditedInfoText,
@@ -16,7 +15,7 @@ import {
 
 const LoadingText = () => (
   <Text
-    color="text-1"
+    c="text-primary"
     span
     size="sm"
     truncate
@@ -25,7 +24,7 @@ const LoadingText = () => (
 );
 
 const InfoTextSeparator = (
-  <Text component="span" size="sm" mx="xs" c="text-medium">
+  <Text component="span" size="sm" mx="xs" c="text-secondary">
     •
   </Text>
 );
@@ -34,7 +33,7 @@ export const InfoTextEditedInfo = ({
   result,
   isCompact,
 }: {
-  result: WrappedResult;
+  result: SearchResult;
   isCompact?: boolean;
 }) => {
   const { isLoading, data, error } = useListUserRecipientsQuery();
@@ -89,7 +88,7 @@ export const InfoTextEditedInfo = ({
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
         <Tooltip label={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
-          <Text component="span" size="sm" c="text-medium" truncate>
+          <Text component="span" size="sm" c="text-secondary" truncate>
             {formattedDuration}
           </Text>
         </Tooltip>

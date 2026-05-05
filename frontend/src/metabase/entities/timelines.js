@@ -1,5 +1,4 @@
 import { updateIn } from "icepick";
-import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -10,32 +9,27 @@ import {
   useListCollectionTimelinesQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
+import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { TimelineSchema } from "metabase/schema";
 
-import TimelineEvents from "./timeline-events";
+import { TimelineEvents } from "./timeline-events";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const Timelines = createEntity({
+export const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
   schema: TimelineSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: ({ collectionId, ...params } = {}, dispatch) =>
@@ -87,28 +81,6 @@ const Timelines = createEntity({
 
       dispatch({ type: Timelines.actionTypes.INVALIDATE_LISTS_ACTION });
       dispatch({ type: TimelineEvents.actionTypes.INVALIDATE_LISTS_ACTION });
-    },
-  },
-
-  objectActions: {
-    setCollection: (timeline, collection, opts) => {
-      return Timelines.actions.update(
-        { id: timeline.id },
-        {
-          name: getTimelineName(timeline),
-          collection_id: canonicalCollectionId(collection && collection.id),
-          default: false,
-        },
-        undo(opts, t`timeline`, t`moved`),
-      );
-    },
-
-    setArchived: (timeline, archived, opts) => {
-      return Timelines.actions.update(
-        { id: timeline.id },
-        { archived, default: false },
-        undo(opts, t`timeline`, archived ? t`archived` : t`unarchived`),
-      );
     },
   },
 
@@ -167,5 +139,3 @@ function useListQuery({ collectionId, ...params } = {}, options) {
 
   return collectionId ? collectionTimelines : timelines;
 }
-
-export default Timelines;

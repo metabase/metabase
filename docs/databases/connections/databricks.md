@@ -4,11 +4,15 @@ title: Databricks
 
 # Databricks
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**. Then select **Databricks**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**. Then select **Databricks**.
 
 You can edit these settings at any time. Just remember to save your changes.
 
 ## Edit connection details
+
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
 
 ### Display name
 
@@ -33,6 +37,7 @@ There are two ways to authenticate with Databricks. You can use a personal acces
 The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
 
 #### Personal access token authentication
+
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 
 #### Authenticate access with a service principal using OAuth (OAuth M2M)
@@ -96,11 +101,19 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
+
 ## Model features
 
 There aren't (yet) any model features available for Databricks.
 
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+When **multi-catalog is not enabled**, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
 
 See [Database routing](../../permissions/database-routing.md).
 

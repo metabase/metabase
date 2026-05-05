@@ -1,6 +1,6 @@
+import { SegmentSchema } from "metabase/schema";
 import type {
   CreateSegmentRequest,
-  DeleteSegmentRequest,
   Segment,
   SegmentId,
   UpdateSegmentRequest,
@@ -15,6 +15,7 @@ import {
   provideSegmentTags,
   tag,
 } from "./tags";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -24,6 +25,7 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
+      onQueryStarted: hydrateLegacyEntities([SegmentSchema]),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: (id) => ({
@@ -31,6 +33,7 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
+      onQueryStarted: hydrateLegacyEntities(SegmentSchema),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: (body) => ({
@@ -54,19 +57,6 @@ export const segmentApi = Api.injectEndpoints({
           tag("table"),
         ]),
     }),
-    deleteSegment: builder.mutation<Segment, DeleteSegmentRequest>({
-      query: ({ id, ...body }) => ({
-        method: "DELETE",
-        url: `/api/segment/${id}`,
-        body,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [
-          listTag("segment"),
-          idTag("segment", id),
-          tag("table"),
-        ]),
-    }),
   }),
 });
 
@@ -75,5 +65,4 @@ export const {
   useGetSegmentQuery,
   useCreateSegmentMutation,
   useUpdateSegmentMutation,
-  useDeleteSegmentMutation,
 } = segmentApi;

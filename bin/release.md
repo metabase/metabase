@@ -5,7 +5,7 @@
 1. Install Clojure CLI -- see [https://clojure.org/guides/getting_started]. Don't use `apt install clojure` as this
    installs a version that doesn't understand `deps.edn`.
 
-1. Install `git`, `node`, `yarn`, `awscli`, `docker`, `java`, and `wget``
+1. Install `git`, `node`, `bun`, `awscli`, `docker`, `java`, and `wget``
 
    1. For installing Docker on macOS you should use [Docker Desktop](https://docs.docker.com/docker-for-mac/install/).
       Make sure `docker ps` works from the terminal

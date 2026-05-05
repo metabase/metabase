@@ -1,13 +1,10 @@
 import { merge } from "icepick";
 
-import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
-import {
-  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "metabase/embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
-import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
+import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
+import type { DeepPartial } from "metabase/utils/types";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -21,8 +18,8 @@ const units = (px: number) => ({
 const FONT_SIZES = {
   tableCell: units(12.5),
   pivotTableCell: units(12),
-  label: units(12),
-  goalLabel: units(14),
+  label: units(13),
+  goalLabel: units(13),
 };
 
 /**
@@ -37,9 +34,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {
-        textColor: "var(--mb-color-text-medium)",
-        backgroundColor: "var(--mb-color-bg-light)",
-        hoverTextColor: "var(--mb-color-text-white)",
+        textColor: "var(--mb-color-text-secondary)",
+        backgroundColor: "var(--mb-color-background-secondary)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
@@ -57,9 +54,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-bg-white)",
+    backgroundColor: "var(--mb-color-background-primary)",
     card: {
-      backgroundColor: "var(--mb-color-bg-white)",
+      backgroundColor: "var(--mb-color-background-primary)",
     },
   },
   question: {
@@ -80,14 +77,19 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       fontSize: FONT_SIZES.pivotTableCell.px,
     },
     rowToggle: {
-      textColor: "text-white",
-      backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
+      textColor: "text-primary-inverse",
+      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
     },
   },
   cartesian: {
     label: { fontSize: FONT_SIZES.label.px },
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
+    },
+    splitLine: {
+      lineStyle: {
+        color: "var(--mb-color-cartesian-grid-line)",
+      },
     },
   },
   popover: {
@@ -124,7 +126,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     breadcrumbs: {
       expandButton: {
         backgroundColor: "transparent",
-        hoverTextColor: "var(--mb-color-text-white)",
+        hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
@@ -150,7 +152,7 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
       }, // satisfies Partial<ModalRootProps>,
     },
@@ -158,7 +160,7 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
       }, // satisfies Partial<ModalProps>,
     },
@@ -169,6 +171,14 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
           target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
       }, // satisfies Partial<PopoverProps>,
+    },
+    Tooltip: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        },
+      }, // satisfies Partial<TooltipProps>,
     },
   };
 }

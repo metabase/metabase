@@ -1,4 +1,5 @@
 import type { ComboboxItem, ComboboxItemGroup } from "@mantine/core";
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -371,7 +372,7 @@ describe("MultiAutocomplete", () => {
     expect(queryOption("Two")).not.toBeInTheDocument();
     expect(queryOption("Three")).not.toBeInTheDocument();
 
-    await userEvent.type(input, "t");
+    await userEvent.type(input, "{backspace}{backspace}t");
     expect(queryOption("One")).not.toBeInTheDocument();
     expect(getOption("Two")).toBeInTheDocument();
     expect(getOption("Three")).toBeInTheDocument();
@@ -379,8 +380,9 @@ describe("MultiAutocomplete", () => {
     await userEvent.click(getOption("Two"));
     expect(queryOption("One")).not.toBeInTheDocument();
     expect(queryOption("Two")).not.toBeInTheDocument();
-    expect(queryOption("Three")).not.toBeInTheDocument();
+    expect(queryOption("Three")).toBeInTheDocument();
 
+    await userEvent.type(input, "{backspace}");
     await userEvent.paste("three");
     expect(queryOption("One")).not.toBeInTheDocument();
     expect(queryOption("Two")).not.toBeInTheDocument();
@@ -463,5 +465,17 @@ describe("MultiAutocomplete", () => {
 
     await userEvent.type(input, "on");
     expect(getOption("One")).toBeInTheDocument();
+  });
+
+  it("should not submit the input value during a keyboard composition session (metabase#60630)", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "foo");
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(input).toHaveValue("foo");
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
+
+    fireEvent.keyDown(input, { key: "Enter", isComposing: false });
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
   });
 });

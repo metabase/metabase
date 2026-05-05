@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import type { ComponentProps, ElementType, HTMLAttributes } from "react";
 
-import { CopyButton } from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { Anchor } from "metabase/ui";
 
 export const PublicLinkCopyButton = styled(CopyButton)`

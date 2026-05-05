@@ -1,5 +1,5 @@
 .root {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
   color: var(--mb-color-text-primary);
   border-bottom-width: 1px;

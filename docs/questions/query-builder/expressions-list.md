@@ -35,7 +35,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
     - [if](./expressions/case.md)
+    - [in](#in)
     - [isNull](./expressions/isnull.md)
+    - [notIn](#notin)
     - [notNull](#notnull)
 
   - [Math functions](#math-functions)
@@ -55,12 +57,12 @@ For an introduction to expressions, check out the [overview of custom expression
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [date](#date)
+    - [datetime](#datetime)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
     - [float](#float)
     - [host](#host)
-    - [in](#in)
     - [isEmpty](./expressions/isempty.md)
     - [integer](#integer)
     - [lTrim](#ltrim)
@@ -99,6 +101,8 @@ For an introduction to expressions, check out the [overview of custom expression
     - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
+    - [timeSpan](#timespan)
+    - [today](#today)
     - [week](#week)
     - [weekday](#weekday)
     - [year](#year)
@@ -122,7 +126,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
+Aggregation expressions consider all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -294,6 +298,21 @@ Syntax: `if(condition, output, ...)`
 
 Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
+### in
+
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+Syntax: `in(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The list of columns or values to check against.
+
+You can add more values to check against.
+
+Example: `in([Category], "Widget", "Gadget")` would return true for rows where the `Category` is either "Widget" or "Gadget".
+
+Related: [notIn](#notin), [contains](#contains), [startsWith](#startswith), [endsWith](#endswith)
+
 ### [isNull](./expressions/isnull.md)
 
 Returns true if the column is null.
@@ -313,6 +332,21 @@ Syntax: `notNull(column)`
 Example: `notNull([Tax])` would return true if there is a value present in the column for that row.
 
 Related: [isNull](#isnull), [notEmpty](#notempty)
+
+### notIn
+
+Returns true if `value1` doesn't equal `value2` (and `value3`, etc., if specified).
+
+Syntax: `notIn(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The column or values to look for.
+
+You can add more values to look for.
+
+Example: `notIn([Category], "Widget", "Gadget")` would return true for rows where the `Category` is not "Widget" or "Gadget".
+
+Related: [in](#in), [case](./expressions/case.md)
 
 ## Math functions
 
@@ -396,7 +430,7 @@ Example: `sqrt([Hypotenuse])`.
 
 Databases that don't support `sqrt`: SQLite.
 
-Related: [Power](#power).
+Related: [power](#power).
 
 ## String functions
 
@@ -429,7 +463,7 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
-> Not available for Oracle or the non-JDBC Apache Druid driver.
+> Unavailable for Oracle or the non-JDBC Apache Druid driver.
 
 - When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
 - When used on a datetime value, truncates datetime to a date.
@@ -463,9 +497,12 @@ Related: [datetime](#datetime)
 
 > Available on PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake
 
-Converts a datetime string to a datetime.
+Converts a datetime string or bytes to a datetime.
 
-Syntax: `datetime(column)`
+Syntax: `datetime(value, mode)`
+
+- `value`: The string, bytes, or number to convert to a datetime.
+- `mode`: Optional. The mode indicating the format. One of: `"simple"`, `"iso"`, `"simpleBytes"`, `"isoBytes"`, `"unixSeconds"`, `"unixMilliseconds"`, `"unixMicroseconds"`, `"unixNanoseconds"`. Default is `"iso"`.
 
 Example: `datetime("2025-03-20 12:45:04")`
 
@@ -540,20 +577,6 @@ Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://
 
 Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
-### [in](./expressions/in.md)
-
-Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
-
-```
-in(value1, value2, ...)
-```
-
-`value1` is the column or value to check.
-
-`value2, ...` is the list of columns or values to check.
-
-Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
-
 ### [isEmpty](./expressions/isempty.md)
 
 Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isNull](#isnull) for non-string columns.
@@ -566,7 +589,7 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Not available for the non-JDBC Apache Druid driver.
+> Only available for BigQuery, ClickHouse, MySQL, PostgreSQL, Amazon Redshift, and Snowflake.
 
 - Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
 - Converts a floating point value by rounding it to an integer.
@@ -716,7 +739,7 @@ Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
-> Not available for the non-JDBC Druid driver
+> Unavailable for the non-JDBC Druid driver
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
@@ -856,7 +879,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 ### [now](./expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [instance default report timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone).
 
 Syntax: `now()`
 
@@ -888,7 +911,7 @@ Syntax: `relativeDateTime(number, text)`
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-`relativeDateTime` can only be used as part of a conditional expression.
+Note that `relativeDateTime()` will truncate the result to the unit specified as its argument.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
@@ -913,6 +936,16 @@ Syntax: `timeSpan(number, text)`
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
+
+### today
+
+Returns the current date (without time).
+
+Syntax: `today()`
+
+Example: `today()` would return the current date, such as `2025-05-04`.
+
+Related: [now](#now).
 
 ### [week](./expressions/week.md)
 
@@ -993,7 +1026,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 
@@ -1013,7 +1046,7 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 ## Database limitations
 
-Limitations are noted for each aggregation and function above, and here there are in summary:
+Limitations are noted for each aggregation and function above, and here they are in summary:
 
 **H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
 

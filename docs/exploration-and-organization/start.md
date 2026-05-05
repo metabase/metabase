@@ -1,5 +1,7 @@
 ---
 title: "Organization overview"
+redirect_from:
+  - /docs/latest/exploration-and-organization
 ---
 
 # Organization overview
@@ -24,7 +26,7 @@ View changes to a question, dashboard or model and revert to previous versions.
 
 ## [Delete and restore items](./delete-and-restore.md)
 
-Move outdated outdated questions, models, and dashboards to trash, or delete them permanently.
+Move outdated questions, models, and dashboards to trash, or delete them permanently.
 
 ## [Data reference](./data-model-reference.md)
 

@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -21,7 +21,13 @@ import {
 } from "__support__/ui";
 import type { ModelResult } from "metabase/browse/models";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as domUtils from "metabase/lib/dom";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -29,12 +35,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardState } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import MainNavbar from "../MainNavbar";
 
@@ -50,11 +50,13 @@ export type SetupOpts = {
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
   instanceCreationDate?: string;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   hasDWHAttached?: boolean;
   isEmbeddingIframe?: boolean;
   hasWhitelabelToken?: boolean;
+  hasEmbeddingFeature?: boolean;
   applicationName?: string;
+  activeUsersCount?: number;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -63,15 +65,24 @@ export const PERSONAL_COLLECTION_BASE = createMockCollection({
   originalName: "John's Personal Collection",
 });
 
+export const NESTED_COLLECTION = createMockCollection({
+  id: 3,
+  name: "Nested collection",
+  location: "/2/",
+  parent_id: 2,
+});
+
 export const TEST_COLLECTION = createMockCollection({
   id: 2,
   name: "Test collection",
+  children: [NESTED_COLLECTION],
 });
 
 export async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
+  activeUsersCount = 2,
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
@@ -80,14 +91,15 @@ export async function setup({
   withAdditionalDatabase = true,
   canCurateRootCollection = false,
   instanceCreationDate = dayjs().toISOString(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   hasDWHAttached = false,
   isEmbeddingIframe,
   hasWhitelabelToken,
+  hasEmbeddingFeature,
   applicationName = "Metabase",
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+    jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
   }
 
   const SAMPLE_DATABASE = createMockDatabase({
@@ -134,9 +146,10 @@ export async function setup({
   setupCollectionsEndpoints({
     collections,
     rootCollection: OUR_ANALYTICS,
+    currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
-    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
@@ -189,13 +202,17 @@ export async function setup({
         hosting: true,
         upload_management: true,
         whitelabel: hasWhitelabelToken,
+        embedding: hasEmbeddingFeature,
       }),
       "show-google-sheets-integration": true,
+      "active-users-count": activeUsersCount,
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(

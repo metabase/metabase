@@ -1,17 +1,20 @@
+import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { Box, Checkbox } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/redux";
+import { Box, Checkbox, useColorScheme } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { getCspNonce } from "metabase/utils/csp";
 
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
-import { AuthError, AuthErrorRoot, TextLink } from "./GoogleButton.styled";
+import S from "./GoogleButton.module.css";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -28,6 +31,8 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
+
+  const { resolvedColorScheme } = useColorScheme();
 
   const handleLogin = useCallback(
     async ({ credential = "" }: CredentialResponse) => {
@@ -49,16 +54,29 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     ]);
   }, []);
 
+  const [buttonContainer, rect] = useResizeObserver();
+
+  const [width] = useDebouncedValue(rect.width, 200);
+
   return (
-    <Box>
+    <Box ref={buttonContainer}>
       {isCard && clientId ? (
         <ErrorBoundary>
-          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
+          <GoogleOAuthProvider clientId={clientId} nonce={getCspNonce()}>
             <GoogleLogin
               useOneTap
               onSuccess={handleLogin}
               onError={handleError}
               locale={locale}
+              width={width}
+              theme={
+                resolvedColorScheme === "dark" ? "filled_black" : "outline"
+              }
+              // This is needed to ensure that no white border shows up around the
+              // login button in dark mode (UXW-2138)
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox
@@ -69,17 +87,19 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
           />
         </ErrorBoundary>
       ) : (
-        <TextLink to={Urls.login(redirectUrl)}>
+        <Link className={S.Link} to={Urls.login(redirectUrl)}>
           {t`Sign in with Google`}
-        </TextLink>
+        </Link>
       )}
 
       {errors.length > 0 && (
-        <AuthErrorRoot>
+        <Box mt="1rem">
           {errors.map((error, index) => (
-            <AuthError key={index}>{error}</AuthError>
+            <Box c="error" ta="center" key={index}>
+              {error}
+            </Box>
           ))}
-        </AuthErrorRoot>
+        </Box>
       )}
     </Box>
   );

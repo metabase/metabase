@@ -19,7 +19,9 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -66,6 +68,12 @@
   "Test setting - this only shows up in dev (7)"
   :visibility :internal
   :encryption :when-encryption-key-set)
+
+(defsetting test-setting-with-deprecated-name
+  "Test setting with a deprecated env var name"
+  :visibility :internal
+  :encryption :when-encryption-key-set
+  :deprecated-name :old-test-setting-name)
 
 (defsetting toucan-name
   "Name for the Metabase Toucan mascot."
@@ -239,6 +247,17 @@
              #"Cannot initialize setting before the db is set up"
              (setting/get :test-setting-custom-init)))))))
 
+(deftest discard-setting-changes-with-init-test
+  (testing "discard-setting-changes correctly handles settings with :init"
+    (clear-setting-if-leak!)
+    (let [value-inside (atom nil)]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (reset! value-inside (test-setting-custom-init))
+        (testing "the setting returns its initialized value inside the macro, not nil"
+          (is (some? @value-inside))))
+      (testing "after the macro, the setting's initialized value is preserved (not re-initialized)"
+        (is (= @value-inside (test-setting-custom-init)))))))
+
 (def ^:private base-options
   {:setter   :none
    :default  "totally-basic"})
@@ -299,6 +318,13 @@
            (db-fetch-setting :test-setting-1)))
     (is (= "For realz"
            (db-fetch-setting :test-setting-2))))
+
+  (testing "unregistered settings should be silently skipped"
+    (setting/set-many! {:test-setting-1 "known value"
+                        :totally-fake-setting "unknown value"})
+    (is (= "known value"
+           (db-fetch-setting :test-setting-1)))
+    (is (not (setting/registered? :totally-fake-setting))))
 
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
@@ -548,6 +574,12 @@
          (test-json-setting! {:a 100, :b 200})))
   (is (= {:a 100, :b 200}
          (test-json-setting))))
+
+(deftest db-stored-value-test
+  (testing "should expose the raw DB/cache value through the public API"
+    (is (= "raw-value"
+           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
+             (setting/db-stored-value :test-setting-1))))))
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
@@ -931,8 +963,9 @@
          (test-database-local-only-setting! 2))))
 
   (testing "Default values should be allowed for Database-local-only Settings"
-    (is (= "DEFAULT"
-           (test-database-local-only-setting-with-default)))
+    (binding [setting/*database-local-values* {}]
+      (is (= "DEFAULT"
+             (test-database-local-only-setting-with-default))))
     (binding [setting/*database-local-values* {:test-database-local-only-setting-with-default "WOW"}]
       (is (= "WOW"
              (test-database-local-only-setting-with-default))))))
@@ -1032,6 +1065,157 @@
            :user-local     :allowed
            :database-local :allowed
            :encryption     :when-encryption-key-set)))))
+
+;;; ------------------------------------------------- Driver-feature Settings -----------------------------------------
+
+(defsetting ^:private test-driver-feature-only-setting
+  (deferred-tru "test Setting")
+  :database-local :only
+  :driver-feature :actions
+  :encryption     :when-encryption-key-set)
+
+(deftest driver-feature-validation-test
+  (testing "A setting with :driver-feature must be :database-local"
+    (is (thrown-with-msg?
+         Throwable
+         #"Setting :test-driver-feature-non-local-setting requires a driver feature, but is not limited to only database-local values"
+         (defsetting test-driver-feature-non-local-setting
+           (deferred-tru "test Setting")
+           :driver-feature :actions
+           :encryption     :when-encryption-key-set))))
+
+  (testing "Having :database-local :allowed is not enough to use :driver-feature"
+    (is (thrown-with-msg?
+         Throwable
+         #"Setting :test-driver-feature-allowed-setting requires a driver feature, but is not limited to only database-local values"
+         (defsetting test-driver-feature-allowed-setting
+           (deferred-tru "test Setting 2")
+           :database-local :allowed
+           :driver-feature :actions/data-editing
+           :encryption     :when-encryption-key-set))))
+
+  (testing "Having :database-local :only is OK"
+    (is (some? test-driver-feature-only-setting))))
+
+(deftest validate-settable-for-db-test
+  (testing "validate-settable-for-db! validates database feature requirements"
+    (let [database                       {:id 1, :engine :h2}
+          setting-with-driver-feature    :test-driver-feature-only-setting
+          setting-without-driver-feature :test-database-local-allowed-setting
+          driver-supports-everything?    (constantly true)
+          driver-supports-nothing?       (constantly false)]
+
+      (testing "should succeed when driver supports required feature"
+        (is (nil? (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-everything?))))
+
+      (testing "should throw when driver does not support required feature"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
+             (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
+
+      (testing "should succeed for settings without driver-feature requirement"
+        (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
+
+;;; ------------------------------------------------ Database-enabled Settings ----------------------------------------
+
+(defsetting ^:private test-enabled-for-db-setting
+  (deferred-tru "test Setting")
+  :database-local   :only
+  :enabled-for-db?  (fn [db] (not (:router_database_id db)))
+  :encryption       :when-encryption-key-set)
+
+(deftest enabled-for-db-validation-test
+  (testing ":enabled-for-db? must only be used with database-local settings"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting .* uses :enabled-for-db\?, but is not limited to only database-local values"
+         (defsetting test-enabled-for-db-non-local-setting
+           (deferred-tru "test Setting")
+           :enabled-for-db? (constantly true)
+           :encryption :when-encryption-key-set))))
+
+  (testing "Having :database-local :allowed is not enough to use :enabled-for-db?"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting .* uses :enabled-for-db\?, but is not limited to only database-local values"
+         (defsetting test-enabled-for-db-allowed-setting
+           (deferred-tru "test Setting")
+           :database-local :allowed
+           :enabled-for-db? (constantly true)
+           :encryption :when-encryption-key-set))))
+
+  (testing "A setting with :enabled-for-db? and :database-local :only should be valid"
+    (is (some? test-enabled-for-db-setting))))
+
+(deftest validate-settable-for-db-enabled-test
+  (testing "validate-settable-for-db! validates database-specific enablement"
+    (let [regular-database {:id 1 :engine :h2}
+          routed-database  {:id 2 :engine :h2 :router_database_id 3}]
+
+      (testing "should succeed when database passes enabled-for-db? predicate"
+        (is (nil? (setting/validate-settable-for-db! :test-enabled-for-db-setting
+                                                     regular-database
+                                                     (constantly true)))))
+
+      (testing "should throw when database fails enabled-for-db? predicate"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Setting test-enabled-for-db-setting is not enabled for this database"
+             (setting/validate-settable-for-db! :test-enabled-for-db-setting
+                                                routed-database
+                                                (constantly true)))))
+
+      (testing "should succeed for settings without enabled-for-db? requirement"
+        (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
+                                                     routed-database
+                                                     (constantly true))))))))
+
+(defsetting ^:private test-warn-vs-error-setting
+  (deferred-tru "test Setting for warnings vs errors")
+  :database-local   :only
+  :enabled-for-db?  (fn [db]
+                      (setting/custom-disabled-reasons!
+                       [(when (:has-error db)    {:key :test/error,   :type :error,   :message "Error reason"})
+                        (when (:has-warning db)  {:key :test/warning, :type :warning, :message "Warning reason"})]))
+  :default "default-value"
+  :encryption :when-encryption-key-set)
+
+(defmacro ^:private with-database [db & body]
+  `(binding [setting/*database*              ~db
+             setting/*database-local-values* (:settings ~db)]
+     ~@body))
+
+(deftest warning-vs-error-disabled-reasons-test
+  (let [settings        {:test-warn-vs-error-setting "custom-value"}
+        db-with-warning {:id 1                 :has-warning true :settings settings}
+        db-with-error   {:id 2 :has-error true                   :settings settings}
+        db-with-both    {:id 3 :has-error true :has-warning true :settings settings}
+        every-feature   (constantly true)]
+
+    (testing "Settings with only warning reasons should not be disabled"
+      (with-database db-with-warning
+        (testing "configured value is still returned"
+          (is (= "custom-value" (test-warn-vs-error-setting))))))
+
+    (testing "Settings with error reasons should be disabled"
+      (with-database db-with-error
+        (testing "configured value is not returned"
+          (is (= "default-value" (test-warn-vs-error-setting))))))
+
+    (testing "Settings with both warning and error reasons should be disabled"
+      (with-database db-with-both
+        (testing "configured value is not returned"
+          (is (= "default-value" (test-warn-vs-error-setting))))))
+
+    (testing "validate-settable-for-db! should only throw for error reasons"
+      (testing "should not throw for warnings"
+        (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
+      (testing "should throw for errors"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Setting test-warn-vs-error-setting is not enabled for this database"
+             (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
@@ -1639,3 +1823,107 @@
           (mt/with-temporary-setting-values [test-setting-that-is-not-included-when-listing-in-api "fun-times"]
             (is (= ::not-present
                    (f :test-setting-that-is-not-included-when-listing-in-api)))))))))
+
+;;; ----------------------------------------- deprecated-name env var fallback -----------------------------------------
+
+(defn- deprecated-env-var-warnings
+  "Return warning log messages mentioning the deprecated env var after running [[setting/log-deprecated-env-var-usage!]]."
+  []
+  (mt/with-log-messages-for-level [messages :warn]
+    (setting/log-deprecated-env-var-usage!)
+    (->> (messages) (mapv :message) (filterv #(str/includes? % "OLD_TEST_SETTING")))))
+
+(deftest deprecated-name-only-legacy-set-test
+  (mt/with-temp-env-var-value! [mb-old-test-setting-name "LEGACY"]
+    (is (= "LEGACY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= ["Deprecated MB_OLD_TEST_SETTING_NAME is set; rename it to MB_TEST_SETTING_WITH_DEPRECATED_NAME."]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-both-set-different-values-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"
+                                mb-old-test-setting-name             "LEGACY"]
+    (is (= "PRIMARY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= [(str "MB_TEST_SETTING_WITH_DEPRECATED_NAME and deprecated MB_OLD_TEST_SETTING_NAME"
+                 " have conflicting values; using MB_TEST_SETTING_WITH_DEPRECATED_NAME."
+                 " Remove MB_OLD_TEST_SETTING_NAME.")]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-both-set-same-value-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "SAME"
+                                mb-old-test-setting-name             "SAME"]
+    (is (= "SAME" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME and deprecated MB_OLD_TEST_SETTING_NAME are both set. Remove MB_OLD_TEST_SETTING_NAME."]
+           (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-only-primary-set-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"]
+    (is (= "PRIMARY" (setting/env-var-value :test-setting-with-deprecated-name)))
+    (is (= [] (deprecated-env-var-warnings)))))
+
+(deftest deprecated-name-neither-set-test
+  (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
+  (is (= [] (deprecated-env-var-warnings))))
+
+(deftest deprecated-name-empty-primary-blocks-fallback-test
+  (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
+                                mb-old-test-setting-name             "LEGACY"]
+    (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))))
+
+;;; ----------------------------------------- deprecated-name DB fallback -----------------------------------------
+
+(defmacro ^:private with-setting-row-in-db
+  "Set up a raw DB row for a setting key (primary or deprecated), refresh the cache, execute body, then clean up.
+  Binds a fresh warned-set so warning behaviour can be tested in isolation."
+  [[k v] & body]
+  `(let [k# (name ~k)]
+     (binding [setting/*deprecated-db-key-warned* (atom #{})]
+       (try
+         (if (t2/select-one :model/Setting :key k#)
+           (t2/update! :model/Setting :key k# {:value ~v})
+           (t2/insert! :model/Setting {:key k# :value ~v}))
+         (setting.cache/restore-cache!)
+         ~@body
+         (finally
+           (t2/delete! (t2/table-name :model/Setting) :key k#)
+           (setting.cache/restore-cache!))))))
+
+(deftest deprecated-name-db-fallback-only-legacy-test
+  (testing "When only the deprecated key exists in the DB, the new setting reads its value"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      (is (= "DB_LEGACY" (test-setting-with-deprecated-name))))))
+
+(deftest deprecated-name-db-fallback-primary-takes-precedence-test
+  (testing "When both keys exist in the DB, the primary value wins"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      (mt/with-temporary-setting-values [test-setting-with-deprecated-name "DB_PRIMARY"]
+        (is (= "DB_PRIMARY" (test-setting-with-deprecated-name)))))))
+
+(deftest deprecated-name-db-fallback-neither-set-test
+  (testing "When neither key exists in the DB, returns nil (or default)"
+    (mt/with-temporary-setting-values [test-setting-with-deprecated-name nil]
+      (is (nil? (test-setting-with-deprecated-name))))))
+
+(deftest deprecated-name-clearing-primary-does-not-resurface-legacy-test
+  (testing "Clearing the primary setting does not cause the deprecated value to resurface"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      ;; sanity check: deprecated value is visible
+      (is (= "DB_LEGACY" (test-setting-with-deprecated-name)))
+      ;; now explicitly clear the setting — deprecated value should not resurface
+      (test-setting-with-deprecated-name! nil)
+      (is (nil? (test-setting-with-deprecated-name))))))
+
+;;; ----------------------------------------- deprecated-name env+DB interaction -----------------------------------------
+
+(deftest deprecated-name-env-var-takes-precedence-over-db-test
+  (testing "When the deprecated env var and deprecated DB key are both set, the env var wins (checked first)"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_LEGACY" (test-setting-with-deprecated-name))))))
+  (testing "When the deprecated env var is set and primary DB key is also set, env var wins (env > DB)"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (with-setting-row-in-db [:test-setting-with-deprecated-name "DB_PRIMARY"]
+        (is (= "ENV_LEGACY" (test-setting-with-deprecated-name))))))
+  (testing "When the primary env var is set and deprecated DB key exists, primary env var wins"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
+      (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))

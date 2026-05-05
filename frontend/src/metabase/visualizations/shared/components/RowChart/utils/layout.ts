@@ -1,7 +1,7 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
 
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { Margin } from "metabase/visualizations/shared/types/layout";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import type {
   ChartFont,
@@ -42,15 +42,22 @@ export const getChartMargin = <TDatum>(
   yLabel?: string | null,
   hasXAxis?: boolean,
   hasYAxis?: boolean,
+  chartWidth?: number | null,
 ): Margin => {
-  const yAxisOffset = hasYAxis
+  const maxYAxisLabelWidth = hasYAxis
     ? getMaxWidth(
         seriesData.flatMap((seriesData) =>
           seriesData.bars.map((bar) => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
         measureTextWidth,
-      ) + TICKS_OFFSET
+      )
+    : 0;
+
+  // Limit y-axis labels to 50% of chart width to ensure bars remain visible
+  const maxAllowedYAxisWidth = chartWidth ? chartWidth * 0.5 : Infinity;
+  const yAxisOffset = hasYAxis
+    ? Math.min(maxYAxisLabelWidth, maxAllowedYAxisWidth) + TICKS_OFFSET
     : 0;
 
   const xAxisOffset = hasXAxis ? TICKS_OFFSET + ticksFont.size : 0;

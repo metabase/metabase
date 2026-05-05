@@ -1,0 +1,11 @@
+.addButton {
+  align-self: center;
+}
+
+.dropdown {
+  overflow: hidden;
+}
+
+.dimensionPicker {
+  color: var(--mb-color-brand);
+}

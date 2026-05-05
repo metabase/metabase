@@ -33,7 +33,7 @@ describe("scenarios > collections > clean up", () => {
     describe("action menu", () => {
       it("should show in proper contexts", () => {
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.log("should not show in custom analytics collections");
         H.visitCollection("root");
@@ -141,11 +141,11 @@ describe("scenarios > collections > clean up", () => {
       });
     });
 
-    H.describeWithSnowplowEE("clean up collection modal", () => {
+    describe("clean up collection modal", () => {
       beforeEach(() => {
         H.resetSnowplow();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.enableTracking();
       });
 
@@ -290,7 +290,9 @@ describe("scenarios > collections > clean up", () => {
 
           makeItemStale(ORDERS_QUESTION_ID, "card");
 
-          cy.findByRole("navigation").findByText("Our analytics").click();
+          cy.findByTestId("main-navbar-root")
+            .findByText("Our analytics")
+            .click();
           selectCleanThingsUpCollectionAction();
           cy.url().should("include", "cleanup");
 
@@ -363,7 +365,7 @@ const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
 
 const recursiveFilter = () =>
-  cy.findByText(/Include items in sub-collections/).should("exist");
+  cy.findByLabelText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");
 const pagination = () => cy.findByTestId("cleanup-collection-modal-pagination");
 const emptyState = () => cy.findByText(/All items have been used in the past/);

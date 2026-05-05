@@ -1,8 +1,8 @@
-import { t } from "ttag";
-
-export function getErrorMessage() {
-  return t`I'm currently offline, try again later.`;
-}
-
-// We don't need to translate this yet, as it's from ai-service which isn't translated
-export const METABOT_RESULTS_MESSAGE = "Here are the results";
+export const METABOT_V3_FEATURE = "metabot-v3";
+export const OFFER_METABASE_MANAGED_AI_FEATURE = "offer-metabase-ai-managed";
+export const METABASE_MANAGED_AI_FEATURE = "metabase-ai-managed";
+export const METABASE_MANAGED_AI_PRODUCT_TYPE = "metabase-ai-managed";
+export const METABASE_TIERED_AI_PRODUCT_TYPE = "metabase-ai-tiered";
+export const METABASE_MANAGED_AI_TERMS_URL =
+  "https://www.metabase.com/license/hosting";
+export const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;

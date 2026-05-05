@@ -1,4 +1,4 @@
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
@@ -7,8 +7,10 @@ import { TextInput } from "metabase/ui";
 
 import { CopyWidgetButton } from "./FormTextInput.styled";
 
-export interface FormTextInputProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormTextInputProps extends Omit<
+  TextInputProps,
+  "value" | "error"
+> {
   name: string;
   nullable?: boolean;
   hasCopyButton?: boolean;
@@ -28,11 +30,13 @@ export const FormTextInput = forwardRef(function FormTextInput(
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);
 
+  const { validateOnMount } = useFormikContext();
+
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newValue = event.target.value;
       if (newValue === "") {
-        setValue(nullable ? null : undefined);
+        setValue(nullable ? null : newValue);
       } else {
         setValue(newValue);
       }
@@ -49,22 +53,24 @@ export const FormTextInput = forwardRef(function FormTextInput(
     [setTouched, onBlur],
   );
 
+  const rightSection = hasCopyButton ? (
+    <CopyWidgetButton value={value} />
+  ) : (
+    props.rightSection
+  );
+  const rightSectionWidth = hasCopyButton ? 40 : (props.rightSectionWidth ?? 0);
+
   return (
     <TextInput
-      styles={{
-        input: {
-          fontWeight: "bold",
-        },
-      }}
       {...props}
       ref={ref}
       name={name}
       value={value ?? ""}
-      error={touched && error ? error : null}
+      error={(validateOnMount || touched) && error ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      rightSection={hasCopyButton ? <CopyWidgetButton value={value} /> : null}
-      rightSectionWidth={hasCopyButton ? 40 : undefined}
+      rightSection={rightSection}
+      rightSectionWidth={rightSectionWidth}
       errorProps={{
         role: "alert",
       }}

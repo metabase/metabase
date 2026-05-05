@@ -17,12 +17,17 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/components/ErrorMessage";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/common/hooks/use-memoized-callback";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
+  FALLBACK_ID_FOR_EMPTY_COLUMN_NAME,
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   ROW_HEIGHT,
@@ -31,21 +36,19 @@ import {
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   BodyCellVariant,
+  CellFormatter,
   ColumnOptions,
   DataGridTheme,
+  PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/hooks/use-memoized-callback";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { formatValue } from "metabase/lib/formatting";
-import { useDispatch } from "metabase/lib/redux";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { setUIControls } from "metabase/query_builder/actions";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { useDispatch } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
+import { getScrollBarSize } from "metabase/utils/dom";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -56,10 +59,11 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { ClickObject, OrderByDirection } from "metabase-lib/types";
+import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -67,6 +71,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./TableInteractive.module.css";
+import { TableInteractiveContextProvider } from "./TableInteractiveContext";
 import {
   HeaderCellWithColumnInfo,
   type HeaderCellWithColumnInfoProps,
@@ -74,6 +79,17 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
+import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
+
+const shouldWrap = (
+  settings: VisualizationSettings,
+  columnSettings: ColumnSettings = {},
+) => {
+  return (
+    !settings["table.pagination"] && Boolean(columnSettings["text_wrapping"])
+  );
+};
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -97,11 +113,13 @@ interface TableProps extends VisualizationProps {
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
+  zoomedRowIndex?: number;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onZoomRow?: (objectId: number | string) => void;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -138,7 +156,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     width,
     isPivoted = false,
-    isNightMode,
     question,
     clicked,
     hasMetadataPopovers = true,
@@ -148,18 +165,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     renderEmptyMessage,
     queryBuilderMode,
     isDashboard,
+    isDocument,
     isSettings,
     isRawTable,
     isEmbeddingSdk,
     scrollToLastColumn,
-    token,
-    uuid,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    zoomedRowIndex,
+    tableFooterExtraButtons,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -168,6 +186,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const tc = useTranslateContent();
 
   const { rows, cols } = data;
 
@@ -233,19 +253,46 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col) => {
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
+      const wrap = shouldWrap(settings, columnSettings);
 
-      return memoize((value, rowIndex) => {
-        const clicked = getCellClickedObject(columnIndex, rowIndex);
-        return formatValue(value, {
-          ...columnSettings,
-          type: "cell",
-          jsx: true,
-          rich: true,
-          clicked,
-        });
-      });
+      const rich: CellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
+
+          const value = tc(untranslatedValue);
+
+          return formatValue(value, {
+            ...columnSettings,
+            type: "cell",
+            jsx: true,
+            rich: true,
+            clicked,
+            collapseNewlines: !wrap,
+          });
+        },
+      );
+
+      const plain: PlainCellFormatter<RowValue> = memoize(
+        (untranslatedValue, rowIndex) => {
+          const clicked = getCellClickedObject(columnIndex, rowIndex);
+          const value = tc(untranslatedValue);
+
+          return String(
+            formatValue(value, {
+              ...columnSettings,
+              type: "cell",
+              clicked,
+            }),
+          );
+        },
+      );
+
+      return {
+        rich,
+        plain,
+      };
     });
-  }, [cols, settings, getCellClickedObject]);
+  }, [cols, settings, getCellClickedObject, tc]);
 
   const handleBodyCellClick = useCallback(
     (
@@ -265,9 +312,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         : data.cols.findIndex((col) => col.name === columnId);
 
       const formatter = columnFormatters[columnIndex];
-      const formattedValue = formatter(
+      const formattedValue = formatter.rich(
         data.rows[rowIndex][columnIndex],
         rowIndex,
+        columnId,
       );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
@@ -432,9 +480,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
-      const wrap =
-        !settings["table.pagination"] &&
-        Boolean(columnSettings["text_wrapping"]);
+      const wrap = shouldWrap(settings, columnSettings);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
@@ -463,9 +509,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
+      if (id === "") {
+        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
+      }
+
+      const translatedColumnName = tc(columnName);
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
-        name: columnName,
+        name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
         getCellClassName: (value) =>
@@ -485,11 +537,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
               })}
-              infoPopoversDisabled={!hasMetadataPopovers || isDashboard}
               timezone={data.results_timezone}
               question={question}
               column={col}
-              name={columnName}
+              name={translatedColumnName}
               align={align}
               sort={sortDirection}
               variant={headerVariant}
@@ -505,7 +556,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection,
         enableResizing: true,
         getBackgroundColor,
-        formatter,
+        formatter: formatter.rich,
+        clipboardFormatter: formatter.plain,
       };
 
       if (isMinibar) {
@@ -524,7 +576,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               align={align}
               backgroundColor={backgroundColor}
               value={value}
-              formatter={formatter}
+              formatter={formatter.rich}
               extent={columnExtent}
               columnSettings={columnSettings}
             />
@@ -536,7 +588,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [
     theme,
-    hasMetadataPopovers,
     data,
     question,
     mode,
@@ -550,6 +601,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
+    tc,
   ]);
 
   const handleColumnResize = useCallback(
@@ -571,7 +623,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [cols, isDashcardViewTable, onUpdateVisualizationSettings, settings],
   );
 
-  const rowId: RowIdColumnOptions | undefined = useMemo(() => {
+  const rowId = useMemo<RowIdColumnOptions | undefined>(() => {
     const getBackgroundColor = memoize((rowIndex: number) =>
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
@@ -582,8 +634,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
     const hasObjectDetail =
-      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
-      !isEmbeddingSdk;
+      !(
+        isPivoted ||
+        hasAggregation ||
+        isNotebookPreview ||
+        isModelEditor ||
+        isDocument
+      ) && !isEmbeddingSdk;
 
     const shouldShowRowIndex =
       settings["table.row_index"] && !isNotebookPreview && !isModelEditor;
@@ -596,13 +653,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         ? {
             variant: "index",
             getBackgroundColor,
+            expandedIndex: undefined,
           }
         : undefined;
     }
 
     return {
-      variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
+      variant: shouldShowRowIndex
+        ? hasObjectDetail
+          ? "indexExpand"
+          : "index"
+        : "expandButton",
       getBackgroundColor,
+      expandedIndex: zoomedRowIndex,
     };
   }, [
     cols,
@@ -611,33 +674,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     queryBuilderMode,
     settings,
     isDashboard,
+    isDocument,
+    zoomedRowIndex,
   ]);
 
-  const backgroundColor = useMemo(() => {
-    if (!isNightMode) {
-      return "transparent";
-    }
-
-    const isPublicOrStaticEmbedding = token != null || uuid != null;
-    return isPublicOrStaticEmbedding
-      ? "var(--mb-color-bg-black)"
-      : "var(--mb-color-bg-night)";
-  }, [isNightMode, token, uuid]);
-
-  const dataGridTheme: DataGridTheme = useMemo(() => {
-    return {
-      stickyBackgroundColor: tableTheme.stickyBackgroundColor,
-      fontSize: tableTheme.cell.fontSize,
-      cell: {
-        backgroundColor: tableTheme.cell.backgroundColor ?? backgroundColor,
-        textColor: tableTheme.cell.textColor,
-      },
-      pillCell: {
-        backgroundColor: tableTheme.idColumn?.backgroundColor,
-        textColor: tableTheme.idColumn?.textColor,
-      },
-    };
-  }, [tableTheme, backgroundColor]);
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
+  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {
@@ -664,8 +708,25 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [height, settings]);
 
   const minGridWidth = useMemo(() => {
-    return isDashcardViewTable ? width : undefined;
-  }, [isDashcardViewTable, width]);
+    return isDashcardViewTable || isEmbeddingSdk ? width : undefined;
+  }, [isDashcardViewTable, isEmbeddingSdk, width]);
+
+  const pinnedLeftColumnsCount = useMemo<number | undefined>(() => {
+    if (isPivoted || !settings["table.freeze_columns"]) {
+      return undefined;
+    }
+    return Math.min(
+      settings["table.freeze_columns_count"],
+      columnsOptions.length,
+    );
+  }, [isPivoted, settings, columnsOptions]);
+
+  const pinnedTopRowsCount = useMemo<number | undefined>(() => {
+    if (isPivoted || !settings["table.freeze_rows"]) {
+      return undefined;
+    }
+    return Math.min(settings["table.freeze_rows_count"], rows.length);
+  }, [isPivoted, settings, rows]);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -673,14 +734,27 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     sorting,
     columnOrder,
     columnSizingMap,
+    pinnedLeftColumnsCount,
+    pinnedTopRowsCount,
     columnsOptions,
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    enableSelection: true,
   });
-  const { virtualGrid } = tableProps;
+  const { getCenterColumns, scrollTo, columnsReordering } = tableProps;
+  const infoPopoversDisabled = getInfoPopoversDisabled({
+    clicked,
+    hasMetadataPopovers,
+    isDashboard,
+    isReorderingColumns: columnsReordering.isDragging,
+  });
+  const tableInteractiveContextValue = useMemo(
+    () => ({ infoPopoversDisabled }),
+    [infoPopoversDisabled],
+  );
 
   // If the data changes we reset saved column widths as it is no longer relevant
   // except for the case where question is converted from a model to a question and back.
@@ -688,20 +762,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
-    const hasColumns = virtualGrid.virtualColumns.length > 0;
+    const hasColumns = getCenterColumns().length > 0;
     if (hasColumns && scrollToLastColumn) {
-      virtualGrid.columnVirtualizer.scrollToIndex(
-        tableProps.table.getAllColumns().length,
-        {
-          align: "end",
-        },
-      );
+      const lastIndex = tableProps.table.getAllColumns().length - 1;
+      scrollTo({ column: { index: lastIndex, options: { align: "end" } } });
       dispatch(setUIControls({ scrollToLastColumn: false }));
     } else if (
       scrollToColumn != null &&
       scrolledColumnRef.current !== scrollToColumn
     ) {
-      virtualGrid.columnVirtualizer.scrollToIndex(scrollToColumn);
+      scrollTo({ column: { index: scrollToColumn } });
       scrolledColumnRef.current = scrollToColumn;
     }
   }, [
@@ -709,7 +779,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     scrollToLastColumn,
     dispatch,
     tableProps.table,
-    virtualGrid,
+    getCenterColumns,
+    scrollTo,
   ]);
 
   const handleWheel = useCallback(() => {
@@ -727,7 +798,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           <ErrorMessage
             type="noRows"
             title={t`No results!`}
-            message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+            message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
             action={undefined}
           />
         </Flex>
@@ -743,34 +814,33 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     (isDashboard || mode == null || isRawTable) && !isSettings;
 
   return (
-    <div
-      ref={ref}
-      className={cx(
-        S.root,
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-        className,
-      )}
-    >
-      <DataGrid
-        {...tableProps}
-        styles={dataGridStyles}
-        showRowsCount={isDashboard}
-        isColumnReorderingDisabled={isColumnReorderingDisabled}
-        emptyState={emptyState}
-        onBodyCellClick={handleBodyCellClick}
-        onAddColumnClick={handleAddColumnButtonClick}
-        onHeaderCellClick={handleHeaderCellClick}
-        onWheel={handleWheel}
-      />
-    </div>
+    <TableInteractiveContextProvider value={tableInteractiveContextValue}>
+      <div
+        ref={ref}
+        className={cx(S.root, DashboardS.fullscreenNormalText, className)}
+      >
+        <DataGrid
+          {...tableProps}
+          styles={dataGridStyles}
+          showRowsCount={isDashboard}
+          rowsTruncated={data.rows_truncated}
+          isColumnReorderingDisabled={isColumnReorderingDisabled}
+          emptyState={emptyState}
+          zoomedRowIndex={zoomedRowIndex}
+          onBodyCellClick={handleBodyCellClick}
+          onAddColumnClick={handleAddColumnButtonClick}
+          onHeaderCellClick={handleHeaderCellClick}
+          onWheel={handleWheel}
+          tableFooterExtraButtons={tableFooterExtraButtons}
+        />
+      </div>
+    </TableInteractiveContextProvider>
   );
 });
 
 export const TableInteractive = _.compose(
   withMantineTheme,
-  ExplicitSize({
+  ExplicitSize<TableProps>({
     refreshMode: "throttle",
   }),
 )(TableInteractiveInner);

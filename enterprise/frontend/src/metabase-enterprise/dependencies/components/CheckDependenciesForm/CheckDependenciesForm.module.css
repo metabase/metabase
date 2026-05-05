@@ -1,0 +1,12 @@
+.card {
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+}
+
+.list {
+  overflow: auto;
+  max-height: 60vh;
+}

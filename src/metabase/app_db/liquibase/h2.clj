@@ -18,7 +18,11 @@
         (proxy-super quoteObject (upcase object-name) object-type)))
 
     (mustQuoteObjectName [_object-name _object-type]
-      true)))
+      true)
+
+    (correctObjectName [object-name object-type]
+      (let [^H2Database this this]
+        (proxy-super correctObjectName (upcase object-name) object-type)))))
 
 ;; HACK! Create a [[java.lang.Package]] for the proxy class if one does not already exist. This is needed because:
 ;;

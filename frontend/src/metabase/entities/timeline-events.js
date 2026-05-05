@@ -1,27 +1,22 @@
-import { t } from "ttag";
-
 import { timelineEventApi, useGetTimelineEventQuery } from "metabase/api";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
 import { TimelineEventSchema } from "metabase/schema";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const TimelineEvents = createEntity({
+export const TimelineEvents = createEntity({
   name: "timelineEvents",
   nameOne: "timelineEvent",
   path: "/api/timeline-event",
   schema: TimelineEventSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
-  },
+  }),
 
   api: {
     list: () => {
@@ -52,28 +47,8 @@ const TimelineEvents = createEntity({
         timelineEventApi.endpoints.deleteTimelineEvent,
       ),
   },
-
-  objectActions: {
-    setTimeline: ({ id }, timeline, opts) => {
-      return TimelineEvents.actions.update(
-        { id },
-        { timeline_id: timeline.id },
-        undo(opts, t`event`, t`moved`),
-      );
-    },
-
-    setArchived: ({ id }, archived, opts) => {
-      return TimelineEvents.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`event`, archived ? t`archived` : t`unarchived`),
-      );
-    },
-  },
 });
 
 const useGetQuery = ({ id }, options) => {
   return useGetTimelineEventQuery(id, options);
 };
-
-export default TimelineEvents;

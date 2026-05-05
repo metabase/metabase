@@ -1,6 +1,8 @@
 import type { CardId, CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DocumentId } from "./document";
+import type { CardDisplayType } from "./visualization";
 
 export const BOOKMARK_TYPES = [
   "card",
@@ -8,6 +10,10 @@ export const BOOKMARK_TYPES = [
   "dashboard",
   "snippet",
   "indexed-entity",
+  "transform",
+  "document",
+  "table",
+  "measure",
 ] as const;
 export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;
@@ -15,7 +21,7 @@ export type BookmarkId = string;
 export interface Bookmark {
   authority_level?: string;
   card_id?: string;
-  display?: string;
+  display?: CardDisplayType;
   id: BookmarkId;
   item_id: number;
   name: string;
@@ -24,6 +30,10 @@ export interface Bookmark {
    * Defined only when bookmark.type is "card"
    */
   card_type?: CardType;
+  /**
+   * Defined only when bookmark.type is "collection"
+   */
+  is_remote_synced?: boolean;
 }
 
 export interface BookmarkOrdering {
@@ -32,12 +42,12 @@ export interface BookmarkOrdering {
 }
 
 export interface CreateBookmarkRequest {
-  id: CardId | CollectionId | DashboardId;
+  id: CardId | CollectionId | DashboardId | DocumentId;
   type: BookmarkType;
 }
 
 export interface DeleteBookmarkRequest {
-  id: CardId | CollectionId | DashboardId;
+  id: CardId | CollectionId | DashboardId | DocumentId;
   type: BookmarkType;
 }
 

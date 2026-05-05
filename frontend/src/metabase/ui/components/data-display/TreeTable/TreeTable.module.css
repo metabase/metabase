@@ -1,0 +1,11 @@
+.root:focus {
+  outline: none;
+}
+
+.measuring {
+  visibility: hidden;
+}
+
+.body {
+  overflow: auto;
+}

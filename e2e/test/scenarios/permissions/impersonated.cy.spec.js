@@ -12,7 +12,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
       H.restore("postgres-12");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     describe("impersonated users", () => {
@@ -48,7 +48,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.restore("postgres-12");
         H.createTestRoles({ type: "postgres" });
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         setImpersonatedPermission();
       });
@@ -109,7 +109,6 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.saveQuestion("foo", undefined, {
           path: ["Our analytics", "First collection"],
           select: true,
-          tab: "Browse",
         });
 
         cy.log("configure caching");

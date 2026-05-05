@@ -183,7 +183,6 @@
   "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
-
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
@@ -265,12 +264,18 @@
    {:default []}))
 
 (methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
-  "Batch hydration of details (user, group members) for NotificationRecipients"
+  "Batch hydration of details (user, group members) for NotificationRecipients.
+  Only active users are attached as :user; deactivated users get :user nil so they
+  don't receive notifications (GDGT-1927)."
   [_model _k recipients]
   (-> (group-by :type recipients)
       (m/update-existing :notification-recipient/user
                          (fn [recipients]
-                           (t2/hydrate recipients :user)))
+                           (let [id->user (when (seq recipients)
+                                            (t2/select-fn->fn :id identity :model/User
+                                                              :id [:in (map :user_id recipients)]
+                                                              :is_active true))]
+                             (mapv #(assoc % :user (id->user (:user_id %))) recipients))))
       (m/update-existing :notification-recipient/group
                          (fn [recipients]
                            (t2/hydrate recipients [:permissions_group :members])))
@@ -311,8 +316,8 @@
   [instance]
   (validate-notification-handler instance)
   (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
-    (cross-check-channel-type-and-template-type instance)
-    instance))
+    (cross-check-channel-type-and-template-type instance))
+  instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                   :model/NotificationRecipient                                  ;;
@@ -347,7 +352,8 @@
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
-                                               [:value :any]]]
+                                               [:value :any]
+                                               [:channel_id {:optional true} [:maybe :string]]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
     [:notification-recipient/template
@@ -506,7 +512,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
-    [::mc/default       :any]]])
+    [::mc/default       :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -557,11 +563,15 @@
           notification-id (:id instance)]
       (when (seq subscriptions)
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [handler handlers+recipients]
-        (let [recipients (:recipients handler)
+      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
+        ;; assert can either template_id exists, then template but be nil, and vice versa
+        (let [template-id (if template
+                            (t2/insert-returning-pk! :model/ChannelTemplate template)
+                            (:template_id handler))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id
+                                    :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
@@ -585,7 +595,10 @@
                                   :nested-specs {:recipients {:model        :model/NotificationRecipient
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}}}}})
+                                                              :multi-row?   true}
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :ref-in-parent :template_id
+                                                              :compare-cols  [:channel_type :name :details]}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."

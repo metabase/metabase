@@ -1,24 +1,29 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
+
 import { ThemeProvider } from "metabase/ui";
 
-// @ts-expect-error: See metabase/lib/delay
+// @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
 require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
-require("metabase/lib/dayjs");
+require("metabase/utils/dayjs");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { css, Global, useTheme } from "@emotion/react";
+
+import { Global, css, useTheme } from "@emotion/react";
+
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+
+import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
 // Any story name changes are also reflected in the loki.config.js storiesFilter array.
@@ -59,6 +64,15 @@ const parameters = {
   },
 };
 
+const argTypes = {
+  theme: {
+    control: {
+      type: "inline-radio",
+    },
+    options: ["light", "dark"],
+  },
+};
+
 const globalStyles = css`
   ${defaultFontFiles({ baseUrl: "/" })}
 
@@ -71,14 +85,31 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
+const getResolvedColorScheme = (
+  displayTheme: string | undefined,
+): "light" | "dark" => {
+  switch (displayTheme) {
+    case "night":
+    case "dark":
+      return "dark";
+    default:
+      return "light";
+  }
+};
+
 const decorators = [
-  (Story) => {
+  (Story, { args = {}, globals }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
+
+    const resolvedColorScheme = getResolvedColorScheme(
+      args.theme ?? globals.theme,
+    );
+
     return (
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />
@@ -96,7 +127,9 @@ function CssVariables() {
   }, []);
 
   // This can get expensive so we should memoize it separately
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
+  const cssVariables = useMemo(() => {
+    return getMetabaseCssVariables({ theme });
+  }, [theme]);
 
   const styles = useMemo(() => {
     return css`
@@ -109,8 +142,8 @@ function CssVariables() {
       Theming-specific CSS variables.
       These CSS variables are not part of the core design system colors.
     **/
-        --mb-color-bg-dashboard: var(--mb-color-bg-white);
-        --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+        --mb-color-bg-dashboard: var(--mb-color-background-primary);
+        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */
@@ -124,6 +157,20 @@ function CssVariables() {
   return <Global styles={styles} />;
 }
 
-const preview = { parameters, decorators };
+/*
+ * Initializes MSW
+ * See https://github.com/mswjs/msw-storybook-addon#configuring-msw
+ * to learn how to customize it
+ */
+
+initialize({
+  onUnhandledRequest: "bypass",
+});
+const preview = {
+  parameters,
+  decorators,
+  loaders: [mswLoader],
+  argTypes,
+};
 
 export default preview;

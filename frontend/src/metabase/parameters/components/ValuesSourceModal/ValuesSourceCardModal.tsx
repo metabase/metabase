@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
   QuestionPickerModal,
+  type QuestionPickerValueItem,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
 import { useQuestionQuery } from "metabase/common/hooks";
 import type { Parameter, ValuesSourceConfig } from "metabase-types/api";
 

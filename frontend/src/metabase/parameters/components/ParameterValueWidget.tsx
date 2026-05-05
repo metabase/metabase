@@ -1,29 +1,32 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
-import { t } from "ttag";
+import { type ReactNode, useMemo, useState } from "react";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import { Icon, Popover, type PopoverProps } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, ParameterId } from "metabase-types/api";
+import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
-import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
+import {
+  ParameterDropdownWidget,
+  isTextWidget,
+} from "./ParameterDropdownWidget";
 import { WidgetStatus } from "./WidgetStatus";
 
 export type ParameterValueWidgetProps = {
@@ -38,8 +41,8 @@ export type ParameterValueWidgetProps = {
   isFullscreen?: boolean;
   className?: string;
   parameters?: UiParameter[];
-  dashboard?: Dashboard | null;
-  question?: Question;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   setParameterValueToDefault?: (parameterId: ParameterId) => void;
   // This means the widget will take care of the default value.
   // Should be used for dashboards and native questions in the parameter bar,
@@ -47,12 +50,12 @@ export type ParameterValueWidgetProps = {
   enableRequiredBehavior?: boolean;
   mimicMantine?: boolean;
   isSortable?: boolean;
+  prefix?: ReactNode;
 } & Partial<PopoverProps>;
 
 export const ParameterValueWidget = ({
   className,
   commitImmediately = false,
-  dashboard,
   enableRequiredBehavior,
   focusChanged,
   isEditing = false,
@@ -62,12 +65,16 @@ export const ParameterValueWidget = ({
   parameter,
   parameters,
   placeholder,
-  question,
+  cardId,
+  dashboardId,
   setParameterValueToDefault,
   setValue,
   value,
+  prefix,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
+  const tc = useTranslateContent();
+
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
@@ -75,7 +82,6 @@ export const ParameterValueWidget = ({
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
-  const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
   const [isOpen, { close, toggle }] = useDisclosure();
 
@@ -186,6 +192,15 @@ export const ParameterValueWidget = ({
     }
   };
 
+  const typeIcon = useMemo(() => {
+    const showTypeIcon = !isEditing && !isFocused && !(hasValue && noPopover);
+    return showTypeIcon ? (
+      <Icon name={parameterTypeIcon} className={S.parameterIcon} size={16} />
+    ) : null;
+  }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
+
+  const translatedPlaceholder = tc(placeholder);
+
   if (noPopover) {
     return (
       <Sortable
@@ -199,22 +214,17 @@ export const ParameterValueWidget = ({
           ariaLabel={parameter.name}
           hasValue={hasValue}
         >
-          {showTypeIcon && (
-            <Icon
-              name={parameterTypeIcon}
-              className={cx(CS.mr1, CS.flexNoShrink)}
-              size={16}
-            />
-          )}
+          {typeIcon}
+          <div className={S.Prefix}>{prefix}</div>
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
-            question={question}
-            dashboard={dashboard}
+            cardId={cardId}
+            dashboardId={dashboardId}
             value={value}
             setValue={setValue}
             isEditing={isEditing}
-            placeholder={placeholder}
+            placeholder={translatedPlaceholder}
             focusChanged={setIsFocused}
             isFullscreen={isFullscreen}
             commitImmediately={commitImmediately}
@@ -229,106 +239,98 @@ export const ParameterValueWidget = ({
     );
   }
 
-  const placeholderText = isEditing
-    ? isDateParameter(parameter)
-      ? t`Select a default value…`
-      : t`Enter a default value…`
-    : placeholder || t`Select…`;
-
   return (
-    <Popover
-      opened={isOpen}
-      onChange={toggle}
-      position="bottom-start"
-      trapFocus
-      {...popoverProps}
+    <Sortable
+      id={parameter.id}
+      draggingStyle={{ opacity: 0.5 }}
+      disabled={!isSortable}
+      role="listitem"
     >
-      <Popover.Target>
-        <Box
-          data-testid="parameter-value-widget-target"
-          onClick={toggle}
-          className={CS.cursorPointer}
-        >
-          <Sortable
-            id={parameter.id}
-            draggingStyle={{ opacity: 0.5 }}
-            disabled={!isSortable}
-            role="listitem"
-          >
-            <ParameterValueWidgetTrigger
-              hasValue={hasValue}
-              className={className}
-              ariaLabel={placeholder}
-              mimicMantine={mimicMantine}
-            >
-              {showTypeIcon && (
-                <Icon
-                  name={parameterTypeIcon}
-                  className={cx(CS.mr1, CS.flexNoShrink)}
-                  size={16}
-                />
-              )}
-              <div
-                className={cx(CS.mr1)}
-                style={
-                  isStringParameter(parameter) ? { maxWidth: "190px" } : {}
-                }
-              >
-                <FormattedParameterValue
-                  parameter={parameter}
-                  value={value}
-                  cardId={question?.id()}
-                  dashboardId={dashboard?.id}
-                  placeholder={placeholderText}
-                  isPopoverOpen={isOpen}
-                />
-              </div>
-              {getActionIcon()}
-            </ParameterValueWidgetTrigger>
-          </Sortable>
-        </Box>
-      </Popover.Target>
-      <Popover.Dropdown
-        // Removes `maxWidth` so that `floating-ui` can detect the new element size. See metabase#52918 for details.
-        // Use `size` middleware options when we upgrade to mantine v7.
-        maw={isDateParameter(parameter) ? "100vw !important" : undefined}
-        data-testid="parameter-value-dropdown"
+      <Popover
+        opened={isOpen}
+        onChange={toggle}
+        position="bottom-start"
+        trapFocus
+        middlewares={{ flip: true, shift: true }}
+        clickOutsideEvents={["mousedown", "touchstart", "pointerdown"]}
+        {...popoverProps}
       >
-        <ParameterDropdownWidget
-          parameter={parameter}
-          parameters={parameters}
-          question={question}
-          dashboard={dashboard}
-          value={value}
-          setValue={setValue}
-          isEditing={isEditing}
-          placeholder={placeholder}
-          focusChanged={setIsFocused}
-          isFullscreen={isFullscreen}
-          commitImmediately={commitImmediately}
-          setParameterValueToDefault={setParameterValueToDefault}
-          enableRequiredBehavior={enableRequiredBehavior}
-          isSortable={isSortable}
-          onFocusChanged={onFocusChanged}
-          onPopoverClose={close}
-        />
-      </Popover.Dropdown>
-    </Popover>
+        <Popover.Target>
+          <ParameterValueWidgetTrigger
+            data-testid="parameter-value-widget-target"
+            onClick={toggle}
+            hasValue={hasValue}
+            className={cx(CS.cursorPointer, className)}
+            ariaLabel={placeholder}
+            mimicMantine={mimicMantine}
+            hasPopover
+          >
+            {typeIcon}
+            {prefix && <div className={S.Prefix}>{prefix}</div>}
+            <div
+              className={CS.mr1}
+              style={
+                isStringParameter(parameter)
+                  ? { maxWidth: "190px", overflow: "hidden" }
+                  : {
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }
+              }
+            >
+              <FormattedParameterValue
+                parameter={parameter}
+                value={value}
+                cardId={cardId}
+                dashboardId={dashboardId}
+                placeholder={translatedPlaceholder}
+                isPopoverOpen={isOpen}
+              />
+            </div>
+            {getActionIcon()}
+          </ParameterValueWidgetTrigger>
+        </Popover.Target>
+        <Popover.Dropdown
+          // Removes `maxWidth` so that `floating-ui` can detect the new element size. See metabase#52918 for details.
+          // Use `size` middleware options when we upgrade to mantine v7.
+          maw={isDateParameter(parameter) ? "100vw !important" : undefined}
+          data-testid="parameter-value-dropdown"
+        >
+          <ParameterDropdownWidget
+            parameter={parameter}
+            parameters={parameters}
+            cardId={cardId}
+            dashboardId={dashboardId}
+            value={value}
+            setValue={setValue}
+            isEditing={isEditing}
+            placeholder={placeholder}
+            focusChanged={setIsFocused}
+            isFullscreen={isFullscreen}
+            commitImmediately={commitImmediately}
+            setParameterValueToDefault={setParameterValueToDefault}
+            enableRequiredBehavior={enableRequiredBehavior}
+            isSortable={isSortable}
+            onFocusChanged={onFocusChanged}
+            onPopoverClose={close}
+          />
+        </Popover.Dropdown>
+      </Popover>
+    </Sortable>
   );
 };
 
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter)) {
+  if (
+    isDateParameter(parameter) ||
+    isTemporalUnitParameter(parameter) ||
+    isBooleanParameter(parameter)
+  ) {
     return false;
   }
   return isTextWidget(parameter);
-}
-
-function isTextWidget(parameter: UiParameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
 function wrapArray<T>(value: T | T[]): T[] {

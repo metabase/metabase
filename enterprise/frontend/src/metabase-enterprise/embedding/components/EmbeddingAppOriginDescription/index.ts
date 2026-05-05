@@ -1,1 +1,0 @@
-export { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";

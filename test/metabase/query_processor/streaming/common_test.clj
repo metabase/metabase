@@ -19,6 +19,21 @@
                 filename-time-in-report-zone (t/zoned-date-time filename-time test-timezone)]
             (is (= now-in-report-zone filename-time-in-report-zone))))))))
 
+(deftest currency-identifier-test
+  (testing "narrowSymbol style returns symbol_native"
+    (testing "USD symbol_native is $ (same as symbol)"
+      (is (= "$" (streaming.common/currency-identifier {::mb.viz/currency "USD"
+                                                        ::mb.viz/currency-style "narrowSymbol"}))))
+    (testing "CAD symbol_native is $ (differs from symbol CA$)"
+      (is (= "$" (streaming.common/currency-identifier {::mb.viz/currency "CAD"
+                                                        ::mb.viz/currency-style "narrowSymbol"}))))
+    (testing "EUR symbol_native is €"
+      (is (= "€" (streaming.common/currency-identifier {::mb.viz/currency "EUR"
+                                                        ::mb.viz/currency-style "narrowSymbol"})))))
+  (testing "narrowSymbol falls back to code if symbol not supported"
+    (is (= "KGS" (streaming.common/currency-identifier {::mb.viz/currency "KGS"
+                                                        ::mb.viz/currency-style "narrowSymbol"})))))
+
 (deftest column-titles-test
   (testing "column titles properly merge settings from multiple references to the same column"
     (let [ordered-cols [{:name "CREATED_AT" :id 13 :display_name "Created At"}]

@@ -1,7 +1,14 @@
 import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
+import * as sharedQB from "metabase/redux/query-builder";
+import type { QueryBuilderMode } from "metabase/redux/store";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -9,6 +16,7 @@ import type {
   Card,
   ConcreteFieldReference,
   Join,
+  LegacyDatasetQuery,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TemplateTag,
@@ -42,23 +50,17 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import type { QueryBuilderMode } from "metabase-types/store";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
-import * as native from "../native";
-import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
+import * as url from "../url";
 
+import * as native from "./native";
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
-type TestCard = Card | UnsavedCard;
+type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
 
 type SetupOpts = {
   card: TestCard;
@@ -104,7 +106,7 @@ function getModelVirtualTable(card: Card) {
     db_id: SAVED_QUESTIONS_DB.id,
     name: card.name,
     display_name: card.name,
-    fields: card.result_metadata,
+    fields: card.result_metadata ?? [],
   });
 }
 
@@ -185,7 +187,6 @@ async function setup({
 
 const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
-  ident: "gxyP-LOf7Zn96z8IWueoH",
   condition: [
     "=",
     ["field", ORDERS.ID, null],
@@ -340,13 +341,13 @@ describe("QB Actions > updateQuestion", () => {
         });
 
         it("updates URL if `shouldUpdateUrl: true` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: true });
           expect(updateUrlSpy).toHaveBeenCalledTimes(1);
         });
 
         it("doesn't update URL if `shouldUpdateUrl: false` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: false });
           expect(updateUrlSpy).not.toHaveBeenCalled();
         });
@@ -449,7 +450,7 @@ describe("QB Actions > updateQuestion", () => {
 
       describe(questionType, () => {
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
+          const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
           await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).not.toHaveBeenCalled();
         });
@@ -471,7 +472,7 @@ describe("QB Actions > updateQuestion", () => {
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-            const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
+            const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
             await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
             expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
           });

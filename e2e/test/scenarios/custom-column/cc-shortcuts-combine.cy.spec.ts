@@ -79,7 +79,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       "123.45678901234567 123.45678901234567 email@example.com",
     );
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByLabelText("Remove column").last().click();
 
     cy.findByTestId("combine-example").should(
@@ -125,38 +125,35 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 });
 
-H.describeWithSnowplow(
-  "scenarios > question > custom column > combine shortcuts",
-  () => {
-    beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsNormalUser();
+describe("scenarios > question > custom column > combine shortcuts", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsNormalUser();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should send an event for combine columns", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+    selectCombineColumns();
+
+    selectColumn(0, "User", "Email");
+    selectColumn(1, "User", "Email");
+
+    H.expressionEditorWidget().button("Done").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "column_combine_via_shortcut",
+      custom_expressions_used: ["concat"],
+      database_id: SAMPLE_DB_ID,
+      question_id: 0,
     });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
-    });
-
-    it("should send an event for combine columns", () => {
-      H.openOrdersTable({ mode: "notebook" });
-      H.addCustomColumn();
-      selectCombineColumns();
-
-      selectColumn(0, "User", "Email");
-      selectColumn(1, "User", "Email");
-
-      H.expressionEditorWidget().button("Done").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "column_combine_via_shortcut",
-        custom_expressions_used: ["concat"],
-        database_id: SAMPLE_DB_ID,
-        question_id: 0,
-      });
-    });
-  },
-);
+  });
+});
 
 function selectCombineColumns() {
   H.popover().findByText("Combine columns").click();
@@ -164,11 +161,11 @@ function selectCombineColumns() {
 
 function selectColumn(index: number, table: string, name?: string) {
   H.expressionEditorWidget().within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("column-input").eq(index).click();
   });
 
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {

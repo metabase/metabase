@@ -1,4 +1,5 @@
 (ns metabase.driver.hive-like-test
+  "Do not mark this as ^:mb/driver-tests. CI will not see this file since this is an abstract driver."
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))

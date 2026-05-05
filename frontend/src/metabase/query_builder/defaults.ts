@@ -2,7 +2,7 @@ import type {
   QueryBuilderLoadingControls,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   dataReferenceStack: null,
@@ -21,9 +21,9 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
+  previousQueryBuilderMode: null,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
+  datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,
@@ -31,8 +31,10 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
-  isNativeQueryFixApplied: false,
   highlightedNativeQueryLineNumbers: [],
+  isShowingListViewConfiguration: false,
+  nativeEditorSelectedRange: [],
+  questionDetailsTimelineDrawerState: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
@@ -41,8 +43,10 @@ export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
   timeoutId: "",
 };
 
-export const DEFAULT_DASHBOARD_STATE = {
-  dashboardId: null,
+export const DEFAULT_PARENT_ENTITY_STATE = {
+  id: null,
+  model: null,
+  name: null,
   isEditing: false,
 };
 

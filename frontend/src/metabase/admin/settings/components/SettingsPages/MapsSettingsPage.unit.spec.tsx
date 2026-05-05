@@ -8,13 +8,13 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockGeoJSONFeatureCollection,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MapsSettingsPage } from "./MapsSettingsPage";
 
@@ -87,7 +87,7 @@ const setup = async () => {
 describe("MapsSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
     await setup();
-    ["Map tile server URL", "Custom Maps"].forEach((text) => {
+    ["Map tile server URL", "Custom maps"].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
     expect(screen.getByDisplayValue("https://tiles.com")).toBeInTheDocument();

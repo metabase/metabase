@@ -1,7 +1,7 @@
 /* this is the wrapper element that looks like an input */
 .MultiSelectInput {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   padding-top: rem(5px);
   padding-bottom: rem(5px);
   padding-inline-start: rem(5px);

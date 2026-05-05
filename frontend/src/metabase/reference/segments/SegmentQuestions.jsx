@@ -3,17 +3,18 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
+import { List } from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import { ListItem } from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useQuestionListQuery } from "metabase/common/hooks";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import ListItem from "metabase/components/ListItem";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -43,7 +44,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-export const SegmentQuestions = ({ style, table, segment, metadata }) => {
+const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
   const {
     data = [],
     isLoading,
@@ -57,7 +58,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
         type="questions"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>
@@ -72,7 +73,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
                         key={question.id()}
                         name={question.displayName()}
                         description={getDescription(question)}
-                        url={Urls.question(question.card())}
+                        url={Urls.card(question.card())}
                         icon={visualizations.get(question.display()).iconName}
                       />
                     ),
@@ -92,11 +93,14 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   );
 };
 
-SegmentQuestions.propTypes = {
+SegmentQuestionsInner.propTypes = {
   table: PropTypes.object,
   segment: PropTypes.object.isRequired,
   style: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);
+export const SegmentQuestions = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentQuestionsInner);

@@ -6,10 +6,10 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { PaginationControls } from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { usePagination } from "metabase/hooks/use-pagination";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 
@@ -80,8 +80,9 @@ function AuditTable({
         dispatch={dispatch}
         {...rest}
       />
-      <PaginationControlsContainer>
-        {shouldShowPagination && (
+
+      {shouldShowPagination && (
+        <PaginationControlsContainer>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -89,11 +90,13 @@ function AuditTable({
             onNextPage={loadedCount === pageSize ? handleNextPage : null}
             onPreviousPage={handlePreviousPage}
           />
-        )}
-      </PaginationControlsContainer>
+        </PaginationControlsContainer>
+      )}
+
       {children}
     </div>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps))(AuditTable);

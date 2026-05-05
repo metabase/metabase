@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import Alert from "metabase/core/components/Alert";
-import { getStoreUrl } from "metabase/selectors/settings";
-import { Anchor, Box, Text } from "metabase/ui";
+import { Alert } from "metabase/common/components/Alert";
+import { ButtonLink } from "metabase/common/components/ExternalLink";
+import { useStoreUrl } from "metabase/common/hooks";
+import { Anchor, Box, Icon, Text } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
-import { StoreButtonLink } from "./BillingInfo.styled";
 import { BillingInfoTable } from "./BillingInfoTable";
 
 interface BillingInfoProps {
@@ -46,7 +46,7 @@ const BillingInfoError = () => {
       <SettingHeader id="billing" title={t`Billing`} />
       <Box mt="1rem" data-testid="billing-info-error">
         <Alert variant="error" icon="warning">
-          <Text c="text-medium">
+          <Text c="text-secondary">
             {t`An error occurred while fetching information about your billing.`}
             <br />
             <strong>{t`Need help?`}</strong>{" "}
@@ -65,20 +65,21 @@ const BillingInfoError = () => {
 };
 
 const BillingGoToStore = () => {
-  const url = getStoreUrl();
+  const url = useStoreUrl();
 
   return (
     <>
       <SettingHeader
         id="billing"
         title={t`Billing`}
-        // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
         description={t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}
       />
-      <StoreButtonLink href={url}>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+      <ButtonLink href={url}>
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
-      </StoreButtonLink>
+        <Icon name="external" opacity={0.6} ml="sm" />
+      </ButtonLink>
     </>
   );
 };

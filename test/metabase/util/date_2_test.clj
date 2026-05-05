@@ -506,7 +506,7 @@
 
 (deftest static-instances-locale-test
   (testing "in the Turkish locale, :minute-of-hour can be found"
-    (mt/with-locale "tr"
+    (mt/with-locale! "tr"
       (is (some? (:minute-of-hour (u.date.common/static-instances ChronoField)))))))
 
 (deftest ^:parallel with-time-zone-same-instant-test

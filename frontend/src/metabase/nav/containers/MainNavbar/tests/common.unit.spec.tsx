@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import { screen, within } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockDashboard,
@@ -12,6 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  NESTED_COLLECTION,
   PERSONAL_COLLECTION_BASE,
   TEST_COLLECTION,
   setup,
@@ -121,13 +122,6 @@ describe("nav > containers > MainNavbar", () => {
         name: /How to use Metabase/i,
       });
       expect(link).toHaveAttribute("aria-selected", "true");
-    });
-  });
-
-  describe("DWH Upload", () => {
-    it("should not render DWH Upload section", () => {
-      setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload")).not.toBeInTheDocument();
     });
   });
 
@@ -364,6 +358,121 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+
+      expect(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not display the new collection button if a user has no write permissions", async () => {
+      await setup({
+        user: createMockUser({ can_write_any_collection: false }),
+      });
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Our analytics/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("button", { name: "Create a new collection" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should toggle active collection on click", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(TEST_COLLECTION),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested collection/i }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not toggle inactive collection on click", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(NESTED_COLLECTION),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(regularCollectionElements.listItem);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should toggle inactive collection via the chevron button", async () => {
+      const { regularCollectionElements } = await setupCollectionPage({
+        pathname: Urls.collection(PERSONAL_COLLECTION_BASE),
+        route: "/collection/:slug",
+      });
+
+      expect(regularCollectionElements.listItem).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested collection/i }),
+      ).not.toBeInTheDocument();
+
+      const chevron = within(regularCollectionElements.listItem).getByRole(
+        "button",
+      );
+      await userEvent.click(chevron);
+      expect(
+        screen.getByRole("treeitem", { name: /Nested collection/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("Personal Collections", () => {
+    it("non-admin should see not other users personal collections", async () => {
+      await setup({});
+
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("admin should see other users personal collections if there other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+      });
+      expect(
+        await screen.findByText(/Other users' personal collections/i),
+      ).toBeInTheDocument();
+    });
+
+    it("admin not should see other users personal collections if there no other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        activeUsersCount: 1,
+      });
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
+      ).not.toBeInTheDocument();
     });
   });
 });

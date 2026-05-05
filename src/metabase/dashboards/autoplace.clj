@@ -1,13 +1,13 @@
 (ns metabase.dashboards.autoplace
   "NOTE: It's not SUPER high impact if it falls out of sync - hopefully both will place things in a reasonable spot - but
   ideally this namespace should be kept in sync with
-  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js)."
+  [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dashboard_grid.js)."
   (:require
    [metabase.dashboards.constants :as dashboard.constants]))
 
 (def ^:constant default-grid-width
   "The default grid width."
-  dashboard.constants/GRID_WIDTH)
+  dashboard.constants/grid-width)
 
 (defn- intersects? [a b]
   (not (or
@@ -23,7 +23,7 @@
   "Where should a new card be placed on a tab, given the existing dashcards?
 
   NOTE: almost identical in behavior to `getPositionForNewDashCard` in
-  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js
+  https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dashboard_grid.js
 
   If you make changes here, we should keep the frontend version in sync.
 

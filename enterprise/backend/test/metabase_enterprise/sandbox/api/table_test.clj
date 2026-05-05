@@ -35,6 +35,20 @@
         (is (= all-columns
                (field-names :crowberto)))))))
 
+(deftest query-metadata-not-sandboxed-for-admins-test
+  (testing "GET /api/table/:id/query_metadata"
+    ;; checks that admins are exempt from normal perms checking.
+    ;; the above test did not trigger this case because the admin is not *in* "All Users".
+    (met/with-gtaps-for-all-users!
+      {:gtaps      {:venues
+                    {:remappings {}
+                     :query      (mt.tu/restricted-column-query (mt/id))}}
+       :attributes {:cat 50}}
+      (is (= #{"ID" "CATEGORY_ID" "NAME"}
+             (field-names :rasta)))
+      (is (= all-columns
+             (field-names :crowberto))))))
+
 (deftest native-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (met/with-gtaps! {:gtaps      {:venues
@@ -48,8 +62,7 @@
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
-                                                (:dataset_query card) (:entity_id card))]
+            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
         (if metadata
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
           (card.metadata/save-metadata-async! metadata-future card)))
@@ -97,14 +110,12 @@
       (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
         (mt/with-current-user (mt/user->id :rasta)
           (is (= #{"VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.NAME"}
-                 (->> [(mt/id :venues) (mt/id :checkins)]
-                      table/batch-fetch-table-query-metadatas
+                 (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names)))))
 
       (testing "Users with full permissions should not be affected by this field filtering"
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= #{"CHECKINS.DATE" "CHECKINS.ID" "CHECKINS.USER_ID" "CHECKINS.VENUE_ID"
                    "VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.LATITUDE" "VENUES.LONGITUDE" "VENUES.NAME" "VENUES.PRICE"}
-                 (->> [(mt/id :venues) (mt/id :checkins)]
-                      table/batch-fetch-table-query-metadatas
+                 (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names))))))))

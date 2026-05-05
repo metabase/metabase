@@ -1,12 +1,13 @@
 (ns metabase-enterprise.audit-app.settings
   (:require
+   [metabase.audit-app.core :as audit]
    [metabase.settings.core :refer [defsetting]]))
 
 (defsetting install-analytics-database
   "Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable."
   :type       :boolean
-  :default    true
+  :default    (not (audit/analytics-dev-mode))
   :visibility :internal
   :setter     :none
   :audit      :never
@@ -24,3 +25,12 @@
   :audit      :never
   :doc        (str "Setting this environment variable to false can also come in handy when migrating environments, as"
                    " it can simplify the migration process."))
+
+(defsetting last-analytics-views-checksum
+  "Checksum of the instance_analytics_views SQL files. When this changes, the audit DB schema
+  is re-synced to pick up new or modified views from migrations."
+  :type       :integer
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)

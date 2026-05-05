@@ -1,0 +1,47 @@
+.ColorPill {
+  border-radius: 50%;
+  cursor: pointer;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 1px;
+
+  &:hover {
+    border-color: var(--mb-color-text-tertiary);
+  }
+}
+
+.Selected {
+  border-color: var(--mb-color-text-tertiary);
+
+  &:hover {
+    border-color: var(--mb-color-text-primary);
+  }
+}
+
+.Auto {
+  border-style: dashed;
+}
+
+.XSmall {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+}
+
+.Small {
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 1px;
+}
+
+.Medium {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.1875rem;
+}
+
+.Large {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.25rem;
+}

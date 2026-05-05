@@ -1,9 +1,9 @@
 import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { SeriesInfo } from "../../types/data";
 import type { ContinuousScaleType, Range } from "../../types/scale";
@@ -155,6 +155,7 @@ export const RowChart = <TDatum,>({
         yLabel,
         hasXAxis,
         hasYAxis,
+        width,
       ),
     [
       seriesData,
@@ -167,6 +168,7 @@ export const RowChart = <TDatum,>({
       yLabel,
       hasXAxis,
       hasYAxis,
+      width,
     ],
   );
 
@@ -271,6 +273,7 @@ export const RowChart = <TDatum,>({
       xLabel={xLabel}
       hasXAxis={hasXAxis}
       hasYAxis={hasYAxis}
+      measureTextWidth={measureTextWidth}
       onClick={onClick}
       onHover={onHover}
     />

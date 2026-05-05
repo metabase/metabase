@@ -1,37 +1,36 @@
 .queryEditor {
-  width: 100%;
-  background-color: var(--mb-color-bg-light);
-}
-
-.dragHandleContainer {
+  background-color: var(--mb-color-background-secondary);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  flex: var(--native-query-editor-flex, none);
   width: 100%;
-  height: 8px;
-  position: absolute;
-  bottom: -4px;
-  cursor: row-resize;
 }
 
-.dragHandle {
-  width: 100px;
-  height: 5px;
-  background-color: var(--mb-color-border);
-  border-radius: 4px;
+.editorWrapper {
+  overflow: auto;
+  width: 100%;
+  flex: 1 0 auto;
+  max-height: 100%;
 }
 
-.resizableBox {
-  display: none;
+.resizableArea {
+  display: flex;
   border-top: 1px solid var(--mb-color-border);
+  flex: 1 1 auto;
+  overflow: hidden;
+  flex-direction: column;
+}
 
-  &.open {
-    display: flex;
-  }
+.resizableBoxContent {
+  overflow: hidden;
 }
 
 .actionButtons {
   /* min-height of the top bar, it's needed for vertical alignment when there
   are several template tags */
-  height: 55px;
+  height: 3rem;
+}
+
+.readOnlyEditor {
+  overflow: auto;
 }

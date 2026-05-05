@@ -7,7 +7,6 @@ describe("Login", () => {
     setup({
       isPasswordLoginEnabled: false,
       isGoogleAuthEnabled: true,
-      hasEnterprisePlugins: true,
       tokenFeatures: { disable_password_login: true },
     });
 

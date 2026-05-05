@@ -18,11 +18,16 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.retry :as retry]
+   [metabase.util.retry-test :as rt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :web-server))
+
+(defn- take-notification!
+  [queue]
+  (#'notification.send/take-notification-with-timeout! queue 1000))
 
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
@@ -50,12 +55,12 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload {:keys [template recipients]}]
                                                                     (swap! renders conj {:channel-type channel-type
                                                                                          :notification-payload notification-payload
                                                                                          :template template
                                                                                          :recipients recipients})
-                                                                 ;; rendered messages are recipients
+                                                                    ;; rendered messages are recipients
                                                                     recipients)]
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
@@ -73,6 +78,30 @@
                         :template     nil
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))
+
+(deftest notification-disable-links-test
+  (testing "Card notification with links disabled based on disable_links flag"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card              {:name "Orders question"
+                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :subscriptions     [{:type          :notification-subscription/cron
+                                            :cron_schedule "0 0 0 * * ? *"}]
+                       :handlers          [{:channel_type :channel/email
+                                            :recipients   [{:type    :notification-recipient/user
+                                                            :user_id (mt/user->id :crowberto)}]}]}]
+        (let [has-link? (fn [notification]
+                          (->> (notification.tu/with-captured-channel-send!
+                                 (#'notification.send/send-notification-sync! notification))
+                               :channel/email first :message first :content
+                               (re-find #"href=")
+                               (= "href=")))]
+          (testing "test that disable_links: false will keep links in the alert email"
+            (is (true? (has-link? (assoc-in notification [:payload :disable_links] false)))))
+          (testing "test that disable_links: nil will keep links in the alert email"
+            (is (true? (has-link? (assoc-in notification [:payload :disable_links] nil)))))
+          (testing "test that disable_links: true will disable all links in the alert email"
+            (is (false? (has-link? (assoc-in notification [:payload :disable_links] true))))))))))
 
 (defn- latest-task-history-entry
   [task-name]
@@ -160,25 +189,11 @@
                        :status       :failed
                        :task_details {:attempted_retries 0
                                       :message           "Failed to send"
-                                      :ex-data           {:metadata 42
-                                                          :metabase.notification.send/skip-retry? true}
-
+                                      :ex-data           {:metadata 42}
                                       :retry_errors      (mt/malli=? [:sequential [:map {:closed true}
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
                       (latest-task-history-entry "channel-send"))))))))))
-
-(defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
-  (let [metrics (bean (.getMetrics retry))]
-    (into {}
-          (map (fn [field]
-                 (let [n (metrics field)]
-                   (when (pos? n)
-                     [field n]))))
-          [:numberOfFailedCallsWithRetryAttempt
-           :numberOfFailedCallsWithoutRetryAttempt
-           :numberOfSuccessfulCallsWithRetryAttempt
-           :numberOfSuccessfulCallsWithoutRetryAttempt])))
 
 (def ^:private fake-email-notification
   {:subject      "test-message"
@@ -186,115 +201,97 @@
    :message-type :text
    :message      "test message body"})
 
-(def ^:private test-retry-configuration
-  (assoc @#'notification.send/default-retry-config
-         :initial-interval-millis 1
-         :max-attempts 2))
-
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-      (with-redefs [email/send-email!                      mt/fake-inbox-email-fn
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (testing "no retry errors recorded"
-            (is (zero? (-> (latest-task-history-entry "channel-send") :task_details :retry_errors count))))
-          (is (= 1 (count @mt/inbox)))))))
+    (let [[hook state] (rt/retry-analytics-config-hook)]
+      (binding [retry/*test-time-config-hook* hook]
+        (with-redefs [email/send-email! mt/fake-inbox-email-fn]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
+            (is (= {:success true, :retries 0} @state))
+            (testing "no retry errors recorded"
+              (is (zero? (-> (latest-task-history-entry "channel-send") :task_details :retry_errors count))))
+            (is (= 1 (count @mt/inbox))))))))
   (testing "send email succeeds hiding SMTP host not set error"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-      (with-redefs [email/send-email!                      (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
+    (let [[hook state] (rt/retry-analytics-config-hook)]
+      (binding [retry/*test-time-config-hook* hook]
+        (with-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
+            (is (= {:success true, :retries 0} @state))
+            (is (= 0 (count @mt/inbox))))))))
   (testing "send email fails b/c retry limit"
-    (let [retry-config (assoc test-retry-configuration :max-attempts 1)
-          test-retry (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
+    (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
+      (binding [retry/*test-time-config-hook* hook]
+        (with-redefs [email/send-email! (tu/works-after 2 mt/fake-inbox-email-fn)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
+            (is (= {:success false, :retries 1} @state))
+            (is (= 0 (count @mt/inbox))))))))
   (testing "send email succeeds w/ retry"
-    (let [retry-config (assoc test-retry-configuration :max-attempts 2)
-          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 1 (count @mt/inbox))))))))
+    (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
+      (binding [retry/*test-time-config-hook* hook]
+        (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
+            (is (= {:success true, :retries 1} @state))
+            (is (= 1 (count @mt/inbox)))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
+  {:channel  "#test-channel"
+   :blocks [{:type "section", :text {:type "plain_text", :text ""}}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
     (testing "post slack message succeeds w/o retry"
-      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                      slack/post-chat-message!               (constantly nil)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
-    (testing "post slack message succeeds hiding token error"
-      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                      slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Slack API error: token_revoked"
-                                                                               {:error-type :slack/invalid-token})))]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfFailedCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
+      (let [[hook state] (rt/retry-analytics-config-hook)]
+        (binding [retry/*test-time-config-hook* hook]
+          (with-redefs [slack/post-chat-message! (constantly nil)]
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+            (is (= {:success true, :retries 0} @state))))))
+    (testing "post slack message succeeds hiding token error, doesn't retry"
+      (let [[hook state] (rt/retry-analytics-config-hook)]
+        (binding [retry/*test-time-config-hook* hook]
+          (with-redefs [slack/post-chat-message! (fn [& _]
+                                                   (throw (ex-info "Slack API error: token_revoked"
+                                                                   {:error-type :slack/invalid-token})))]
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+            (is (= {:success false, :retries 0} @state))))))
     (testing "post slack message fails b/c retry limit"
-      (let [retry-config (assoc test-retry-configuration :max-attempts 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                      retry/random-exponential-backoff-retry (constantly test-retry)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
+      (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
+        (binding [retry/*test-time-config-hook* hook]
+          (with-redefs [slack/post-chat-message! (tu/works-after 2 (constantly nil))]
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+            (is (= {:success false, :retries 1} @state))))))
     (testing "post slack message succeeds with retry"
-      (let [retry-config (assoc test-retry-configuration :max-attempts 2)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                      retry/random-exponential-backoff-retry (constantly test-retry)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))
+      (let [[hook state] (rt/retry-analytics-config-hook {:max-retries 1})]
+        (binding [retry/*test-time-config-hook* hook]
+          (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))]
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+            (is (= {:success true, :retries 1} @state))))))
     (testing "post slack message to missing channel fails without retry"
-      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
-        (with-redefs [slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Channel not found"
-                                                                               {:error-type :slack/channel-not-found}))
-                                                               nil)
-                      retry/random-exponential-backoff-retry (constantly test-retry)]
-          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
-          (is (= {:numberOfFailedCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry))))))))
+      (let [[hook state] (rt/retry-analytics-config-hook)]
+        (binding [retry/*test-time-config-hook* hook]
+          (with-redefs [slack/post-chat-message! (fn [& _]
+                                                   (throw (ex-info "Channel not found"
+                                                                   {:error-type :slack/channel-not-found}))
+                                                   nil)]
+            (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+            (is (= {:success false, :retries 0} @state))))))))
 
 (deftest send-channel-record-task-history-test
-  (with-redefs [notification.send/default-retry-config {:max-attempts            4
+  (with-redefs [notification.send/default-retry-config {:max-retries             4
                                                         :initial-interval-millis 1
                                                         :multiplier              2.0
-                                                        :randomization-factor    0.1
+                                                        :jitter-factor           0.1
                                                         :max-interval-millis     30000}]
     (mt/with-model-cleanup [:model/TaskHistory]
       (let [pulse-id             (rand-int 10000)
@@ -302,10 +299,10 @@
                                   :notification_type "notification/card"
                                   :channel_type "channel/slack"
                                   :channel_id   nil
-                                  :retry_config {:max-attempts            4
+                                  :retry_config {:max-retries             4
                                                  :initial-interval-millis 1
                                                  :multiplier              2.0
-                                                 :randomization-factor    0.1
+                                                 :jitter-factor           0.1
                                                  :max-interval-millis     30000}}
             send!                #(#'notification.send/channel-send-retrying! pulse-id :notification/card {:channel_type :channel/slack} fake-slack-notification)]
         (testing "channel send task history task details include retry config"
@@ -402,7 +399,7 @@
                    [{:channel_type notification.tu/test-channel-type
                      :channel_id   (:id chn)
                      :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
-            (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-attempts 1)
+            (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-retries 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
               (#'notification.send/send-notification-sync! n)
@@ -484,7 +481,7 @@
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
         (let [queue           (#'notification.send/create-dedup-priority-queue)
-              test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
+              test-dispatcher (:dispatch-fn (#'notification.send/create-notification-dispatcher 2 queue))]
           (testing "basic processing"
             (reset! sent-notifications [])
             (let [notification {:id 1 :test-value "A"}]
@@ -549,7 +546,7 @@
 
       (is (= [high-priority middle-priority low-priority]
              (for [_ (range 3)]
-               (#'notification.send/take-notification! queue)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-queue-preserves-deadline-on-replacement-test
   (testing "notifications with same ID are replaced in queue while preserving original deadline"
@@ -575,7 +572,7 @@
              ;; If deadline is preserved, high-priority should come first since it was added after notification-v1
              ;; If deadline was recalculated, notification-v2 would come first due to its minutely schedule
              (for [_ (range 2)]
-               (#'notification.send/take-notification! queue)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-dedup-priority-test
   (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -583,14 +580,14 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification! queue)))))
+               (take-notification! queue)))))
 
     (testing "multiple notifications are processed in order"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -599,11 +596,11 @@
         (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
 
         (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-               (#'notification.send/take-notification! queue)))
+               (take-notification! queue)))
         (is (= {:id 2 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification! queue)))
+               (take-notification! queue)))
         (is (= {:id 3 :payload_type :notification/testing :test-value "C"}
-               (#'notification.send/take-notification! queue)))))
+               (take-notification! queue)))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -611,7 +608,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification! queue))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take
@@ -633,6 +630,9 @@
           total-items            (* num-producers num-items-per-producer)
           received-items         (atom #{})
           producer-latch         (java.util.concurrent.CountDownLatch. 1)
+          ;; inter-consumer coordination:
+          consumer-countdown     (atom total-items)
+          ;; coordination with main test thread:
           consumer-latch         (java.util.concurrent.CountDownLatch. total-items)
           producer-fn            (fn [producer-id]
                                    (.await producer-latch)
@@ -642,14 +642,14 @@
                                        (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try
-                                     (while (pos? (.getCount consumer-latch))
-                                       (let [item (#'notification.send/take-notification! queue)]
+                                     (while (<= 0 (swap! consumer-countdown dec))
+                                       (let [item (take-notification! queue)]
                                          (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
                                        (log/errorf e "Consumer %s error:" consumer-id))))
-          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))
-          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))]
+          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))
+          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))]
 
       ; Start all producers simultaneously
       (.countDown producer-latch)
@@ -700,7 +700,7 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "multiple notifications are processed in order, no dedup"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
@@ -708,11 +708,11 @@
       (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "C"})
 
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification! queue)))
+             (take-notification! queue)))
       (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-             (#'notification.send/take-notification! queue)))
+             (take-notification! queue)))
       (is (= {:id 2 :payload_type :notification/testing :test-value "C"}
-             (#'notification.send/take-notification! queue))))
+             (take-notification! queue))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -720,7 +720,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification! queue))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take
@@ -732,3 +732,44 @@
         (.await take-latch)
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
+
+(deftest notification-dispatcher-graceful-shutdown-test
+  (testing "dispatcher gracefully processes all notifications in queue before shutting down"
+    (let [processed-notifications (atom [])
+          processing-latch        (java.util.concurrent.CountDownLatch. 1)
+          queue                   (#'notification.send/create-dedup-priority-queue)
+          dispatcher              (#'notification.send/create-notification-dispatcher 2 queue)
+          dispatch-fn             (:dispatch-fn dispatcher)
+          shutdown-fn             (:shutdown-fn dispatcher)]
+      (with-redefs [notification.send/send-notification-sync!
+                    (fn [notification]
+                      ;; Wait for the latch to be released before processing
+                      (.await processing-latch)
+                      (swap! processed-notifications conj notification))]
+
+        (testing "notifications are queued and processed during shutdown"
+          (dispatch-fn {:id 1 :payload_type :notification/testing :test-value "A"})
+          (dispatch-fn {:id 2 :payload_type :notification/testing :test-value "B"})
+          (dispatch-fn {:id 3 :payload_type :notification/testing :test-value "C"})
+          (dispatch-fn {:id 4 :payload_type :notification/testing :test-value "D"})
+
+          ;; why "at least 2"? because popping items off the queue is in another thread, it may not have happened yet.
+          (testing "there are at least 2 notifications waiting in the queue"
+            (is (<= 2 (notification.send/queue-size queue))))
+          (testing "sanity check that notifications were not processed"
+            (is (= 0 (count @processed-notifications))
+                "No notifications should be processed before latch is released"))
+
+          (let [shutdown-fut (future (shutdown-fn 1000))]
+            (.countDown processing-latch)
+            @shutdown-fut
+            (testing "all notifications were processed during shutdown"
+              (is (= 0 (notification.send/queue-size queue)))
+              (is (= 4 (count @processed-notifications)))
+              (is (= #{"A" "B" "C" "D"}
+                     (into #{} (map :test-value @processed-notifications)))))
+
+            (testing "shutdown dispatcher won't accept new items"
+              (is (= ::notification.send/shutdown
+                     (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
+              (is (= 0 (notification.send/queue-size queue))))))))))

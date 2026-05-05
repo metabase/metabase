@@ -16,9 +16,12 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
@@ -56,27 +59,12 @@
   (magic-group all-users-magic-group-type))
 
 (def all-external-users-magic-group-type
-  "The magic group type of the \"All External Users\" magic group."
+  "The magic group type of the \"All tenant users\" magic group."
   "all-external-users")
 
-#_(def ^{:arglists '([])} all-external-users
-    "Fetch the `all-external-users` magic group"
-    (mdb/memoize-for-application-db
-     (fn []
-     ;; Don't use `magic-group` here, because this one might not exist and that's ok.
-       (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type all-external-users-magic-group-type))))
-
-(defn create-all-external-users!
-  "Creates the \"All External Users\" magic group."
-  []
-  (t2/insert! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type
-                                       :name "All External Users"
-                                       :is_tenant_group true}))
-
-(defn delete-all-external-users!
-  "Deletes the \"All External Users\" magic group."
-  []
-  (t2/delete! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type}))
+(def ^{:arglists '([])} all-external-users
+  "Fetch the `All tenant users` permissions group"
+  (magic-group all-external-users-magic-group-type))
 
 (def admin-magic-group-type
   "The magic-group type of the \"Administrators\" magic group."
@@ -85,6 +73,14 @@
 (def ^{:arglists '([])} admin
   "Fetch the `Administrators` permissions group"
   (magic-group admin-magic-group-type))
+
+(def data-analyst-magic-group-type
+  "The magic-group type of the \"Data Analysts\" magic group."
+  "data-analyst")
+
+(def ^{:arglists '([])} data-analyst
+  "Fetch the `Data Analysts` permissions group"
+  (magic-group data-analyst-magic-group-type))
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
@@ -100,15 +96,22 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
+(def ^:dynamic ^:private *allow-modifying-magic-groups*
+  "Dynamic var that, when bound to true, allows modifying magic groups. Used by [[sync-data-analyst-group-for-oss!]]."
+  false)
+
 (defn- check-not-magic-group
   "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
   [{id :id}]
   {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (admin)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
+  (when-not *allow-modifying-magic-groups*
+    (doseq [magic-group [(all-users)
+                         (all-external-users)
+                         (admin)
+                         (data-analyst)]]
+      (when (= id (:id magic-group))
+        (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+                        {:status-code 400}))))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -119,9 +122,9 @@
 
 (defn- set-default-permission-values!
   [group]
-  (t2/with-transaction [_conn]
-    (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
+  (data-perms/with-global-permissions-lock
+    (let [db-ids (t2/select-pks-vec :model/Database :router_database_id nil)]
+      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]
@@ -190,3 +193,102 @@
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
   (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))
+
+(defn- group-id->num-members
+  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
+  groups.)"
+  []
+  (let [results (mdb/query
+                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
+    (zipmap
+     (map :group_id results)
+     (map :members results))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
+  "Efficiently add `:member_count` to PermissionGroups."
+  [_model _k groups]
+  (let [group-id->num-members (group-id->num-members)]
+    (for [group groups]
+      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
+
+;;; ------------------------------------------ OSS Data Analyst Group Handling ------------------------------------------
+
+(defn- unique-converted-group-name
+  "Generate a unique name for the converted Data Analysts group.
+  Returns \"Data Analysts (converted)\", or \"Data Analysts (converted) (2)\", etc."
+  [group-name]
+  (let [base-name (format "%s (converted)" group-name)
+        like-pattern (str base-name "%")
+        existing-names (t2/select-fn-set :name :model/PermissionsGroup
+                                         :name [:like like-pattern])]
+    (if-not (contains? existing-names base-name)
+      base-name
+      (loop [n 2]
+        (let [candidate (str base-name " (" n ")")]
+          (if-not (contains? existing-names candidate)
+            candidate
+            (recur (inc n))))))))
+
+(defn- grant-library-permissions!
+  "Grant write permissions on all library collections to a group."
+  [group-id]
+  (when-let [collection-ids (seq (t2/select-pks-set :model/Collection
+                                                    :type [:in ["library" "library-data" "library-metrics"]]))]
+    (t2/insert! :model/Permissions
+                (for [coll-id collection-ids]
+                  {:group_id group-id
+                   :object   (str "/collection/" coll-id "/")}))))
+
+(defn- do-sync-conversion!
+  "Convert the Data Analysts magic group (if it has members) to a normal visible group, and create a fresh empty
+  magic group in its place. This ensures that we don't have an invisible group that affects permissions on OSS."
+  []
+  (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
+    (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
+      (log/info "Converting Data Analysts group to normal group for OSS")
+      (binding [*allow-modifying-magic-groups* true]
+        (t2/with-transaction [_conn]
+          ;; Rename and demote the existing group to a normal visible group
+          (t2/update! :model/PermissionsGroup (:id existing-group)
+                      {:name             (unique-converted-group-name (:name existing-group))
+                       :magic_group_type nil})
+          ;; Create new empty magic group with default library permissions, reusing the old name
+          (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
+                                                                  {:name             (:name existing-group)
+                                                                   :magic_group_type data-analyst-magic-group-type})]
+            (grant-library-permissions! new-group-id))
+          (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))))))
+
+(def ^:private seconds-to-sleep-per-attempt 1)
+
+(defn sync-data-analyst-group-for-oss!
+  "On startup, convert the Data Analysts group to a normal visible group if this instance definitively lacks
+  the `:advanced-permissions` premium feature.
+
+  In OSS, we don't want the Data Analysts group to be invisible while still granting permissions — that's a hidden
+  backdoor. Instead, we convert any existing Data Analysts group (with members) to a normal group with a unique name
+  like 'Data Analysts (converted)' that admins can see and manage. We then create a fresh empty Data Analysts magic
+  group.
+
+  Uses [[premium-features/canonically-has-feature?]] to distinguish between 'definitively no feature' and 'token
+  check failed (indeterminate)'. If the token check is indeterminate, retries in a background thread until a
+  canonical response is received.
+
+  This is idempotent: if the magic group has no members, nothing happens."
+  []
+  (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
+    (case result
+      true  nil
+      false (do-sync-conversion!)
+      nil   (future
+              (loop [attempt 1]
+                (Thread/sleep (long (* 1000 (min (* attempt seconds-to-sleep-per-attempt) 60))))
+                (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
+                  (case result
+                    true  nil
+                    false (do-sync-conversion!)
+                    nil   (recur (inc attempt)))))))))

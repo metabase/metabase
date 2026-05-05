@@ -60,7 +60,7 @@
 ;; locally cached value is older than the one in the DB, we will flush our cache. When the cache is fetched again, it
 ;; will have the up-to-date value.
 ;;
-;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for caclulating
+;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for calculating
 ;; and comparing values of `settings-last-updated`. Because the Setting table itself only stores text values, we'll
 ;; need to cast it between TEXT and TIMESTAMP SQL types as needed.
 
@@ -92,6 +92,12 @@
   ;; changes
   (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
 
+(defn cache-last-updated-at
+  "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."
+  []
+  (let [current-cache (cache)]
+    (core/get current-cache settings-last-updated-key)))
+
 (defn- cache-out-of-date?
   "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
   conditions is true:
@@ -105,12 +111,12 @@
   (let [current-cache (cache)]
     (boolean
      (or
-        ;; is the cache empty?
+      ;; is the cache empty?
       (not current-cache)
-        ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-      (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
-          ;; compare it to the value in the DB. This is done be seeing whether a row exists
-          ;; WHERE value > <local-value>
+      ;; if not, get the cached value of `settings-last-updated`, and if it exists...
+      (when-let [last-known-update (cache-last-updated-at)]
+        ;; compare it to the value in the DB. This is done be seeing whether a row exists
+        ;; WHERE value > <local-value>
         (u/prog1 (t2/select-one-fn :value :model/Setting
                                    {:where [:and
                                             [:= :key settings-last-updated-key]

@@ -14,6 +14,13 @@
   (get *local-redefs* a-var
        (get (meta a-var) ::original)))
 
+(defn original-fn
+  "Return the original (unpatched) function for `a-var`. If the var has been
+   patched by [[with-dynamic-fn-redefs]], returns the stored original; otherwise
+   returns the var's current root value."
+  [a-var]
+  (or (::original (meta a-var)) @a-var))
+
 (defn- var->proxy
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call."
   [a-var]

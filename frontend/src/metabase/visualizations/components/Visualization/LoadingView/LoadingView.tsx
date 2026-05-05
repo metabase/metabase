@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
-import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
-import { duration } from "metabase/lib/formatting";
+import { duration } from "metabase/utils/formatting";
+import type { CardSlownessStatus } from "metabase/visualizations/types";
 
 import {
   Duration,
@@ -11,8 +11,8 @@ import {
   StyledLoadingSpinner,
 } from "./LoadingView.styled";
 
-interface LoadingViewProps {
-  isSlow: CardSlownessStatus;
+export interface LoadingViewProps {
+  isSlow: CardSlownessStatus | undefined;
   expectedDuration?: number;
 }
 

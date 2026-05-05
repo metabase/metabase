@@ -1,7 +1,6 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 
-import { useDefaultFilter } from "metabase/querying/filters/hooks/use-default-filter";
 import { Box, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -10,6 +9,8 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
+import { useDefaultFilter } from "./hooks";
+
 export function DefaultFilterPicker({
   query,
   stageIndex,
@@ -17,8 +18,10 @@ export function DefaultFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -69,6 +72,7 @@ export function DefaultFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
@@ -77,7 +81,7 @@ export function DefaultFilterPicker({
               <Radio
                 key={option.operator}
                 value={option.operator}
-                label={option.name}
+                label={option.displayName}
                 pb={6}
                 size="xs"
               />
@@ -88,6 +92,7 @@ export function DefaultFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </div>

@@ -1,8 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
@@ -17,14 +21,21 @@ export function FilterStep({
   updateQuery,
 }: NotebookStepProps) {
   const { stageIndex } = step;
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const filters = useMemo(
     () => Lib.filters(query, stageIndex),
     [query, stageIndex],
   );
 
-  const renderFilterName = (filter: Lib.FilterClause) =>
-    Lib.displayInfo(query, stageIndex, filter).longDisplayName;
+  const renderFilterName = useMemo(
+    () =>
+      _.memoize((filter: Lib.FilterClause) =>
+        getTranslatedFilterDisplayName(query, stageIndex, filter, tc, locale),
+      ),
+    [query, stageIndex, tc, locale],
+  );
 
   const handleAddFilter = (clause: Lib.Filterable) => {
     const nextQuery = Lib.filter(query, stageIndex, clause);
@@ -80,6 +91,7 @@ export function FilterStep({
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
             onClose={onClose}
+            readOnly={readOnly}
           />
         )}
         onReorder={handleReorderFilter}
@@ -100,6 +112,7 @@ interface FilterPopoverProps {
     nextFilter: Lib.Filterable,
   ) => void;
   onClose?: () => void;
+  readOnly?: boolean;
 }
 
 function FilterPopover({
@@ -110,6 +123,7 @@ function FilterPopover({
   onAddFilter,
   onUpdateFilter,
   onClose,
+  readOnly,
 }: FilterPopoverProps) {
   return (
     <FilterPicker
@@ -125,6 +139,7 @@ function FilterPopover({
         }
       }}
       onClose={onClose}
+      readOnly={readOnly}
     />
   );
 }

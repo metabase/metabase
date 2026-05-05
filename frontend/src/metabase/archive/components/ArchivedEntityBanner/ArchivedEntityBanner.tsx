@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import {
+  CollectionPickerModal,
+  type CollectionPickerValueItem,
+} from "metabase/common/components/Pickers/CollectionPicker";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import Styles from "./ArchivedEntityBanner.module.css";
@@ -51,7 +53,7 @@ export const ArchivedEntityBanner = ({
             >
               <Icon className={Styles.iconStyle} name="trash_filled" />
             </Box>
-            <Text color="text-white" size="md" lh="1rem">
+            <Text color="text-primary-inverse" size="md" lh="1rem">
               {c(
                 "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
               ).t`This ${entityType} is in the trash.`}
@@ -87,10 +89,10 @@ export const ArchivedEntityBanner = ({
           value={{ id: "root", model: "collection" }}
           onChange={(collection) => onMove?.(collection)}
           options={{
-            showSearch: true,
+            hasSearch: true,
             hasConfirmButtons: true,
-            showRootCollection: true,
-            showPersonalCollections: true,
+            hasRootCollection: true,
+            hasPersonalCollections: true,
             confirmButtonText: t`Move`,
           }}
           onClose={() => setModal(null)}

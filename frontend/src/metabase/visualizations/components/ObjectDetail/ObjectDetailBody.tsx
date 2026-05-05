@@ -1,59 +1,40 @@
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type {
-  DatasetData,
+  DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
 import { DetailsTable } from "./ObjectDetailsTable";
-import { Relationships } from "./ObjectRelationships";
 import type { OnVisualizationClickType } from "./types";
 
 export interface ObjectDetailBodyProps {
-  data: DatasetData;
-  objectName: string;
+  columns: DatasetColumn[];
   zoomedRow: RowValue[];
   settings: VisualizationSettings;
-  hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
-  tableForeignKeys?: ForeignKey[];
-  tableForeignKeyReferences?: {
-    [key: number]: { status: number; value: number };
-  };
-  followForeignKey?: (fk: ForeignKey) => void;
+  isDashboard: boolean;
 }
 
 export function ObjectDetailBody({
-  data,
-  objectName,
+  columns,
   zoomedRow,
   settings,
-  hasRelationships = false,
   onVisualizationClick,
   visualizationIsClickable,
-  tableForeignKeys,
-  tableForeignKeyReferences,
-  followForeignKey,
+  isDashboard,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
     <ObjectDetailBodyWrapper>
       <DetailsTable
-        data={data}
+        columns={columns}
         zoomedRow={zoomedRow}
         settings={settings}
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
+        isDashboard={isDashboard}
       />
-      {hasRelationships && (
-        <Relationships
-          objectName={objectName}
-          tableForeignKeys={tableForeignKeys}
-          tableForeignKeyReferences={tableForeignKeyReferences}
-          foreignKeyClicked={followForeignKey}
-        />
-      )}
     </ObjectDetailBodyWrapper>
   );
 }

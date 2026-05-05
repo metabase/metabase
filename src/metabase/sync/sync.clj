@@ -9,7 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
@@ -17,6 +17,7 @@
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
@@ -45,14 +46,16 @@
     [:metadata :analyze :field-values]))
 
 (defn- do-phase! [database phase]
-  (let [f      (phase->fn phase)
-        result (f database)]
-    (if (instance? Throwable result)
-      ;; do nothing if we're configured to just move on.
-      (when-not sync-util/*log-exceptions-and-continue?*
-        ;; but if we didn't expect any suppressed exceptions, rethrow it
-        (throw result))
-      (assoc result :name (name phase)))))
+  (tracing/with-span :sync (str "sync." (name phase)) {:db/id (:id database)
+                                                       :sync/phase (name phase)}
+    (let [f      (phase->fn phase)
+          result (f database)]
+      (if (instance? Throwable result)
+        ;; do nothing if we're configured to just move on.
+        (when-not sync-util/*log-exceptions-and-continue?*
+          ;; but if we didn't expect any suppressed exceptions, rethrow it
+          (throw result))
+        (assoc result :name (name phase))))))
 
 (mu/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
@@ -68,10 +71,11 @@
   ([database                         :- i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
-   (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (->> (scan-phases scan)
-          (keep (partial do-phase! database))
-          (doall)))))
+   (tracing/with-span :sync "sync.database" {:db/id (:id database)}
+     (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+       (->> (scan-phases scan)
+            (keep (partial do-phase! database))
+            (doall))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
@@ -91,9 +95,9 @@
         database (table/database table)]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
-    (if (binding [h2/*allow-testing-h2-connections* true]
+    (if (binding [driver.settings/*allow-testing-h2-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (sync.fingerprint/refingerprint-field field))
+        (sync.fingerprint/refingerprint-field! field))
       :sync/no-connection)))

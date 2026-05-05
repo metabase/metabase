@@ -1,0 +1,1 @@
+export { SnippetCollectionPermissionsModal } from "./SnippetCollectionPermissionsModal";

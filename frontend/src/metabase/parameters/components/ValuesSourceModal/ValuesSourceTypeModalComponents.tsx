@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
-} from "metabase/components/LoadingAndErrorWrapper";
-import TextArea, {
+} from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  TextArea,
   type TextAreaProps,
-} from "metabase/core/components/TextArea";
+} from "metabase/common/components/TextArea";
 import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./ValuesSourceTypeModal.module.css";

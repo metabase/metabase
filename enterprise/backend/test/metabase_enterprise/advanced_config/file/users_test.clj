@@ -28,7 +28,7 @@
         (is (partial= {:first_name       "Cam"
                        :last_name        "Era"
                        :email            "cam+config-file-test@metabase.com"
-                       :login_attributes {"a" 1}}
+                       :login_attributes {"a" "1"}}
                       (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                      :email "cam+config-file-test@metabase.com")))
         (is (= 1
@@ -51,7 +51,7 @@
             (is (partial= {:first_name       "Cam"
                            :last_name        "Saul"
                            :email            "cam+config-file-test@metabase.com"
-                           :login_attributes {"a" 1 "b" 2}}
+                           :login_attributes {"a" "1" "b" "2"}}
                           (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                          :email "cam+config-file-test@metabase.com")))
             (testing "Password should be hashed, but it should be a NEW HASH"
@@ -157,3 +157,21 @@
      :last_name  "Era"
      :email      "cam+config-file-test@metabase.com"}
     (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)"))))
+
+(deftest email-case-irrelevant-test
+  (testing "Using any case in email still works #62894"
+    (try
+      (binding [advanced-config.file/*config* {:version 1
+                                               :config  {:users [{:first_name       "Cam"
+                                                                  :last_name        "Era"
+                                                                  :email            "Cam+config-file-test@metabase.com"
+                                                                  :password         "2cans"
+                                                                  :login_attributes {"a" 1}}]}}]
+        (is (= :ok
+               (advanced-config.file/initialize!)))
+        (testing "It should not fail with 'duplicate'"
+          (is (= :ok
+                 (advanced-config.file/initialize!)))))
+      (finally
+        (t2/delete! :model/User :email "cam+config-file-test@metabase.com")
+        (t2/delete! :model/User :email "Cam+config-file-test@metabase.com")))))

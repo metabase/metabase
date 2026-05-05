@@ -33,7 +33,7 @@ function restrict(req, res, next) {
 // [<endsnippet restrict-helper>]
 
 // [<snippet sign-user-token-helper>]
-const signUserToken = user =>
+const signUserToken = (user) =>
   jwt.sign(
     {
       email: user.email,
@@ -47,7 +47,7 @@ const signUserToken = user =>
 
 const userGroupsExample = () => {
   // [<snippet user-groups-sign-user-token-helper>]
-  const signUserToken = user =>
+  const signUserToken = (user) =>
     jwt.sign(
       {
         email: user.email,
@@ -63,7 +63,7 @@ const userGroupsExample = () => {
 
 const userAttributeExample = () => {
   // [<snippet user-attribute-sign-user-token-helper>]
-  const signUserToken = user =>
+  const signUserToken = (user) =>
     jwt.sign(
       {
         email: user.email,

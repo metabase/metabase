@@ -128,7 +128,7 @@ describe("canListParameterValues", () => {
       values_source_type: "card",
       values_source_config: {
         card_id: 1,
-        value_field: ["field", noValuesField.id, null],
+        value_field: ["field", NO_VALUES_FIELD_ID, null],
       },
     });
 

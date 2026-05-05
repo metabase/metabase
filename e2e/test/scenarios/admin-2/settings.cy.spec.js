@@ -10,7 +10,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
-H.describeWithSnowplow("scenarios > admin > settings", () => {
+describe("scenarios > admin > settings", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -76,8 +76,8 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     // rather than aliasing it with .as()
     const emailInput = () =>
       cy
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        .contains("Email Address for Help Requests")
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        .contains(/Email Address for Help Requests/i)
         .parent()
         .parent()
         .find("input");
@@ -105,8 +105,8 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     cy.findByTestId("admin-layout-content").within(() => {
-      cy.contains("Site Url");
-      cy.contains("Redirect to HTTPS").should("not.exist");
+      cy.contains(/Site Url/i);
+      cy.contains(/Redirect to HTTPS/i).should("not.exist");
 
       // switch site url to use https
       cy.findByTestId("site-url-setting")
@@ -139,7 +139,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     H.popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("It looks like HTTPS is not properly configured");
   });
 
@@ -174,7 +174,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
-      .and("contain", "2025/2/11, 21:40");
+      .and("contain", "2028/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -189,7 +189,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
@@ -198,13 +198,18 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       semantic_type: "type/Currency",
     });
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.TOTAL,
+    });
 
-    cy.findByTestId("admin-layout-content").within(() => {
+    H.DataModel.FieldSection.get().within(() => {
       // Assert that this option now exists
-      cy.findByText("Where to display the unit of currency");
+      cy.findByText("Where to display the unit of currency")
+        .scrollIntoView()
+        .should("be.visible");
       cy.findByText("In every table cell").click();
     });
 
@@ -221,11 +226,13 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");
-    const timezoneSelect = cy.findByRole("textbox", { name: /timezone/i });
-    timezoneSelect.clear().type("Centr");
+    cy.findByRole("textbox", { name: /timezone/i })
+      .as("timezoneSelect")
+      .clear()
+      .type("Centr");
     cy.findByRole("listbox").findByText("US/Central").click();
     cy.wait("@reportTimezone");
-    timezoneSelect.should("have.value", "US/Central");
+    cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
@@ -252,51 +259,23 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
 
     cy.wait("@appSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("We're a little lost...").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site name/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site URL/i);
-  });
-
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site URL").should("not.exist");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Updates").should("not.exist");
-  });
-
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide the store link when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon").should("not.exist");
   });
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/notifications/slack");
+      cy.visit("/admin/settings/slack");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase on Slack");
-      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
-      cy.button("Save changes").click();
+      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(": invalid token");
+      cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
+      cy.button("Connect").click();
+      cy.findByRole("main").findByText(/invalid token/i);
     });
   });
 });
@@ -310,9 +289,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   it("should show the store link when running Metabase OSS", () => {
     cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon");
+    cy.findByLabelText("Navigation bar").findByLabelText("store icon");
   });
 });
 
@@ -320,150 +297,17 @@ describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
-  });
-
-  // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Enterprise").should("not.exist");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should hide the store link when running Metabase EE", () => {
-    cy.visit("/admin/settings/general");
+    cy.visit("/admin/settings/license");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon").should("not.exist");
+    cy.findByTestId("admin-layout-content")
+      .findByLabelText("store icon")
+      .should("not.exist");
   });
 });
-
-/**
- * Disabled and quarantined until we fix the caching issues, and especially:
- * https://github.com/metabase/metabase/issues/13262
- */
-describe.skip(
-  "scenarios > admin > settings > cache",
-  { tags: "@external" },
-  () => {
-    function enableCaching() {
-      cy.findByText("Disabled")
-        .parent()
-        .within(() => {
-          cy.findByRole("switch").click();
-        });
-
-      cy.findByText("Enabled");
-    }
-
-    function setCachingValue(field, value) {
-      cy.findByText(field).closest("li").find("input").type(value).blur();
-    }
-
-    function saveQuestion(name) {
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-
-      cy.findByText("Save").click();
-
-      cy.findByLabelText("Name").type(name);
-
-      H.modal().button("Save").click();
-
-      cy.findByText("Not now").click();
-
-      cy.wait("@saveQuestion");
-    }
-
-    function getCellText() {
-      // eslint-disable-next-line no-unsafe-element-filtering
-      return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
-    }
-
-    function refresh() {
-      cy.icon("refresh").first().click();
-      cy.wait("@cardQuery");
-    }
-
-    function refreshUntilCached(loop = 0) {
-      if (loop > 5) {
-        throw new Error("Caching mechanism seems to be broken.");
-      }
-
-      refresh();
-
-      getCellText().then((res) => {
-        cy.get("@tempResult").then((temp) => {
-          if (res === temp) {
-            cy.wrap(res).as("cachedResult");
-          } else {
-            cy.wrap(res).as("tempResult");
-
-            refreshUntilCached(++loop);
-          }
-        });
-      });
-    }
-    const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
-
-    beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-    });
-
-    describe("issue 18458", () => {
-      beforeEach(() => {
-        cy.visit("/admin/settings/caching");
-
-        enableCaching();
-
-        setCachingValue("Minimum Query Duration", "1");
-        setCachingValue("Cache Time-To-Live (TTL) multiplier", "2");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Saved");
-
-        // Run the query and save the question
-        H.startNewNativeQuestion();
-        H.NativeEditor.type(nativeQuery);
-        H.runNativeQuery();
-
-        getCellText().then((res) => {
-          cy.wrap(res).as("tempResult");
-        });
-
-        saveQuestion("18458");
-      });
-
-      it("should respect previously set cache duration (metabase#18458)", () => {
-        refreshUntilCached();
-
-        cy.get("@cachedResult").then((cachedValue) => {
-          /**
-           * 5s is longer than what we set the cache to last:
-           * Approx 2s for an Average Runtime x multiplier of 2.
-           *
-           * The cache should expire after 4s and we should see a new random result.
-           */
-          cy.wait(5000);
-
-          refresh();
-
-          getCellText().then((newValue) => {
-            expect(newValue).to.not.eq(cachedValue);
-          });
-        });
-      });
-    });
-  },
-);
 
 describe("Cloud settings section", () => {
   beforeEach(() => {
@@ -474,28 +318,22 @@ describe("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     // Setting to none will give us an instance where token-features.hosting is set to true
     // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
+    H.activateToken("pro-cloud");
 
-    H.setTokenFeatures("none");
-    cy.visit("/admin");
-    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Cloud Settings/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to the Metabase Store").should(
-      "have.attr",
-      "href",
-      "https://store.metabase.com/",
-    );
+    cy.visit("/admin/settings");
+    cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
+    cy.findByTestId("admin-layout-content")
+      .findByText("Go to the Metabase Store")
+      .should("have.attr", "href", "https://test-store.metabase.com/");
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
-    H.setTokenFeatures("all");
-    cy.visit("/admin");
+    H.activateToken("pro-self-hosted");
+    cy.visit("/admin/settings/cloud");
     cy.findAllByTestId("settings-sidebar-link")
       .filter(":contains(Cloud)")
       .should("have.descendants", ".Icon-gem")
       .click();
-    cy.location("pathname").should("contain", "/admin/settings/cloud");
 
     cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
       "exist",
@@ -505,136 +343,287 @@ describe("Cloud settings section", () => {
 });
 
 describe("scenarios > admin > settings > email settings", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to save and clear email settings", () => {
-    // first time SMTP setup should redirect user to SMTP connection form
-    // at "/admin/settings/email/smtp"
-    cy.visit("/admin/settings/email");
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email/smtp",
-    );
-
-    // SMTP connection setup
-    cy.findByLabelText("SMTP Host").type("localhost").blur();
-    cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
-    cy.findByLabelText("SMTP Username").type("admin").blur();
-    cy.findByLabelText("SMTP Password").type("admin").blur();
-
-    // SMTP settings need to manually be saved
-    cy.intercept("PUT", "api/email").as("smtpSaved");
-    H.main().within(() => {
-      cy.findByText("Save changes").click();
+  describe("self-hosted instance", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "api/email").as("smtpSaved");
+      H.restore();
+      cy.signInAsAdmin();
+      H.resetSnowplow();
+      H.enableTracking();
     });
-    cy.wait("@smtpSaved");
 
-    // after first time setup, user is redirected top-level page
-    // which contains additional email settings
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
-    cy.findByTestId("smtp-connection-card").should("exist");
-    // Non SMTP-settings should save automatically
-    cy.findByLabelText("From Address")
-      .clear()
-      .type("mailer@metabase.test")
-      .blur();
+    it("should be able to save and clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .button("Configure")
+        .click();
 
-    cy.findByLabelText("From Name").type("Sender Name").blur();
-    cy.findByLabelText("Reply-To Address")
-      .type("reply-to@metabase.test")
-      .blur();
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_clicked",
+        event_detail: "self-hosted",
+      });
 
-    // Refresh page to confirm changes persist
-    cy.reload();
+      H.modal().within(() => {
+        // SMTP connection setup
+        cy.findByLabelText(/SMTP Host/i)
+          .type("localhost")
+          .blur();
+        cy.findByLabelText(/SMTP Port/i)
+          .type(SMTP_PORT)
+          .blur();
+        cy.findByLabelText(/SMTP Username/i)
+          .type("admin")
+          .blur();
+        cy.findByLabelText(/SMTP Password/i)
+          .type("admin")
+          .blur();
+        cy.button("Save changes").click();
+      });
 
-    // validate that there is no-redirect after initial setup
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
+      cy.wait("@smtpSaved");
 
-    // validate additional settings
-    cy.findByDisplayValue("mailer@metabase.test");
-    cy.findByDisplayValue("Sender Name");
-    cy.findByDisplayValue("reply-to@metabase.test");
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_success",
+        event_detail: "self-hosted",
+      });
 
-    // validate SMTP connection settings
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit Configuration")
-      .click();
-    cy.findByDisplayValue("localhost");
-    cy.findByDisplayValue(SMTP_PORT);
-    cy.findAllByDisplayValue("admin");
+      // should show as active now
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Active")
+        .should("be.visible");
 
-    // breadcrumbs should now show up since it is not a first time configuration
-    // and should back navigate to top-level email settings
-    cy.findByTestId("breadcrumbs").findByText("Email").click();
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
+      // button should be different
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .button("Edit configuration")
+        .should("be.visible");
 
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit Configuration")
-      .click();
+      // Non SMTP-settings should save automatically
+      cy.findByLabelText("From Address")
+        .clear()
+        .type("mailer@metabase.test")
+        .blur();
 
-    // should not offer to save email changes when there aren't any (metabase#14749)
-    cy.button("Save changes").should("be.disabled");
+      cy.findByLabelText("From Name").type("Sender Name").blur();
+      cy.findByLabelText("Reply-To Address")
+        .type("reply-to@metabase.test")
+        .blur();
 
-    // should be able to clear email settings
-    H.main().findByText("Clear").click();
+      // Refresh page to confirm changes persist
+      cy.reload();
 
-    cy.reload();
+      // validate additional settings
+      cy.findByDisplayValue("mailer@metabase.test");
+      cy.findByDisplayValue("Sender Name");
+      cy.findByDisplayValue("reply-to@metabase.test");
 
-    cy.findByLabelText("SMTP Host").should("have.value", "");
-    cy.findByLabelText("SMTP Port").should("have.value", "");
-    cy.findByLabelText("SMTP Username").should("have.value", "");
-    cy.findByLabelText("SMTP Password").should("have.value", "");
-    cy.findByTestId("breadcrumbs").should("not.exist");
-  });
+      // validate SMTP connection settings
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Edit configuration")
+        .click();
+      cy.findByDisplayValue("localhost");
+      cy.findByDisplayValue(SMTP_PORT);
+      cy.findAllByDisplayValue("admin");
 
-  it("should show an error if test email fails", () => {
-    // Reuse Email setup without relying on the previous test
-    cy.request("PUT", "/api/setting", {
-      "email-from-address": "admin@metabase.test",
-      "email-from-name": "Metabase Admin",
-      "email-reply-to": ["reply-to@metabase.test"],
-      "email-smtp-host": "localhost",
-      "email-smtp-password": null,
-      "email-smtp-port": "1234",
-      "email-smtp-security": "none",
-      "email-smtp-username": null,
+      // should not offer to save email changes when there aren't any (metabase#14749)
+      cy.button("Save changes").should("be.disabled");
+
+      // should be able to clear email settings
+      H.modal().button("Clear").click();
+
+      cy.reload();
+
+      cy.findByTestId("self-hosted-smtp-connection-card")
+        .findByText("Configure")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("SMTP Host").should("have.value", "");
+        cy.findByLabelText("SMTP Port").should("have.value", "");
+        cy.findByLabelText("SMTP Username").should("have.value", "");
+        cy.findByLabelText("SMTP Password").should("have.value", "");
+      });
+
+      H.expectNoBadSnowplowEvents();
     });
-    cy.visit("/admin/settings/email/smtp");
-    H.main().findByText("Send test email").click();
-    cy.findAllByText(
-      "Couldn't connect to host, port: localhost, 1234; timeout -1",
+
+    it("should show an error if test email fails", () => {
+      // Reuse Email setup without relying on the previous test
+      cy.request("PUT", "/api/setting", {
+        "email-from-address": "admin@metabase.test",
+        "email-from-name": "Metabase Admin",
+        "email-reply-to": ["reply-to@metabase.test"],
+        "email-smtp-host": "localhost",
+        "email-smtp-password": null,
+        "email-smtp-port": "1234",
+        "email-smtp-security": "none",
+        "email-smtp-username": null,
+      });
+      cy.visit("/admin/settings/email");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.button("Send test email").click();
+        cy.findByText(
+          "Couldn't connect to host, port: localhost, 1234; timeout -1",
+        );
+      });
+    });
+
+    it(
+      "should send a test email for a valid SMTP configuration",
+      { tags: "@external" },
+      () => {
+        H.setupSMTP();
+        cy.visit("/admin/settings/email");
+        cy.button("Send test email").click();
+        H.undoToast().findByText("Email sent!").should("be.visible");
+        cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
+          ({ body }) => {
+            const emailBody = body[0].text;
+            expect(emailBody).to.include("Your Metabase emails are working");
+          },
+        );
+      },
     );
   });
 
-  it(
-    "should send a test email for a valid SMTP configuration",
-    { tags: "@external" },
-    () => {
-      H.setupSMTP();
-      cy.visit("/admin/settings/email/smtp");
-      H.main().findByText("Send test email").click();
-      H.main().findByText("Sent!");
+  describe("starter instance", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          // in an actual cloud starter instance this gets configured via env vars
+          res.body["email-configured?"] = true;
+          return res.body;
+        });
+      });
 
-      cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
-        ({ body }) => {
-          const emailBody = body[0].text;
-          expect(emailBody).to.include("Your Metabase emails are working");
-        },
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+    });
+
+    it("should not allow custom SMTP configuration", () => {
+      cy.visit("/admin/settings/email");
+
+      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
+      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
+      cy.button("Send test email").should("not.exist");
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Whitelabel email notifications").should("be.visible");
+        cy.findByLabelText("From Address").should("be.disabled");
+        cy.findByText(
+          "Please set up a custom SMTP server to change this (Pro only)",
+        ).should("be.visible");
+      });
+    });
+  });
+
+  describe("Pro-cloud instance", () => {
+    beforeEach(() => {
+      cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          // in an actual pro-cloud instance this gets configured via env vars
+          res.body["email-configured?"] = true;
+          return res.body;
+        });
+      });
+      cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    it("should be able to save and clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
+      cy.findByTestId("cloud-smtp-connection-card")
+        .button("Set up a custom SMTP server")
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_clicked",
+        event_detail: "cloud",
+      });
+
+      H.modal().within(() => {
+        cy.findByLabelText(/SMTP Host/i)
+          .type("localhost")
+          .blur();
+        cy.findByText(/465/i).click();
+        cy.findByText(/SSL/i).click();
+        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
+        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
+        cy.findByLabelText(/SMTP Username/i)
+          .type("admin")
+          .blur();
+        cy.findByLabelText(/SMTP Password/i)
+          .type("admin")
+          .blur();
+        cy.button("Save changes").click();
+      });
+
+      cy.wait("@smtpSaved");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "custom_smtp_setup_success",
+        event_detail: "cloud",
+      });
+
+      cy.findByTestId("cloud-smtp-connection-card").within(() => {
+        // Button text should change
+        cy.button("Edit settings");
+        // Custom server should be auto-enabled
+        cy.findByLabelText("Custom SMTP Server").should("be.checked");
+      });
+
+      cy.findByLabelText("From Address")
+        .clear()
+        .type("mailer@metabase.test")
+        .blur();
+
+      cy.findByLabelText("From Name").type("Sender Name").blur();
+      cy.findByLabelText("Reply-To Address")
+        .type("reply-to@metabase.test")
+        .blur();
+
+      // Refresh page to confirm changes persist
+      cy.reload();
+
+      // validate additional settings
+      cy.findByDisplayValue("mailer@metabase.test");
+      cy.findByDisplayValue("Sender Name");
+      cy.findByDisplayValue("reply-to@metabase.test");
+
+      // validate SMTP connection settings
+      cy.findByTestId("cloud-smtp-connection-card")
+        .findByText("Edit settings")
+        .click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("localhost");
+        cy.findAllByDisplayValue("admin");
+        cy.button("Save changes").should("be.disabled");
+
+        cy.button("Clear").click();
+        cy.wait("@smtpCleared");
+        cy.findByLabelText("SMTP Host").should("have.value", "");
+        cy.findByDisplayValue(/465/i).should("have.attr", "checked");
+        cy.findByDisplayValue(/SSL/i).should("have.attr", "checked");
+        cy.findByLabelText("SMTP Username").should("have.value", "");
+        cy.findByLabelText("SMTP Password").should("have.value", "");
+        cy.findByRole("button", { name: "Close" }).click();
+      });
+
+      // Button text should revert back
+      cy.findByTestId("cloud-smtp-connection-card").findByText(
+        "Set up a custom SMTP server",
       );
-    },
-  );
+
+      H.expectNoBadSnowplowEvents();
+    });
+  });
 });
 
 describe("scenarios > admin > license and billing", () => {
@@ -665,51 +654,8 @@ describe("scenarios > admin > license and billing", () => {
         .should("have.prop", "tagName", "A");
     });
 
-    it("should show the user store info for an self-hosted instance managed by the store", () => {
-      H.setTokenFeatures("all");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-      ]);
-
-      const harborMasterConnectedAccount = {
-        email: "ci-admins@metabase.com",
-        first_name: "CI",
-        last_name: "Admins",
-        password: "test-password-123",
-      };
-
-      // create an admin user who is also connected to our test harbormaster account
-      cy.request("GET", "/api/permissions/group")
-        .then(({ body: groups }) => {
-          const adminGroup = groups.find((g) => g.name === "Administrators");
-          return cy
-            .createUserFromRawData(harborMasterConnectedAccount)
-            .then((user) => Promise.resolve([adminGroup.id, user]));
-        })
-        .then(([adminGroupId, user]) => {
-          const data = { user_id: user.id, group_id: adminGroupId };
-          return cy
-            .request("POST", "/api/permissions/membership", data)
-            .then(() => Promise.resolve(user));
-        })
-        .then((user) => {
-          cy.signOut(); // stop being normal admin user and be store connected admin user
-          return cy.request("POST", "/api/session", {
-            username: user.email,
-            password: harborMasterConnectedAccount.password,
-          });
-        })
-        .then(() => {
-          // core test
-          cy.visit("/admin/settings/license");
-          cy.findByTestId("billing-info-key-plan").should("exist");
-          cy.findByTestId("license-input").should("exist");
-        });
-    });
-
     it("should not show license input for cloud-hosted instances", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -720,7 +666,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should render an error if something fails when fetching billing info", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -750,32 +696,27 @@ describe("scenarios > admin > localization", () => {
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2022
+    // filter: created before June 1st, 2025
     // summarize: Count by CreatedAt: Week
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createQuestion({
-      name: "Orders created before June 1st 2022",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2025",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+        },
+        display: "bar",
       },
-      display: "line",
-    });
-
-    // find and open that question
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2022").click();
-
-    cy.wait("@cardQuery");
+      { visitQuestion: true },
+    );
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    H.echartsContainer().get("text").contains("April 25, 2022");
+    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
+    H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -803,7 +744,7 @@ describe("scenarios > admin > localization", () => {
     });
 
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13604").click();
 
     cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
@@ -858,27 +799,13 @@ describe("scenarios > admin > localization", () => {
     });
   });
 
-  it("should not display excessive options in localization tab (metabase#14426)", () => {
-    cy.visit("/admin/settings/localization");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Instance language/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Report timezone/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/First day of the week/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Localization options/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/Column title/i).should("not.exist");
-  });
-
   it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
     cy.visit("/admin/settings/localization");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
     cy.findByDisplayValue("US Dollar").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
 
@@ -901,7 +828,7 @@ describe("scenarios > admin > localization", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€10.00");
   });
 
@@ -946,7 +873,7 @@ describe("scenarios > admin > localization", () => {
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget
-      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
+      cy.findByLabelText("Date").clear().type("2027/5/15").blur();
 
       // add a time to the date
       cy.findByText("Add time").click();
@@ -962,7 +889,7 @@ describe("scenarios > admin > localization", () => {
 
     // verify that the correct row is displayed
     H.tableInteractive().within(() => {
-      cy.findByText("2024/5/15, 19:56");
+      cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
   });
@@ -971,13 +898,13 @@ describe("scenarios > admin > localization", () => {
 describe("scenarios > admin > settings > map settings", () => {
   beforeEach(() => {
     H.restore();
+    cy.intercept("GET", "/api/geojson*").as("getGeoJson");
     cy.signInAsAdmin();
   });
 
   it("should be able to load and save a custom map", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
+    cy.button("Add a map").click();
     cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
       "Test Map",
     );
@@ -986,33 +913,30 @@ describe("scenarios > admin > settings > map settings", () => {
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    cy.wait(2000).findAllByText("Select…").first().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("NAME").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("Select…").last().click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("NAME").last().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add map").click();
-    cy.wait(3000).findByText("NAME").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Test Map");
+    cy.button("Load").click();
+    cy.wait("@getGeoJson");
+    cy.findByTestId("map-region-key-select").click();
+    H.popover().contains("NAME").click();
+    cy.findByTestId("map-region-name-select").click();
+    H.popover().contains("NAME").click();
+    cy.button("Add map").click();
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("NAME").should("not.exist");
+      cy.contains("Test Map");
+    });
   });
 
   it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
     cy.intercept("GET", "/api/geojson*").as("load");
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     cy.wait("@load").then((interception) => {
       expect(interception.response.statusCode).to.eq(200);
@@ -1021,32 +945,32 @@ describe("scenarios > admin > settings > map settings", () => {
 
   it("should show an informative error when adding an invalid URL", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type("bad-url");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. " +
+      "Invalid GeoJSON file location: must start with http:// or https://. " +
         "URLs referring to hosts that supply internal hosting metadata are prohibited.",
     );
   });
 
   it("should show an informative error when adding a valid URL that does not contain GeoJSON, or is missing required fields", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a map").click();
 
     // Not GeoJSON
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type("https://metabase.com");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("GeoJSON URL returned invalid content-type");
 
     // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
@@ -1055,9 +979,9 @@ describe("scenarios > admin > settings > map settings", () => {
       .type(
         "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
       );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Invalid custom GeoJSON: does not contain features");
   });
 
@@ -1159,7 +1083,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     AUTH_METHODS.forEach((auth) => {
       it(`${auth.display} Auth`, () => {
-        cy.visit("/admin/settings/notifications");
+        cy.visit("/admin/settings/webhooks");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
         H.modal().within(() => {
@@ -1188,7 +1112,7 @@ describe("notifications", { tags: "@external" }, () => {
   });
 
   it("Should allow you to create and edit Notifications", () => {
-    cy.visit("/admin/settings/notifications");
+    cy.visit("/admin/settings/webhooks");
 
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 
@@ -1245,26 +1169,26 @@ describe("admin > settings > updates", () => {
   // we're mocking this so it can be stable for tests
   const versionInfo = {
     latest: {
-      version: "v1.86.76",
+      version: "v1.56.4",
       released: "2022-10-14",
       rollout: 60,
       highlights: ["New latest feature", "Another new feature"],
     },
     beta: {
-      version: "v1.86.75.309",
+      version: "v1.56.75.3",
       released: "2022-10-15",
       rollout: 70,
       highlights: ["New beta feature", "Another new feature"],
     },
     nightly: {
-      version: "v1.86.75.311",
+      version: "v1.56.75.2",
       released: "2022-10-16",
       rollout: 80,
       highlights: ["New nightly feature", "Another new feature"],
     },
     older: [
       {
-        version: "v1.86.75",
+        version: "v1.56.1",
         released: "2022-10-10",
         rollout: 100,
         highlights: ["Some old feature", "Another old feature"],
@@ -1272,12 +1196,11 @@ describe("admin > settings > updates", () => {
     ],
   };
 
-  const currentVersion = "v1.86.70";
+  const currentVersion = "v1.55.2";
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.visit("/admin/settings/updates");
 
     cy.intercept("GET", "/api/session/properties", (req) => {
       req.continue((res) => {
@@ -1289,59 +1212,74 @@ describe("admin > settings > updates", () => {
     cy.intercept("GET", "/api/setting/version-info", (req) => {
       req.reply(versionInfo);
     });
+
+    cy.visit("/admin/settings/updates");
   });
+
+  const assertIframeLoaded = (testId) => {
+    cy.findByTestId(testId).should("be.visible");
+    cy.findByTestId(testId).should(($iframe) => {
+      const body = $iframe.contents().find("body");
+      expect(body).to.exist;
+    });
+  };
 
   it("should show the updates page", () => {
     cy.findByTestId("check-for-updates-setting")
       .findByText("Check for updates")
       .should("be.visible");
 
-    cy.findByTestId("update-channel-setting")
-      .findByText("Types of releases to check for")
-      .should("be.visible");
-
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
-      cy.findByText("Some old feature").should("be.visible");
-    });
+      cy.findByText(
+        "Metabase 1.56.4 is available. You're running 1.55.2.",
+      ).should("be.visible");
 
-    cy.log("hide most things if updates are turned off");
+      cy.findByText("Changelog").should("be.visible").click();
+      assertIframeLoaded("changelog-iframe");
 
-    cy.findByTestId("check-for-updates-setting")
-      .findByText("Check for updates")
-      .click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Types of releases to check for").should("not.exist");
-      cy.findByText("Some old feature").should("not.exist");
+      cy.findByText("What's new").should("be.visible").click();
+      assertIframeLoaded("releases-iframe");
     });
   });
+});
 
-  it("should change release notes based on the selected update channel", () => {
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
-      cy.findByText("Some old feature").should("be.visible");
-      cy.findByText("New latest feature").should("be.visible");
-      cy.findByDisplayValue("Stable releases").click();
-    });
+describe("admin > settings > nav", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings");
+  });
 
-    H.popover().findByText("Beta releases").click();
+  it("should navigate properly", () => {
+    // sadly we can't test this in unit tests with the current state of react-router and redux 😭
+    cy.log("clicking sidebar nav links should navigate there");
 
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New beta feature").should("be.visible");
-      cy.findByDisplayValue("Beta releases").click();
-    });
+    cy.url().should("include", "/admin/settings/general");
+    cy.findByTestId("admin-layout-sidebar").findByText(/email/i).click();
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
 
-    H.popover().findByText("Nightly builds").click();
+    cy.log(
+      "clicking folders should expand and collapse them, but not navigate",
+    );
 
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New nightly feature").should("be.visible");
-    });
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("not.be.visible");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/authentication/i)
+      .click();
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("be.visible");
+    // still on email page
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
+    // navigate to sub-item
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .click();
+    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });

@@ -7,27 +7,31 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Toaster from "metabase/components/Toaster";
+import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Toaster } from "metabase/common/components/Toaster";
+import { useSetCollection } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import Bookmarks from "metabase/entities/bookmarks";
-import Questions from "metabase/entities/questions";
-import { connect } from "metabase/lib/redux";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Questions } from "metabase/entities/questions";
 import {
   rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
+import { connect, useDispatch } from "metabase/redux";
+import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import ViewSidebar from "../../ViewSidebar";
+import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
 import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
@@ -36,7 +40,24 @@ import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
 
-const ViewInner = forwardRef(function _ViewInner(props, ref) {
+const ViewInner = forwardRef(function ViewInnerImpl(propsIn, ref) {
+  const dispatch = useDispatch();
+  const setCollection = useSetCollection();
+  const props = {
+    ...propsIn,
+    onMove: async (question, newCollection) => {
+      const updated = await setCollection(
+        {
+          model: getEntityTypeFromCardType(question.type()),
+          id: question.id(),
+        },
+        newCollection,
+        { notify: false },
+      );
+      // keep the QB in sync with where the question now lives
+      dispatch({ type: API_UPDATE_QUESTION, payload: updated });
+    },
+  };
   const {
     question,
     result,
@@ -275,18 +296,18 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: async (question) => {
+    await dispatch(
+      Questions.actions.update({ id: question.id() }, { archived: false }),
+    );
     await dispatch(setArchivedQuestion(question, false));
     await dispatch(Bookmarks.actions.invalidateLists());
   },
-  onMove: (question, newCollection) =>
-    dispatch(
-      Questions.actions.setCollection({ id: question.id() }, newCollection, {
-        notify: { undo: false },
-      }),
-    ),
   onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
+  },
+  runQuery: () => {
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   },
 });
 

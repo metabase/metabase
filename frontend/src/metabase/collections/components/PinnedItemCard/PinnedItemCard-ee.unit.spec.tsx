@@ -1,15 +1,15 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import PinnedItemCard from "./PinnedItemCard";
 
@@ -35,7 +35,8 @@ function setup({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("content_verification");
+  setupEnterpriseOnlyPlugin("moderation");
 
   return renderWithProviders(
     <Route

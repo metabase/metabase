@@ -4,11 +4,11 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers/api";
-import type { CardId } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
-} from "metabase-types/store/visualizer";
+} from "metabase/redux/store/visualizer";
+import type { CardId } from "metabase-types/api";
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -207,6 +207,20 @@ export const ACCOUNTS_COUNT_BY_COUNTRY: StructuredQuestionDetailsWithName = {
   },
   visualization_settings: {
     "graph.dimensions": ["COUNTRY"],
+    "graph.metrics": ["count"],
+  },
+};
+
+export const ACCOUNTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
+  display: "bar",
+  name: "Accounts by Created At (Month)",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ACCOUNTS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT"],
     "graph.metrics": ["count"],
   },
 };

@@ -1,5 +1,6 @@
 (ns metabase.channel.template.handlebars
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]
    [metabase.config.core :as config]
@@ -7,8 +8,9 @@
    [metabase.util.log :as log])
   (:import
    (com.github.jknack.handlebars
-    Handlebars Template)
+    Handlebars Template Context)
    (com.github.jknack.handlebars.cache ConcurrentMapTemplateCache)
+   (com.github.jknack.handlebars.context MapValueResolver)
    (com.github.jknack.handlebars.io
     ClassPathTemplateLoader)))
 
@@ -34,6 +36,14 @@
       (u/qualified-name %)
       %) context))
 
+(defn- build-context
+  [context]
+  (-> context
+      wrap-context
+      (Context/newBuilder)
+      (.resolver (into-array [(MapValueResolver/INSTANCE)]))
+      (.build)))
+
 (def ^:private default-hbs
   (delay (u/prog1 (registry (classpath-loader "/" "") :reload? true)
            (handlebars-helper/register-helpers <> handlebars-helper/default-helpers))))
@@ -47,13 +57,34 @@
                  (catch Exception e
                    (log/warn e "Error reloading default helpers"))))))
 
+(def ^:private allowed-template-prefixes
+  "Set of allowed directory prefixes for template paths."
+  #{"metabase/channel/email/"
+    "notification/channel_template/"})
+
+(defn valid-template-path?
+  "Returns true if the template path is safe: ends with .hbs, does not contain ..,
+  and starts with one of the allowed prefixes."
+  [^String path]
+  (boolean
+   (and (str/ends-with? path ".hbs")
+        (not (str/includes? path ".."))
+        (some #(str/starts-with? path %) allowed-template-prefixes))))
+
+(defn- validate-template-path!
+  "Validate that a template path is safe, throw if not."
+  [^String path]
+  (when-not (valid-template-path? path)
+    (throw (ex-info "invalid template path" {:path path}))))
+
 (defn render
   "Render a template with a context."
   ([template-name context]
    (render @default-hbs template-name context))
   ([^Handlebars req ^String template-name ctx]
+   (validate-template-path! template-name)
    (let [template ^Template (.compile req template-name)]
-     (.apply template (wrap-context ctx)))))
+     (.apply template (build-context ctx)))))
 
 (defn render-string
   "Render a template string with a context."
@@ -61,7 +92,7 @@
    (render-string @default-hbs template context))
   ([^Handlebars req ^String template ctx]
    (.apply ^Template (.compileInline req template)
-           (wrap-context ctx))))
+           (build-context ctx))))
 
 (comment
   (render-string "{{now}}" {})
@@ -69,4 +100,4 @@
   (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
   (render-string "Hello {{name}}" {:name "Ngoc"})
   (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
-  (render "/metabase/channel/email/_header.hbs" {}))
+  (render "metabase/channel/email/_header.hbs" {}))

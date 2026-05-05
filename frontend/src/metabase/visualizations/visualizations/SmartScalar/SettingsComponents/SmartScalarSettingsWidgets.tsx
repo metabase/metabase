@@ -13,7 +13,7 @@ import { useCallback } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import { Stack } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -31,7 +31,7 @@ import {
   ComparisonList,
 } from "./SmartScalarSettingsWidgets.styled";
 
-type SmartScalarComparisonWidgetProps = {
+export type SmartScalarComparisonWidgetProps = {
   onChange: (setting: SmartScalarComparison[]) => void;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];

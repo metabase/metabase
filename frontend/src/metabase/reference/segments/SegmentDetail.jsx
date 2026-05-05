@@ -4,24 +4,27 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/common/components/Link";
+import { List } from "metabase/common/components/List";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
-import EditHeader from "metabase/reference/components/EditHeader";
+import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/selectors/metadata";
 
 import S from "../components/Detail.module.css";
 import {
   getError,
-  getFields,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -160,7 +163,7 @@ const SegmentDetail = (props) => {
         entity={entity}
         table={table}
         type="segment"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
         headerLink={getQuestionUrl({
           dbId: table && table.db_id,
           tableId: entity.table_id,
@@ -282,4 +285,5 @@ const SegmentDetail = (props) => {
 
 SegmentDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentDetail);

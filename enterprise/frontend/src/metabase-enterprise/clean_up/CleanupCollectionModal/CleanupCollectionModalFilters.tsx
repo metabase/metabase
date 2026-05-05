@@ -34,7 +34,9 @@ export const CleanupCollectionModalFilters = ({
           data={dateFilterOptions}
           value={dateFilter}
           onChange={(option) => {
-            option && isDateFilter(option) && onDateFilterChange(option);
+            if (option && isDateFilter(option)) {
+              onDateFilterChange(option);
+            }
           }}
           mx=".5rem"
           data-testid="cleanup-date-filter"

@@ -55,7 +55,6 @@
      help-link-custom-destination
      instance-creation
      is-hosted?
-     is-metabot-enabled
      jdbc-data-warehouse-max-connection-pool-size
      jdbc-data-warehouse-unreturned-connection-timeout-seconds
      jwt-attribute-email
@@ -97,7 +96,6 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
-     notebook-native-preview-shown
      notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices
@@ -119,10 +117,10 @@
      reset-token-ttl-hours
      retired-setting
      retry-initial-interval
-     retry-max-attempts
+     retry-max-retries
      retry-max-interval-millis
      retry-multiplier
-     retry-randomization-factor
+     retry-jitter-factor
      saml-application-name
      saml-attribute-email
      saml-attribute-firstname
@@ -139,6 +137,7 @@
      saml-keystore-password
      saml-keystore-path
      saml-user-provisioning-enabled?
+     sdk-iframe-embed-setup-settings
      send-email-on-first-login-from-new-device
      send-new-sso-user-admin-email?
      session-cookie-samesite

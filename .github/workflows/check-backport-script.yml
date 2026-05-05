@@ -3,10 +3,11 @@ name: Prevent backport.sh from being merged
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  merge_group:
 
 jobs:
   check-backport-script:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

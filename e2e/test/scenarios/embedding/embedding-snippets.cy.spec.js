@@ -6,7 +6,7 @@ import {
 
 import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
-const features = ["none", "all"];
+const tokens = ["starter", "pro-self-hosted"];
 
 function codeBlock() {
   return cy.get(".cm-content");
@@ -16,18 +16,23 @@ function highlightedTexts() {
   return cy.findAllByTestId("highlighted-text");
 }
 
-features.forEach((feature) => {
-  describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
+tokens.forEach((token) => {
+  describe(`[plans=${token}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures(feature);
+      H.activateToken(token);
     });
 
     it("dashboard should have the correct embed snippet", () => {
-      const defaultDownloadsValue = feature === "all" ? true : undefined;
+      const defaultDownloadsValue =
+        token === "pro-self-hosted" ? true : undefined;
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: ORDERS_DASHBOARD_ID,
+        acceptTerms: false,
+      });
 
       H.modal().within(() => {
         cy.findByText(
@@ -61,7 +66,7 @@ features.forEach((feature) => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()
@@ -79,7 +84,7 @@ features.forEach((feature) => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
-        cy.findByText("Dashboard background").click();
+        cy.findByLabelText("Dashboard background").click();
         codeBlock()
           .first()
           .invoke("text")
@@ -93,10 +98,10 @@ features.forEach((feature) => {
             }),
           );
 
-        if (feature === "all") {
+        if (token === "pro-self-hosted") {
           // Disable both download options
-          cy.findByText("Export to PDF").click();
-          cy.findByText("Results (csv, xlsx, json, png)").click();
+          cy.findByLabelText("Export to PDF").click();
+          cy.findByLabelText("Results (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()
@@ -123,9 +128,14 @@ features.forEach((feature) => {
     });
 
     it("question should have the correct embed snippet", () => {
-      const defaultDownloadsValue = feature === "all" ? true : undefined;
+      const defaultDownloadsValue =
+        token === "pro-self-hosted" ? true : undefined;
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: ORDERS_QUESTION_ID,
+        acceptTerms: false,
+      });
 
       H.modal().within(() => {
         cy.findByText(
@@ -150,8 +160,8 @@ features.forEach((feature) => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // hide download button for pro/enterprise users metabase#23477
-        if (feature === "all") {
-          cy.findByText("Download (csv, xlsx, json, png)").click();
+        if (token === "pro-self-hosted") {
+          cy.findByLabelText("Download (csv, xlsx, json, png)").click();
 
           codeBlock()
             .first()
@@ -177,7 +187,7 @@ features.forEach((feature) => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      if (feature === "all") {
+      if (token === "pro-self-hosted") {
         // Verify that switching tabs keeps the highlighted texts
         highlightedTexts().should("have.length", 1);
 

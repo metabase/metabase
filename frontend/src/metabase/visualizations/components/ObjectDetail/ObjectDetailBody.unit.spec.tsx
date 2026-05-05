@@ -7,18 +7,14 @@ describe("ObjectDetailBody", () => {
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
-        data={testDataset}
-        objectName="Large Sandstone Socks"
+        columns={testDataset.cols}
         zoomedRow={testDataset.rows[2]}
         settings={{
           column: () => null,
         }}
-        hasRelationships={false}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        followForeignKey={() => null}
+        isDashboard={false}
       />,
     );
 

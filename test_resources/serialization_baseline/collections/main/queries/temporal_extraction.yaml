@@ -1,0 +1,719 @@
+name: Temporal Extraction
+entity_id: bDK7jyPszEHzHh4aG4_SV
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - expressions:
+    - - get-year
+      - lib/expression-name: Order Year
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-quarter
+      - lib/expression-name: Order Quarter
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-month
+      - lib/expression-name: Order Month
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-day
+      - lib/expression-name: Order Day
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-hour
+      - lib/expression-name: Order Hour
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-minute
+      - lib/expression-name: Order Minute
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-second
+      - lib/expression-name: Order Second
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-day-of-week
+      - lib/expression-name: Day of Week ISO
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - iso
+    - - get-week
+      - lib/expression-name: Week Number
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - us
+    - - month-name
+      - lib/expression-name: Month Name
+      - - get-month
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - CREATED_AT
+    - - quarter-name
+      - lib/expression-name: Quarter Name
+      - - get-quarter
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - CREATED_AT
+    - - day-name
+      - lib/expression-name: Day Name
+      - - get-day-of-week
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - CREATED_AT
+        - iso
+    - - get-day-of-week
+      - lib/expression-name: Day of Week Default
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - get-week
+      - lib/expression-name: Week Number Default
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+    - - temporal-extract
+      - lib/expression-name: Extracted Month
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - month-of-year
+    - - temporal-extract
+      - lib/expression-name: Extracted Day of Week ISO
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+      - day-of-week
+      - iso
+    limit: 10
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - ID
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - ID
+  name: ID
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: ID
+  lib/desired-column-alias: ID
+  lib/original-display-name: ID
+  lib/original-name: ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - USER_ID
+  - null
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - USER_ID
+  name: USER_ID
+  position: 1
+  semantic_type: type/FK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: USER_ID
+  lib/desired-column-alias: USER_ID
+  lib/original-display-name: User ID
+  lib/original-name: USER_ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: USER_ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: Product ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - PRODUCT_ID
+  - null
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - PRODUCT_ID
+  name: PRODUCT_ID
+  position: 2
+  semantic_type: type/FK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: PRODUCT_ID
+  lib/desired-column-alias: PRODUCT_ID
+  lib/original-display-name: Product ID
+  lib/original-name: PRODUCT_ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRODUCT_ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Subtotal
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - SUBTOTAL
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - SUBTOTAL
+  name: SUBTOTAL
+  position: 3
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: SUBTOTAL
+  lib/desired-column-alias: SUBTOTAL
+  lib/original-display-name: Subtotal
+  lib/original-name: SUBTOTAL
+  lib/source: source/table-defaults
+  lib/source-column-alias: SUBTOTAL
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Tax
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - TAX
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - TAX
+  name: TAX
+  position: 4
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: TAX
+  lib/desired-column-alias: TAX
+  lib/original-display-name: Tax
+  lib/original-name: TAX
+  lib/source: source/table-defaults
+  lib/source-column-alias: TAX
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - TOTAL
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - TOTAL
+  name: TOTAL
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: TOTAL
+  lib/desired-column-alias: TOTAL
+  lib/original-display-name: Total
+  lib/original-name: TOTAL
+  lib/source: source/table-defaults
+  lib/source-column-alias: TOTAL
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Discount
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - DISCOUNT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - DISCOUNT
+  name: DISCOUNT
+  position: 6
+  semantic_type: type/Discount
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: DISCOUNT
+  lib/desired-column-alias: DISCOUNT
+  lib/original-display-name: Discount
+  lib/original-name: DISCOUNT
+  lib/source: source/table-defaults
+  lib/source-column-alias: DISCOUNT
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: Quantity
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - QUANTITY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - QUANTITY
+  name: QUANTITY
+  position: 8
+  semantic_type: type/Quantity
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/deduplicated-name: QUANTITY
+  lib/desired-column-alias: QUANTITY
+  lib/original-display-name: Quantity
+  lib/original-name: QUANTITY
+  lib/source: source/table-defaults
+  lib/source-column-alias: QUANTITY
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Year
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Year
+  name: Order Year
+  source: fields
+  lib/deduplicated-name: Order Year
+  lib/desired-column-alias: Order Year
+  lib/expression-name: Order Year
+  lib/original-name: Order Year
+  lib/source: source/expressions
+  lib/source-column-alias: Order Year
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Quarter
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Quarter
+  name: Order Quarter
+  source: fields
+  lib/deduplicated-name: Order Quarter
+  lib/desired-column-alias: Order Quarter
+  lib/expression-name: Order Quarter
+  lib/original-name: Order Quarter
+  lib/source: source/expressions
+  lib/source-column-alias: Order Quarter
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Month
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Month
+  name: Order Month
+  source: fields
+  lib/deduplicated-name: Order Month
+  lib/desired-column-alias: Order Month
+  lib/expression-name: Order Month
+  lib/original-name: Order Month
+  lib/source: source/expressions
+  lib/source-column-alias: Order Month
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Day
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Day
+  name: Order Day
+  source: fields
+  lib/deduplicated-name: Order Day
+  lib/desired-column-alias: Order Day
+  lib/expression-name: Order Day
+  lib/original-name: Order Day
+  lib/source: source/expressions
+  lib/source-column-alias: Order Day
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Hour
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Hour
+  name: Order Hour
+  source: fields
+  lib/deduplicated-name: Order Hour
+  lib/desired-column-alias: Order Hour
+  lib/expression-name: Order Hour
+  lib/original-name: Order Hour
+  lib/source: source/expressions
+  lib/source-column-alias: Order Hour
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Minute
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Minute
+  name: Order Minute
+  source: fields
+  lib/deduplicated-name: Order Minute
+  lib/desired-column-alias: Order Minute
+  lib/expression-name: Order Minute
+  lib/original-name: Order Minute
+  lib/source: source/expressions
+  lib/source-column-alias: Order Minute
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Order Second
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Order Second
+  name: Order Second
+  source: fields
+  lib/deduplicated-name: Order Second
+  lib/desired-column-alias: Order Second
+  lib/expression-name: Order Second
+  lib/original-name: Order Second
+  lib/source: source/expressions
+  lib/source-column-alias: Order Second
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Day of Week ISO
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Day of Week ISO
+  name: Day of Week ISO
+  source: fields
+  lib/deduplicated-name: Day of Week ISO
+  lib/desired-column-alias: Day of Week ISO
+  lib/expression-name: Day of Week ISO
+  lib/original-name: Day of Week ISO
+  lib/source: source/expressions
+  lib/source-column-alias: Day of Week ISO
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Week Number
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Week Number
+  name: Week Number
+  source: fields
+  lib/deduplicated-name: Week Number
+  lib/desired-column-alias: Week Number
+  lib/expression-name: Week Number
+  lib/original-name: Week Number
+  lib/source: source/expressions
+  lib/source-column-alias: Week Number
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Month Name
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Month Name
+  name: Month Name
+  source: fields
+  lib/deduplicated-name: Month Name
+  lib/desired-column-alias: Month Name
+  lib/expression-name: Month Name
+  lib/original-name: Month Name
+  lib/source: source/expressions
+  lib/source-column-alias: Month Name
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Quarter Name
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Quarter Name
+  name: Quarter Name
+  source: fields
+  lib/deduplicated-name: Quarter Name
+  lib/desired-column-alias: Quarter Name
+  lib/expression-name: Quarter Name
+  lib/original-name: Quarter Name
+  lib/source: source/expressions
+  lib/source-column-alias: Quarter Name
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Day Name
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Day Name
+  name: Day Name
+  source: fields
+  lib/deduplicated-name: Day Name
+  lib/desired-column-alias: Day Name
+  lib/expression-name: Day Name
+  lib/original-name: Day Name
+  lib/source: source/expressions
+  lib/source-column-alias: Day Name
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Day of Week Default
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Day of Week Default
+  name: Day of Week Default
+  source: fields
+  lib/deduplicated-name: Day of Week Default
+  lib/desired-column-alias: Day of Week Default
+  lib/expression-name: Day of Week Default
+  lib/original-name: Day of Week Default
+  lib/source: source/expressions
+  lib/source-column-alias: Day of Week Default
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Week Number Default
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Week Number Default
+  name: Week Number Default
+  source: fields
+  lib/deduplicated-name: Week Number Default
+  lib/desired-column-alias: Week Number Default
+  lib/expression-name: Week Number Default
+  lib/original-name: Week Number Default
+  lib/source: source/expressions
+  lib/source-column-alias: Week Number Default
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Extracted Month
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Extracted Month
+  name: Extracted Month
+  source: fields
+  lib/deduplicated-name: Extracted Month
+  lib/desired-column-alias: Extracted Month
+  lib/expression-name: Extracted Month
+  lib/original-name: Extracted Month
+  lib/source: source/expressions
+  lib/source-column-alias: Extracted Month
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Extracted Day of Week ISO
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Extracted Day of Week ISO
+  name: Extracted Day of Week ISO
+  source: fields
+  lib/deduplicated-name: Extracted Day of Week ISO
+  lib/desired-column-alias: Extracted Day of Week ISO
+  lib/expression-name: Extracted Day of Week ISO
+  lib/original-name: Extracted Day of Week ISO
+  lib/source: source/expressions
+  lib/source-column-alias: Extracted Day of Week ISO
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: bDK7jyPszEHzHh4aG4_SV
+  label: temporal_extraction
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

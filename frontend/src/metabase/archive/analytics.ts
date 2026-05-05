@@ -1,5 +1,20 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { MoveToTrashEvent } from "metabase-types/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
+
+type MoveToTrashEventDetail =
+  | "question"
+  | "model"
+  | "metric"
+  | "dashboard"
+  | "collection"
+  | "dataset"
+  | "indexed-entity"
+  | "snippet"
+  | "document"
+  | "table"
+  | "transform"
+  | "measure";
+
+type MoveToTrashTriggeredFrom = "collection" | "detail_page" | "cleanup_modal";
 
 export const archiveAndTrack = async ({
   archive,
@@ -8,20 +23,28 @@ export const archiveAndTrack = async ({
   triggeredFrom,
 }: {
   archive: () => Promise<void>;
-  model: MoveToTrashEvent["event_detail"] | "card";
+  model: MoveToTrashEventDetail | "card";
   modelId: number;
-  triggeredFrom: MoveToTrashEvent["triggered_from"];
+  triggeredFrom: MoveToTrashTriggeredFrom;
 }): Promise<void> => {
   const start = new Date().getTime();
-  const logAnalytics = (successful: boolean) =>
-    trackSchemaEvent("simple_event", {
+  const logAnalytics = (successful: boolean) => {
+    let eventDetail: MoveToTrashEventDetail;
+    if (model === "card") {
+      eventDetail = "question";
+    } else {
+      eventDetail = model;
+    }
+
+    return trackSchemaEvent("simple_event", {
       event: "moved-to-trash",
-      event_detail: model === "card" ? "question" : model,
+      event_detail: eventDetail,
       target_id: modelId,
       triggered_from: triggeredFrom,
       duration_ms: new Date().getTime() - start,
       result: successful ? "success" : "failure",
     });
+  };
 
   return archive()
     .then((result) => {

@@ -15,25 +15,16 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import Fields from "metabase/entities/fields";
-import Questions from "metabase/entities/questions";
-import Segments from "metabase/entities/segments";
-import { color } from "metabase/lib/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-} from "metabase/lib/entities";
+import { Fields } from "metabase/entities/fields";
+import { Questions } from "metabase/entities/questions";
+import { Segments } from "metabase/entities/segments";
 import {
   compose,
   createThunkAction,
   useDispatch,
   useSelector,
   withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/redux";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -45,6 +36,14 @@ import {
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
@@ -58,13 +57,13 @@ export const UPDATE_TABLE_FIELD_ORDER =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Tables = createEntity({
+export const Tables = createEntity({
   name: "tables",
   nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchMetadata") {
         return {
@@ -89,7 +88,7 @@ const Tables = createEntity({
       };
     },
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {
@@ -280,9 +279,7 @@ const Tables = createEntity({
 
       if (state[virtualTableId]) {
         const virtualTable = state[virtualTableId];
-        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
-          isDatasets: card.type === "model",
-        });
+        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection);
         const virtualSchemaName = getCollectionVirtualSchemaName(
           card.collection,
         );
@@ -349,14 +346,6 @@ const Tables = createEntity({
     }
 
     return state;
-  },
-  objectSelectors: {
-    getUrl: (table) =>
-      Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: (table, { variant = "primary" } = {}) => ({
-      name: variant === "primary" ? "table" : "database",
-    }),
-    getColor: (table) => color("accent2"),
   },
 
   selectors: {
@@ -477,5 +466,3 @@ function getUseListQueryEndpoint(dbId, schemaName) {
 
   return "listTables";
 }
-
-export default Tables;

@@ -23,7 +23,7 @@ Test extensions do things like create new databases and load data for given _dat
 
 To run the test suite with your driver, you'll need to write a series of method implementations for special _test extension_ multimethods. Test extensions do things like create new databases and load data for _database definitions_.
 
-These test extensions will tell Metabase how to create new databases and load them with test data, and provide information about what Metabae can expect from the created database. Test extensions are simply additional multimethods used only by tests. Like the core driver multimethods, they dispatch on the driver name as a keyword, e.g. `:mysql`.
+These test extensions will tell Metabase how to create new databases and load them with test data, and provide information about what Metabase can expect from the created database. Test extensions are simply additional multimethods used only by tests. Like the core driver multimethods, they dispatch on the driver name as a keyword, e.g. `:mysql`.
 
 ## File organization
 
@@ -80,7 +80,7 @@ You only need one call -- there's no need to do all three for a `:sql-jdbc` driv
 
 ## Anatomy of a Metabase test
 
-Let's look at an real-life Metabase test so we can understand how it works and what exactly we need to do to power it:
+Let's look at a real-life Metabase test so we can understand how it works and what exactly we need to do to power it:
 
 ```clj
 ;; expect-with-non-timeseries-dbs = run against all drivers listed in `DRIVERS` env var except timeseries ones like Druid
@@ -121,9 +121,9 @@ That's about as much as you'd need to know about the internals of how Metabase t
 
 ## Loading Data
 
-In order to ensure consistent behavior across different drivers, the Metabase test suite creates new databases and load datas into them from a set of shared _Database Definitions_. That means whether we're running a test against MySQL, Postgres, SQL Server, or MongoDB, a single test can check that we get the exact same results for every driver!
+In order to ensure consistent behavior across different drivers, the Metabase test suite creates new databases and loads data into them from a set of shared _Database Definitions_. That means whether we're running a test against MySQL, Postgres, SQL Server, or MongoDB, a single test can check that we get the exact same results for every driver!
 
-Most of these database definitions live in [EDN](https://github.com/edn-format/edn) files; the majority of tests run against a test database named "test data", whose definition can be found [here](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/dataset_definitions/test-data.edn). Take a look at that file -- it's just a simple set of tables names, column names and types, and then a few thousand rows of data to load into those tables.
+Most of these database definitions live in [EDN](https://github.com/edn-format/edn) files; the majority of tests run against a test database named "test data", whose definition can be found [here](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/dataset_definitions/test-data.edn). Take a look at that file -- it's just a simple set of table names, column names and types, and then a few thousand rows of data to load into those tables.
 
 Like test extension method definitions, schemas for `DatabaseDefinition` live in [`metabase.test.data.interface`](https://github.com/metabase/metabase/blob/master/test/metabase/test/data/interface.clj) -- you can take a look and see exactly what a database definition is supposed to look like.
 
@@ -174,7 +174,7 @@ You'll almost certainly be running your database in a local Docker container. Ra
 
 Tells Metabase to look for the environment variable `MB_MYSQL_TEST_USER`; if not found, default to `"root"`. The name of the environment variable follows the pattern `MB_<driver>_TEST_<property>`, as passed into the function as first and second args, respectively. You don't need to specify a default value for `tx/db-test-env-var`; perhaps `user` is an optional parameter; and if `MB_MYSQL_TEST_USER` isn't specified, you don't need to specify it in the connection details.
 
-But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding enviornment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
+But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding environment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
 
 ```clj
 ;; If MB_SQLSERVER_TEST_USER is unset, the test suite will quit with a message saying something like
@@ -190,7 +190,7 @@ Besides `tx/db-test-env-var`, `metabase.test.data.interface` has several other h
 
 There's a few other things Metabase needs to know when comparing test results. For example, different databases name tables and columns in different ways; methods exist to let Metabase know it should expect something like the `venues` table in the `test-data` Database Definition to come back as `VENUES` for a database that uppercases everything. (We consider such minor variations in naming to still mean the same thing.) Take a look at `tx/format-name` and other methods like that and see which ones you need to implement.
 
-## What about DBMSes that don't let you create new databases programatically?
+## What about DBMSes that don't let you create new databases programmatically?
 
 This is actually a common problem, and luckily we have figured out how to work around it. The solution is usually something like using different _schemas_ in place of different databases, or prefixing table names with the database name, and creating everything in the same database. For SQL-based databases, you can implement `sql.tx/qualified-name-components` to have tests use a different identifier instead of what they would normally use, for example `"shared_db"."test-data_venues".id` instead of `"test-data".venues.id`. The SQL Server and Oracle test extensions are good examples of such black magic in action.
 
@@ -204,8 +204,8 @@ Here is an example configuration for PostgreSQL.
 be-tests-postgres-latest-ee:
   needs: files-changed
   if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-  runs-on: ubuntu-22.04
-  timeout-minutes: 60
+  runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+  timeout-minutes: 40
   env:
     CI: "true"
     DRIVERS: postgres

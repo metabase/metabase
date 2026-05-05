@@ -7,14 +7,17 @@ import type {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { Extent } from "metabase/visualizations/types";
 import type {
+  Card,
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   RowValue,
+  VisualizationSettingKey,
 } from "metabase-types/api";
 
-export type BreakoutValue = RowValue;
+export type BreakoutValue = Exclude<RowValue, object>;
 export type ColumnName = string;
 
 export type SeriesDataKey =
@@ -30,11 +33,9 @@ export type DataKey =
   | typeof X_AXIS_DATA_KEY
   | typeof INDEX_KEY;
 
-export type VizSettingsKey = string;
-
 export type LegacySeriesSettingsObjectKey = {
-  card: {
-    _seriesKey: VizSettingsKey;
+  card: Partial<Card> & {
+    _seriesKey?: VisualizationSettingKey;
   };
 };
 
@@ -48,7 +49,7 @@ export type BaseSeriesModel = {
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
-  vizSettingsKey: VizSettingsKey;
+  vizSettingsKey: VisualizationSettingKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
   // This object is used as a key for the `series` function of the computed
@@ -92,7 +93,6 @@ export type Datum = Record<DataKey, RowValue> & {
   [INDEX_KEY]?: number;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
-export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type RawValueFormatter = (value: RowValue) => string;
 export type LabelFormatter = RawValueFormatter;
@@ -179,6 +179,7 @@ export type YAxisModel = {
   column: DatasetColumn;
   label?: string;
   formatter: AxisFormatter;
+  formatGoal: AxisFormatter;
   splitNumber?: number;
   isNormalized?: boolean;
 };
@@ -226,6 +227,7 @@ export type BaseCartesianChartModel = {
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
+  splitPanelYAxisModels?: YAxisModel[];
   xAxisModel: XAxisModel;
 
   columnByDataKey: Record<DataKey, DatasetColumn>;

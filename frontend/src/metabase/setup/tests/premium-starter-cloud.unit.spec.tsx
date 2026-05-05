@@ -9,7 +9,6 @@ import {
   getLastSettingsPutPayload,
   selectUsageReason,
   setup,
-  skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
@@ -17,7 +16,6 @@ import {
 const setupPremium = (opts?: SetupOpts) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ hosting: true }),
   });
 };
@@ -26,10 +24,9 @@ describe("setup (EE build, only `hosting` feature to simulate starter plan on cl
   it("default step order should be correct, without the license and data usage steps", async () => {
     await setupPremium();
     await skipWelcomeScreen();
-    expectSectionToHaveLabel("What's your preferred language?", "1");
-    expectSectionToHaveLabel("What should we call you?", "2");
-    expectSectionToHaveLabel("What will you use Metabase for?", "3");
-    expectSectionToHaveLabel("Add your data", "4");
+    expectSectionToHaveLabel("What should we call you?", "1");
+    expectSectionToHaveLabel("What will you use Metabase for?", "2");
+    expectSectionToHaveLabel("Add your data", "3");
     // no "Activate your commercial license" as this has token-features
     // no "Usage data preferences" as this is a hosted instance
 
@@ -57,7 +54,6 @@ describe("setup (EE build, only `hosting` feature to simulate starter plan on cl
   it("should set 'setup-license-active-at-setup' to false", async () => {
     await setupPremium();
     await skipWelcomeScreen();
-    await skipLanguageStep();
     await submitUserInfoStep();
 
     await selectUsageReason("embedding");

@@ -1,0 +1,1927 @@
+import { SAMPLE_DB_TABLES, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
+
+const { H } = cy;
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
+const NON_SAMPLE_DB_NAME = "QA Postgres12";
+
+describe("scenarios - embedding hub", () => {
+  describe("checklist", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
+    });
+
+    it("Contains setup guide in sidebar", () => {
+      cy.visit("/admin/embedding");
+
+      cy.findByTestId("admin-layout-sidebar")
+        .findByText("Setup guide")
+        .should("exist")
+        .click();
+
+      cy.findByTestId("admin-layout-content")
+        .findByRole("heading", { name: "Embedding setup guide" })
+        .should("exist");
+    });
+
+    it('"Create a dashboard" card should show return toast after saving x-ray', () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("Find and click on 'Create a dashboard' card");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create a dashboard")
+        .click();
+
+      cy.log("Select a table to generate dashboard from");
+      H.modal().within(() => {
+        cy.findByText("Choose a table to generate a dashboard").should(
+          "be.visible",
+        );
+        H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
+      });
+
+      cy.log("Should navigate to auto dashboard with from param");
+      cy.url().should("include", "/auto/dashboard/table/");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
+
+      cy.log("Wait for x-ray dashboard to load and save it");
+      cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
+
+      cy.log("Should show modal prompting to return to setup guide");
+      H.modal().within(() => {
+        cy.findByText("Dashboard saved!").should("be.visible");
+        cy.findByText("Return to the setup guide").click();
+      });
+
+      cy.log("Should navigate back to the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
+    });
+
+    it('"Connect a database" card should pass from param in navigation URL', () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("Find and click on 'Connect a database' card");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
+
+      cy.log("Add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+
+      cy.log("Select a database engine");
+      cy.findByRole("dialog").findByText("PostgreSQL").click();
+
+      cy.log("Should navigate with from param");
+      cy.url().should("include", "/admin/databases/create");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
+    });
+
+    it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.log("Enable CSV uploads");
+      cy.request("PUT", "/api/setting/uploads-settings", {
+        value: {
+          db_id: 1, // Sample Database ID
+          schema_name: "PUBLIC",
+          table_prefix: null,
+        },
+      });
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("'Connect a database' should not be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .closest("button")
+        .findByText("Done")
+        .should("not.exist");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("CSV").click();
+
+        cy.log("Upload a CSV file");
+        cy.get("#add-data-modal-upload-csv-input").selectFile(
+          {
+            contents: Cypress.Buffer.from(
+              "header1,header2\nvalue1,value2",
+              "utf8",
+            ),
+            fileName: "test-upload.csv",
+            mimeType: "text/csv",
+            lastModified: Date.now(),
+          },
+          { force: true },
+        );
+
+        cy.button("Upload").should("be.enabled").click();
+      });
+
+      cy.wait("@getChecklist");
+
+      cy.log("'Connect a database' should be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done")
+        .should("be.visible");
+    });
+
+    it('"Get embed snippet" card should take you to the embed flow', () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .click();
+
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+        });
+    });
+
+    it('"Get embed snippet" step should be done when a guest embed is published', () => {
+      cy.log("Create a dashboard to embed");
+      H.createDashboard({ name: "Test Dashboard" });
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("step should not be marked as done at first");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .closest("button")
+        .findByText("Done")
+        .should("not.exist");
+
+      cy.log("open embed wizard");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .click();
+
+      cy.log("choose dashboard experience");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Dashboard").click();
+          cy.findByText("Next").click();
+        });
+
+      cy.log("pick a dashboard");
+      H.modal().first().findByTestId("embed-browse-entity-button").click();
+      H.entityPickerModal().findByText("Test Dashboard").click();
+      H.modal().first().findByText("Next").click();
+
+      cy.log("publish the embed");
+      H.publishChanges("dashboard");
+
+      cy.log("close the wizard");
+      H.modal().first().findByText("Get code").click();
+      H.modal().first().findByLabelText("Close").click();
+
+      cy.log("step should be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Get embed snippet")
+        .closest("button")
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+    });
+
+    it("embedding checklist should show up on the embedding homepage", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.findAllByText("Get started with modular embedding")
+        .first()
+        .should("be.visible");
+
+      cy.get("main").within(() => {
+        cy.findByText("Create a dashboard").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible").click();
+      });
+
+      cy.log("Sanity check: add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+    });
+
+    it("embedding checklist should not show up on the embedding homepage if not enabled", () => {
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with modular embedding")
+        .should("not.exist");
+    });
+
+    it("overflow menu > customize homepage opens modal with correct title", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Customize homepage").click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Pick a dashboard to appear on the homepage").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("overflow menu > dismiss guide hides the embedding homepage", () => {
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      cy.get("main")
+        .findByText("Get started with modular embedding")
+        .should("be.visible");
+
+      cy.log("Click overflow menu button on the embedding homepage");
+      cy.get("main").within(() => {
+        cy.findByLabelText("More options").click();
+      });
+
+      H.menu().findByText("Dismiss guide").click();
+
+      cy.log("Verify guide is dismissed and no longer visible");
+      cy.get("main")
+        .findByText("Get started with modular embedding")
+        .should("not.exist");
+    });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      H.updateSetting("use-tenants", true);
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/tenants");
+    });
+
+    it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Configure data permissions and enable tenants")
+        .click();
+
+      cy.url().should("include", "/admin/embedding/setup-guide/permissions");
+
+      H.main()
+        .findByText("Configure data permissions and enable tenants")
+        .scrollIntoView()
+        .should("be.visible");
+    });
+
+    it("permissions setup page should mark steps as completed", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("all 5 steps are present and none are completed at first");
+      H.main().within(() => {
+        cy.findByText("Enable multi-tenant user strategy")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Select data to make available")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.findByText("Create tenants").scrollIntoView().should("be.visible");
+        cy.findByText("Summary").scrollIntoView().should("be.visible");
+
+        // No steps should be completed yet (no check icons)
+        cy.icon("check").should("not.exist");
+      });
+
+      cy.log("enable tenants and create a shared collection");
+      H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
+
+      cy.log("create a tenant");
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.log("check steps 1 and 4 are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 2);
+
+      cy.log("setup row-level security");
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        },
+      );
+
+      cy.log("check all 5 steps are completed");
+      cy.reload();
+      H.main().icon("check").should("have.length", 5);
+    });
+
+    it('"Enable tenants and create shared collection" button should enable tenants and create a shared collection', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.log("create an x-ray dashboard via the embedding setup guide");
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create a dashboard")
+        .click();
+
+      cy.log("select Orders table from the modal");
+      H.modal().within(() => {
+        H.pickEntity({
+          path: ["Databases", "Sample Database", "Orders"],
+        });
+      });
+
+      cy.log("wait for x-ray dashboard to generate and save it");
+      H.main()
+        .findByText("A look at", { exact: false, timeout: 30_000 })
+        .should("be.visible");
+      cy.button("Save this").click();
+      H.undoToast().should("contain", "Your dashboard was saved");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("tenants should not be enabled");
+      cy.request("GET", "/api/session/properties").then((response) => {
+        expect(response.body["use-tenants"]).to.equal(false);
+      });
+
+      cy.log("shared tenants collection should not exist");
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        expect(response.body).to.have.length(0);
+      });
+
+      cy.log("click the enable tenants button");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log("tenants should be enabled");
+      cy.request("GET", "/api/session/properties").then((response) => {
+        expect(response.body["use-tenants"]).to.equal(true);
+      });
+
+      cy.log("shared collection should be created");
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        expect(response.body).to.have.length(1);
+        expect(response.body[0].name).to.equal("Shared collection");
+      });
+
+      cy.log(
+        "dashboard picker should appear with the x-ray dashboard pre-selected",
+      );
+      H.main()
+        .findByText("This will allow tenant users to see it.")
+        .should("be.visible");
+
+      cy.log("x-ray dashboard should be pre-selected, move it");
+      H.main()
+        .findByRole("button", {
+          name: "Move to shared collection",
+          timeout: 10_000,
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log(
+        "x-rayed dashboard should have been moved to the shared collection",
+      );
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        const sharedCollectionId = response.body[0].id;
+        cy.request(
+          "GET",
+          `/api/collection/${sharedCollectionId}/items?models=dashboard`,
+        ).then((itemsResponse) => {
+          const dashboards = itemsResponse.body.data;
+          expect(dashboards.length).to.be.greaterThan(0);
+          expect(
+            dashboards.some((d: { name: string }) =>
+              d.name.includes("A look at"),
+            ),
+          ).to.be.true;
+        });
+      });
+
+      cy.log("enable-tenants step should be marked as completed");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+
+          // the embedding checklist query takes time on CI
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("move-dashboard step should be marked as completed");
+      H.main()
+        .findByRole("listitem", {
+          name: "Create a dashboard in the shared collection",
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+    });
+
+    it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.log("enable tenants via setting without creating a shared collection");
+      H.updateSetting("use-tenants", true);
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("no steps should be completed");
+      H.main().within(() => {
+        cy.findByText("Enable multi-tenant user strategy")
+          .scrollIntoView()
+          .should("be.visible");
+
+        cy.icon("check").should("not.exist");
+      });
+
+      cy.log("button should still be enabled");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled");
+    });
+
+    it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.log("enable tenants and create a shared collection");
+      H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      });
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("wait until step is marked as complete");
+      H.main().icon("check").should("have.length", 1);
+
+      cy.log("un-collapse the pre-collapsed step");
+      H.main().findByText("Enable multi-tenant user strategy").click();
+
+      cy.log("button should be disabled as setup was already complete");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.disabled");
+    });
+
+    it("selecting database routing strategy should show documentation link in step 3", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("click the enable tenants button");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
+      cy.log("select database routing strategy");
+      H.main()
+        .findByRole("radio", { name: /Database routing/ })
+        .click();
+
+      cy.log("confirm the strategy selection");
+      H.main().findByRole("button", { name: "Use database routing" }).click();
+
+      cy.log("should show database routing content with docs link");
+      H.main()
+        .findByText("Manage data permissions with database routing")
+        .should("be.visible");
+
+      H.main()
+        .findByRole("link", { name: /View the guide/i })
+        .should("have.attr", "href")
+        .and("include", "database-routing");
+    });
+
+    describe("create tenants step", () => {
+      beforeEach(() => {
+        H.restore("setup");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        cy.log("enable tenants and create shared collection");
+        H.updateSetting("use-tenants", true);
+        cy.request("POST", "/api/collection", {
+          name: "Shared collection",
+          namespace: "shared-tenant-collection",
+        });
+
+        cy.log("setup row-level security to unlock the create tenants step");
+        cy.request("POST", "/api/permissions/group", {
+          name: "Test Group",
+        }).then(({ body: group }) => {
+          cy.sandboxTable({
+            table_id: STATIC_ORDERS_ID,
+            group_id: group.id,
+          });
+        });
+      });
+
+      it("can create two tenants and show summary", () => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("step 1 should be marked as done before navigating");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .should("have.attr", "data-completed", "true");
+
+        H.main().within(() => {
+          cy.log("navigate to create tenants step");
+
+          cy.findByRole("listitem", { name: "Create tenants" })
+            .should("be.visible")
+            .click();
+
+          cy.log("fill out the tenant form");
+          cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+          cy.findByLabelText("organization_id").type("acme-123");
+          cy.findByPlaceholderText("tenant-slug")
+            .clear()
+            .type("acme-corp-slug");
+
+          cy.log("add another tenant");
+          cy.findByRole("button", { name: /New tenant/ }).click();
+        });
+
+        cy.log("fill out the second tenant form");
+        H.main().within(() => {
+          cy.findAllByPlaceholderText("Tenant name")
+            .should("have.length", 2)
+            .last()
+            .clear()
+            .type("Beta Inc");
+
+          cy.findAllByLabelText("organization_id")
+            .should("have.length", 2)
+            .last()
+            .type("beta-456");
+
+          cy.findAllByPlaceholderText("tenant-slug")
+            .should("have.length", 2)
+            .last()
+            .clear()
+            .type("beta-inc-slug");
+        });
+
+        cy.log("submit the tenant creation form");
+        H.main().findByRole("button", { name: "Create tenants" }).click();
+
+        cy.log("success toast should show");
+        H.undoToast()
+          .findByText("Tenants created successfully")
+          .should("be.visible");
+
+        H.main().within(() => {
+          cy.log("step 4 should be marked as completed");
+          cy.findByRole("listitem", {
+            name: "Create tenants",
+            timeout: 10_000,
+          }).should("have.attr", "data-completed", "true");
+
+          cy.findByText("You created the following tenants").should(
+            "be.visible",
+          );
+
+          cy.log("step 5 should hide title when active");
+          cy.findByText("Summary").should("not.exist");
+
+          cy.log("summary step should show tenant #1");
+          cy.findByText("Acme Corp").should("be.visible");
+          cy.findByText("acme-corp-slug").should("be.visible");
+
+          cy.log("summary step should show tenant #2");
+          cy.findByText("Beta Inc").should("be.visible");
+          cy.findByText("beta-inc-slug").should("be.visible");
+
+          cy.log("navigation links should be shown in summary");
+          cy.findByRole("link", { name: /Tenants/ }).should("be.visible");
+          cy.findByRole("button", { name: "Done" }).click();
+        });
+
+        cy.log("Configure data permissions step should be done");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Configure data permissions and enable tenants")
+          .closest("button")
+          .scrollIntoView()
+          .findByText("Done")
+          .should("be.visible");
+
+        cy.log("verify tenant_attributes are saved correctly via API");
+        cy.request("GET", "/api/ee/tenant").should((response) => {
+          const tenants = response.body.data;
+
+          const acmeTenant = tenants.find(
+            (tenant: { slug: string }) => tenant.slug === "acme-corp-slug",
+          );
+
+          const betaTenant = tenants.find(
+            (tenant: { slug: string }) => tenant.slug === "beta-inc-slug",
+          );
+
+          expect(acmeTenant).to.exist;
+          expect(acmeTenant.attributes).to.deep.equal({
+            organization_id: "acme-123",
+          });
+
+          expect(betaTenant).to.exist;
+          expect(betaTenant.attributes).to.deep.equal({
+            organization_id: "beta-456",
+          });
+        });
+
+        cy.visit("/admin/people/tenants");
+
+        cy.log("tenants are shown in the tenants page");
+        H.main().within(() => {
+          cy.findByText("Acme Corp").should("be.visible");
+          cy.findByText("Beta Inc").should("be.visible");
+        });
+      });
+
+      it("shows error toast when creating a tenant with duplicate slug", () => {
+        cy.log("create an existing tenant");
+        cy.request("POST", "/api/ee/tenant", {
+          name: "Existing Tenant",
+          slug: "existing-tenant",
+        });
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        H.main()
+          .findByRole("listitem", { name: "Create tenants" })
+          .should("be.visible")
+          .click();
+
+        cy.log("fill out the tenant form with a colliding slug");
+        H.main().within(() => {
+          cy.findByPlaceholderText("Tenant name")
+            .clear()
+            .type("Another Tenant");
+
+          cy.findByPlaceholderText("e.g. acme-corp").type("another-id");
+
+          cy.findByPlaceholderText("tenant-slug")
+            .clear()
+            .type("existing-tenant");
+        });
+
+        H.main().findByRole("button", { name: "Create tenants" }).click();
+
+        cy.log("error toast should be shown");
+        H.undoToast()
+          .findByText("This tenant name or slug is already taken.", {
+            timeout: 10_000,
+          })
+          .should("be.visible");
+
+        cy.log("we should still be on the create tenants step");
+        H.main().findByPlaceholderText("Tenant name").should("be.visible");
+      });
+
+      it("reloads with strategy pre-selected and 'Select data' step unlocked when RLS is configured", () => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log(
+          "'Select data' step should not be locked when RLS is configured",
+        );
+        H.main()
+          .findByRole("listitem", { name: "Select data to make available" })
+          .icon("lock")
+          .should("not.exist");
+
+        cy.log("strategy picker should show RLS pre-selected");
+        H.main()
+          .findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .should("have.attr", "aria-checked", "true");
+      });
+
+      it("shows autocomplete suggestions for organization_id based on selected field values", () => {
+        H.restore("postgres-12");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("enable tenants and create shared collection");
+        H.main()
+          .findByRole("button", {
+            name: "Enable tenants and create shared collection",
+          })
+          .click();
+
+        cy.log("wait for tenants to be enabled");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
+
+        cy.log("use row and column level security");
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use row and column level security" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("pick orders table");
+        H.main().findByText("Pick a table").click();
+        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+        H.miniPicker().findByText("Orders").click();
+
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("User ID").click();
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("autocomplete dropdown should show matching user id values");
+        H.main().findByPlaceholderText("e.g. 1").type("1");
+
+        H.popover().within(() => {
+          cy.findAllByRole("option").should("have.length.at.least", 8);
+
+          // The ID differs across run, so let's only do one assertion here.
+          cy.findByRole("option", { name: "1" }).should("exist");
+        });
+      });
+    });
+
+    // Needs its own test case, as the RLS selected table and columns
+    // are only populated when the user goes through the "Select data" step
+    // in the UI. Without it, the data permissions description won't show.
+    it("shows RLS data permissions description in summary", () => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("enable tenants and create shared collection");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .click();
+
+      cy.log("wait for tenants to be enabled");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
+      cy.log("use row and column level security");
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use row and column level security" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("pick Orders table and User ID column");
+      H.main().findByText("Pick a table").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+      H.miniPicker().findByText("Orders").click();
+
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("User ID").click();
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+      H.main().findByRole("button", { name: "Next" }).click();
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("should show dynamic description with the selected column name");
+      H.main()
+        .contains("Enter a value that matches the User ID column.")
+        .should("be.visible");
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("e.g. 1").type("42");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Create tenants" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp can view rows in the Orders table where User ID field equals 42.",
+        )
+        .should("be.visible");
+    });
+
+    it("should create sandboxes for multiple tables via row-level security setup", () => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("steps 3, 4, and 5 should be locked initially");
+      H.main().within(() => {
+        cy.findByRole("listitem", { name: "Select data to make available" })
+          .icon("lock")
+          .should("exist");
+
+        cy.findByRole("listitem", { name: "Create tenants" })
+          .icon("lock")
+          .should("exist");
+
+        cy.findByRole("listitem", { name: "Summary" })
+          .icon("lock")
+          .should("exist");
+      });
+
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .click();
+
+      cy.log("wait for tenants to be enabled");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use row and column level security" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("pick first table and column");
+      H.main().findByText("Pick a table").click();
+
+      cy.log("Our analytics should be hidden in the table picker");
+      H.miniPicker().findByText("Our analytics").should("not.exist");
+      cy.log("Sample Database should be hidden in the table picker");
+      H.miniPicker().findByText("Sample Database").should("not.exist");
+
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+      H.miniPicker().findByText("Orders").click();
+
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("User ID").click();
+
+      cy.log("pick second table and column");
+      H.main().findByText("Add table").click();
+      H.main().findAllByText("Pick a table").first().click();
+
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+
+      cy.log("orders should be hidden as it's already selected");
+      H.miniPicker().findByText("Orders").should("not.exist");
+
+      H.miniPicker().findByText("People").click();
+
+      H.main()
+        .findAllByPlaceholderText("Pick a column")
+        .should("have.length", 2)
+        .last()
+        .click();
+
+      H.popover().findByText("ID").click();
+
+      cy.log("create sandbox");
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.log("wait for sandbox creation to complete");
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("no error toast should appear");
+      H.undoToast().should("not.exist");
+
+      // We verify permissions via API rather than UI because:
+      // 1. The admin permissions UI is complex and would add significant test time
+      // 2. This test focuses on the onboarding flow, not the permissions UI
+      cy.log("access policies should be created");
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          H.getTableId({ databaseId: WRITABLE_DB_ID, name: "people" }).then(
+            (peopleTableId) => {
+              cy.request("GET", "/api/mt/gtap").should((response) => {
+                const policies = response.body;
+                expect(policies.length).to.be.at.least(2);
+
+                const orderPolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === ordersTableId,
+                );
+
+                const peoplePolicy = policies.find(
+                  (policy: { table_id: number }) =>
+                    policy.table_id === peopleTableId,
+                );
+
+                expect(orderPolicy).to.exist;
+                expect(peoplePolicy).to.exist;
+
+                expect(orderPolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
+
+                expect(peoplePolicy.attribute_remappings).to.have.property(
+                  "organization_id",
+                );
+              });
+
+              cy.request(
+                "GET",
+                `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+              ).should((response) => {
+                const graph = response.body;
+
+                const permissions =
+                  graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+                expect(permissions).to.exist;
+
+                expect(permissions["view-data"].public).to.deep.equal({
+                  [ordersTableId]: "sandboxed",
+                  [peopleTableId]: "sandboxed",
+                });
+
+                expect(permissions["create-queries"].public).to.deep.equal({
+                  [ordersTableId]: "query-builder",
+                  [peopleTableId]: "query-builder",
+                });
+              });
+            },
+          );
+        },
+      );
+
+      H.main()
+        .findByRole("listitem", {
+          name: "Select data to make available",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+    });
+
+    it("should update existing sandboxes when changing column selection", () => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+
+      // We use API setup here instead of clicking through the UI because:
+      // 1. This test verifies the UPDATE flow (not CREATE), which requires a sandbox to already exist
+      // 2. The sandbox can only be created after tenants are enabled (which creates the all-external-users group)
+      // 3. Using API calls is cleaner for test data preparation than clicking through UI twice
+      cy.log("enable tenants to create the all-external-users");
+      H.updateSetting("use-tenants", true);
+
+      cy.log("create shared collection with a dashboard");
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        parent_id: null,
+        namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
+      });
+
+      cy.log("create an existing sandbox for Orders table via API");
+      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+        (ordersTableId) => {
+          cy.wrap(ordersTableId).as("ordersTableId");
+
+          H.getFieldId({ tableId: ordersTableId, name: "user_id" }).then(
+            (userIdFieldId) => {
+              H.getFieldId({ tableId: ordersTableId, name: "product_id" }).then(
+                (productIdFieldId) => {
+                  cy.wrap(productIdFieldId).as("productIdFieldId");
+
+                  cy.request("GET", "/api/permissions/group").then(
+                    (response) => {
+                      const allExternalUsersGroup = response.body.find(
+                        (g: { magic_group_type: string }) =>
+                          g.magic_group_type === "all-external-users",
+                      );
+
+                      cy.request("POST", "/api/mt/gtap", {
+                        table_id: ordersTableId,
+                        group_id: allExternalUsersGroup.id,
+                        card_id: null,
+                        attribute_remappings: {
+                          organization_id: [
+                            "dimension",
+                            ["field", userIdFieldId, null],
+                          ],
+                        },
+                      });
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("wait for checklist data to load before interacting with steps");
+      H.main()
+        .findByRole("listitem", {
+          name: /Enable multi-tenant user strategy/,
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("open the data segregation strategy step");
+      H.main()
+        .findByText("Which data segregation strategy does your database use?")
+        .scrollIntoView()
+        .click();
+
+      cy.log("select row and column level security strategy");
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use row and column level security" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("Select the same Orders table");
+      H.main().findByText("Pick a table").click();
+      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+      H.miniPicker().findByText("Orders").click();
+
+      cy.log("select Product ID column instead of User ID");
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("Product ID").click();
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.log("wait for sandbox update to complete");
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("error toast should not appear");
+      H.undoToast().should("not.exist");
+
+      cy.log("sandbox should be updated and not created");
+      cy.get<number>("@ordersTableId").then((ordersTableId) => {
+        cy.get<number>("@productIdFieldId").then((productIdFieldId) => {
+          cy.request("GET", "/api/mt/gtap").should((response) => {
+            const policies = response.body;
+
+            const orderPolicies = policies.filter(
+              (policy: { table_id: number }) =>
+                policy.table_id === ordersTableId,
+            );
+
+            // should only have one sandbox for Orders table
+            expect(orderPolicies.length).to.equal(1);
+
+            const [orderPolicy] = orderPolicies;
+            const tenantFieldRef =
+              orderPolicy.attribute_remappings.organization_id;
+
+            expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
+          });
+        });
+      });
+
+      H.main()
+        .findByRole("listitem", {
+          name: "Select data to make available",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+    });
+
+    it(
+      "should block schemas without selected tables in RLS setup",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        cy.log(
+          'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
+        );
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("enable tenants and create shared collection");
+        H.main()
+          .findByRole("button", {
+            name: "Enable tenants and create shared collection",
+          })
+          .click();
+
+        cy.log("wait for tenants to be enabled");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
+
+        cy.log("select RLS strategy");
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", {
+            name: "Use row and column level security",
+          })
+          .scrollIntoView()
+          .click();
+
+        cy.log(
+          "pick a table from the Domestic schema of the Postgres database",
+        );
+
+        H.main().findByText("Pick a table").click();
+        H.miniPicker().findByText("Writable Postgres12").click();
+        H.miniPicker().findByText("Domestic").click();
+        H.miniPicker().findByText("Animals").click();
+
+        cy.log("pick Score column as the tenant filter field");
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("Score").click();
+
+        cy.log("create sandbox");
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("wait for sandbox creation to complete");
+        cy.wait("@updatePermissionsGraph");
+
+        cy.log("no error toast should appear");
+        H.undoToast().should("not.exist");
+
+        cy.log("verify schemas without selected tables are blocked");
+        cy.request(
+          "GET",
+          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+        ).then((response) => {
+          const graph = response.body;
+
+          const permissions =
+            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+          expect(permissions).to.exist;
+
+          const viewData = permissions["view-data"];
+          expect(viewData).to.exist;
+
+          // Domestic schema should have granular per-table permissions
+          expect(viewData["Domestic"]).to.be.an("object");
+          const domesticTableIds = Object.keys(viewData["Domestic"]);
+          expect(domesticTableIds.length).to.be.at.least(1);
+
+          // At least one table should be sandboxed (the Animals table we selected)
+          const domesticValues = Object.values(
+            viewData["Domestic"],
+          ) as string[];
+          expect(domesticValues).to.include("sandboxed");
+
+          // Wild schema should be blocked (it has no selected tables)
+          expect(viewData["Wild"]).to.equal("blocked");
+
+          // create-queries should allow query-builder for Domestic,
+          // and be "no" for Wild (cascaded from blocked view-data)
+          const createQueries = permissions["create-queries"];
+          expect(createQueries["Domestic"]).to.equal("query-builder");
+          expect(createQueries["Wild"]).to.equal("no");
+        });
+
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+      },
+    );
+
+    it("locks the production embed step when JWT is not enabled", () => {
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.log("jwt should be disabled by default");
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["jwt-enabled"]).to.equal(false);
+      });
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("be.visible");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .closest("button")
+        .findByText("Complete the other steps to unlock")
+        .should("be.visible");
+    });
+  });
+
+  describe("connection impersonation step", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      H.updateSetting("use-tenants", true);
+
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
+      });
+    });
+
+    it("should configure connection impersonation for selected databases", function () {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.get<number>("@postgresID").then((postgresId) => {
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        H.main()
+          .findByRole("radio", { name: /Connection impersonation/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use connection impersonation" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("select database");
+        H.main().findByPlaceholderText("Pick a database").click();
+        H.popover().findByText("QA Postgres12").click();
+
+        cy.log("database should be selected in the multi-select pill");
+        H.main().findAllByLabelText("Remove").should("have.length", 1);
+        H.main().findByText("QA Postgres12").should("be.visible");
+
+        cy.log("setup connection impersonation for the database");
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("step should be marked as complete");
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("connection impersonation policy should be created");
+        cy.request("GET", "/api/ee/advanced-permissions/impersonation").should(
+          (response) => {
+            const policies = response.body;
+            expect(policies.length).to.be.at.least(1);
+
+            const postgresPolicy = policies.find(
+              (policy: { db_id: number }) => policy.db_id === postgresId,
+            );
+
+            expect(postgresPolicy).to.exist;
+            expect(postgresPolicy.attribute).to.equal("database_role");
+          },
+        );
+
+        cy.log("permission graph should have impersonated view-data");
+        cy.request(
+          "GET",
+          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+        ).should((response) => {
+          const graph = response.body;
+
+          const permissions =
+            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId as number];
+
+          expect(permissions).to.exist;
+          expect(permissions["view-data"]).to.equal("impersonated");
+          expect(permissions["create-queries"]).to.equal("query-builder");
+        });
+      });
+    });
+
+    it("should show 'no compatible databases' message when only Sample Database exists", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select connection impersonation strategy");
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByText(
+          "None of your databases support connection impersonation. Pick a different data segregation strategy in the previous step, or connect a new database in the Database settings before proceeding. Metabase connects to more than 15 popular databases.",
+        )
+        .should("be.visible");
+
+      cy.log("should show add database button");
+      H.main()
+        .findByRole("link", { name: "Add database" })
+        .should("have.attr", "href", "/admin/databases/create");
+    });
+
+    it("should show disabled database with tooltip when database does not support connection impersonation", function () {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("open the database picker dropdown");
+      H.main().findByPlaceholderText("Pick a database").click();
+
+      H.popover().findByText("Sample Database").should("be.visible");
+
+      cy.log(
+        "sample database should have the info icon (does not support connection impersonation)",
+      );
+      H.popover()
+        .findByText("Sample Database")
+        .parent()
+        .icon("info")
+        .should("exist");
+
+      H.popover().findByText("QA Postgres12").should("be.visible");
+
+      cy.log(
+        "postgres should not have the info icon (supports connection impersonation)",
+      );
+      H.popover()
+        .findByText("QA Postgres12")
+        .parent()
+        .icon("info")
+        .should("not.exist");
+
+      cy.log("clicking disabled database should not close dropdown");
+      H.popover().findByText("Sample Database").click();
+      H.popover().should("be.visible");
+
+      cy.log("hover over the info icon to see tooltip");
+      H.popover()
+        .findByText("Sample Database")
+        .parent()
+        .icon("info")
+        .trigger("mouseenter");
+
+      H.tooltip()
+        .findByText("This database doesn't support connection impersonation")
+        .should("be.visible");
+    });
+
+    it("creates a tenant with database_role attribute when using connection impersonation", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select connection impersonation strategy");
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant_role").type("acme_role");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Create tenants" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("tenant should have database_role attribute");
+      cy.request("GET", "/api/ee/tenant").should((response) => {
+        const tenantBySlug = response.body.data.find(
+          (tenant: { slug: string }) => tenant.slug === "acme-corp",
+        );
+
+        expect(tenantBySlug.attributes).to.deep.equal({
+          database_role: "acme_role",
+        });
+      });
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp will connect using the acme_role database role.",
+        )
+        .should("be.visible");
+    });
+
+    it("reopens the create tenants step after changing the segregation strategy", () => {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.log("pre-complete RLS and create a tenant");
+      cy.sandboxTable({
+        table_id: STATIC_ORDERS_ID,
+        group_id: ALL_EXTERNAL_USERS_GROUP_ID,
+      });
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Legacy Tenant",
+        slug: "legacy-tenant",
+        attributes: {
+          organization_id: "legacy-org",
+        },
+      });
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log(
+        "wait for checklist to load and page to settle on the summary step",
+      );
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
+
+      cy.log("reopen the strategy step and switch to connection impersonation");
+      H.main()
+        .findByRole("listitem", {
+          name: "Which data segregation strategy does your database use?",
+        })
+        .click();
+
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("complete the new select-data step");
+      H.main().findByPlaceholderText("Pick a database").click();
+      H.popover().findByText("QA Postgres12").click();
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("create tenants should reopen instead of skipping to summary");
+      H.main()
+        .findByRole("listitem", {
+          name: "Create tenants",
+          timeout: 10_000,
+        })
+        .should("have.attr", "aria-current", "step");
+
+      H.main()
+        .findByRole("listitem", { name: "Summary" })
+        .should("not.have.attr", "aria-current", "step");
+
+      cy.log("creating a new tenant should go to summary");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant_role").type("acme_role");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Create tenants" }).click();
+
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
+
+      H.main()
+        .contains(
+          "All users in Acme Corp will connect using the acme_role database role.",
+        )
+        .should("be.visible");
+    });
+  });
+
+  describe("database routing create tenants step", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      H.updateSetting("use-tenants", true);
+
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "Test Dashboard",
+          collection_id: collection.id,
+        });
+      });
+    });
+
+    it("creates a tenant with database_slug attribute when using database routing", () => {
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("select database routing strategy");
+      H.main()
+        .findByRole("radio", { name: /Database routing/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use database routing" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant-db-slug").type("acme-db");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Create tenants" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("tenant should have database_slug attribute");
+      cy.request("GET", "/api/ee/tenant").should((response) => {
+        const tenantBySlug = response.body.data.find(
+          (tenant: { slug: string }) => tenant.slug === "acme-corp",
+        );
+
+        expect(tenantBySlug.attributes).to.deep.equal({
+          database_slug: "acme-db",
+        });
+      });
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp will be routed to the acme-db database.",
+        )
+        .should("be.visible");
+    });
+  });
+
+  describe("sso setup sub-checklist", () => {
+    beforeEach(() => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
+    });
+
+    it("disables the Enable JWT button when IdP URI is empty", () => {
+      cy.visit("/admin/embedding/setup-guide/sso");
+
+      cy.findByLabelText(/JWT Identity Provider URI/i)
+        .should("be.visible")
+        .should("be.empty");
+
+      H.main()
+        .findByRole("button", {
+          name: "Enable JWT authentication and continue",
+        })
+        .should("be.visible")
+        .should("be.disabled");
+    });
+
+    it("can configure JWT auth and complete SSO setup", () => {
+      cy.visit("/admin/embedding/setup-guide/sso");
+
+      cy.log("no steps should be completed initially");
+      H.main().icon("check").should("not.exist");
+
+      cy.log("step 1: enable JWT");
+      H.main().within(() => {
+        cy.findByLabelText(/JWT Identity Provider URI/i)
+          .should("be.visible")
+          .type("https://jwt.example.com/auth");
+
+        cy.findByRole("button", {
+          name: "Enable JWT authentication and continue",
+        }).click();
+      });
+
+      cy.log("JWT should be enabled");
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["jwt-enabled"]).to.equal(true);
+        expect(body["jwt-identity-provider-uri"]).to.equal(
+          "https://jwt.example.com/auth",
+        );
+        expect(body["jwt-group-sync"]).to.equal(true);
+      });
+
+      cy.log("step 1 should be complete");
+      H.main()
+        .findByRole("listitem", { name: "Set up JWT authentication" })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("valid signing key should be shown");
+      H.main().within(() => {
+        cy.findByText(
+          /This example code for Node.js sets up an endpoint using Express/,
+        ).should("be.visible");
+
+        cy.log("express.js code snippet should be shown inline");
+        cy.contains("METABASE_JWT_SHARED_SECRET").should("exist");
+        cy.contains("METABASE_INSTANCE_URL").should("exist");
+
+        cy.findByRole("button", { name: "Next" }).scrollIntoView().click();
+      });
+
+      cy.log("step 2 should be complete");
+      H.main()
+        .findByRole("listitem", { name: "Add a new endpoint to your app" })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("step 3: confirm login works");
+      H.main().within(() => {
+        cy.findByText("Try logging in with SSO. Did it work?").should(
+          "be.visible",
+        );
+
+        cy.findByRole("link", { name: "Log in works, I'm done" }).click();
+      });
+
+      cy.log("should go back to setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
+      cy.url().should("not.include", "/sso");
+
+      cy.log("'Configure SSO' card should be marked as done");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Configure SSO")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+
+      cy.log("'Embed in production with SSO' should now be unlocked");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Embed in production with SSO")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("button")
+        .icon("lock")
+        .should("not.exist");
+    });
+  });
+
+  it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", () => {
+    H.restore("setup");
+    cy.signInAsAdmin();
+    H.activateToken("pro-cloud");
+
+    cy.log("enable JWT");
+    cy.request("PUT", "/api/setting", {
+      "jwt-enabled": true,
+      "jwt-identity-provider-uri": "https://jwt.example.com/auth",
+      "jwt-shared-secret": "0".repeat(64),
+    });
+
+    cy.visit("/admin/embedding/setup-guide/sso");
+
+    cy.log("step 1 should be marked as done");
+    H.main()
+      .findByRole("listitem", {
+        name: "Set up JWT authentication",
+        timeout: 10_000,
+      })
+      .should("have.attr", "data-completed", "true");
+
+    cy.log("navigate to step 3");
+    H.main()
+      .findByRole("listitem", {
+        name: "Test that JWT authentication is working correctly",
+      })
+      .click();
+
+    cy.log("click troubleshooting button");
+    H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
+
+    cy.log("troubleshooting view should be shown");
+    H.main().findByText("Troubleshooting").should("be.visible");
+
+    cy.log("help link should point to /help-premium");
+    H.main()
+      .findByRole("link", { name: "Contact customer support" })
+      .should("have.attr", "href")
+      .and("include", "metabase.com/help-premium");
+  });
+});

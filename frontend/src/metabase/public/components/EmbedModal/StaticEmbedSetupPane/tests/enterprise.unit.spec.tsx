@@ -18,7 +18,7 @@ describe("Static Embed Setup phase - EE, no token", () => {
             resourceType,
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
         });
 
         expect(
@@ -32,14 +32,14 @@ describe("Static Embed Setup phase - EE, no token", () => {
         await setup({
           props: {},
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
         });
 
         expect(screen.getByText("Removing the banner")).toBeVisible();
 
         expect(
           screen.getByText(
-            "The “Powered by Metabase” banner appears on all static embeds created with your current version. Upgrade to remove it (and customize a lot more)",
+            "The “Powered by Metabase” banner appears on all guest embeds created with your current version. Upgrade to remove it (and customize a lot more)",
           ),
         ).toBeVisible();
       });

@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
+import { isRootTrashCollection } from "metabase/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,
-} from "metabase/components/BulkActionBar";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { useDispatch } from "metabase/lib/redux";
+} from "metabase/common/components/BulkActionBar";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { canMoveItem, useSetArchive } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
@@ -32,6 +33,7 @@ export const ArchivedBulkActions = ({
   setSelectedAction,
 }: ArchivedBulkActionsProps) => {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const hasSelectedItems = useMemo(
     () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -41,6 +43,11 @@ export const ArchivedBulkActions = ({
   const selectedItemCount = selectedItems?.length ?? 0;
 
   const handleCloseModal = () => {
+    setSelectedItems(null);
+    setSelectedAction(null);
+  };
+
+  const unselect = () => {
     setSelectedItems(null);
     setSelectedAction(null);
     clearSelected();
@@ -54,8 +61,8 @@ export const ArchivedBulkActions = ({
   }, [selected]);
 
   const handleBulkRestore = () => {
-    const actions = selected.map((item) => item.setArchived(false));
-    Promise.all(actions).finally(() => clearSelected());
+    const actions = selected.map((item) => archive(item, false));
+    Promise.all(actions).finally(unselect);
   };
 
   // delete
@@ -70,7 +77,7 @@ export const ArchivedBulkActions = ({
 
   const handleBulkDeletePermanently = async () => {
     const actions = selected.map((item) => item.delete());
-    Promise.all(actions).finally(() => clearSelected());
+    Promise.all(actions).finally(unselect);
     dispatch(
       addUndo({
         message: ngettext(
@@ -78,7 +85,6 @@ export const ArchivedBulkActions = ({
           `${selected.length} items have been permanently deleted.`,
           selected.length,
         ),
-        undo: false,
         canDismiss: true,
       }),
     );

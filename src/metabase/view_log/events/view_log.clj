@@ -51,6 +51,8 @@
               lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
           (cluster-lock/with-cluster-lock lock-name
+            ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
+            ;; specifically search-index enqueues on after-update.
             (t2/query {:update (t2/table-name model)
                        :set    {:view_count [:+ :view_count (into [:case]
                                                                   (mapcat (fn [[cnt ids]]
@@ -69,12 +71,12 @@
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
-(defn- increment-view-counts!
+(defn increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
-(mu/defn ^:private record-views!
+(mu/defn record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
@@ -82,7 +84,7 @@
     (when (premium-features/log-enabled?)
       (t2/insert! :model/ViewLog view-or-views))))
 
-(defn- generate-view
+(defn generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
   [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]
@@ -90,7 +92,8 @@
    :user_id    (or user-id api/*current-user-id*)
    :model_id   (or object-id (u/id object))
    :has_access has-access
-   :context    context})
+   :context    context
+   :tenant_id  (:tenant_id @api/*current-user*)})
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
@@ -117,13 +120,18 @@
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
+      ;; Use t2/query (raw SQL) instead of t2/update! to avoid triggering Toucan2 model hooks
+      ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
+      ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
+      ;; in increment-view-counts!*
       (cluster-lock/with-cluster-lock dashboard-statistics-lock
-        (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
-                    {:last_viewed_at (into [:case]
-                                           (mapcat (fn [[id timestamp]]
-                                                     [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                   dashboard-id->timestamp))
-                     :updated_at :updated_at})) ;; setting last_viewed_at should not update the updated_at column
+        (t2/query {:update (t2/table-name :model/Dashboard)
+                   :set    {:last_viewed_at (into [:case]
+                                                  (mapcat (fn [[id timestamp]]
+                                                            [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                          dashboard-id->timestamp))
+                            :updated_at :updated_at}
+                   :where  [:in :id (keys dashboard-id->timestamp)]}))
       (catch Exception e
         (log/error e "Failed to update dashboard last_viewed_at")))))
 

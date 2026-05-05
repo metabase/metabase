@@ -5,15 +5,25 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
+  (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
+   [metabase.analytics.settings :as analytics.settings]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? empty? get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -22,7 +32,8 @@
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
-                             (- (System/currentTimeMillis) start-time-ms)))
+                             ;; Consider having `:start_time_nanos` instead, to avoid the pitfalls of system clocks.
+                             (u/since-ms-wall-clock start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -37,16 +48,21 @@
 (defn- save-execution-metadata!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (when-not (:cache_hit query-execution)
-    (query/save-query-and-update-average-execution-time! query query-hash running-time))
-  (if-not context
-    (log/warn "Cannot save QueryExecution, missing :context")
-    (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
+  (tracing/with-span :db-app "db-app.save-query-execution" {}
+    (when-not (:cache_hit query-execution)
+      (query/save-query-and-update-average-execution-time! query query-hash running-time))
+    (if-not context
+      (log/warn "Cannot save QueryExecution, missing :context")
+      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info]
-  (let [execution-info' (analytics/include-sdk-info execution-info)]
+  (let [;; Capture SDK info now, on the request thread, because `with-execute-async` below intentionally
+        ;; does not convey dynamic var bindings to the background thread (to avoid holding DB connections).
+        ;; `include-sdk-info` also runs in the `before-insert` hook as a safety net for any code path
+        ;; that inserts QueryExecution directly (where dynamic vars would still be bound).
+        execution-info' (analytics.core/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -64,10 +80,10 @@
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
-                      :cache_hit    (boolean (:cached cache-details))
-                      :cache_hash   (:hash cache-details)
-                      :result_rows  result-rows
-                      :is_sandboxed (boolean is-sandboxed?))]
+                      :cache_hit       (boolean (:cached cache-details))
+                      :cache_hash      (:hash cache-details)
+                      :result_rows     result-rows
+                      :is_sandboxed    (boolean is-sandboxed?))]
     (save-execution-metadata! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -84,8 +100,8 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
-               :parameterized))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :is_impersonated :is_db_routed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
+               :parameterized :parameters))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
@@ -106,7 +122,8 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
-       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
+       (save-successful-execution-metadata!
+        (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -115,16 +132,19 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- query-execution-info
-  "Return the info for the QueryExecution entry for this `query`."
+(mu/defn- query-execution-info
+  "Return the info for the QueryExecution entry for this `query`. Fields that depend on dynamic vars set by
+  postprocessing middleware (`is_impersonated`, `is_db_routed`, the routed `database_id`) are NOT computed here —
+  they're added later by [[enrich-with-execution-context]] from inside the postprocessing rff, where the bindings
+  are still in effect. See PR #71386 — reading those values from the query map at the top of the around middleware
+  was a timing bug because pre-processing hadn't yet run."
   {:arglists '([query])}
-  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    mirror-database-id             :mirror-database/id
-    :as                            query}]
+    :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
                      (-> original-query
@@ -132,11 +152,14 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or mirror-database-id database-id)
+    {:database_id       database-id
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id
      :dashboard_id      dashboard-id
+     :transform_id      transform-id
+     :lens_id           lens-id
+     :lens_params       lens-params
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
@@ -144,10 +167,57 @@
                              (every? #(some? (:value %)) parameters))
      :native            (= (keyword query-type) :native)
      :json_query        json-query
+     :tenant_id         (:tenant_id @api/*current-user*)
+     :parameters        (when (and (seq parameters) (analytics.settings/analytics-pii-retention-enabled))
+                          (json/encode parameters))
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
      :start_time_millis (System/currentTimeMillis)}))
+
+(defn- snapshot-execution-context
+  "Reads the postprocessing-middleware dynamic vars (`*impersonation-role*`, `*destination-database-id*`) and
+  returns a map of fields to merge into the QueryExecution row."
+  []
+  (let [destination-db-id (qp.middleware.enterprise/currently-destination-database-id)]
+    (cond-> {:is_impersonated (qp.middleware.enterprise/currently-impersonated?)
+             :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
+      destination-db-id (assoc :database_id destination-db-id))))
+
+(def ^:dynamic ^:private *execution-context-ref*
+  "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
+  [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the
+  EE postprocessing `binding` blocks are still on the stack. The around middleware reads it in both the
+  success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
+  that catch the EE bindings have already been popped during exception unwind.
+
+  Why a shared mutable ref (atom) instead of just `set!` on the dynamic var: the QP can run on a thread spawned
+  by the streaming response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a
+  snapshot — `set!` would mutate only the spawned thread's frame, not the caller's. A shared mutable cell that
+  any thread holding a reference can read/write makes the value flow back to the caller correctly."
+  nil)
+
+(defn capture-execution-context-middleware
+  "Execute middleware. Snapshots impersonation/db-routing dynamic-var values into [[*execution-context-ref*]] (if
+  bound) and forwards. Must be positioned FIRST in the execute middleware list so it runs INNERMOST — i.e. inside
+  the `binding` blocks established by `swap-destination-db-middleware` and
+  `apply-impersonation-postprocessing-middleware`. See the comment block in
+  [[metabase.query-processor.execute/middleware]] explaining the reduce order."
+  [qp]
+  (fn [query rff]
+    (when *execution-context-ref*
+      (reset! *execution-context-ref* (snapshot-execution-context)))
+    (qp query rff)))
+
+(defn- enrich-with-execution-context
+  "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always
+  includes `:is_impersonated` and `:is_db_routed` (defaulting to `false`) so the QueryExecution row has a stable
+  shape even when the snapshot didn't run (e.g. tests that bypass [[capture-execution-context-middleware]])."
+  [execution-info]
+  (merge {:is_impersonated false
+          :is_db_routed    false}
+         execution-info
+         (some-> *execution-context-ref* deref)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -162,25 +232,34 @@
 
   4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
+    ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
+    ;; This has to live somewhere and while processing each query seems like a natural place.
+    (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
-      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-            execution-info (query-execution-info query)]
-        (letfn [(rff* [metadata]
-                  (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result (rff (dissoc metadata :preprocessed_query))]
-                        ;; temporarily disabled because it impacts query performance
-                    (add-and-save-execution-metadata-xform! execution-info result)))]
-          (try
-            (qp query rff*)
-            (catch Throwable e
-              (save-failed-query-execution!
-               execution-info
-               (or
-                (some-> e ex-cause ex-message)
-                (ex-message e)))
-              (throw (ex-info (ex-message e)
-                              {:query-execution execution-info}
-                              e)))))))))
+      ;; The atom is written from inside [[capture-execution-context-middleware]] (positioned in the execute
+      ;; chain inside the EE postprocessing bindings) and read in both the success-path rff and the error-path
+      ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
+      ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
+      (binding [*execution-context-ref* (atom nil)]
+        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+              execution-info (query-execution-info query)]
+          (letfn [(rff* [metadata]
+                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                          result         (rff (dissoc metadata :preprocessed_query))
+                          execution-info (enrich-with-execution-context execution-info)]
+                      (add-and-save-execution-metadata-xform! execution-info result)))]
+            (try
+              (qp query rff*)
+              (catch Throwable e
+                (let [execution-info (enrich-with-execution-context execution-info)]
+                  (save-failed-query-execution!
+                   execution-info
+                   (or
+                    (some-> e ex-cause ex-message)
+                    (ex-message e)))
+                  (throw (ex-info (ex-message e)
+                                  {:query-execution execution-info}
+                                  e)))))))))))

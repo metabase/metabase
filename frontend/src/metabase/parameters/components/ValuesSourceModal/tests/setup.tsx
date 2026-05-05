@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -14,8 +14,10 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, ParameterValues, TokenFeatures } from "metabase-types/api";
@@ -27,7 +29,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import ValuesSourceModal from "../ValuesSourceModal";
 
@@ -38,8 +39,8 @@ export interface SetupOpts {
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = async ({
@@ -49,8 +50,8 @@ export const setup = async ({
   hasCollectionAccess = true,
   hasParameterValuesError = false,
   showMetabaseLinks = true,
-  hasEnterprisePlugins = false,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
   const currentUser = createMockUser();
   const databases = [createMockDatabase()];
@@ -65,10 +66,14 @@ export const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [personalCollection, rootCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: rootCollection,
     collectionItems: [],
   });
 
@@ -79,7 +84,7 @@ export const setup = async ({
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ),
     );
@@ -96,15 +101,19 @@ export const setup = async ({
 
   const state = createMockState({
     currentUser,
+    entities: createMockEntitiesState({
+      databases: [createMockDatabase()],
+      questions: cards,
+    }),
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <ValuesSourceModal

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -8,6 +9,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {
   BillingInfo,
   BillingInfoLineItem,
@@ -25,13 +27,16 @@ import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 const setup = async ({
   token = "token",
   is_env_setting = false,
+  airgapEnabled = false,
   features = {},
 }: {
   token?: string | null;
   is_env_setting?: boolean;
+  airgapEnabled?: boolean;
   features?: Partial<TokenFeatures> & { "metabase-store-managed"?: boolean };
 }) => {
   const settings = createMockSettings({
+    "airgap-enabled": airgapEnabled,
     "premium-embedding-token": token,
     "token-features": createMockTokenFeatures(features),
   });
@@ -43,21 +48,33 @@ const setup = async ({
       env_name: "MB_PREMIUM_EMBEDDING_TOKEN",
       value: token,
     },
+    {
+      key: "airgap-enabled",
+      value: airgapEnabled,
+    },
   ]);
 
   setupPropertiesEndpoints(settings);
-  setupTokenStatusEndpoint(
-    !!token && token !== "invalid",
-    Object.keys(features),
-  );
+  setupTokenStatusEndpoint({
+    valid: !!token && token !== "invalid",
+    features: Object.keys(features),
+  });
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<LicenseAndBillingSettings />);
+  renderWithProviders(<LicenseAndBillingSettings />, {
+    storeInitialState: {
+      settings: createMockSettingsState(settings),
+    },
+  });
 
   await screen.findByTestId("license-and-billing-content");
 };
 
 describe("LicenseAndBilling", () => {
+  beforeEach(() => {
+    jest.spyOn(dayjs.prototype, "diff").mockReturnValue(27209);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -194,7 +211,7 @@ describe("LicenseAndBilling", () => {
         format: "unsupported-format",
         display: "value",
       };
-      // mocking some future diplay that doesn't exist yet
+      // mocking some future display that doesn't exist yet
       const unsupportedDisplay: any = {
         name: "Unsupported display",
         value: "Unsupported display",
@@ -257,6 +274,24 @@ describe("LicenseAndBilling", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders settings for airgapped token", async () => {
+    await setup({ token: "valid", airgapEnabled: true });
+
+    expect(
+      await screen.findByText(
+        "To manage your billing preferences, please email",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("billing@metabase.com")).toHaveAttribute(
+      "href",
+      "mailto:billing@metabase.com",
+    );
+
+    expect(
+      screen.getByText("Your token expires in 27209 days."),
+    ).toBeInTheDocument();
+  });
+
   it("renders settings for unlicensed instances", async () => {
     await setup({ token: null });
 
@@ -298,6 +333,27 @@ describe("LicenseAndBilling", () => {
     expect(
       await screen.findByText(
         "This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an message on a 503 (error accessing metabase store)", async () => {
+    await setup({ token: null });
+
+    expect(
+      await screen.findByText(
+        "Bought a license to unlock advanced functionality? Please enter it below.",
+      ),
+    ).toBeInTheDocument();
+
+    setupUpdateSettingEndpoint({ status: 503 });
+
+    await userEvent.type(screen.getByTestId("license-input"), "invalid");
+    await userEvent.click(await screen.findByTestId("activate-button"));
+
+    expect(
+      await screen.findByText(
+        "We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.",
       ),
     ).toBeInTheDocument();
   });

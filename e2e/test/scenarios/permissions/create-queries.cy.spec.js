@@ -198,7 +198,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalTablePermissions);
@@ -227,7 +227,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     cy.visit("/admin/permissions/");
     cy.get("label").contains("Databases").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");
 
     H.selectSidebarItem("Sample Database");
@@ -274,7 +274,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalPermissions);
@@ -344,7 +344,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalTablePermissions);
@@ -433,7 +433,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     // Drill down to tables permissions
@@ -499,7 +499,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalTablePermissions);
@@ -528,7 +528,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.visit("/admin/permissions/");
     cy.get("label").contains("Databases").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");
 
     H.selectSidebarItem("Sample Database");
@@ -575,7 +575,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       cy.button("Yes").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
     H.assertPermissionTable(finalPermissions);

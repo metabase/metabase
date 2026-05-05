@@ -1,7 +1,7 @@
-import { updateSetting } from "metabase/admin/settings/settings";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { updateSetting } from "metabase/redux/settings";
+import { createAsyncThunk } from "metabase/redux/utils";
 
-import { getCurrentVersion } from "../settings/selectors";
+import { getCurrentVersion } from "./selectors";
 
 export const disableNotice = createAsyncThunk(
   "metabase/admin/app/DISABLE_NOTICE",

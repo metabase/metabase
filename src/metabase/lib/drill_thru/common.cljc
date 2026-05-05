@@ -1,10 +1,14 @@
 (ns metabase.lib.drill-thru.common
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -13,7 +17,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty select-keys]]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -58,9 +63,7 @@
   (->> (lib.metadata.calculation/visible-columns
         query
         stage-number
-        (lib.util/query-stage query stage-number)
-        {:unique-name-fn                               (lib.util/unique-name-generator)
-         :include-joined?                              false
+        {:include-joined?                              false
          :include-expressions?                         false
          :include-implicitly-joinable?                 false
          :include-implicitly-joinable-for-source-card? false})
@@ -104,7 +107,7 @@
 (mu/defn- card-sourced-name-based-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
         card-sourced? (boolean (lib.util/source-card-id query))
         has-id? (boolean (:id column))]
     (and breakout-sourced? card-sourced? (not has-id?))))
@@ -112,15 +115,23 @@
 (mu/defn- possible-model-mapped-breakout-column? :- :boolean
   [query  :- ::lib.schema/query
    column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
         model-sourced? (lib.card/source-card-is-model? query)
         has-id? (boolean (:id column))]
     (and breakout-sourced? model-sourced? has-id?)))
 
+(mu/defn- possible-expression-breakout-column? :- :boolean
+  [query  :- ::lib.schema/query
+   column :- ::lib.schema.metadata/column]
+  (let [breakout-sourced?   (boolean (:lib/breakout? column))
+        has-id?             (boolean (:id column))
+        matching-expression (lib.expression/maybe-resolve-expression query -1 (:name column))]
+    (and breakout-sourced? (boolean matching-expression) (not has-id?))))
+
 (mu/defn- day-bucketed-breakout-column? :- :boolean
   [column :- ::lib.schema.metadata/column]
-  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
-        day-bucketed? (= (:metabase.lib.field/temporal-unit column) :day)]
+  (let [breakout-sourced? (boolean (:lib/breakout? column))
+        day-bucketed? (= (:lib/temporal-unit column) :day)]
     (and breakout-sourced? day-bucketed?)))
 
 (mu/defn matching-filterable-column :- [:maybe ::lib.schema.metadata/column]
@@ -131,6 +142,22 @@
    column       :- ::lib.schema.metadata/column]
   (let [columns (lib.filter/filterable-columns query stage-number)]
     (or (lib.equality/find-matching-column query stage-number column-ref columns)
+        ;; TODO (Cam 2026-02-11) HACK if we have a column ref that for some reason is missing the
+        ;; `:join-alias` (likely from broken metadata converted from legacy metadata where `:source-alias` was renamed
+        ;; to `:lib/original-join-alias` but not `:lib/join-alias`) we still want find a match, so try
+        ;; using that if we failed without using it. This hack is needed to
+        ;; make [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]] pass.
+        ;;
+        ;; Ideally I think we'd just update this code to use [[metabase.lib.metadata.calculation/metadata]] (which
+        ;; uses things like [[metabase.lib.field.resolution]] under the hood) but then we'd have to fix a lot of bugs
+        ;; where this is called with the wrong stage number (several callers append a stage to the query and then call
+        ;; with a different `stage-number` than the original even tho `column` is relative to a different stage). I
+        ;; tried doing this fix but it broke a few other things. Investigate further.
+        (when (and (lib.util/clause-of-type? column-ref :field)
+                   (not (lib.join.util/current-join-alias column-ref)))
+          (when-let [original-join-alias (:lib/original-join-alias column)]
+            (let [ref-with-alias (lib.join/with-join-alias column-ref original-join-alias)]
+              (lib.equality/find-matching-column query stage-number ref-with-alias columns))))
         (and (:lib/source-uuid column)
              (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                            columns)))))
@@ -148,10 +175,10 @@
    ;; If a breakout-sourced column comes from a model based on a native query that renames the column with an "AS"
    ;; alias, AND where the column has been mapped to a real DB field, then we can't use the breakout column directly
    ;; and must instead lookup the equivalent "resolved" column metadata. This results in a (hopefully) equivalent
-   ;; column where the :lib/source is no longer :source/breakouts, but rather :source/card, which allows
-   ;; column-metadata->field-ref to recognize that it needs to generate a named-based ref. This is required because an
-   ;; id-based ref will wind up generating SQL that matches the underlying mapped column's name, not the name of the
-   ;; column from the model's native query (which was renamed via "AS").
+   ;; column where `:lib/breakout?` is no longer true, and the `:lib/source` is now `:source/card`, which
+   ;; allows [[metabase.lib.field/column-metadata->field-ref]] to recognize that it needs to generate a named-based
+   ;; ref. This is required because an id-based ref will wind up generating SQL that matches the underlying mapped
+   ;; column's name, not the name of the column from the model's native query (which was renamed via "AS").
    ;;
    ;; When a breakout column is bucketed by day, it is cast to type/Date. If we create filters for such a column,
    ;; the QP will assume that there is no time component and, for example, it can generate a simple equality clause
@@ -181,6 +208,7 @@
   ;; https://github.com/metabase/metabase/issues/53604
   (if-not (or (card-sourced-name-based-breakout-column? query column)
               (possible-model-mapped-breakout-column? query column)
+              (possible-expression-breakout-column? query column)
               (day-bucketed-breakout-column? column))
     column
     (let [filterable-column (matching-filterable-column query stage-number column-ref column)]

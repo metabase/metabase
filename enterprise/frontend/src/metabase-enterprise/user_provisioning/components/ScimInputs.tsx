@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import type { TextInputProps } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 
@@ -17,9 +17,11 @@ export const getTextInputStyles = (params: {
   },
   input: {
     color: match(params)
-      .with({ masked: true }, () => `var(--mb-color-text-light) !important`)
-      .with({ disabled: false }, () => `var(--mb-color-text-dark) !important`)
-      .otherwise(() => `black !important`),
+      .with(
+        { disabled: false },
+        () => `var(--mb-color-text-primary) !important`,
+      )
+      .otherwise(() => `var(--mb-color-text-primary) !important`),
     fontFamily: fontFamilyMonospace,
   },
 });

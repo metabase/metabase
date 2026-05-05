@@ -10,7 +10,7 @@ jobs:
   external-reminder:
     name: External PR Helper
     if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     permissions:
       pull-requests: write

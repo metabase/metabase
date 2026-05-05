@@ -54,7 +54,7 @@
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "number-style (non-currency)"
-        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-style "decimal"})))
+        (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-style "decimal"})))
         (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
         (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
 
@@ -92,23 +92,23 @@
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Thousands separator can be omitted"
-          (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."}))))))))
+          (is (= ["###0" "###0.##########"]   (format-string {::mb.viz/number-separators "."}))))))))
 
 (deftest format-settings->format-string-test-2b4
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Decimals"
         (testing "Custom separators are not supported"
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
-          (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))))))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ", "})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".,"})))
+          (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-separators ".’"}))))))))
 
 (deftest format-settings->format-string-test-2c
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "General number formatting"
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
-        (is (= ["#,##0" "#,##0.##"]
+        (is (= ["#,##0" "#,##0.##########"]
                (format-string {::mb.viz/scale 2})))
         (is (= "#,##0.00"
                (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2})))))))
@@ -119,13 +119,13 @@
       (testing "Prefix and suffix"
         (testing "Prefix/suffix on general number format"
           (is (= ["\"prefix\"#,##0"
-                  "\"prefix\"#,##0.##"]
+                  "\"prefix\"#,##0.##########"]
                  (format-string {::mb.viz/prefix "prefix"})))
           (is (= ["#,##0\"suffix\""
-                  "#,##0.##\"suffix\""]
+                  "#,##0.##########\"suffix\""]
                  (format-string {::mb.viz/suffix "suffix"})))
           (is (= ["\"prefix\"#,##0\"suffix\""
-                  "\"prefix\"#,##0.##\"suffix\""]
+                  "\"prefix\"#,##0.##########\"suffix\""]
                  (format-string {::mb.viz/prefix "prefix",
                                  ::mb.viz/suffix "suffix"}))))))))
 
@@ -231,6 +231,30 @@
                                                            ::mb.viz/currency-style "name"}
                                                           price-col))))))))
 
+(deftest format-settings->format-string-test-3d2
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency formatting"
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
+        (testing "narrowSymbol uses symbol_native and produces correct format strings"
+          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "USD",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col)))
+          ;; CAD narrowSymbol is "$" (not "CA$" like symbol), so no space before number
+          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "CAD",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col)))
+          (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false,
+                                                  ::mb.viz/currency "EUR",
+                                                  ::mb.viz/currency-style "narrowSymbol"}
+                                                 price-col))))
+        (testing "narrowSymbol falls back to code with space if symbol not supported"
+          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
+                                                   ::mb.viz/currency "KGS",
+                                                   ::mb.viz/currency-style "narrowSymbol"}
+                                                  price-col))))))))
+
 (deftest format-settings->format-string-test-3e
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
@@ -243,11 +267,13 @@
       (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
         (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "narrowSymbol"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} price-col)))
           (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "narrowSymbol"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} price-col)))
           (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} price-col)))
@@ -433,7 +459,7 @@
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
-      (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+      (is (= [["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"] ["#,##0"] ["#,##0.##########"]]
              (rest (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
@@ -514,6 +540,19 @@
     (is (= ["Col (€)"]
            (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
+                               []))))
+    ;; narrowSymbol uses symbol_native (e.g. "$" for CAD instead of "CA$")
+    (is (= ["Col ($)"]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "CAD",
+                                                           ::mb.viz/currency-style "narrowSymbol"}}}
+                               []))))
+    ;; narrowSymbol falls back to code if symbol not supported
+    (is (= ["Col (KGS)"]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "KGS", ::mb.viz/currency-style "narrowSymbol"}}}
                                []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]

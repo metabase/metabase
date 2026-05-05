@@ -1,15 +1,17 @@
 import { useCallback } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   useBookmarkListQuery,
-  useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Bookmark from "metabase/entities/bookmarks";
-import Databases from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Databases } from "metabase/entities/databases";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
@@ -36,7 +38,7 @@ export function CollectionContent({
       "exclude-archived": true,
     });
 
-  const { data: collection, error: collectionError } = useCollectionQuery({
+  const { data: collection, error: collectionError } = useGetCollectionQuery({
     id: collectionId,
   });
 
@@ -60,9 +62,9 @@ export function CollectionContent({
   const dispatch = useDispatch();
 
   const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.create({ id, type }));
+    dispatch(Bookmarks.actions.create({ id, type }));
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.delete({ id, type }));
+    dispatch(Bookmarks.actions.delete({ id, type }));
 
   const uploadFile = useCallback(
     ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
@@ -88,7 +90,6 @@ export function CollectionContent({
       databases={databases}
       bookmarks={bookmarks}
       collection={collection}
-      collections={collections}
       collectionId={collectionId}
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}

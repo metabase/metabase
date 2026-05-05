@@ -1,13 +1,13 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useCallback } from "react";
 
 import type {
   DragEndEvent,
   SortableDivider,
-} from "metabase/core/components/Sortable";
-import { Sortable, SortableList } from "metabase/core/components/Sortable";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
+} from "metabase/common/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 import type { IconProps } from "metabase/ui";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 import { ColumnItem } from "../ColumnItem";
 
@@ -28,8 +28,9 @@ interface SortableColumnFunctions<T> {
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
 }
-interface ChartSettingOrderedItemsProps<T extends SortableItem>
-  extends SortableColumnFunctions<T> {
+interface ChartSettingOrderedItemsProps<
+  T extends SortableItem,
+> extends SortableColumnFunctions<T> {
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;
@@ -56,9 +57,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
+  const sensors = useDndSensors({ distance: 15 });
 
   const renderItem = useCallback(
     ({ item, id }: { item: T; id: string | number }) =>
@@ -119,7 +118,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       renderItem={renderItem}
       items={items}
       onSortEnd={onSortEnd}
-      sensors={[pointerSensor]}
+      sensors={sensors}
       dividers={dividers}
     />
   );

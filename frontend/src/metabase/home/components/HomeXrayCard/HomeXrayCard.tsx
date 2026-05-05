@@ -6,6 +6,7 @@ import {
   CardTitlePrimary,
   CardTitleSecondary,
 } from "./HomeXrayCard.styled";
+import { trackHomeXRayClicked } from "./analytics";
 
 interface HomeXrayCardProps {
   title: string;
@@ -19,7 +20,7 @@ export const HomeXrayCard = ({
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
-    <HomeCard url={url}>
+    <HomeCard url={url} onClick={trackHomeXRayClicked}>
       <CardIcon name="bolt_filled" />
       <CardTitle>
         <CardTitleSecondary>{message}</CardTitleSecondary>{" "}

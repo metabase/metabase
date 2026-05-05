@@ -1,19 +1,20 @@
-import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
+  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/utils/formatting";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
-import { Divider, Radio, Select, Stack, Switch, Text } from "metabase/ui";
+} from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 import { SetByEnvVar } from "./AdminSettingInput";
 
@@ -41,13 +42,19 @@ export function FormattingWidget() {
   const {
     value: initialValue,
     updateSetting,
-    isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
   const [localValue, setLocalValue] = useState<FormattingSettings | undefined>({
     ...DEFAULT_FORMATTING_SETTINGS,
     ...initialValue,
   });
+
+  useEffect(() => {
+    setLocalValue({
+      ...DEFAULT_FORMATTING_SETTINGS,
+      ...initialValue,
+    });
+  }, [initialValue]);
 
   const {
     date_style: dateStyle,
@@ -65,14 +72,12 @@ export function FormattingWidget() {
     const currencyOptions = (
       getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
-    const currencyStyleOptions =
-      getCurrencyStyleOptions(currency).map(mapNameToLabel);
+    const currencyStyleOptions = getCurrencyStyleOptions(
+      currency,
+      currencyStyle,
+    ).map(mapNameToLabel);
     return [currencyOptions, currencyStyleOptions];
-  }, [currency]);
-
-  if (isLoading) {
-    return null;
-  }
+  }, [currency, currencyStyle]);
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 
@@ -86,12 +91,11 @@ export function FormattingWidget() {
 
   return (
     <Stack data-testid="custom-formatting-setting">
-      <SettingHeader id="custom-formatting" title={t`Localization options`} />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
-        <Stack>
-          <FormattingSection title={t`Dates and Times`}>
+        <>
+          <SettingsSection title={t`Dates and times`}>
             <FormattingInput
               id="date_style"
               label={t`Date style`}
@@ -149,9 +153,8 @@ export function FormattingWidget() {
                 })
               }
             />
-          </FormattingSection>
-          <Divider mt="md" mb="md" />
-          <FormattingSection title={t`Numbers`}>
+          </SettingsSection>
+          <SettingsSection title={t`Numbers`}>
             <FormattingInput
               id="number_separators"
               label={t`Separator style`}
@@ -162,7 +165,7 @@ export function FormattingWidget() {
                 { label: "100 000,00", value: ", " },
                 { label: "100.000,00", value: ",." },
                 { label: "100000.00", value: "." },
-                { label: "100'000.00", value: ".'" },
+                { label: "100’000.00", value: ".’" },
               ]}
               onChange={(newValue) =>
                 handleChange({
@@ -174,9 +177,8 @@ export function FormattingWidget() {
                 })
               }
             />
-          </FormattingSection>
-          <Divider mt="md" mb="md" />
-          <FormattingSection title={t`Currency`}>
+          </SettingsSection>
+          <SettingsSection title={t`Currency`}>
             <FormattingInput
               id="currency"
               label={t`Unit of currency`}
@@ -204,13 +206,13 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
-                    currency_style: newValue as string,
+                    currency_style: newValue as CurrencyStyle,
                   },
                 })
               }
             />
-          </FormattingSection>
-        </Stack>
+          </SettingsSection>
+        </>
       )}
     </Stack>
   );
@@ -243,8 +245,8 @@ function FormattingInput({
   };
 
   return (
-    <Stack gap="md" data-testid={`${id}-formatting-setting`}>
-      <Text htmlFor={id} component="label" fw="bold" display="block">
+    <Box data-testid={`${id}-formatting-setting`}>
+      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xs">
         {label}
       </Text>
       {inputType === "select" && (
@@ -273,23 +275,6 @@ function FormattingInput({
           </Stack>
         </Radio.Group>
       )}
-    </Stack>
-  );
-}
-
-function FormattingSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Stack gap="sm">
-      <Text component="h3" fz="lg" fw="bold" display="block">
-        {title}
-      </Text>
-      <Stack>{children}</Stack>
-    </Stack>
+    </Box>
   );
 }

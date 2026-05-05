@@ -1,12 +1,12 @@
 (ns metabase.request.session
   (:require
-   [metabase.api.common
-    :as api
-    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
+   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
+   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields
@@ -14,7 +14,8 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (t2/select-one current-user-fields, :id user-id)))
+    (-> (t2/select-one current-user-fields, :id user-id)
+        user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
@@ -27,15 +28,22 @@
   ;;
   ::none)
 
-(defn do-with-current-user
-  "Impl for [[with-current-user]]."
-  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
+(mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
+  [{:keys [permissions-set metabase-user-id]} :- ::request.schema/current-user-info]
+  (or permissions-set
+      (some-> metabase-user-id perms/user-permissions-set)))
+
+(mu/defn do-with-current-user
+  "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
+   thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
+            *is-data-analyst?*             (boolean is-data-analyst?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id perms/user-permissions-set)))]
+            *current-user-permissions-set* (delay (current-user-info->permissions-set current-user-info))]
     ;; As mentioned above, do not rebind user-local values to something new, because changes to its value will not be
     ;; propagated to frames further up the stack.
     (letfn [(do-with-user-local-values [thunk]
@@ -54,7 +62,12 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (t2/select-one [:model/User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [:model/User
+                    [:id :metabase-user-id]
+                    [:is_superuser :is-superuser?]
+                    [:is_data_analyst :is-data-analyst?]
+                    [:locale :user-locale]
+                    :settings]
                    :id current-user-id)))
 
 (defn do-as-admin
@@ -62,14 +75,14 @@
   [thunk]
   (do-with-current-user
    (merge
-    (with-current-user-fetch-user-for-id api/*current-user-id*)
+    (with-current-user-fetch-user-for-id *current-user-id*)
     {:is-superuser? true
      :permissions-set #{"/"}
      :user-locale i18n/*user-locale*})
    thunk))
 
 (defmacro as-admin
-  "Execude code in body as an admin user."
+  "Execute code in body as an admin user."
   {:style/indent 0}
   [& body]
   `(do-as-admin (^:once fn* [] ~@body)))

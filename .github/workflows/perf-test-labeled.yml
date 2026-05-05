@@ -9,9 +9,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  uberjar:
+    if: ${{ github.event.label.name == 'Run-perf' }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
   run-perf-test:
+    needs: [uberjar]
     if: ${{ github.event.label.name == 'Run-perf' }}
     uses: ./.github/workflows/perf-test.yml
-    with:
-      wait_for_uberjar: true
     secrets: inherit

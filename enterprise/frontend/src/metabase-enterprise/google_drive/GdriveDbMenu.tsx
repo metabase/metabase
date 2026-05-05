@@ -143,12 +143,7 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
-    return (
-      <GdriveErrorMenuItem
-        error={folderError ?? folderInfo}
-        hasDivider={false}
-      />
-    );
+    return <GdriveErrorMenuItem error={folderError ?? folderInfo} />;
   }
 
   return (

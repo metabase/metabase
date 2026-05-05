@@ -1,10 +1,10 @@
 import { type ReactElement, isValidElement } from "react";
-import { match } from "ts-pattern";
 
-import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getIcon } from "metabase/common/utils/icon";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -14,7 +14,6 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -148,7 +147,8 @@ function QuestionTableBadges({
   hasLink,
   isLast,
 }: QuestionTableBadgesProps) {
-  const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
+  const badgeInactiveColor =
+    isLast && !subHead ? "text-primary" : "text-tertiary";
 
   const parts = tables.map((table) => (
     <HeadBreadcrumbs.Badge
@@ -162,8 +162,8 @@ function QuestionTableBadges({
           <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
-              icon="info_filled"
-              size={12}
+              icon="info"
+              size={16}
               position="bottom"
               className={HeaderS.HeaderBadgeIcon}
             />
@@ -187,17 +187,12 @@ function getTableURL(table: Table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     if (cardId != null) {
-      return Urls.question({ id: cardId, name: table.displayName() });
+      return Urls.card({ id: cardId, name: table.displayName() });
     }
   }
-  return ML_Urls.getUrl(table.newQuestion());
+  return Urls.question(table.newQuestion());
 }
 
 export function getQuestionIcon(question: Question): IconName {
-  return match(question.type())
-    .returnType<IconName>()
-    .with("question", () => "table2")
-    .with("model", () => "model")
-    .with("metric", () => "metric")
-    .exhaustive();
+  return getIcon({ model: "card", type: question.type() }).name;
 }

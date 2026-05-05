@@ -64,13 +64,13 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
   return (
     <BaseCell
-      role="gridcell"
       align={align}
       isSelected={isSelected}
       className={cx(S.root, className, {
         [S.pill]: variant === "pill",
       })}
       backgroundColor={backgroundColor}
+      data-testid="body-cell-container"
     >
       {formattedValue != null ? (
         <div

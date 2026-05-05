@@ -1,4 +1,9 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import {
+  createMockMediaQueryList,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { AppBarProps } from "./AppBar";
@@ -22,6 +27,7 @@ describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    setupUserMetabotPermissionsEndpoint();
     matchMediaSpy = jest.spyOn(window, "matchMedia");
   });
 
@@ -31,7 +37,9 @@ describe("AppBar", () => {
 
   describe("large screens", () => {
     beforeEach(() => {
-      matchMediaSpy.mockReturnValue(getMediaQuery({ matches: false }));
+      matchMediaSpy.mockReturnValue(
+        createMockMediaQueryList({ matches: false }),
+      );
     });
 
     it("should render the desktop app bar", () => {
@@ -93,7 +101,9 @@ describe("AppBar", () => {
 
   describe("small screens", () => {
     beforeEach(() => {
-      matchMediaSpy.mockReturnValue(getMediaQuery({ matches: true }));
+      matchMediaSpy.mockReturnValue(
+        createMockMediaQueryList({ matches: true }),
+      );
     });
 
     it("should render the mobile app bar", () => {
@@ -155,21 +165,9 @@ describe("AppBar", () => {
 });
 
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
+  detailView: null,
   currentUser: createMockUser(),
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
-  onLogout: jest.fn(),
-  ...opts,
-});
-
-const getMediaQuery = (opts?: Partial<MediaQueryList>): MediaQueryList => ({
-  media: "",
-  matches: false,
-  onchange: jest.fn(),
-  dispatchEvent: jest.fn(),
-  addListener: jest.fn(),
-  addEventListener: jest.fn(),
-  removeListener: jest.fn(),
-  removeEventListener: jest.fn(),
   ...opts,
 });

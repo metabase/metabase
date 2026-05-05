@@ -9,13 +9,13 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { GdrivePayload } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 
@@ -69,12 +69,11 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
   });
 
-  it("should show service acocunt email", async () => {
+  it("should show service account email", async () => {
     setup({
       status: "not-connected",
     });
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
-
     expect(
       await screen.findByText("super-service-account@testing.metabase.com"),
     ).toBeInTheDocument();

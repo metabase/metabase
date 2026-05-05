@@ -1,18 +1,18 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
+  (:refer-clojure :exclude [get-in some not-empty])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
@@ -23,21 +23,21 @@
    [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload.core :as upload]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log])
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [get-in not-empty some]])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -48,7 +48,7 @@
   mysql.actions/keep-me
   mysql.ddl/keep-me)
 
-(driver/register! :mysql, :parent :sql-jdbc)
+(driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
@@ -74,6 +74,8 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
+                              :rename                                 true
+                              :atomic-renames                         true
                               :expressions/integer                    true
                               :expressions/float                      true
                               :expressions/date                       true
@@ -83,36 +85,96 @@
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                false
-                              :expression-literals                    true}]
+                              :expression-literals                    true
+                              :database-routing                       true
+                              :metadata/table-existence-check         true
+                              :transforms/python                      true
+                              :transforms/table                       true
+                              ;; currently disabled as :describe-indexes is not supported
+                              :transforms/index-ddl                   false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true
+                              :workspace                              true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+(defmethod driver/database-supports? [:mysql :nested-field-columns]
+  [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.
     (= driver :mysql)))
 
+(mu/defn- database-flavor :- [:maybe :string]
+  ^String [database :- [:maybe :map]]
+  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
+  (when-let [k (some #(when (contains? database %)
+                        %)
+                     [:dbms-version
+                      :dbms_version])]
+    (get-in database [k :flavor])))
+
+(mu/defn- connection-flavor :- :string
+  ^String [^Connection conn :- (lib.schema.common/instance-of-class Connection)]
+  (.. conn getMetaData getDatabaseProductName))
+
 (defn mariadb?
   "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
   [database]
-  (-> database :dbms_version :flavor (= "MariaDB")))
+  (= (database-flavor database) "MariaDB"))
 
-(defn mariadb-connection?
+(defn- mysql?
+  "Returns true if the database is MySQL (not MariaDB).
+   Returns true for unsynced databases (unknown flavor)."
+  [db]
+  (= "MySQL"
+     (if-let [conn (:connection db)]
+       (connection-flavor conn)
+       (database-flavor db))))
+
+(mu/defn- mariadb-connection?  :- :boolean
   "Returns true if the database is MariaDB."
-  [driver conn]
-  (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
+  [conn :- (lib.schema.common/instance-of-class Connection)]
+  (= (connection-flavor conn) "MariaDB"))
+
+(defn- partial-revokes-enabled?
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
+           rset (.executeQuery stmt)]
+       (when (.next rset)
+         (= "ON" (.getString rset 2)))))))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
+
+(defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (mysql? db)
+       (not (try
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
+
+(defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -148,10 +210,15 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
+(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+
 (defmethod driver/can-connect? :mysql
   [driver details]
   ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
   ;; a warning if it is
+  (let [match (re-find disallowed-additional-opts (:additional-options details ""))]
+    (when match
+      (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
@@ -160,14 +227,14 @@
 (declare privilege-grants-for-user)
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :mysql
-  [driver conn & {:as _options}]
+  [_driver conn-spec & {:as _options}]
   ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
   ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (mariadb-connection? driver conn)
-    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn sql {:as-arrays? true})))
+  (when-not (some-> conn-spec :connection mariadb-connection?)
+    (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn-spec sql {:as-arrays? true})))
           db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
           table-names (map first (sql->tuples "SHOW TABLES"))]
-      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn "CURRENT_USER()")
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
                                                              db-name
                                                              table-names)]
         {:role   nil
@@ -188,16 +255,22 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/default-password-details
+    (driver.common/auth-provider-options #{:aws-iam})
+    (assoc driver.common/default-password-details
+           :visible-if {"use-auth-provider" false})
     driver.common/default-role-details
     driver.common/cloud-ip-address-info
-    driver.common/default-ssl-details
-    default-ssl-cert-details
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              default-ssl-cert-details
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
     (assoc driver.common/additional-options
@@ -207,10 +280,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
-  ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
-  (if (= unit :millisecond)
-    (recur driver hsql-form (/ amount 1000.0) :second)
-    [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]]))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
@@ -218,22 +288,23 @@
   (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
-  [_ message]
-  (condp re-matches message
-    #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
+      :cannot-connect-check-host-and-port
 
-    #"^Unknown database .*$"
-    :database-name-incorrect
+      #"^Unknown database .*$"
+      :database-name-incorrect
 
-    #"Access denied for user.*$"
-    :username-or-password-incorrect
+      #"Access denied for user.*$"
+      :username-or-password-incorrect
 
-    #"Must specify port after ':' in connection string"
-    :invalid-hostname
+      #"Must specify port after ':' in connection string"
+      :invalid-hostname
 
-    ;; else
-    message))
+      ;; else
+      message)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -268,7 +339,20 @@
   [_]
   :sunday)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod driver/rename-tables!* :mysql
+  [_driver db-id sorted-rename-map]
+  (let [rename-clauses (map (fn [[from-table to-table]]
+                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
+                            sorted-rename-map)
+        sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     db-id
+     nil
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! {:connection conn} [sql])))))
+
+;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -290,6 +374,10 @@
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
+
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
 
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
@@ -379,7 +467,7 @@
           nfc-path              (:nfc-path stored-field)
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
+          json-extract+jsonpath [:json_unquote [:json_extract parent-identifier jsonpath-query]]]
       (case (u/lower-case-en field-type)
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
@@ -398,18 +486,26 @@
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
-      (not (lib.field/json-field? stored-field))
+      (not (driver-api/json-field? stored-field))
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (::add/source-alias opts))
+      (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+      ;; The field is referenced through a join (source-table is a join-alias
+      ;; string). The join target is compiled as a subquery that already
+      ;; projects this nfc column with JSON extraction applied — reference the
+      ;; projected column directly instead of re-applying extraction, which
+      ;; would derive the wrong column name through nested projections. (#73198)
+      (string? (driver-api/qp.add.source-table opts))
+      honeysql-expr
 
       :else
-      (walk/postwalk #(if (h2x/identifier? %)
+      (perf/postwalk #(if (h2x/identifier? %)
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
@@ -500,10 +596,11 @@
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
-        timestamp? (h2x/is-of-type? expr "timestamp")]
+        timestamp? (or (sql.qp.u/field-with-tz? arg)
+                       (h2x/is-of-type? expr "timestamp"))]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
-     [:convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone]
+     [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
      "datetime")))
 
 (defn- timestampdiff-dates [unit x y]
@@ -591,7 +688,7 @@
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
   ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
   (let [set-prog-nm-fn (fn []
-                         (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+                         (let [prog-name (str/replace driver-api/mb-version-and-process-identifier "," "_")]
                            (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))]
     (if-let [conn-attrs (get additional-options-map "connectionAttributes")]
       (if (str/includes? conn-attrs "program_name")
@@ -600,24 +697,43 @@
       (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
-  [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
+  [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
   (let [addl-opts-map (sql-jdbc.common/additional-options->map additional-options :url "=" false)
+        use-iam?      (= (some-> auth-provider keyword) :aws-iam)
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
       (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
+    (when (and use-iam? (not ssl?))
+      (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
+    (when (and use-iam?
+               (contains? addl-opts-map "sslMode")
+               (not= (get addl-opts-map "sslMode") "VERIFY_CA"))
+      (throw (ex-info "sslMode must be VERIFY_CA in order to use AWS IAM authentication" {})))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
-     (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
-                       (set/rename-keys {:dbname :db})
-                       (dissoc :ssl))]
-       (-> (mdb/spec :mysql details)
+     (let [details (cond-> details
+                     ssl-cert?
+                     (set/rename-keys {:ssl-cert :serverSslCert})
+
+                     use-iam?
+                     (->
+                      (assoc :subprotocol "aws-wrapper:mysql"
+                             :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                             :sslMode "VERIFY_CA"
+                             :wrapperPlugins "iam")
+                      (dissoc :auth-provider :use-auth-provider))
+
+                     true
+                     (-> (set/rename-keys {:dbname :db})
+                         (dissoc :ssl)))]
+       (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
@@ -651,14 +767,14 @@
 ;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
 ;; timezone and the local datetime portion of the parameter, in UTC. Bad!
 ;;
-;; Convert it to a LocalDateTime, in the report timezone, so comparisions will work correctly.
+;; Convert it to a LocalDateTime, in the report timezone, so comparisons will work correctly.
 ;;
 ;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
 ;;
 ;; TIMEZONE FIXME — not 100% sure this behavior makes sense
 (defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
   [driver ^java.sql.PreparedStatement ps ^Integer i t]
-  (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
+  (let [zone   (t/zone-id (driver-api/results-timezone-id))
         offset (.. zone getRules (getOffset (t/instant t)))
         t      (t/local-date-time (t/with-offset-same-instant t offset))]
     (sql-jdbc.execute/set-parameter driver ps i t)))
@@ -672,7 +788,7 @@
   (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
     (fn read-timestamp-thunk []
       (when-let [t (.getObject rs i LocalDateTime)]
-        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))))
+        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (driver-api/results-timezone-id))) (t/zone-offset 0))))
     (fn read-datetime-thunk []
       (.getObject rs i LocalDateTime))))
 
@@ -682,7 +798,7 @@
 ;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
 ;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
 ;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
-;; java.time.LocalTime)` will throw Exceptions theses cases.
+;; java.time.LocalTime)` will throw Exceptions in these cases.
 ;;
 ;; Thus we should attempt to fetch temporal results the normal way and fall back to string representations for cases
 ;; where the values are unparseable.
@@ -746,6 +862,30 @@
     :metabase.upload/datetime                 [:datetime]
     :metabase.upload/offset-datetime          [:timestamp]))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MySQL that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:double])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/JSON [_] [:json])
+(defmethod type->database-type :type/SerializedJSON [_] [:json])
+
+(defmethod driver/type->database-type :mysql
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/allowed-promotions :mysql
   [_driver]
   {:metabase.upload/int     #{:metabase.upload/float}
@@ -802,7 +942,7 @@
       offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
   (defmethod value->string OffsetDateTime
     [driver ^OffsetDateTime val]
-    (let [uploads-db (upload/current-database)]
+    (let [uploads-db (driver-api/current-database)]
       (if (mariadb? uploads-db)
         (offset-datetime->unoffset-datetime driver uploads-db val)
         (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
@@ -847,7 +987,7 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
+    (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
@@ -867,6 +1007,20 @@
              (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/insert-col->val [:mysql :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (cond
+      (isa? (:type column-def) :type/DateTimeWithTZ)
+      (t/offset-date-time v)
+
+      (isa? (:type column-def) :type/DateTime)
+      (u.date/parse v)
+
+      :else
+      v)
+    v))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
@@ -981,7 +1135,9 @@
          (-> col
              (update :pk? pos?)
              (update :database-required pos?)
-             (update :database-is-auto-increment pos?)))))
+             (update :database-is-auto-increment pos?)
+             (update :database-is-nullable pos?)
+             (update :database-is-generated pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -999,6 +1155,16 @@
                           [:not [:= :c.extra [:inline "auto_increment"]]]]
                          :database-required]
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
+                        [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
+
+                        [[:and
+                          ;; mariadb
+                          [:!= :generation_expression nil]
+                          ;; mysql
+                          [:<> :generation_expression ""]]
+                         :database-is-generated]
+
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where
@@ -1028,13 +1194,17 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
-  (mdb/query-canceled-exception? :mysql e))
+  (driver-api/query-canceled-exception? :mysql e))
+
+(defmethod sql-jdbc/drop-index-sql :mysql [_ _schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :mysql)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name)) (quote-identifier (name table-name)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/default-database-role :mysql
   [_driver database]
-  (-> database :details :role))
+  (-> database driver.conn/effective-details :role))
 
 (defmethod driver.sql/set-role-statement :mysql
   [_driver role]
@@ -1043,3 +1213,145 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver.sql/default-schema :mysql
+  [_]
+  nil)
+
+;; Override db-type-name to handle tinyint(1) as boolean
+;; During sync, tinyint(1) is mapped to BIT (boolean) unless tinyInt1isBit=false is set
+;; We need to do the same during query execution to ensure type consistency
+(defmethod sql-jdbc.execute/db-type-name :mysql
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (let [db (try
+             (driver-api/database (driver-api/metadata-provider))
+             (catch Throwable _ nil))
+        tiny-int-1-is-bit? (not (some-> db driver.conn/effective-details :additional-options (str/includes? "tinyInt1isBit=false")))
+        db-type-name (.getColumnTypeName rsmeta column-index)
+        precision    (try
+                       (.getPrecision rsmeta column-index)
+                       (catch Throwable _ nil))]
+    (if (and (= "TINYINT" db-type-name)
+             (= precision 1)
+             tiny-int-1-is-bit?)
+      "BIT"
+      db-type-name)))
+
+(defmethod driver/extra-info :mysql
+  [_driver]
+  nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- mysql-user-exists?
+  "Check if a MySQL user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM mysql.user WHERE user = ?" username])))
+
+(defmethod driver/init-workspace-isolation! :mysql
+  [_driver database workspace]
+  ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
+  ;; We create a separate database for workspace isolation.
+  (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
+        user             (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-sql (if (mysql-user-exists? t-conn user)
+                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
+                               user escaped-password)
+                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
+                               user escaped-password))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [;; Create the isolated database
+                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                       user-sql
+                       ;; Grant all privileges on the isolated database
+                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           db-name
+     :database_details {:user user, :password password :db db-name}}))
+
+(defmethod driver/destroy-workspace-isolation! :mysql
+  [_driver database workspace]
+  (let [db-name  (:schema workspace)
+        username (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
+                      (mysql-user-exists? t-conn username)
+                      (conj (format "DROP USER IF EXISTS `%s`@'%%'" username)))]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/grant-workspace-read-access! :mysql
+  [_driver database workspace tables]
+  (let [username (-> workspace :database_details :user)
+        qu       (sql.u/quote-name :mysql :field username)
+        ;; In MySQL, tables don't have separate schemas within a database,
+        ;; but the :schema field contains the source database name
+        sqls     (for [{db :schema, t :name} tables]
+                   (if (str/blank? db)
+                     (format "GRANT SELECT ON %s TO %s@'%%'"
+                             (sql.u/quote-name :mysql :table t) qu)
+                     (format "GRANT SELECT ON %s.%s TO %s@'%%'"
+                             (sql.u/quote-name :mysql :schema db)
+                             (sql.u/quote-name :mysql :table t) qu)))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
+;; to manually clean up after testing rather than relying on transaction rollback.
+(def ^:private perm-check-workspace-id "-1337")
+
+(defmethod driver/check-isolation-permissions :mysql
+  [driver database test-table]
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     {:write? true}
+     (fn [^Connection _conn]
+       (let [result (try
+                      (let [init-result (try
+                                          (driver/init-workspace-isolation! driver database test-workspace)
+                                          (catch Exception e
+                                            (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                 (ex-message e))
+                                                            {:step :init} e))))
+                            workspace-with-details (merge test-workspace init-result)]
+                        (when test-table
+                          (try
+                            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                            (catch Exception e
+                              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                                   (:schema test-table) (:name test-table) (ex-message e))
+                                              {:step :grant :table test-table} e)))))
+                        (try
+                          (driver/destroy-workspace-isolation! driver database workspace-with-details)
+                          (catch Exception e
+                            (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                 (ex-message e))
+                                            {:step :destroy} e))))
+                        nil)
+                      (catch Exception e
+                        ;; On failure, attempt cleanup
+                        (try
+                          (driver/destroy-workspace-isolation! driver database
+                                                               (merge test-workspace
+                                                                      {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
+                                                                       :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
+                          (catch Exception _cleanup-error
+                            nil))
+                        (ex-message e)))]
+         result)))))
+
+(defmethod driver/llm-sql-dialect-resource :mysql [_]
+  "metabot/prompts/dialects/mysql.md")

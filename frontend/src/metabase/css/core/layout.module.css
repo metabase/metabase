@@ -42,10 +42,6 @@
   width: 100%;
 }
 
-.half {
-  width: 50%;
-}
-
 /* position utilities */
 .fixed {
   position: fixed;
@@ -93,4 +89,8 @@
 /* force a stacking context for adding z-index to children */
 .stackingContext {
   transform: scale(1);
+}
+
+.verticalAlignMiddle {
+  vertical-align: middle;
 }

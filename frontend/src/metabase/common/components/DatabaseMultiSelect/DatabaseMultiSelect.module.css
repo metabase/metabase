@@ -1,0 +1,35 @@
+.pill {
+  padding: 0.25rem 1rem;
+}
+
+.input:focus-within {
+  border-color: var(--mb-color-brand);
+}
+
+.option {
+  padding: 0.4rem 0.5rem;
+}
+
+.pillContent {
+  color: var(--mb-color-text-primary);
+}
+
+.optionContent {
+  flex: 1;
+}
+
+.optionIcon {
+  color: var(--mb-color-text-primary);
+  flex-shrink: 0;
+}
+
+.optionIconDisabled {
+  color: var(--mb-color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.disabledInfoIcon {
+  color: var(--mb-color-text-secondary);
+  flex-shrink: 0;
+  margin-left: auto;
+}

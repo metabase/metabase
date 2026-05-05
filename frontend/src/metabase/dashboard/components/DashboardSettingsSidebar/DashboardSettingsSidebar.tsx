@@ -1,45 +1,45 @@
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { toggleAutoApplyFilters } from "metabase/dashboard/actions";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Switch } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { Switch, useModalsStack } from "metabase/ui";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
-interface DashboardSettingsSidebarProps {
-  dashboard: Dashboard;
-  onClose: () => void;
-}
+export function DashboardSettingsSidebar() {
+  const { dashboard, closeSidebar } = useDashboardContext();
+  const { open, state, close } = useModalsStack(["default", "caching"]);
 
-export function DashboardSettingsSidebar({
-  dashboard,
-  onClose,
-}: DashboardSettingsSidebarProps) {
-  const [page, setPage] = useState<"default" | "caching">("default");
-
-  const [isOpen, setIsOpen] = useState(false);
+  const currentModal: keyof typeof state = state.caching
+    ? "caching"
+    : "default";
 
   useMount(() => {
-    // this component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
+    // the modal is not rendered until it is "open"
+    // but we want to set it open after it mounts to get
     // pretty animations
-    setIsOpen(true);
+    open("default");
   });
 
-  if (page === "caching") {
+  if (!dashboard) {
+    return null;
+  }
+
+  if (currentModal === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
         item={dashboard as CacheableDashboard}
         model="dashboard"
-        onBack={() => setPage("default")}
-        onClose={onClose}
+        isOpen={state.caching}
+        onClose={closeSidebar}
+        onBack={() => close("caching")}
         pt="md"
       />
     );
@@ -48,18 +48,13 @@ export function DashboardSettingsSidebar({
   return (
     <ErrorBoundary>
       <Sidesheet
-        isOpen={isOpen}
+        isOpen={state.default}
+        onClose={closeSidebar}
+        closeOnEscape={currentModal === "default"}
         title={t`Dashboard settings`}
-        onClose={onClose}
         data-testid="dashboard-settings-sidebar"
       >
-        <DashboardSidesheetBody
-          dashboard={dashboard}
-          page={page}
-          setPage={setPage}
-          isOpen={isOpen}
-          onClose={onClose}
-        />
+        <DashboardSidesheetBody dashboard={dashboard} openSidesheet={open} />
       </Sidesheet>
     </ErrorBoundary>
   );
@@ -67,15 +62,12 @@ export function DashboardSettingsSidebar({
 
 export type DashboardSidebarPageProps = {
   dashboard: Dashboard;
-  page: "default" | "caching";
-  setPage: Dispatch<SetStateAction<"default" | "caching">>;
-  isOpen: boolean;
-  onClose: () => void;
+  openSidesheet: (sidesheetKey: "caching") => void;
 };
 
 const DashboardSidesheetBody = ({
   dashboard,
-  setPage,
+  openSidesheet,
 }: DashboardSidebarPageProps) => {
   const dispatch = useDispatch();
 
@@ -90,7 +82,9 @@ const DashboardSidesheetBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   const isCacheable = isDashboardCacheable(dashboard);
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showCaching =
+    (dashboard.can_set_cache_policy ?? canWrite) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
 
   if (dashboard.archived) {
     return null;
@@ -115,7 +109,7 @@ const DashboardSidesheetBody = ({
           <PLUGIN_CACHING.SidebarCacheSection
             model="dashboard"
             item={dashboard}
-            setPage={setPage}
+            setPage={() => openSidesheet("caching")}
           />
         </SidesheetCard>
       )}

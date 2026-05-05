@@ -9,30 +9,15 @@ redirect_from:
 
 ![Dashboard Filters](./images/filters.png)
 
-Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
+Instead of creating duplicate dashboards to show different cuts of the same data (like a different dashboard for each quarter), you can add filter or parameter widgets to let people change _what_ data is displayed (filter the data), or _how_ it's displayed (parameterize the data).
 
-Instead of creating duplicate dashboards, you can add filter or parameter widgets to let people change variables for cards on a dashboard.
+## Filter and parameter widgets
 
-## Adding a filter or parameter
-
-![Add a Filter](./images/add-filter.png)
-
-- Click the **pencil icon** to enter dashboard editing mode.
-- Click the **filter icon** that appears in the top-right to add a filter.
-- Select a [filter type](#filter-and-parameter-types)
-- [Connect your filter or parameter widget to dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards) to one or more dashboard cards on any or all tabs.
-- [Configure your filter](#editing-a-filter)
-- **Save** your changes.
-
-Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
-
-## Filter and parameter types
-
-The type of filter or parameter widget you choose determines how the widget works, including which fields you'll be able to filter your cards by.
+There are two basic types of widgets you can add: filters or parameters. The type of filter or parameter widget you choose determines how the widget works, including which fields you can connect to the widget.
 
 ### Filter widgets
 
-**Filters** determine what data to show. For example, a date filter might show only data from the last 30 days, or a category filter might show only specific product categories.
+**Filters** determine _what_ data to show. For example, a date filter might show only data from the last 30 days, or a category filter might show only specific product categories.
 
 - [Date picker](#date-picker-filters)
 - [Location](#location-filters)
@@ -43,13 +28,56 @@ The type of filter or parameter widget you choose determines how the widget work
 
 ### Parameter widgets
 
- **Parameters** determine how to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
+**Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
 
 - [Time grouping](#time-grouping-parameter)
 
-## Date picker filters
+## Dashboard, header, and card widgets
 
-When picking a Time filter, Metabase will prompt you to pick a specific type of date picker widget:
+You can add widgets to the whole dashboard, to headers, or to individual dashboard cards.
+
+![Filter location](./images/filter-location.png)
+
+- **Dashboard-level widgets** can connect to cards on the entire dashboard, across all tabs.
+- **Header-level widgets** can only be connected to cards on the same tab.
+- **Card-level widgets** can only be connected to their individual cards.
+
+By default, prefer dashboard-level widgets.
+
+If, however, your dashboard grows larger, and it doesn't make sense to break the dashboard up into multiple dashboards, you can add widgets to headings and cards so people can filter in place as they scroll through sections. In these cases, you should scope the effects of a heading widget to the section immediately below.
+
+If you want tab-specific widgets, you could either:
+
+- Use a dashboard widget, but only connect the widget to cards on a specific tab. The dashboard widgets will only be visible when people select the tab.
+- Use a header widget.
+
+These are just rules of thumb to keep the user experience predictable. Do whatever works for your use case.
+
+## Add a filter or parameter to a dashboard
+
+![Add a Filter](./images/add-filter.png)
+
+1. While viewing a dashboard, click the **pencil icon** to enter dashboard editing mode.
+2. You can add a filter or parameter widget to:
+
+   - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+   - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
+   - **Question cards**. Can only be connected to cards on the current tab.
+
+   Go to where you want to add a filter and click the **filter icon**.
+
+3. Select a [filter type](#filter-and-parameter-widgets).
+4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
+5. [Configure your filter](#configure-dashboard-filters-and-parameters).
+6. **Save** your changes.
+
+If the filter isn't connected to any of the cards on the current tab, Metabase won't display the filter.
+
+## Filter types
+
+### Date picker filters
+
+When picking a Date picker filter, Metabase will prompt you to pick an operator:
 
 - Month and Year
 - Quarter and Year
@@ -58,42 +86,40 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 - Relative Date
 - All Options
 
-Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
+Single Date and Date Range will provide a calendar widget, while the other options provide slightly different dropdown interfaces for picking values. To get a widget that's just like the date picker in the query builder, choose "All Options".
 
-## Time grouping parameter
+#### Issues with connecting to a date variable
 
-![Time grouping](./images/time-grouping.png)
+If you get a message like "A date variable in this card can only be connected to a time type with the Single date option," it's probably because you're connecting your filter to a [basic variable](../questions/native-editor/basic-sql-parameters.md) (and not a field filter) in a native query. You can handle this scenario in a couple of ways:
 
-You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
+- **If you want a date picker where people can select multiple dates**, you'll need to change the variable in your SQL code to a [field filter](../questions/native-editor/field-filters.md).
+- **If you want the filter widget to just take a single date**, you'll need to change the dashboard filter widget's type to "Single date".
 
-> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../questions/query-builder/editor.md).
+### Location filters
 
-This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
-
-You can group by:
-
-- Minute (or minute of hour)
-- Hour (or hour of day)
-- Day (or day of week, month, or year)
-- Week (or week of year)
-- Month (or month of year)
-- Quarter (or quarter of year)
-- Year
-
-## Location filters
-
-There are four types of Location filters to choose from:
+There are four types of Location filters to choose from.
 
 - City
 - State
 - ZIP or Postal Code
 - Country
 
-## ID filter
+Additionally, you can select an operator for the location filter:
 
-The ID filter provides a simple input box where you can type the ID of a user, order, etc.
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, a native/SQL question using a [field filter](../questions/native-editor/field-filters.md), or a basic variable set to accept [multiple values](../questions/native-editor/basic-sql-parameters.md#basic-variable-that-allows-people-to-select-multiple-values).
+- **Is not**. Exclude one or more specific values.
+- **Contains**. Match values that contain the entered text.
+- **Does not contain**. Filter out values that contain the entered text.
+- **Starts with**. Match values that begin with the entered text.
+- **Ends with**. Match values that end with the entered text.
 
-## Number filter
+### ID filter
+
+The ID filter provides a simple input box where you can type the ID of a user, order, and so on.
+
+You can give people the option to pick one value or multiple values.
+
+### Number filter
 
 You can choose from:
 
@@ -103,105 +129,161 @@ You can choose from:
 - Greater than or equal to
 - Less than or equal to
 
-## Text or category filter
+### Text or category filter
 
-A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
+A flexible filter type that lets you create either a dropdown menu or an input box to filter on any text or category field in your cards. Options include:
 
-- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be a question built using the query builder, a native/SQL question using a [field filter](../questions/native-editor/field-filters.md), or a basic variable set to [multiple values](../questions/native-editor/basic-sql-parameters.md#basic-variable-that-allows-people-to-select-multiple-values).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
 - **Starts with**. Match values that begin with the entered text.
 - **Ends with**. Match values that end with the entered text.
 
-## Boolean filter
+You can also select how people should filter on this column:
+
+- Dropdown list
+- Search box
+- Input box
+
+### Boolean filter
 
 A boolean filter allows people to filter data based on true/false values.
 
-## Connecting a filter or parameter widget to dashboard cards
+## Time grouping parameter
 
-Dashboard widgets apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
+![Time grouping](./images/time-grouping.png)
+
+You can add a time grouping widget to a dashboard to change how charts are grouped by time. This widget won't filter the data; it'll change how Metabase aggregates the data. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the same results by other groupings: by week, by quarter, and so on.
+
+This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
+
+Grouping options include:
+
+- Minute (or minute of hour)
+- Hour (or hour of day)
+- Day (or day of week, month, or year)
+- Week (or week of year)
+- Month (or month of year)
+- Quarter (or quarter of year)
+- Year
+
+To connect a time grouping widget to a SQL question, you'll need to insert time grouping parameters in your code. See [time grouping parameters](../questions/native-editor/time-grouping-parameters.md).
+
+## Connecting a filter or parameter widget to dashboard cards
 
 For each widget that you add, you'll need to tell Metabase which column the filter should update for each card.
 
-Click on a card's dropdown menu to select the field that you want the widget to filter on.
+Click a card's dropdown menu to select the field that you want the widget to filter on.
 
-Here we've wired up a Text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
+Here we've wired up a text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
 
 ![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
 
-## Auto-connecting filters to cards
+Which cards you can connect a filter or parameter widget to depends on:
 
-If there are other cards that also have the field you select, Metabase will offer to automatically connect the filter to those cards too (including to relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
+- Whether the card has a relevant field (i.e., the field the widget is filtering).
+- Where the widget is located: on the dashboard, heading card, or question card. Only dashboard widgets can be connected to cards across all [dashboard tabs](./introduction.md#dashboard-tabs). Widgets on heading and question cards are restricted to the cards on their respective tabs.
 
-To undo this auto-connecting of cards, click on the toast that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking on the "X" next to the connected field.
+For cards built in the query builder, _filters_ can be connected to fields at any stage of the query. _Time grouping parameters_ can only be connected to fields in the last stage of the query, and so to make use of time grouping parameters, your query should have a summary by a datetime field as the last stage. For example, if you have a query that's just computing `Count` of products by `Category` and `Created At`, you'll be able to connect the time grouping parameter to the `Created At` grouping, but if you modify the query to filter for results with `Count > 100`, you won't be able to connect time grouping parameter on a dashboard to that query because the last stage is now a filter.
 
-## Filtering dashboards with native/SQL questions
+### Auto-connecting filters to cards
 
-If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/filters).
+If there are other cards that also have the field you select, Metabase will offer to automatically connect the filter to those cards too (including relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
-You can't connect a time grouping parameter widget to a card with a SQL question.
+To undo this auto-connecting of cards, click the notification that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking the "X" next to the connected field.
 
 ## Wiring up dashboard filters to text cards
 
 You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
 
-## Requiring a filter or parameter
+## Filtering dashboards with native/SQL questions
 
-You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card. If you require a filter, you'll also need to supply a default value for that filter.
+To connect a dashboard filter widget to a card with a question created with the native editor, you'll need to [add a field filter or basic variable to your query](../questions/native-editor/sql-parameters.md).
 
-You might want to require a filter value if:
+If your native query uses a basic variable (and not a field filter), you'll only be able to use dashboard filter types that select a single value (so for example, you won't be able to use date range filters).
 
-- Your unfiltered dashboard contains questions that pull lots of data, as enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
-- The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for a particular customer.
+For parameters, check out [Time grouping parameters in SQL](../questions/native-editor/time-grouping-parameters.md).
 
-## Editing a filter
+## Configure dashboard filters and parameters
 
-To edit a filter's settings:
+To edit settings for a dashboard filter or parameter:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
-2. Click the **gear** icon on the filter you want to edit.
+2. Click the widget you want to edit.
+3. A widget editing sidebar will open on the right side
 
-From this filter editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
+   From this editing view, you can wire up dashboard cards to the filter, or use the filter settings sidebar to:
 
-- [Rename filter](#rename-filter)
-- [Set filter input type](#set-filter-input-type)
-- [Set a default filter value](#set-a-default-filter-value)
-- [Remove a filter](#remove-a-filter)
-- [Reorder filters](#reorder-filters)
-- [Make a multi-select filter](#make-a-multi-select-filter)
-- [Change a filter's selectable values](#change-a-filters-selectable-values)
+   - [Rename a dashboard widget](#rename-a-dashboard-widget)
+   - [Change widget type](#change-filter-or-parameter-type)
+   - [Change filter operator](#change-filter-operator)
+   - [Set filter input type](#set-filter-input-type)
+   - [Make a multi-select filter](#make-a-multi-select-filter)
+   - [Change a filter's selectable values](#change-a-filters-selectable-values)
+   - [Set a default filter value](#set-a-default-filter-value)
+   - [Make a filter required](#make-a-filter-or-parameter-required)
+   - [Move a filter](#move-a-filter-or-parameter)
+   - [Remove a filter](#remove-a-filter-or-parameter)
 
-### Rename filter
+### Rename a dashboard widget
 
-1. In dashboard edit mode, click your filter's **gear** icon.
-2. Change the label text.
+1. In dashboard edit mode, click the filter you want to edit.
+2. In the filter editing sidebar, change the **Label** text.
 
 Renaming the filter only affects the filter's display; the label has no effect on which columns Metabase filters.
 
+### Change filter or parameter type
+
+You can change the [type](#filter-types) of an existing filter (for example, from a Date filter to a Text filter). Any incompatible columns connected to the widget will be disconnected.
+
+To change the widget type:
+
+1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
+2. Click on the filter or parameter you want to edit. A widget editing sidebar should pop up on the right side.
+3. In the sidebar, change the type of filter or parameter.  Changing the widget type disconnects the widget from all cards. You'll need to reconnect to the relevant columns on each card for the new type. If you've changed the widget type by mistake and want to restore the widget and its connections to cards, you can exit dashboard edit mode without saving your changes.
+
+### Change filter operator
+
+For some [filter types](#filter-types), you can configure the filter operator - meaning, how Metabase should use the value that a person passed in the filter. For example, for a Number filter, you can configure whether Metabase should filter for values exactly equal to the value passed in the filter, greater than the value, or less than the value.
+
+To change the operator for a dashboard filter:
+
+1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
+2. Click on the filter you want to edit. A widget editing sidebar should pop up on the right side.
+3. In **Filter operator**, pick the filter operator. The options will depend on the filter type. Some filter types (for example, ID) don't have operator selection.
+
 ### Set filter input type
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+You can set a widget to display options as a dropdown menu, search box, or input box.
+
+[Metadata settings](../data-modeling/metadata-editing.md#filtering) for the filtered column, including [variable settings in native queries](../questions/native-editor/filter-widgets.md#dropdown-menu-and-search), can also affect the filter's appearance.
+
+For example, if the column you're connecting a filter to is configured in the [metadata settings](../data-modeling/metadata-editing.md#filtering) to display a search box instead of a dropdown, that metadata setting will take precedence.
+
+To configure filter input type:
+
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the filter settings sidebar, set **How should people filter on this column?**:
 
-- [Dropdown list](#dropdown-list)
-- [Search box](#search-box)
-- [Input box](#plain-input-box)
+   - [Dropdown list](#dropdown-list)
+   - [Search box](#search-box)
+   - [Input box](#plain-input-box)
 
 #### Dropdown list
 
-A list of all of the possible values in a column. People can use checkboxes to select more than one value on [multi-select filters](#make-a-multi-select-filter). You should choose the dropdown widget if you want the list of filter values to load instantly (from cache).
+A list of all the possible values in a column. People can use checkboxes to select more than one value on [multi-select filters](#make-a-multi-select-filter). If you want the list of filter values to load instantly (from cache), you should choose the dropdown widget.
 
-If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
+If you're not seeing the **Dropdown list** option and your dashboard filter is based on a column from a:
 
-- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- Table or model built with the query builder: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- Model built with a SQL query: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 #### Search box
 
 A search box that suggests a list of matching filter values as you type. The suggestion list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
 
-The search box is a good choice for most columns containing labels, categories, statuses, and so on. It's is the default filter widget for columns with less than 100 unique values.
+The search box is a good choice for most columns containing labels, categories, statuses, and so on. It's the default filter widget for columns with fewer than 100 unique values.
 
 #### Plain input box
 
@@ -209,44 +291,76 @@ An input box that lets people enter plain text (no suggestion list).
 
 Useful for looking up partial matches (such as the ["contains" filter](#text-or-category-filter)) in columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
-### Set a default filter value
-
-1. In dashboard edit mode, click your filter's **gear** icon.
-2. From the sidebar, choose a value from the **Default value** input field.
-
-For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
-
-### Remove a filter
-
-1. In dashboard edit mode, click your filter's **gear** icon.
-2. From the sidebar, click **Remove**.
-
-If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
-
-### Reorder filters
-
-In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter widget, then drag the widget to a different position.
-
 ### Make a multi-select filter
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **People can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
-1. In dashboard edit mode, click your filter's **gear** icon.
+1. In dashboard edit mode, click the filter you want to edit.
 2. From the sidebar, find **How should users filter on this column?**.
-3. Select "Dropdown list".\*
+3. Select "Dropdown list". If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
+
    - From connected fields
    - From another model or question
    - Custom list
 
-![Selectable values](./images/selectable-values.png)
+     ![Selectable values](./images/selectable-values.png)
 
-\* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
+### Set a default filter value
+
+You might want to set a default filter value, like "Active," so that when people load your dashboard, they only see data for "Active" records (not "Inactive," "Canceled," and so on).
+
+1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
+2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
+3. In the sidebar, scroll down and choose a value from the **Default value** input field.
+
+### Make a filter or parameter required
+
+You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card. If you require a filter, you'll also need to supply a default value for that filter.
+
+You might want to require a filter value if:
+
+- Your unfiltered dashboard contains questions that pull lots of data. Enforcing filtered data can prevent people from inadvertently querying tons of data and running up your data warehouse costs.
+- The questions on your dashboard don't make sense without a filter. For example, if you create a dashboard intended to view data relevant to a specific customer (as opposed to all customers), you can require a customer ID so that the dashboard only loads data for a particular customer.
+
+To require a value for a dashboard filter:
+
+1. When viewing a dashboard, click the **pencil** icon to **Edit the dashboard**.
+2. Click on the filter you want to make required. A filter sidebar should pop up on the right side.
+3. In the filter settings sidebar, scroll to the toggle **Always require a value**.
+4. Specify the default value for the filter.
+
+### Move a filter or parameter
+
+Widgets can be displayed and applied on dashboard, header, or card level, see [Dashboard, header, and card widgets](#dashboard-header-and-card-widgets). If you want to change the level of the filter - for example, move a dashboard filter into a card filter, or a header filter into a dashboard filter - you'll need to move it in the filter settings (you can't drag filters to a different level).
+
+To move a filter:
+
+1. In dashboard edit mode, click the filter or parameter you want to edit.
+2. From the sidebar, click **Move filter**.
+3. Select a card or header to move the widget to. Select "Top of the page" to make the widget into a dashboard-wide filter or parameter.
+4. Make sure that the widget is connected to the right columns.
+
+### Remove a filter or parameter
+
+1. In dashboard edit mode, click the filter you want to edit.
+2. From the sidebar, click **Remove**.
+
+If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
+
+## Reorder filters
+
+To reorder dashboard-wide filters:
+
+1. While viewing a dashboard, click the **pencil** icon to enter edit mode.
+2. In dashboard edit mode, click the grabber handle (six dots) on the right side of a filter widget, then drag the widget to a different position.
+
+   You can't drag a dashboard level filter to a header or a card. To move a dashboard-level filter to a header or a card, see [Move filter](#move-a-filter-or-parameter).
 
 ## Linking filters
 
@@ -258,9 +372,9 @@ By default, each time you change the value in a filter on a dashboard, the dashb
 
 If a dashboard is particularly large or slow, or you have multiple filters that you want to adjust before the dashboard refreshes its results, you may want to tell Metabase when to apply those filters and refresh the dashboard.
 
-To turn off the automatic application of filters.
+To turn off the automatic application of filters:
 
-1. Click on the three-dot menu **...**.
+1. View the dashboard (not in edit mode) and click the three-dot menu **...**.
 2. Select **Edit settings**.
 3. In the **General** section, toggle off **Auto-apply filters**.
 
@@ -270,7 +384,7 @@ With auto-apply turned off, each time you change a value in a filter, you'll nee
 
 ## Using filter widgets
 
-Once you've added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
+Once you've added a filter to your dashboard, click the filter widget to select a value and activate the filter. To stop filtering, click the blue X.
 
 Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
 

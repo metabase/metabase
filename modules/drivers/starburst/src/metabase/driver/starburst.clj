@@ -1,5 +1,6 @@
 (ns metabase.driver.starburst
   "starburst driver."
+  (:refer-clojure :exclude [select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -7,10 +8,9 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,21 +20,32 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLType Time Types)
-   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    SQLException
+    SQLType
+    Time
+    Types)
+   (java.time
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
@@ -56,7 +67,9 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
-                              :now                             true}]
+                              :now                             true
+                              :database-routing                true
+                              :connection-impersonation        true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -65,11 +78,11 @@
     ""
     (str " " name ": " value)))
 
-(defmethod qp.util/query->remark :starburst
+(defmethod driver-api/query->remark :starburst
   [_ {{:keys [card-id dashboard-id]} :info, :as query}]
   (str
-   (qp.util/default-query->remark query)
-   (format-field "accountID" (system/site-uuid))
+   (driver-api/default-query->remark query)
+   (format-field "accountID" (driver-api/site-uuid))
    (format-field "dashboardID" dashboard-id)
    (format-field "cardID" card-id)))
 
@@ -164,6 +177,11 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_utf8 expr]))
 
+(defmethod sql.qp/cast-temporal-byte [:starburst :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:from_utf8 expr]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Date Truncation                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -172,15 +190,15 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via starburst's
   `AT TIME ZONE` operator. See https://starburst.io/docs/current/functions/datetime.html#time-zone-conversion"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (h2x/type-info expr)
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
-             ;; an error will be thrown by the query analyzer
+         ;; an error will be thrown by the query analyzer
          db-type
          (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
-             ;; if one has already been set, don't do so again
+         ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
       (-> (h2x/with-database-type-info (h2x/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
@@ -316,7 +334,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:starburst :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))]
+  (let [report-zone (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))]
     [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
 
 (defn- timestamp-with-time-zone? [expr]
@@ -329,7 +347,7 @@
     (h2x/cast timestamp-with-time-zone-db-type expr)))
 
 (defn- ->at-time-zone [expr]
-  (h2x/at-time-zone (->timestamp-with-time-zone expr) (qp.timezone/results-timezone-id)))
+  (h2x/at-time-zone (->timestamp-with-time-zone expr) (driver-api/results-timezone-id)))
 
 (doseq [unit [:year :quarter :month :week :day]]
   (defmethod sql.qp/datetime-diff [:starburst unit] [_driver unit x y]
@@ -347,12 +365,13 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        with_timezone? (h2x/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$")
+        with_timezone? (or (sql.qp.u/field-with-tz? arg)
+                           (h2x/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$"))
         _ (sql.u/validate-convert-timezone-args with_timezone? target-timezone source-timezone)
         expr [:at_timezone
               (if with_timezone?
                 expr
-                [:with_timezone expr (or source-timezone (qp.timezone/results-timezone-id))])
+                [:with_timezone expr (or source-timezone (driver-api/results-timezone-id))])
               target-timezone]]
     (h2x/with-database-type-info (h2x/->timestamp expr) "timestamp")))
 
@@ -420,15 +439,27 @@
     base-type))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
-  [_driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn table-schema table-name]
   (try
-    (let [sql (str "SHOW TABLES FROM \"" table-schema "\" LIKE '" table-name "'")]
-      ;; if the query completes without throwing an Exception, we can SELECT from this table
+    ;; Both Hive and Iceberg plugins for Trino expose one another's tables
+    ;; at the metadata level, even though they are not queryable through that catalog.
+    ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
+    ;; queryability. If the table is not queryable for this reason, we will return
+    ;; false. It's a slight stretch of the concept of "permissions," but it is true
+    ;; that we cannot query these tables...
+    (let [catalog (some-> conn .getCatalog)
+          sql (describe-table-sql driver catalog table-schema table-name)]
       (with-open [stmt (.prepareStatement conn sql)
                   rs (.executeQuery stmt)]
         (.next rs)))
-    (catch Throwable e
-      (log/fatal e "ERROR WITH QUERY ")
+    (catch SQLException e
+      ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
+      ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
+      ;; included in trino-jdbc. We check the vendor-specific error code instead.
+      ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
+      (when (= 133001 (.getErrorCode e))
+        (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                    table-schema table-name))
       false)))
 
 (defn- describe-schema
@@ -458,38 +489,40 @@
                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
 
-(defmethod driver/describe-database :starburst
-  [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [schemas (if schema
-                     #{(describe-schema driver conn catalog schema)}
-                     (all-schemas driver conn catalog))]
-       {:tables (reduce set/union #{} schemas)}))))
+(defmethod driver/describe-database* :starburst
+  [driver database]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [schemas (if schema
+                       #{(describe-schema driver conn catalog schema)}
+                       (all-schemas driver conn catalog))]
+         {:tables (reduce set/union #{} schemas)})))))
 
 (defmethod driver/describe-table :starburst
-  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       (let [sql (describe-table-sql driver catalog schema table-name)
-             rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
-         {:schema schema
-          :name   table-name
-          :fields (into
-                   #{}
-                   (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                  {:name column
-                                   :database-type type
-                                   :base-type (starburst-type->base-type type)
-                                   :database-position idx}))
-                   (jdbc/reducible-result-set rs {}))})))))
+  [driver database {schema :schema, table-name :name}]
+  (let [{:keys [catalog]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (let [sql (describe-table-sql driver catalog schema table-name)
+               rs  (sql-jdbc.execute/execute-statement! driver stmt sql)]
+           {:schema schema
+            :name   table-name
+            :fields (into
+                     #{}
+                     (map-indexed (fn [idx {:keys [column type] :as _col}]
+                                    {:name              column
+                                     :database-type     type
+                                     :base-type         (starburst-type->base-type type)
+                                     :database-position idx}))
+                     (jdbc/reducible-result-set rs {}))}))))))
 
 (defmethod driver/db-default-timezone :starburst
   [driver database]
@@ -525,6 +558,16 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
+     (when-let [db (cond
+                  ;; id?
+                     (integer? db-or-id-or-spec)
+                     (driver-api/with-metadata-provider db-or-id-or-spec
+                       (driver-api/database (driver-api/metadata-provider)))
+                  ;; db?
+                     (u/id db-or-id-or-spec)     db-or-id-or-spec
+                  ;; otherwise it's a spec and we can't get the db
+                     :else nil)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
@@ -619,20 +662,8 @@
          (t/zone-offset 0))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          SQL Statment Operations                                               |
+;;; |                                          SQL Statement Operations                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- impersonate-user
-  [^Connection conn]
-  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (let [email (get (deref api/*current-user*) :email)]
-      (log/info "[starburst] Using legacy impersonation.")
-      (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
-
-(defn- remove-impersonation
-  [^Connection conn]
-  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))))
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed
 (defn- handle-execution-error
@@ -659,19 +690,15 @@
 ; In the end, the exact same message is presented to the user when the number of arguments is
 ; incorrect except we now execute the query to display the error message
 (defn- proxy-optimized-prepared-statement
-  [driver ^Connection conn ^PreparedStatement stmt params]
+  [driver ^Connection _conn ^PreparedStatement stmt params]
   (let [ps (proxy [java.sql.PreparedStatement] []
              (executeQuery []
                (try
-                 (let [rs (.executeQuery stmt)]
-                   (remove-impersonation conn)
-                   rs)
+                 (.executeQuery stmt)
                  (catch Throwable e (handle-execution-error e))))
              (execute []
                (try
-                 (let [rs (.execute stmt)]
-                   (remove-impersonation conn)
-                   rs)
+                 (.execute stmt)
                  (catch Throwable e (handle-execution-error e))))
              (setMaxRows [nb] (.setMaxRows stmt nb))
              (setObject
@@ -699,36 +726,33 @@
              (setFloat [index val] (.setFloat stmt index val))
              (setDouble [index val] (.setDouble stmt index val))
              (cancel [] (.cancel stmt))
-             (close [] (.close stmt)))]
+             (close [] (.close stmt))
+             (isClosed [] (.isClosed stmt)))]
     (sql-jdbc.execute/set-parameters! driver ps params)
     ps))
 
 ; Default prepared statement where set-parameters! is called before generating the proxy
 (defn- proxy-prepared-statement
-  [driver ^Connection conn ^PreparedStatement stmt params]
+  [driver ^Connection _conn ^PreparedStatement stmt params]
   (sql-jdbc.execute/set-parameters! driver stmt params)
   (proxy [java.sql.PreparedStatement] []
     (executeQuery []
       (try
-        (let [rs (.executeQuery stmt)]
-          (remove-impersonation conn)
-          rs)
+        (.executeQuery stmt)
         (catch Throwable e (handle-execution-error e))))
     (execute []
       (try
-        (let [rs (.execute stmt)]
-          (remove-impersonation conn)
-          rs)
+        (.execute stmt)
         (catch Throwable e (handle-execution-error e))))
     (setMaxRows [nb] (.setMaxRows stmt nb))
     (cancel [] (.cancel stmt))
-    (close [] (.close stmt))))
+    (close [] (.close stmt))
+    (isClosed [] (.isClosed stmt))))
 
 (defmethod sql-jdbc.execute/prepared-statement :starburst
   [driver ^Connection conn ^String sql params]
   ;; with starburst driver, result set holdability must be HOLD_CURSORS_OVER_COMMIT
   ;; defining this method simply to omit setting the holdability
-  (impersonate-user conn)
   (let [stmt (.prepareStatement conn
                                 sql
                                 ResultSet/TYPE_FORWARD_ONLY
@@ -738,19 +762,16 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
-      (if
-       (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
+      (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
       (catch Throwable e
-        (remove-impersonation conn)
         (.close stmt)
         (throw e)))))
 
 (defmethod sql-jdbc.execute/statement :starburst
   [_ ^Connection conn]
   ;; and similarly for statement (do not set holdability)
-  (impersonate-user conn)
   (let [stmt (.createStatement conn
                                ResultSet/TYPE_FORWARD_ONLY
                                ResultSet/CONCUR_READ_ONLY)]
@@ -763,12 +784,12 @@
         (try
           (let [rs (.execute stmt sql)]
             rs)
-          (catch Throwable e (handle-execution-error e))
-          (finally (remove-impersonation conn))))
+          (catch Throwable e (handle-execution-error e))))
       (getResultSet [] (.getResultSet stmt))
       (setMaxRows [nb] (.setMaxRows stmt nb))
       (cancel [] (.cancel stmt))
-      (close [] (.close stmt)))))
+      (close [] (.close stmt))
+      (isClosed [] (.isClosed stmt)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Prepared Statement Substitutions                                      |
@@ -783,7 +804,7 @@
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   ;_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone       (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
@@ -889,12 +910,12 @@
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to starburst via JDBC, from the given `opts`."
   [{:keys [host port catalog schema]
-    :or   {host "localhost", port 5432, catalog ""}
+    :or   {host "localhost", port 8080, catalog ""}
     :as   details}]
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"
               :subprotocol "trino"
-              :subname     (mdb/make-subname host port (db-name catalog schema))})
+              :subname     (driver-api/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       prepare-roles
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
@@ -910,14 +931,6 @@
     (str v)
     v))
 
-; The role defined in the database should be ignored only if:
-; - The impersonation flag is checked AND
-; - The current user is NOT the database user
-(defn- remove-role? [details-map]
-  (and
-   (:impersonation details-map)
-   (not= (get (deref api/*current-user*) :email) (:user details-map))))
-
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
   (let [props (-> details-map
@@ -931,11 +944,9 @@
                   (assoc :SSL (:ssl details-map))
                   (assoc :source (format
                                   "Metabase %s [%s]"
-                                  (:tag config/mb-version-info "")
-                                  config/local-process-uuid))
-                  (cond-> (:impersonation details-map) (assoc :clientInfo "impersonate:true"))
+                                  (:tag driver-api/mb-version-info "")
+                                  driver-api/local-process-uuid))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
-                  (dissoc (if (remove-role? details-map) :roles :test))
 
                   ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                   ;; very picky about properties (throwing an error if any are unrecognized)
@@ -983,17 +994,13 @@
   [_]
   :monday)
 
-(defmethod driver.sql/set-role-statement :starburst
-  [_driver role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET SESSION AUTHORIZATION \"%s\";" role)
-      (format "SET SESSION AUTHORIZATION %s;" role))))
-
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
-  (get-in database [:details :user]))
+  (:user (driver.conn/effective-details database)))
+
+(defmethod driver/set-role! :starburst
+  [_driver ^Connection conn role]
+  (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ expr]]

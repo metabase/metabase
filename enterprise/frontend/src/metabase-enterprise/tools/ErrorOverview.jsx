@@ -2,7 +2,12 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
+import { fetchDataOrError } from "metabase/dashboard/utils";
 import { CardApi } from "metabase/services";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
@@ -15,6 +20,7 @@ const getSortOrder = (isAscending) => (isAscending ? "asc" : "desc");
 
 const CARD_ID_COL = 0;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorOverview(props) {
   const reloadRef = useRef(null);
   // TODO: use isReloading to display a loading overlay
@@ -54,7 +60,8 @@ export default function ErrorOverview(props) {
 
     await Promise.all(
       checkedCardIds.map(
-        async (member) => await CardApi.query({ cardId: member }),
+        async (member) =>
+          await fetchDataOrError(CardApi.query({ cardId: member })),
       ),
     );
     setRowChecked({});
@@ -70,51 +77,52 @@ export default function ErrorOverview(props) {
   };
 
   return (
-    <>
-      <h2>{t`Questions that errored when last run`}</h2>
-      <AuditParameters
-        parameters={[
-          { key: "errorFilter", placeholder: t`Error contents` },
-          { key: "dbFilter", placeholder: t`DB name` },
-          { key: "collectionFilter", placeholder: t`Collection name` },
-        ]}
-        buttons={[
-          {
-            key: "reloadSelected",
-            label: t`Rerun Selected`,
-            disabled: Object.values(rowChecked).every(
-              (isChecked) => !isChecked,
-            ),
-            onClick: handleReloadSelected,
-          },
-        ]}
-        hasResults={hasResults}
-      >
-        {({ errorFilter, dbFilter, collectionFilter }) => (
-          <AuditTable
-            {...props}
-            reloadRef={reloadRef}
-            pageSize={50}
-            isSortable
-            isSelectable
-            rowChecked={rowChecked}
-            sorting={sorting}
-            onSortingChange={handleSortingChange}
-            onAllSelectClick={handleAllSelectClick}
-            onRowSelectClick={handleRowSelectClick}
-            onLoad={handleLoad}
-            mode={ErrorMode}
-            table={Queries.bad_table(
-              errorFilter,
-              dbFilter,
-              collectionFilter,
-              sorting.column,
-              getSortOrder(sorting.isAscending),
-            )}
-            className={CS.mt2}
-          />
-        )}
-      </AuditParameters>
-    </>
+    <SettingsPageWrapper title={t`Questions that errored when last run`}>
+      <SettingsSection>
+        <AuditParameters
+          parameters={[
+            { key: "errorFilter", placeholder: t`Error contents` },
+            { key: "dbFilter", placeholder: t`DB name` },
+            { key: "collectionFilter", placeholder: t`Collection name` },
+          ]}
+          buttons={[
+            {
+              key: "reloadSelected",
+              label: t`Rerun Selected`,
+              disabled: Object.values(rowChecked).every(
+                (isChecked) => !isChecked,
+              ),
+              onClick: handleReloadSelected,
+            },
+          ]}
+          hasResults={hasResults}
+        >
+          {({ errorFilter, dbFilter, collectionFilter }) => (
+            <AuditTable
+              {...props}
+              reloadRef={reloadRef}
+              pageSize={50}
+              isSortable
+              isSelectable
+              rowChecked={rowChecked}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
+              onAllSelectClick={handleAllSelectClick}
+              onRowSelectClick={handleRowSelectClick}
+              onLoad={handleLoad}
+              mode={ErrorMode}
+              table={Queries.bad_table(
+                errorFilter,
+                dbFilter,
+                collectionFilter,
+                sorting.column,
+                getSortOrder(sorting.isAscending),
+              )}
+              className={CS.mt2}
+            />
+          )}
+        </AuditParameters>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

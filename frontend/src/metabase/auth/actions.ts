@@ -2,18 +2,18 @@ import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
-import { deleteSession, initiateSLO } from "metabase/lib/auth";
-import { isSmallScreen, reload } from "metabase/lib/dom";
-import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
+import * as Urls from "metabase/urls";
+import { isSmallScreen, reload } from "metabase/utils/dom";
+import { isResourceNotFoundError } from "metabase/utils/errors";
+import { loadLocalization } from "metabase/utils/i18n";
+import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { LoginData } from "./types";
 
@@ -167,7 +167,7 @@ export const resetPassword = createAsyncThunk(
 );
 
 export const validatePassword = async (password: string) => {
-  const error = MetabaseSettings.passwordComplexityDescription(password);
+  const error = passwordComplexityDescription(password);
   if (error) {
     return error;
   }
@@ -176,5 +176,25 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
+  }
+};
+
+const initiateSLO = async () => {
+  try {
+    return await SessionApi.slo();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};
+
+export const deleteSession = async () => {
+  try {
+    await SessionApi.delete();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
   }
 };

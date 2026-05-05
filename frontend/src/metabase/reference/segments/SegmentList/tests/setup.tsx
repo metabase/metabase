@@ -1,27 +1,27 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SegmentList } from "../SegmentList";
 
 export interface SetupOpts {
   user: User;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   user,
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupOpts) => {
   const state = createMockState({
     currentUser: createMockUser(user),
@@ -31,9 +31,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(<SegmentList />, { storeInitialState: state });
 };

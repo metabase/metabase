@@ -111,13 +111,13 @@ describe("Onboarding", () => {
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
   });
 
-  it("should scroll the last remembered item into view on page load", () => {
+  it("should scroll the last remembered item into view on page load", async () => {
     setup({ openItem: "sql" });
 
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
 
     // closing the item should not trigger `scrollIntoView` again
-    userEvent.click(getItemControl("Query with SQL"));
+    await userEvent.click(getItemControl("Query with SQL"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
@@ -340,10 +340,10 @@ describe("Onboarding", () => {
 
       expect(
         within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email/smtp");
+      ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("subscription-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(
@@ -384,10 +384,10 @@ describe("Onboarding", () => {
 
       expect(
         within(commsSetup).getByRole("link", { name: "Set up email" }),
-      ).toHaveAttribute("href", "/admin/settings/email/smtp");
+      ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("alert-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(

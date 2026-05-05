@@ -1,22 +1,16 @@
+import cx from "classnames";
 import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { TextButton } from "metabase/components/Button.styled";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import {
   DashboardNotificationCard,
   NotificationCard,
 } from "../NotificationCard";
-
-import {
-  NotificationHeader,
-  NotificationIcon,
-  NotificationLabel,
-  NotificationMessage,
-  NotificationSection,
-} from "./NotificationList.styled";
 
 type NotificationListProps = {
   listItems: NotificationListItem[];
@@ -43,12 +37,19 @@ export const NotificationList = ({
 
   return (
     <div data-testid="notifications-list">
-      <NotificationHeader>
-        <NotificationLabel>{t`You receive or created these`}</NotificationLabel>
-        <TextButton size="small" onClick={onHelp}>
+      <Flex align="center" mb="lg">
+        <Text c="text-primary" fz="md" fw={700} flex="1 1 auto" m={0}>
+          {t`You receive or created these`}
+        </Text>
+        <UnstyledButton
+          fz="sm"
+          fw="bold"
+          onClick={onHelp}
+          className={cx(CS.textMedium, CS.textBrandHover)}
+        >
           {t`Not seeing one here?`}
-        </TextButton>
-      </NotificationHeader>
+        </UnstyledButton>
+      </Flex>
       {listItems.map((listItem) =>
         listItem.type === "pulse" ? (
           <DashboardNotificationCard
@@ -77,14 +78,18 @@ export const NotificationList = ({
 
 const NotificationEmptyState = ({ children }: { children?: ReactNode }) => {
   return (
-    <>
-      <NotificationSection>
-        <NotificationIcon name="bell" />
-        <NotificationMessage>
-          {t`If you subscribe or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
-        </NotificationMessage>
-        {children}
-      </NotificationSection>
-    </>
+    <Flex direction="column" align="center">
+      <Icon
+        name="bell"
+        size="3.25rem"
+        c="background-tertiary-inverse"
+        mt="4.875rem"
+        mb="1.75rem"
+      />
+      <Box maw="24rem" ta="center">
+        {t`If you subscribe or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
+      </Box>
+      {children}
+    </Flex>
   );
 };

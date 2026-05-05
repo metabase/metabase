@@ -5,19 +5,23 @@ import {
 } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
-import { parseSearchOptions } from "metabase/lib/browser";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
+  setDataPicker,
   setEntityTypes,
 } from "metabase/redux/embedding-data-picker";
-import type { InteractiveEmbeddingOptions } from "metabase-types/store";
-import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
+import type {
+  InteractiveEmbeddingOptions,
+  InteractiveEmbeddingOptionsState,
+} from "metabase/redux/store";
+import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { parseSearchOptions } from "metabase/utils/browser";
 
 export const createSlice = buildCreateSlice({
   creators: { asyncThunk: asyncThunkCreator },
 });
 
-export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions =
+export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptionsState =
   {
     font: undefined,
     top_nav: true,
@@ -29,27 +33,15 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
-    data_picker: "flat",
   };
 
-const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
-  DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = (
+  Object.keys(
+    DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+  ) as (keyof InteractiveEmbeddingOptions)[]
 )
-  // `entity_types` used to be in the embed slice, but it's moved to the embedding data picker slice already.
-  .concat("entity_types");
-
-export const urlParameterToBoolean = (
-  urlParameter: string | string[] | boolean | undefined,
-) => {
-  if (urlParameter === undefined) {
-    return undefined;
-  }
-  if (Array.isArray(urlParameter)) {
-    return Boolean(urlParameter.at(-1));
-  } else {
-    return Boolean(urlParameter);
-  }
-};
+  // These 2 properties belongs in embedding-data-picker reducer
+  .concat("entity_types", "data_picker");
 
 interface Location {
   search: string;
@@ -57,15 +49,17 @@ interface Location {
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
-    options: {} as InteractiveEmbeddingOptions,
+    options: {} as InteractiveEmbeddingOptionsState,
     isEmbeddingSdk: false,
   },
   reducers: (create) => ({
     setInitialUrlOptions: create.asyncThunk(
       ({ search }: Location, { dispatch }) => {
-        const { entity_types, ...searchOptions } = processSearch(search);
+        const { entity_types, data_picker, ...searchOptions } =
+          processSearch(search);
 
         dispatch(setEntityTypes(entity_types));
+        dispatch(setDataPicker(data_picker));
 
         return searchOptions;
       },

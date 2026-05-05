@@ -1,0 +1,19 @@
+/**
+ * Non-active items border color is pretty much hardcoded in Mantine v8.
+ * Therefore we need to override it for non-active items.
+ */
+.item {
+  --item-border-color: var(--mb-color-border);
+
+  &[data-line-active] {
+    --item-border-color: var(--tl-color);
+  }
+}
+
+.itemBullet {
+  border-color: var(--mb-color-border);
+
+  &[data-active] {
+    border-color: var(--tl-color);
+  }
+}

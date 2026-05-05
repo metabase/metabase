@@ -1,17 +1,15 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type {
   MoveDestination,
   OnMoveWithSourceAndDestination,
 } from "metabase/collections/types";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
-import { useCollectionQuery } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { MoveModal } from "metabase/containers/MoveModal";
-import Collections from "metabase/entities/collections";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import { useSetCollection } from "metabase/common/hooks";
+import * as Urls from "metabase/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
@@ -33,17 +31,20 @@ const MoveCollectionModalView = ({
     [collection, onMove, onClose],
   );
 
-  const recentsAndSearchFilter = (item: CollectionPickerItem) =>
-    item.model === "collection" && item.id === collection.parent_id;
-
   return (
     <MoveModal
       title={t`Move "${collection.name}"?`}
-      initialCollectionId={collection.parent_id ?? "root"}
-      movingCollectionId={collection.id}
+      movingItem={{
+        ...collection,
+        collection: {
+          id: collection.parent_id || "root ",
+          name: "",
+          namespace: collection.namespace,
+        }, // parent collection info
+        model: "collection",
+      }}
       onMove={handleMove}
       onClose={onClose}
-      recentAndSearchFilter={recentsAndSearchFilter}
     />
   );
 };
@@ -58,17 +59,17 @@ export const MoveCollectionModal = ({
   params?: { slug: string };
   onClose: () => void;
 }) => {
-  const dispatch = useDispatch();
+  const setCollection = useSetCollection();
   const collectionIdfromUrl = Urls.extractCollectionId(params?.slug);
 
+  const resolvedCollectionId = collectionId ?? collectionIdfromUrl;
   const {
     data: collection,
     isLoading,
     error,
-  } = useCollectionQuery({
-    id: collectionId ?? collectionIdfromUrl,
-    enabled: Boolean(collectionId || collectionIdfromUrl),
-  });
+  } = useGetCollectionQuery(
+    resolvedCollectionId != null ? { id: resolvedCollectionId } : skipToken,
+  );
 
   if (!collection || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -78,7 +79,10 @@ export const MoveCollectionModal = ({
     <MoveCollectionModalView
       collection={collection}
       onMove={async (source, destination) => {
-        await dispatch(Collections.actions.setCollection(source, destination));
+        await setCollection(
+          { model: "collection", id: source.id },
+          destination,
+        );
       }}
       onClose={onClose}
     />

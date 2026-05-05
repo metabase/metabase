@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -13,9 +12,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { checkNotNull } from "metabase/utils/types";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -178,6 +177,8 @@ describe("SearchResults", () => {
 
   it("should only call the /api/user/recipients endpoint once even if there are multiple search results", async () => {
     await setup();
-    expect(fetchMock.calls("path:/api/user/recipients").length).toBe(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/user/recipients").length,
+    ).toBe(1);
   });
 });

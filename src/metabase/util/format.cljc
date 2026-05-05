@@ -12,7 +12,7 @@
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable. (µs/ms/etc.)"
   ^String [nanoseconds]
-  ;; The basic idea is to take `n` and see if it's greater than the divisior. If it is, we'll print it out as that
+  ;; The basic idea is to take `n` and see if it's greater than the divisor. If it is, we'll print it out as that
   ;; unit. If more, we'll divide by the divisor and recur, trying each successively larger unit in turn. e.g.
   ;;
   ;; (format-nanoseconds 500)    ; -> "500 ns"
@@ -53,8 +53,10 @@
       (format-with-unit n suffix))))
 
 #?(:clj
-   (def ^:private colorize?
-     ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
+   (def colorize?
+     "Whether we should print in colors or not.
+
+  As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)"
      (if (config/config-str :no-color)
        false
        (config/config-bool :mb-colorize-logs))))
@@ -62,8 +64,8 @@
 #_{:clj-kondo/ignore [:def-fn]}
 (def ^{:arglists '(^String [color-symb x])} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
-  `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
-  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
+  `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of available
+  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)."
   #?(:clj  (if colorize?
              (fn [color x]
                (colorize/color (keyword color) (str x)))

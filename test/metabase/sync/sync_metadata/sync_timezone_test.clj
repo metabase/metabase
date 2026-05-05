@@ -1,6 +1,5 @@
 (ns metabase.sync.sync-metadata.sync-timezone-test
   (:require
-   [clj-time.core :as time]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -47,26 +46,32 @@
     (testing (str "This tests populating the timezone field for a given database. The sync happens automatically, so "
                   "this test removes it first to ensure that it gets set when missing")
       (mt/dataset test-data
-        (let [db                               (mt/db)
-              tz-on-load                       (db-timezone db)
-              _                                (t2/update! :model/Database (:id db) {:timezone nil})
-              tz-after-update                  (db-timezone db)
-              ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
-              ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
-              _                                (driver/notify-database-updated driver/*driver* db)
-              {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" db)]
-          (testing "only step keys"
-            (is (= {:timezone-id "UTC"}
-                   (sync.util-test/only-step-keys step-info))))
-          (testing "task details"
-            (is (= {:timezone-id "UTC"}
-                   (:task_details task-history))))
-          (testing "On startup is the timezone specified?"
-            (is (time/time-zone-for-id tz-on-load)))
-          (testing "Check to make sure the test removed the timezone"
-            (is (nil? tz-after-update)))
-          (testing "Check that the value was set again after sync"
-            (is (time/time-zone-for-id (db-timezone db)))))))))
+        (try
+          (let [db                               (mt/db)
+                tz-on-load                       (db-timezone db)
+                _                                (t2/update! :model/Database (:id db) {:timezone nil})
+                tz-after-update                  (db-timezone db)
+                ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
+                ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
+                _                                (driver/notify-database-updated driver/*driver* db)
+                {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" (assoc db :timezone nil))]
+            (testing "only step keys"
+              (is (= {:timezone-id "UTC"}
+                     (sync.util-test/only-step-keys step-info))))
+            (testing "task details"
+              (is (= {:timezone-id "UTC"}
+                     (:task_details task-history))))
+            (testing "On startup is the timezone specified?"
+              (is (not (nil? tz-on-load)))
+              (is (java.time.ZoneId/of tz-on-load)))
+            (testing "Check to make sure the test removed the timezone"
+              (is (nil? tz-after-update)))
+            (testing "Check that the value was set again after sync"
+              (is (not (nil? (db-timezone db))))
+              (is (java.time.ZoneId/of (db-timezone db)))))
+          (finally
+            ;; Make sure to reset the timezone to UTC in case the test failed
+            (t2/update! :model/Database (:id (mt/db)) {:timezone "UTC"})))))))
 
 (deftest sync-timezone-mysql-test
   (mt/test-driver :mysql

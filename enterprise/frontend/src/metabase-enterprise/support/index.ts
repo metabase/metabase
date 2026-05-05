@@ -1,0 +1,15 @@
+import { PLUGIN_IS_EE_BUILD, PLUGIN_SUPPORT } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
+import {
+  GrantAccessModal,
+  SupportSettingsSection,
+} from "./components/SupportSettingsSection";
+
+export function initializePlugin() {
+  if (hasPremiumFeature("support-users") && PLUGIN_IS_EE_BUILD.isEEBuild()) {
+    PLUGIN_SUPPORT.isEnabled = true;
+    PLUGIN_SUPPORT.SupportSettings = SupportSettingsSection;
+    PLUGIN_SUPPORT.GrantAccessModal = GrantAccessModal;
+  }
+}

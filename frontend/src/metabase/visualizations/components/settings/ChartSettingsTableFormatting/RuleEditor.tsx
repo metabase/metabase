@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import {
   Box,
@@ -135,7 +135,12 @@ export const RuleEditor = ({
             </Text>
             <Box>
               <Select<ColumnFormattingOperator>
-                comboboxProps={{ withinPortal: false }}
+                comboboxProps={{
+                  withinPortal: false,
+                  middlewares: {
+                    flip: false,
+                  },
+                }}
                 value={rule.operator}
                 onChange={(operator) => onChange({ ...rule, operator })}
                 data={_.pairs(operators).map(([value, label]) => ({
@@ -290,7 +295,11 @@ const RuleEditorValueInput = ({
   onChange: (rule: ColumnFormattingSetting) => void;
   disabled?: boolean;
 }) => {
-  if (!hasOperand) {
+  if (
+    !hasOperand ||
+    typeof rule.value === "boolean" ||
+    typeof rule.value === "object"
+  ) {
     return null;
   }
 

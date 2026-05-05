@@ -5,7 +5,6 @@ import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
   return baseSetup({
-    hasEnterprisePlugins: true,
     ...opts,
   });
 }

@@ -1,4 +1,5 @@
 // Functions that get key elements in the app
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
 
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
@@ -43,6 +44,22 @@ export function selectDropdown() {
   return popover().findByRole("listbox");
 }
 
+export function miniPicker() {
+  return cy.findByTestId("mini-picker");
+}
+
+export function miniPickerBrowseAll() {
+  return miniPicker().findByText("Browse all");
+}
+
+export function miniPickerOurAnalytics() {
+  return miniPicker().findByText("Our analytics");
+}
+
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -54,14 +71,25 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("a");
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
 }
 
 export function entityPickerModalTab(name) {
-  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  if (typeof name === "string") {
+    return cy.findAllByRole("tab").filter(`:contains(${name})`);
+  } else {
+    return cy.findAllByRole("tab").first().parent().findByText(name);
+  }
 }
 
 // displays at least these tabs:
@@ -119,7 +147,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }
@@ -149,6 +177,10 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
+ * @param {Object} options
+ * @param {boolean} [options.isEditing] - whether dashboard editing mode is enabled
+ * @param {string} [options.name] - the name of the filter widget to get
+ *
  * @returns HTMLFieldSetElement
  *
  * @example
@@ -165,17 +197,21 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget() {
-  return cy.get("fieldset");
+export function filterWidget({ isEditing = false, name = null } = {}) {
+  const selector = isEditing ? "editing-parameter-widget" : "parameter-widget";
+
+  return name != null
+    ? cy.findAllByTestId(selector).filter(`:contains(${name})`)
+    : cy.findAllByTestId(selector);
 }
 
 export function clearFilterWidget(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("close").click();
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return filterWidget().eq(index).icon("revert").click();
 }
 
@@ -208,6 +244,18 @@ export function toggleFilterWidgetValues(
   });
 }
 
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
+}
+
 export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
@@ -230,6 +278,14 @@ export const queryBuilderFiltersPanel = () => {
 
 export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
+};
+
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
+};
+
+export const queryVisualizationRoot = () => {
+  return cy.findByTestId("query-visualization-root");
 };
 
 export const closeQuestionActions = () => {
@@ -262,73 +318,126 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
-export const moveDnDKitElement = (
-  element,
-  { horizontal = 0, vertical = 0 } = {},
+/**
+ * Moves an element within a dnd-kit sortable list from one position to another.
+ *
+ * @param {string | RegExp} dataTestId - The data-testid pattern to match list elements
+ * @param {Object} options
+ * @param {number} options.startIndex - The index of the element to drag
+ * @param {number} options.dropIndex - The index where the element should be dropped
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
+export const moveDnDKitListElement = (
+  dataTestId,
+  {
+    startIndex,
+    dropIndex,
+    onBeforeDragEnd = () => {},
+    useMouseEvents = false,
+  } = {},
 ) => {
-  element
-    .trigger("pointerdown", 0, 0, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    // This initial move needs to be greater than the activation constraint
-    // of the pointer sensor
-    .trigger("pointermove", 20, 20, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    .trigger("pointermove", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    .trigger("pointerup", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200);
+  const selector = new RegExp(dataTestId);
+  const getElement = () =>
+    cy.findAllByTestId(selector).should("have.length.gt", 1).eq(startIndex);
+
+  const getCenter = ($el) => {
+    const { x, y, width, height } = $el.getBoundingClientRect();
+
+    return { clientX: x + width / 2, clientY: y + height / 2 };
+  };
+
+  cy.findAllByTestId(selector).then(($all) => {
+    const dragEl = $all.get(startIndex);
+    const dropEl = $all.get(dropIndex);
+    const dragPoint = getCenter(dragEl);
+    const dropPoint = getCenter(dropEl);
+
+    moveDnDKitElementByGetter(getElement, {
+      vertical: dropPoint.clientY - dragPoint.clientY,
+      horizontal: dropPoint.clientX - dragPoint.clientX,
+      useMouseEvents,
+      onBeforeDragEnd,
+    });
+  });
 };
 
-export const moveDnDKitElementByAlias = (
-  alias,
-  { horizontal = 0, vertical = 0 } = {},
-) => {
+/**
+ * Moves a dnd-kit draggable element by a specified offset using a Cypress alias.
+ *
+ * @param {string} alias - The Cypress alias for the element to drag (e.g., "@dragElement")
+ * @param {Object} options
+ * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
+ * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
+export const moveDnDKitElementByAlias = (alias, options) => {
   // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
   // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
-  cy.get(alias)
-    .trigger("pointerdown", 0, 0, {
+  const getElement = () => cy.get(alias);
+  return moveDnDKitElementByGetter(getElement, options);
+};
+
+/**
+ * Moves a dnd-kit draggable element by a specified offset using a function that returns the element.
+ *
+ * @param {() => Cypress.Chainable} getElement - A function that returns the element to drag
+ * @param {Object} options
+ * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
+ * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
+ * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
+ */
+const moveDnDKitElementByGetter = (
+  getElement,
+  {
+    horizontal = 0,
+    vertical = 0,
+    useMouseEvents = false,
+    onBeforeDragEnd = () => {},
+  } = {},
+) => {
+  const down = useMouseEvents ? "mousedown" : "pointerdown";
+  const move = useMouseEvents ? "mousemove" : "pointermove";
+  const up = useMouseEvents ? "mouseup" : "pointerup";
+  const extraProps = useMouseEvents
+    ? { eventConstructor: "MouseEvent" }
+    : { isPrimary: true };
+
+  getElement()
+    .trigger(down, 0, 0, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
+
   // This initial move needs to be greater than the activation constraint
-  // of the pointer sensor
-  cy.get(alias)
-    .trigger("pointermove", 20, 20, {
+  // of the sensor
+  getElement()
+    .trigger(move, 20, 20, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
-  cy.get(alias)
-    .trigger("pointermove", horizontal, vertical, {
+
+  getElement()
+    .trigger(move, horizontal, vertical, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
-  cy.get(alias)
-    .trigger("pointerup", horizontal, vertical, {
+
+  onBeforeDragEnd();
+
+  cy.document()
+    .trigger(up, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 };
@@ -353,6 +462,10 @@ export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
 };
 
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
+};
+
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
@@ -374,7 +487,7 @@ export function tableInteractiveFooter() {
 }
 
 export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId(`resize-handle-${columnId}`)
     .eq(elementIndex)
     .trigger("mousedown", {
@@ -383,17 +496,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {
@@ -417,7 +531,7 @@ export function assertTableRowsCount(value) {
 }
 
 export function lastTableRow() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return tableInteractiveScrollContainer()
     .scrollTo("bottomLeft")
     .findAllByRole("row")
@@ -442,13 +556,19 @@ export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderColumn(headerString) {
-  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
-  // from obscuring the target column in the viewport
-  const objectDetailOffset = 50;
-  tableInteractiveHeader()
-    .findByText(headerString)
-    .scrollIntoView({ offset: { left: -objectDetailOffset } });
+export function tableHeaderColumn(
+  headerString,
+  { scrollIntoView = true } = {},
+) {
+  if (scrollIntoView) {
+    // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+    // from obscuring the target column in the viewport
+    const objectDetailOffset = 50;
+    tableInteractiveHeader()
+      .findByText(headerString)
+      .scrollIntoView({ offset: { left: -objectDetailOffset } });
+  }
+
   return tableInteractiveHeader().findByText(headerString);
 }
 
@@ -464,13 +584,18 @@ export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
     .should("have.length", columns.length);
 
   columns.forEach((column, index) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
       .eq(index)
@@ -479,7 +604,7 @@ export function assertTableData({ columns, firstRows = [] }) {
 
   firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
         .eq(columns.length * rowIndex + cellIndex)
@@ -493,7 +618,7 @@ export function assertTableData({ columns, firstRows = [] }) {
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
  * @returns
  */
-export function newButton(menuItem) {
+export function newButton(menuItem = undefined) {
   if (menuItem) {
     cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);
@@ -519,12 +644,12 @@ export function fieldValuesTextbox() {
 }
 
 export function fieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("token-field").eq(index);
 }
 
 export function removeFieldValuesValue(index) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByTestId("token-field")
     .findAllByLabelText("Remove")
@@ -533,7 +658,7 @@ export function removeFieldValuesValue(index) {
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)
@@ -559,4 +684,68 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
 export function mapPinIcon() {
   return cy.get(".leaflet-marker-icon");
+}
+
+export function waitForLoaderToBeRemoved() {
+  cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+export function leaveConfirmationModal() {
+  return cy.findByTestId("leave-confirmation");
+}
+
+export function getUniqueTableColumnValues(columnName) {
+  const values = [];
+
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`)
+      .each(($item) => values.push($item.text()))
+      .then(() => {
+        cy.wrap(Array.from(new Set(values))).as("items");
+      });
+  });
+
+  return cy.get("@items");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).should(($cells) => {
+      $cells.each((i, cell) => {
+        expect(cell).to.have.text(columnValue);
+      });
+    });
+  });
+}
+
+export function getProfileLink() {
+  return cy.findByTestId("app-switcher-target");
+}
+
+export const mainAppLinkText = "Main app";
+export const dataStudioAppLinkText = "Data studio";
+export const adminAppLinkText = "Admin";
+
+export function goToMainApp() {
+  getProfileLink().click();
+  popover().findByText(mainAppLinkText).click();
+}
+
+export function goToAdmin() {
+  getProfileLink().click();
+  popover().findByText(adminAppLinkText).click();
+}
+
+export function goToDataStudio() {
+  getProfileLink().click();
+  popover().findByText(dataStudioAppLinkText).click();
+}
+
+export function goToProfile() {
+  getProfileLink().click();
+  popover().findByTestId("mode-switcher-profile-link").click();
+}
+
+export function getHelpSubmenu() {
+  return cy.findByTestId("help-submenu");
 }

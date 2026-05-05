@@ -154,7 +154,7 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
     );
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177" },
         { name: "Gadget", value: "199" },
@@ -204,7 +204,7 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
     );
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177" },
         { name: "Widget", value: "210" },
@@ -388,7 +388,9 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashcardVisualizerModal(0);
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
@@ -435,7 +437,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177" },
         { name: "Gadget", value: "199" },
@@ -468,7 +470,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177" },
         { name: "Widget", value: "210" },
@@ -528,7 +530,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177", secondaryValue: "23.79 %" },
         { name: "Gadget", value: "199", secondaryValue: "26.75 %" },
@@ -544,7 +546,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { name: "Doohickey", value: "177", secondaryValue: "47.07 %" },
         { name: "Gadget", value: "199", secondaryValue: "52.93 %" },
@@ -556,7 +558,7 @@ describe("scenarios > visualizations > legend", () => {
 });
 
 function hideSeries(legendItemIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Hide series")
@@ -564,7 +566,7 @@ function hideSeries(legendItemIndex) {
 }
 
 function showSeries(legendItemIndex) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")

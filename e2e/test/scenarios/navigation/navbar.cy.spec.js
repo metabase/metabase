@@ -131,7 +131,7 @@ describe("scenarios > navigation > navbar", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be open when logging in with a landing page configured", () => {
@@ -146,6 +146,26 @@ describe("scenarios > navigation > navbar", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
+    });
+  });
+
+  describe("library", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("should show the library when a table is published", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      cy.visit("/");
+      H.navigationSidebar()
+        .findByRole("section", { name: "Library" })
+        .findByText("Data")
+        .click();
+      H.collectionTable().findByText("Orders").click();
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
     });
   });
 });

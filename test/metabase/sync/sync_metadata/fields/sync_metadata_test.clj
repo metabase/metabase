@@ -14,7 +14,10 @@
    ;; use alphabetical field_order by default because the default, database, will update the position
    (updates-that-will-be-performed! new-metadata-from-sync metadata-in-application-db {:field_order :alphabetical}))
   ([new-metadata-from-sync metadata-in-application-db table]
-   (mt/with-temp [:model/Database db {}
+   (updates-that-will-be-performed! new-metadata-from-sync metadata-in-application-db table {}))
+  ([new-metadata-from-sync metadata-in-application-db table db-settings]
+   (mt/with-temp [:model/Database db (cond-> {}
+                                       (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
        (with-redefs [t2/update! (fn [model id updates]
@@ -220,6 +223,33 @@
              :database-is-auto-increment false
              :json-unfolding             false})))))
 
+(deftest crufty-field-sets-preview-display-false-test
+  (testing "When a field becomes crufty (matches auto-cruft pattern), preview_display should be set to false"
+    (testing "field with preview_display=true should have it set to false when crufty"
+      (is (= [["Field" 1 {:visibility_type :details-only
+                          :preview_display false}]]
+             (updates-that-will-be-performed!
+              ;; new metadata from sync - field name matches auto-cruft pattern
+              (merge default-metadata {:name "updated_at"})
+              ;; existing field in application DB with preview_display=true
+              (merge default-metadata {:name            "updated_at"
+                                       :id              1
+                                       :visibility-type :normal
+                                       :preview-display true})
+              {:field_order :alphabetical}
+              ;; database settings with auto-cruft pattern matching "updated_at"
+              {:auto-cruft-columns ["updated_at"]}))))
+    (testing "field already with preview_display=false should not be updated again"
+      (is (= [["Field" 1 {:visibility_type :details-only}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata {:name "updated_at"})
+              (merge default-metadata {:name            "updated_at"
+                                       :id              1
+                                       :visibility-type :normal
+                                       :preview-display false})
+              {:field_order :alphabetical}
+              {:auto-cruft-columns ["updated_at"]}))))))
+
 (deftest dont-overwrite-semantic-type-test
   (testing "We should not override non-nil `semantic_type`s"
     (is (= []
@@ -245,7 +275,12 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (is (= [["Field"
+    (is (= [["FieldUserSettings"
+             1
+             {:effective_type      :type/Text
+              :coercion_strategy   nil
+              :semantic_type       nil}]
+            ["Field"
              1
              {:base_type           :type/Text
               :effective_type      :type/Text

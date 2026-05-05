@@ -27,16 +27,16 @@
       (doseq [[query-type gtap-rule]
               [["MBQL"
                 {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                       :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
+                                       :remappings {:cat [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                  :attributes {:cat 50}}]
                ["native"
                 {:gtaps      {:venues {:query
                                        (mt/native-query
-                                         {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
-                                          :template-tags {"cat" {:id           "__MY_CAT__"
-                                                                 :name         "cat"
-                                                                 :display-name "Cat id"
-                                                                 :type         :number}}})
+                                        {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
+                                         :template-tags {"cat" {:id           "__MY_CAT__"
+                                                                :name         "cat"
+                                                                :display-name "Cat id"
+                                                                :type         :number}}})
                                        :remappings {:cat [:variable [:template-tag "cat"]]}}}
                  :attributes {:cat 50}}]]]
         (testing (format "GTAP rule is a %s query" query-type)
@@ -88,7 +88,7 @@
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
-                                                                               [:dimension (mt/id :venues :category_id)]}}}
+                                                                               [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                                                                 :attributes {:cat 5 #_BBQ}}
                           (is (= {:field_id        (mt/id :venues :name)
                                   :values          [["Baby Blues BBQ"]
@@ -127,7 +127,7 @@
       (testing (str "Searching via the query builder needs to use a GTAP when the user has segmented permissions. "
                     "This tests out a field search on a table with segmented permissions")
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
-        ;; searching whould only include venues in that category
+        ;; searching should only include venues in that category
         (let [url (format "field/%s/search/%s" (mt/id :venues :name) (mt/id :venues :name))]
           (is (= [["Gordo Taqueria"]
                   ["Tacos Villa Corona"]

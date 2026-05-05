@@ -1,3 +1,4 @@
+import { SnippetSchema } from "metabase/schema";
 import type {
   CreateSnippetRequest,
   ListSnippetsParams,
@@ -14,6 +15,7 @@ import {
   provideSnippetListTags,
   provideSnippetTags,
 } from "./tags";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const snippetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -27,6 +29,7 @@ export const snippetApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (snippets = []) => provideSnippetListTags(snippets),
+      onQueryStarted: hydrateLegacyEntities([SnippetSchema]),
     }),
     getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
       query: (id) => ({
@@ -34,6 +37,7 @@ export const snippetApi = Api.injectEndpoints({
         url: `/api/native-query-snippet/${id}`,
       }),
       providesTags: (snippet) => (snippet ? provideSnippetTags(snippet) : []),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
     createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
       query: (body) => ({

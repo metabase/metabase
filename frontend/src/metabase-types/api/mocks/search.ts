@@ -23,6 +23,7 @@ export const createMockSearchResult = (
     can_write: true,
     table_id: 1,
     table_name: null,
+    table_display_name: null,
     bookmark: null,
     database_id: 1,
     database_name: "test-data",
@@ -64,6 +65,7 @@ export const createMockSearchResults = ({
     offset: 0,
     table_db_id: null,
     total: items.length,
+    engine: "search.engine/appdb",
     ...options,
   };
 };

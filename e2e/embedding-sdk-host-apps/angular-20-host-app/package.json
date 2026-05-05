@@ -13,7 +13,6 @@
     "@angular/core": "^20.0.0",
     "@angular/platform-browser": "^20.0.0",
     "@angular/router": "^20.0.0",
-    "@metabase/embedding-sdk-react": "file:../../../resources/embedding-sdk",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -23,6 +22,10 @@
     "@angular/compiler-cli": "^20.0.0",
     "@ngx-env/builder": "19.0.4",
     "@types/react": "^18.2.79",
-    "@types/react-dom": "^18.2.25"
+    "@types/react-dom": "^18.2.25",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "esbuild": "0.25.0"
   }
 }

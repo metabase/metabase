@@ -4,15 +4,16 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { List } from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
-import EditHeader from "metabase/reference/components/EditHeader";
+import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
@@ -22,7 +23,6 @@ import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import {
   getError,
   getFieldsBySegment,
-  getForeignKeys,
   getIsEditing,
   getLoading,
   getSegment,
@@ -41,7 +41,6 @@ const mapStateToProps = (state, props) => {
   return {
     segment: getSegment(state, props),
     entities: data,
-    foreignKeys: getForeignKeys(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props),
     user: getUser(state, props),
@@ -59,7 +58,6 @@ const propTypes = {
   segment: PropTypes.object.isRequired,
   style: PropTypes.object.isRequired,
   entities: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object.isRequired,
   isEditing: PropTypes.bool,
   startEditing: PropTypes.func.isRequired,
   endEditing: PropTypes.func.isRequired,
@@ -79,7 +77,6 @@ const SegmentFieldList = (props) => {
     segment,
     style,
     entities,
-    foreignKeys,
     loadingError,
     loading,
     user,
@@ -111,6 +108,7 @@ const SegmentFieldList = (props) => {
     display_name: getFormField(`${id}.display_name`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
+    settings: getFormField(`${id}.settings`),
   });
 
   return (
@@ -125,7 +123,7 @@ const SegmentFieldList = (props) => {
       )}
       <EditableReferenceHeader
         type="segment"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
         name={t`Fields in ${segment.name}`}
         user={user}
         isEditing={isEditing}
@@ -171,7 +169,6 @@ const SegmentFieldList = (props) => {
                           <Field
                             databaseId={table.db_id}
                             field={entity}
-                            foreignKeys={foreignKeys}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}
                             icon={getIconForField(entity)}
                             isEditing={isEditing}
@@ -196,4 +193,5 @@ const SegmentFieldList = (props) => {
 
 SegmentFieldList.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentFieldList);

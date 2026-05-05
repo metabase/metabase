@@ -2,19 +2,13 @@ import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
-import Collections from "metabase/entities/collections";
+import {
+  useCopyDashboardMutation,
+  useCopyDocumentMutation,
+} from "metabase/api";
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { connect } from "metabase/lib/redux";
-import { entityTypeForObject } from "metabase/lib/schema";
-
-function mapStateToProps(state: any, props: any) {
-  return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
-      ...props,
-      collectionId: props.entityObject.collection_id,
-    }),
-  };
-}
+import { entityTypeForObject } from "metabase/entities/utils";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {
@@ -28,15 +22,18 @@ const getTitle = (entityObject: any, isShallowCopy: boolean) => {
 
 function CollectionCopyEntityModal({
   entityObject,
-  initialCollectionId,
   onClose,
   onSaved,
 }: {
   entityObject: any;
-  initialCollectionId: number;
   onClose: () => void;
   onSaved: (newEntityObject: any) => void;
 }) {
+  const [copyDashboard] = useCopyDashboardMutation();
+  const [copyDocument] = useCopyDocumentMutation();
+  const initialCollectionId = useInitialCollectionId({
+    collectionId: entityObject.collection_id,
+  });
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const title = getTitle(entityObject, isShallowCopy);
 
@@ -44,8 +41,26 @@ function CollectionCopyEntityModal({
     setIsShallowCopy(is_shallow_copy);
   };
 
-  const handleSaved = (newEntityObject: any) => {
-    onSaved(newEntityObject);
+  const handleCopy = async (values: Record<string, any>) => {
+    const overrides = dissoc(values, "id");
+
+    if (entityObject.model === "dashboard") {
+      const { is_shallow_copy, ...rest } = overrides;
+      return copyDashboard({
+        id: entityObject.id,
+        ...rest,
+        is_deep_copy: !is_shallow_copy,
+      }).unwrap();
+    }
+
+    if (entityObject.model === "document") {
+      return copyDocument({
+        id: entityObject.id,
+        ...overrides,
+      }).unwrap();
+    }
+
+    throw new Error(`Cannot duplicate entity of type "${entityObject.model}"`);
   };
 
   return (
@@ -57,15 +72,13 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       title={title}
-      copy={async (values) => {
-        return entityObject.copy(dissoc(values, "id"));
-      }}
+      copy={handleCopy}
       onClose={onClose}
-      onSaved={handleSaved}
+      onSaved={onSaved}
       onValuesChange={handleValuesChange}
     />
   );
 }
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps)(CollectionCopyEntityModal);
+export default CollectionCopyEntityModal;

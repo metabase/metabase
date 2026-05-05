@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
-export const Root = styled.div<{ isDashboard: boolean }>`
+export const Root = styled.div<{ isDashboard?: boolean }>`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
@@ -15,7 +15,7 @@ export const Root = styled.div<{ isDashboard: boolean }>`
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
   color: ${({ isDashboard }) =>
-    isDashboard ? color("text-medium") : color("text-light")};
+    isDashboard ? color("text-secondary") : color("text-tertiary")};
 `;
 
 export const StyledIcon = styled(Icon)`

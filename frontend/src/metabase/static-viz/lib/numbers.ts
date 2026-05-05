@@ -1,10 +1,13 @@
-import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
+import type { CurrencyStyle } from "metabase/utils/formatting";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting/numbers";
+
+export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
 
 export type NumberFormatOptions = {
-  number_style?: "currency" | "decimal" | "scientific" | "percentage";
+  number_style?: NumberStyle;
   currency?: string;
-  currency_style?: "symbol" | "code" | "name";
-  number_separators?: ".,";
+  currency_style?: CurrencyStyle;
+  number_separators?: string;
   decimals?: number;
   scale?: number;
   prefix?: string;
@@ -13,7 +16,7 @@ export type NumberFormatOptions = {
 };
 
 const DEFAULT_OPTIONS = {
-  number_style: "decimal" as NumberFormatOptions["number_style"],
+  number_style: "decimal" as const,
   currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",
@@ -34,4 +37,4 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 };
 
 export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(percent === 1 ? 0 : 2)} %`;
+  `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;

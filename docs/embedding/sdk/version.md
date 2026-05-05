@@ -1,42 +1,49 @@
 ---
-title: Embedded analytics SDK - versions
+title: Modular embedding SDK - versions
+summary: Learn about Modular embedding SDK versioning and compatibility with Metabase. Install compatible versions and pin your Metabase Cloud instance version.
 ---
 
-# Embedded analytics SDK - versions
+# Modular embedding SDK - versions
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
-The SDK stable version tracks with the Metabase version.
+## Metabase 57 and later
 
-So, for example, if you're on Metabase 53 (`0.53.x`, `1.53.x`), _any_ version 0.53.x of the @metabase/embedding-sdk-react npm package will be compatible.
+Starting with Metabase 57, the `@metabase/embedding-sdk-react` npm package loads the SDK Bundle from your Metabase.
 
-To simplify things, we publish dist-tags for each stable Metabase version. For example, to install the latest version of the SDK compatible with Metabase 53, run:
+Install the SDK Package matching your Metabase major with the `@{major}-stable` dist-tag, so the package's TypeScript types and exported components stay in sync with your instance's SDK Bundle:
 
 ```sh
-npm install @metabase/embedding-sdk-react@53-stable
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
-To grab the latest version of the SDK that works with Metabase nightly builds, use the `canary` dist-tag.
+Installing without a dist-tag (`npm install @metabase/embedding-sdk-react`) still works. The bundle loads from your Metabase, but the package's types and exports will track the latest published SDK major, which may drift from your Metabase version.
+
+## Metabase 56 and earlier
+
+For Metabase 56 and earlier, the SDK major version must match the Metabase major version. Use the matching `@{major}-stable` dist-tag. For example, for Metabase 55:
+
+```sh
+npm install @metabase/embedding-sdk-react@55-stable
+```
+
+On Metabase 55 (`0.55.x`, `1.55.x`), _any_ 0.55.x release of `@metabase/embedding-sdk-react` will be compatible.
 
 ## Minimum SDK version
 
-52 is the minimum version supported for the Embedded analytics SDK.
+Version 52 is the minimum version supported for the Modular embedding SDK.
 
-## Version pinning when using the SDK with Metabase Cloud
+## You can pin instances to a version on Metabase Cloud
 
-To pin your version of Metabase, go to **Admin settings > Settings > Embedding**. Go to the Embedded analytics SDK card and scroll to **Version pinning** and click **Request version pinning**.
+Metabase Cloud upgrades your instance automatically as new versions roll out. If you're using the SDK with Metabase Cloud, you may want to pin your version so you can upgrade manually.
 
-## Version pinning requirements
+On Metabase 56 or earlier, pinning also keeps the SDK Package and Metabase majors in lockstep.
 
-To pin a version of Metabase, you must:
+### Manually pinning your instance version on Metabase Cloud
 
-- Be on Metabase Cloud (obviously)
-- Be on the Pro or Enterprise plans
+To manually pin your version of Metabase:
 
-## Why you'd want to pin your Metabase Cloud version
+1. Go to **Admin > Embedding > Modular**.
+2. Scroll to **Version pinning** and click **Request version pinning**.
 
-Normally, Metabase Cloud upgrades your Metabase as new versions roll out so that you don't have to deal with upgrades.
-
-But if you're using the SDK with Metabase Cloud, you'll want to upgrade manually to make sure your embeds don't break when you upgrade both your Metabase and your SDK version.
-
-To upgrade manually, you can pin your Metabase version so that it stays in sync with the SDK version you're using. That way you can choose when to upgrade your Metabase.
+This will open a mailto link to our support team.

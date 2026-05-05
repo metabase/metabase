@@ -2,7 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import { TreeNode } from "metabase/components/tree/TreeNode";
+import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconName, IconProps } from "metabase/ui";
 
 import {

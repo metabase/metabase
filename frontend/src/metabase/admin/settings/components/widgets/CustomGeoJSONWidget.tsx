@@ -2,19 +2,19 @@ import cx from "classnames";
 import { type ChangeEvent, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Modal from "metabase/components/Modal";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Select, { Option } from "metabase/core/components/Select";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Modal } from "metabase/common/components/Modal";
+import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/uuid";
-import { Button } from "metabase/ui";
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import { Button, Ellipsified, Image, Stack, Text } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
+import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,
   CustomGeoJSONSetting,
@@ -109,28 +109,44 @@ export const CustomGeoJSONWidget = () => {
     return null;
   }
 
+  const hasCustomMaps = Object.values(customGeoJsonSetting).some(
+    (map) => !map.builtin,
+  );
+
   return (
     <div className={CS.flexFull}>
       <div className={cx(CS.flex, CS.justifyBetween)}>
         <SettingHeader
           id={settingDetails.key}
-          title={t`Custom Maps`}
+          title={t`Custom maps`}
           description={t`Add your own GeoJSON files to enable different region map visualizations`}
         />
         {!map && (
-          <button
+          <Button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
             onClick={handleAddMap}
+            variant="filled"
           >
             {t`Add a map`}
-          </button>
+          </Button>
         )}
       </div>
-      <ListMaps
-        maps={customGeoJsonSetting}
-        onEditMap={handleEditMap}
-        onDeleteMap={handleDelete}
-      />
+
+      {!hasCustomMaps && (
+        <Stack p="xl" align="center" gap="md">
+          <Image w={120} h={120} src={noResultsSource} />
+          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
+        </Stack>
+      )}
+
+      {hasCustomMaps && (
+        <ListMaps
+          maps={customGeoJsonSetting}
+          onEditMap={handleEditMap}
+          onDeleteMap={handleDelete}
+        />
+      )}
+
       {map ? (
         <Modal wide>
           <div className={CS.p4}>
@@ -162,6 +178,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
   const [mapIdToDelete, setMapIdToDelete] = useState<string | undefined>(
     undefined,
   );
+
   return (
     <section>
       <table className={AdminS.ContentTable}>
@@ -186,7 +203,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                   className={CS.cursorPointer}
                   onClick={() => onEditMap(map, mapId)}
                 >
-                  <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+                  <Ellipsified style={{ maxWidth: 400 }}>{map.url}</Ellipsified>
                 </td>
                 <td className={AdminS.TableActions}>
                   <Button

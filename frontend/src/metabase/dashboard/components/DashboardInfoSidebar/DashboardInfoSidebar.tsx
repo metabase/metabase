@@ -5,7 +5,10 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
   Sidesheet,
   SidesheetCard,
@@ -14,13 +17,15 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { Timeline } from "metabase/common/components/Timeline";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks";
+import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  type DashboardContextReturned,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type {
@@ -32,16 +37,6 @@ import type {
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
-import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
-
-interface DashboardInfoSidebarProps {
-  dashboard: Dashboard;
-  setDashboardAttribute: <Key extends keyof Dashboard>(
-    attribute: Key,
-    value: Dashboard[Key],
-  ) => void;
-  onClose: () => void;
-}
 
 enum Tab {
   Overview = "overview",
@@ -49,13 +44,35 @@ enum Tab {
   Insights = "insights",
 }
 
-export function DashboardInfoSidebar({
+export function DashboardInfoSidebar() {
+  const { dashboard, closeSidebar, setDashboardAttributes } =
+    useDashboardContext();
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardInfoSidebarInner
+      dashboard={dashboard}
+      closeSidebar={closeSidebar}
+      setDashboardAttributes={setDashboardAttributes}
+    />
+  );
+}
+
+export function DashboardInfoSidebarInner({
   dashboard,
-  setDashboardAttribute,
-  onClose,
-}: DashboardInfoSidebarProps) {
+  closeSidebar,
+  setDashboardAttributes,
+}: { dashboard: NonNullable<DashboardContextReturned["dashboard"]> } & Pick<
+  DashboardContextReturned,
+  "closeSidebar" | "setDashboardAttributes"
+>) {
   const [isOpen, setIsOpen] = useState(false);
-  useHotkeys([["]", onClose]]);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  useHotkeys([["]", closeSidebar]]);
 
   useMount(() => {
     // this component is not rendered until it is "open"
@@ -64,17 +81,15 @@ export function DashboardInfoSidebar({
     setIsOpen(true);
   });
 
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
-
-  const { data: revisions } = useRevisionListQuery({
-    query: { model_type: "dashboard", model_id: dashboard.id },
-  });
+  const { data: revisions } = useListRevisionsQuery(
+    dashboard ? { id: dashboard.id, entity: "dashboard" } : skipToken,
+  );
 
   const isIADashboard = useMemo(
     () =>
-      dashboard.collection &&
+      dashboard?.collection &&
       isInstanceAnalyticsCollection(dashboard?.collection),
-    [dashboard.collection],
+    [dashboard?.collection],
   );
 
   const currentUser = useSelector(getUser);
@@ -82,12 +97,18 @@ export function DashboardInfoSidebar({
 
   const handleDescriptionChange = useCallback(
     (description: string) => {
-      if (description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH) {
-        setDashboardAttribute?.("description", description);
+      if (
+        dashboard?.id &&
+        description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH
+      ) {
+        setDashboardAttributes?.({
+          id: dashboard.id,
+          attributes: { description },
+        });
         dispatch(updateDashboard({ attributeNames: ["description"] }));
       }
     },
-    [dispatch, setDashboardAttribute],
+    [dashboard?.id, dispatch, setDashboardAttributes],
   );
 
   const handleDescriptionBlur = useCallback(
@@ -101,6 +122,10 @@ export function DashboardInfoSidebar({
     [],
   );
 
+  if (!dashboard) {
+    return null;
+  }
+
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   return (
@@ -109,7 +134,7 @@ export function DashboardInfoSidebar({
         <Sidesheet
           isOpen={isOpen}
           title={t`Info`}
-          onClose={onClose}
+          onClose={closeSidebar}
           removeBodyPadding
           size="md"
         >
@@ -137,6 +162,7 @@ export function DashboardInfoSidebar({
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
                 <HistoryTab
+                  dashboard={dashboard}
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
@@ -197,11 +223,13 @@ const OverviewTab = ({
 };
 
 const HistoryTab = ({
+  dashboard,
   canWrite,
   revisions,
   currentUser,
   moderationReviews,
 }: {
+  dashboard: Dashboard;
   canWrite: boolean;
   revisions?: Revision[];
   currentUser: User | null;
@@ -224,11 +252,14 @@ const HistoryTab = ({
 
   return (
     <SidesheetCard>
-      <Timeline
+      <RevisionHistoryTimeline
         events={events}
         data-testid="dashboard-history-list"
-        revert={(revision) => dispatch(revertToRevision(revision))}
+        revert={(revision) =>
+          dispatch(revertToRevision(dashboard.id, revision))
+        }
         canWrite={canWrite}
+        entity="dashboard"
       />
     </SidesheetCard>
   );

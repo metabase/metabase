@@ -22,28 +22,29 @@
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata
-   ;; TODO does this belong here, or in the `dashboards` module?
+  batch-fetch-card-metadata
+  ;; TODO does this belong here, or in the `dashboards` module?
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
+  fully-parameterized?
   model-supports-implicit-actions?
   model?
   sole-dashboard-id
+  starting-card-schema-version
   update-card!
-   ;; TODO -- 95% sure this should go in the `dashboards` module rather than here.
-  with-allowed-changes-to-internal-dashboard-card
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
-  refresh-metadata]
+  infer-metadata
+  maybe-async-result-metadata
+  refresh-metadata
+  save-metadata-async!]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms
   query->database-and-table-ids
   save-query-and-update-average-execution-time!])
-
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/lib-query card->lib-query)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

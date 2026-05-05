@@ -1,8 +1,13 @@
+import { t } from "ttag";
+
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  type AuthSettingsPageTab,
+  PLUGIN_AUTH_PROVIDERS,
+} from "metabase/plugins";
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
@@ -10,7 +15,11 @@ import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthC
 import { LdapAuthCard } from "../../auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "../ApiKeys/ManageApiKeys";
 
-export function AuthenticationSettingsPage({ tab }: { tab: string }) {
+export function AuthenticationSettingsPage({
+  tab,
+}: {
+  tab: AuthSettingsPageTab;
+}) {
   const hasSSO = useHasSso();
 
   if (hasSSO) {
@@ -18,30 +27,22 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
   }
 
   if (tab === "api-keys") {
-    return (
-      <Stack gap="lg" mx="md">
-        <Breadcrumbs
-          crumbs={[
-            ["Authentication", "/admin/settings/authentication"],
-            ["API Keys", "/admin/settings/authentication/api-keys"],
-          ]}
-        />
-        <ManageApiKeys />
-      </Stack>
-    );
+    return <ManageApiKeys />;
   }
 
   return (
-    <Flex justify={"space-between"}>
-      <Stack gap="xl" maw="42rem" px="lg" py="sm">
-        <GoogleAuthCard />
-        <LdapAuthCard />
-        <ApiKeysAuthCard />
-      </Stack>
-      <Box style={{ flexShrink: 0 }}>
-        <UpsellSSO source="authentication-sidebar" />
-      </Box>
-    </Flex>
+    <SettingsPageWrapper title={t`Authentication`}>
+      <Flex justify={"space-between"} gap="lg">
+        <Stack gap="lg">
+          <GoogleAuthCard />
+          <LdapAuthCard />
+          <ApiKeysAuthCard />
+        </Stack>
+        <Box style={{ flexShrink: 0 }}>
+          <UpsellSSO location="authentication-sidebar" />
+        </Box>
+      </Flex>
+    </SettingsPageWrapper>
   );
 }
 

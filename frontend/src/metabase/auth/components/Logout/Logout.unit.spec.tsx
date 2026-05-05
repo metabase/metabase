@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { setupLogoutEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import * as domUtils from "metabase/utils/dom";
 
 import { Logout } from "./Logout";
 
@@ -21,7 +21,9 @@ describe("Logout", () => {
 
     setup();
 
-    await waitFor(() => expect(fetchMock.done("path:/api/session")).toBe(true));
+    await waitFor(() =>
+      expect(fetchMock.callHistory.done("path:/api/session")).toBe(true),
+    );
     await waitFor(() => expect(domUtils.reload).toHaveBeenCalled());
   });
 });

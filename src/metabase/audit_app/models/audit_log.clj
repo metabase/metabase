@@ -1,5 +1,5 @@
 (ns metabase.audit-app.models.audit-log
-  "Model defenition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is
+  "Model definition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is
   distinct from the View Log model, which predates this namespace, and which powers specific API endpoints used for
   in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
@@ -82,14 +82,22 @@
     :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
-                                             :user_group_memberships])
+                                             :user_group_memberships :tenant_id])
     :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
-                                             :user_group_memberships])
+                                             :user_group_memberships :tenant_id])
     :password-reset-initiated  (select-keys entity [:token])
     :password-reset-successful (select-keys entity [:token])
     {}))
+
+(defmethod model-details :model/PermissionsGroup
+  [permissions-group _event-type]
+  (select-keys permissions-group [:id :name :is_tenant_group :magic_group_type]))
+
+(defmethod model-details :model/PermissionsGroupMembership
+  [membership _event-type]
+  (select-keys membership [:id :user_id :group_id :is_group_manager]))
 
 (defmethod model-details :model/Notification
   [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
@@ -112,6 +120,34 @@
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id
      :database_id db-id)))
+
+(defmethod model-details :model/Document
+  [document _event-type]
+  (select-keys document [:name :collection_id]))
+
+(defmethod model-details :model/Comment
+  [comment _event-type]
+  (select-keys comment [:target_type :target_id :child_target_id :parent_comment_id]))
+
+(defmethod model-details :model/Transform
+  [{:keys [source] :as transform} _event-type]
+  (merge (select-keys transform [:name :description :target :run_trigger])
+         {:source
+          (-> source
+              (dissoc :body)
+              (update :query #(select-keys % [:database])))}))
+
+(defmethod model-details :model/TransformRun
+  [transform-run _event-type]
+  (select-keys transform-run [:transform_id :status :run_method]))
+
+(defmethod model-details :model/Glossary
+  [glossary _event-type]
+  (select-keys glossary [:term]))
+
+(defmethod model-details :model/RemoteSyncTask
+  [task _event-type]
+  (select-keys task [:sync_task_type :version]))
 
 (def ^:private model-name->audit-logged-name
   {"RootCollection" "Collection"})
@@ -136,12 +172,13 @@
 
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
-                        [:object          {:optional true} [:maybe :map]]
-                        [:previous-object {:optional true} [:maybe :map]]
-                        [:user-id         {:optional true} [:maybe pos-int?]]
-                        [:model           {:optional true} [:maybe [:or :keyword :string]]]
-                        [:model-id        {:optional true} [:maybe pos-int?]]
-                        [:details         {:optional true} [:maybe :map]]])
+                        [:object           {:optional true} [:maybe :map]]
+                        [:previous-object  {:optional true} [:maybe :map]]
+                        [:user-id          {:optional true} [:maybe pos-int?]]
+                        [:model            {:optional true} [:maybe [:or :keyword :string]]]
+                        [:model-id         {:optional true} [:maybe pos-int?]]
+                        [:details          {:optional true} [:maybe :map]]
+                        [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event
   :- [:map
@@ -181,7 +218,7 @@
   - `:user-id`: the user ID that initiated the event (defaults: `api/*current-user-id*`)
   - `:model`: the name of the model the event is acting on, e.g. `:model/Card` or \"Card\" (default: model of `:object`)
   - `:model-id`: the ID of the model the event is acting on (default: ID of `:object`)
-  - `:details`: a map of arbitrary details relavent to the event, which is recorded as-is (default: {})
+  - `:details`: a map of arbitrary details relevant to the event, which is recorded as-is (default: {})
 
   `:object` and `:previous-object` both have `model-details` called on them to determine which fields should be audited,
   then they are added to `:details` before the event is recorded. `:previous-object` is only included if any audited fields

@@ -17,7 +17,7 @@ export async function startApp({
   try {
     shell(appRunCommand, { detached: true, cwd, env });
 
-    await waitForHealth(`http://localhost:${env.CLIENT_PORT}`);
+    await waitForHealth(`http://localhost:${env.CLIENT_PORT}`, "Host App");
   } catch {
     shell(appDownCommand, { cwd, env });
   }

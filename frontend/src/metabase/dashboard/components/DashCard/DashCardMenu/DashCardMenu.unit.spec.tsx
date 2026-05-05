@@ -7,11 +7,19 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockDataset,
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -21,7 +29,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DashCardMenu } from "./DashCardMenu";
 
@@ -99,27 +106,62 @@ interface SetupOpts {
   result?: Dataset;
 }
 
-const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
+const setup = ({
+  card = TEST_CARD,
+  result = TEST_RESULT,
+  canEdit = true,
+  onEditVisualization,
+}: SetupOpts & {
+  canEdit?: boolean;
+  onEditVisualization?: () => void;
+} = {}) => {
+  const mockDashboard = createMockDashboard();
+
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
+      dashboards: [mockDashboard],
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: mockDashboard.id,
+      dashboards: {
+        [mockDashboard.id]: createMockStoreDashboard({
+          id: mockDashboard.id,
+          name: mockDashboard.name,
+        }),
+      },
     }),
   });
 
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
+  const dashcard = createMockDashboardCard({
+    ...card,
+    dashboard_id: card.dashboard_id ?? undefined,
+  });
 
   setupCardQueryDownloadEndpoint(card, "json");
 
   setupLastDownloadFormatEndpoints();
-
   const { history } = renderWithProviders(
     <>
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenu question={question} result={result} downloadsEnabled />
+          <MockDashboardContext
+            dashboardId={mockDashboard.id}
+            dashboard={mockDashboard}
+            navigateToNewCardFromDashboard={null}
+          >
+            <DashCardMenu
+              question={question}
+              result={result}
+              dashcard={dashcard}
+              canEdit={canEdit}
+              onEditVisualization={onEditVisualization}
+            />
+          </MockDashboardContext>
         )}
       />
       <Route path="question/:slug" component={() => <div />} />
@@ -220,6 +262,50 @@ describe("DashCardMenu", () => {
     await userEvent.click(getIcon("ellipsis"));
 
     expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+
+  it("should not display Edit question when canEdit is false", async () => {
+    setup({ canEdit: false });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Download results")).toBeInTheDocument();
+    expect(screen.queryByText("Edit question")).not.toBeInTheDocument();
+  });
+
+  it("should not display Edit visualization when canEdit is false", async () => {
+    const onEditVisualization = jest.fn();
+    setup({ canEdit: false, onEditVisualization });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Download results")).toBeInTheDocument();
+    expect(screen.queryByText("Edit visualization")).not.toBeInTheDocument();
+  });
+
+  it("should support keyboard navigation in download popover", async () => {
+    setup();
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Download results"));
+
+    // Verify format options are keyboard accessible (as radio buttons)
+    const csvButton = screen.getByRole("radio", { name: ".csv" });
+    expect(csvButton).toBeInTheDocument();
+
+    // Verify that format options can receive focus
+    csvButton.focus();
+    expect(csvButton).toHaveFocus();
+
+    // Test navigation between format options using arrow keys
+    await userEvent.keyboard("{ArrowRight}");
+    // After arrow right, a format option should still have focus (exact option may vary)
+    const xlsxButton = screen.getByRole("radio", { name: ".png" });
+    expect(xlsxButton).toHaveFocus();
+
+    // Esc should close the popover
+    await userEvent.keyboard("{Esc}");
     expect(screen.queryByText("Download results")).not.toBeInTheDocument();
   });
 });

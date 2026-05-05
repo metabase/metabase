@@ -3,22 +3,7 @@ import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/search/constants";
 import type { IconName } from "metabase/ui";
-import type {
-  EnabledSearchModel,
-  SearchResult,
-  UserId,
-} from "metabase-types/api";
-
-export interface WrappedResult extends SearchResult {
-  getUrl: () => string;
-  getIcon: () => {
-    name: IconName;
-    size?: number;
-    width?: number;
-    height?: number;
-  };
-  getCollection: () => SearchResult["collection"];
-}
+import type { EnabledSearchModel, UserId } from "metabase-types/api";
 
 export type TypeFilterProps = EnabledSearchModel[];
 export type CreatedByFilterProps = UserId[];
@@ -28,6 +13,7 @@ export type LastEditedAtFilterProps = string | null;
 export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
 export type SearchTrashedItemsFilterProps = true | undefined;
+export type PersonalCollectionFilterProps = "only" | undefined;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
@@ -38,6 +24,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
   [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilterProps;
+  [SearchFilterKeys.PersonalCollections]: PersonalCollectionFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
@@ -75,8 +62,9 @@ interface SearchFilter<T extends FilterTypeKeys = any> {
   toUrl: (value: SearchFilterPropTypes[T] | null) => SearchQueryParamValue;
 }
 
-export interface SearchFilterDropdown<T extends FilterTypeKeys = any>
-  extends SearchFilter {
+export interface SearchFilterDropdown<
+  T extends FilterTypeKeys = any,
+> extends SearchFilter {
   type: "dropdown";
   DisplayComponent: ComponentType<Pick<SearchFilterComponentProps<T>, "value">>;
   ContentComponent: ComponentType<SearchFilterComponentProps<T>>;

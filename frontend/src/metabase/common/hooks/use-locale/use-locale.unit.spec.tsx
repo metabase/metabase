@@ -1,14 +1,14 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { useLocale } from "./use-locale";
 
 const TestComponent = () => {
-  const locale = useLocale();
+  const { locale } = useLocale();
   return <div data-testid="locale">{`${locale}`}</div>;
 };
 

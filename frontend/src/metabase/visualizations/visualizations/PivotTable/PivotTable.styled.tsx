@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { adjustBrightness, alpha, color } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
+import { adjustBrightness, alpha, color } from "metabase/ui/colors";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
@@ -37,7 +37,6 @@ function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
 interface PivotTableCellProps {
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   hasTopBorder?: boolean;
   isTransparent?: boolean;
@@ -46,18 +45,18 @@ interface PivotTableCellProps {
 const getCellBackgroundColor = ({
   theme,
   isEmphasized,
-  isNightMode,
   isTransparent,
 }: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
   const backgroundColor = theme.other.table.cell.backgroundColor;
+  const isDarkMode = theme.other.colorScheme === "dark";
 
   if (isTransparent) {
     return "transparent";
   }
 
   if (isEmphasized) {
-    if (isNightMode) {
-      return color("bg-black");
+    if (isDarkMode) {
+      return color("background-primary-inverse");
     }
 
     if (backgroundColor) {
@@ -67,11 +66,11 @@ const getCellBackgroundColor = ({
     return alpha("border", 0.25);
   }
 
-  if (isNightMode) {
-    return alpha("bg-black", 0.1);
+  if (isDarkMode) {
+    return alpha("background-primary-inverse", 0.1);
   }
 
-  return color(backgroundColor ?? "bg-white");
+  return color(backgroundColor ?? "background-primary");
 };
 
 const getCellHoverBackground = (
@@ -88,16 +87,24 @@ const getCellHoverBackground = (
   return adjustBrightness(backgroundColor, 0.15, 0.1);
 };
 
-const getColor = ({
-  theme,
-  isNightMode,
-}: PivotTableCellProps & { theme: MantineTheme }) => {
-  if (isNightMode) {
-    return color("text-white");
+const getColor = ({ theme }: PivotTableCellProps & { theme: MantineTheme }) => {
+  if (theme.other.colorScheme === "dark") {
+    return color("text-primary-inverse");
   }
 
   return color(theme.other.table.cell.textColor);
 };
+
+const borderRight = css`
+  &:after {
+    content: " ";
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    border-right: 1px solid ${color("border-subtle")};
+  }
+`;
 
 export const PivotTableCell = styled.div<PivotTableCellProps>`
   flex: 1 0 auto;
@@ -109,19 +116,19 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   font-weight: ${(props) => (props.isBold ? "bold" : "normal")};
   cursor: ${(props) => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  ${borderRight}
   border-bottom: 1px solid
     ${(props) =>
-      props.isBorderedHeader
-        ? "var(--mb-color-bg-dark)"
-        : "var(--mb-color-border)"};
+    props.isBorderedHeader
+      ? "var(--mb-color-border)"
+      : "var(--mb-color-table-border)"};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
     props.hasTopBorder &&
     css`
       /* compensate the top border */
       line-height: ${CELL_HEIGHT - 1}px;
-      border-top: 1px solid var(--mb-color-border) (props);
+      border-top: 1px solid ${color("border-subtle")};
     `}
 
   &:hover {
@@ -129,25 +136,20 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   }
 `;
 
-interface PivotTableTopLeftCellsContainerProps {
-  isNightMode?: boolean;
-}
-
-export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
+export const PivotTableTopLeftCellsContainer = styled.div`
   display: flex;
   align-items: flex-end;
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  position: relative;
+  ${borderRight}
   background-color: ${(props) =>
     getCellBackgroundColor({
       isEmphasized: true,
-      isNightMode: props.isNightMode,
       theme: props.theme,
     })};
 `;
 
 interface PivotTableRootProps {
   isDashboard?: boolean;
-  isNightMode?: boolean;
   shouldOverflow?: boolean;
   shouldHideScrollbars?: boolean;
 }
@@ -161,7 +163,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
   ${(props) =>
     props.isDashboard
       ? css`
-          border-top: 1px solid var(--mb-color-border) (props);
+          border-top: 1px solid ${color("border-subtle")};
         `
       : null}
 
@@ -188,7 +190,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const ResizeHandle = styled.div`

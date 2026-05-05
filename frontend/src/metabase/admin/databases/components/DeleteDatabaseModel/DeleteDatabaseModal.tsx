@@ -4,9 +4,8 @@ import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/redux";
 import { MetabaseApi } from "metabase/services";
 import {
   Alert,
@@ -21,6 +20,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
@@ -134,7 +134,7 @@ export const DeleteDatabaseModal = ({
         >
           {hasContent && (
             <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-              <Alert color="bg-dark" icon={<Icon name="info" />}>
+              <Alert color="info" icon={<Icon name="info" />}>
                 <Text>
                   {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
                     <UnstyledButton

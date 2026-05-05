@@ -1,0 +1,1 @@
+export { PublishedTableMeasureRevisionHistoryPage } from "./PublishedTableMeasureRevisionHistoryPage";

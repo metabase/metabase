@@ -18,14 +18,14 @@ describe("scenarios > collection items metadata", () => {
     it("should display last edit moment for dashboards", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       changeDashboard();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
     });
 
     it("should display last edit moment for questions", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       changeQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
     });
   });
@@ -34,10 +34,10 @@ describe("scenarios > collection items metadata", () => {
     it("should display if user is the last editor", () => {
       cy.signInAsAdmin();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
       H.visitQuestion(ORDERS_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
       cy.signOut();
     });
@@ -49,10 +49,10 @@ describe("scenarios > collection items metadata", () => {
 
       cy.signIn("normal");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
       H.visitQuestion(ORDERS_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });
 

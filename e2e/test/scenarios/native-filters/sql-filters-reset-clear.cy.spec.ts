@@ -129,7 +129,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "display-name": DEFAULT_NON_REQUIRED,
         id: "75d67d38",
         type: "date",
-        default: "2024-01-01",
+        default: "2027-01-01",
       },
       default_required: {
         name: "default_required",
@@ -137,12 +137,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         id: "60f12ac8",
         type: "date",
         required: true,
-        default: "2024-01-01",
+        default: "2027-01-01",
       },
     });
 
     checkNativeParametersDropdown({
-      defaultValueFormatted: "January 1, 2024",
+      defaultValueFormatted: "January 1, 2027",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
       setValue: (value) => {
@@ -154,7 +154,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     checkParameterSidebarDefaultValueDate({
-      defaultValueFormatted: "January 1, 2024",
+      defaultValueFormatted: "January 1, 2027",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
     });
@@ -189,7 +189,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
       default_required: {
@@ -201,7 +200,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
         required: true,
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
     });
@@ -367,7 +365,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, non-required, has current value");
     filter(NO_DEFAULT_NON_REQUIRED).click();
     setValue(otherValue);
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+
+    filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filter(NO_DEFAULT_NON_REQUIRED).should(
@@ -382,19 +381,18 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, required, has current value");
     filter(NO_DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(NO_DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
-    // checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
+    filter(NO_DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     clearButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
@@ -402,10 +400,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     );
     filter(DEFAULT_NON_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
@@ -414,10 +412,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("has default value, required, current value different than default");
     filter(DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
   }
 

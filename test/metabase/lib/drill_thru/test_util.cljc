@@ -82,14 +82,38 @@
    [:custom-native {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
    [:custom-row    {:optional true} [:maybe (schema-or-update-fn Row)]]])
 
-(def ^:private native-card-id 12)
+(def ^:private ^:dynamic *native-card-id* nil)
 
-(defn ->native
+(defonce ^:private last-native-card-id (atom 12))
+
+(defn- next-native-card-id []
+  (swap! last-native-card-id inc))
+
+(defn- native-card-id
+  "Returns the `native-card-id` for this test. Throws if the fixture is not installed."
+  []
+  (or *native-card-id*
+      (throw (ex-info (str "No *native-card-id* set for `lib.drill-thru.test-util`. "
+                           "Install the test fixture with `(use-fixtures :each lib.drill-thru.tu/with-native-card-id)`")
+                      {}))))
+
+(defn with-native-card-id
+  "Test fixture for drills which need a common native card ID.
+
+  Install it with `(use-fixtures :each lib.drill-thru.tu/with-native-card-id)` in each namespace that uses
+  `lib.drill-thru.tu`."
+  [f]
+  (binding [*native-card-id* (next-native-card-id)]
+    (f)))
+
+(defn- ->native
   "Wraps a given MBQL query into a dummy SQL query, backed by a card. Returns the native query."
   [mbql-query]
   (let [cols        (try
                       (->> (lib/returned-columns mbql-query)
-                           (map #(assoc % :lib/source :source/native)))
+                           (map #(-> %
+                                     (assoc :lib/source :source/native)
+                                     (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
                       (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                         ;; Not all the input queries passed to this are real. Some of them are skeletons used
                         ;; as test expectations. If we fail to generate the returned columns, just return nil.
@@ -100,7 +124,7 @@
         original-mp (lib.metadata/->metadata-provider mbql-query)
         base        (lib/native-query original-mp "dummy SQL query")
         new-mp      (lib.tu/metadata-provider-with-card-from-query
-                     original-mp native-card-id base
+                     (lib.tu/base-metadata-provider original-mp) (native-card-id) base
                      {:result-metadata cols})]
     (lib/native-query new-mp "dummy SQL query")))
 
@@ -110,7 +134,7 @@
   [mbql-query]
   (let [native (->native mbql-query)
         mp     (lib.metadata/->metadata-provider native)
-        card   (lib.metadata/card mp native-card-id)]
+        card   (lib.metadata/card mp (native-card-id))]
     (lib/query mp card)))
 
 (defn field-key=
@@ -259,8 +283,10 @@
    query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [cols       (cond->> (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
-                     true                   (map #(assoc % :lib/original-source (:lib/source %)))
-                     (= query-kind :native) (map #(assoc % :lib/source :source/native)))
+                     true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
+                     (= query-kind :native) (map #(-> %
+                                                      (assoc :lib/source :source/native)
+                                                      (dissoc :lib/breakout? :lib/expression-name :lib/join-alias))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)
@@ -272,7 +298,7 @@
                        (if (some? v) v :null)))
         dimensions (when (= query-type :aggregated)
                      (for [col   cols
-                           :when (and (= (:lib/original-source col) :source/breakouts)
+                           :when (and (::was-breakout-in-original-query? col)
                                       (not= (:name col) column-name))]
                        {:column     col
                         :column-ref (get refs (:name col))
@@ -282,15 +308,15 @@
       :column-ref (get refs column-name)
       :value      nil}
      (when (= query-kind :native)
-       {:card-id native-card-id})
+       {:card-id (native-card-id)})
      (when (= click-type :cell)
        {:value      value
         :row        (for [[column-name value] row
-                          :let [column (or (by-name column-name)
-                                           (throw (ex-info
-                                                   (lib.util/format "Invalid row: no column named %s in query returned-columns"
-                                                                    (pr-str column-name))
-                                                   {:column-name column-name, :returned-columns (keys by-name)})))]]
+                          :let                [column (or (by-name column-name)
+                                                          (throw (ex-info
+                                                                  (lib.util/format "Invalid row: no column named %s in query returned-columns"
+                                                                                   (pr-str column-name))
+                                                                  {:column-name column-name, :returned-columns (keys by-name)})))]]
                       {:column     column
                        :column-ref (get refs column-name)
                        :value      value})
@@ -339,13 +365,13 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
-(defn- drop-uuids-and-idents [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid :ident))
+(defn- drop-uuids [form]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
                  form))
 
 (defn- clean-expected-query [form]
   (-> form
-      drop-uuids-and-idents
+      drop-uuids
       (dissoc :lib/metadata)))
 
 (defn- clean-expected-query-on-drill [form query-kind]
@@ -436,7 +462,7 @@
                       "\nDrill = \n" (u/pprint-to-str drill))
           (let [query' (apply lib/drill-thru query -1
                               (when (= query-kind :native)
-                                native-card-id)
+                                (native-card-id))
                               drill drill-args)]
             (is (=? (or (when (= query-kind :native)
                           expected-native)

@@ -23,7 +23,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     it(`should display proper drills on cell click for unaggregated query - development-mode: ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
       H.openReviewsTable({ limit: 3 });
@@ -284,7 +284,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2022",
+        resultText: "July 31, 2025",
       });
     });
 
@@ -294,7 +294,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         drillCellText: "3,976",
         menuItems: ["Time", "Products", "Created At"],
         filterText: "Products → Category is Doohickey",
-        resultText: "July 31, 2022",
+        resultText: "July 31, 2025",
       });
     });
   });
@@ -492,10 +492,10 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
   });
 
   it("should display proper drills on a datetime cell click when there is no value (metabase#44101)", () => {
-    const CANCELLED_AT_INDEX = 9;
+    const CANCELLED_AT_INDEX = 10;
 
     H.openTable({ table: ACCOUNTS_ID, limit: 1 });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("have.text", "")
@@ -511,9 +511,76 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
       "have.text",
       "Canceled At is not empty",
     );
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("not.have.text", "");
+  });
+});
+
+describe("Issue 58247", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openTable({ table: REVIEWS_ID, limit: 10 });
+  });
+
+  const text =
+    "Omnis pariatur autem adipisci eligendi. Eos aut accusantium dolorem et. Numquam vero debitis id provident odit doloremque enim.";
+
+  it("should properly preselect filter when clicking a string 'Contains...' filter (metabase#58247)", () => {
+    H.tableInteractiveBody().findByText(text).click();
+    H.popover().findByText("Contains…").click();
+
+    H.popover().findByText("Contains").should("be.visible");
+  });
+
+  it("should properly preselect filter when clicking a string 'Does not contain...' filter (metabase#58247)", () => {
+    H.tableInteractiveBody().findByText(text).click();
+    H.popover().findByText("Does not contain…").click();
+
+    H.popover().findByText("Does not contain").should("be.visible");
+  });
+});
+
+describe("Issue 40061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const questionDetails = {
+    display: "table",
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "Created At 2": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+        aggregation: [["count"]],
+        breakout: [
+          ["expression", "Created At 2", { "base-type": "type/DateTime" }],
+        ],
+      },
+    },
+  };
+
+  it("should be able extract dates based on a custom column (metabase#40061)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("table-header").findByText("Created At 2: Day").click();
+    H.popover().findByText("Extract day, month…").click();
+    H.popover().findByText("Year").click();
+    cy.findByTestId("table-header").findByText("Year").should("exist");
+    cy.findByTestId("question-row-count")
+      .findByText("Showing 1,421 rows")
+      .should("exist");
   });
 });

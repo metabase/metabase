@@ -1,25 +1,20 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
-import {
-  NotificationCardRoot,
-  NotificationContent,
-  NotificationDescription,
-  NotificationIcon,
-  NotificationMessage,
-} from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import Link from "metabase/core/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import {
   canArchive,
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
-} from "metabase/lib/notifications";
-import * as Urls from "metabase/lib/urls";
-import { Group, Icon } from "metabase/ui";
+} from "metabase/notifications/utils";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
+
+import S from "./DashboardNotificationCard.module.css";
 
 type NotificationCardProps = {
   listItem: QuestionNotificationListItem;
@@ -39,7 +34,7 @@ export const NotificationCard = ({
   const { item } = listItem;
   const hasArchive = canArchive(listItem.item, user);
 
-  const entityLink = Urls.question({
+  const entityLink = Urls.card({
     id: item.payload.card_id,
     card_id: item.payload.card_id,
   });
@@ -57,14 +52,27 @@ export const NotificationCard = ({
   }, [listItem, onArchive]);
 
   return (
-    <NotificationCardRoot data-testid="notification-alert-item">
-      <NotificationContent>
+    <Flex
+      className={S.root}
+      data-testid="notification-alert-item"
+      align="center"
+      px="lg"
+      py="md"
+      bg="background-primary"
+    >
+      <Box flex="1 1 auto">
         <Link variant="brandBold" to={entityLink}>
           {formatTitle(listItem)}
         </Link>
-        <NotificationDescription>
-          <NotificationMessage>
-            <Group gap="0.75rem" align="center" c="text-medium">
+        <Flex wrap="wrap" mt="xs">
+          <Text
+            component="span"
+            className={S.message}
+            c="text-secondary"
+            fz="sm"
+            lh="0.875rem"
+          >
+            <Group gap="0.75rem" align="center" c="text-secondary">
               {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
               {enabledChannelsMap["channel/slack"] && (
                 <Icon name="slack" size={14} />
@@ -72,7 +80,7 @@ export const NotificationCard = ({
               {enabledChannelsMap["channel/http"] && (
                 <Icon name="webhook" size={16} />
               )}
-              <Group gap="0.25rem" align="center" c="text-medium">
+              <Group gap="0.25rem" align="center" c="text-secondary">
                 {subscription && (
                   <span>{formatNotificationSchedule(subscription)}</span>
                 )}
@@ -80,24 +88,30 @@ export const NotificationCard = ({
                 {<span>{formatCreatorMessage(item, user.id)}</span>}
               </Group>
             </Group>
-          </NotificationMessage>
-        </NotificationDescription>
-      </NotificationContent>
+          </Text>
+        </Flex>
+      </Box>
 
       {isEditable && !hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
       )}
       {isEditable && hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />
       )}
-    </NotificationCardRoot>
+    </Flex>
   );
 };

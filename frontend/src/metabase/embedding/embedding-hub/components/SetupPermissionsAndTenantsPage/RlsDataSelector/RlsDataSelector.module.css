@@ -1,0 +1,39 @@
+[data-can-remove="true"]:hover .RemoveButton {
+  opacity: 1;
+}
+
+.RemoveButton {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-secondary);
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+.RemoveButton:hover {
+  background: var(--mb-color-background-hover);
+  color: var(--mb-color-text-primary);
+}
+
+.PickerTrigger {
+  border: 1px solid var(--mb-color-border);
+  transition: border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.PickerTrigger:hover {
+  border-color: var(--mb-color-brand);
+}
+
+.AddTableButton {
+  color: var(--mb-color-brand);
+}

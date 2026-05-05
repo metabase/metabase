@@ -1,13 +1,11 @@
 import { t } from "ttag";
 
-import { getEngineNativeType } from "metabase/lib/engine";
-import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
-import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { SidebarFeatures } from "metabase/querying/editor/types";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
@@ -16,17 +14,9 @@ import S from "./NativeQueryEditorActionButtons.module.css";
 
 const ICON_SIZE = 18;
 
-export type Features = {
-  dataReference?: boolean;
-  variables?: boolean;
-  snippets?: boolean;
-  promptInput?: boolean;
-};
-
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
-  nativeEditorSelectedText?: string;
-  features: Features;
+  features: SidebarFeatures;
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
   isRunnable: boolean;
@@ -35,16 +25,13 @@ interface NativeQueryEditorActionButtonsProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
-  isPromptInputVisible?: boolean;
   runQuery?: () => void;
   cancelQuery?: () => void;
-  onOpenModal: (modalType: QueryModalType) => void;
-  onShowPromptInput: () => void;
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar: () => void;
-  onFormatQuery: () => void;
-  onGenerateQuery: (queryText: string) => void;
+  toggleDataReference?: () => void;
+  toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
+  onFormatQuery?: () => void;
 }
 
 export const NativeQueryEditorActionButtons = (
@@ -52,12 +39,12 @@ export const NativeQueryEditorActionButtons = (
 ) => {
   const {
     question,
-    nativeEditorSelectedText,
     snippetCollections,
     snippets,
     features,
+    toggleDataReference,
+    toggleTemplateTagsEditor,
     onFormatQuery,
-    onGenerateQuery,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -68,11 +55,8 @@ export const NativeQueryEditorActionButtons = (
     !snippetCollections[0].can_write
   );
 
-  const query = question.query();
-  const engine = question.database?.()?.engine;
-  const canFormatQuery = engine != null && canFormatForEngine(engine);
-  const canGenerateQuery =
-    engine != null && getEngineNativeType(engine) === "sql";
+  // Default to true if not explicitly set to false
+  const showFormatButton = features.formatQuery !== false;
 
   return (
     <Flex
@@ -85,15 +69,23 @@ export const NativeQueryEditorActionButtons = (
         <PreviewQueryButton {...props} />
       )}
       {features.dataReference && (
-        <DataReferenceButton {...props} size={ICON_SIZE} />
+        <DataReferenceButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleDataReference}
+        />
       )}
       {features.snippets && showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
       )}
       {features.variables && (
-        <NativeVariablesButton {...props} size={ICON_SIZE} />
+        <NativeVariablesButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleTemplateTagsEditor}
+        />
       )}
-      {canFormatQuery && (
+      {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
             variant="subtle"
@@ -104,13 +96,6 @@ export const NativeQueryEditorActionButtons = (
             onClick={onFormatQuery}
           />
         </Tooltip>
-      )}
-      {canGenerateQuery && (
-        <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
-          query={query}
-          selectedQueryText={nativeEditorSelectedText}
-          onGenerateQuery={onGenerateQuery}
-        />
       )}
     </Flex>
   );

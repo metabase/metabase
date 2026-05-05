@@ -5,15 +5,14 @@ import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Modal from "metabase/components/Modal";
-import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
 import { ActionsApi, MetabaseApi } from "metabase/services";
+import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -74,7 +73,6 @@ export function ObjectDetailView({
   zoomedRow: passedZoomedRow,
   zoomedRowID,
   tableForeignKeys,
-  tableForeignKeyReferences,
   settings,
   canZoom,
   canZoomPreviousRow,
@@ -86,11 +84,11 @@ export function ObjectDetailView({
   visualizationIsClickable,
   fetchTableFks,
   loadObjectDetailFKReferences,
-  followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
   className,
+  isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
@@ -108,6 +106,8 @@ export function ObjectDetailView({
   const hasPk = !!data.cols.find(isPK);
   const hasFks = !_.isEmpty(tableForeignKeys);
   const hasRelationships = showRelations && hasFks && hasPk;
+
+  const isObjectDetailModal = question?.display() !== "object";
 
   const handleExecuteModalClose = () => {
     setActionId(undefined);
@@ -151,13 +151,18 @@ export function ObjectDetailView({
       return;
     }
 
-    if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
+    if (
+      isObjectDetailModal &&
+      table &&
+      _.isEmpty(table.fks) &&
+      !isVirtualCardId(table.id)
+    ) {
       fetchTableFks(table.id as ConcreteTableId);
     }
   });
 
   useEffect(() => {
-    if (hasNotFoundError) {
+    if (hasNotFoundError || !showControls) {
       return;
     }
 
@@ -178,6 +183,7 @@ export function ObjectDetailView({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     hasNotFoundError,
+    showControls,
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
@@ -190,7 +196,7 @@ export function ObjectDetailView({
       const pkField = passedData.cols[pkIndex];
       const query = question?.query();
       const datasetQuery = query
-        ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
+        ? Lib.toJsQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)
@@ -239,20 +245,11 @@ export function ObjectDetailView({
     }
   }, [hasFks, data, prevData, prevTableForeignKeys, loadFKReferences]);
 
-  const onFollowForeignKey = useCallback(
-    (fk: ForeignKey) => {
-      zoomedRowID !== undefined
-        ? followForeignKey({ objectId: zoomedRowID, fk })
-        : _.noop();
-    },
-    [zoomedRowID, followForeignKey],
-  );
-
   const areImplicitActionsEnabled = Boolean(
     question &&
-      question.canWrite() &&
-      question.type() === "model" &&
-      question.supportsImplicitActions(),
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
@@ -354,36 +351,28 @@ export function ObjectDetailView({
               />
             )}
             <ObjectDetailBody
-              data={data}
-              objectName={objectName}
+              columns={passedData.cols}
               zoomedRow={zoomedRow ?? []}
               settings={settings}
-              hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
-              tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={onFollowForeignKey}
+              isDashboard={isDashboard}
             />
           </ObjectDetailWrapperDiv>
         )}
       </ObjectDetailContainer>
 
-      <Modal
-        isOpen={isActionExecuteModalOpen}
+      <ActionExecuteModal
+        opened={isActionExecuteModalOpen}
+        actionId={actionId}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch
         onClose={handleExecuteModalClose}
-      >
-        <ActionExecuteModal
-          actionId={actionId}
-          initialValues={initialValues}
-          fetchInitialValues={fetchInitialValues}
-          shouldPrefetch
-          onClose={handleExecuteModalClose}
-          onSuccess={handleActionSuccess}
-        />
-      </Modal>
+        onSuccess={handleActionSuccess}
+      />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal opened={isDeleteModalOpen} onClose={handleDeleteModalClose}>
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={zoomedRowID}

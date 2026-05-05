@@ -1,6 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo",
     "outDir": "build",
     "paths": {
       "*": [
@@ -9,7 +11,9 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ],
-      "cljs/*": ["./target/cljs_dev/*"]
+      "build-configs/*": ["./frontend/build/*"],
+      "cljs/*": ["./target/cljs_dev/*"],
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
     },
     "plugins": [
       {
@@ -22,6 +26,7 @@
   },
   "include": [
     "frontend/src/**/*",
+    "frontend/build/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*"
@@ -31,7 +36,7 @@
     // The following files will load `frontend/src/metabase/app` which will conflict with
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",
-    "frontend/src/metabase/app-public.js",
-    "frontend/src/metabase/app-embed.js"
+    "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/app-embed.ts"
   ]
 }

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.api.user-test
-  "Tests that would logically be included in [[metabase.users.api-test]] but are separate as they are enterprise only."
+  "Tests that would logically be included in [[metabase.users-rest.api-test]] but are separate as they are enterprise only."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -66,10 +66,29 @@
           [:model/User _ {:login_attributes {:foo "bar"
                                              :woo "hoo"}}
            :model/User _ {:login_attributes {:foo "biz"
-                                             :woo "haa"}}
+                                             :woo "haa"}} ; codespell:ignore haa
            :model/User _ {:login_attributes {:third-one "nope"}}]
           (is (= 2
                  (count (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))))
+
+(deftest get-user-attributes-with-tenants-test
+  (mt/with-premium-features #{:tenants :sandboxes}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (testing "includes tenant attributes from tenant models"
+        (mt/with-temp
+          [:model/Tenant _ {:name "Test Tenant"
+                            :slug "test-tenant"
+                            :attributes {"tenant-key-1" "value1"
+                                         "tenant-key-2" "value2"}}
+           :model/Tenant _ {:name "Another Tenant"
+                            :slug "another-tenant"
+                            :attributes {"tenant-key-3" "value3"
+                                         "tenant-key-1" "different-value"}}
+           :model/User _ {:login_attributes {:user-key "user-value"}}]
+
+          (let [attributes (set (mt/user-http-request :crowberto :get 200 "mt/user/attributes"))]
+            (is (set/subset? #{"tenant-key-1" "tenant-key-2" "tenant-key-3" "user-key"}
+                             attributes))))))))
 
 (deftest update-user-attributes-test
   (mt/with-premium-features #{}
@@ -91,3 +110,29 @@
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}
                (t2/select-one-fn :login_attributes :model/User :id id)))))))
+
+(deftest attributes-endpoint-includes-jwt-attributes-test
+  (testing "GET /api/mt/user/attributes includes keys from jwt_attributes"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/User _ {:login_attributes {"department" "engineering"
+                                                       "role" "developer"}}
+                     :model/User _ {:jwt_attributes {"session_id" "abc123"
+                                                     "scope" "read-write"}}
+                     :model/User _ {:login_attributes {"team" "backend"}
+                                    :jwt_attributes {"auth_level" "admin"
+                                                     "region" "us-east"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 "mt/user/attributes")]
+          (testing "includes keys from login_attributes"
+            (is (contains? (set response) "department"))
+            (is (contains? (set response) "role"))
+            (is (contains? (set response) "team")))
+
+          (testing "includes keys from jwt_attributes"
+            (is (contains? (set response) "session_id"))
+            (is (contains? (set response) "scope"))
+            (is (contains? (set response) "auth_level"))
+            (is (contains? (set response) "region")))
+
+          (testing "does not include duplicate keys"
+            (let [response-counts (frequencies response)]
+              (is (every? #(= 1 %) (vals response-counts))))))))))

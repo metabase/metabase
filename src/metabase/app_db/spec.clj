@@ -28,8 +28,14 @@
   [host port db]
   (str "//" (when-not (str/blank? host) (str host ":" port)) (if-not (str/blank? db) (str "/" db) "/")))
 
+(defn- make-aws-iam-spec [subprotocol]
+  {:subprotocol (str "aws-wrapper:" subprotocol)
+   :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+   :useSSL true
+   :wrapperPlugins "iam"})
+
 (defmethod spec :postgres
-  [_ {:keys [host port db]
+  [_ {:keys [host port db aws-iam]
       :or   {host "localhost", port 5432, db ""}
       :as   opts}]
   (merge
@@ -39,17 +45,32 @@
     ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
     :OpenSourceSubProtocolOverride true
     :ApplicationName               config/mb-version-and-process-identifier}
-   (dissoc opts :host :port :db)))
+   (when aws-iam
+     (make-aws-iam-spec "postgresql"))
+   (dissoc opts :host :port :db :aws-iam)))
 
 (defmethod spec :mysql
-  [_ {:keys [host port db]
+  [_ {:keys [host port db aws-iam ssl-cert]
       :or   {host "localhost", port 3306, db ""}
       :as   opts}]
   (merge
    {:classname   "org.mariadb.jdbc.Driver"
     :subprotocol "mysql"
     :subname     (make-subname host (or port 3306) db)}
-   (dissoc opts :host :port :db)))
+   (when aws-iam
+     (merge
+      (make-aws-iam-spec "mysql")
+      (cond
+        (= ssl-cert "trust")
+        {:trustServerCertificate true}
+
+        (and ssl-cert (not= ssl-cert "trust"))
+        {:sslMode       "VERIFY_CA"
+         :serverSslCert ssl-cert}
+
+        :else
+        {:sslMode "VERIFY_CA"})))
+   (dissoc opts :host :port :db :aws-iam :ssl-cert)))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "lib": [
       "dom",
       "dom.iterable",
@@ -24,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@metabase/embedding-sdk-react": [
+        "./node_modules/@metabase/embedding-sdk-react"
       ]
     },
     "target": "ES2017"

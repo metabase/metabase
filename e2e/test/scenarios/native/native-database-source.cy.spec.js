@@ -192,7 +192,7 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
           [SAMPLE_DB_ID]: {
@@ -292,12 +292,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     // Save the query
     H.saveQuestion("sql count", { wrapId: true });
-    cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
+    cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
   });
 });
 

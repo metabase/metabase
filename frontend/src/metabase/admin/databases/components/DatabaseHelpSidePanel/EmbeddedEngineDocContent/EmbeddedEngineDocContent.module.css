@@ -1,0 +1,42 @@
+.markdown {
+  line-height: 1.5;
+  margin-top: var(--mantine-spacing-md);
+
+  ul {
+    list-style: disc;
+    margin-bottom: 1.25rem;
+    padding-left: 1.25rem;
+  }
+
+  h2,
+  h3,
+  h4 {
+    margin: 0.5rem 0;
+    display: inline-block;
+  }
+
+  h2 {
+    font-size: var(--mantine-h4-font-size);
+  }
+
+  h3,
+  h4 {
+    font-size: var(--mantine-h5-font-size);
+  }
+
+  pre {
+    background-color: var(--mb-color-background-secondary);
+    padding: 8px 10px;
+  }
+
+  code {
+    text-wrap: auto;
+  }
+
+  blockquote {
+    background-color: var(--mb-color-background-tertiary);
+    border-radius: 0.25rem;
+    margin: 0.25rem 0 1.25rem;
+    padding: 1rem 1.5rem;
+  }
+}

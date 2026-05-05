@@ -9,7 +9,6 @@ interface DashboardEmptyStateProps {
   addQuestion?: () => void;
   isDashboardEmpty: boolean;
   isEditing?: boolean;
-  isNightMode: boolean;
   canCreateQuestions?: boolean;
 }
 
@@ -20,17 +19,11 @@ function InlineIcon({ name }: { name: IconName }) {
   return <Icon name={name} style={{ verticalAlign: "middle" }} />;
 }
 
-function EmptyStateWrapper({
-  isNightMode,
-  children,
-}: {
-  isNightMode: boolean;
-  children: ReactNode;
-}) {
+function EmptyStateWrapper({ children }: { children: ReactNode }) {
   return (
     <Stack
       align="center"
-      color={isNightMode ? "text-white" : "inherit"}
+      color="inherit"
       data-testid="dashboard-empty-state"
       h="100%"
       justify="center"
@@ -47,7 +40,6 @@ export function DashboardEmptyState({
   addQuestion,
   isDashboardEmpty,
   isEditing,
-  isNightMode,
   canCreateQuestions,
 }: DashboardEmptyStateProps) {
   let title = getDefaultTitle(isDashboardEmpty);
@@ -58,7 +50,7 @@ export function DashboardEmptyState({
   }
 
   return (
-    <EmptyStateWrapper isNightMode={isNightMode}>
+    <EmptyStateWrapper>
       <>
         <Stack align="center" maw="25rem" gap="xs">
           <Title ta="center" order={3}>
@@ -67,12 +59,12 @@ export function DashboardEmptyState({
 
           <Text ta="center" data-testid="dashboard-empty-state-copy">
             {isEditing
-              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${(<InlineIcon key="section-icon" name="section" />)} ${(
+              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${<InlineIcon key="section-icon" name="section" />} ${(
                   <b key="section">{c(
                     "Context for languages with declension: 'start [populating a dashboard] with some default layouts by adding >>a section<<",
                   ).t`a section`}</b>
                 )}.`
-              : jt`Click on the ${(<InlineIcon key="pencil-icon" name="pencil" />)} ${(<b key="edit">{c("The name of a button").t`Edit`}</b>)} button to add questions, filters, links, or text.`}
+              : jt`Click on the ${<InlineIcon key="pencil-icon" name="pencil" />} ${<b key="edit">{c("The name of a button").t`Edit`}</b>} button to add questions, filters, links, or text.`}
           </Text>
         </Stack>
         <Button
@@ -88,11 +80,10 @@ export function DashboardEmptyState({
 
 export function DashboardEmptyStateWithoutAddPrompt({
   isDashboardEmpty,
-  isNightMode,
 }: DashboardEmptyStateProps) {
   const title = getDefaultTitle(isDashboardEmpty);
   return (
-    <EmptyStateWrapper isNightMode={isNightMode}>
+    <EmptyStateWrapper>
       <Title ta="center" order={3}>
         {title}
       </Title>

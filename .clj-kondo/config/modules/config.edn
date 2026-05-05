@@ -1,4 +1,16 @@
+;;
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                       !!
+;; !!  PRO TIP! Run the tests in [[metabase.core.modules-test]] when you change this file!  !!
+;; !!                                                                                       !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;
 ;; A "module" is any `metabase.<module>.core` namespace in `src`.
+;;
+;; ## `team`:
+;;
+;; The team that owns this module. This has to match one of the team names in `.github/team.json` EXACTLY. You can
+;; run [[metabase.core.modules-test/all-modules-have-teams-test]] to make sure you did this correctly.
 ;;
 ;; ## `api`:
 ;;
@@ -27,6 +39,48 @@
 ;; 2. A set of module symbols. This is the list of modules that are allowed to be referenced. An empty set means no
 ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
 ;;
+;; ## `friends`:
+;;
+;; 'Friend' in the C++ sense; set of modules that are allowed free access into the internals of this module including
+;; namespaces that are not `:api` namespaces. This is useful when writing modules that are 'extensions' of other
+;; modules, for example `enterprise/search` might be enterprise extensions of `search`, or `search-rest` might be the
+;; REST API component for `search`.
+;;
+;;    search
+;;    {...
+;;     :friends #{enterprise/search search-rest}}
+;;
+;; ## `model-exports`:
+;;
+;; Set of `:model/X` keywords defined by this module that it allows others to reference. By default all are private.
+;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
+;;
+;;    enterprise/workspaces
+;;    {...
+;;     :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}}
+;;
+;; ## `model-imports`:
+;;
+;; Set of `:model/X` keywords that this module is allowed to reference from other modules. Defaults to none.
+;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
+;;
+;;    transforms-base
+;;    {...
+;;     :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
+;;
+;; ### `:bypass`
+;;
+;; Some modules (like `cmd` and `enterprise/serialization`) are inherently cross-cutting and import nearly
+;; every model. For these, use `:model-imports :bypass` instead of an explicit set:
+;;
+;;    cmd
+;;    {...
+;;     :model-imports :bypass}
+;;
+;; A bypassed module can reference any model — even ones that are not exported. Models that are *only*
+;; referenced outside their home module by bypassed modules do not need to appear in `:model-exports`
+;; (in fact, they must not — the staleness test will flag them).
+;;
 ;; ## Tips
 ;;
 ;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
@@ -34,50 +88,111 @@
 ;; you need to make
 {:metabase/modules
  {actions
-  {:api  #{metabase.actions.api
+  {:team "Gadget"
+   :api  #{metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.schema
+           metabase.actions.types}
    :uses #{analytics
            api
-           collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
-           permissions
-           public-sharing
+           parameters
            queries
            query-processor
            search
            settings
-           util}}
+           util
+           warehouses}
+   :model-exports #{:model/Action}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/User}}
+
+  actions-rest
+  {:team "Gadget"
+   :api  #{metabase.actions-rest.api}
+   :uses #{actions
+           analytics
+           api
+           collections
+           lib
+           permissions
+           public-sharing
+           queries
+           util}
+   :model-imports #{:model/Action :model/Card :model/Database}}
 
   activity-feed
-  {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
+  {:team "UX West"
+   :api  #{metabase.activity-feed.api
+           metabase.activity-feed.core
+           metabase.activity-feed.init}
    :uses #{api
            app-db
            collections
            config
            events
            models
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/QueryExecution
+                    :model/Table}}
+
+  agent-api
+  {:team    "Metabot"
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
+   :uses    #{agent-lib
+              api
+              auth-identity
+              dashboards
+              events
+              lib
+              llm
+              metabot
+              queries
+              query-processor
+              request
+              server
+              settings
+              util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/User}}
+
+  agent-lib
+  {:team "Metabot"
+   :api  #{metabase.agent-lib.core}
+   :uses #{lib
            util}}
 
-  appearance
-  {:api  #{metabase.appearance.core
-           metabase.appearance.init}
-   :uses #{settings util}}
-
   analytics
-  {:api  #{metabase.analytics.api
+  {:team "UX West"
+   :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
-           metabase.analytics.prometheus
+           metabase.analytics.settings
            metabase.analytics.snowplow}
-   :uses #{appearance
+   :uses #{analytics-interface
            api
            app-db
-           channel
+           appearance
            config
            driver
            eid-translation
@@ -86,61 +201,125 @@
            models
            permissions
            premium-features
+           request
            session
            settings
            sso
            system
            task
            util
-           version}}
+           version}
+   :model-imports #{:model/CacheConfig
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/Document
+                    :model/Field
+                    :model/ModerationReview
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/QueryCache
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table
+                    :model/Transform
+                    :model/TransformRun
+                    :model/User}}
+
+  analytics-interface
+  {:team "Querying Platform"
+   :api  #{metabase.analytics-interface.core}
+   :uses #{}}
 
   analyze
-  {:api  #{metabase.analyze.core
-           metabase.analyze.query-results}
+  {:team "Graphy"
+   :api  #{metabase.analyze.core}
    :uses #{config
            driver
-           legacy-mbql
            lib
            models
+           query-processor
            sync
-           util}}
+           util}
+   :model-imports #{:model/Field :model/Table}}
 
   ;; TODO -- consolidate these into a `.core` API namespace.
   api
-  {:api #{metabase.api.common
-          metabase.api.common.internal
-          metabase.api.docs
-          metabase.api.init
-          metabase.api.macros
-          metabase.api.open-api
-          metabase.api.response
-          metabase.api.routes.common
-          metabase.api.settings
-          metabase.api.util
-          metabase.api.util.handlers}
-   :uses #{config
+  {:team "DevEx"
+   :api  #{metabase.api.common
+           metabase.api.common.internal
+           metabase.api.docs
+           metabase.api.init
+           metabase.api.macros
+           metabase.api.macros.defendpoint.tools-manifest
+           metabase.api.macros.scope
+           metabase.api.open-api
+           metabase.api.routes.common
+           metabase.api.settings
+           metabase.api.util
+           metabase.api.util.handlers}
+   :uses #{api-scope
+           config
            events
            models
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
+                    :model/Document
+                    :model/Measure
+                    :model/ModelIndexValue
+                    :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/Segment
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform
+                    :model/User}}
 
   api-keys
-  {:api  #{metabase.api-keys.api
-           metabase.api-keys.core}
+  {:team "UX West"
+   :api  #{metabase.api-keys.api
+           metabase.api-keys.core
+           metabase.api-keys.schema}
    :uses #{api
            app-db
            events
            models
            permissions
            users
-           util}}
+           util}
+   :model-exports #{:model/ApiKey}
+   :model-imports #{:model/User}}
 
   api-routes
-  {:api  #{metabase.api-routes.core}
+  {:team "UX West"
+   :api  #{metabase.api-routes.cmd
+           metabase.api-routes.core}
    :uses :any}
 
+  api-scope
+  {:team "Metabot"
+   :api  #{metabase.api-scope.core
+           metabase.api-scope.init}}
+
   app-db
-  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+  {:team "UX West"
+   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setup}
@@ -149,10 +328,23 @@
            config
            connection-pool
            task
-           util}}
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/QueryCache
+                    :model/Secret
+                    :model/Setting}}
+
+  appearance
+  {:team "UX West"
+   :api  #{metabase.appearance.core
+           metabase.appearance.init}
+   :uses #{settings util}
+   :model-imports #{:model/Dashboard}}
 
   audit-app
-  {:api  #{metabase.audit-app.core
+  {:team "UX West"
+   :api  #{metabase.audit-app.core
            metabase.audit-app.init}
    :uses #{api
            app-db
@@ -162,28 +354,76 @@
            settings
            task
            task-history
-           util}}
+           tracing
+           util}
+   :model-exports #{:model/AuditLog}
+   :model-imports #{:model/ApiKey
+                    :model/Card
+                    :model/Channel
+                    :model/Collection
+                    :model/Comment
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document
+                    :model/Glossary
+                    :model/Notification
+                    :model/NotificationHandler
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Pulse
+                    :model/QueryExecution
+                    :model/RemoteSyncTask
+                    :model/Segment
+                    :model/Table
+                    :model/Transform
+                    :model/TransformRun
+                    :model/User}}
+
+  auth-identity
+  {:team "UX West"
+   :api  #{metabase.auth-identity.core
+           metabase.auth-identity.init}
+   :uses #{channel
+           events
+           login-history
+           models
+           notification
+           premium-features
+           request
+           util}
+   :model-exports #{:model/AuthIdentity}
+   :model-imports #{:model/Session :model/User}}
 
   auth-provider
-  {:api  #{metabase.auth-provider.core}
+  {:team "UX West"
+   :api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
   batch-processing
-  {:api  #{metabase.batch-processing.core
+  {:team "UX West"
+   :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db
            settings
            util}}
 
   bookmarks
-  {:api  #{metabase.bookmarks.api}
+  {:team "UX West"
+   :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            queries
-           util}}
+           util}
+   :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document}}
 
   bug-reporting
-  {:api  #{metabase.bug-reporting.api
+  {:team "UX West"
+   :api  #{metabase.bug-reporting.api
            metabase.bug-reporting.init}
    :uses #{analytics
            api
@@ -193,10 +433,12 @@
            permissions
            premium-features
            settings
-           util}}
+           util}
+   :model-imports #{:model/Database}}
 
   cache
-  {:api  #{metabase.cache.api
+  {:team "UX West"
+   :api  #{metabase.cache.api
            metabase.cache.core
            metabase.cache.init}
    :uses #{api
@@ -204,13 +446,21 @@
            config
            events
            models
+           permissions
            premium-features
+           request
            settings
-           util}}
+           util}
+   :model-exports #{:model/CacheConfig :model/QueryCache}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database}}
 
   ;; TODO -- way too many API namespaces.
   channel
-  {:api  #{metabase.channel.api
+  {:team "Gadget"
+   :api  #{metabase.channel.api
            metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -222,6 +472,7 @@
            metabase.channel.template.core
            metabase.channel.urls}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            appearance
@@ -240,19 +491,27 @@
            premium-features
            query-processor
            settings
+           slackbot
            system
            task
            timeline
            types
-           util}}
+           util}
+   :model-exports #{:model/Channel :model/ChannelTemplate}
+   :model-imports #{:model/Dashboard
+                    :model/Database
+                    :model/PulseChannel
+                    :model/User}}
 
   classloader
-  {:api  #{metabase.classloader.core
+  {:team "DevEx"
+   :api  #{metabase.classloader.core
            metabase.classloader.init}
    :uses #{util}}
 
   cloud-migration
-  {:api  #{metabase.cloud-migration.api
+  {:team "UX West"
+   :api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
            metabase.cloud-migration.init}
    :uses #{api
@@ -262,45 +521,80 @@
            models
            premium-features
            settings
+           store-api
            task
-           util}}
-
-  content-verification
-  {:api  #{metabase.content-verification.core
-           metabase.content-verification.init}
-   :uses #{app-db
-           models
-           util}}
+           util}
+   :model-imports #{:model/AuditLog
+                    :model/Card
+                    :model/LoginHistory
+                    :model/Session
+                    :model/Setting
+                    :model/User
+                    :model/UserParameterValue
+                    :model/ViewLog}}
 
   cmd
-  {:api  #{metabase.cmd.copy
+  {:team "UX West"
+   :api  #{metabase.cmd.copy
            metabase.cmd.core
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
            app-db
+           auth-identity
            classloader
            config
-           legacy-mbql
            models
            query-processor
            search
            settings
-           users
-           util}}
+           util}
+   :model-imports :bypass}
 
   collections
-  {:api  #{metabase.collections.api
+  {:team "UX West"
+   :api  #{metabase.collections.core
            metabase.collections.models.collection
-           metabase.collections.models.collection.root}
+           metabase.collections.models.collection.root
+           metabase.collections.schema}
    :uses #{api
            api-keys
            app-db
            audit-app
            config
-           driver
            events
-           legacy-mbql
+           models
+           permissions
+           premium-features
+           remote-sync
+           search
+           util}
+   :model-exports #{:model/Collection}
+   :model-imports #{:model/Card
+                    :model/CollectionBookmark
+                    :model/CollectionPermissionGraphRevision
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Permissions
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform
+                    :model/User}}
+
+  collections-rest
+  {:team "UX West"
+   :api  #{metabase.collections-rest.api
+           metabase.collections-rest.init}
+   :uses #{api
+           app-db
+           collections
+           eid-translation
+           events
+           lib-be
            models
            notification
            permissions
@@ -308,40 +602,124 @@
            queries
            request
            revisions
-           search
+           settings
+           tracing
+           transforms
            upload
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform}}
+
+  comments
+  {:team "UX West"
+   :api  #{metabase.comments.api
+           metabase.comments.init}
+   :uses #{analytics
+           api
+           channel
+           events
+           models
+           request
+           users
+           util}
+   :model-exports #{:model/Comment}
+   :model-imports #{:model/Document :model/User}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
-  {:api  #{metabase.config.core}
+  {:team "DevEx"
+   :api  #{metabase.config.core}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.
   connection-pool
-  {:api  #{metabase.connection-pool}
+  {:team "UX West"
+   :api  #{metabase.connection-pool}
    :uses #{}}
 
+  content-translation
+  {:team "UX West"
+   :api  #{metabase.content-translation.models}
+   :uses #{premium-features
+           util}
+   :model-exports #{:model/ContentTranslation}}
+
+  content-verification
+  {:team "UX West"
+   :api  #{metabase.content-verification.core
+           metabase.content-verification.init}
+   :uses #{app-db
+           models
+           util}
+   :model-exports #{:model/ModerationReview}
+   :model-imports #{:model/Card :model/Dashboard}}
+
   core
-  {:api  #{metabase.core.initialization-status}
+  {:team "UX West"
+   :api  #{}
    :uses :any}
 
   dashboards
-  {:api  #{metabase.dashboards.api
-           metabase.dashboards.autoplace
+  {:team "UX West"
+   :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
-           metabase.dashboards.models.dashboard-tab}
+           metabase.dashboards.models.dashboard-tab
+           metabase.dashboards.schema
+           metabase.dashboards.settings}
+   :uses #{api
+           app-db
+           audit-app
+           collections
+           config
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
+           query-processor
+           search
+           settings
+           util
+           warehouse-schema}
+   :model-exports #{:model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/DashboardBookmark
+                    :model/ModerationReview
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/Revision
+                    :model/User}}
+
+  dashboards-rest
+  {:team "UX West"
+   :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
            api
            app-db
-           audit-app
            channel
            collections
-           config
+           collections-rest
+           dashboards
+           eid-translation
            embedding
            events
            lib
@@ -356,45 +734,130 @@
            query-processor
            request
            revisions
-           search
            util
-           warehouse-schema
-           xrays}}
+           xrays}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Field
+                    :model/Pulse
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
+                    :model/Query
+                    :model/Table
+                    :model/User}}
+
+  data-studio
+  {:team "Gadget"
+   :api  #{metabase.data-studio.api}
+   :uses #{api
+           database-routing
+           driver
+           events
+           request
+           sync
+           util
+           warehouse-schema}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   database-routing
-  {:api  #{metabase.database-routing.core}
+  {:team "UX West"
+   :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  documents
+  {:team "UX West"
+   :api  #{metabase.documents.api
+           metabase.documents.core
+           metabase.documents.init
+           metabase.documents.prose-mirror
+           metabase.documents.schema}
+   :uses #{activity-feed
+           api
+           app-db
+           batch-processing
+           collections
+           events
+           models
+           public-sharing
+           queries
+           query-permissions
+           query-processor
+           revisions
+           search
+           util
+           view-log}
+   :model-exports #{:model/Document}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
+
   driver
-  {:api #{metabase.driver
-          metabase.driver.common
-          metabase.driver.common.parameters
-          metabase.driver.common.parameters.dates
-          metabase.driver.common.parameters.operators
-          metabase.driver.common.parameters.parse
-          metabase.driver.common.parameters.values
-          metabase.driver.ddl.interface
-          metabase.driver.h2
-          metabase.driver.impl
-          metabase.driver.init
-          metabase.driver.mysql
-          metabase.driver.postgres
-          metabase.driver.settings
-          metabase.driver.sql
-          metabase.driver.sql-jdbc.connection
-          metabase.driver.sql-jdbc.execute
-          metabase.driver.sql-jdbc.execute.diagnostic
-          metabase.driver.sql-jdbc.sync
-          metabase.driver.sql.query-processor
-          metabase.driver.sql.query-processor.deprecated
-          metabase.driver.sql.util
-          metabase.driver.sync
-          metabase.driver.util}
+  {:team "Querying Platform"
+   :api  #{metabase.driver
+           metabase.driver.common
+           metabase.driver.common.parameters
+           metabase.driver.common.parameters.parse
+           metabase.driver.connection
+           metabase.driver.ddl.interface
+           metabase.driver.h2
+           metabase.driver.impl
+           metabase.driver.init
+           metabase.driver.mysql
+           metabase.driver.postgres
+           metabase.driver.settings
+           metabase.driver.sql
+           metabase.driver.sql-jdbc
+           metabase.driver.sql-jdbc.connection
+           metabase.driver.sql-jdbc.execute
+           metabase.driver.sql-jdbc.execute.diagnostic
+           metabase.driver.sql-jdbc.sync
+           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. I've added it to make
+           ;; tests pass as we are using it directly with ee/workspaces module. I believe later, when workspaces
+           ;; are in better state quality wise, it should become part of the driver api and that should be used
+           ;; instead of calling directly into the normalize module.
+           metabase.driver.sql.normalize
+           metabase.driver.sql.query-processor
+           metabase.driver.sql.util
+           metabase.driver.sync
+           metabase.driver.util}
+   :uses #{analytics-interface
+           app-db
+           appearance
+           auth-provider
+           classloader
+           config
+           driver-api
+           events
+           legacy-mbql
+           lib
+           lib-be
+           premium-features
+           query-processor
+           settings
+           sql-tools
+           system
+           tracing
+           util
+           warehouse-schema
+           warehouses}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  driver-api
+  {:team "Querying Platform"
+   :api  #{metabase.driver-api.core}
    :uses #{actions
            api
            app-db
            appearance
-           auth-provider
            classloader
            config
            connection-pool
@@ -412,65 +875,137 @@
            sync
            system
            upload
-           warehouse-schema
-           warehouses
-           util}}
+           util
+           warehouse-schema}}
 
   eid-translation
-  {:api  #{metabase.eid-translation.api
+  {:team "UX West"
+   :api  #{metabase.eid-translation.api
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Dimension
+                    :model/Document
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/Segment
+                    :model/Timeline
+                    :model/Transform
+                    :model/User}}
 
   embedding
-  {:api  #{metabase.embedding.api
-           metabase.embedding.init
+  {:team "Embedding"
+   :api  #{metabase.embedding.init
+           metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
-           config
-           driver
+           models
+           premium-features
+           server
+           settings
+           util}
+   :model-imports #{:model/Card :model/Dashboard}
+   :model-exports #{:model/EmbeddingTheme}}
+
+  embedding-rest
+  {:team "Embedding"
+   :api  #{metabase.embedding-rest.api}
+   :uses #{api
+           dashboards
+           database-routing
            eid-translation
+           embedding
            events
            models
            notification
            parameters
-           premium-features
-           public-sharing
+           public-sharing-rest
            queries
            query-processor
-           settings
+           request
            tiles
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
 
   events
-  {:api  #{metabase.events.core
+  {:team "DevEx"
+   :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           util}}
+           util}
+   :friends #{tracing}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/User}}
 
   formatter
-  {:api  #{metabase.formatter.core}
+  {:team "UX West"
+   :api  #{metabase.formatter.core}
    :uses #{appearance
            models
-           system
            query-processor
            types
            util}}
 
+  frontend-errors
+  {:team "UX West"
+   :api  #{metabase.frontend-errors.api}
+   :uses #{analytics-interface
+           api
+           request
+           util}}
+
   geojson
-  {:api  #{metabase.geojson.api
+  {:team "UX West"
+   :api  #{metabase.geojson.api
            metabase.geojson.init}
    :uses #{api
+           config
            permissions
            settings
            util}}
 
+  glossary
+  {:team "Gadget"
+   :api  #{metabase.glossary.api}
+   :uses #{api
+           events
+           models
+           util}
+   :model-exports #{:model/Glossary}
+   :model-imports #{:model/User}}
+
+  graph
+  {:team "Graphy"
+   :api  #{metabase.graph.core}
+   :uses #{util}}
+
   indexed-entities
-  {:api  #{metabase.indexed-entities.api
+  {:team "UX West"
+   :api  #{metabase.indexed-entities.api
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -482,79 +1017,142 @@
            search
            sync
            task
-           util}}
+           util}
+   :model-exports #{:model/ModelIndex :model/ModelIndexValue}
+   :model-imports #{:model/Card :model/Collection}}
+
+  initialization-status
+  {:team "UX West"
+   :api  #{metabase.initialization-status.core}
+   :uses #{}}
+
+  interestingness
+  {:team "UX West"
+   :api  #{metabase.interestingness.core}
+   :uses #{util}}
 
   internal-stats
-  {:api #{metabase.internal-stats.core}
+  {:team "UX West"
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models}}
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/MetabotMessage
+                    :model/QueryExecution
+                    :model/User}}
 
   legacy-mbql
-  {:api #{metabase.legacy-mbql.normalize
-          metabase.legacy-mbql.predicates
-          metabase.legacy-mbql.schema
-          metabase.legacy-mbql.schema.helpers
-          metabase.legacy-mbql.util}
+  {:team "Querying Platform"
+   :api  #{metabase.legacy-mbql.normalize
+           metabase.legacy-mbql.schema
+           metabase.legacy-mbql.util}
    :uses #{lib
-           models
            types
            util}}
 
   lib
-  {:api #{metabase.lib.binning
-          metabase.lib.binning.util
-          metabase.lib.card
-          metabase.lib.core
-          metabase.lib.equality
-          metabase.lib.field
-          metabase.lib.filter
-          metabase.lib.ident
-          metabase.lib.init
-          metabase.lib.join.util
-          metabase.lib.metadata
-          metabase.lib.metadata.cached-provider
-          metabase.lib.metadata.calculation
-          metabase.lib.metadata.invocation-tracker
-          metabase.lib.metadata.protocols
-          metabase.lib.normalize
-          metabase.lib.options
-          metabase.lib.query
-          metabase.lib.schema
-          metabase.lib.schema.actions
-          metabase.lib.schema.binning
-          metabase.lib.schema.common
-          metabase.lib.schema.expression
-          metabase.lib.schema.expression.temporal
-          metabase.lib.schema.expression.window
-          metabase.lib.schema.id
-          metabase.lib.schema.info
-          metabase.lib.schema.literal
-          metabase.lib.schema.metadata
-          metabase.lib.schema.parameter
-          metabase.lib.schema.template-tag
-          metabase.lib.schema.temporal-bucketing
-          metabase.lib.schema.util
-          metabase.lib.temporal-bucket
-          metabase.lib.types.isa
-          metabase.lib.util
-          metabase.lib.util.match
-          metabase.lib.walk}
+  {:team "Querying Platform"
+   :api  #{metabase.lib.core
+           metabase.lib.equality
+           metabase.lib.init
+           metabase.lib.metadata
+           metabase.lib.metadata.protocols
+           metabase.lib.schema
+           metabase.lib.schema.actions
+           metabase.lib.schema.aggregation
+           metabase.lib.schema.common
+           metabase.lib.schema.expression
+           metabase.lib.schema.expression.temporal
+           metabase.lib.schema.filter
+           metabase.lib.schema.id
+           metabase.lib.schema.info
+           metabase.lib.schema.join
+           metabase.lib.schema.literal
+           metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
+           metabase.lib.schema.metadata
+           metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.parameter
+           metabase.lib.schema.ref
+           metabase.lib.schema.template-tag
+           metabase.lib.schema.temporal-bucketing
+           metabase.lib.schema.test-spec
+           metabase.lib.schema.util
+           metabase.lib.schema.validate
+           metabase.lib.types.isa
+           metabase.lib.util
+           metabase.lib.util.match}
    :uses #{config
+           graph
            legacy-mbql
            types
-           util}}
+           util}
+   :friends #{agent-lib           ;; Structured MBQL builder; needs direct access to a few lib internals.
+              legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
+              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
+
 
   lib-be
-  {:api #{metabase.lib-be.core
-          metabase.lib-be.init
-          metabase.lib-be.metadata.jvm}
+  {:team "Querying Platform"
+   :api  #{metabase.lib-be.core
+           metabase.lib-be.init}
    :uses #{lib
            models
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PersistedInfo
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
+
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
+           util}
+   :model-imports #{:model/Card :model/Field :model/Table}}
+
+  llm
+  {:team "Metabot"
+   :api  #{metabase.llm.api
+           metabase.llm.init
+           metabase.llm.settings
+           metabase.llm.startup}
+   :uses #{analytics
+           api
+           driver
+           lib
+           lib-be
+           metabot
+           models
+           premium-features
+           request
+           settings
+           sql-tools
+           sync
+           util
+           warehouse-schema}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   logger
-  {:api  #{metabase.logger.api
+  {:team "DevEx"
+   :api  #{metabase.logger.api
            metabase.logger.core
            metabase.logger.init}
    :uses #{analytics
@@ -565,20 +1163,149 @@
            util}}
 
   login-history
-  {:api #{metabase.login-history.api
-          metabase.login-history.core
-          metabase.login-history.init}
+  {:team "UX West"
+   :api  #{metabase.login-history.api
+           metabase.login-history.core
+           metabase.login-history.init}
    :uses #{analytics
            api
+           app-db
            channel
            request
            settings
+           util}
+   :model-exports #{:model/LoginHistory}}
+
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api
+           metabase.mcp.core
+           metabase.mcp.init}
+   :uses #{agent-api
+           api
+           api-scope
+           config
+           llm
+           oauth-server
+           request
+           server
+           settings
+           system
            util}}
 
+  measures
+  {:team "Graphy"
+   :api  #{metabase.measures.api}
+   :uses #{api
+           events
+           lib
+           lib-be
+           metrics
+           models
+           permissions
+           remote-sync
+           search
+           util}
+   :model-exports #{:model/Measure}
+   :model-imports #{:model/Collection :model/Table :model/User}}
+
+  metabot
+  {:team    "Metabot"
+   :api     #{metabase.metabot.api
+              metabase.metabot.api.entity-analysis
+              metabase.metabot.config
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
+   :friends #{agent-api
+              enterprise/metabot
+              enterprise/metabot-analytics
+              slackbot}
+   :uses    #{activity-feed
+              agent-lib
+              analytics
+              analytics-interface
+              api
+              api-scope
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              interestingness
+              legacy-mbql
+              lib
+              lib-be
+              llm
+              models
+              native-query-snippets
+              notification
+              parameters
+              permissions
+              premium-features
+              pulse
+              query-processor
+              request
+              search
+              server
+              settings
+              slackbot
+              sql-tools
+              store-api
+              sync
+              system
+              task
+              transforms
+              transforms-base
+              util
+              warehouses}
+   :model-exports #{:model/AiUsageLog
+                    :model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotFeedback
+                    :model/MetabotMessage}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Glossary
+                    :model/ModerationReview
+                    :model/QueryTable
+                    :model/Table
+                    :model/Transform
+                    :model/User}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
+           server
+           util}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
+
   model-persistence
-  {:api #{metabase.model-persistence.api
-          metabase.model-persistence.core
-          metabase.model-persistence.init}
+  {:team "Graphy"
+   :api  #{metabase.model-persistence.api
+           metabase.model-persistence.core
+           metabase.model-persistence.init}
    :uses #{api
            app-db
            driver
@@ -587,56 +1314,79 @@
            models
            permissions
            premium-features
-           settings
            queries
            query-processor
            request
+           settings
            system
            task
            task-history
-           util}}
+           tracing
+           util}
+   :model-exports #{:model/PersistedInfo}
+   :model-imports #{:model/Card :model/Database}}
 
   models
-  {:api #{metabase.models.dispatch
-          metabase.models.humanization
-          metabase.models.init
-          metabase.models.interface
-          metabase.models.resolution
-          metabase.models.serialization
-          metabase.models.util.spec-update
-          metabase.models.visualization-settings}
+  {:team "DevEx"
+   :api  #{metabase.models.humanization
+           metabase.models.init
+           metabase.models.interface
+           metabase.models.resolution
+           metabase.models.serialization
+           metabase.models.serialization.resolve
+           metabase.models.util.spec-update
+           metabase.models.visualization-settings}
    :uses #{api
            app-db
            classloader
            legacy-mbql
            lib
-           lib-be
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Field
+                    :model/NativeQuerySnippet
+                    :model/Segment
+                    :model/Table
+                    :model/User}}
 
   native-query-snippets
-  {:api  #{metabase.native-query-snippets.api
+  {:team "Graphy"
+   :api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
+           lib
            models
            permissions
            premium-features
-           util}}
+           remote-sync
+           util}
+   :model-exports #{:model/NativeQuerySnippet}
+   :model-imports #{:model/Collection :model/User}}
 
   notification
-  {:api  #{metabase.notification.api
+  {:team "Gadget"
+   :api  #{metabase.notification.api
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models
            metabase.notification.payload.core}
    :uses #{analytics
+           analytics-interface
            api
            appearance
+           auth-identity
            channel
            config
            dashboards
            driver
+           embedding
            events
            models
            parameters
@@ -650,15 +1400,42 @@
            system
            task
            task-history
+           tracing
            users
+           util}
+   :model-exports #{:model/Notification :model/NotificationHandler :model/NotificationRecipient}
+   :model-imports #{:model/Card
+                    :model/Channel
+                    :model/ChannelTemplate
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/User}}
+
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           request
+           settings
+           system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
   parameters
-  {:api  #{metabase.parameters.chain-filter
+  {:team "Graphy"
+   :api  #{metabase.parameters.chain-filter
+           metabase.parameters.core
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
+           metabase.parameters.field-values
            metabase.parameters.init
            metabase.parameters.params
            metabase.parameters.schema
@@ -666,104 +1443,155 @@
    :uses #{api
            app-db
            classloader
-           driver
-           legacy-mbql
            lib
            lib-be
            models
            query-processor
-           types
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   permissions
-  {:api  #{metabase.permissions.api
-           metabase.permissions.core
+  {:team "UX West"
+   :api  #{metabase.permissions.core
            metabase.permissions.init
-           ;; TODO -- move these into the API namespace.
-           metabase.permissions.models.application-permissions-revision
-           metabase.permissions.models.collection-permission-graph-revision
-           metabase.permissions.models.collection.graph
-           metabase.permissions.models.data-permissions
-           metabase.permissions.models.permissions
-           metabase.permissions.models.permissions-group
-           metabase.permissions.path
-           metabase.permissions.util
-           metabase.permissions.validation}
+           metabase.permissions.schema}
    :uses #{api
            app-db
            audit-app
            collections
            config
+           events
+           lib
            models
+           premium-features
+           remote-sync
+           settings
+           tracing
+           util
+           enterprise/advanced-permissions}
+   :model-exports #{:model/ApplicationPermissionsRevision
+                    :model/CollectionPermissionGraphRevision
+                    :model/DataPermissions
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/PermissionsRevision}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Table
+                    :model/User}}
+
+  permissions-rest
+  {:team "UX West"
+   :api  #{metabase.permissions-rest.api}
+   :uses #{api
+           audit-app
+           events
+           permissions
            premium-features
            request
            settings
-           util
-           enterprise/advanced-permissions}}
+           util}
+   :model-imports #{:model/DataPermissions
+                    :model/Database
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/PermissionsRevision
+                    :model/Table
+                    :model/User}}
 
   pivot
-  {:api #{metabase.pivot.core}
+  {:team "UX West"
+   :api  #{metabase.pivot.core}
    :uses #{models
            util}}
 
   plugins
-  {:api  #{metabase.plugins.core}
+  {:team "DevEx"
+   :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
   premium-features
-  {:api  #{metabase.premium-features.api
+  {:team "UX West"
+   :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            app-db
            classloader
            config
+           events
            internal-stats
+           llm
            settings
-           util}}
+           startup
+           task
+           tracing
+           util}
+   :model-imports #{:model/User}}
 
   product-feedback
-  {:api  #{metabase.product-feedback.api
+  {:team "UX West"
+   :api  #{metabase.product-feedback.api
            metabase.product-feedback.init}
    :uses #{analytics
            api
            app-db
            channel
            config
-           driver
            premium-features
            settings
            task
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Database
+                    :model/User}}
 
   public-sharing
-  {:api  #{metabase.public-sharing.api
-           metabase.public-sharing.core
+  {:team "UX West"
+   :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
+   :uses #{api
+           settings
+           util}}
+
+  public-sharing-rest
+  {:team "UX West"
+   :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
            analytics
            api
            dashboards
+           dashboards-rest
            events
            lib
-           lib-be
            models
            parameters
+           public-sharing
            queries
            query-processor
            request
-           settings
            tiles
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Document}}
 
   pulse
-  {:api  #{metabase.pulse.api
+  {:team "Gadget"
+   :api  #{metabase.pulse.api
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
@@ -773,7 +1601,9 @@
            collections
            config
            driver
+           embedding
            events
+           lib
            models
            notification
            permissions
@@ -782,17 +1612,30 @@
            request
            task
            task-history
+           tracing
            util
            enterprise/advanced-permissions
-           enterprise/sandbox}}
+           enterprise/sandbox}
+   :model-exports #{:model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient}
+   :model-imports #{:model/Card
+                    :model/Channel
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Notification
+                    :model/User}}
 
   queries
-  {:api  #{metabase.queries.api
-           metabase.queries.core
+  {:team "Graphy"
+   :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}      ; TODO FIXME
+           metabase.queries.schema}
    :uses #{analytics
+           analytics-interface
            analyze
            api
            app-db
@@ -803,87 +1646,121 @@
            config
            content-verification
            dashboards
-           embedding
+           documents
            events
-           legacy-mbql
            lib
            lib-be
+           metrics
            models
            parameters
            permissions
            premium-features
            public-sharing
            pulse
-           query-analysis
+           query-permissions
+           query-processor
+           request
+           search
+           util
+           view-log
+           warehouse-schema}
+   :model-exports #{:model/Card
+                    :model/Query
+                    :model/QueryExecution
+                    :model/QueryTable}
+   :model-imports #{:model/Action
+                    :model/CardBookmark
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Database
+                    :model/Document
+                    :model/Field
+                    :model/ModerationReview
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/Revision
+                    :model/Table
+                    :model/User}}
+
+  queries-rest
+  {:team "Querying Platform"
+   :api  #{metabase.queries-rest.api}
+   :uses #{analyze
+           api
+           collections
+           eid-translation
+           embedding
+           events
+           lib
+           lib-be
+           models
+           parameters
+           permissions
+           public-sharing
+           queries
            query-permissions
            query-processor
            request
            revisions
            search
-           util
-           view-log
-           warehouse-schema}}
-
-  query-analysis
-  {:api  #{metabase.query-analysis.core
-           metabase.query-analysis.init}
-   :uses #{config
-           driver
-           legacy-mbql
-           lib
-           query-processor
-           settings
-           task
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/CardBookmark
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Table}}
 
   query-permissions
-  {:api  #{metabase.query-permissions.core}
+  {:team "UX West"
+   :api  #{metabase.query-permissions.core}
    :uses #{api
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            query-processor
            request
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Field}}
 
   query-processor
-  {:api #{metabase.query-processor
-          metabase.query-processor.api
-          metabase.query-processor.card
-          metabase.query-processor.compile
-          metabase.query-processor.dashboard
-          metabase.query-processor.debug
-          metabase.query-processor.error-type
-          metabase.query-processor.init
-          metabase.query-processor.interface
-          metabase.query-processor.metadata
-          metabase.query-processor.middleware.annotate
-          metabase.query-processor.middleware.cache-backend.db
-          metabase.query-processor.middleware.constraints
-          metabase.query-processor.middleware.fetch-source-query-legacy
-          metabase.query-processor.middleware.limit
-          metabase.query-processor.middleware.permissions
-          metabase.query-processor.middleware.wrap-value-literals
-          metabase.query-processor.pipeline
-          metabase.query-processor.pivot
-          metabase.query-processor.preprocess
-          metabase.query-processor.reducible
-          metabase.query-processor.schema
-          metabase.query-processor.setup
-          metabase.query-processor.store
-          metabase.query-processor.streaming
-          metabase.query-processor.streaming.common
-          metabase.query-processor.streaming.interface
-          metabase.query-processor.timezone
-          metabase.query-processor.util
-          metabase.query-processor.util.add-alias-info
-          metabase.query-processor.util.nest-query
-          metabase.query-processor.util.persisted-cache
-          metabase.query-processor.util.relative-datetime
-          metabase.query-processor.util.transformations.nest-breakouts
-          metabase.query-processor.writeback}
+  {:team    "Querying Platform"
+   :friends #{driver-api
+              enterprise/cache
+              enterprise/sandbox
+              parameters
+              transforms-base
+              warehouse-schema}
+   :api     #{metabase.query-processor.api
+              metabase.query-processor.card
+              metabase.query-processor.compile
+              metabase.query-processor.core
+              metabase.query-processor.dashboard
+              metabase.query-processor.error-type
+              metabase.query-processor.init
+              metabase.query-processor.interface
+              metabase.query-processor.metadata
+              metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.permissions
+              metabase.query-processor.parameters.dates
+              metabase.query-processor.parameters.operators
+              metabase.query-processor.pipeline
+              metabase.query-processor.pivot
+              metabase.query-processor.preprocess
+              metabase.query-processor.schema
+              metabase.query-processor.store
+              metabase.query-processor.streaming
+              metabase.query-processor.streaming.common
+              metabase.query-processor.streaming.interface
+              metabase.query-processor.timezone
+              metabase.query-processor.util
+              metabase.query-processor.util.persisted-cache}
    :uses #{analytics
+           analytics-interface
            analyze
            api
            app-db
@@ -892,6 +1769,7 @@
            batch-processing
            cache
            config
+           dashboards
            driver
            events
            formatter
@@ -904,280 +1782,584 @@
            permissions
            pivot
            premium-features
-           query-permissions
            queries
-           request
+           query-permissions
+           server
            settings
            system
-           server
-           types
+           tracing
            users
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Database
+                    :model/QueryCache
+                    :model/QueryExecution
+                    :model/Table}}
+
+  remote-sync
+  {:team "UX West"
+   :api  #{metabase.remote-sync.core
+           metabase.remote-sync.init}
+   :uses #{api
+           models
+           premium-features}
+   :model-imports #{:model/Collection}}
 
   request
-  {:api  #{metabase.request.core
-           metabase.request.init}
-   :uses #{api
+  {:team "UX West"
+   :api  #{metabase.request.core
+           metabase.request.current
+           metabase.request.init
+           metabase.request.schema
+           metabase.request.user-agent}
+   :uses #{analytics-interface
+           api
            config
+           embedding
            permissions ; FIXME
+           premium-features
            session
            settings
            users
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   revisions
-  {:api  #{metabase.revisions.api
+  {:team "UX West"
+   :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init}
    :uses #{api
            config
            dashboards
            events
+           lib
            models
+           queries
            query-permissions
-           util}}
+           util}
+   :model-exports #{:model/Revision}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Document
+                    :model/Measure
+                    :model/Segment
+                    :model/Transform}}
 
   sample-data
-  {:api  #{metabase.sample-data.core
+  {:team "UX West"
+   :api  #{metabase.sample-data.core
            metabase.sample-data.init}
    :uses #{plugins
            settings
            sync
-           util}}
+           util}
+   :model-imports #{:model/Database}}
 
   search
-  {:api #{metabase.search.api
-          metabase.search.appdb.scoring
-          metabase.search.config
-          metabase.search.core
-          metabase.search.in-place.scoring
-          metabase.search.ingestion
-          metabase.search.init
-          metabase.search.spec}
+  {:team "UX West"
+   :api  #{metabase.search.api
+           metabase.search.appdb.scoring
+           metabase.search.config
+           metabase.search.core
+           metabase.search.engine
+           metabase.search.in-place.scoring
+           metabase.search.ingestion
+           metabase.search.init
+           metabase.search.scoring
+           metabase.search.spec
+           metabase.search.task.search-index}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            appearance
            audit-app
            collections
            config
-           driver
            events
-           models
-           permissions
-           premium-features
-           queries
-           request
-           settings
-           startup
-           task
-           util
-           warehouses}}
-
-  secrets
-  {:api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
-
-  segments
-  {:api  #{metabase.segments.api}
-   :uses #{api
-           events
-           legacy-mbql
            lib
            lib-be
            models
            permissions
+           premium-features
+           queries
+           query-processor
+           request
+           settings
+           startup
+           task
+           tracing
+           transforms
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
+
+  secrets
+  {:team "Graphy"
+   :api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}
+   :model-exports #{:model/Secret}}
+
+  segments
+  {:team "Graphy"
+   :api  #{metabase.segments.api
+           metabase.segments.schema}
+   :uses #{api
+           events
+           lib
+           lib-be
+           models
+           permissions
+           remote-sync
            search
            util
-           xrays}}
+           xrays}
+   :model-exports #{:model/Segment}
+   :model-imports #{:model/Collection :model/Table :model/User}}
 
   server
-  {:api #{metabase.server.core
-          metabase.server.init
-          metabase.server.middleware.session
-          metabase.server.streaming-response} ; TODO -- too many API namespaces
+  {:team "UX West"
+   :api  #{metabase.server.core
+           metabase.server.init
+           metabase.server.middleware.session
+           metabase.server.settings
+           metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
+           analytics-interface
            api
            api-keys
            app-db
            appearance
            config
-           core
            driver
            embedding
+           initialization-status
+           lib-be
+           mcp
+           oauth-server
            premium-features
            query-processor
            request
            session
            settings
+           sso
            system
+           tracing
+           users
            util
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Session}}
 
   session
-  {:api  #{metabase.session.core
-           metabase.session.api
+  {:team "UX West"
+   :api  #{metabase.session.api
+           metabase.session.core
            metabase.session.init
-           metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
+           auth-identity
            channel
            config
-           driver
            events
-           login-history
            request
            settings
            sso
            system
            task
-           users
-           util}}
+           tracing
+           util}
+   :model-exports #{:model/Session}
+   :model-imports #{:model/AuthIdentity :model/User}}
 
   settings
-  {:api  #{metabase.settings.api
-           metabase.settings.core
+  {:team "DevEx"
+   :api  #{metabase.settings.core
            metabase.settings.init}
    :uses #{api
            app-db
            config
            events
            models
-           permissions
            premium-features
            util
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-exports #{:model/Setting}}
+
+  settings-rest
+  {:team "DevEx"
+   :api  #{metabase.settings-rest.api}
+   :uses #{api
+           permissions
+           settings
+           util}}
 
   setup
-  {:api  #{metabase.setup.api
-           metabase.setup.core
+  {:team "UX West"
+   :api  #{metabase.setup.core
            metabase.setup.init}
+   :uses #{app-db
+           config
+           settings
+           util}
+   :model-imports #{:model/User}}
+
+  setup-rest
+  {:team "UX West"
+   :api  #{metabase.setup-rest.api}
    :uses #{analytics
            api
-           app-db
            appearance
-           channel
-           config
+           auth-identity
            events
-           permissions
            request
-           session
            settings
+           setup
            system
-           users
+           util}
+   :model-imports #{:model/AuthIdentity :model/User}}
+
+  slackbot
+  {:team    "Metabot"
+   :api     #{metabase.slackbot.api
+              metabase.slackbot.config
+              metabase.slackbot.init}
+   :friends #{metabot}
+   :uses    #{analytics
+              analytics-interface
+              api
+              channel
+              config
+              formatter
+              lib
+              metabot
+              permissions
+              query-processor
+              request
+              server
+              settings
+              sso
+              system
+              upload
+              util}
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
+                    :model/Database
+                    :model/MetabotMessage
+                    :model/User}}
+
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema
+           metabase.source-swap.util}
+   :uses #{driver
+           lib
+           sql-tools
+           util}}
+
+  sql-parsing
+  {:team "DevEx"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics-interface
+           util}}
+
+  sql-tools
+  {:team "DevEx"
+   :api #{metabase.sql-tools.core
+          metabase.sql-tools.init}
+   :uses #{analytics
+           analytics-interface
+           driver
+           lib
+           settings
+           sql-parsing
            util}}
 
   sso
-  {:api  #{metabase.sso.api
-           metabase.sso.core
-           metabase.sso.init}
-   :uses #{api
-           config
-           permissions
-           premium-features
-           settings
-           users
-           util}}
+  {:team "UX West"
+   :api     #{metabase.sso.api
+              metabase.sso.api.slack-connect
+              metabase.sso.core
+              metabase.sso.init
+              metabase.sso.settings}
+   :friends #{enterprise/sso}
+   :uses    #{api
+              auth-identity
+              config
+              permissions
+              premium-features
+              request
+              server
+              settings
+              system
+              util}
+   :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   startup
-  {:api  #{metabase.startup.core}
+  {:team "DevEx"
+   :api  #{metabase.startup.core}
    :uses #{util}}
 
+  store-api
+  {:team "Cloud"
+   :api  #{metabase.store-api.core
+           metabase.store-api.init}
+   :uses #{config
+           settings
+           util}}
+
   sync
-  {:api #{metabase.sync.api
-          metabase.sync.core
-          metabase.sync.init
-          metabase.sync.schedules
-          metabase.sync.task.sync-databases
-          metabase.sync.util}
-   :uses #{analyze
+  {:team "Graphy"
+   :api  #{metabase.sync.api
+           metabase.sync.core
+           metabase.sync.init
+           metabase.sync.schedules
+           metabase.sync.task.sync-databases
+           metabase.sync.util}
+   :uses #{analytics-interface
+           analyze
            api
            app-db
            audit-app
            config
+           database-routing
            driver
            events
+           interestingness
            lib
            models
+           premium-features
            query-processor
            settings
            task
            task-history
+           tracing
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   system
-  {:api  #{metabase.system.core
+  {:team "UX West"
+   :api  #{metabase.system.core
            metabase.system.init}
    :uses #{appearance settings util}}
 
   task
-  {:api #{metabase.task.bootstrap
-          metabase.task.core}
+  {:team "UX West"
+   :api  #{metabase.task.bootstrap
+           metabase.task.core}
    :uses #{app-db
            classloader
+           tracing
            util}}
 
   task-history
-  {:api  #{metabase.task-history.api
+  {:team "UX West"
+   :api  #{metabase.task-history.api
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
+           config
            models
            permissions
            premium-features
+           query-processor
            request
            task
+           tracing
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/Database}}
+
+  tenants
+  {:team "Admin Webapp"
+   :api  #{metabase.tenants.core}
+   :uses #{premium-features
            util}}
 
   testing-api
-  {:api  #{metabase.testing-api.api
+  {:team "DevEx"
+   :api  #{metabase.testing-api.api
            metabase.testing-api.core
            metabase.testing-api.init}
    :uses #{analytics
            api
            app-db
            config
+           lib
+           lib-be
+           permissions
            premium-features
            search
-           util}}
+           util}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/SecurityAdvisory
+                    :model/User}}
 
   tiles
-  {:api  #{metabase.tiles.api
+  {:team "UX West"
+   :api  #{metabase.tiles.api
            metabase.tiles.init}
    :uses #{api
            legacy-mbql
+           lib
+           lib-be
+           parameters
            query-processor
            settings
            util}}
 
   timeline
-  {:api  #{metabase.timeline.api
+  {:team "UX West"
+   :api  #{metabase.timeline.api
            metabase.timeline.core}
    :uses #{analytics
            api
            collections
+           events
            models
+           util}
+   :model-exports #{:model/Timeline}
+   :model-imports #{:model/Collection :model/User}}
+
+  tracing
+  {:team "DevEx"
+   :api  #{metabase.tracing.core
+           metabase.tracing.init}
+   :uses #{events
+           settings
+           task
            util}}
 
+  transforms
+  {:team "Graphy"
+   :api  #{metabase.transforms.core
+           metabase.transforms.feature-gating
+           metabase.transforms.init
+           metabase.transforms.schema
+           metabase.transforms.util}
+   :uses #{analytics-interface
+           api
+           app-db
+           channel
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           query-processor
+           remote-sync
+           revisions
+           search
+           settings
+           task
+           task-history
+           tracing
+           transforms-base
+           util
+           warehouse-schema}
+   :friends #{models
+              enterprise/transforms-python}
+   :model-exports #{:model/Transform
+                    :model/TransformJob
+                    :model/TransformJobTransformTag
+                    :model/TransformRun
+                    :model/TransformTag}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/User}}
+
+  transforms-base
+  {:team "Graphy"
+   :api  #{metabase.transforms-base.init
+           metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   ;; TODO regressions — transforms-base should not depend on :model/Transform or
+   ;; :model/TransformRun directly. Remove once the module is agnostic to global
+   ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
+   :model-imports #{:model/Database
+                    :model/Table
+                    :model/Transform
+                    :model/TransformRun}
+   :uses #{database-routing
+           driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util
+           warehouse-schema}
+   :friends #{transforms
+              enterprise/transforms-python}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{}
+   :uses #{}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
+           models
+           request
+           transforms
+           transforms-base
+           util}
+   :model-imports #{:model/Transform
+                    :model/TransformJob
+                    :model/TransformJobTransformTag
+                    :model/TransformRun
+                    :model/TransformTag}}
+
   types
-  {:api  #{metabase.types.core
+  {:team "Querying Platform"
+   :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:api  #{metabase.upload.api
+  {:team "Graphy"
+   :api  #{metabase.upload.api
            metabase.upload.core
+           metabase.upload.db
            metabase.upload.init}
    :uses #{analytics
-           appearance
+           analytics-interface
            api
-           collections
+           appearance
            driver
            events
-           legacy-mbql
            lib
            model-persistence
            models
@@ -1186,10 +2368,15 @@
            settings
            sync
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   user-key-value
-  {:api  #{metabase.user-key-value.api
+  {:team "UX West"
+   :api  #{metabase.user-key-value.api
            metabase.user-key-value.init}
    :uses #{api
            config
@@ -1197,15 +2384,43 @@
            util}}
 
   users
-  {:api  #{metabase.users.api
+  {:team "UX West"
+   :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
-           metabase.users.models.user-parameter-value}
+           metabase.users.models.user-parameter-value
+           metabase.users.schema
+           metabase.users.settings}
    :uses #{analytics
            api
-           appearance
            batch-processing
            channel
+           config
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           setup
+           system
+           tenants
+           util
+           enterprise/advanced-permissions}
+   :model-exports #{:model/User :model/UserParameterValue}
+   :model-imports #{:model/AuthIdentity
+                    :model/Dashboard
+                    :model/Database
+                    :model/PermissionsGroupMembership
+                    :model/Session
+                    :model/Tenant}}
+
+  users-rest
+  {:team "UX West"
+   :api  #{metabase.users-rest.api}
+   :uses #{api
+           appearance
+           auth-identity
            collections
            config
            events
@@ -1213,23 +2428,30 @@
            permissions
            premium-features
            request
-           session
-           settings
-           setup
            sso
            system
+           tenants
+           users
            util
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/LoginHistory
+                    :model/User}}
 
   util
-  {:api :any
+  {:team "DevEx"
+   :api  :any
    :uses #{classloader
            config
            settings
            system}}
 
   version
-  {:api  #{metabase.version.core
+  {:team "UX West"
+   :api  #{metabase.version.core
            metabase.version.init}
    :uses #{config
            settings
@@ -1238,7 +2460,8 @@
            util}}
 
   view-log
-  {:api  #{metabase.view-log.core
+  {:team "UX West"
+   :api  #{metabase.view-log.core
            metabase.view-log.init}
    :uses #{analytics
            api
@@ -1249,24 +2472,25 @@
            models
            premium-features
            query-permissions
-           util}}
+           util}
+   :model-exports #{:model/ViewLog}
+   :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
   warehouse-schema
-  {:api  #{metabase.warehouse-schema.api
-           metabase.warehouse-schema.field
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
-   :uses #{analytics
-           analyze
+   :uses #{analyze
            api
            app-db
            audit-app
            driver
-           events
            lib
            lib-be
            models
@@ -1274,24 +2498,81 @@
            permissions
            premium-features
            query-processor
-           request
+           remote-sync
            search
+           util
+           warehouses}
+   :model-exports #{:model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Segment
+                    :model/Transform
+                    :model/User}}
+
+  warehouse-schema-rest
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema-rest.api}
+   :uses #{analytics
+           api
+           app-db
+           database-routing
+           driver
+           events
+           lib
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
            sync
            types
            upload
            util
-           warehouses
-           xrays}}
+           warehouse-schema
+           xrays}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   warehouses
-  {:api  #{metabase.warehouses.api
-           metabase.warehouses.core
+  {:team "UX West"
+   :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            app-db
            audit-app
+           driver
+           lib
+           models
+           permissions
+           premium-features
+           search
+           secrets
+           settings
+           sync
+           util}
+   :model-exports #{:model/Database}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Table
+                    :model/User}}
+
+  warehouses-rest
+  {:team "UX West"
+   :api  #{metabase.warehouses-rest.api}
+   :uses #{analytics
+           api
+           app-db
            classloader
            collections
            config
@@ -1306,39 +2587,80 @@
            queries
            request
            sample-data
-           search
            secrets
+           server
            settings
            sync
            upload
            util
            warehouse-schema
-           enterprise/advanced-permissions}}
+           warehouses
+           enterprise/advanced-permissions}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   xrays
-  {:api  #{metabase.xrays.api
+  {:team "Graphy"
+   :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
    :uses #{analyze
-           appearance
            api
+           appearance
            collections
            dashboards
            driver
            legacy-mbql
            lib
+           lib-be
            models
-           settings
            queries
            query-permissions
            query-processor
+           segments
+           settings
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/ModelIndex
+                    :model/ModelIndexValue
+                    :model/Query
+                    :model/Revision
+                    :model/Segment
+                    :model/Table}}
+
+  enterprise/action-v2
+  {:team "Gadget"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           driver
+           events
+           lib
+           models
+           query-processor
+           util
+           warehouse-schema}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   enterprise/advanced-config
-  {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.init
+  {:team "UX West"
+   :api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
    :uses #{api
            api-keys
@@ -1346,69 +2668,69 @@
            driver
            permissions
            premium-features
-           setup
            settings
+           setup
            sync
            users
-           util}}
+           util}
+   :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
-  {:api  #{metabase-enterprise.advanced-permissions.api.routes
+  {:team "UX West"
+   :api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           audit-app
            lib
            permissions
            premium-features
            query-permissions
            query-processor
+           remote-sync
            util
            warehouses
-           enterprise/impersonation}}
-
-  enterprise/ai-entity-analysis
-  {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api
-           premium-features
-           enterprise/metabot-v3}}
-
-  enterprise/ai-sql-fixer
-  {:api #{metabase-enterprise.ai-sql-fixer.api}
-   :uses #{api
-           driver
-           enterprise/metabot-v3
-           query-analysis
-           query-processor
-           util}}
-
-  enterprise/ai-sql-generation
-  {:api #{metabase-enterprise.ai-sql-generation.api}
-   :uses #{api
-           driver
-           enterprise/metabot-v3
-           models
-           util}}
+           enterprise/impersonation}
+   :model-imports #{:model/ApplicationPermissionsRevision
+                    :model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Permissions
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Table}}
 
   enterprise/analytics
-  {:api  #{}
+  {:team "UX West"
+   :api  #{}
    :uses #{driver
            premium-features
            enterprise/advanced-config
            enterprise/scim
-           enterprise/sso}}
+           enterprise/semantic-search
+           enterprise/sso}
+   :model-imports #{:model/Database :model/Sandbox}}
 
   enterprise/api
-  {:api  #{metabase-enterprise.api.routes
-           metabase-enterprise.api.routes.common}
+  {:team "UX West"
+   :api  #{metabase-enterprise.api.core}
+   :uses #{api
+           premium-features
+           util}}
+
+  enterprise/api-routes
+  {:team "UX West"
+   :api  #{metabase-enterprise.api-routes.routes}
    :uses :any}
 
   enterprise/audit-app
-  {:api  #{metabase-enterprise.audit-app.api.routes
+  {:team "UX West"
+   :api  #{metabase-enterprise.audit-app.api.routes
            metabase-enterprise.audit-app.init}
    :uses #{api
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
@@ -1418,55 +2740,187 @@
            query-permissions
            query-processor
            settings
+           setup
+           startup
            sync
            users
            util
-           enterprise/serialization}}
+           enterprise/serialization}
+   :model-imports #{:model/AuditLog
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Notification
+                    :model/NotificationRecipient
+                    :model/Permissions
+                    :model/Pulse
+                    :model/PulseChannelRecipient
+                    :model/QueryExecution
+                    :model/Table
+                    :model/User
+                    :model/ViewLog}}
+
+  enterprise/auth-identity
+  {:team "UX West"
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/auth-provider
-  {:api  #{}
+  {:team "UX West"
+   :api  #{}
    :uses #{premium-features
            util}}
 
   enterprise/billing
-  {:api  #{metabase-enterprise.billing.api.routes}
+  {:team "UX West"
+   :api  #{metabase-enterprise.billing.api.routes}
    :uses #{api
-           premium-features util}}
+           premium-features
+           store-api
+           util}
+   :model-imports #{:model/User}}
 
   enterprise/cache
-  {:api  #{metabase-enterprise.cache.init}
+  {:team "UX West"
+   :api  #{metabase-enterprise.cache.init}
    :uses #{cache
            premium-features
            query-processor
            task
-           util}}
+           util}
+   :model-imports #{:model/CacheConfig
+                    :model/Card
+                    :model/Dashboard
+                    :model/DatabaseRouter
+                    :model/Query
+                    :model/QueryCache
+                    :model/QueryExecution}}
+
+  enterprise/checker
+  {:team "Graphy"
+   ;; todo: add ability to prevent usage (transitive even) of app db
+   :api  #{}
+   :uses #{classloader
+           lib
+           models
+           plugins
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
+
+  enterprise/cloud-add-ons
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :uses #{api
+           events
+           premium-features
+           store-api
+           util
+           enterprise/harbormaster}}
+
+  enterprise/cloud-proxy
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-proxy.api}
+   :uses #{api
+           premium-features
+           util
+           enterprise/harbormaster}}
+
+  enterprise/content-translation
+  {:team "UX West"
+   :api  #{metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           embedding
+           premium-features
+           util
+           enterprise/api}
+   :model-imports #{:model/ContentTranslation}}
 
   enterprise/content-verification
-  {:api  #{metabase-enterprise.content-verification.api.routes}
+  {:team "UX West"
+   :api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
            content-verification
            util
            enterprise/api}}
 
   enterprise/core
-  {:api  #{metabase-enterprise.core.init}
+  {:team "DevEx"
+   :api  #{metabase-enterprise.core.init}
    :uses :any}
 
   enterprise/dashboard-subscription-filters
-  {:api  #{}
+  {:team "Graphy"
+   :api  #{}
    :uses #{premium-features}}
 
-  enterprise/data-editing
-  {:api  #{metabase-enterprise.data-editing.api}
+  enterprise/data-complexity-score
+  {:team "Metabot"
+   :api  #{metabase-enterprise.data-complexity-score.api
+           metabase-enterprise.data-complexity-score.init}
+   :uses #{analytics
+           analytics-interface
+           api
+           app-db
+           audit-app
+           collections
+           config
+           metabot
+           models
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/embeddings
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Metabot
+                    :model/ModerationReview
+                    :model/Table}}
+
+  enterprise/data-studio
+  {:team "UX West"
+   :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
-           actions
-           util}}
+           collections
+           events
+           models
+           permissions
+           premium-features
+           util}
+   :model-imports #{:model/Collection
+                    :model/Dimension
+                    :model/Field
+                    :model/Table}}
+
+  enterprise/database-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.database-replication.api
+           metabase-enterprise.database-replication.init}
+   :uses #{api
+           driver
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}
+   :model-imports #{:model/Database}}
 
   enterprise/database-routing
-  {:api #{metabase-enterprise.database-routing.api}
+  {:team "UX West"
+   :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
@@ -1475,26 +2929,114 @@
            settings
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-exports #{:model/DatabaseRouter}
+   :model-imports #{:model/Database :model/Transform}}
+
+  enterprise/dependencies
+  {:team "Graphy"
+   :api  #{metabase-enterprise.dependencies.analysis
+           metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
+   :uses #{analyze
+           api
+           app-db
+           collections
+           documents
+           driver
+           events
+           graph
+           lib
+           lib-be
+           models
+           native-query-snippets
+           permissions
+           premium-features
+           queries
+           query-processor
+           request
+           revisions
+           settings
+           sql-tools
+           task
+           transforms
+           transforms-base
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Sandbox
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
+
+  enterprise/email
+  {:team "UX West"
+   :api  #{metabase-enterprise.email.api}
+   :uses #{api
+           channel
+           permissions
+           premium-features
+           settings
+           util}}
+
+  enterprise/embedding-hub
+  {:team "Embedding"
+   :api  #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           permissions
+           premium-features
+           enterprise/sso}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant}}
+
+  enterprise/embeddings
+  {:team "Metabot"
+   :api  #{metabase-enterprise.embeddings.client}
+   ;; Temporary: the impl currently delegates back into semantic-search until
+   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
+   ;; make token tracking a hook). Drop this dep once the relocation lands.
+   :uses #{enterprise/semantic-search}}
 
   enterprise/gsheets
-  {:api  #{metabase-enterprise.gsheets.api
+  {:team "Cloud"
+   :api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
-   :uses #{api
-           analytics
+   :uses #{analytics
+           analytics-interface
+           api
            premium-features
            settings
            util
-           enterprise/harbormaster}}
+           enterprise/harbormaster}
+   :model-imports #{:model/Database :model/Setting}}
 
   enterprise/harbormaster
-  {:api #{metabase-enterprise.harbormaster.client}
+  {:team "Cloud"
+   :api  #{metabase-enterprise.harbormaster.client}
    :uses #{api
-           cloud-migration
+           store-api
            util}}
 
   enterprise/impersonation
-  {:api #{metabase-enterprise.impersonation.api}
+  {:team "Graphy"
+   :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
            driver
@@ -1504,155 +3046,304 @@
            query-processor
            util
            warehouse-schema
-           enterprise/sandbox}}
+           enterprise/sandbox}
+   :model-exports #{:model/ConnectionImpersonation}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/internal-stats
-  {:api #{}
+  {:team "UX West"
+   :api  #{}
    :uses #{premium-features
            settings}}
 
-  enterprise/llm
-  {:api  #{metabase-enterprise.llm.api
-           metabase-enterprise.llm.init}
-   :uses #{analytics
-           analyze
-           api
-           parameters
-           query-processor
-           settings
-           util}}
-
-  enterprise/metabot-v3
-  {:api #{metabase-enterprise.metabot-v3.api
-          metabase-enterprise.metabot-v3.core
-          metabase-enterprise.metabot-v3.init
-          metabase-enterprise.metabot-v3.tools.api}
+  enterprise/library
+  {:team "UX West"
+   :api  #{metabase-enterprise.library.api}
    :uses #{api
-           app-db
            collections
-           config
-           legacy-mbql
-           lib
-           lib-be
-           models
+           premium-features}
+   :model-imports #{:model/Card :model/Collection :model/Table}}
+
+  enterprise/metabot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.api.routes
+              metabase-enterprise.metabot.init}
+   :friends #{slackbot
+              mcp
+              metabot}
+   :uses    #{api
+              lib-be
+              metabot
+              models
+              permissions
+              premium-features
+              settings
+              task
+              util
+              enterprise/dependencies
+              enterprise/transforms-python}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Transform}}
+
+  enterprise/metabot-analytics
+  {:team "Metabot"
+   :api  #{metabase-enterprise.metabot-analytics.api}
+   :uses #{api
+           driver
+           metabot
            permissions
-           premium-features
-           pulse
            query-processor
            request
-           settings
-           system
-           users
-           util
-           warehouse-schema}}
+           slackbot
+           sql-tools
+           util}
+   :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
+
+  enterprise/permission-debug
+  {:team "UX West"
+   :api  #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}
+   :model-imports #{:model/Card :model/User}}
 
   enterprise/premium-features
-  {:api  #{}
+  {:team "UX West"
+   :api  #{}
    :uses #{premium-features
            util}}
 
-  enterprise/query-reference-validation
-  {:api  #{metabase-enterprise.query-reference-validation.api}
-   :uses #{api
+  enterprise/remote-sync
+  {:team "UX West"
+   :api  #{metabase-enterprise.remote-sync.api
+           metabase-enterprise.remote-sync.core
+           metabase-enterprise.remote-sync.init}
+   :uses #{analytics-interface
+           api
+           app-db
            collections
-           query-analysis
-           request
-           util}}
+           events
+           models
+           premium-features
+           settings
+           startup
+           task
+           task-history
+           util
+           enterprise/serialization
+           enterprise/transforms-python}
+   :model-exports #{:model/RemoteSyncTask}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PythonLibrary
+                    :model/Segment
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform
+                    :model/TransformTag
+                    :model/User}}
+
+  enterprise/replacement
+  {:team "Graphy"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           app-db
+           events
+           lib
+           lib-be
+           model-persistence
+           models
+           queries
+           source-swap
+           task
+           transforms
+           util
+           warehouse-schema
+           enterprise/dependencies}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Field
+                    :model/Measure
+                    :model/PersistedInfo
+                    :model/Sandbox
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   enterprise/sandbox
-  {:api #{metabase-enterprise.sandbox.api.routes
-          metabase-enterprise.sandbox.api.util}
+  {:team "UX West"
+   :api  #{metabase-enterprise.sandbox.api.routes
+           metabase-enterprise.sandbox.api.util}
    :uses #{api
            app-db
            audit-app
-           classloader
            driver
+           events
            legacy-mbql
            lib
            models
            permissions
            premium-features
-           query-permissions
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
            warehouses
-           enterprise/api}}
+           enterprise/api}
+   :model-exports #{:model/Sandbox}
+   :model-imports #{:model/Card
+                    :model/ConnectionImpersonation
+                    :model/Database
+                    :model/Field
+                    :model/PermissionsGroupMembership
+                    :model/Table
+                    :model/User}}
 
   enterprise/scim
-  {:api  #{metabase-enterprise.scim.core
+  {:team "UX West"
+   :api  #{metabase-enterprise.scim.core
            metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
-   :uses #{analytics
+   :uses #{analytics-interface
            api
            api-keys
            models
            permissions
-           settings
            server
+           settings
            system
            users
            util
-           enterprise/serialization}}
+           enterprise/serialization}
+   :model-imports #{:model/ApiKey
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/User}}
 
   enterprise/search
-  {:api  #{}
+  {:team "UX West"
+   :api  #{}
    :uses #{premium-features
            search}}
 
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
+
+  enterprise/semantic-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-search.api
+           metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.init}
+   :uses #{activity-feed
+           analytics
+           analytics-interface
+           api
+           app-db
+           config
+           connection-pool
+           llm
+           metabot
+           models
+           permissions
+           premium-features
+           search
+           settings
+           task
+           tracing
+           util}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
+
   enterprise/serialization
-  {:api #{metabase-enterprise.serialization.api
-          metabase-enterprise.serialization.cmd
-          metabase-enterprise.serialization.v2.backfill-ids}
+  {:team "Graphy"
+   :api  #{metabase-enterprise.serialization.api
+           metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
            app-db
            appearance
            collections
            config
-           legacy-mbql
+           events
            lib
            logger
            models
            plugins
            premium-features
-           settings
+           search
+           server
            setup
-           util
-           warehouse-schema}}
+           util}
+   :model-imports :bypass}
 
   enterprise/snippet-collections
-  {:api  #{}
+  {:team "Graphy"
+   :api  #{}
    :uses #{models
            native-query-snippets
            permissions
            premium-features
-           util}}
+           remote-sync
+           util}
+   :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/sso
-  {:api #{metabase-enterprise.sso.api.routes
-          metabase-enterprise.sso.init
-          metabase-enterprise.sso.settings}
+  {:team "UX West"
+   :api  #{metabase-enterprise.sso.api.routes
+           metabase-enterprise.sso.init
+           metabase-enterprise.sso.settings}
    :uses #{api
            appearance
-           channel
+           auth-identity
            embedding
-           events
-           notification
            premium-features
            request
            session
            settings
            sso
            system
-           users
            util
-           enterprise/scim}}
+           enterprise/scim}
+   :model-imports #{:model/PermissionsGroup :model/Session}}
 
   enterprise/stale
-  {:api  #{metabase-enterprise.stale.api
+  {:team "UX West"
+   :api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
    :uses #{analytics
            api
@@ -1662,15 +3353,112 @@
            queries
            request
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
+
+  enterprise/support-access-grants
+  {:team "UX West"
+   :api  #{metabase-enterprise.support-access-grants.api
+           metabase-enterprise.support-access-grants.init}
+   :uses #{api
+           auth-identity
+           events
+           models
+           request
+           settings
+           system
+           util}
+   :model-imports #{:model/AuthIdentity :model/Session :model/User}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
+           util}
+   :model-exports #{:model/Tenant}
+   :model-imports #{:model/Collection :model/User}}
+
+  enterprise/transforms
+  {:team "Graphy"
+   :api  #{metabase-enterprise.transforms.api}
+   :uses #{premium-features
+           enterprise/transforms-inspector}}
+
+  enterprise/transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase-enterprise.transforms-inspector.api}
+   :uses #{analytics-interface
+           api
+           driver
+           events
+           lib
+           lib-be
+           query-processor
+           server
+           sql-tools
+           tracing
+           transforms
+           transforms-base
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
+
+  enterprise/transforms-python
+  {:team "Graphy"
+   :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.core
+           metabase-enterprise.transforms-python.init}
+   :uses #{analytics-interface
+           api
+           app-db
+           config
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           query-processor
+           settings
+           transforms
+           transforms-base
+           util}
+   :model-exports #{:model/PythonLibrary}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/TransformRun}}
 
   enterprise/upload-management
-  {:api  #{metabase-enterprise.upload-management.api}
+  {:team "UX West"
+   :api  #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
            premium-features
            upload
-           util}}}
+           util}
+   :model-imports #{:model/Database :model/Table}}
+
+  enterprise/workspaces
+  {:team "Metabot"
+   :api  #{}
+   :uses #{premium-features}}
+
+  enterprise/writable-connection
+  {:team "Graphy"
+   :api  #{}
+   :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
@@ -1682,6 +3470,14 @@
   {:ignored-namespace-patterns
    #{"-test$"                               ; anything ending in `-test`
      "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test[-.]dataset"                      ; anything that contains `test.dataset` or `test-dataset`
      "test\\.impl"                          ; anything that contains `test.impl`
      "test-setup"                           ; anything that contains `test-setup`
+     "test[-_]helpers"                      ; anything that contains `test-helpers` or `test_helpers`
      "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`
+
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!                                                                                       !!
+;; !!  PRO TIP! Run the tests in [[metabase.core.modules-test]] when you change this file!  !!
+;; !!                                                                                       !!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

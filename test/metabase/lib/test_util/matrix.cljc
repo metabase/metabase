@@ -3,12 +3,12 @@
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (defn- metadata-with-column-of-type
   [column-type]
@@ -20,7 +20,6 @@
                      :database-required false
                      :table-id 1
                      :name "TEST_ME"
-                     :ident (u/generate-nano-id)
                      :coercion-strategy nil
                      :settings nil
                      :caveats nil
@@ -64,7 +63,6 @@
                        :database-required false,
                        :table-id 1,
                        :name "ID",
-                       :ident (u/generate-nano-id)
                        :coercion-strategy nil,
                        :settings nil,
                        :caveats nil,
@@ -119,7 +117,6 @@
                        :custom-position 0,
                        :active true,
                        :id 10,
-                       :ident (u/generate-nano-id)
                        :parent-id nil,
                        :points-of-interest nil,
                        :visibility-type :normal,
@@ -139,7 +136,6 @@
                        :database-required false
                        :table-id 10
                        :name "FK_ID"
-                       :ident (u/generate-nano-id)
                        :coercion-strategy nil
                        :settings nil
                        :caveats nil
@@ -199,7 +195,7 @@
                   "Matrix - Foreign__TEST_ME"]
                  [(-> (lib/query mp table-meta)
                       (lib/join (lib/join-clause table-meta [(lib/= (lib.metadata/field mp 1) (lib.metadata/field mp 1))])))
-                  "Matrix__TEST_ME"]
+                  "Matrix_2__TEST_ME"]
                  [(lib/query mp (:matrix mock-cards))
                   "TEST_ME"]
                  [(lib/query mp (:matrix/native mock-cards))
@@ -208,9 +204,16 @@
 
 (defn find-first
   "Finds the column with the matching `:lib/desired-column-alias`"
-  [desired columns]
-  (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns))
+  [query desired columns]
+  ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
+  ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
+  (let [columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      columns)]
+    (or (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns)
+        (throw (ex-info "Failed to find column"
+                        {:desired-column-alias desired, :found (map :lib/desired-column-alias columns)})))))
 
 (deftest ^:parallel matrix-test-queries-test
   (doseq [[query desired] (test-queries :type/Text)]
-    (is (find-first desired (lib/visible-columns query)))))
+    (is (find-first query desired (lib/visible-columns query)))))

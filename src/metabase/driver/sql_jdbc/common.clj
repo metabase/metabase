@@ -43,7 +43,7 @@
                       v)) "" additional-opts)))
 
 (defn handle-additional-options
-  "If `details` contains an `:addtional-options` key, append those options to the connection string in `connection-spec`.
+  "If `details` contains an `:additional-options` key, append those options to the connection string in `connection-spec`.
    (Some drivers like MySQL provide this details field to allow special behavior where needed).
 
    Optionally specify `seperator-style`, which defaults to `:url` (e.g. `?a=1&b=2`). You may instead set it to
@@ -54,13 +54,14 @@
   ([connection-spec]
    (handle-additional-options connection-spec connection-spec))
   ;; two-arity+options version provided for when `connection-spec` is being built up separately from `details` source
-  ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as _details} & {:keys [seperator-style]
-                                                                                                                :or   {seperator-style :url}}]
-   (-> (dissoc connection-spec :additional-options)
-       (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
+  ([{connection-string :subname, uri :connection-uri :as connection-spec}
+    {additional-options :additional-options, :as _details} & {:keys [seperator-style] :or {seperator-style :url}}]
+   (cond-> (dissoc connection-spec :additional-options)
+     uri (assoc :connection-uri (conn-str-with-additional-opts uri seperator-style additional-options))
+     :always (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
 
 (defn additional-options->map
-  "Attempts to parse the entires within the `additional-options` string into a map of keys to values. `separator-style`
+  "Attempts to parse the entries within the `additional-options` string into a map of keys to values. `separator-style`
   works as in the other functions in this namespace (since it influences the separator that appears between pairs).
 
   `opt-name-val-separator?` is an optional parameter that indicates the string that appears between keys and values. If

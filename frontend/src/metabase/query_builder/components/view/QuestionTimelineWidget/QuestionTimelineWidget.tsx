@@ -1,18 +1,18 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
+import { getUiControls } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   onCloseTimelines,
   onOpenTimelines,
-} from "metabase/query_builder/actions";
-import { getUiControls } from "metabase/query_builder/selectors";
+} from "metabase/redux/query-builder";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
 }
 
-const QuestionTimelineWidget = ({
+export const QuestionTimelineWidget = ({
   className,
 }: QuestionTimelineWidgetProps): JSX.Element => {
   const { isShowingTimelineSidebar } = useSelector(getUiControls);
@@ -21,13 +21,19 @@ const QuestionTimelineWidget = ({
   const handleOpenTimelines = () => dispatch(onOpenTimelines());
   const handleCloseTimelines = () => dispatch(onCloseTimelines());
 
+  function handleClick(isShowingTimelineSidebar: boolean) {
+    if (isShowingTimelineSidebar) {
+      handleCloseTimelines();
+    } else {
+      handleOpenTimelines();
+    }
+  }
+
   return (
     <ViewFooterButton
       icon="calendar"
       tooltipLabel={t`Events`}
-      onClick={
-        isShowingTimelineSidebar ? handleCloseTimelines : handleOpenTimelines
-      }
+      onClick={() => handleClick(isShowingTimelineSidebar)}
       className={className}
     />
   );
@@ -42,6 +48,3 @@ QuestionTimelineWidget.shouldRender = ({
 }: QuestionTimelineWidgetOpts) => {
   return isTimeseries;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionTimelineWidget;

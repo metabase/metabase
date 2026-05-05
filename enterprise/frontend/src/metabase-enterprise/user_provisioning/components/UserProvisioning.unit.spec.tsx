@@ -12,12 +12,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { UserProvisioning } from "./UserProvisioning";
 
@@ -125,15 +125,19 @@ describe("SCIM User Provisioning Settings", () => {
 
   it("should allow copying the scim URL", async () => {
     window.prompt = jest.fn(); // no idea what this does, but jsdom says it's not implemented
+    Object.assign(window.navigator, {
+      clipboard: {
+        writeText: jest.fn().mockImplementation(() => Promise.resolve()),
+      },
+    });
     await setup({
       settings: {
         "scim-enabled": true,
       },
     });
 
-    const copyButton = await screen.findByTestId("copy-button");
+    await userEvent.click(screen.getByLabelText("copy icon"));
 
-    await userEvent.click(copyButton);
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
   });
 

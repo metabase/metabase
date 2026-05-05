@@ -13,56 +13,66 @@ import {
   createMockNativeQuerySnippet,
 } from "metabase-types/api/mocks";
 
-import SnippetFormModal from "./SnippetFormModal";
+import { SnippetFormModal } from "./SnippetFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",
-  name: "Top folder",
+  name: "SQL snippets",
   can_write: true,
 };
 
 type SetupOpts = {
-  snippet?: Partial<NativeQuerySnippet>;
-  onClose?: null | (() => void);
+  snippet?:
+    | NativeQuerySnippet
+    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id?: undefined });
   withDefaultFoldersList?: boolean;
 };
 
 async function setup({
   snippet = {},
   withDefaultFoldersList = true,
-  onClose = jest.fn(),
 }: SetupOpts = {}) {
-  fetchMock.get(
-    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
-    TOP_SNIPPETS_FOLDER,
-  );
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace: "snippets" },
+    response: TOP_SNIPPETS_FOLDER,
+  });
 
   if (withDefaultFoldersList) {
-    fetchMock.get(
-      { url: "path:/api/collection", query: { namespace: "snippets" } },
-      [TOP_SNIPPETS_FOLDER],
-    );
+    fetchMock.get({
+      url: "path:/api/collection",
+      query: { namespace: "snippets" },
+      response: [TOP_SNIPPETS_FOLDER],
+    });
   }
 
-  fetchMock.post("path:/api/native-query-snippet", async (url) => {
+  fetchMock.post("path:/api/native-query-snippet", async (call) => {
     return createMockNativeQuerySnippet(
-      await fetchMock.lastCall(url)?.request?.json(),
+      await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
     );
   });
 
   if (snippet.id) {
     fetchMock.put(
       `path:/api/native-query-snippet/${snippet.id}`,
-      async (url) => {
+      async (call) => {
         return createMockNativeQuerySnippet(
-          await fetchMock.lastCall(url)?.request?.json(),
+          await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
         );
       },
     );
   }
 
+  const onCreate = jest.fn();
+  const onUpdate = jest.fn();
+  const onClose = jest.fn();
   renderWithProviders(
-    <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
+    <SnippetFormModal
+      snippet={snippet}
+      onCreate={onCreate}
+      onUpdate={onUpdate}
+      onClose={onClose}
+    />,
   );
 
   await waitForLoaderToBeRemoved();
@@ -112,10 +122,11 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", query: { namespace: "snippets" } },
-        [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      );
+      fetchMock.get({
+        url: "path:/api/collection",
+        query: { namespace: "snippets" },
+        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      });
 
       await setup({ withDefaultFoldersList: false });
 
@@ -154,13 +165,6 @@ describe("SnippetFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setup({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {
@@ -212,10 +216,11 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", query: { namespace: "snippets" } },
-        [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      );
+      fetchMock.get({
+        url: "path:/api/collection",
+        query: { namespace: "snippets" },
+        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      });
 
       await setupEditing({ withDefaultFoldersList: false });
 
@@ -256,13 +261,6 @@ describe("SnippetFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setupEditing({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {

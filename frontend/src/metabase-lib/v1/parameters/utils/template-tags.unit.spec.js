@@ -1,20 +1,26 @@
 import {
   getTemplateTagParameters,
   getTemplateTags,
-  remapParameterValuesToTemplateTags,
 } from "metabase-lib/v1/parameters/utils/template-tags";
 import { createMockTemplateTag } from "metabase-types/api/mocks";
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
-    it("should return an empty array for an invalid card", () => {
-      expect(getTemplateTags({})).toEqual([]);
-    });
-
     it("should return an empty array for a non-native query", () => {
       const card = {
         dataset_query: {
           type: "query",
+        },
+      };
+      expect(getTemplateTags(card)).toEqual([]);
+    });
+
+    it("should return an empty array for an internal query", () => {
+      const card = {
+        dataset_query: {
+          type: "internal",
+          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+          args: [],
         },
       };
       expect(getTemplateTags(card)).toEqual([]);
@@ -130,6 +136,7 @@ describe("parameters/utils/cards", () => {
           slug: "a",
           target: ["variable", ["template-tag", "a"]],
           type: "foo",
+          isMultiSelect: false,
         },
         {
           default: undefined,
@@ -138,6 +145,7 @@ describe("parameters/utils/cards", () => {
           slug: "b",
           target: ["variable", ["template-tag", "b"]],
           type: "string/=",
+          isMultiSelect: false,
         },
         {
           default: undefined,
@@ -146,6 +154,7 @@ describe("parameters/utils/cards", () => {
           slug: "c",
           target: ["variable", ["template-tag", "c"]],
           type: "number/=",
+          isMultiSelect: false,
         },
         {
           default: undefined,
@@ -154,6 +163,7 @@ describe("parameters/utils/cards", () => {
           slug: "d",
           target: ["variable", ["template-tag", "d"]],
           type: "date/single",
+          isMultiSelect: false,
         },
         {
           default: undefined,
@@ -162,11 +172,78 @@ describe("parameters/utils/cards", () => {
           slug: "e",
           target: ["dimension", ["template-tag", "e"]],
           type: "foo",
+          isMultiSelect: true,
         },
       ];
 
       expect(getTemplateTagParameters(tags)).toEqual(
         parametersWithFieldFilterOperatorTypes,
+      );
+    });
+
+    it("should produce string/= for text tags without widget-type (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "text",
+          id: "1",
+          name: "name",
+          "display-name": "Name",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "Name",
+            slug: "name",
+            target: ["variable", ["template-tag", "name"]],
+            type: "string/=",
+          }),
+        ]),
+      );
+    });
+
+    it("should produce boolean/= for boolean tags without widget-type (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "boolean",
+          id: "1",
+          name: "active",
+          "display-name": "Is Active",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "Is Active",
+            slug: "active",
+            target: ["variable", ["template-tag", "active"]],
+            type: "boolean/=",
+          }),
+        ]),
+      );
+    });
+
+    it("should produce string/= for unknown tag types (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "unknown-type",
+          id: "1",
+          name: "x",
+          "display-name": "X",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "X",
+            slug: "x",
+            target: ["variable", ["template-tag", "x"]],
+            type: "string/=",
+          }),
+        ]),
       );
     });
 
@@ -198,65 +275,9 @@ describe("parameters/utils/cards", () => {
           slug: "a",
           target: ["variable", ["template-tag", "a"]],
           type: "string/=",
+          isMultiSelect: false,
         },
       ]);
-    });
-  });
-
-  describe("remapParameterValuesToTemplateTags", () => {
-    it("should convert a dashboard parameterValues map into a map of template tag values", () => {
-      const parameterValues = {
-        "dashboard-parameter-1": "aaa",
-        "dashboard-parameter-2": "bbb",
-        "dashboard-parameter-3": null,
-        "dashboard-parameter-4": "ddd",
-      };
-
-      const dashboardParameters = [
-        {
-          id: "dashboard-parameter-1",
-          target: ["variable", ["template-tag", "template-tag-1"]],
-        },
-        {
-          id: "dashboard-parameter-2",
-          target: ["dimension", ["template-tag", "template-tag-2"]],
-        },
-        {
-          id: "dashboard-parameter-3",
-          target: ["dimension", ["template-tag", "template-tag-3"]],
-        },
-        {
-          id: "dashboard-parameter-4",
-          target: ["dimension", ["field", 1, null]],
-        },
-        {
-          id: "dashboard-parameter-5",
-        },
-      ];
-
-      const templateTags = [
-        {
-          name: "template-tag-1",
-        },
-        {
-          name: "template-tag-2",
-        },
-        {
-          name: "template-tag-3",
-        },
-      ];
-
-      expect(
-        remapParameterValuesToTemplateTags(
-          templateTags,
-          dashboardParameters,
-          parameterValues,
-        ),
-      ).toEqual({
-        "template-tag-1": "aaa",
-        "template-tag-2": "bbb",
-        "template-tag-3": null,
-      });
     });
   });
 });

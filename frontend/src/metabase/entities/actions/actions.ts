@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -6,13 +5,7 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import type { Dispatch } from "metabase/redux/store";
 import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
@@ -24,7 +17,8 @@ import type {
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+
+import { createEntity, entityCompatibleQuery } from "../utils";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,
@@ -65,7 +59,7 @@ const defaultImplicitActionCreateOptions = {
 };
 
 const enableImplicitActionsForModel =
-  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
     // We're ordering actions that's most recently created first.
     // So if we want to show Create, Update, Delete, then we need
@@ -109,23 +103,20 @@ const enableImplicitActionsForModel =
     dispatch(Actions.actions.invalidateLists());
   };
 
-const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
-const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
-
 /**
  * @deprecated use "metabase/api" instead
  */
-const Actions = createEntity({
+export const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   schema: ActionSchema,
   path: "/api/action",
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetActionQuery,
     }),
     useListQuery: useListActionsQuery,
-  },
+  }),
   api: {
     list: (entityQuery: ListActionsRequest, dispatch: Dispatch) =>
       entityCompatibleQuery(
@@ -173,65 +164,4 @@ const Actions = createEntity({
     "visualization_settings",
     "archived",
   ],
-  objectActions: {
-    createPublicLink: createThunkAction(
-      CREATE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) =>
-        async (dispatch: Dispatch) => {
-          const data = await entityCompatibleQuery(
-            { id },
-            dispatch,
-            actionApi.endpoints.createActionPublicLink,
-          );
-
-          return { id, uuid: data.uuid };
-        },
-    ),
-    deletePublicLink: createThunkAction(
-      DELETE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) =>
-        async (dispatch: Dispatch) => {
-          await entityCompatibleQuery(
-            { id },
-            dispatch,
-            actionApi.endpoints.deleteActionPublicLink,
-          );
-
-          return { id };
-        },
-    ),
-    setArchived: ({ id }: WritebackAction, archived: boolean) =>
-      Actions.actions.update(
-        { id },
-        { archived },
-        undo({}, t`action`, archived ? t`archived` : t`unarchived`),
-      ),
-  },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
-    switch (type) {
-      case CREATE_PUBLIC_LINK: {
-        const { id, uuid } = payload;
-        return updateIn(state, [id], (action) => {
-          return { ...action, public_uuid: uuid };
-        });
-      }
-      case DELETE_PUBLIC_LINK: {
-        const { id } = payload;
-        return updateIn(state, [id], (action) => {
-          return { ...action, public_uuid: null };
-        });
-      }
-      default: {
-        return state;
-      }
-    }
-  },
-  objectSelectors: {
-    getUrl: (action: WritebackAction) =>
-      Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
-  },
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Actions;

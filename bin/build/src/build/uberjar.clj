@@ -9,7 +9,7 @@
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io OutputStream)
+   (java.io File OutputStream)
    (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
@@ -18,15 +18,24 @@
 (def ^:private class-dir
   (u/filename u/project-root-directory "target" "classes"))
 
+(def ^:private uberjar-dir
+  "Canonical directory for all uberjar builds."
+  (u/filename u/project-root-directory "target" "uberjar"))
+
+(def ^:private artifact-name
+  "The uberjar artifact name, customizable via the MB_JAR_FILENAME env var."
+  (or (System/getenv "MB_JAR_FILENAME")
+      "metabase.jar"))
+
 (def uberjar-filename
-  "Target filename for the Metabase uberjar."
-  (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
+  "Full path to the Metabase uberjar, including the artifact name."
+  (u/filename uberjar-dir artifact-name))
 
 (defn- do-with-duration-ms [thunk f]
-  (let [start-time-ms (System/currentTimeMillis)
-        result        (thunk)
-        duration      (- (System/currentTimeMillis) start-time-ms)]
-    (f duration)
+  (let [timer      (u/start-timer)
+        result     (thunk)
+        elapsed-ms (u/since-ms timer)]
+    (f elapsed-ms)
     result))
 
 (defmacro ^:private with-duration-ms [[duration-ms-binding] & body]
@@ -38,7 +47,8 @@
 
 (defn- create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
-  (b/create-basis {:project "deps.edn", :aliases #{edition}}))
+  (b/create-basis {:project "deps.edn",
+                   :aliases #{edition :drivers}}))
 
 (defn- all-paths [basis]
   (concat (:paths basis)
@@ -69,6 +79,22 @@
    (ns.deps/graph)
    ns-decls))
 
+(def ^:private drivers-excluded-from-aot
+  "Drivers whose JDBC dependencies are not bundled due to licensing restrictions (users must supply the JDBC driver JAR
+  themselves). These drivers are included as source on the classpath and compiled lazily at runtime when their JDBC
+  driver is present in the plugins directory."
+  #{"oracle" "vertica"})
+
+(defn- all-drivers []
+  (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
+       (filter (fn [^File d]
+                 (and
+                  (.isDirectory d)
+                  (not (.isHidden d))
+                  (.exists (io/file d "deps.edn"))
+                  (not (contains? drivers-excluded-from-aot (.getName d))))))
+       (map (comp symbol #(str "metabase.driver." %) #(.getName ^File %)))))
+
 (defn- metabase-namespaces-in-topo-order [basis]
   (let [ns-decls   (into []
                          (comp (map io/file)
@@ -79,7 +105,7 @@
                         ns.deps/topo-sort
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
-        all        (concat orphans sorted)]
+        all        (concat orphans sorted (all-drivers))]
     (assert (contains? (set all) 'metabase.core.bootstrap))
     (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
@@ -112,10 +138,16 @@
    ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
    #"\~$"
    #"^\.?#"
-   #"\.rej$"])
+   #"\.rej$"
+   ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
+   ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
+   #"^modules/"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
+    ;; put module config file on classpath for log team attribution
+    (b/copy-file {:src ".clj-kondo/config/modules/config.edn"
+                  :target "resources/metabase/config/modules.edn"})
     (doseq [path (all-paths basis)]
       (u/step (format "Copy resources from %s" path)
         (b/copy-dir {:target-dir class-dir
@@ -129,7 +161,11 @@
    ;; tf` -- see Slacc thread
    ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
    #".*module-info\.class"
-   #"^LICENSE$"])
+   #"^LICENSE$"
+   #".*LICENSE.jol.txt"
+   #"META-INF/license/LICENSE.jol.txt"
+   #"META-INF/license.*"
+   #"META-INF/LICENSE.*"])
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
@@ -157,6 +193,25 @@
   (.write (manifest) os)
   (.flush os))
 
+(defn- add-non-aot-driver-sources!
+  "Inject source files for drivers excluded from AOT directly into the uberjar.
+  These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
+  ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
+  class-dir."
+  []
+  (u/step "Add non-AOT driver sources to uberjar"
+    (u/with-open-jar-file-system [fs uberjar-filename]
+      (doseq [driver drivers-excluded-from-aot
+              :let [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
+              :when (.isDirectory src-dir)]
+        (u/step (format "Add source for %s" driver)
+          (doseq [^File f (file-seq src-dir)
+                  :when (.isFile f)]
+            (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
+                  target   (u/get-path-in-filesystem fs rel-path)]
+              (Files/createDirectories (.getParent target) (into-array java.nio.file.attribute.FileAttribute []))
+              (Files/copy (.toPath f) target (into-array java.nio.file.CopyOption [])))))))))
+
 (defn update-manifest!
   "Start a build step that updates the manifest.
   The customizations we need to make are not currently supported by tools.build -- see
@@ -164,7 +219,7 @@
   to do it by hand for the time being."
   []
   (u/step "Update META-INF/MANIFEST.MF"
-    (u/with-open-jar-file-system [fs "target/uberjar/metabase.jar"]
+    (u/with-open-jar-file-system [fs uberjar-filename]
       (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
         (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
@@ -183,6 +238,6 @@
         (compile-sources! basis)
         (copy-resources! basis)
         (create-uberjar! basis)
+        (add-non-aot-driver-sources!)
         (update-manifest!))
-      (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
-                  (/ duration-ms 1000.0)))))
+      (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))

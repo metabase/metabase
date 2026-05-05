@@ -6,7 +6,7 @@ title: Troubleshooting notifications
 
 Metabase is failing to send notifications like alerts or dashboard subscriptions.
 
-**Root cause:** 
+**Root cause:**
 
 When long running queries get stuck in the queue, they can block all other queries from running.
 

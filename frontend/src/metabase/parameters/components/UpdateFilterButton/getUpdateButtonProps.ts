@@ -20,31 +20,37 @@ export function getUpdateButtonProps(
   defaultValue?: unknown,
   required?: boolean,
 ): { label: string; isDisabled: boolean } {
+  const isDefaultValue = areParameterValuesIdentical(
+    unsavedValue,
+    defaultValue,
+  );
+  const isEmpty = !hasValue(unsavedValue);
+  const isUnchanged = areParameterValuesIdentical(value, unsavedValue);
+
   if (required) {
+    if (isDefaultValue || isEmpty) {
+      return {
+        label: getResetLabel(),
+        isDisabled: isUnchanged,
+      };
+    }
+
     return {
-      label:
-        !hasValue(unsavedValue) ||
-        areParameterValuesIdentical(unsavedValue, defaultValue)
-          ? getResetLabel()
-          : getUpdateLabel(),
-      isDisabled:
-        areParameterValuesIdentical(unsavedValue, value) &&
-        hasValue(unsavedValue),
+      label: getUpdateLabel(),
+      isDisabled: isUnchanged,
     };
   }
 
   if (hasValue(defaultValue)) {
     return {
-      label: areParameterValuesIdentical(unsavedValue, defaultValue)
-        ? getResetLabel()
-        : getUpdateLabel(),
-      isDisabled: areParameterValuesIdentical(value, unsavedValue),
+      label: isDefaultValue ? getResetLabel() : getUpdateLabel(),
+      isDisabled: isUnchanged,
     };
   }
 
   return {
     label: hasValue(value) ? getUpdateLabel() : getAddLabel(),
-    isDisabled: areParameterValuesIdentical(value, unsavedValue),
+    isDisabled: isUnchanged,
   };
 }
 

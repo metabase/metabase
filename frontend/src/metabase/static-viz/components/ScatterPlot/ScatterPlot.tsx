@@ -4,7 +4,7 @@ import { init } from "echarts/core";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
@@ -46,7 +46,7 @@ export function ScatterPlot({
       verticalPadding: LEGEND_PADDING,
     });
 
-  const chartMeasurements = getChartMeasurements(
+  const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
@@ -57,7 +57,7 @@ export function ScatterPlot({
 
   const option = getScatterPlotOption(
     chartModel,
-    chartMeasurements,
+    chartLayout,
     null,
     [],
     settings,
@@ -86,6 +86,8 @@ export function ScatterPlot({
           height={height}
           width={width}
           preserveAspectRatio="xMinYMin slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

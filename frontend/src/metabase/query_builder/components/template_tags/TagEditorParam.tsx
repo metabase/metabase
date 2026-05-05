@@ -2,19 +2,21 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { connect } from "metabase/lib/redux";
+import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
+import { type DispatchFn, connect } from "metabase/redux";
 import { fetchField } from "metabase/redux/metadata";
+import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
@@ -27,14 +29,15 @@ import type {
   Parameter,
   ParameterValuesConfig,
   RowValue,
+  TableId,
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import TagEditorParamS from "./TagEditorParam.module.css";
 import {
@@ -42,15 +45,30 @@ import {
   FieldMappingSelect,
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
+  TableMappingSelect,
+  VariableTypeSelect,
 } from "./TagEditorParamParts";
+import { FieldAliasInput } from "./TagEditorParamParts/FieldAliasInput";
+import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
 import {
   ContainerLabel,
   InputContainer,
 } from "./TagEditorParamParts/TagEditorParam";
-import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
-import type { WidgetOption } from "./types";
 
-interface Props {
+interface StateProps {
+  metadata: Metadata;
+  originalQuestion?: Question;
+}
+
+interface DispatchProps {
+  fetchField: (fieldId: FieldId, force?: boolean) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
+}
+
+interface OwnProps {
   tag: TemplateTag;
   /**
    * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
@@ -60,15 +78,13 @@ interface Props {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
-  metadata: Metadata;
-  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
+  setTemplateTagConfig?: (
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
-  fetchField: (fieldId: FieldId, force?: boolean) => void;
+  parametersAreUserVisible?: boolean;
 }
 
 function mapStateToProps(state: State) {
@@ -78,15 +94,35 @@ function mapStateToProps(state: State) {
   };
 }
 
-const mapDispatchToProps = { fetchField };
+const mapDispatchToProps = (
+  dispatch: DispatchFn,
+  props: OwnProps,
+): DispatchProps => {
+  return {
+    fetchField(fieldId, force) {
+      dispatch(fetchField(fieldId, force));
+    },
+    setTemplateTagConfig(tag, config) {
+      if (props.setTemplateTagConfig) {
+        props.setTemplateTagConfig(tag, config);
+        return;
+      }
+      dispatch(setTemplateTagConfig(tag, config));
+    },
+  };
+};
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
+  isMultiSelect: false,
   values_query_type: undefined,
   values_source_type: undefined,
   values_source_config: undefined,
+  temporal_units: undefined,
 };
 
-class TagEditorParamInner extends Component<Props> {
+class TagEditorParamInner extends Component<
+  OwnProps & StateProps & DispatchProps
+> {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -101,24 +137,36 @@ class TagEditorParamInner extends Component<Props> {
     newType: TemplateTagType,
   ): ParameterValuesConfig => {
     const { tag, parameter, originalQuestion } = this.props;
-    if (!parameter || !originalQuestion) {
+    if (!parameter) {
       return EMPTY_VALUES_CONFIG;
     }
 
-    const query = originalQuestion.query();
-    const queryInfo = Lib.queryDisplayInfo(query);
-    if (!queryInfo.isNative) {
-      return EMPTY_VALUES_CONFIG;
+    const newConfig: ParameterValuesConfig = {
+      ...EMPTY_VALUES_CONFIG,
+      isMultiSelect: isSingleOrMultiSelectable(parameter)
+        ? parameter.isMultiSelect
+        : false,
+    };
+    if (!originalQuestion) {
+      return newConfig;
     }
 
-    const originalTag = Lib.templateTags(query)[tag.name];
-    const parameters = originalQuestion.parameters();
-    const originalParameter = parameters.find(({ id }) => id === parameter.id);
+    const originalQuery = originalQuestion.query();
+    const originalQueryInfo = Lib.queryDisplayInfo(originalQuery);
+    if (!originalQueryInfo.isNative) {
+      return newConfig;
+    }
+
+    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalParameter = originalQuestion
+      .parameters()
+      .find(({ id }) => id === parameter.id);
     if (!originalTag || originalTag.type !== newType || !originalParameter) {
-      return EMPTY_VALUES_CONFIG;
+      return newConfig;
     }
 
     return {
+      ...newConfig,
       values_source_type: originalParameter.values_source_type,
       values_source_config: originalParameter.values_source_config,
       values_query_type: originalParameter.values_query_type,
@@ -135,7 +183,10 @@ class TagEditorParamInner extends Component<Props> {
         type: type,
         default: undefined,
         dimension: undefined,
+        alias: undefined,
+        "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
+        "table-id": undefined,
       });
 
       setParameterValue(tag.id, null);
@@ -204,7 +255,7 @@ class TagEditorParamInner extends Component<Props> {
     });
   };
 
-  setParameterAttribute(attr: keyof TemplateTag, val: any) {
+  setTemplateTagAttribute(attr: keyof TemplateTag, val: any) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
       this.props.setTemplateTag({
@@ -226,16 +277,40 @@ class TagEditorParamInner extends Component<Props> {
         return;
       }
 
-      const newTag = {
+      const newTag: TemplateTag = {
         ...tag,
         dimension,
-        "widget-type": getDefaultParameterWidgetType(tag, field),
+        alias: undefined,
+        ...(tag.type === "dimension"
+          ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
+          : {}),
       };
 
       setTemplateTag({
         ...newTag,
         options: getDefaultParameterOptions(newTag),
       });
+    }
+  };
+
+  setTableId = (tableId: TableId | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["table-id"] !== tableId) {
+      setTemplateTag({ ...tag, "table-id": tableId });
+    }
+  };
+
+  setEmitAlias = (emitAlias: boolean) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag["emit-alias"] !== emitAlias) {
+      setTemplateTag({ ...tag, "emit-alias": emitAlias });
+    }
+  };
+
+  setAlias = (alias: string | undefined) => {
+    const { tag, setTemplateTag } = this.props;
+    if (tag.alias !== alias) {
+      setTemplateTag({ ...tag, alias });
     }
   };
 
@@ -264,51 +339,55 @@ class TagEditorParamInner extends Component<Props> {
       metadata,
       parameter,
       embeddedParameterVisibility,
+      setTemplateTagConfig,
+      parametersAreUserVisible = true,
     } = this.props;
-    let widgetOptions: WidgetOption[] = [];
-    let field: Field | null = null;
-    let table: Table | null | undefined = null;
-    let fieldMetadataLoaded = false;
-    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      field = metadata.field(tag.dimension[1]);
-      if (field) {
-        widgetOptions = getParameterOptionsForField(field);
-        table = field.table;
-        fieldMetadataLoaded = true;
-      }
-    }
 
     const isDimension = tag.type === "dimension";
-    const hasSelectedDimensionField =
-      isDimension && Array.isArray(tag.dimension);
-    const hasWidgetOptions = widgetOptions.length > 0;
+    const isTemporalUnit = tag.type === "temporal-unit";
+    const isTable = tag.type === "table";
+    const field = Array.isArray(tag.dimension)
+      ? metadata.field(tag.dimension[1])
+      : null;
+    const widgetOptions =
+      field != null ? getParameterOptionsForField(field) : [];
 
     return (
       <Box
         className={TagEditorParamS.TagContainer}
         data-testid={`tag-editor-variable-${tag.name}`}
       >
-        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+        <ContainerLabel>{t`Variable name`}</ContainerLabel>
         <Box component="h3" className={TagEditorParamS.TagName}>
           {tag.name}
         </Box>
-
         <VariableTypeSelect value={tag.type} onChange={this.setType} />
 
-        {tag.type === "dimension" && (
+        {(isDimension || isTemporalUnit) && (
           <FieldMappingSelect
             tag={tag}
-            hasSelectedDimensionField={hasSelectedDimensionField}
-            table={table}
             field={field}
-            fieldMetadataLoaded={fieldMetadataLoaded}
             database={database}
             databases={databases}
             setFieldFn={this.setDimension}
           />
         )}
 
-        {hasSelectedDimensionField && (
+        {isTable && (
+          <TableMappingSelect
+            tag={tag}
+            database={database}
+            databases={databases}
+            onChange={this.setTableId}
+            onChangeEmitAlias={this.setEmitAlias}
+          />
+        )}
+
+        {(isDimension || isTemporalUnit) && field != null && (
+          <FieldAliasInput tag={tag} onChange={this.setAlias} />
+        )}
+
+        {isDimension && field != null && (
           <FilterWidgetTypeSelect
             tag={tag}
             value={this.getFilterWidgetTypeValue(tag)}
@@ -317,25 +396,66 @@ class TagEditorParamInner extends Component<Props> {
           />
         )}
 
-        {(hasWidgetOptions || !isDimension) && (
-          <FilterWidgetLabelInput
-            tag={tag}
-            onChange={(value) =>
-              this.setParameterAttribute("display-name", value)
-            }
-          />
+        {parametersAreUserVisible &&
+          ((!isDimension && !isTable) || widgetOptions.length > 0) && (
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setTemplateTagAttribute("display-name", value)
+              }
+            />
+          )}
+
+        {parametersAreUserVisible && parameter && isTemporalUnit && (
+          <>
+            <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
+            <Box mb="xl">
+              <TemporalUnitSettings
+                parameter={parameter}
+                onChangeTemporalUnits={(newTemporalUnits) => {
+                  setTemplateTagConfig(tag, {
+                    temporal_units: newTemporalUnits,
+                  });
+
+                  if (tag.default != null) {
+                    if (
+                      !newTemporalUnits.includes(tag.default as TemporalUnit)
+                    ) {
+                      // reset value as it's not on the new list of available options
+                      this.setTemplateTagAttribute("default", null);
+                      this.props.setParameterValue(tag.id, null);
+                    }
+                  }
+                }}
+              />
+            </Box>
+          </>
         )}
 
-        {parameter && canUseCustomSource(parameter) && (
-          <InputContainer>
-            <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
-            <ValuesSourceSettings
+        {parametersAreUserVisible &&
+          parameter &&
+          canUseCustomSource(parameter) && (
+            <InputContainer>
+              <ContainerLabel>{t`How should users filter on this variable?`}</ContainerLabel>
+              <ValuesSourceSettings
+                parameter={parameter}
+                onChangeQueryType={this.setQueryType}
+                onChangeSourceSettings={this.setSourceSettings}
+              />
+            </InputContainer>
+          )}
+
+        {parametersAreUserVisible &&
+          parameter &&
+          isSingleOrMultiSelectable(parameter) && (
+            <ParameterMultiSelectInput
+              tag={tag}
               parameter={parameter}
-              onChangeQueryType={this.setQueryType}
-              onChangeSourceSettings={this.setSourceSettings}
+              onChangeMultiSelect={(isMultiSelect) =>
+                setTemplateTagConfig(tag, { isMultiSelect })
+              }
             />
-          </InputContainer>
-        )}
+          )}
 
         {parameter && (
           <DefaultRequiredValueControl
@@ -343,10 +463,11 @@ class TagEditorParamInner extends Component<Props> {
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
-              this.setParameterAttribute("default", value);
+              this.setTemplateTagAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}
             onChangeRequired={this.setRequired}
+            parametersAreUserVisible={parametersAreUserVisible}
           />
         )}
       </Box>
@@ -354,7 +475,12 @@ class TagEditorParamInner extends Component<Props> {
   }
 }
 
-export const TagEditorParam = connect(
+export const TagEditorParam = connect<
+  StateProps,
+  DispatchProps,
+  OwnProps,
+  State
+>(
   mapStateToProps,
   mapDispatchToProps,
 )(TagEditorParamInner);

@@ -7,9 +7,9 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseDangerZoneSection } from "./DatabaseDangerZoneSection";
 
@@ -81,7 +81,9 @@ describe("DatabaseDangerZoneSection", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/discard_values`,
+          ),
         ).toBe(true);
       });
     });
@@ -98,7 +100,9 @@ describe("DatabaseDangerZoneSection", () => {
 
       expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();
       expect(
-        fetchMock.called(`path:/api/database/${database.id}/discard_values`),
+        fetchMock.callHistory.called(
+          `path:/api/database/${database.id}/discard_values`,
+        ),
       ).toBe(false);
     });
 

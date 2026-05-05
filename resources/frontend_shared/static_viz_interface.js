@@ -17,18 +17,6 @@ function toJSMap(m) {
 /**
  * @deprecated use javascript_visualization instead
  */
-function row_chart(settings, data, colors, tokenFeatures) {
-  return StaticViz.LegacyRenderChart("row", {
-    settings: JSON.parse(settings),
-    data: JSON.parse(data),
-    colors: JSON.parse(colors),
-    tokenFeatures: JSON.parse(tokenFeatures),
-  });
-}
-
-/**
- * @deprecated use javascript_visualization instead
- */
 function gauge(card, data, tokenFeatures) {
   return StaticViz.LegacyRenderChart("gauge", {
     card: JSON.parse(card),
@@ -48,17 +36,6 @@ function funnel(data, settings, tokenFeatures) {
   });
 }
 
-/**
- * @deprecated use javascript_visualization instead
- */
-function progress(data, settings, instanceColors, tokenFeatures) {
-  return StaticViz.LegacyRenderChart("progress", {
-    data: JSON.parse(data),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
-    tokenFeatures: JSON.parse(tokenFeatures),
-  });
-}
 
 function javascript_visualization(rawSeries, dashcardSettings, options) {
   const content = StaticViz.RenderChart(

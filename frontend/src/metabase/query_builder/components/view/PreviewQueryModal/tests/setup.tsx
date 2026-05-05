@@ -1,34 +1,34 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { TokenFeatures } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDatabase,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockNativeCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { PreviewQueryModal } from "..";
 
 export interface SetupOpts {
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupOpts = {}) => {
-  const card = createMockCard();
+  const card = createMockNativeCard();
   const state = createMockState({
     qb: createMockQueryBuilderState({ card }),
     entities: createMockEntitiesState({
@@ -41,9 +41,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   fetchMock.post("path:/api/dataset/native", {
     status: 500,

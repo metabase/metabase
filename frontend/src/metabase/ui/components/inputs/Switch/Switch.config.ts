@@ -6,6 +6,7 @@ const LABEL_FONT_SIZES: Record<string, string> = {
   xs: rem(12),
   sm: rem(14),
   md: rem(16),
+  lg: rem(18),
 };
 
 const LABEL_LINE_HEIGHT: Record<string, string> = {
@@ -41,8 +42,8 @@ const THUMB_SIZES: Record<string, string> = {
 
 const TRACK_PADDING_TOP: Record<string, string> = {
   xs: rem(0),
-  sm: rem(2),
-  md: rem(0),
+  sm: rem(1),
+  md: rem(1),
 };
 
 export const switchOverrides = {

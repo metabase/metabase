@@ -10,15 +10,15 @@ You have created a [linked filter][linked-filter-gloss] so that (for example) if
 - your linked filter seems to have no effect, or
 - your linked filter widget does not display a dropdown of filtered values.
 
-If you are having problems with a regular [filter widget][filter-widget-gloss], please see [this guide](./filters.md). In order to fix problems with linked filters, you need a clear understanding of how they work:
+If you are having problems with a regular [filter widget][filter-widget-gloss], please see [this guide](./filters.md). To fix problems with linked filters, you need a clear understanding of how they work:
 
 ## Does a connected dashboard card use a SQL variable?
 
-**Root cause**: Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
+**Root cause**: Native/SQL questions must have a [field filter](../questions/native-editor/field-filters.md) variable to be linked. Regular SQL variables won't work.
 
 **Steps to take**:
 
-1. Update the card's query to change the regular variable to a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable.
+1. Update the card's query to change the regular variable to a [field filter](../questions/native-editor/field-filters.md) variable.
 
 See [Limitations of linking filters](../dashboards/linked-filters.md#limitations-of-linked-filters).
 
@@ -42,7 +42,7 @@ See [Limitations of linking filters](../dashboards/linked-filters.md#limitations
 
 1. Remove the existing linkage and create a new one in the opposite direction.
 
-## Do some rows actually satisfy the full filter condition?
+## Do some rows satisfy the full filter condition?
 
 **Root cause:** There aren't any rows that satisfy all the conditions in a linked filter. Continuing with the city and state example, if you manually enter the name of a city that isn't in the selected state, no record will satisfy both conditions.
 

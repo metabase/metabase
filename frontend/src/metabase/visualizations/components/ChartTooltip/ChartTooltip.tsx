@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import { getEventTarget } from "metabase/lib/dom";
+import { Tooltip } from "metabase/common/components/Tooltip";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { getEventTarget } from "metabase/utils/dom";
 import type {
   HoveredObject,
   HoveredTimelineEvent,
@@ -36,7 +37,15 @@ export const ChartTooltipContent = ({
   return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
 };
 
-const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
+const ChartTooltip = ({
+  hovered: untranslatedHoveredObject,
+  settings,
+}: ChartTooltipProps) => {
+  const hovered =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateFieldValuesInHoveredObject(
+      untranslatedHoveredObject,
+    );
+
   const tooltip = <ChartTooltipContent hovered={hovered} settings={settings} />;
 
   const isNotEmpty = useMemo(() => {
@@ -60,7 +69,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
 
   const target = hasTargetElement
     ? hovered?.element
-    : hasTargetEvent
+    : hovered?.event != null
       ? getEventTarget(hovered.event)
       : null;
 

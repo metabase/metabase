@@ -91,17 +91,19 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
+      H.getDraggableElements().contains("ID").as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 100,
+        useMouseEvents: true,
       });
-      const idButton = cy
-        .get('[data-testid="draggable-item-ID"]')
-        .closest("[role=button]");
-      const userIdButton = cy
-        .get('[data-testid="draggable-item-User ID"]')
-        .closest("[role=button]");
+      const idButton = () =>
+        cy.get('[data-testid="draggable-item-ID"]').closest("[role=button]");
+      const userIdButton = () =>
+        cy
+          .get('[data-testid="draggable-item-User ID"]')
+          .closest("[role=button]");
       // The ID column should be below the User ID column.
-      expect(idButton.prev()[0]).to.equal(userIdButton[0]);
+      expect(idButton().prev()[0]).to.equal(userIdButton()[0]);
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
     H.modal().findAllByRole("columnheader").first().contains("User ID");
