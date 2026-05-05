@@ -197,15 +197,38 @@
     :redshift   [[:create-user  (str "CREATE USER \"" hacker-name "\" PASSWORD 'Pass1234X'")]
                  [:create-group (str "CREATE GROUP \"" hacker-name "_grp\"")]]
     :mysql      [[:create-user  (str "CREATE USER '" hacker-name "'@'%' IDENTIFIED BY 'Pass1234X'")]
-                 [:create-role  (str "CREATE ROLE '" hacker-name "_r'")]]
+                 [:create-role  (str "CREATE ROLE '" hacker-name "_r'")]
+                 ;; Driver-specific quirk #11: workspace user must not have
+                 ;; GRANT OPTION on anything. Granting *any* privilege to *any*
+                 ;; principal requires the granter to hold the priv WITH
+                 ;; GRANT OPTION, which the workspace user does not.
+                 [:grant-other  "GRANT SELECT ON mysql.* TO 'metabase'@'%'"]]
     :sqlserver  [[:create-user  (str "CREATE USER [" hacker-name "] WITHOUT LOGIN")]
                  [:create-role  (str "CREATE ROLE [" hacker-name "_r]")]
                  [:execute-as   "EXECUTE AS USER = 'dbo'"]]
     :snowflake  [[:use-role     "USE ROLE ACCOUNTADMIN"]
                  [:create-user  (str "CREATE USER \"" hacker-name "\" PASSWORD = 'Pass1234X'")]
-                 [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]]
+                 [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]
+                 ;; Driver-specific quirk #11: workspace user has USAGE on its
+                 ;; granted warehouse only — switching context to another
+                 ;; warehouse must fail (no USAGE; or warehouse doesn't exist
+                 ;; at all). Both are acceptable denial signals.
+                 [:use-warehouse "USE WAREHOUSE \"NONEXISTENT_MB_ISO_WH\""]]
     :clickhouse [[:create-user  (str "CREATE USER `" hacker-name "` IDENTIFIED WITH plaintext_password BY 'Pass1234X'")]
                  [:create-role  (str "CREATE ROLE `" hacker-name "_r`")]]))
+
+(defn- rename-input-table-sql
+  "Per-driver SQL the workspace user attempts when renaming a granted input
+   table — RENAME requires ALTER on the table, which the workspace user only
+   has SELECT on. Engines spell rename three different ways: `ALTER TABLE …
+   RENAME TO …` (postgres / mysql / snowflake / redshift), `RENAME TABLE …
+   TO …` (clickhouse), and `EXEC sp_rename '…', '…'` (sql server)."
+  [driver schema src-name new-name]
+  (case driver
+    :clickhouse (str "RENAME TABLE `" schema "`.`" src-name "` TO `" schema "`.`" new-name "`")
+    :sqlserver  (str "EXEC sp_rename '[" schema "].[" src-name "]', '" new-name "'")
+    (str "ALTER TABLE " (sql.u/quote-name driver :table schema src-name)
+         " RENAME TO " (sql.u/quote-name driver :field new-name))))
 
 (defn- storage-escape-sqls
   "Per-driver list of `[label sql]` pairs probing the warehouse's bridges to
@@ -290,18 +313,22 @@
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")]))))
             (testing "workspace user cannot write to or DDL against the input schema"
-              ;; Beyond INSERT/UPDATE/DELETE we also exercise ALTER TABLE and TRUNCATE
-              ;; — they route through different privilege checks per engine (e.g. ALTER
-              ;; ADD COLUMN needs a separate ALTER privilege on most warehouses; TRUNCATE
-              ;; on SQL Server requires ALTER TABLE rather than DELETE), so a too-broad
-              ;; revoke that missed one of these would slip through INSERT-only coverage.
+              ;; Beyond INSERT/UPDATE/DELETE we also exercise ALTER TABLE, TRUNCATE,
+              ;; and RENAME — they route through different privilege checks per
+              ;; engine (e.g. ALTER ADD COLUMN needs a separate ALTER privilege on
+              ;; most warehouses; TRUNCATE on SQL Server requires ALTER TABLE
+              ;; rather than DELETE; RENAME spelling differs entirely between
+              ;; ClickHouse, SQL Server, and the rest), so a too-broad revoke
+              ;; that missed one of these would slip through INSERT-only coverage.
               (let [base-ops [[:insert        (str "INSERT INTO " src " VALUES (2, 'b')")]
                               [:create-table  (str "CREATE TABLE "
                                                    (qualify driver in-schema sneaky-name)
                                                    " (id INT)" (create-table-tail driver))]
                               [:drop-table    (str "DROP TABLE " src)]
                               [:alter-add-col (str "ALTER TABLE " src " ADD COLUMN extra INT")]
-                              [:truncate      (str "TRUNCATE TABLE " src)]]
+                              [:truncate      (str "TRUNCATE TABLE " src)]
+                              [:rename        (rename-input-table-sql driver in-schema src-name
+                                                                      (str "ws_iso_renamed_" run-id))]]
                     ops      (cond-> base-ops
                                (supports-update-delete-as-perm-test? driver)
                                (into [[:update (str "UPDATE " src " SET v = 'x'")]
