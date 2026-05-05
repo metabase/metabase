@@ -365,20 +365,35 @@
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
    (empty? (:table-definitions dbdef))
-   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
+   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
-         ;; table-name should be something like test_data_venues
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         ;; Probe the table directly instead of querying information_schema.tables, which can return
-         ;; stale results on Redshift due to metadata catalog propagation delays between connections.
-         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))]
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
+         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
+         probe!         (fn []
+                          (sql-jdbc.execute/do-with-connection-with-options
+                           driver jdbc-spec {:write? false}
+                           (fn [^java.sql.Connection conn]
+                             (jdbc/query {:connection conn} [probe-sql])
+                             true)))]
      (try
-       (jdbc/query jdbc-spec
-                   [(format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)])
-       true
-       (catch Exception _
-         false)))))
+       (probe!)
+       (catch com.amazon.redshift.util.RedshiftException e
+         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+           false
+           (throw e)))
+       (catch Exception e
+         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
+         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
+         (Thread/sleep 1000)
+         (try
+           (probe!)
+           (catch com.amazon.redshift.util.RedshiftException e2
+             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
+               false
+               (throw e2)))))))))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]
