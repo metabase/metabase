@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -6,7 +5,6 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
-import { createThunkAction } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { ActionSchema } from "metabase/schema";
 import type {
@@ -105,9 +103,6 @@ const enableImplicitActionsForModel =
     dispatch(Actions.actions.invalidateLists());
   };
 
-const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
-const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
-
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -169,51 +164,4 @@ export const Actions = createEntity({
     "visualization_settings",
     "archived",
   ],
-  objectActions: {
-    createPublicLink: createThunkAction(
-      CREATE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) =>
-        async (dispatch: Dispatch) => {
-          const data = await entityCompatibleQuery(
-            { id },
-            dispatch,
-            actionApi.endpoints.createActionPublicLink,
-          );
-
-          return { id, uuid: data.uuid };
-        },
-    ),
-    deletePublicLink: createThunkAction(
-      DELETE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) =>
-        async (dispatch: Dispatch) => {
-          await entityCompatibleQuery(
-            { id },
-            dispatch,
-            actionApi.endpoints.deleteActionPublicLink,
-          );
-
-          return { id };
-        },
-    ),
-  },
-  reducer: (state, { type, payload }: { type: string; payload: any }) => {
-    switch (type) {
-      case CREATE_PUBLIC_LINK: {
-        const { id, uuid } = payload;
-        return updateIn(state, [id], (action) => {
-          return { ...action, public_uuid: uuid };
-        });
-      }
-      case DELETE_PUBLIC_LINK: {
-        const { id } = payload;
-        return updateIn(state, [id], (action) => {
-          return { ...action, public_uuid: null };
-        });
-      }
-      default: {
-        return state;
-      }
-    }
-  },
 });

@@ -6,11 +6,10 @@ import { push } from "react-router-redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
-import type { WrappedResult } from "metabase/search/types";
 import { Group, Icon, Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type { SearchContext } from "metabase-types/api";
+import type { SearchContext, SearchResult } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";
 
@@ -40,10 +39,10 @@ export function SearchResult({
   searchRequestId,
   searchTerm,
 }: {
-  result: WrappedResult;
+  result: SearchResult;
   compact?: boolean;
   showDescription?: boolean;
-  onClick?: (result: WrappedResult) => void;
+  onClick?: (result: SearchResult) => void;
   isSelected?: boolean;
   className?: string;
   index: number;
@@ -52,7 +51,7 @@ export function SearchResult({
   searchRequestId?: string;
   searchTerm?: string;
 }) {
-  const { name, model, description, moderated_status }: WrappedResult = result;
+  const { name, model, description, moderated_status }: SearchResult = result;
 
   const showXRayButton =
     result.model === "indexed-entity" &&
@@ -177,7 +176,7 @@ export function SearchResult({
   );
 }
 
-const isItemActive = (result: WrappedResult) => {
+const isItemActive = (result: SearchResult) => {
   if (result.model !== "table") {
     return true;
   }
@@ -185,7 +184,7 @@ const isItemActive = (result: WrappedResult) => {
   return isSyncCompleted(result);
 };
 
-const isItemLoading = (result: WrappedResult) => {
+const isItemLoading = (result: SearchResult) => {
   if (result.model !== "database" && result.model !== "table") {
     return false;
   }

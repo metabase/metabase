@@ -1,4 +1,4 @@
-import { slugify as toSlug } from "metabase/utils/formatting";
+import { slugify as toSlug } from "metabase/visualizations/lib/formatting";
 import type {
   PythonTransformTableAliases,
   PythonTransformTableEntry,

@@ -15,15 +15,20 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
-  canMoveItem,
-  canPinItem,
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
-import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
+import {
+  type ArchivableItem,
+  canMoveItem,
+  canPinItem,
+  isPinnable,
+  useSetArchive,
+  useSetPinned,
+} from "metabase/common/hooks";
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
@@ -89,6 +94,7 @@ function ActionMenu({
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
+  const setPinned = useSetPinned();
   const [sendToast] = useToast();
   const setCollectionPreview = useSetCollectionPreview();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
@@ -103,8 +109,10 @@ function ActionMenu({
   const canCopy = onCopy && canCopyItem(item);
 
   const handlePin = useCallback(() => {
-    item.setPinned?.(!isItemPinned(item));
-  }, [item]);
+    if (isPinnable(item)) {
+      setPinned(item, !isItemPinned(item));
+    }
+  }, [item, setPinned]);
 
   const handleCopy = useCallback(() => {
     onCopy?.([item]);

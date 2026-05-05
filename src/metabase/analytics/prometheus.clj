@@ -5,16 +5,16 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
-  (:refer-clojure :exclude [set!])
   (:require
    [clojure.java.jmx :as jmx]
+   [clojure.string :as str]
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
-   [metabase.analytics.settings :refer [prometheus-server-port]]
+   [metabase.analytics-interface.core :as analytics.interface]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -646,7 +646,30 @@
                        {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
-                        :labels [:format]})])
+                        :labels [:format]})
+
+   ;; experiment metrics
+   (prometheus/counter :experiment/runs-total
+                       {:description "Number of experiment candidate runs."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/matches-total
+                       {:description "Number of experiment runs where control and candidate matched."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/mismatches-total
+                       {:description "Number of experiment runs where control and candidate differed."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/errors-total
+                       {:description "Number of experiment runs where the candidate threw."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/control-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment control code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-error-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
+                        :labels [:experiment]})])
 
 (defn- quartz-collectors
   []
@@ -700,8 +723,6 @@
                                 [@c3p0-collector]
                                 (product-collectors)
                                 (quartz-collectors)))]
-    (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
-      (prometheus/inc registry metric (qualified-vals labels) value))
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
     (reset! jvm-hiccup-thread
             (hiccup-meter/start-hiccup-meter
@@ -728,25 +749,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
-(def ^:private ^:dynamic *setting-up*
-  "True while [[setup!]] is initializing the registry. Guards against reentrant metric
-  emission during init — e.g. token-check error logging that fires while drivers are
-  registering can call [[inc!]], which would otherwise loop back into [[setup!]] before
-  the first call has finished. While `*setting-up*` is true the metric fns silently drop."
-  false)
+(defn- parse
+  [x]
+  (when-not (str/blank? x)
+    (let [value (parse-long x)]
+      (when-not value
+        (log/warn "MB_PROMETHEUS_SERVER_PORT had a value but did not parse to an integer"))
+      value)))
+
+(declare install-real-reporter!)
 
 (defn setup!
-  "Start the prometheus metric collector and web-server."
+  "Start the prometheus metric collector and web-server. Port is optional, read from `MB_PROMETHEUS_SERVER_PORT`"
+  ([] (setup! (parse (System/getenv "MB_PROMETHEUS_SERVER_PORT"))))
+  ([port]
+   (when (not system)
+     (when-not port
+       (log/info "Running prometheus metrics without a webserver"))
+     (locking #'system
+       (when-not system
+         (let [sys (make-prometheus-system port "metabase-registry")]
+           (alter-var-root #'system (constantly sys))
+           (install-real-reporter!)))))))
+
+(defn observe-initial-values
+  "Observe initial values. Some values need a baseline otherwise their first observed value won't register as a
+  deviation from that baseline. See #52834. It's possible that before setting these baselines, some of these values
+  will be observed. Most initial values are 0 and `(inc r m ls 0)` is a no-op as to the value, but ensures the metric
+  will be scraped. Search engine uses a bit field 1 or 0 for active and default. But this is the only place these are
+  observed so it's not a double inc."
   []
-  (when (and (not system) (not *setting-up*))
-    (binding [*setting-up* true]
-      (let [port (prometheus-server-port)]
-        (when-not port
-          (log/info "Running prometheus metrics without a webserver"))
-        (locking #'system
-          (when-not system
-            (let [sys (make-prometheus-system port "metabase-registry")]
-              (alter-var-root #'system (constantly sys)))))))))
+  (let [registry (:registry system)]
+    (if-not registry
+      (log/warn "Observe initial values called without initializing registry")
+      (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
+        (prometheus/inc registry metric (qualified-vals labels) value)))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
@@ -774,10 +811,7 @@
      (observe! metric nil labels-or-amount)
      (observe! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
-   (when system
-     (prometheus/observe (:registry system) metric (qualified-vals labels) amount))))
+   (prometheus/observe (:registry system) metric (qualified-vals labels) amount)))
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
@@ -788,10 +822,7 @@
      (inc! metric nil labels-or-amount)
      (inc! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
-   (when system
-     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
+   (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
@@ -804,10 +835,7 @@
      (dec! metric nil labels-or-amount)
      (dec! metric labels-or-amount 1)))
   ([metric labels amount]
-   (when-not system
-     (setup!))
-   (when system
-     (prometheus/dec (:registry system) metric (qualified-vals labels) amount))))
+   (prometheus/dec (:registry system) metric (qualified-vals labels) amount)))
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
@@ -817,10 +845,7 @@
    ;; Escape var to avoid confusing it with the special form of the same name.
    (#'set! metric nil amount))
   ([metric labels amount]
-   (when-not system
-     (setup!))
-   (when system
-     (prometheus/set (:registry system) metric (qualified-vals labels) amount))))
+   (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
 (defn clear!
   "Call Collector.clear() on given metric."
@@ -829,6 +854,27 @@
     (setup!))
   (when system
     (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
+
+(def ^:private real-reporter
+  "A real analytics.interface/Reporter that reports here"
+  (reify analytics.interface/Reporter
+    (-inc! [_ metric labels amount]
+      (inc! metric labels amount))
+    (-dec-gauge! [_ metric labels amount]
+      (dec! metric labels amount))
+    (-set-gauge! [_ metric labels amount]
+      ;; set! in first position hits the special form
+      (metabase.analytics.prometheus/set! metric labels amount))
+    (-observe! [_ metric labels amount]
+      (observe! metric labels amount))
+    (-clear! [_ metric]
+      (clear! metric))))
+
+(defn- install-real-reporter!
+  "Called after setup to wire up the real reporter"
+  []
+  (log/info "Installing real prometheus reporter")
+  (analytics.interface/set-reporter! real-reporter))
 
 (comment
   ;; want to see what's in the registry?

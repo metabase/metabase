@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ActionViz from "metabase/actions/components/ActionViz";
-import { ActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";
 import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
+import ActionViz from "metabase/dashboard/components/ActionViz";
+import { ActionDashcardSettings } from "metabase/dashboard/components/ActionViz/ActionDashcardSettings";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Form, FormProvider, FormSelect, FormTextInput } from "metabase/forms";
 import {

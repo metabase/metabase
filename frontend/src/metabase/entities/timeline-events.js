@@ -1,9 +1,7 @@
-import { t } from "ttag";
-
 import { timelineEventApi, useGetTimelineEventQuery } from "metabase/api";
 import { TimelineEventSchema } from "metabase/schema";
 
-import { createEntity, entityCompatibleQuery, undo } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -48,16 +46,6 @@ export const TimelineEvents = createEntity({
         dispatch,
         timelineEventApi.endpoints.deleteTimelineEvent,
       ),
-  },
-
-  objectActions: {
-    setTimeline: ({ id }, timeline, opts) => {
-      return TimelineEvents.actions.update(
-        { id },
-        { timeline_id: timeline.id },
-        undo(opts, t`event`, t`moved`),
-      );
-    },
   },
 });
 
