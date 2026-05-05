@@ -40,8 +40,6 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
 
   return (
     <Flex
-      component={Link}
-      to={Urls.customVizEdit(plugin.id)}
       justify="space-between"
       align="center"
       gap="md"
@@ -58,14 +56,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
         </Group>
       )}
 
-      <Box
-        className={S.menuContainer}
-        flex="0 0 auto"
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-        }}
-      >
+      <Box className={S.menuContainer} flex="0 0 auto">
         <Menu>
           <Menu.Target>
             <ActionIcon
@@ -77,6 +68,13 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item
+              component={Link}
+              to={Urls.customVizEdit(plugin.id)}
+              leftSection={<Icon name="upload" />}
+            >
+              {t`Replace bundle`}
+            </Menu.Item>
             <Menu.Item
               leftSection={<Icon name={plugin.enabled ? "pause" : "play"} />}
               onClick={handleToggleEnabled}

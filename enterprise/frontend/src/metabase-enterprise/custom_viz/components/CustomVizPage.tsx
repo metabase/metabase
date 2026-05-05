@@ -1,12 +1,14 @@
 import { useCallback, useEffect } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -14,7 +16,16 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Code,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
 import {
@@ -72,6 +83,11 @@ export function CustomVizPage({ params }: Props) {
 
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [replaceBundle] = useReplaceCustomVizPluginBundleMutation();
+
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
+  const { url: docsUrl } = useDocsUrl(
+    "questions/visualizations/custom-visualizations",
+  );
 
   const submitValues = useCallback(
     async (values: FormState) => {
@@ -163,6 +179,16 @@ export function CustomVizPage({ params }: Props) {
                     <Title order={2}>
                       {isEdit ? t`Replace bundle` : t`Add a new visualization`}
                     </Title>
+                    <Text c="text-secondary">
+                      {jt`Create a custom visualization bundle by running ${(
+                        <Code key="cmd">{t`npm run build`}</Code>
+                      )} in your custom visualization project. ${(
+                        <ExternalLink
+                          key="docs"
+                          href={docsUrl}
+                        >{t`Read the docs`}</ExternalLink>
+                      )}.`}
+                    </Text>
                     {isEdit && plugin && (
                       <CustomVizPluginSummary plugin={plugin} />
                     )}

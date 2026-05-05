@@ -297,7 +297,20 @@ describe("admin > custom visualizations", () => {
         H.enableTracking();
         H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ).then(
           (plugin: CustomVizPlugin) => {
-            H.visitCustomVizEditForm(plugin.id);
+            H.visitCustomVizSettings();
+
+            cy.log(
+              "Replace bundle is reachable only via the row's Plugin actions menu — clicking the row itself does not navigate",
+            );
+            H.main().findByText("demo-viz").click();
+            cy.findByRole("heading", { name: "Replace bundle" }).should(
+              "not.exist",
+            );
+
+            // Actions menu is only visible on row hover
+            H.main().findByText("demo-viz").realHover();
+            cy.findByRole("button", { name: "Plugin actions" }).click();
+            H.popover().findByText("Replace bundle").click();
 
             cy.findByRole("heading", { name: "Replace bundle" }).should(
               "be.visible",

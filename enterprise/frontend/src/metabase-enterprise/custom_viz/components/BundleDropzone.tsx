@@ -5,7 +5,7 @@ import { type FileRejection, useDropzone } from "react-dropzone";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { Box, Icon, Stack, Text } from "metabase/ui";
 
 import S from "./BundleDropzone.module.css";
 
@@ -74,14 +74,7 @@ export function BundleDropzone({ name = "file" }: { name?: string }) {
       >
         <input {...getInputProps()} />
         {file ? (
-          <SelectedFile
-            file={file}
-            onRemove={(event) => {
-              event.stopPropagation();
-              setValue(null);
-              setTouched(true);
-            }}
-          />
+          <SelectedFile file={file} />
         ) : (
           <DropHint isDragActive={isDragActive} />
         )}
@@ -105,19 +98,13 @@ function DropHint({ isDragActive }: { isDragActive: boolean }) {
           : t`Drag a .tgz here, or click to browse`}
       </Text>
       <Text c="text-secondary" size="sm">
-        {t`Produced by running "npm run build" in your custom-viz project. Up to 5 MB.`}
+        {t`Up to 5 MB`}
       </Text>
     </>
   );
 }
 
-function SelectedFile({
-  file,
-  onRemove,
-}: {
-  file: File;
-  onRemove: (event: React.MouseEvent) => void;
-}) {
+function SelectedFile({ file }: { file: File }) {
   return (
     <>
       <Icon name="document" size={24} c="brand" />
@@ -125,9 +112,6 @@ function SelectedFile({
       <Text c="text-secondary" size="sm">
         {(file.size / 1024).toFixed(1)} KB
       </Text>
-      <Button variant="subtle" size="xs" onClick={onRemove}>
-        {t`Remove`}
-      </Button>
     </>
   );
 }
