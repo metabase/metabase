@@ -21,6 +21,7 @@ import { LocalizationSettingsPage } from "./settings/components/SettingsPages/Lo
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
 import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSettingsPage";
+import { StarRezSettingsPage } from "./settings/components/SettingsPages/StarRezSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
@@ -92,6 +93,7 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
+    <Route path="starrez" component={StarRezSettingsPage} />
     <Route path="*" component={NotFound} />
   </Route>
 );
