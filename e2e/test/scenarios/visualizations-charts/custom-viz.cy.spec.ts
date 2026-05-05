@@ -140,7 +140,10 @@ describe("admin > custom visualizations", () => {
 
         H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
         cy.findByRole("button", { name: "Add visualization" }).click();
-        cy.findByRole("link", { name: /demo-viz/ }).click();
+
+        H.main().findByText("demo-viz").realHover();
+        cy.findByRole("button", { name: "Plugin actions" }).click();
+        H.popover().findByText("Replace bundle").click();
 
         cy.findByTestId("admin-layout-sidebar")
           .findByRole("link", { name: /Custom visualizations/ })
