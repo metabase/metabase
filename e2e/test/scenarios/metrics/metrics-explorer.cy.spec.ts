@@ -364,7 +364,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Empty Metric");
 
       H.MetricsViewer.getMetricVisualization()
-        .findByText(/No dice/)
+        .findByText("No results!")
         .should("exist");
     });
   });
