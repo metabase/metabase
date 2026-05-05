@@ -41,13 +41,13 @@ Pick what you want to count:
 
 For each metric, you'll see the same set of charts:
 
-- **By day** and **By hour**: "Being with you and not being with you is the only way I have to measure time." - Jorge Luis Borges.
+- **By time**: a time-series chart that buckets by hour or day depending on the date range you filter. Defaults to day.
 - **By source**: _where_ in Metabase the request came from. See [Sources and profiles](#sources-and-profiles) below.
 - **By profile**: _which_ Metabot persona answered. See [Sources and profiles](#sources-and-profiles) below.
 - **Users with most ...**, **Groups with most ...**, **IP addresses with most ...**: top-N rankings.
 - **Tenants with most ...**: only shown when tenants are enabled.
 
-Clicking a bar or point on most charts deep-links you into the [Conversations list](#conversations) with the corresponding filter applied (so clicking on a name will take you to that person's conversations).
+Clicking a bar in the **By day**, **Groups with most ...**, **Users with most ...**, or **Tenants with most ...** charts deep-links into the [Conversations list](#conversations) with the corresponding filter applied. The **By source**, **By profile**, and **IP addresses** charts are display-only.
 
 ## Sources and profiles
 
@@ -58,9 +58,13 @@ Source and profile both describe a conversation, but they answer different quest
 
 They often line up (a conversation that started in Slack is handled by the Slackbot profile), but they don't have to. A conversation started from the Metabot chat sidebar might be handled by the **Internal**, **NLQ**, or **SQL** profile depending on what the user asked.
 
+The Conversations admin page only shows **Profile**. Source is visible in the **Stats** charts and in the [Usage Analytics models](#building-custom-reports) used to build custom reports.
+
 ### Sources
 
-| Source              | Where it comes from                                                         |
+The **By source** chart and the [AI Usage Log](#building-custom-reports) model report a human-readable `source_name`. The AI Usage Log also exposes a raw `source` column with the underlying ID (such as `metabot_agent`, `oss-sql-gen`, or `document_generate_content`); both columns are available when you build custom reports. Conversations with no source land in an `(empty)` bucket on the chart.
+
+| Source name         | Where it comes from                                                         |
 | ------------------- | --------------------------------------------------------------------------- |
 | `Metabot`           | The Metabot chat sidebar inside Metabase.                                   |
 | `Documents`         | Content generation inside [Documents](../documents/start.md).               |
@@ -71,7 +75,7 @@ They often line up (a conversation that started in Slack is handled by the Slack
 
 ### Profiles
 
-A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do.
+A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page and the [Metabot Conversations](#building-custom-reports) model show the human-readable name. The [AI Usage Log](#building-custom-reports) model shows the raw `profile_id` instead (for example, `internal`, `transforms_codegen`, or `embedding_next`).
 
 | Profile              | What it does                                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -83,6 +87,8 @@ A profile is the configuration Metabot uses for a conversation: which prompt, wh
 | `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md) SQL or Python.                                    |
 | `Documents`          | Generates content inside [Documents](../documents/start.md).                                                              |
 
+Conversations without a profile show up in an `(empty)` bucket on the **By profile** chart.
+
 ## Conversations
 
 _Admin > AI > Usage auditing > Conversations_
@@ -93,7 +99,7 @@ The Conversations page lists every Metabot conversation Metabase has on file, ne
 
 - **Date range**, **User**, **Group**, **Tenant**: same as the [Stats filters](#filters).
 
-To filter by source or profile, drill in from a [Stats](#stats) chart — clicking a source or profile bar deep-links here with that filter applied.
+To filter by source or profile, drill in from a [Stats](#stats) chart.
 
 ### Columns
 
@@ -117,7 +123,7 @@ The detail view is a full audit of a single conversation. It includes:
 - **Header**: start date, the user the conversation is with, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the user's name you can jump to all of that user's conversations or to their account details.
 - **Stat tiles**: Messages, Total tokens, Queries run, Searches.
 - **Feedback**: any thumbs-up or thumbs-down a user submitted, with the issue category they picked and any free-form text. The agent response that triggered the feedback is shown alongside.
-- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood, including the user context it had — useful for understanding why a query came out a certain way for a user with [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). The transcript is read-only.
+- **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are expanded inline so you can see what Metabot was doing under the hood. Useful for understanding why a query came out a certain way, if for example the person had [row and column security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or custom [user attributes](../people-and-groups/managing.md#adding-a-user-attribute) affecting the results.
 - **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Run** on a query to open it in a new tab and execute it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
 - **Open in Slack**: for Slack-sourced conversations, a link back to the original Slack thread.
 
@@ -127,13 +133,13 @@ If you're an admin chatting with Metabot, type `/inspect` in the chat to jump st
 
 ## Building custom reports
 
-Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) models back the Usage auditing pages. See the [Usage analytics reference](../usage-and-performance-tools/usage-analytics-reference.md) for the full column list of each:
+Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) models back the Usage auditing pages.
 
 - [AI Usage Log](../usage-and-performance-tools/usage-analytics-reference.md#ai-usage-log): one row per LLM call.
 - [Metabot Conversations](../usage-and-performance-tools/usage-analytics-reference.md#metabot-conversations): one row per conversation.
 - [Metabot Messages](../usage-and-performance-tools/usage-analytics-reference.md#metabot-messages): one row per message.
 
-Save your custom questions in the [Custom reports](../usage-and-performance-tools/usage-analytics.md#custom-reports-collection) sub-collection so they inherit the right permissions.
+Save your custom questions in the [Custom reports](../usage-and-performance-tools/usage-analytics.md#custom-reports-collection) sub-collection so the reports inherit the right permissions.
 
 ## What isn't tracked yet
 
