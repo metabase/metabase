@@ -3483,7 +3483,6 @@
            util
            enterprise/serialization}
    :model-imports #{:model/Database
-                    :model/Table
                     :model/User}}
 
   enterprise/writable-connection
