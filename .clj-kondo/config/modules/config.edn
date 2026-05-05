@@ -3467,19 +3467,26 @@
 
   enterprise/workspaces
   {:team "Graphy"
-   :api  #{metabase-enterprise.workspaces.core
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
            app-db
            cache
            driver
            lib
+           models
            permissions
            premium-features
            query-processor
            sql-tools
            util}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database
+                    :model/Table
+                    :model/TableRemapping
+                    :model/User
+                    :model/Workspace
+                    :model/WorkspaceDatabase}}
 
   enterprise/writable-connection
   {:team "Graphy"
