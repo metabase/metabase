@@ -28,21 +28,33 @@
 
 (defn- visible-db-where
   "Honeysql predicate selecting non-audit, non-router databases visible to the current user.
-  `d` is the table alias of the joined `metabase_database`."
-  [d]
-  [:and
-   [:= (u/qualified-key d :is_audit) false]
-   [:= (u/qualified-key d :router_database_id) nil]
-   [:in (u/qualified-key d :id) (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
+  When `opts` contains a non-empty `:database-ids`, additionally restricts to that set
+  (intersected with visibility — callers can only narrow, not widen). `d` is the table
+  alias of the joined `metabase_database`."
+  [d {:keys [database-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key d :is_audit) false]
+           [:= (u/qualified-key d :router_database_id) nil]
+           [:in (u/qualified-key d :id) (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
+    (seq database-ids) (conj [:in (u/qualified-key d :id) (vec database-ids)])))
 
 (defn- visible-table-where
   "Honeysql predicate selecting active, non-hidden tables visible to the current user.
-  `t` is the table alias of the joined `metabase_table`."
-  [t]
-  [:and
-   [:= (u/qualified-key t :active) true]
-   [:= (u/qualified-key t :visibility_type) nil]
-   [:in (u/qualified-key t :id) (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
+  When `opts` contains a non-empty `:schema-ids` (a sequence of `[db-id schema]` pairs),
+  additionally restricts `(t.db_id, t.schema)` to that set. `t` is the table alias of the
+  joined `metabase_table`. We use `t.db_id` rather than the joined `metabase_database`
+  alias so the predicate is self-contained — the FK left-join chain references
+  `fk_table` before `fk_db` is joined, so an alias dependency on `fk_db` would fail."
+  [t {:keys [schema-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key t :active) true]
+           [:= (u/qualified-key t :visibility_type) nil]
+           [:in (u/qualified-key t :id) (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
+    (seq schema-ids) (conj (into [:or]
+                                 (for [[db-id schema] schema-ids]
+                                   [:and
+                                    [:= (u/qualified-key t :db_id)  db-id]
+                                    [:= (u/qualified-key t :schema) schema]])))))
 
 (defn- visible-field-where
   "Honeysql predicate selecting active, non-sensitive fields. `f` is the table alias of the
@@ -53,29 +65,32 @@
    [:<> (u/qualified-key f :visibility_type) "sensitive"]])
 
 (defn- reducible-databases-query
-  "Raw reducible-query streaming visible-database rows for [[reducible-databases]]."
-  []
+  "Raw reducible-query streaming visible-database rows for [[reducible-databases]].
+  Optional `:database-ids` restricts the export to that set (intersected with visibility)."
+  [opts]
   (t2/reducible-query {:select [[:db.name :name] [:db.engine :engine]]
                        :from   [[:metabase_database :db]]
-                       :where  (visible-db-where :db)}))
+                       :where  (visible-db-where :db opts)}))
 
 (defn- reducible-tables-query
   "Raw reducible-query streaming visible-table rows for [[reducible-tables]]."
-  []
+  [opts]
   (t2/reducible-query {:select [[:db.name :db_name]
                                 [:table.schema :schema]
                                 [:table.name :table_name]
                                 [:table.description :description]]
                        :from   [[:metabase_table :table]]
                        :join   [[:metabase_database :db] [:= :table.db_id :db.id]]
-                       :where  [:and (visible-db-where :db) (visible-table-where :table)]}))
+                       :where  [:and
+                                (visible-db-where    :db    opts)
+                                (visible-table-where :table opts)]}))
 
 (defn- reducible-fields-query
   "Raw reducible-query streaming visible-field rows for [[reducible-fields]]. Visibility
   filters on the FK target chain are folded into the LEFT JOIN ON clauses (rather than the
   WHERE) so that an inaccessible target fails the join and the `fk_*` columns come back as
   NULL — [[format-field-row]] then drops the `:fk_target_field_id` for that row."
-  []
+  [opts]
   (t2/reducible-query
    {:select    [[:db.name :db_name]
                 [:table.schema :table_schema]
@@ -97,9 +112,12 @@
     :join      [[:metabase_table :table]    [:= :field.table_id :table.id]
                 [:metabase_database :db]    [:= :table.db_id :db.id]]
     :left-join [[:metabase_field :fk_field]    [:and [:= :field.fk_target_field_id :fk_field.id] (visible-field-where :fk_field)]
-                [:metabase_table :fk_table]    [:and [:= :fk_field.table_id :fk_table.id]        (visible-table-where :fk_table)]
-                [:metabase_database :fk_db]    [:and [:= :fk_table.db_id :fk_db.id]              (visible-db-where :fk_db)]]
-    :where     [:and (visible-db-where :db) (visible-table-where :table) (visible-field-where :field)]}))
+                [:metabase_table :fk_table]    [:and [:= :fk_field.table_id :fk_table.id]        (visible-table-where :fk_table opts)]
+                [:metabase_database :fk_db]    [:and [:= :fk_table.db_id :fk_db.id]              (visible-db-where :fk_db opts)]]
+    :where     [:and
+                (visible-db-where :db opts)
+                (visible-table-where :table opts)
+                (visible-field-where :field)]}))
 
 (defn- decode-nfc-path
   "JSON-decode an `nfc_path` value pulled via raw query (no model transform). Returns nil for
@@ -175,18 +193,18 @@
 
 (defn- reducible-databases
   "Eduction streaming visible databases as already-formatted JSON-shaped rows."
-  []
-  (eduction (map format-database-row) (reducible-databases-query)))
+  [opts]
+  (eduction (map format-database-row) (reducible-databases-query opts)))
 
 (defn- reducible-tables
   "Eduction streaming visible tables as already-formatted JSON-shaped rows."
-  []
-  (eduction (map format-table-row) (reducible-tables-query)))
+  [opts]
+  (eduction (map format-table-row) (reducible-tables-query opts)))
 
 (defn- reducible-fields
   "Eduction streaming visible fields as already-formatted JSON-shaped rows."
-  []
-  (eduction (map format-field-row) (reducible-fields-query)))
+  [opts]
+  (eduction (map format-field-row) (reducible-fields-query opts)))
 
 ;;; ----------------------------------- JSON streaming -----------------------------------
 
@@ -228,21 +246,31 @@
   (.write writer "}"))
 
 (defn write-databases-metadata!
-  "Streams the databases/tables/fields metadata to the given OutputStream. Sections are
-  included only when their `with-...?` flag is true. All references — database, table,
-  fk_target_field — are emitted in serdes-portable form (names rather than numeric IDs)
-  so the response can be ingested by another Metabase instance with different surrogate
-  keys.
+  "Streams the databases/tables/fields metadata to the given OutputStream. All references —
+  database, table, fk_target_field — are emitted in serdes-portable form (names rather than
+  numeric IDs) so the response can be ingested by another Metabase instance with different
+  surrogate keys.
+
+  Options (`opts` map):
+    - `:with-databases?` — include the `\"databases\"` section (default `false`).
+    - `:with-tables?`    — include the `\"tables\"` section (default `false`).
+    - `:with-fields?`    — include the `\"fields\"` section (default `false`).
+    - `:database-ids`    — optional collection of database IDs to restrict the export to,
+                           intersected with the visibility filter (callers can only narrow,
+                           not widen). Nil/empty ⇒ all visible databases.
+    - `:schema-ids`      — optional sequence of `[db-id schema]` pairs to restrict the
+                           tables/fields sections to those (db, schema) combinations.
+                           Nil/empty ⇒ all schemas in the allowed databases.
 
   Warehouses with large schemas can produce gigabytes of metadata, so rows are pulled
   from reducible queries and streamed directly to the writer — memory stays bounded
   regardless of schema size."
-  [^java.io.OutputStream os {:keys [with-databases? with-tables? with-fields?]}]
+  [^java.io.OutputStream os {:keys [with-databases? with-tables? with-fields?] :as opts}]
   (let [writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (write-json-object!
      writer
      (cond-> []
-       with-databases? (conj ["databases" (reducible-databases)])
-       with-tables?    (conj ["tables"    (reducible-tables)])
-       with-fields?    (conj ["fields"    (reducible-fields)])))
+       with-databases? (conj ["databases" (reducible-databases opts)])
+       with-tables?    (conj ["tables"    (reducible-tables    opts)])
+       with-fields?    (conj ["fields"    (reducible-fields    opts)])))
     (.flush writer)))

@@ -4,7 +4,6 @@
    request/response shape through the HTTP layer."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [medley.core :as m]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -35,7 +34,6 @@
                  ["POST /"        :post   403 "ee/workspace-manager/"                                  {:name "X"}]
                  ["PUT /:id"      :put    403 (str "ee/workspace-manager/" (:id ws))                   {:name "Y"}]
                  ["DELETE /:id"   :delete 403 (str "ee/workspace-manager/" (:id ws))                   nil]
-                 ["GET database"  :get    403 "ee/workspace-manager/database"                          nil]
                  ["POST database" :post   403 (str "ee/workspace-manager/" (:id ws) "/database")       {:database_id (mt/id) :input_schemas ["PUBLIC"]}]]]
           (testing label
             (is (= "You don't have permissions to do that."
@@ -89,13 +87,35 @@
                                             (str "ee/workspace-manager/" (:id ws) "/database/" (mt/id)))]
               (is (empty? (:databases ws'))))))))))
 
-(deftest available-databases-test
-  (testing "GET /database returns each eligible database with its discovered schemas"
-    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
-                   :model/Table _ {:db_id db-id :schema "public"    :name "t1" :active true}
-                   :model/Table _ {:db_id db-id :schema "analytics" :name "t2" :active true}]
-      (let [body  (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/database")
-            entry (m/find-first (comp #{db-id} :database_id) body)]
-        (is (=? {:database_id   db-id
-                 :input_schemas ["analytics" "public"]}
-                entry))))))
+(deftest metadata-export-test
+  (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input_schemas"
+    (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
+                   :model/Table {t1-id :id} {:db_id db-id :schema "schema-1" :name "table-1" :active true}
+                   :model/Table {t2-id :id} {:db_id db-id :schema "schema-2" :name "table-2" :active true}
+                   :model/Field _ {:table_id t1-id :name "field-1" :active true
+                                   :base_type :type/Integer :database_type "BIGINT"}
+                   :model/Field _ {:table_id t2-id :name "field-2" :active true
+                                   :base_type :type/Text :database_type "TEXT"}
+                   :model/Workspace         {ws-id :id} {:name       "Export"
+                                                         :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _          {:workspace_id     ws-id
+                                                        :database_id      db-id
+                                                        :database_details {}
+                                                        :output_schema    ""
+                                                        ;; schema-2 is deliberately excluded
+                                                        :input_schemas    ["schema-1"]
+                                                        :status           :provisioned}]
+      ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
+      ;; Length mismatch in any section would fail `=?` — that's how we assert the
+      ;; schema filter is doing its job.
+      (is (=? {:databases [{:id db-name :name db-name :engine "postgres"}]
+               :tables    [{:id [db-name "schema-1" "table-1"] :db_id db-name
+                            :name "table-1" :schema "schema-1"}]
+               :fields    [{:id [db-name "schema-1" "table-1" "field-1"]
+                            :table_id [db-name "schema-1" "table-1"]
+                            :name "field-1" :base_type "type/Integer"}]}
+              (mt/user-http-request :crowberto :get 202
+                                    (str "ee/workspace-manager/" ws-id "/metadata/export")
+                                    :with-databases true
+                                    :with-tables    true
+                                    :with-fields    true))))))

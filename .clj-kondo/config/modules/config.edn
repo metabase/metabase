@@ -3305,6 +3305,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
@@ -3472,13 +3473,14 @@
    :uses #{api
            app-db
            cache
-           database-routing
            driver
+           enterprise/serialization
            lib
            models
            permissions
            premium-features
            query-processor
+           server
            sql-tools
            util}
    :model-imports #{:model/Database

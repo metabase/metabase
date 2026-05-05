@@ -4,10 +4,13 @@
    [[metabase-enterprise.workspaces.core]]."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.schema :as-alias serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -122,19 +125,6 @@
 
 ;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
 
-(def ^:private AvailableDatabaseResponse
-  [:map {:closed true}
-   [:database_id   ms/PositiveInt]
-   [:input_schemas [:sequential :string]]])
-
-(api.macros/defendpoint :get "/database" :- [:sequential AvailableDatabaseResponse]
-  "List databases eligible for workspace assignment, paired with the input schemas
-  discovered for each. Excludes the sample DB, the audit DB, router parents/children,
-  and any database whose driver does not support the `:workspace` feature."
-  []
-  (api/check-superuser)
-  (ws/available-databases))
-
 (api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
   "Add a database to a workspace and provision it immediately (blocking)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -178,3 +168,36 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
+
+;;; ----------------------------------------- Metadata export --------------------------------------------------
+
+(defn- workspace-metadata-filters
+  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace."
+  [workspace]
+  {:database-ids (mapv :database_id (:databases workspace))
+   :schema-ids   (vec (for [{:keys [database_id input_schemas]} (:databases workspace)
+                            schema                              input_schemas]
+                        [database_id schema]))})
+
+(api.macros/defendpoint :get "/:id/metadata/export"
+  :- (sr/streaming-response-schema ::serialization.schema/metadata-export-response)
+  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
+  scoped to each database's `:input_schemas`. Same flag semantics as
+  `/api/ee/serialization/metadata/export` — sections must be opted into via the
+  `with-databases` / `with-tables` / `with-fields` query parameters."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [with-databases with-tables with-fields]}
+   :- [:map
+       [:with-databases {:default false} [:maybe :boolean]]
+       [:with-tables    {:default false} [:maybe :boolean]]
+       [:with-fields    {:default false} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (let [workspace (api/check-404 (ws/get-workspace id))
+        filters   (workspace-metadata-filters workspace)]
+    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+      (serialization/write-databases-metadata!
+       os
+       (merge filters
+              {:with-databases? with-databases
+               :with-tables?    with-tables
+               :with-fields?    with-fields})))))
