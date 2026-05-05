@@ -39,7 +39,10 @@ export function JobListMoreMenu({ jobs }: JobListMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <Button leftSection={<Icon name="ellipsis" />} />
+          <Button
+            aria-label={t`More job options`}
+            leftSection={<Icon name="ellipsis" />}
+          />
         </Menu.Target>
         <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
           {hasEnabledJobs && (
