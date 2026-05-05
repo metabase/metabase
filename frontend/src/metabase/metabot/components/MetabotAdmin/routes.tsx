@@ -15,6 +15,10 @@ export function getMetabotAdminRoutes() {
           {...props}
           fullWidth={!PLUGIN_AI_CONTROLS.isEnabled}
           fullHeight={!PLUGIN_AI_CONTROLS.isEnabled}
+          innerContentProps={{
+            fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+            fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
+          }}
         />
       )}
     >
