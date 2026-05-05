@@ -7,14 +7,25 @@ import { MetabotNavPane } from "./MetabotNavPane";
 export const MetabotAdminLayout = ({
   children,
   fullWidth,
+  innerContentProps,
 }: {
   children: React.ReactNode;
   fullWidth?: boolean;
+  innerContentProps?: {
+    fullWidth?: boolean;
+    fullHeight?: boolean;
+  };
 }) => (
   <AdminSettingsLayout sidebar={<MetabotNavPane />} fullWidth={fullWidth}>
     <ErrorBoundary>
       {fullWidth ? (
-        <Box py="lg" px="xl" maw="100rem" mx="auto">
+        <Box
+          py={innerContentProps?.fullHeight ? 0 : "lg"}
+          px={innerContentProps?.fullWidth ? 0 : "xl"}
+          maw={innerContentProps?.fullWidth ? undefined : "100rem"}
+          h={innerContentProps?.fullHeight ? "100%" : undefined}
+          mx="auto"
+        >
           {children}
         </Box>
       ) : (
