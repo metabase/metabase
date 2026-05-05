@@ -5,7 +5,6 @@
 FROM node:22-bullseye AS builder
 
 ARG MB_EDITION=oss
-ARG VERSION
 
 WORKDIR /home/node
 
@@ -32,7 +31,7 @@ RUN npm install -g bun
 # install frontend dependencies
 RUN bun install --frozen-lockfile
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh
 
 # ###################
 # # STAGE 2: runner

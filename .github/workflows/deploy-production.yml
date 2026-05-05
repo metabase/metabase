@@ -47,7 +47,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             MB_EDITION=oss
-            VERSION=${{ github.sha }}
 
       - name: Copy deployment files
         uses: appleboy/scp-action@v0.1.7
