@@ -448,7 +448,8 @@
           "must not fall through to the bare-status fallback"))))
 
 (deftest tools-list-no-refs-test
-  (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
+  (testing "tool inputSchemas have no $ref, no $defs, root type is always object,
+            and no top-level oneOf/anyOf/allOf (rejected by mcpjam)"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
         (when-let [schema (:inputSchema tool)]
@@ -459,7 +460,10 @@
               (is (not (contains? schema :$defs))
                   (str (:name tool) " should have no $defs"))
               (is (= "object" (:type schema))
-                  (str (:name tool) " root type should be object")))))))))
+                  (str (:name tool) " root type should be object"))
+              (doseq [k [:oneOf :anyOf :allOf]]
+                (is (not (contains? schema k))
+                    (str (:name tool) " should have no top-level " k))))))))))
 
 (deftest tools-call-get-table-query-params-test
   (testing "get_table passes query params correctly (with-fields default true)"
@@ -530,12 +534,12 @@
                                             {:source     {:type "table" :id orders-id}
                                              :operations [["limit" 5]]})
                   _              (call-tool session-id "execute_query"
-                                            {:query (:query construct-data)})
+                                            {:query_handle (:query_handle construct-data)})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
-                                             :query (:query construct-data)})
+                                             :query (mcp.session/read-handle (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})]
@@ -565,7 +569,7 @@
                                         {:source     {:type "table" :id (mt/id :orders)}
                                          :operations [["limit" 5]]})
               execute-data   (call-tool session-id "execute_query"
-                                        {:query (:query construct-data)})]
+                                        {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
           (is (=? {:status    "completed"
                    :row_count 5
@@ -597,6 +601,48 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test
+  (testing "visualize_query echoes the inline query"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query "ZW5jb2RlZA=="}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query resolves a stored handle"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          handle         (mt/with-current-user user-id
+                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query asks for an argument when neither query nor handle is provided"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Provide either")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {}})
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query returns 'handle not found' when query_handle is unknown"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle (str (random-uuid))}})
                            {"mcp-session-id" session-id}))))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
