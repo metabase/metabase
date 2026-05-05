@@ -7,13 +7,21 @@ import {
   INSERT_ADJACENT_HTML,
   SANITIZED_SETTERS,
   SET_ATTRIBUTE,
+  SET_ATTRIBUTE_NODE,
+  SET_ATTRIBUTE_NODE_NS,
   SET_ATTRIBUTE_NS,
+  SET_NAMED_ITEM,
+  SET_NAMED_ITEM_NS,
   createElementDistortion,
   createElementNSDistortion,
   insertAdjacentHTMLDistortion,
   sanitizedSetterDistortion,
   setAttributeDistortion,
   setAttributeNSDistortion,
+  setAttributeNodeDistortion,
+  setAttributeNodeNSDistortion,
+  setNamedItemDistortion,
+  setNamedItemNSDistortion,
 } from "./distortions-dom-mutate";
 import {
   ACTIVE_ELEMENT_GETTER,
@@ -61,6 +69,22 @@ export function makeDistortionCallback(pluginId: CustomVizPluginId) {
 
     if (value === SET_ATTRIBUTE_NS) {
       return setAttributeNSDistortion(pluginId);
+    }
+
+    if (value === SET_ATTRIBUTE_NODE) {
+      return setAttributeNodeDistortion(pluginId);
+    }
+
+    if (value === SET_ATTRIBUTE_NODE_NS) {
+      return setAttributeNodeNSDistortion(pluginId);
+    }
+
+    if (value === SET_NAMED_ITEM) {
+      return setNamedItemDistortion(pluginId);
+    }
+
+    if (value === SET_NAMED_ITEM_NS) {
+      return setNamedItemNSDistortion(pluginId);
     }
 
     const blockedLabel = BLOCKED_NATIVE_REFS.get(value);

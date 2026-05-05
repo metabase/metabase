@@ -1878,6 +1878,30 @@ describe("sandbox", () => {
       payload: "new PaymentRequest([], {});",
       errorPattern: blockedPattern(/API call: PaymentRequest/),
     },
+    {
+      // setAttributeNode is a setAttribute alternative that takes an Attr
+      // node instead of (name, value); make sure the same on*-handler block
+      // applies here too.
+      name: "setAttributeNode(onclick attr)",
+      payload: `
+        var attr = document.createAttribute("onclick");
+        attr.value = "alert(1)";
+        document.body.setAttributeNode(attr);
+      `,
+      errorPattern: blockedPattern(
+        /setAttributeNode for inline event handler: onclick/,
+      ),
+    },
+    {
+      // element.attributes.setNamedItem is yet another path to the same sink.
+      name: "attributes.setNamedItem(href javascript:)",
+      payload: `
+        var attr = document.createAttribute("href");
+        attr.value = "javascript:alert(1)";
+        document.body.attributes.setNamedItem(attr);
+      `,
+      errorPattern: blockedPattern(/setNamedItem with javascript: URL: href/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {

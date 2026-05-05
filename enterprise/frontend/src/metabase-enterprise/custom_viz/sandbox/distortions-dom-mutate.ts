@@ -7,6 +7,10 @@ export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
 export const SET_ATTRIBUTE = Element.prototype.setAttribute;
 export const SET_ATTRIBUTE_NS = Element.prototype.setAttributeNS;
+export const SET_ATTRIBUTE_NODE = Element.prototype.setAttributeNode;
+export const SET_ATTRIBUTE_NODE_NS = Element.prototype.setAttributeNodeNS;
+export const SET_NAMED_ITEM = NamedNodeMap.prototype.setNamedItem;
+export const SET_NAMED_ITEM_NS = NamedNodeMap.prototype.setNamedItemNS;
 
 type SanitizedSetterInfo = {
   name: string;
@@ -138,18 +142,27 @@ function isJavascriptUrl(value: unknown): boolean {
   return typeof value === "string" && /^\s*javascript:/i.test(value);
 }
 
+function assertSafeAttrAssignment(
+  pluginId: CustomVizPluginId,
+  apiName: string,
+  name: unknown,
+  value: unknown,
+): void {
+  if (isInlineEventHandlerName(name)) {
+    throw new Error(
+      `[plugin ${pluginId}] blocked ${apiName} for inline event handler: ${String(name)}`,
+    );
+  }
+  if (isUrlValuedAttr(name) && isJavascriptUrl(value)) {
+    throw new Error(
+      `[plugin ${pluginId}] blocked ${apiName} with javascript: URL: ${String(name)}`,
+    );
+  }
+}
+
 export function setAttributeDistortion(pluginId: CustomVizPluginId) {
   return function setAttribute(this: Element, name: string, value: string) {
-    if (isInlineEventHandlerName(name)) {
-      throw new Error(
-        `[plugin ${pluginId}] blocked setAttribute for inline event handler: ${name}`,
-      );
-    }
-    if (isUrlValuedAttr(name) && isJavascriptUrl(value)) {
-      throw new Error(
-        `[plugin ${pluginId}] blocked setAttribute with javascript: URL: ${name}`,
-      );
-    }
+    assertSafeAttrAssignment(pluginId, "setAttribute", name, value);
     return SET_ATTRIBUTE.call(this, name, value);
   };
 }
@@ -161,17 +174,46 @@ export function setAttributeNSDistortion(pluginId: CustomVizPluginId) {
     qualifiedName: string,
     value: string,
   ) {
-    if (isInlineEventHandlerName(qualifiedName)) {
-      throw new Error(
-        `[plugin ${pluginId}] blocked setAttributeNS for inline event handler: ${qualifiedName}`,
-      );
-    }
-    if (isUrlValuedAttr(qualifiedName) && isJavascriptUrl(value)) {
-      throw new Error(
-        `[plugin ${pluginId}] blocked setAttributeNS with javascript: URL: ${qualifiedName}`,
-      );
-    }
+    assertSafeAttrAssignment(pluginId, "setAttributeNS", qualifiedName, value);
     return SET_ATTRIBUTE_NS.call(this, namespace, qualifiedName, value);
+  };
+}
+
+export function setAttributeNodeDistortion(pluginId: CustomVizPluginId) {
+  return function setAttributeNode(this: Element, attr: Attr) {
+    assertSafeAttrAssignment(
+      pluginId,
+      "setAttributeNode",
+      attr.name,
+      attr.value,
+    );
+    return SET_ATTRIBUTE_NODE.call(this, attr);
+  };
+}
+
+export function setAttributeNodeNSDistortion(pluginId: CustomVizPluginId) {
+  return function setAttributeNodeNS(this: Element, attr: Attr) {
+    assertSafeAttrAssignment(
+      pluginId,
+      "setAttributeNodeNS",
+      attr.name,
+      attr.value,
+    );
+    return SET_ATTRIBUTE_NODE_NS.call(this, attr);
+  };
+}
+
+export function setNamedItemDistortion(pluginId: CustomVizPluginId) {
+  return function setNamedItem(this: NamedNodeMap, attr: Attr) {
+    assertSafeAttrAssignment(pluginId, "setNamedItem", attr.name, attr.value);
+    return SET_NAMED_ITEM.call(this, attr);
+  };
+}
+
+export function setNamedItemNSDistortion(pluginId: CustomVizPluginId) {
+  return function setNamedItemNS(this: NamedNodeMap, attr: Attr) {
+    assertSafeAttrAssignment(pluginId, "setNamedItemNS", attr.name, attr.value);
+    return SET_NAMED_ITEM_NS.call(this, attr);
   };
 }
 
