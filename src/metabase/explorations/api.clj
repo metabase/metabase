@@ -207,6 +207,17 @@
    [:name            [:maybe :string]]
    [:query_ids       [:sequential ms/PositiveInt]]])
 
+(mr/def ::ExplorationDocument
+  "Schema for a document attached to an exploration thread."
+  [:map
+   [:id                    ms/PositiveInt]
+   [:name                  :string]
+   [:exploration_thread_id [:maybe ms/PositiveInt]]
+   [:creator_id            ms/PositiveInt]
+   [:content_type          :string]
+   [:created_at            {:optional true} [:maybe :any]]
+   [:updated_at            {:optional true} [:maybe :any]]])
+
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
   [:map
@@ -376,17 +387,6 @@
                  {:left-join [:exploration_query_result
                               [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
                   :where     [:= :exploration_query.id query-id]}))
-
-(mr/def ::ExplorationDocument
-  "Schema for a document attached to an exploration thread."
-  [:map
-   [:id                    ms/PositiveInt]
-   [:name                  :string]
-   [:exploration_thread_id [:maybe ms/PositiveInt]]
-   [:creator_id            ms/PositiveInt]
-   [:content_type          :string]
-   [:created_at            {:optional true} [:maybe :any]]
-   [:updated_at            {:optional true} [:maybe :any]]])
 
 (def ^:private document-summary-columns
   [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
