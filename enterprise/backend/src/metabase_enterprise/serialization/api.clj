@@ -363,9 +363,9 @@
     (write-json-object!
      writer
      (cond-> []
-       with-databases? (conj ["databases" (eduction (map metadata/format-database-row) (metadata/reducible-databases))])
-       with-tables?    (conj ["tables"    (eduction (map metadata/format-table-row)    (metadata/reducible-tables))])
-       with-fields?    (conj ["fields"    (eduction (map metadata/format-field-row)    (metadata/reducible-fields))])))
+       with-databases? (conj ["databases" (metadata/reducible-databases)])
+       with-tables?    (conj ["tables"    (metadata/reducible-tables)])
+       with-fields?    (conj ["fields"    (metadata/reducible-fields)])))
     (.flush writer)))
 
 (api.macros/defendpoint :get "/metadata/export"

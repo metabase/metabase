@@ -50,15 +50,15 @@
    [:= (u/qualified-key f :active) true]
    [:<> (u/qualified-key f :visibility_type) "sensitive"]])
 
-(defn reducible-databases
-  "Reducible query streaming visible databases as `{:name :engine}` rows."
+(defn- reducible-databases-query
+  "Raw reducible-query streaming visible-database rows for [[reducible-databases]]."
   []
   (t2/reducible-query {:select [[:db.name :name] [:db.engine :engine]]
                        :from   [[:metabase_database :db]]
                        :where  (visible-db-where :db)}))
 
-(defn reducible-tables
-  "Reducible query streaming visible tables along with their owning database name."
+(defn- reducible-tables-query
+  "Raw reducible-query streaming visible-table rows for [[reducible-tables]]."
   []
   (t2/reducible-query {:select [[:db.name :db_name]
                                 [:table.schema :schema]
@@ -68,12 +68,11 @@
                        :join   [[:metabase_database :db] [:= :table.db_id :db.id]]
                        :where  [:and (visible-db-where :db) (visible-table-where :table)]}))
 
-(defn reducible-fields
-  "Reducible query streaming visible fields with the columns needed to build their portable
-  ids and the FK target's portable id. Visibility filters on the FK target chain are folded
-  into the LEFT JOIN ON clauses (rather than the WHERE) so that an inaccessible target fails
-  the join and the `fk_*` columns come back as NULL — `format-field-row` then drops the
-  `:fk_target_field_id` for that row."
+(defn- reducible-fields-query
+  "Raw reducible-query streaming visible-field rows for [[reducible-fields]]. Visibility
+  filters on the FK target chain are folded into the LEFT JOIN ON clauses (rather than the
+  WHERE) so that an inaccessible target fails the join and the `fk_*` columns come back as
+  NULL — [[format-field-row]] then drops the `:fk_target_field_id` for that row."
   []
   (t2/reducible-query
    {:select    [[:db.name :db_name]
@@ -171,3 +170,18 @@
                   :nfc_path nfc-path
                   :parent_id parent-id
                   :fk_target_field_id fk-target-id)))
+
+(defn reducible-databases
+  "Eduction streaming visible databases as already-formatted JSON-shaped rows."
+  []
+  (eduction (map format-database-row) (reducible-databases-query)))
+
+(defn reducible-tables
+  "Eduction streaming visible tables as already-formatted JSON-shaped rows."
+  []
+  (eduction (map format-table-row) (reducible-tables-query)))
+
+(defn reducible-fields
+  "Eduction streaming visible fields as already-formatted JSON-shaped rows."
+  []
+  (eduction (map format-field-row) (reducible-fields-query)))
