@@ -695,7 +695,7 @@
                                                :cacheCreationTokens 300
                                                :cacheReadTokens     1200}
                                        :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (==  300 (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
           (is (== 1200 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
 
@@ -711,7 +711,7 @@
                                       {:type  :usage
                                        :usage {:promptTokens 10 :completionTokens 5}
                                        :model "test-model"}]))]
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "agent"})))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
           (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
           (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))))))
 
