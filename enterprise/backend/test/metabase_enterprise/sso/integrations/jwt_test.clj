@@ -898,7 +898,7 @@
                                               default-jwt-secret))))))))
 
 (deftest non-string-jwt-claims-dropped-test
-  (testing "JWT claims with non-string values are dropped and warning is logged"
+  (testing "JWT claims are stringified or joined as appropriate; unstringable values are dropped (UXW-3921)"
     (with-jwt-default-setup!
       (mt/with-log-messages-for-level [jwt-log-messages [metabase-enterprise :warn]]
         (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -919,14 +919,14 @@
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
 
-          (testing "only string attributes are saved to jwt_attributes"
+          (testing "scalar attributes are stringified, array attributes are joined with commas, unstringable values dropped"
             (is (= {"string_attr" "valid-string"
                     "number_attr" "42"
-                    "boolean_attr" "false"}
+                    "boolean_attr" "false"
+                    "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
