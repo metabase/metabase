@@ -212,11 +212,11 @@
   [:map
    [:id                    ms/PositiveInt]
    [:name                  :string]
-   [:exploration_thread_id [:maybe ms/PositiveInt]]
+   [:exploration_thread_id ms/PositiveInt]
    [:creator_id            ms/PositiveInt]
    [:content_type          :string]
-   [:created_at            {:optional true} [:maybe :any]]
-   [:updated_at            {:optional true} [:maybe :any]]])
+   [:created_at            ms/TemporalInstant]
+   [:updated_at            ms/TemporalInstant]])
 
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
