@@ -61,12 +61,6 @@ Use the `layout` prop to specify which layout to use for the Metabot component:
 
 If `MetabotQuestion`'s built-in layouts don't fit your app, use the `useMetabot` hook to read Metabot's conversation state directly and render your own UI. The hook gives you the messages, the chart the agent most recently produced, processing and error state, and actions to submit, cancel, retry, or reset the conversation.
 
-`useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted. Always guard before use. If you don't guard it, the first render will throw `Cannot read properties of null` when you reach for `metabot.messages`, `metabot.submitMessage`, etc., because the SDK ships its Metabot internals via a code-split chunk that isn't available synchronously.
-
-`MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state. Which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets below render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
-
-The `Chart` component on each chart message, and the `CurrentChart` returned by the hook, accept the same props as [`StaticQuestion`](./questions.md#staticquestion) except `questionId`, `token`, and `query`, which the SDK already wires for you. Most apps will set `drills` (to allow click-actions on chart elements) and `height`. The `height="100%"` only works if the parent has a defined height. The dedicated-chart snippet below sets `height: 600` on the outer flex container for that reason.
-
 ### Inline charts
 
 ![AI chat inline charts](../images/ai-chat-inline-chart.png)
@@ -90,6 +84,12 @@ Each agent chart message carries a pre-wired `Chart` component. Walk the message
 ### Return shape
 
 {% include_file "{{ dirname }}/api/snippets/UseMetabotResult.md" snippet="properties" %}
+
+### Notes on `useMetabot`
+
+- **Guard against null while waiting for the SDK bundle**: `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted. Always guard before use. If you don't guard it, the first render will throw `Cannot read properties of null` when you reach for `metabot.messages`, `metabot.submitMessage`, etc., because the SDK ships its Metabot internals via a code-split chunk that isn't available synchronously.
+- **Bring your own Markdown renderer** `MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state. Which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets below render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
+- **The chart components accept the same props as `StaticQuestion`**. The `Chart` component on each chart message, and the `CurrentChart` returned by the hook, accept the same props as [`StaticQuestion`](./questions.md#staticquestion) except `questionId`, `token`, and `query`, which the SDK already wires for you. Most apps will set `drills` (to allow click-actions on chart elements) and `height`. The `height="100%"` only works if the parent has a defined height. The dedicated-chart snippet below sets `height: 600` on the outer flex container for that reason.
 
 ### API reference
 
