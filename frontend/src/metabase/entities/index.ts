@@ -75,7 +75,6 @@ export { Dashboards as dashboards } from "./dashboards";
 export { Questions as questions } from "./questions";
 
 export { Timelines as timelines } from "./timelines";
-export { TimelineEvents as timelineEvents } from "./timeline-events";
 
 export { Bookmarks as bookmarks } from "./bookmarks";
 export { Databases as databases } from "./databases";
