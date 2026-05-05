@@ -91,9 +91,9 @@
                     ;; Bootstraps the same in-process state the
                     ;; `:workspace` section loader installs at boot.
                     (ws/set-instance-workspace!
-                     {:name      "e2e-ws"
-                      :databases {(:id ws-db) {:input_schemas [main-schema]
-                                               :output_schema isolation-schema}}})
+                     {:name "e2e-ws"
+                      :databases {(:id ws-db) {:input  [{:schema main-schema}]
+                                               :output {:schema isolation-schema}}}})
                     (mt/with-db ws-db
                       (sync/sync-database! ws-db {:scan :schema})
 
