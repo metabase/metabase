@@ -133,6 +133,46 @@
                 (format "expected 403 for %s; got %d: %s"
                         label (.getCode ^BigQueryException bq-ex) (.getMessage ^BigQueryException bq-ex)))))))))
 
+(defn- expect-bq-denied!
+  "Like [[expect-bq-write-denied!]] but accepts any 4xx response. Used where the
+   correct denial code varies — cross-workspace reads can return 403 (forbidden)
+   or 404 (resource not found, when the caller has no visibility on the target),
+   and storage/external-table escapes can surface as 403 (no GCS perms) or 404
+   (bucket not found). All 4xx codes mean the operation was correctly denied."
+  [^BigQuery client sql label]
+  (testing (format "%s is denied" label)
+    (try
+      (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
+      (is false (format "%s unexpectedly succeeded" label))
+      (catch Throwable t
+        (let [bq-ex (find-bq-exception t)]
+          (is (some? bq-ex)
+              (format "expected BigQueryException for %s; got %s" label (class t)))
+          (when bq-ex
+            (let [code (.getCode ^BigQueryException bq-ex)]
+              (is (and (>= code 400) (< code 500))
+                  (format "expected 4xx for %s; got %d: %s"
+                          label code (.getMessage ^BigQueryException bq-ex))))))))))
+
+(defn- verify-bq-destroy!
+  "Assert post-destroy state for BigQuery workspace isolation: the workspace's
+   output dataset is gone. Called right after `destroy-workspace-isolation!` to
+   confirm cleanup actually happened.
+
+   Note: the natural companion check — \"workspace SA can no longer issue
+   access tokens\" — is *not* asserted because GCP IAM propagation of
+   `deleteServiceAccount` is documented as taking up to 24 hours: deleted
+   service accounts can keep issuing tokens during that window, making any
+   immediate post-destroy assertion flaky. The dataset deletion is reliable
+   because admin-client reads see the deletion immediately. The actual SA is
+   hard-deleted by `bq-delete-sa-direct!` in the test's finally block."
+  [project-id ^BigQuery admin-client out-dataset]
+  (testing "workspace output dataset is dropped"
+    (let [ds-id (DatasetId/of project-id out-dataset)
+          ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]
+      (is (nil? ds)
+          (format "output dataset %s should be removed after destroy" out-dataset)))))
+
 (defn- bq-create-dataset! [^BigQuery client project-id dataset-name]
   (.create client
            (.build (DatasetInfo/newBuilder (DatasetId/of project-id dataset-name)))
@@ -256,38 +296,33 @@
                 (when @succeeded
                   (try (bigquery/drop-dataset! admin-client project-id hacker-ds)
                        (catch Throwable _ nil)))))
+            (testing "workspace SA cannot exfiltrate data via storage/external escapes"
+              ;; The two BigQuery primitives that bridge to GCS (and thus would
+              ;; let a workspace SA exfiltrate or inject data outside the BQ
+              ;; sandbox) are CREATE EXTERNAL TABLE (read GCS object as a
+              ;; queryable table) and EXPORT DATA (write query result to GCS).
+              ;; Both require GCS-side `storage.objects.get` / `.create` on the
+              ;; bucket, which the workspace SA has on no bucket — its IAM
+              ;; bindings are scoped to BigQuery resources only. We point at a
+              ;; freshly-named bucket so the response can be either 403
+              ;; (perm-denied) or 404 (bucket-not-found); both confirm the SA
+              ;; cannot reach GCS. Accept any 4xx via expect-bq-denied!.
+              (let [hacker-uri  (format "gs://nonexistent-mb-iso-%s/data.csv" run-id)
+                    ext-tbl     (qual out-dataset (str "ws_iso_ext_" run-id))]
+                (expect-bq-denied! user-client
+                                   (format "CREATE EXTERNAL TABLE %s OPTIONS (uris = ['%s'], format = 'CSV')"
+                                           ext-tbl hacker-uri)
+                                   :create-external-table)
+                (expect-bq-denied! user-client
+                                   (format "EXPORT DATA OPTIONS (uri = '%s', format = 'CSV') AS SELECT 1 AS x"
+                                           hacker-uri)
+                                   :export-data)))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert the cleanup actually happened. destroy is idempotent so
               ;; finally re-calling it is a no-op.
               (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
-              (testing "workspace SA can no longer issue access tokens"
-                ;; GCP IAM holds deleted service accounts in a *soft-deleted* state
-                ;; for ~30 days — `getServiceAccount` may still return the SA (with
-                ;; a tombstone email) right after `deleteServiceAccount` returns,
-                ;; making "look the SA up" a flaky deletion signal. The reliable
-                ;; signal is that fresh token issuance fails: deleted SAs cannot
-                ;; mint new access tokens. We bypass the per-test ImpersonatedCreds
-                ;; instance (which caches a token for up to an hour) by building a
-                ;; new one and forcing a refresh.
-                (let [fresh-imp-creds (ImpersonatedCredentials/create
-                                       admin-creds
-                                       ws-sa-email
-                                       nil
-                                       (doto (java.util.ArrayList.)
-                                         (.add "https://www.googleapis.com/auth/bigquery"))
-                                       3600)]
-                  (try
-                    (.refresh fresh-imp-creds)
-                    (is false (format "fresh impersonation of %s unexpectedly succeeded after destroy" ws-sa-email))
-                    (catch Throwable t
-                      (is (some? t)
-                          (format "fresh impersonation correctly denied after destroy: %s" (ex-message t)))))))
-              (testing "workspace output dataset is dropped"
-                (let [ds-id (DatasetId/of project-id out-dataset)
-                      ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]
-                  (is (nil? ds)
-                      (format "output dataset %s should be removed after destroy" out-dataset))))))
+              (verify-bq-destroy! project-id admin-client out-dataset)))
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
@@ -297,26 +332,6 @@
             (try (bq-drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
             (try (bq-delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close iam-client))))))))
-
-(defn- expect-bq-denied!
-  "Like [[expect-bq-write-denied!]] but accepts any 4xx response. Cross-workspace
-   reads can surface as 404 (resource not found, when the caller has no visibility
-   on the target dataset at all) instead of 403 (forbidden) — both indicate the
-   operation was correctly denied; the choice is BigQuery's IAM bookkeeping."
-  [^BigQuery client sql label]
-  (testing (format "%s is denied" label)
-    (try
-      (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
-      (is false (format "%s unexpectedly succeeded" label))
-      (catch Throwable t
-        (let [bq-ex (find-bq-exception t)]
-          (is (some? bq-ex)
-              (format "expected BigQueryException for %s; got %s" label (class t)))
-          (when bq-ex
-            (let [code (.getCode ^BigQueryException bq-ex)]
-              (is (and (>= code 400) (< code 500))
-                  (format "expected 4xx for %s; got %d: %s"
-                          label code (.getMessage ^BigQueryException bq-ex))))))))))
 
 (deftest ^:synchronized cross-workspace-isolation-perms-bigquery-test
   ;; BigQuery sibling of `cross-workspace-isolation-perms-test`. Provisions two

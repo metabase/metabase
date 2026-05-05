@@ -157,6 +157,30 @@
           (is (some? sqle)
               (format "expected SQLException for %s; got %s" label (class t))))))))
 
+(defn- verify-jdbc-destroy!
+  "Assert post-destroy state for a JDBC workspace: the workspace user can no
+   longer open a fresh connection, and the output namespace is gone from the
+   admin's catalog. Called right after `destroy-workspace-isolation!` to
+   confirm cleanup actually happened.
+
+   `user-spec` is an unpooled JDBC spec — each `jdbc/query` opens a new
+   connection, so after destroy the auth handshake must fail (user/role
+   dropped on most drivers). Any exception is acceptable; what specifically
+   fails is driver-defined."
+  [driver admin-spec user-spec out-schema]
+  (testing "workspace user cannot open a fresh connection"
+    (try
+      (jdbc/query user-spec ["SELECT 1"])
+      (is false "workspace user unexpectedly succeeded querying after destroy")
+      (catch Throwable t
+        (is (some? t)
+            (format "workspace user denied after destroy: %s" (ex-message t))))))
+  (testing "output namespace was dropped"
+    (let [visible-after (visible-namespaces driver admin-spec)]
+      (is (not (contains? visible-after (u/lower-case-en out-schema)))
+          (format "output namespace %s should not appear in catalog after destroy. visible=%s"
+                  out-schema visible-after)))))
+
 (defn- escalation-attempt-sqls
   "Per-driver list of `[label sql]` pairs that probe the privilege-escalation
    surface — account-/server-/role-level operations the workspace user should
@@ -182,6 +206,35 @@
                  [:create-role  (str "CREATE ROLE \"" hacker-name "_r\"")]]
     :clickhouse [[:create-user  (str "CREATE USER `" hacker-name "` IDENTIFIED WITH plaintext_password BY 'Pass1234X'")]
                  [:create-role  (str "CREATE ROLE `" hacker-name "_r`")]]))
+
+(defn- storage-escape-sqls
+  "Per-driver list of `[label sql]` pairs probing the warehouse's bridges to
+   external storage (S3, internal stages, etc.) — the high-value bypass paths
+   that would let a workspace user exfiltrate granted-input or output data
+   outside the warehouse sandbox. Each SQL is shaped to fail at permission
+   check, not parse: if denial flips to success, the workspace user has
+   storage perms it shouldn't.
+
+   Drivers without a meaningful storage-bridge primitive (postgres / mysql /
+   sqlserver / clickhouse — all of which keep data in-engine without an
+   external-storage SQL surface) return an empty list."
+  [driver hacker-name]
+  (case driver
+    :snowflake [;; Internal Snowflake stage — needs CREATE STAGE on the schema,
+                ;; which `dataEditor`-equivalent grants don't include.
+                [:create-stage          (str "CREATE STAGE \"" hacker-name "_stage\"")]
+                ;; External stage referencing S3 — needs CREATE STAGE plus a
+                ;; STORAGE INTEGRATION the workspace user has USAGE on.
+                [:create-external-stage (str "CREATE STAGE \"" hacker-name "_s3_stage\" "
+                                             "URL='s3://nonexistent-mb-iso-bucket/'")]]
+    :redshift  [;; COPY from S3 — needs S3 read perms via IAM_ROLE; workspace user
+                ;; has no IAM role assumption privilege.
+                [:copy-from-s3   (str "COPY \"" hacker-name "_tmp\" FROM 's3://nonexistent-mb-iso-bucket/data.csv' "
+                                      "IAM_ROLE 'arn:aws:iam::000000000000:role/nonexistent-role'")]
+                ;; UNLOAD to S3 — write side of the same path; equally denied.
+                [:unload-to-s3   (str "UNLOAD ('SELECT 1') TO 's3://nonexistent-mb-iso-bucket/' "
+                                      "IAM_ROLE 'arn:aws:iam::000000000000:role/nonexistent-role'")]]
+    (:postgres :mysql :sqlserver :clickhouse) []))
 
 (defn- random-suffix
   "Eight hex chars from a random UUID. Per-run unique enough to avoid collisions
@@ -305,28 +358,23 @@
               (let [hacker-name (str "ws_iso_hacker_" run-id)]
                 (doseq [[label sql] (escalation-attempt-sqls driver hacker-name)]
                   (expect-sql-denied! user-spec sql label))))
+            (testing "workspace user cannot exfiltrate via storage/external escapes"
+              ;; Snowflake stages and Redshift COPY/UNLOAD are the SQL-level bridges
+              ;; to external object storage on those warehouses — high-value bypass
+              ;; paths because they let a sandboxed user pull data in (COPY) or push
+              ;; data out (UNLOAD) without going through grant-mediated tables. The
+              ;; other JDBC drivers (postgres / mysql / sqlserver / clickhouse) have
+              ;; no equivalent SQL surface and are no-ops here.
+              (let [hacker-name (str "ws_iso_storage_" run-id)]
+                (doseq [[label sql] (storage-escape-sqls driver hacker-name)]
+                  (expect-sql-denied! user-spec sql label))))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert that the cleanup actually happened. Drivers' destroy impls are
               ;; idempotent (`IF EXISTS` everywhere), so the `finally` calling destroy
               ;; a second time is a no-op.
               (driver/destroy-workspace-isolation! driver database ws-with-details)
-              (testing "workspace user cannot open a fresh connection"
-                ;; `user-spec` is an unpooled jdbc spec — each `jdbc/query` opens a new
-                ;; connection, which after destroy must fail at password/auth time
-                ;; (user/role dropped). Any exception is acceptable; what fails is
-                ;; specifically driver-defined.
-                (try
-                  (jdbc/query user-spec ["SELECT 1"])
-                  (is false "workspace user unexpectedly succeeded querying after destroy")
-                  (catch Throwable t
-                    (is (some? t)
-                        (format "workspace user denied after destroy: %s" (ex-message t))))))
-              (testing "output namespace was dropped"
-                (let [visible-after (visible-namespaces driver admin-spec)]
-                  (is (not (contains? visible-after (u/lower-case-en out-schema)))
-                      (format "output namespace %s should not appear in catalog after destroy. visible=%s"
-                              out-schema visible-after))))))
+              (verify-jdbc-destroy! driver admin-spec user-spec out-schema)))
           (finally
             ;; Always attempt destroy first — drivers' impls are idempotent (`IF EXISTS`
             ;; everywhere) so this is safe whether init succeeded fully, partially, or
