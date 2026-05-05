@@ -1320,10 +1320,10 @@
   [username tables]
   (let [qu              (sql.u/quote-name :mysql :field username)
         source-databases (into #{} (keep :schema) tables)]
-    (mapv (fn [db]
-            (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                    (sql.u/quote-name :mysql :schema db) qu))
-          source-databases)))
+    (perf/mapv (fn [db]
+                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                         (sql.u/quote-name :mysql :schema db) qu))
+               source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace tables]

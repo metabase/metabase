@@ -3483,11 +3483,7 @@
            sql-tools
            util}
    :model-imports #{:model/Database
-                    :model/Table
-                    :model/TableRemapping
-                    :model/User
-                    :model/Workspace
-                    :model/WorkspaceDatabase}}
+                    :model/User}}
 
   enterprise/writable-connection
   {:team "Graphy"
