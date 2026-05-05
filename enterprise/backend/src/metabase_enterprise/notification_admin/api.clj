@@ -5,6 +5,7 @@
   expression ([[status-expr]]) referenced both as a projected column and in the `:status` filter
   WHERE clause, so the filter and the response field can't drift."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -56,35 +57,47 @@
   [:map
    [:updated ms/IntGreaterThanOrEqualToZero]])
 
-(defn- details-as-text
-  "Cast `notification_recipient.details` (JSON column) to a portable text type for substring
-  matching. MySQL needs `CHAR`; H2 and Postgres take `TEXT`. Mirrors the pattern in
-  [[metabase.settings.models.setting.cache]]."
-  []
-  (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :nr.details))
+(defn- handler-ids-with-user-email
+  "Set of notification_handler IDs whose user-recipients have `core_user.email` matching `email`
+  (case-insensitive). SQL-only — `core_user.email` is a plain column with a unique constraint."
+  [lower-email]
+  (or (t2/select-fn-set
+       :notification_handler_id (t2/table-name :model/NotificationRecipient)
+       {:join  [[:core_user :cu] [:= :cu.id :notification_recipient.user_id]]
+        :where [:and
+                [:= :notification_recipient.type "notification-recipient/user"]
+                [:= [:lower :cu.email] lower-email]]})
+      #{}))
 
-(defn- recipient-email-exists
-  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has a recipient
-  matching `email`. Two paths joined with OR:
-    - **user recipients**: `core_user.email` matches case-insensitively.
-    - **raw-value recipients**: the JSON-serialized `details` column contains the email substring.
-  The raw-value path is a substring LIKE on the cast-to-text JSON column — the JSON shape is
-  `{\"value\":\"…\"}` (plus optional `channel_id`), so a bare email substring effectively anchors
-  to the `value` field with a vanishingly small false-positive surface."
+(defn- handler-ids-with-raw-value-email
+  "Set of notification_handler IDs whose raw-value (external) recipients have `details.value`
+  matching `email`. Filtered in Clojure rather than SQL: the email lives inside a JSON map
+  (`{:value \"…\"}`), and `notification_recipient.details` is a `TEXT` column — every dialect
+  would need a different JSON-extraction expression to query it cleanly. Loading the raw-value
+  rows and matching with a Clojure equality check sidesteps that entirely. Bounded by the
+  raw-value recipient count, which is admin-search-cadence small in practice."
+  [lower-email]
+  (->> (t2/select :model/NotificationRecipient
+                  :type :notification-recipient/raw-value)
+       (into #{}
+             (comp (filter #(= lower-email
+                               (some-> % :details :value str/lower-case)))
+                   (map :notification_handler_id)))))
+
+(defn- notification-ids-with-recipient-email
+  "Pre-resolve the notification IDs that have any recipient — user or raw-value — matching
+  `email`. The two-path lookup is split so each path stays simple: SQL handles user emails
+  (indexed equality on `core_user.email`); Clojure handles raw-value emails (JSON value lives
+  inside a TEXT-encoded map)."
   [email]
-  (let [lower-email (str/lower-case email)]
-    [:exists
-     {:select    [[1]]
-      :from      [[(t2/table-name :model/NotificationHandler) :nh]]
-      :join      [[(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id]]
-      :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-      :where     [:and
-                  [:= :nh.notification_id :notification.id]
-                  [:or
-                   [:= [:lower :cu.email] lower-email]
-                   [:and
-                    [:= :nr.type "notification-recipient/raw-value"]
-                    [:like [:lower (details-as-text)] (str "%" lower-email "%")]]]]}]))
+  (let [lower-email (str/lower-case email)
+        handler-ids (set/union (handler-ids-with-user-email lower-email)
+                               (handler-ids-with-raw-value-email lower-email))]
+    (if (seq handler-ids)
+      (or (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
+                            :id [:in handler-ids])
+          #{})
+      #{})))
 
 (def ^:private status-lookback-days
   "How far back to consider alert-type TaskRuns when computing `failing`/`abandoned`/`healthy`."
@@ -188,7 +201,13 @@
     (sql.helpers/where (channel-exists channel))
 
     recipient_email
-    (sql.helpers/where (recipient-email-exists recipient_email))))
+    (sql.helpers/where
+     ;; Pre-resolve in Clojure to avoid a SQL-side JSON-text LIKE for raw-value recipients
+     ;; (their email lives in a JSON `details` column). Sentinel `-1` ensures an empty match
+     ;; produces zero rows rather than a malformed `IN ()` clause.
+     [:in :notification.id
+      (let [ids (notification-ids-with-recipient-email recipient_email)]
+        (if (seq ids) ids #{-1}))])))
 
 (defn- status-where
   "WHERE clause filtering to rows where [[status-expr]] equals `status`. Comparing against the
