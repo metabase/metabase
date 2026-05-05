@@ -1866,7 +1866,7 @@ describe("sandbox", () => {
       additionalAssertions,
     } of SANDBOX_CASES) {
       before?.();
-      cy.log("Verifying error pattern", name);
+      cy.log(`Verifying error pattern for: ${name}`);
       cy.get("@consoleError").should(
         "have.been.calledWithMatch",
         Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
