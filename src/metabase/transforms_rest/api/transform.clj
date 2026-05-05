@@ -4,11 +4,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -147,6 +149,21 @@
     [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (transforms.core/get-transforms query-params))
 
+(api.macros/defendpoint :get "/settings" :- [:map {:closed true}
+                                             [:enabled :boolean]
+                                             [:is_locked [:maybe :boolean]]]
+  "Get instance-wide transform feature settings: whether transforms are enabled,
+   and whether the customer's active transforms meter is locked (trial quota exhausted).
+   Per harbormaster's mutual-exclusivity constraint, at most one of `:transform-basic-runs`
+   or `:transform-advanced-runs` is present, so the OR aggregate reduces to the single
+   active meter (if any)."
+  []
+  (let [meters (premium-features/locked-meters)]
+    {:enabled   (or (transforms.gating/query-transforms-enabled?)
+                    (transforms.gating/python-transforms-enabled?))
+     :is_locked (boolean (or (true? (:transform-basic-runs meters))
+                             (true? (:transform-advanced-runs meters))))}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -281,6 +298,9 @@
    The transform must already be fetched and validated."
   [transform]
   (transforms.core/check-feature-enabled! transform)
+  (api/check (not (transforms.gating/transform-locked? transform))
+             [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                   :error-code "metabase_transforms_locked"}])
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.core/execute! transform {:start-promise start-promise

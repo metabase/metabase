@@ -415,3 +415,62 @@
           (testing "transform in root collection has root collection hydrated"
             (is (= "Transforms"
                    (get-in (runs-by-id run-in-root-id) [:transform :collection :name])))))))))
+
+(deftest run-transform-locked-meter-returns-402-test
+  (testing "POST /api/transform/:id/run returns 402 with the structured lock error when the meter is locked.
+            Asserted at the API layer — execution is never reached, so no driver setup is needed."
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-temp [:model/Transform {transform-id :id} (query-transform-payload
+                                                              (str "locked_" (u/generate-nano-id)))]
+            (testing "basic-bucket lock returns metabase_transforms_locked 402"
+              (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+                (let [response (mt/user-http-request :crowberto :post 402
+                                                     (format "transform/%d/run" transform-id))]
+                  (is (= "metabase_transforms_locked" (:error-code response)))
+                  (is (string? (:message response)))
+                  (is (re-find #"locked" (:message response))))))
+            (testing "advanced-bucket lock — same generic error code (no bucket-specific code)"
+              ;; Add :writable-connection so the basic-mbql transform routes to advanced bucket.
+              (mt/with-premium-features #{:hosting :transforms-basic :writable-connection}
+                (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
+                  (let [response (mt/user-http-request :crowberto :post 402
+                                                       (format "transform/%d/run" transform-id))]
+                    (is (= "metabase_transforms_locked" (:error-code response)))))))))))))
+
+(deftest get-transform-settings-test
+  (testing "GET /api/transform/settings returns the aggregate enabled+is_locked shape the FE consumes"
+    (testing "OSS / no premium features → enabled=false, is_locked=false"
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [locked-meters {}]
+          ;; OSS gets query transforms when self-hosted, so :enabled is true; assert shape
+          (let [response (mt/user-http-request :crowberto :get 200 "transform/settings")]
+            (is (false? (:is_locked response)))
+            (is (contains? response :enabled))
+            (is (= #{:enabled :is_locked} (set (keys response))))))))
+    (testing "hosted basic, no locks → enabled=true, is_locked=false"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {}]
+          (is (= {:enabled true :is_locked false}
+                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
+    (testing "basic-bucket lock → is_locked=true"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+          (is (= {:enabled true :is_locked true}
+                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
+    (testing "advanced-bucket lock → is_locked=true"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
+          (is (= {:enabled true :is_locked true}
+                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
+    (testing "non-transform meter (e.g. AI tokens) does not show up as transform lock"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:metabase-ai-tokens true}]
+          (is (= {:enabled true :is_locked false}
+                 (mt/user-http-request :crowberto :get 200 "transform/settings"))))))
+    (testing "data-analyst (non-admin) can read the endpoint"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+          (is (= {:enabled true :is_locked true}
+                 (mt/user-http-request :rasta :get 200 "transform/settings"))))))))

@@ -187,6 +187,51 @@
           (is @run-called?
               "Should call run-mbql-transform! when feature is enabled"))))))
 
+(deftest run-transform-locked-meter-test
+  (testing "scheduled run-transform! is skipped (with warn log) when the meter is locked"
+    (mt/with-premium-features #{:hosting :transforms-basic}
+      (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+        (let [transform       {:id          7
+                               :source_type :native
+                               :source      query-source
+                               :name        "Locked Transform"}
+              logged          (atom [])
+              run-called?     (atom false)]
+          (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                                 (swap! logged conj {:level level :message message}))
+                                      transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _] (reset! run-called? true))
+                                      transforms.job-run/add-run-activity! (constantly nil)]
+            (#'jobs/run-transform! 200 :scheduled nil transform)
+            (is (false? @run-called?)
+                "execute! must not be called when the meter is locked")
+            (is (some #(re-matches #".*Skip running transform 7 due to locked meter.*"
+                                   (:message %))
+                      @logged)
+                "Should log warning naming the locked-meter reason"))))))
+  (testing "scheduled run-transform! runs normally when the meter is not locked"
+    (mt/with-premium-features #{:hosting :transforms-basic}
+      (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs false}]
+        (let [transform   {:id 8 :source_type :native :source query-source :name "Unlocked"}
+              run-called? (atom false)]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _] (reset! run-called? true))
+                                      transforms.job-run/add-run-activity! (constantly nil)]
+            (#'jobs/run-transform! 201 :scheduled nil transform)
+            (is (true? @run-called?)))))))
+  (testing "non-metered transform (self-hosted basic-only) is never blocked by lock state"
+    (mt/with-premium-features #{:transforms-basic}    ;; no :hosting → not metered
+      (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
+                                                        :transform-advanced-runs true}]
+        (let [transform   {:id 9 :source_type :native :source query-source :name "Self-hosted basic"}
+              run-called? (atom false)]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _] (reset! run-called? true))
+                                      transforms.job-run/add-run-activity! (constantly nil)]
+            (#'jobs/run-transform! 202 :scheduled nil transform)
+            (is (true? @run-called?)
+                "Self-hosted basic-only transforms are not metered, so no lock applies")))))))
+
 (deftest job-run-boom-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
