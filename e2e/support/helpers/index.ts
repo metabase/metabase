@@ -5,6 +5,7 @@ export * from "./e2e-api-key-helpers";
 export * from "./e2e-bi-basics-helpers";
 export * from "./e2e-boolean-helpers";
 export * from "./e2e-browser-helpers";
+export * from "./e2e-caching-helpers";
 export * from "./e2e-cloud-helpers";
 export * from "./e2e-codemirror-helpers";
 export * from "./e2e-collection-helpers";
