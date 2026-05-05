@@ -603,6 +603,77 @@
             (doseq [sql (drop-input-namespace-sqls driver out-schema [])]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
 
+(deftest ^:synchronized grant-accumulation-test
+  ;; Pins the *additive* contract of `grant-workspace-read-access!`: each call
+  ;; adds tables to the workspace user's read-set without revoking previously-
+  ;; granted ones. So `grant(ws, [A])` followed by `grant(ws, [B])` leaves the
+  ;; workspace user able to SELECT both A and B. (The opposite contract —
+  ;; replacing — would revoke A on the second call. We chose additive
+  ;; deliberately; this test prevents an accidental flip.)
+  ;;
+  ;; All current driver impls are naturally additive because they emit
+  ;; `GRANT SELECT ON …` statements (or table-level IAM bindings on BigQuery)
+  ;; without revoking prior grants. If a driver ever does explicit revoke-then-
+  ;; grant, this test will catch the regression.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+    (testing "grant-workspace-read-access! is additive across multiple calls"
+      (let [driver       driver/*driver*
+            database     (mt/db)
+            details      (:details database)
+            admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
+            run-id       (random-suffix)
+            in-schema    (str "mb_iso_in_" run-id)
+            src-a-name   (str "ws_iso_src_a_" run-id)
+            src-b-name   (str "ws_iso_src_b_" run-id)
+            src-a        (qualify driver in-schema src-a-name)
+            src-b        (qualify driver in-schema src-b-name)
+            workspace    {:id   (Long/parseLong run-id 16)
+                          :name (str "wsd-grantaccum-" run-id)}
+            ws-state     (atom (merge workspace
+                                      {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+                                       :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
+        (try
+          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " src-a " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
+          (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
+          (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
+          (let [init-result     (driver/init-workspace-isolation! driver database workspace)
+                ws-with-details (merge workspace init-result)
+                _               (reset! ws-state ws-with-details)
+                user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
+            ;; First grant: only A.
+            (driver/grant-workspace-read-access! driver database ws-with-details
+                                                 [{:schema in-schema :name src-a-name}])
+            (testing "after first grant, A is readable and B is not"
+              (is (= [{:id 1 :v "a"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " src-a)])))
+              ;; MySQL grants at db.* granularity, so a single grant on db
+              ;; happens to allow B too. Skip the negative assertion there:
+              ;; this isn't an additivity question, it's a grant-granularity
+              ;; question (covered separately in the cross-workspace test by
+              ;; using *separate* input namespaces per workspace).
+              (when-not (= driver :mysql)
+                (expect-sql-denied! user-spec
+                                    (str "SELECT id, v FROM " src-b)
+                                    :select-b-before-grant)))
+            ;; Second grant: only B. The additive contract means A's grant must
+            ;; still be in effect afterward.
+            (driver/grant-workspace-read-access! driver database ws-with-details
+                                                 [{:schema in-schema :name src-b-name}])
+            (testing "after second grant, both A and B are readable (A's grant accumulated)"
+              (is (= [{:id 1 :v "a"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " src-a)])))
+              (is (= [{:id 1 :v "b"}]
+                     (jdbc/query user-spec [(str "SELECT id, v FROM " src-b)])))))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database @ws-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during grant-accumulation test cleanup"
+                              driver)))
+            (doseq [sql (drop-input-namespace-sqls driver in-schema [src-a-name src-b-name])]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+
 ;; --- cross-database isolation -----------------------------------------------
 ;; Workspace tests above all live within a single `(mt/db)` database. Snowflake,
 ;; SQL Server, and BigQuery host *many* databases/projects on one account/server,
