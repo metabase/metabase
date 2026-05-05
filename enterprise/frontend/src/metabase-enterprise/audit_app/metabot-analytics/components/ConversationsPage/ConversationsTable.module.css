@@ -1,0 +1,17 @@
+.table thead th,
+.table thead th * {
+  color: var(--mb-color-brand);
+}
+
+.table td,
+.table th {
+  padding-block: 0.75em;
+}
+
+.table td:first-child {
+  font-weight: normal;
+}
+
+.table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}

@@ -37,4 +37,25 @@ describe("AdminEmbeddingApp", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("admin-layout-content")).toBeInTheDocument();
   });
+
+  it("hides the sidebar for theme editor paths", () => {
+    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+      initialRoute: "/admin/embedding/themes/42",
+      withRouter: true,
+    });
+
+    expect(
+      screen.queryByTestId("admin-layout-sidebar"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("admin-layout-content")).toBeInTheDocument();
+  });
+
+  it("shows the sidebar on the themes listing page", () => {
+    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+      initialRoute: "/admin/embedding/themes",
+      withRouter: true,
+    });
+
+    expect(screen.getByTestId("admin-layout-sidebar")).toBeInTheDocument();
+  });
 });

@@ -31,10 +31,12 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [get-in not-empty some]])
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [get-in not-empty some]]
+   [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
@@ -210,10 +212,15 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
+(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+
 (defmethod driver/can-connect? :mysql
   [driver details]
   ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
   ;; a warning if it is
+  (let [match (re-find disallowed-additional-opts (:additional-options details ""))]
+    (when match
+      (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
@@ -489,7 +496,15 @@
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (driver-api/qp.add.source-alias opts))
+      (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+      ;; The field is referenced through a join (source-table is a join-alias
+      ;; string). The join target is compiled as a subquery that already
+      ;; projects this nfc column with JSON extraction applied — reference the
+      ;; projected column directly instead of re-applying extraction, which
+      ;; would derive the wrong column name through nested projections. (#73198)
+      (string? (driver-api/qp.add.source-table opts))
+      honeysql-expr
 
       :else
       (perf/postwalk #(if (h2x/identifier? %)
@@ -1193,9 +1208,27 @@
   [_driver database]
   (-> database driver.conn/effective-details :role))
 
-(defmethod driver.sql/set-role-statement :mysql
-  [_driver role]
-  (format "SET ROLE '%s';" role))
+(def ^{:arglists '([conn s])} memoized-quote-string-literal
+  "Call quotename(?, '''') on MySQL to quote a string literal, and escape any embedded single quotes, for use
+  with [[sql-jdbc/set-role-statement]] below; presumably this should never change so use a bounded cache to avoid the
+  overhead of calling this on every query."
+  (memoize/bounded
+   (-> (fn [conn s]
+         (:s (next.jdbc/execute-one! conn ["SELECT quote(?) AS s;" s])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[_conn s]] s)))))
+
+(defn- quote-role
+  "MySQL allows roles like `webapp@localhost`, and the correct way to quote that is `'webapp'@'localhost'."
+  [conn role]
+  (let [parts       (->> (str/split role #"@" 2)
+                         (map (partial memoized-quote-string-literal conn)))]
+    (if (= (count parts) 2)
+      (str (first parts) \@ (second parts))
+      (first parts))))
+
+(defmethod sql-jdbc/set-role-statement :mysql
+  [_driver conn role]
+  (format "SET ROLE %s;" (quote-role conn role)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
@@ -1310,22 +1343,22 @@
                       (let [init-result (try
                                           (driver/init-workspace-isolation! driver database test-workspace)
                                           (catch Exception e
-                                            (throw (ex-info (format "Failed to initialize workspace isolation (CREATE DATABASE/USER): %s"
-                                                                    (ex-message e))
+                                            (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                 (ex-message e))
                                                             {:step :init} e))))
                             workspace-with-details (merge test-workspace init-result)]
                         (when test-table
                           (try
                             (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
                             (catch Exception e
-                              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
-                                                      (:schema test-table) (:name test-table) (ex-message e))
+                              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
+                                                   (:schema test-table) (:name test-table) (ex-message e))
                                               {:step :grant :table test-table} e)))))
                         (try
                           (driver/destroy-workspace-isolation! driver database workspace-with-details)
                           (catch Exception e
-                            (throw (ex-info (format "Failed to destroy workspace isolation (DROP DATABASE/USER): %s"
-                                                    (ex-message e))
+                            (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                 (ex-message e))
                                             {:step :destroy} e))))
                         nil)
                       (catch Exception e

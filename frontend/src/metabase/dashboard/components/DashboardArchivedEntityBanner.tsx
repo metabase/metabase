@@ -1,7 +1,7 @@
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Dashboards } from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 
 import { useDashboardContext } from "../context";
 

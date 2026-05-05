@@ -12,10 +12,14 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { setupMetabotPromptSuggestionsEndpoint } from "__support__/server-mocks/metabot";
+import {
+  setupMetabotPromptSuggestionsEndpoint,
+  setupMetabotsEndpoints,
+} from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
@@ -34,16 +38,25 @@ const defaultSeedCollections = [
 const setup = async ({
   aiFeaturesEnabled = true,
   enableEmbedding = false,
+  contentVerification = false,
   initialRoute = "/admin/metabot",
   isConfigured = true,
+  metabots = buildDefaultMetabots(),
+  collections = defaultSeedCollections,
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
+  contentVerification?: boolean;
   initialRoute?: string;
   isConfigured?: boolean;
+  metabots?: Parameters<typeof setupMetabotsEndpoints>[0];
+  collections?: Parameters<
+    typeof setupCollectionByIdEndpoint
+  >[0]["collections"];
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
+    content_verification: contentVerification,
   });
 
   mockSettings({ "token-features": tokenFeatures });
@@ -80,15 +93,11 @@ const setup = async ({
     }),
   ]);
   setupUpdateSettingEndpoint();
-  setupCollectionByIdEndpoint({
-    collections: defaultSeedCollections.map((c: any) => ({
-      id: c.model_id,
-      ...c,
-    })),
-  });
+  setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
+  setupMetabotsEndpoints(metabots);
 
   [FIXED_METABOT_IDS.DEFAULT, FIXED_METABOT_IDS.EMBEDDED].forEach((metabotId) =>
     setupMetabotPromptSuggestionsEndpoint({
@@ -187,6 +196,42 @@ describe("AISettingsPage", () => {
       screen.getByRole("tab", { name: "Embedded", selected: true }),
     ).toBeInTheDocument();
     expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
+  });
+
+  it("reflects the persisted use_verified_content state from the API", async () => {
+    await setup({
+      contentVerification: true,
+      metabots: buildDefaultMetabots({
+        default: { use_verified_content: true },
+      }),
+    });
+
+    expect(
+      await screen.findByRole("switch", {
+        name: "Only use Verified content",
+      }),
+    ).toBeChecked();
+  });
+
+  it("reflects the persisted collection_id from the API", async () => {
+    const verifiedCollection = createMockCollection({
+      id: 42,
+      name: "Verified content",
+    });
+
+    await setup({
+      collections: [...defaultSeedCollections, verifiedCollection],
+      metabots: buildDefaultMetabots({
+        default: { collection_id: 42 },
+      }),
+    });
+
+    expect(await screen.findByText("Verified content")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", {
+        name: "Pick a different collection",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("persists disable ai features", async () => {

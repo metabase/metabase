@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
   location: Location;

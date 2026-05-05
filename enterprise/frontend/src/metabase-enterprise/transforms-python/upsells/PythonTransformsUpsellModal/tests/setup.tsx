@@ -5,6 +5,7 @@ import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupBillingEndpoints,
   setupPropertiesEndpoints,
+  setupStoreEECloudAddOnsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -33,7 +34,7 @@ export const setup = ({
 
   const storeUserEmail = "store-user@example.com";
   const currentUser = createMockUser(
-    isStoreUser ? { email: storeUserEmail } : undefined,
+    isStoreUser ? { email: storeUserEmail, is_superuser: true } : undefined,
   );
 
   const settings = {
@@ -59,6 +60,7 @@ export const setup = ({
     pluginTokens.forEach(setupEnterpriseOnlyPlugin);
   }
 
+  setupStoreEECloudAddOnsEndpoint(billingPeriodMonths);
   setupBillingEndpoints({
     billingPeriodMonths,
     hasBasicTransformsAddOn: true,
