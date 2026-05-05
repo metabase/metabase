@@ -1,6 +1,6 @@
 ---
 title: AI usage auditing
-summary: Audit Metabot conversations and track usage trends, costs, and adoption across users, groups, sources, and profiles.
+summary: "See token and message counts, chat logs, and more."
 ---
 
 # AI usage auditing
@@ -141,75 +141,13 @@ If you're an admin chatting with Metabot, type `/inspect` in the chat to jump st
 
 ## Building custom reports
 
-Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) models back the Usage auditing pages, and you can use them to build your own questions and dashboards.
+Three [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) models back the Usage auditing pages. See the [Usage analytics reference](../usage-and-performance-tools/usage-analytics-reference.md) for the full column list of each:
 
-- [AI usage logs](#ai-usage-logs)
-- [Metabot conversations](#metabot-conversations)
-- [Metabot messages](#metabot-messages)
+- [AI Usage Log](../usage-and-performance-tools/usage-analytics-reference.md#ai-usage-log) — one row per LLM call.
+- [Metabot Conversations](../usage-and-performance-tools/usage-analytics-reference.md#metabot-conversations) — one row per conversation.
+- [Metabot Messages](../usage-and-performance-tools/usage-analytics-reference.md#metabot-messages) — one row per message.
 
 Save your custom questions in the [Custom reports](../usage-and-performance-tools/usage-analytics.md#custom-reports-collection) sub-collection so they inherit the right permissions.
-
-### AI usage logs
-
-One row per LLM call.
-
-- Usage Log ID
-- Created At
-- Source
-- Source Name
-- Model
-- Profile ID
-- Prompt Tokens
-- Completion Tokens
-- Total Tokens
-- Conversation ID
-- User ID
-- User Qualified ID
-- User Display Name
-- Group Name
-- IP Address
-- Tenant ID
-- Request ID
-
-### Metabot Conversations
-
-One row per conversation.
-
-- Conversation ID
-- Created At
-- User ID
-- Summary
-- User Display Name
-- Message Count
-- User Message Count
-- Assistant Message Count
-- Total Tokens
-- Prompt Tokens
-- Completion Tokens
-- Last Message At
-- Profile ID
-- Profile Name
-- Group Name
-- Source
-- Source Name
-- IP Address
-- Tenant ID
-- Tenant Name
-- Model
-
-### Metabot messages
-
-One row per message.
-
-- Message ID
-- Conversation ID
-- Created At
-- Role
-- Profile ID
-- Total Tokens
-- User ID
-- Slack Message ID
-- Channel ID
 
 ## What isn't tracked yet
 
