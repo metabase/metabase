@@ -183,8 +183,11 @@
                                    (into-array BigQuery$JobOption [])))]
         ;; TEMP DIAGNOSTIC: identify which admin SA the CI is authenticating as.
         ;; Remove once we've confirmed the principal that needs IAM roles granted.
-        (log/infof "BigQuery test admin SA: %s"
-                   (.getClientEmail ^ServiceAccountCredentials admin-creds))
+        ;; Using println rather than log/infof because the CI test runner only
+        ;; surfaces test-runner notices to its log capture, not application
+        ;; logs from log/infof — println goes to stdout where it's visible.
+        (println "BigQuery test admin SA:"
+                 (.getClientEmail ^ServiceAccountCredentials admin-creds))
         (try
           (bq-create-dataset! admin-client project-id in-dataset)
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-name)))
