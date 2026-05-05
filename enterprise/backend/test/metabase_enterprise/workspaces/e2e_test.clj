@@ -48,7 +48,7 @@
               ;; distinguishable from this one.
               main-schema (str "canonical_schema_" run-id)
               src-name (str "x_input_table_" run-id)
-              tgt-name (str "x_output_table" run-id)
+              tgt-name (str "x_output_table_" run-id)
               workspace {:id   (Long/parseLong run-id 16)
                          :name (str "wsd-e2e-" run-id)}
               ;; Pre-init synthetic ws-state for cleanup. Every driver's destroy
@@ -129,6 +129,14 @@
                                   "the input-schema output table appears in the app db")
                               (is (= [] (filter #(= isolation-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
                                   "no app-db Table row points at the isolation schema")))
+                          (testing "A table remapping record exists"
+                            (is (= [{:to_schema       isolation-schema
+                                     :from_schema     main-schema
+                                     :from_table_name tgt-name
+                                     :from_db         ""
+                                     :database_id     (:id ws-db)}]
+                                   (for [r (t2/select :model/TableRemapping)]
+                                     (select-keys r [:to_schema :from_schema :from_table_name :from_db :database_id])))))
                           ;; --- Assertion: describe-database stays in main ------
                           (testing "describe-database returns only input-schema tables"
                             (let [{described :tables} (driver/describe-database admin-driver ws-db)]
@@ -144,7 +152,8 @@
                           (let [out-table (t2/select-one :model/Table
                                                          :db_id  (:id ws-db)
                                                          :schema main-schema
-                                                         :name   tgt-name)]
+                                                         :name   tgt-name)
+                                {:keys [to_table_name]} (t2/select-one :model/TableRemapping)]
                             (is (some? out-table)
                                 "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
                             (mt/with-temp [:model/Card card
@@ -156,7 +165,38 @@
                               (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                 (testing "card query returns the transform output (read-side remap engaged)"
                                   (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
-                                      "card returns the rows the transform wrote to the isolation schema")))))
+                                      "card returns the rows the transform wrote to the isolation schema"))))
+                            (mt/with-temp [:model/Card card
+                                           {:name          (str "ws-e2e-card-native-" run-id)
+                                            :database_id   (:id ws-db)
+                                            :dataset_query {:database (:id ws-db)
+                                                            :type     :native
+                                                            :native   {:query (format "SELECT * FROM \"%s\".\"%s\"" isolation-schema #p to_table_name)}}}]
+                              (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
+                                (testing "querying the isolation table directly works like querying any other table"
+                                  (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
+                            (mt/with-temp [:model/Card card
+                                           {:name          (str "ws-e2e-card-native-" run-id)
+                                            :database_id   (:id ws-db)
+                                            :dataset_query {:database (:id ws-db)
+                                                            :type     :native
+                                                            :native   {:query (format "SELECT * FROM \"%s\"" tgt-name)}}}]
+                              (let [rows (try (set (mt/rows (mt/process-query (:dataset_query card))))
+                                              (catch Exception e _))]
+                                (testing "native card query returns the transform output (Phase 2 SQL rewrite engaged)"
+                                  (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
+                                      "native card returns the rows the transform wrote to the isolation schema"))))
+                            (mt/with-temp [:model/Card card
+                                           {:name          (str "ws-e2e-card-native-" run-id)
+                                            :database_id   (:id ws-db)
+                                            :dataset_query {:database (:id ws-db)
+                                                            :type     :native
+                                                            :native   {:query (format "SELECT * FROM \"%s\".\"%s\"" main-schema tgt-name)}}}]
+                              (let [rows (try (set (mt/rows (mt/process-query (:dataset_query card))))
+                                              (catch Exception e (println e)))]
+                                (testing "native card query returns the transform output (Phase 2 SQL rewrite engaged)"
+                                  (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
+                                      "native card returns the rows the transform wrote to the isolation schema")))))
                           (testing "app db Table rows stay confined to the input schema after card run"
                             (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)]
                               (is (some #(and (= main-schema (:schema %))
