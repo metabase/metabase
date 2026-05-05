@@ -139,6 +139,8 @@
       (^Path parsePath [_ ^String s]
         (.getPath nio-fs s (into-array String [])))
       (^void checkAccess [_ ^Path p ^Set modes ^"[Ljava.nio.file.LinkOption;" _opts]
+        ;; LinkOption opts are dropped: the only value is NOFOLLOW_LINKS, and neither our jar zip FS
+        ;; nor resources/python-sources contains symlinks.
         (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes)))
       (^void createDirectory [_ ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
         (Files/createDirectory p attrs))
