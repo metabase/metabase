@@ -3482,6 +3482,7 @@
            sql-tools
            util}
    :model-imports #{:model/Database
+                    :model/Table
                     :model/User}}
 
   enterprise/writable-connection
