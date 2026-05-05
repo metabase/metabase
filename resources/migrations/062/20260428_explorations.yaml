@@ -805,3 +805,17 @@ databaseChangeLog:
             columns:
               - column:
                   name: exploration_thread_id
+
+  - changeSet:
+      id: v62.7gjeaasdg
+      author: nvoxland
+      comment: Backfill an empty Findings document for each existing exploration_thread that doesn't already have one
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO document (name, document, content_type, creator_id, exploration_thread_id)
+              SELECT 'Findings', '{"type":"doc","content":[]}', 'application/json+vnd.prose-mirror', e.creator_id, t.id
+              FROM exploration_thread t
+              JOIN exploration e ON e.id = t.exploration_id
+              WHERE NOT EXISTS (SELECT 1 FROM document d WHERE d.exploration_thread_id = t.id)
+      rollback:
