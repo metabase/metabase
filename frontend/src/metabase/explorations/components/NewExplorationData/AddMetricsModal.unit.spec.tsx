@@ -22,21 +22,31 @@ const dimRevenue = createMockMetricDimension({
   id: "dim-revenue",
   display_name: "Customer size",
   sources: [{ type: "field", "field-id": 1 }],
+  dimension_interestingness: 0.9,
 });
 const dimChurn = createMockMetricDimension({
   id: "dim-churn",
   display_name: "Plan",
   sources: [{ type: "field", "field-id": 2 }],
+  dimension_interestingness: 0.9,
 });
 const dimShared = createMockMetricDimension({
   id: "dim-shared",
   display_name: "Country",
   sources: [{ type: "field", "field-id": 3 }],
+  dimension_interestingness: 0.9,
 });
 const dimLibrary = createMockMetricDimension({
   id: "dim-library",
   display_name: "Tier",
   sources: [{ type: "field", "field-id": 4 }],
+  dimension_interestingness: 0.9,
+});
+const dimBoring = createMockMetricDimension({
+  id: "dim-boring",
+  display_name: "Color",
+  sources: [{ type: "field", "field-id": 5 }],
+  dimension_interestingness: 0.2,
 });
 
 const metricRevenue = createMockMetric({
@@ -68,13 +78,20 @@ const churnAsMetric = metricChurn as ExplorationMetric;
 interface SetupOpts {
   initialMetrics?: ExplorationMetric[];
   initialDimensions?: MetricDimension[];
+  extraMetrics?: ExplorationMetric[];
 }
 
 function setup({
   initialMetrics = [],
   initialDimensions = [],
+  extraMetrics = [],
 }: SetupOpts = {}) {
-  setupMetricsEndpoints([metricRevenue, metricChurn, metricLibrary]);
+  setupMetricsEndpoints([
+    metricRevenue,
+    metricChurn,
+    metricLibrary,
+    ...extraMetrics,
+  ]);
 
   const onSelectedItemsChange = jest.fn();
   const onClose = jest.fn();
@@ -284,5 +301,37 @@ describe("AddMetricsModal", () => {
         within(el).queryByText("Monthly recurring revenue"),
       ) as HTMLElement;
     expect(within(row).getByText("Revenue per month")).toBeInTheDocument();
+  });
+
+  it("checking a metric only auto-picks its interesting dimensions", async () => {
+    const metricMixed = createMockMetric({
+      id: 99,
+      name: "Mixed metric",
+      description: null,
+      dimension_ids: [dimRevenue.id, dimBoring.id],
+      dimensions: [dimRevenue, dimBoring],
+    });
+
+    const { onSelectedItemsChange } = setup({
+      extraMetrics: [metricMixed as ExplorationMetric],
+    });
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Mixed metric",
+    });
+    await userEvent.click(checkbox);
+    await clickDone();
+
+    expect(onSelectedItemsChange).toHaveBeenCalledTimes(1);
+    const [nextMetrics, nextDimensions] = onSelectedItemsChange.mock.calls[0];
+
+    expect(nextMetrics).toEqual([
+      expect.objectContaining({ id: metricMixed.id }),
+    ]);
+    // Only the high-score dim (dimRevenue, 0.9) is auto-picked. The low-score
+    // dim (dimBoring, 0.2) is left out.
+    expect(nextDimensions).toEqual([
+      expect.objectContaining({ id: dimRevenue.id }),
+    ]);
   });
 });

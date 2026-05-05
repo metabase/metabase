@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetExplorationDataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { isInterestingDimension } from "metabase/explorations/constants";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import {
   Box,
@@ -162,7 +163,7 @@ export function AddMetricsModal({
         for (const id of metric.dimension_ids) {
           if (!have.has(id)) {
             const dimension = dimensionsById.get(id);
-            if (dimension) {
+            if (dimension && isInterestingDimension(dimension)) {
               merged.push(dimension);
             }
           }

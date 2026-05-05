@@ -39,12 +39,21 @@ const revenueDateDimension = createMockMetricDimension({
   display_name: "Created At",
   effective_type: "type/DateTime",
   semantic_type: "type/CreationTimestamp",
+  dimension_interestingness: 0.85,
 });
 const customerSegmentDimension = createMockMetricDimension({
   id: "customer.segment",
   name: "segment",
   display_name: "Customer Segment",
   semantic_type: "type/Category",
+  dimension_interestingness: 0.3,
+});
+const productCategoryDimension = createMockMetricDimension({
+  id: "product.category",
+  name: "category",
+  display_name: "Product Category",
+  semantic_type: "type/Category",
+  dimension_interestingness: null,
 });
 
 const metricRevenue: GetExplorationDataResponse["metrics"][number] = {
@@ -87,13 +96,18 @@ const explorationDataResponse: GetExplorationDataResponse = {
   dimension_groups: [
     {
       name: "Created At",
-      dimension_interestingness: null,
+      dimension_interestingness: 0.85,
       dimensions: [revenueDateDimension],
     },
     {
       name: "Customer Segment",
-      dimension_interestingness: null,
+      dimension_interestingness: 0.3,
       dimensions: [customerSegmentDimension],
+    },
+    {
+      name: "Product Category",
+      dimension_interestingness: null,
+      dimensions: [productCategoryDimension],
     },
   ],
 };
@@ -227,6 +241,8 @@ describe("NewExplorationChat", () => {
       dimensions: MetricDimension[],
     ) => MetricDimension[];
 
+    // All metrics returned by the tool are auto-added; metrics don't carry
+    // an interestingness score so we don't filter them.
     expect(updateMetrics([])).toEqual([
       expect.objectContaining({
         id: metricRevenue.id,
@@ -237,14 +253,14 @@ describe("NewExplorationChat", () => {
         name: metricChurn.name,
       }),
     ]);
+    // Only dims that pass the interestingness threshold are auto-added.
+    // - revenueDateDimension (0.85) → kept
+    // - customerSegmentDimension (0.3) → dropped
+    // - productCategoryDimension (null) → dropped
     expect(updateDimensions([])).toEqual([
       expect.objectContaining({
         id: revenueDateDimension.id,
         display_name: revenueDateDimension.display_name,
-      }),
-      expect.objectContaining({
-        id: customerSegmentDimension.id,
-        display_name: customerSegmentDimension.display_name,
       }),
     ]);
   });

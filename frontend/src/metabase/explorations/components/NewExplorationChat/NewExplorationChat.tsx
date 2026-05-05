@@ -8,6 +8,7 @@ import {
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { isInterestingDimension } from "metabase/explorations/constants";
 import type { ExplorationMetric } from "metabase/explorations/types";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
@@ -84,7 +85,11 @@ export function NewExplorationChat({
             message.result,
           ) as GetExplorationDataResponse;
           newMetrics.push(...metrics);
-          newDimensions.push(...dimension_groups.flatMap((g) => g.dimensions));
+          newDimensions.push(
+            ...dimension_groups.flatMap((group) =>
+              group.dimensions.filter(isInterestingDimension),
+            ),
+          );
         }
 
         setMetrics((prev) => {
