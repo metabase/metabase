@@ -17,9 +17,9 @@
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
-   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -145,12 +145,6 @@
 ;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
 ;; calls. Each row carries a fresh UUID handle that the iframe passes to the agent
 ;; so the LLM never carries the encoded query.
-
-(methodical/defmethod t2/table-name :model/McpQueryHandle [_model] :mcp_query_handle)
-
-(doto :model/McpQueryHandle
-  (derive :metabase/model)
-  (derive :hook/created-at-timestamped?))
 
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the MCP session, and return
