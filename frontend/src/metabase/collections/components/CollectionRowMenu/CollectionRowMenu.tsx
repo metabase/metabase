@@ -28,20 +28,20 @@ import { EditCollectionModal } from "./EditCollectionModal";
 
 type CollectionRowMenuProps = {
   collection: Collection;
-  onChangePermissions?: (collectionId: CollectionId) => void;
+  onChangePermissionsClick?: (collectionId: CollectionId) => void;
   onSave?: (details: {
     previousParentId: CollectionId | null;
     newParentId: CollectionId | null;
   }) => void;
-  onArchive?: (collection: Collection) => void;
+  onArchiveSuccess?: (collection: Collection) => void;
   customArchiveMessage?: string;
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
   const {
     collection,
-    onArchive,
-    onChangePermissions,
+    onArchiveSuccess,
+    onChangePermissionsClick,
     onSave,
     customArchiveMessage,
   } = props;
@@ -84,7 +84,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
         }),
       );
       invalidateTags();
-      onArchive?.(collection);
+      onArchiveSuccess?.(collection);
     } catch (error) {
       void dispatch(
         addUndo({
@@ -181,10 +181,10 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
                 : t`Edit collection details`}
             </Menu.Item>
           )}
-          {isAdmin && !!onChangePermissions && (
+          {isAdmin && !!onChangePermissionsClick && (
             <Menu.Item
               leftSection={<Icon name="lock" />}
-              onClick={() => onChangePermissions(collection.id)}
+              onClick={() => onChangePermissionsClick(collection.id)}
             >
               {t`Change permissions`}
             </Menu.Item>

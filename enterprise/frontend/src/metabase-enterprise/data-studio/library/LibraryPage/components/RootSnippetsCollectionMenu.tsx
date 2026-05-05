@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { dataStudioArchivedSnippets } from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { SnippetCollectionPermissionsModal } from "metabase-enterprise/snippets/components/SnippetCollectionPermissionsModal";
 import type { CollectionId } from "metabase-types/api";
 
 type RootSnippetsCollectionMenu = {
@@ -59,7 +59,7 @@ export const RootSnippetsCollectionMenu = ({
         </Menu.Item>
       </Menu.Dropdown>
       {showPermissionsModal && (
-        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
+        <SnippetCollectionPermissionsModal
           collectionId={collectionId}
           onClose={togglePermissionsModal}
         />

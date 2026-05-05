@@ -14,7 +14,7 @@ export function SnippetCollectionMenu(props: SnippetCollectionMenuProps) {
     <>
       <CollectionRowMenu
         collection={collection}
-        onChangePermissions={togglePermissionsModal}
+        onChangePermissionsClick={togglePermissionsModal}
       />
       {showPermissionsModal && (
         <SnippetCollectionPermissionsModal

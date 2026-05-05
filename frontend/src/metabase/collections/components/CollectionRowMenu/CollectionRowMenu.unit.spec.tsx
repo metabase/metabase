@@ -16,13 +16,13 @@ import { CollectionRowMenu } from "./CollectionRowMenu";
 interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   collection?: Partial<Collection>;
-  onChangePermissions?: () => void;
+  onChangePermissionsClick?: () => void;
 }
 
 const setup = ({
   remoteSyncType,
   collection,
-  onChangePermissions,
+  onChangePermissionsClick,
 }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
@@ -37,7 +37,7 @@ const setup = ({
   return renderWithProviders(
     <CollectionRowMenu
       collection={createMockCollection(collection)}
-      onChangePermissions={onChangePermissions}
+      onChangePermissionsClick={onChangePermissionsClick}
     />,
     {
       storeInitialState: state,
@@ -62,7 +62,7 @@ describe("CollectionRowMenu", () => {
   });
 
   it("renders the change permissions item when onChangePermissions is set", async () => {
-    setup({ onChangePermissions: jest.fn() });
+    setup({ onChangePermissionsClick: jest.fn() });
     await openMenu();
     expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
   });
