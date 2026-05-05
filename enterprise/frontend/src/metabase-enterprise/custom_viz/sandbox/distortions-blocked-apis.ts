@@ -75,6 +75,14 @@ block(setter(Document.prototype, "domain"), "Document.set domain");
 // has no other way to read this.
 block(getter(Document.prototype, "referrer"), "Document.get referrer");
 
+// Host URL — `document.URL` / `documentURI` / `baseURI` resolve through the
+// membrane to the *host* Document, so unlike the iframe-local
+// `location.href`, these leak the page the user is actually on (dashboard
+// IDs, embed tokens in query params, etc.).
+block(getter(Document.prototype, "URL"), "Document.get URL");
+block(getter(Document.prototype, "documentURI"), "Document.get documentURI");
+block(getter(Node.prototype, "baseURI"), "Node.get baseURI");
+
 // Storage exfiltration
 block(getter(Window.prototype, "localStorage"), "Window.get localStorage");
 block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");

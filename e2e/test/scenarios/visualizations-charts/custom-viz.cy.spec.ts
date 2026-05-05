@@ -1841,6 +1841,21 @@ describe("sandbox", () => {
       payload: "var x = document.referrer;",
       errorPattern: blockedPattern(/API call: Document\.get referrer/),
     },
+    {
+      name: "document.URL getter",
+      payload: "var x = document.URL;",
+      errorPattern: blockedPattern(/API call: Document\.get URL/),
+    },
+    {
+      name: "document.documentURI getter",
+      payload: "var x = document.documentURI;",
+      errorPattern: blockedPattern(/API call: Document\.get documentURI/),
+    },
+    {
+      name: "document.baseURI getter",
+      payload: "var x = document.baseURI;",
+      errorPattern: blockedPattern(/API call: Node\.get baseURI/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {
