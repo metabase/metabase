@@ -113,15 +113,21 @@
   "Execute all function attributes for a given spec and return computed values.
   If a function returns a map, its entries are merged directly into the result —
   this allows a single function to populate multiple document keys (e.g. :temporal-info
-  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call).
+
+  When a function attr declares `:provides`, the attr-key itself is not a column in
+  the index — it's a logical grouping whose `:provides` keys are the real columns.
+  In that case, on non-map results (e.g. when the function threw and `false` was
+  returned), skip writing instead of poisoning the document with an unknown column."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
        (let [result (execute-function-attr attr-key attr-def record)]
-         (if (map? result)
-           (merge acc result)
-           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
+         (cond
+           (map? result)                          (merge acc result)
+           (seq (search.spec/function-attr-provides attr-def)) acc
+           :else                                  (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
@@ -196,21 +202,36 @@
                    (comp (m/distinct-by (juxt :id :model)))))))
 
 (defn- search-items-reducible []
-  (let [models search.spec/search-models
-        ;; we're pushing indexed entities last in the search items reducible
-        ;; so that more important models gets indexed first, making the partial
-        ;; index more usable earlier
-        sorted-models (cond-> models
-                        (contains? models "indexed-entity")
-                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
-    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
+  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+
+(def ^:private max-document-error-logs 10)
 
 (defn- query->documents [query-reducible]
-  (->> query-reducible
-       (eduction
-        (comp
-         (map t2.realize/realize)
-         (map ->document)))))
+  (let [failures (volatile! 0)]
+    (->> query-reducible
+         (eduction
+          (comp
+           (map t2.realize/realize)
+           (fn [rf]
+             (fn
+               ([] (rf))
+               ([result]
+                (when (pos? @failures)
+                  (log/warnf "Failed to build %d search documents; they were skipped" @failures))
+                (rf result))
+               ([result m]
+                (if-let [doc (try
+                               (->document m)
+                               (catch Throwable t
+                                 (let [n (vswap! failures inc)]
+                                   (cond
+                                     (<= n max-document-error-logs)
+                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (= n (inc max-document-error-logs))
+                                     (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
+                                 nil))]
+                  (rf result doc)
+                  result)))))))))
 
 (defn searchable-documents
   "Return all existing searchable documents from the database."

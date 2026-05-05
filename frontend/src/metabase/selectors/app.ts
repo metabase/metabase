@@ -63,6 +63,10 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
+export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/explore");
+});
+
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,

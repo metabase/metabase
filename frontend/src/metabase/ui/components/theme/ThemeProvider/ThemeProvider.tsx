@@ -52,10 +52,25 @@ interface ThemeProviderProps {
   displayTheme?: DisplayTheme | string;
 
   initialColorScheme?: ColorScheme | undefined;
+
+  /**
+   * Override the resolved color scheme from ColorSchemeContext.
+   * Used by the embedding SDK to propagate `theme.preset` ("light" / "dark")
+   * down to MantineProvider so portals and `.mb-wrapper` descendants pick
+   * up the correct color scheme.
+   */
+  resolvedColorScheme?: ResolvedColorScheme;
+
+  /**
+   * CSS selector for Mantine CSS variables injection. Defaults to
+   * `.mb-wrapper` when running inside the embedding SDK.
+   */
+  cssVariablesSelector?: string;
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
-  const { resolvedColorScheme } = useColorScheme();
+  const { resolvedColorScheme: contextColorScheme } = useColorScheme();
+  const resolvedColorScheme = props.resolvedColorScheme ?? contextColorScheme;
 
   // We cannot use `useSetting` here due to circular dependencies,
   // and `useSelector` throws as the redux provider is not always wrapped
@@ -100,7 +115,10 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       forceColorScheme={resolvedColorScheme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
+      cssVariablesSelector={
+        props.cssVariablesSelector ??
+        (isEmbeddingSdk() ? ".mb-wrapper" : undefined)
+      }
       // This slows down unit tests like crazy
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}

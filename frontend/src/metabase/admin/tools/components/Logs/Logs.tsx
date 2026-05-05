@@ -18,8 +18,8 @@ import { Button, Flex, Icon, TextInput } from "metabase/ui";
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
 import {
+  createLogFormatter,
   filterLogs,
-  formatLog,
   getAllProcessUUIDs,
   urlStateConfig,
 } from "./utils";
@@ -47,14 +47,18 @@ const LogsBase = ({
   const { loaded, error, logs } = usePollingLogsQuery(pollingDurationMs);
   const processUUIDs = useMemo(() => getAllProcessUUIDs(logs), [logs]);
   const filteredLogs = useMemo(
-    () => filterLogs(logs, { process, query }),
-    [logs, process, query],
+    () => filterLogs(logs, { process, query }, processUUIDs),
+    [logs, process, query, processUUIDs],
   );
   const hasAnyLogs = logs.length > 0;
   const { scrollRef, onScroll, refollow } = useTailLogs(filteredLogs);
+  const formatter = useMemo(
+    () => createLogFormatter(process, processUUIDs),
+    [process, processUUIDs],
+  );
   const logText = useMemo(
-    () => filteredLogs.map(formatLog).join("\n"),
-    [filteredLogs],
+    () => filteredLogs.map(formatter).join("\n"),
+    [filteredLogs, formatter],
   );
 
   const displayLogs = useMemo(() => {

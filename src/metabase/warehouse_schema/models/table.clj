@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -224,28 +223,36 @@
 
         :else (merge table changes)))))
 
+(defn- group-perm-defaults
+  "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
+  [table all-users-group non-magic-groups non-admin-groups]
+  (let [au-id    (u/the-id all-users-group)
+        is-audit (= (:db_id table) audit/audit-db-id)
+        defaults (fn [groups perm-type value]
+                   (mapv (fn [g] {:group-id (u/the-id g) :perm-type perm-type :default-value value}) groups))]
+    (concat
+     ;; view-data: all non-admin → :unrestricted
+     (defaults non-admin-groups :perms/view-data :unrestricted)
+     ;; create-queries
+     (if is-audit
+       (defaults non-admin-groups :perms/create-queries :no)
+       (concat [{:group-id au-id :perm-type :perms/create-queries :default-value :query-builder}]
+               (defaults non-magic-groups :perms/create-queries :no)))
+     ;; download-results
+     [{:group-id au-id :perm-type :perms/download-results :default-value :one-million-rows}]
+     (defaults non-magic-groups :perms/download-results :no)
+     ;; manage-table-metadata
+     (defaults non-admin-groups :perms/manage-table-metadata :no))))
+
 (defn- set-new-table-permissions!
   [table]
-  (t2/with-transaction [_conn]
+  (perms/with-db-scoped-permissions-lock (:db_id table)
     (let [all-users-group  (perms/all-users-group)
           non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
-      ;; Data access permissions
-      (if (= (:db_id table) audit/audit-db-id)
-        (do
-         ;; Tables in audit DB should start out with no query access in all groups
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
-        (do
-          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
-      ;; Download permissions
-      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
-      ;; Table metadata management
-      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-default-table-permissions!
+       table
+       (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -439,19 +446,20 @@
           triple->table
           target-triples))
 
+(defn- target->triple
+  "Extract a [db-id schema name] triple from a transform :target map."
+  [{:keys [database schema name]}]
+  [database schema name])
+
 (defn gc-transform-target-tables!
   "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
+   referenced by any Transform. Safe because these rows were never active,
    so they have no child records.
 
    Note: this only handles *inactive* provisional tables. Active tables that were previously
    targeted by a transform retain `transform_target = true` even after the transform is deleted.
    A separate process to reset `transform_target` on active, unreferenced tables is not yet
-   implemented.
-
-   Future optimizations:
-   - Add target_table_id FKs to avoid scanning transform rows.
-   - Pre-filter via workspace_input/workspace_output table references."
+   implemented."
   []
   (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
                               :active false :transform_target true :deactivated_at nil
@@ -465,12 +473,8 @@
                             (map (fn [{:keys [target target_db_id]}]
                                    (-> target
                                        (update :database #(or % target_db_id))
-                                       workspaces/target->triple)))
-                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))
-            remaining     (when (seq remaining)
-                            (remove-referenced-candidates
-                             remaining
-                             (workspaces/reducible-target-triples db-ids)))]
+                                       target->triple)))
+                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))]
         (when-let [dead-ids (seq (mapv :id (vals remaining)))]
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
           (t2/delete! :model/Table :id [:in dead-ids]))))))
@@ -679,7 +683,7 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false

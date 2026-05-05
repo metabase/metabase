@@ -6,7 +6,7 @@ redirect_from:
 
 # Table metadata editing
 
-> Prefer using [Data Studio > Data structure](../data-studio/data-structure.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
+> Prefer using [Data Studio > Tables](../data-studio/managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
 _Admin > Table metadata_
 

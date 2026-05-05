@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -5,10 +6,8 @@ import {
   type OmniPickerItem,
   type OmniPickerTableItem,
 } from "metabase/common/components/Pickers";
-import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
-import { usePublishTablesMutation } from "metabase-enterprise/api/table";
-import { isConcreteTableId } from "metabase-types/api";
+
+import { PublishTablesModal } from "../components/PublishTablesModal";
 
 interface PublishTableModalProps {
   opened: boolean;
@@ -24,20 +23,31 @@ export function PublishTableModal({
   onClose,
   onPublished,
 }: PublishTableModalProps) {
-  const { sendSuccessToast } = useMetadataToasts();
-  const [publishTables] = usePublishTablesMutation();
+  const [selectedTable, setSelectedTable] =
+    useState<OmniPickerTableItem | null>(null);
 
-  const onConfirm = async (item: OmniPickerItem) => {
+  const handlePickerConfirm = (item: OmniPickerItem) => {
     if (!isTableItem(item)) {
       return;
     }
-    await publishTables({ table_ids: [item.id] }).unwrap(); // unwrap() allows EntityPicker's error handling to take over
+    setSelectedTable(item);
+  };
+
+  const handleClose = () => {
+    setSelectedTable(null);
     onClose();
-    sendSuccessToast(t`Published`);
-    if (isConcreteTableId(item.id)) {
-      trackDataStudioTablePublished(item.id);
+  };
+
+  const handlePublish = () => {
+    if (selectedTable) {
+      setSelectedTable(null);
+      onClose();
+      onPublished(selectedTable);
     }
-    onPublished(item);
+  };
+
+  const handlePublishModalClose = () => {
+    setSelectedTable(null);
   };
 
   if (!opened) {
@@ -46,6 +56,17 @@ export function PublishTableModal({
 
   const shouldDisableItem = (item: OmniPickerItem) =>
     item.model === "table" && "is_published" in item && !!item.is_published;
+
+  if (selectedTable) {
+    return (
+      <PublishTablesModal
+        isOpened
+        tableIds={[selectedTable.id]}
+        onPublish={handlePublish}
+        onClose={handlePublishModalClose}
+      />
+    );
+  }
 
   return (
     <EntityPickerModal
@@ -61,8 +82,8 @@ export function PublishTableModal({
         confirmButtonText: t`Publish`,
       }}
       isDisabledItem={shouldDisableItem}
-      onChange={onConfirm}
-      onClose={onClose}
+      onChange={handlePickerConfirm}
+      onClose={handleClose}
     />
   );
 }

@@ -300,7 +300,6 @@ export type TransformQueryPageEditorProps = {
   uiOptions?: TransformEditorProps["uiOptions"];
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler for Python transforms (used in workspace for dry-run) */
   onRun?: () => void;
 };
 

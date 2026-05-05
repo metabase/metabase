@@ -289,7 +289,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
@@ -304,7 +304,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
@@ -318,7 +318,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("Product → Category").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
@@ -328,7 +328,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("User → Source").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
@@ -367,50 +367,51 @@ describe("scenarios > visualizations > pie chart", () => {
         cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
       });
 
+      // All the assertions after this point are fragile and susceptible to breaking when we shift years in the Sample Database
       H.assertEChartsTooltip({
         header: "Created At: Day of week",
         rows: [
           {
             color: "#51528D",
             name: "Saturday",
-            value: "2,747",
-            secondaryValue: "14.64 %",
+            value: "2,661",
+            secondaryValue: "14.18 %",
           },
           {
             color: "#ED8535",
             name: "Thursday",
-            value: "2,698",
-            secondaryValue: "14.38 %",
+            value: "2,646",
+            secondaryValue: "14.10 %",
           },
           {
             color: "#E75454",
             name: "Tuesday",
-            value: "2,695",
-            secondaryValue: "14.37 %",
+            value: "2,590",
+            secondaryValue: "13.81 %",
           },
           {
             color: "#689636",
             name: "Sunday",
-            value: "2,671",
-            secondaryValue: "14.24 %",
+            value: "2,678",
+            secondaryValue: "14.28 %",
           },
           {
             color: "#8A5EB0",
             name: "Monday",
-            value: "2,664",
-            secondaryValue: "14.20 %",
+            value: "2,719",
+            secondaryValue: "14.49 %",
           },
           {
             color: "#69C8C8",
             name: "Friday",
-            value: "2,662",
-            secondaryValue: "14.19 %",
+            value: "2,690",
+            secondaryValue: "14.34 %",
           },
           {
             color: "#F7C41F",
             name: "Wednesday",
-            value: "2,623",
-            secondaryValue: "13.98 %",
+            value: "2,776",
+            secondaryValue: "14.80 %",
           },
         ],
       });
@@ -422,7 +423,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       cy.findByTestId("qb-filters-panel").within(() => {
-        cy.findByText("Count is equal to 2747").should("be.visible");
+        cy.findByText("Count is equal to 2661").should("be.visible");
       });
 
       cy.go("back");
@@ -448,27 +449,27 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       H.assertEChartsTooltip({
-        header: "Saturday",
+        header: "Wednesday",
         rows: [
           {
             name: "Doohickey",
-            value: "606",
-            secondaryValue: "22.06 %",
+            value: "603",
+            secondaryValue: "21.72 %",
           },
           {
             name: "Gadget",
-            value: "740",
-            secondaryValue: "26.94 %",
+            value: "745",
+            secondaryValue: "26.84 %",
           },
           {
             name: "Gizmo",
-            value: "640",
-            secondaryValue: "23.30 %",
+            value: "666",
+            secondaryValue: "23.99 %",
           },
           {
             name: "Widget",
-            value: "761",
-            secondaryValue: "27.70 %",
+            value: "762",
+            secondaryValue: "27.45 %",
           },
         ],
       });
@@ -480,7 +481,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       cy.findByTestId("qb-filters-panel").within(() => {
-        cy.findByText("Count is equal to 606").should("be.visible");
+        cy.findByText("Count is equal to 603").should("be.visible");
       });
     });
   });
@@ -539,11 +540,11 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitDashboard(dashboard_id);
     });
 
-    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("2028", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
 
-    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("2027", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
   });
@@ -571,7 +572,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.echartsContainer().findByText("79%").realHover();
 
     H.assertEChartsTooltip({
-      header: "2024",
+      header: "2027",
       rows: [
         {
           name: "Affiliate",

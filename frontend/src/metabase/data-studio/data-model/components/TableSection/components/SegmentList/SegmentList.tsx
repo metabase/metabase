@@ -60,7 +60,7 @@ export function SegmentList({ table }: SegmentListProps) {
           className={S.EmptyState}
           spacing="sm"
           illustrationElement={
-            <Icon name="segment2" size={32} c="text-secondary" />
+            <Icon name="segment" size={32} c="text-secondary" />
           }
           title={t`No segments yet`}
           message={t`Create a segment to filter rows in this table.`}

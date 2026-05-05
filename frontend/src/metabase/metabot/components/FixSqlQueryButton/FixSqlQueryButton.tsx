@@ -1,6 +1,10 @@
+import { isFulfilled } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
@@ -13,6 +17,7 @@ import { trackQueryFixClicked } from "../../analytics";
 export function FixSqlQueryButton() {
   const dispatch = useDispatch();
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
   if (!isMetabotEnabled) {
@@ -23,7 +28,24 @@ export function FixSqlQueryButton() {
     trackQueryFixClicked();
     await dispatch(setIsNativeEditorOpen(true));
     // SQL and error message are included in the context.
-    await submitInput("Fix this SQL query");
+    const action = await submitInput("Fix this SQL query", {
+      preventOpenSidebar: true,
+    });
+
+    if (!isFulfilled(action) || action.payload.success) {
+      return;
+    }
+
+    if (action.payload.errorMessage?.type === "locked") {
+      sendToast(getMetabotManagedProviderLimitToastProps());
+      return;
+    }
+
+    sendToast({
+      icon: "warning",
+      toastColor: "error",
+      message: action.payload.errorMessage?.message ?? METABOT_ERR_MSG.default,
+    });
   };
 
   return (

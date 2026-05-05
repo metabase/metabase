@@ -42,6 +42,7 @@ export type SdkState = {
   usageProblem: null | SdkUsageProblem;
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
+  pluginsReady: boolean;
 };
 
 export interface SdkStoreState extends State {

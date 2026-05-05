@@ -86,7 +86,7 @@ describe("MetabotChatEditor", () => {
     setup({ value: "[Test Model](metabase://model/123)" });
 
     const editor = await screen.findByTestId("metabot-chat-input");
-    expect(editor).toHaveTextContent("Test Model");
+    await waitFor(() => expect(editor).toHaveTextContent("Test Model"));
   });
 
   it("should emit onChange events with properly serialized content", async () => {

@@ -93,7 +93,7 @@ function UndoToast({
   return (
     <ToastCard
       ref={undo.ref}
-      dark
+      dark={undo.dark ?? true}
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
@@ -101,7 +101,7 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={style}
+      style={{ ...style, ...undo.style }}
     >
       {undo.showProgress && (
         <Progress

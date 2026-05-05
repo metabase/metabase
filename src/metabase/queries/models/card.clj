@@ -1257,14 +1257,18 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- export-result-metadata [metadata]
-  (when metadata
-    (for [m metadata]
-      (-> (dissoc m :fingerprint)
-          (m/update-existing :table_id  serdes/*export-table-fk*)
-          (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)
-          (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))))
+(defn- export-result-metadata [card _k metadata]
+  (if (and (seq metadata) (model? card))
+    (let [native?   (lib/native? (:dataset_query card))
+          keep-keys (into #{:name}
+                          (map u/->snake_case_en)
+                          (lib/model-preserved-keys native?))]
+      (mapv (fn [m]
+              (-> (select-keys m keep-keys)
+                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
+                  (m/update-existing :id serdes/*export-field-fk*)))
+            metadata))
+    ::serdes/skip))
 
 (defn- import-result-metadata [metadata]
   (when metadata
@@ -1326,7 +1330,7 @@
           :legacy_query]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
+    :database_id            (serdes/fk :model/Database)
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
@@ -1338,7 +1342,7 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}
+    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}}
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true

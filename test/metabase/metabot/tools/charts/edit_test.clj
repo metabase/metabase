@@ -3,8 +3,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.charts.edit :as edit-chart]
-   [metabase.test :as mt]))
+   [metabase.metabot.tools.construct :as tools.construct]
+   [metabase.metabot.tools.resources :as tools.resources]
+   [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]))
 
 (deftest edit-chart-test
   (testing "edits a chart's visualization type"
@@ -56,3 +62,43 @@
           {:chart-id "nonexistent"
            :new-chart-type :bar
            :charts-state {}})))))
+
+(deftest edit-chart-of-constructed-query-test
+  (mt/with-current-user (test.users/user->id :crowberto)
+    (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
+
+          {[{{table :structured-output} :content}] :resources}
+          (tools.resources/read-resource-tool {:uris [table-fields-uri]})
+
+          ;; (1) construct a query
+          construct-result (tools.construct/construct-notebook-query-tool
+                            {:query
+                             {:query_type "aggregate"
+                              :source {:table_id (:id table)}
+                              :aggregations [{:function "count"}]
+                              :filters []
+                              :group_by [{:field_id (some (fn [{:keys [display_name field_id]}]
+                                                            (when (= "Category" display_name)
+                                                              field_id))
+                                                          (:fields table))}]
+                              :limit nil
+                              :visualization {:chart_type "bar"}}})
+          query-id (get-in construct-result [:structured-output :query-id])
+          query (get-in construct-result [:structured-output :query])
+          chart-id (get-in construct-result [:structured-output :chart-id])]
+      (binding [tools.shared/*memory-atom* (atom nil)]
+        ;; (2) fetch the construction result into memory _as done in agent/loop-step_
+        (swap! tools.shared/*memory-atom* #'agent/update-memory [{:type :tool-output
+                                                                  :result construct-result}])
+        (is (contains? (tools.shared/current-charts-state) chart-id))
+        (is (contains? (tools.shared/current-queries-state) query-id))
+        (testing "Edit chart can handle charts created using construct-notebook-query-tool"
+          ;; (3) call the edit-chart-tool which uses the shared memory
+          (let [edit-result (tools.charts/edit-chart-tool {:chart_id chart-id
+                                                           :new_viz_settings {:chart_type "pie"}})
+                new-chart-id (get-in edit-result [:structured-output :chart-id])
+                new-chart-in-memory (get (tools.shared/current-charts-state) new-chart-id)]
+            (is (= :pie
+                   (get-in new-chart-in-memory [:visualization_settings :chart_type])))
+            (is (= query
+                   (get-in new-chart-in-memory [:queries 0])))))))))

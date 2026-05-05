@@ -52,9 +52,13 @@ export function useViewerUrl(
     if (!hash) {
       const params = new URLSearchParams(location.search);
       const metricId = params.get("metricId");
-      if (metricId) {
+      const measureId = params.get("measureId");
+      if (metricId || measureId) {
+        const source = metricId
+          ? { type: "metric" as const, id: parseInt(metricId, 10) }
+          : { type: "measure" as const, id: parseInt(measureId!, 10) };
         serializedState = {
-          sources: [{ type: "metric", id: parseInt(metricId, 10) }],
+          sources: [source],
           tabs: [],
           selectedTabId: null,
         };

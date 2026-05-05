@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
-   [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -13,7 +12,6 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self :as self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -165,8 +163,7 @@
   [:map
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
-   [:tag                 {:optional true} [:maybe :string]]
-   [:track-user-intent?  {:optional true} [:maybe :boolean]]])
+   [:tag                 {:optional true} [:maybe :string]]])
 
 ;;; Iteration control
 
@@ -270,8 +267,12 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id] :as chart}]
-      (memory/store-chart mem chart-id chart)))
+    (fn [mem {:keys [chart-id chart-type query]}]
+      (memory/store-chart mem
+                          chart-id
+                          {:chart_id chart-id
+                           :queries [query]
+                           :visualization_settings {:chart_type chart-type}})))
    memory
    parts))
 
@@ -565,9 +566,7 @@
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        labels             {:profile-id (name profile-id)}
-        track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))]
+        labels             {:profile-id (name profile-id)}]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -578,10 +577,6 @@
             (binding [*debug-log* (when debug? (atom []))]
               (try
                 (let [agent              (init-agent opts)
-                      _                  (when track-user-intent?
-                                           (agent-analytics/classify-and-track-user-intent-async!
-                                            (:messages opts)
-                                            (:tracking-opts agent)))
                       {result    :result
                        iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
                                                   (iterate loop-step)
@@ -594,12 +589,16 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
-                  (when (:api-error (ex-data e))
-                    (log/debugf "API error details: status=%s body=%s"
-                                (:status (ex-data e))
-                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
-                    (log/errorf "Agent loop API error: %s" (ex-message e))
+                    (if (:status (ex-data e))
+                      (log/errorf "Agent loop API error: %s status=%s provider=%s body=%s"
+                                  (ex-message e)
+                                  (:status (ex-data e))
+                                  (:provider (ex-data e))
+                                  (pr-str (:body (ex-data e))))
+                      (log/errorf e "Agent loop API error: %s provider=%s"
+                                  (ex-message e)
+                                  (:provider (ex-data e))))
                     (log/error e "Agent loop error"))
                   (rf init (error-part e)))
                 (finally

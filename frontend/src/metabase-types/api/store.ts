@@ -73,6 +73,7 @@ export interface ICloudAddOnProduct {
   short_name: string;
   token_features: TokenFeature[];
   trial_days: number | null;
+  free_units: number | null;
 }
 
 export type GetCloudAddOnsResponse = ICloudAddOnProduct[];

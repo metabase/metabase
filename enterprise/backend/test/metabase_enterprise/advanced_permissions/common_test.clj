@@ -77,7 +77,7 @@
                              :can_create_native_queries false}
                             (user-permissions :rasta))))))))))
 
-(deftest new-database-view-data-permission-level-test
+(deftest new-database-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database         {db-id :id}      {}
                    :model/PermissionsGroup {group-id :id}   {}]
@@ -110,7 +110,7 @@
                          :model/Database {db-id-2 :id} {}]
             (is (= :blocked (perm-value db-id-2)))))))))
 
-(deftest new-table-view-data-permission-level-test
+(deftest new-table-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
                    :model/Database         {db-id :id}      {}
@@ -139,24 +139,24 @@
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
-(deftest new-group-view-data-permission-level
+(deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database {db-id :id} {}]
       (let [all-users-group-id (u/the-id (perms-group/all-users))]
         (testing "A new group defaults to `:unrestricted` for a DB if All Users has `:unrestricted`"
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :unrestricted)
-          (is (= :unrestricted (advanced-permissions.common/new-group-view-data-permission-level db-id))))
+          (is (= {db-id :unrestricted} (advanced-permissions.common/new-group-view-data-permission-levels [db-id]))))
 
         (testing "A new group defaults to `:blocked` for a DB if All Users has `:blocked`"
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :blocked)
-          (is (= :blocked (advanced-permissions.common/new-group-view-data-permission-level db-id))))
+          (is (= {db-id :blocked} (advanced-permissions.common/new-group-view-data-permission-levels [db-id]))))
 
         (testing "A new group defaults to `:blocked` if All Users has any connection impersonation"
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :unrestricted)
           (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id      db-id
                                                                          :attribute  "impersonation_attr"
                                                                          :attributes {"impersonation_attr" "impersonation_role"}}]}
-            (is (= :blocked (advanced-permissions.common/new-group-view-data-permission-level db-id)))))
+            (is (= {db-id :blocked} (advanced-permissions.common/new-group-view-data-permission-levels [db-id])))))
 
         (testing "A new database defaults to `:blocked` if All Users group has any sandbox"
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :unrestricted)
@@ -166,7 +166,7 @@
                                                         :group_id             all-users-group-id
                                                         :card_id              card-id
                                                         :attribute_remappings {"foo" 1}}]
-            (is (= :blocked (advanced-permissions.common/new-group-view-data-permission-level db-id)))))))))
+            (is (= {db-id :blocked} (advanced-permissions.common/new-group-view-data-permission-levels [db-id])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Data model permission enforcement                                       |

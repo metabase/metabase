@@ -515,7 +515,8 @@ describe("scenarios > metrics > editing", () => {
 
       cy.viewport(800, 600);
       H.getNotebookStep("summarize").within(() => {
-        cy.findByText("Formula").should("be.visible");
+        // We need the scroll because of the viewport change, the next findByText is technically off the screen without it
+        cy.findByText("Formula").should("be.visible").scrollIntoView({});
         cy.findAllByText("Default time dimension")
           .filter(":visible")
           .should("have.length", 1);

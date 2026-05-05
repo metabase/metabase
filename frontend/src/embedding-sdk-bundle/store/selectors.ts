@@ -43,6 +43,8 @@ export const getMetabaseInstanceVersion = (state: SdkStoreState) =>
 export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
   state.sdk.fetchRefreshTokenFn;
 
+export const getPluginsReady = (state: SdkStoreState) => state.sdk.pluginsReady;
+
 export const getAvailableFonts = (state: SdkStoreState) =>
   getSetting(state, "available-fonts");
 

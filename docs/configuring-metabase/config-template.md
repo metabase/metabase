@@ -203,6 +203,8 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    mcp-apps-cors-custom-origins: ''
+    mcp-apps-cors-enabled-clients: []
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -227,9 +229,13 @@ config:
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-task-time-limit-ms: 300000
+    remote-sync-token: null
     remote-sync-transforms: false
+    remote-sync-type: read-only
+    remote-sync-url: null
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
@@ -282,6 +288,7 @@ config:
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For

@@ -7,7 +7,6 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
@@ -22,19 +21,6 @@
    (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
-
-(defn- get-jar-path
-  "Returns the path to the currently running jar file.
-
-  More info: https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file"
-  []
-  (assert (config/jar?) "Can only get-jar-path when running from a jar.")
-  (-> (class {})
-      (.getProtectionDomain)
-      (.getCodeSource)
-      (.getLocation)
-      (.toURI) ;; avoid problems with special characters in path.
-      (.getPath)))
 
 (defn copy-from-jar!
   "Recursively copies a subdirectory (at resource-path) from the jar at jar-path into out-dir.
@@ -199,8 +185,8 @@
   (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
     (when (fs/exists? (u.files/relative-path ia-dir))
       (fs/delete-tree (u.files/relative-path ia-dir)))
-    (if (config/jar?)
-      (let [path-to-jar (get-jar-path)]
+    (if (u.files/running-from-jar?)
+      (let [path-to-jar (u.files/get-jar-path)]
         (log/info "The app is running from a jar, starting copy...")
         (log/info (str "Copying " path-to-jar "::" jar-resource-path " -> " plugins-dir))
         (copy-from-jar! path-to-jar jar-resource-path plugins-dir)
@@ -266,43 +252,34 @@
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
-        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
-          (let [original-engine engine]
-            (adjust-audit-db-to-host! audit-db)
-            ;; Only sync if we actually changed the engine type
-            (when (not= original-engine (mdb/db-type))
-              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
-                ;; Sync the audit database to update field metadata to match the host database engine
-                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
-                ;; to the correct types for the host database (e.g., datetime for MySQL)
-                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
-                (let [sync-future (future
-                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
-                                    (log/info "Audit DB field sync complete."))]
-                  (when config/is-test?
-                    ;; Tests need the sync to complete before they run
-                    @sync-future))))))))))
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+          (adjust-audit-db-to-host! audit-db))))))
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (t2/select-one :model/Database :is_audit true)]
-    (cond
-      (not (audit-app.settings/install-analytics-database))
-      (u/prog1 ::blocked
-        (log/info "Not installing Audit DB - install-analytics-database setting is false"))
+  (let [audit-db (t2/select-one :model/Database :is_audit true)
+        result   (cond
+                   (not (audit-app.settings/install-analytics-database))
+                   (u/prog1 ::blocked
+                     (log/info "Not installing Audit DB - install-analytics-database setting is false"))
 
-      (nil? audit-db)
-      (u/prog1 ::installed
-        (log/info "Installing Audit DB...")
-        (install-database! (mdb/db-type) audit/audit-db-id))
+                   (nil? audit-db)
+                   (u/prog1 ::installed
+                     (log/info "Installing Audit DB...")
+                     (install-database! (mdb/db-type) audit/audit-db-id))
 
-      (not= (mdb/db-type) (:engine audit-db))
-      (u/prog1 ::updated
-        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
-        (adjust-audit-db-to-host! audit-db))
+                   (not= (mdb/db-type) (:engine audit-db))
+                   (u/prog1 ::updated
+                     (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
+                     (adjust-audit-db-to-host! audit-db))
 
-      :else
-      ::no-op)))
+                   :else
+                   ::no-op)]
+    (when (contains? #{::installed ::updated} result)
+      (when-let [db (t2/select-one :model/Database :is_audit true)]
+        (log/info "Syncing Audit DB")
+        (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
+    result))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit

@@ -65,8 +65,8 @@
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
 
-              (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
-                                                         (throw (Exception. "Cannot load settings")))]
+              (with-redefs [v2.storage/store! (fn [_stream _backend]
+                                                (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"

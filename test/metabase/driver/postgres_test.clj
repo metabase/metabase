@@ -16,7 +16,7 @@
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -1081,6 +1081,43 @@
              (is (re-find #"CAST" sql))
              (is (some? (mt/rows (qp/process-query query)))))))))))
 
+(deftest create-schema-if-needed-nil-guard-test
+  (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
+    (let [executed-queries (atom [])]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                  (swap! executed-queries conj queries))]
+        (driver/create-schema-if-needed! :postgres ::fake-conn nil)
+        (driver/create-schema-if-needed! :postgres ::fake-conn "")
+        (driver/create-schema-if-needed! :postgres ::fake-conn "   ")
+        (is (empty? @executed-queries)
+            "nil/blank schema should not issue any SQL")))))
+
+(deftest ^:parallel describe-fields-sql-nil-schema-test
+  (testing "describe-fields-sql for Postgres handles nil schema-names correctly (GDGT-2144)"
+    (let [[nil-schema-sql]   (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [mixed-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil "public"]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [normal-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                               :postgres
+                               {:schema-names ["public"]
+                                :table-names  ["my_table"]
+                                :details      {}})]
+      (is (not (re-find #"(?i)IN \(NULL\)" nil-schema-sql))
+          "rendered SQL must not contain `IN (NULL)` which never matches anything")
+      (is (re-find #"\"table_schema\" IS NULL" nil-schema-sql)
+          "passing [nil] schemas should produce an IS NULL check on table_schema")
+      (is (re-find #"\"table_schema\" IN .+OR .+\"table_schema\" IS NULL" mixed-schema-sql)
+          "mixed nil + non-nil schemas should include both IN and IS NULL")
+      (is (not (re-find #"\"table_schema\" IS NULL" normal-schema-sql))
+          "non-nil-only schemas should not have IS NULL on table_schema"))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
@@ -1663,18 +1700,21 @@
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
-    (is (= "SET ROLE ROLE123;"        (driver.sql/set-role-statement :postgres "ROLE123")))
-    (is (= "SET ROLE lowercase_role;" (driver.sql/set-role-statement :postgres "lowercase_role")))
-
-    ;; None (special role in Postgres to revert back to login role; should not be quoted)
-    (is (= "SET ROLE none;"      (driver.sql/set-role-statement :postgres "none")))
-    (is (= "SET ROLE NONE;"      (driver.sql/set-role-statement :postgres "NONE")))
-
-    ;; Special characters
-    (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
-    (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
+    (mt/test-driver :postgres
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :postgres conn role))
+           "MY_ROLE"                      "SET ROLE MY_ROLE;"
+           "ROLE123"                      "SET ROLE ROLE123;"
+           "lowercase_role"               "SET ROLE lowercase_role;"
+           "Role.123"                     "SET ROLE \"Role.123\";"
+           "$role"                        "SET ROLE \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET ROLE none;"
+           "NONE"                         "SET ROLE NONE;"))))))
 
 (deftest get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
@@ -2165,9 +2205,7 @@
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
-  (mt/test-driver
-    :postgres
-
+  (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"

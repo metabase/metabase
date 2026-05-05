@@ -108,7 +108,7 @@ jobs:
         env:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         id: split
-        run: echo "::set-output name=fragment::${SHA:5}"
+        run: echo "fragment=${SHA:5}" >> $GITHUB_OUTPUT
       - name: Render Deployment YAML
         uses: nowactions/envsubst@v1
         with:

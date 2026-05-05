@@ -35,7 +35,7 @@
 
   ## Existing transformations
 
-  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database :name)` - export foreign key in a portable way
+  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database)` - export foreign key in a portable way
   - `(serdes/nested :model/DashboardCard :dashboard_id opts)` - include some entities in your entity export
   - `(serdes/parent-ref)` - symmetrical call for `serdes/nested` to handle parent ids (you'd use it on `:dashboard_id`
     in that case)
@@ -56,7 +56,6 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -450,6 +449,11 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+(defn ^:dynamic ^::cache *make-spec*
+  "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
+  [model-name opts]
+  (make-spec model-name opts))
+
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
   `(extract-all \"ModelName\" {opts...})`
@@ -495,7 +499,7 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (make-spec model-name opts)]
+    (let [spec (*make-spec* model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -527,7 +531,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/info "Extracting" {:path (log-path-str (generate-path model instance))})
+  (log/tracef "Extracting %s" (log-path-str (generate-path model instance)))
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -557,7 +561,7 @@
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (make-spec model-name opts)]
+  (let [spec (*make-spec* model-name opts)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
@@ -577,7 +581,7 @@
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
   [model {:keys [collection-set where] :as opts}]
-  (let [spec (make-spec (name model) opts)]
+  (let [spec (*make-spec* (name model) opts)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
@@ -591,7 +595,7 @@
                                             where)]}))))
 
 (defmethod extract-query :default [model-name opts]
-  (let [spec    (make-spec model-name opts)
+  (let [spec    (*make-spec* model-name opts)
         nested? (some ::nested (vals (:transform spec)))]
     (cond->> (extract-query-collections (keyword "model" model-name) opts)
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
@@ -795,7 +799,7 @@
           schemas))
 
 (defn- xform-one [model-name ingested]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
     (-> (select-keys ingested (:copy spec))
         (into (for [[k transform] (:transform spec)
@@ -815,7 +819,7 @@
         (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
-  (let [spec (make-spec model-name nil)]
+  (let [spec (*make-spec* model-name nil)]
     (doseq [[k transform] (:transform spec)
             :when (and (::nested transform)
                        ;; handling circuit-breaking
@@ -1032,7 +1036,8 @@
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
   [id]
-  (*export-fk-keyed* id :model/Database :name))
+  (when id
+    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
 
 (defn ^:dynamic ^::cache *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1049,8 +1054,8 @@
   [[import-table-fk]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
+          db-name                     (*export-database-fk* db_id)]
       [db-name schema name])))
 
 (mu/defn ^:dynamic ^::cache *import-table-fk*
@@ -1128,9 +1133,12 @@
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema field-name] (map :name fields)))))
+    (let [{field-name :name :keys [parent_id table_id]} (t2/select-one [:model/Field :name :parent_id :table_id] :id field-id)]
+      (if (nil? parent_id)
+        (conj (*export-table-fk* table_id) field-name)
+        (let [fields                      (field-hierarchy field-id)
+              [db-name schema table-name] (*export-table-fk* table_id)]
+          (into [db-name schema table-name] (map :name fields)))))))
 
 (mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
@@ -1201,6 +1209,9 @@
        :database                     (update m k *export-database-fk*)
        (:card_id :card-id)           (update m k *export-fk* :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
        (:source_table :source-table) (cond-> m
+                                       (pos-int? v)
+                                       (update k *export-table-fk*))
+       :table-id                     (cond-> m
                                        (pos-int? v)
                                        (update k *export-table-fk*))
        (:source_card :source-card)   (cond-> m
@@ -1291,6 +1302,9 @@
        :snippet-id                   (cond-> m
                                        (portable-id? v)
                                        (update k *import-fk* 'NativeQuerySnippet))
+       :table-id                     (cond-> m
+                                       (vector? v)
+                                       (update k *import-table-fk*))
        #_else                        (update m k import-mbql*)))
    m
    m))
@@ -1359,30 +1373,37 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (match entity
-    [:field     (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    ["field"    (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    [:metric    (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    ["metric"   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    [:segment   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    ["segment"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    [:measure   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
-    ["measure"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+  (lib.util.match/match-lite entity
+    [#{:field "field"} (opts :guard map?) (id :guard vector?)]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
+     (opts :guard map?)
+     (field :guard portable-id?)]
+    (into #{[{:model (case tag
+                       (:metric "metric") "Card"
+                       (:segment "segment") "Segment"
+                       (:measure "measure") "Measure")
+              :id field}]}
+          (mbql-deps-map opts))
+
     ;; legacy (MBQL 4) refs
-    [:field     (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    ["field"    (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    [:metric    (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    ["metric"   (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    [:segment   (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    ["segment"  (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    [:measure   (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    ["measure"  (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    :else (reduce #(cond
-                     (map? %2)    (into %1 (mbql-deps-map %2))
-                     (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else %1)
-                  #{}
-                  entity)))
+    [#{:field "field" :field-id "field-id"} (id :guard vector?) opts]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
+    #{[{:model (case tag
+                 (:metric "metric") "Card"
+                 (:segment "segment") "Segment"
+                 (:measure "measure") "Measure")
+        :id field}]}
+
+    _ (reduce #(cond
+                 (map? %2)    (into %1 (mbql-deps-map %2))
+                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 :else %1)
+              #{}
+              entity)))
 
 (defn- mbql-deps-map [m]
   (into #{}
@@ -1396,6 +1417,7 @@
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-field) (vector? v))      #{(field->path v)}
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
+                    (and (= k :table-id)     (vector? v))      #{(table->path v)}
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     (map? v)                                   (mbql-deps-map v)
                     (vector? v)                                (mbql-deps-vector v))))
@@ -1679,13 +1701,7 @@
     [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations opts)]
 
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]
-
-    (_ :guard map?)
-    (m/map-vals import-visualizations &match)
-
-    (_ :guard vector?)
-    (mapv import-visualizations &match)))
+    [:field-id (*import-field-fk* fully-qualified-name)]))
 
 (defn- import-column-settings [settings]
   (when settings

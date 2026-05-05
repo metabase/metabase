@@ -133,8 +133,8 @@ export default class NativeQuery {
   canRun() {
     return Boolean(
       this.hasData() &&
-        this.queryText().length > 0 &&
-        this._allTemplateTagsAreValid(),
+      this.queryText().length > 0 &&
+      this._allTemplateTagsAreValid(),
     );
   }
 

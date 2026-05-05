@@ -21,8 +21,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
-                                             with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -35,16 +34,13 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
+   [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql
-    Connection
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)
+   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -317,6 +313,18 @@
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
+(defn- nullable-in
+  "Build a HoneySQL clause that handles nil values in `xs` correctly.
+  SQL `IN (NULL)` never matches NULL rows, so when `xs` contains nil we need an explicit `IS NULL` check."
+  [column xs]
+  (when xs
+    (let [non-nil (seq (remove nil? xs))
+          has-nil? (some nil? xs)]
+      (cond
+        (and non-nil has-nil?) [:or [:in column non-nil] [:= column nil]]
+        non-nil                [:in column non-nil]
+        has-nil?               [:= column nil]))))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
@@ -372,7 +380,7 @@
                    [:= :c.column_name :pk.column_name]]]
       :where [:and
               [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-              (when schema-names [:in :c.table_schema schema-names])
+              (nullable-in :c.table_schema schema-names)
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
                [[:case
@@ -399,7 +407,7 @@
       :where [:and
               [:= :pc.relkind [:inline "m"]]
               [:>= :pa.attnum [:inline 1]]
-              (when schema-names [:in :pn.nspname schema-names])
+              (nullable-in :pn.nspname schema-names)
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
    :dialect (sql.qp/quote-style driver)))
@@ -754,9 +762,21 @@
       (pg-conversion identifier :numeric)
 
       (driver-api/json-field? stored-field)
-      (if (or (::sql.qp/forced-alias opts)
-              (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
         (keyword (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference
+        ;; the projected column directly instead of re-applying extraction,
+        ;; which would derive the wrong column name through nested
+        ;; projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
@@ -1260,13 +1280,23 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :postgres
-  [_ role]
+(def ^{:arglists '([driver conn role])} memoized-quote-identifier
+  "Call `quote_ident(?) on Postgres to quote an identifier; presumably this should never change so use a bounded cache
+  to avoid the overhead of calling this on every query.
+
+  Takes `driver` as a parameter so this function can also be used by Redshift without sharing the same cache."
+  (memoize/bounded
+   (-> (fn [_driver conn role]
+         (:quote_ident (next.jdbc/execute-one! conn ["SELECT quote_ident(?);" role])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[driver _conn role]] [driver role])))))
+
+(defmethod sql-jdbc/set-role-statement :postgres
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET ROLE \"%s\";" role)
-      (format "SET ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (memoized-quote-identifier driver conn))]
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
@@ -1282,8 +1312,11 @@
 
 (defmethod driver/create-schema-if-needed! :postgres
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+  ;; Without the blank check, `format` stringifies nil to "null" and creates a schema
+  ;; literally named "null" on the target DB.
+  (when-not (str/blank? schema)
+    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+      (driver/execute-raw-queries! driver conn-spec sql))))
 
 (defmethod driver/extra-info :postgres
   [_driver]

@@ -334,6 +334,58 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
   });
 
+  it("should update submit button label through Done → Save changes → Save failed", async () => {
+    const notificationId = 42;
+    fetchMock.putOnce(`path:/api/notification/${notificationId}`, {
+      status: 500,
+      body: { message: "Internal server error" },
+    });
+
+    const mockNotification = createMockNotification({
+      id: notificationId,
+      subscriptions: [
+        createMockNotificationCronSubscription({
+          cron_schedule: "0 0 14 ? * 2 *",
+        }),
+      ],
+      payload: {
+        card_id: 1,
+        send_once: false,
+        send_condition: "has_result",
+      },
+    });
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: mockNotification,
+    });
+
+    await screen.findByText("Edit alert");
+
+    // No changes yet — button should say "Done"
+    expect(screen.getByRole("button", { name: /done/i })).toBeInTheDocument();
+
+    // Make a change — button should say "Save changes"
+    const weekdaySelector = screen.getByTestId("select-weekday");
+    await userEvent.click(weekdaySelector);
+    const tuesdayOption = screen.getByRole("option", { name: /Tuesday/i });
+    await userEvent.click(tuesdayOption);
+
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeInTheDocument();
+
+    // Submit with a failing API — button should say "Save failed"
+    await userEvent.click(
+      screen.getByRole("button", { name: /save changes/i }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /save failed/i }),
+    ).toBeInTheDocument();
+  });
+
   it("should update an existing notification when in edit mode", async () => {
     const notificationId = 42;
     // Setup fetchMock for API call

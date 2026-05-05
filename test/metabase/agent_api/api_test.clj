@@ -6,6 +6,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.agent-api.api :as agent-api.api]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -70,6 +72,19 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 when disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (is (= "Agent API is not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "External Agent API routes return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :agent-api-enabled?   "true"]
+      (is (= "AI features are not enabled."
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
 (deftest get-table-details-test
@@ -105,6 +120,36 @@
     (let [table-id (mt/id :orders)
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
+
+(deftest get-table-details-field-types-test
+  (testing "Field metadata (base_type, effective_type, semantic_type, coercion_strategy) is returned correctly"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id, :name "t", :active true}
+                   :model/Field    _              {:table_id table-id, :name "id"
+                                                   :base_type :type/BigInteger
+                                                   :semantic_type :type/PK}
+                   :model/Field    _              {:table_id table-id, :name "name"
+                                                   :base_type :type/Text}
+                   :model/Field    _              {:table_id table-id, :name "created_at"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/DateTime
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime}]
+      (let [fields  (-> (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id))
+                        :fields)
+            by-name (m/index-by :name fields)]
+        (testing "base_type is always set"
+          (is (= "type/BigInteger" (get-in by-name ["id" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["name" :base_type])))
+          (is (= "type/Text"       (get-in by-name ["created_at" :base_type]))))
+        (testing "semantic_type is returned when set"
+          (is (= "type/PK" (get-in by-name ["id" :semantic_type])))
+          (is (nil? (get-in by-name ["name" :semantic_type]))))
+        (testing "effective_type and coercion_strategy are returned when coerced"
+          (is (= "type/DateTime"               (get-in by-name ["created_at" :effective_type])))
+          (is (= "Coercion/ISO8601->DateTime" (get-in by-name ["created_at" :coercion_strategy]))))
+        (testing "effective_type is omitted when it equals base_type"
+          (is (not (contains? (get by-name "id") :effective_type)))
+          (is (not (contains? (get by-name "name") :effective_type))))))))
 
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -188,6 +233,22 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
+
+(deftest coerce-query-list-test
+  (let [coerce #'agent-api.api/coerce-query-list]
+    (testing "arrays pass through unchanged"
+      (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
+    (testing "nil stays nil"
+      (is (nil? (coerce nil))))
+    (testing "a bare string becomes a single-element list"
+      (is (= ["orders"] (coerce "orders"))))
+    (testing "a JSON-stringified array of strings is unwrapped"
+      (is (= ["orders" "revenue"] (coerce "[\"orders\", \"revenue\"]"))))
+    (testing "JSON arrays with non-string elements are not unwrapped — they fall back to a literal single query so that downstream :sequential NonBlankString validation is never bypassed"
+      (is (= ["[1, 2]"] (coerce "[1, 2]")))
+      (is (= ["[\"\"]"] (coerce "[\"\"]"))))
+    (testing "non-JSON strings become a single-element list"
+      (is (= ["not json ["] (coerce "not json ["))))))
 
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
@@ -354,7 +415,7 @@
                   (:measures table))))))))
 
 (deftest combined-query-test
-  (testing "Returns results for a table query"
+  (testing "Returns results for a table query that fits in a single page"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
           response (mt/user-http-request :rasta :post 202 "agent/v1/query"
@@ -363,27 +424,29 @@
                                           :limit    5})]
       (is (=? {:status             "completed"
                :row_count          5
-               :continuation_token string?
+               :continuation_token nil?
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
               response))))
 
-  (testing "Continuation token returns next page of results"
-    (let [table-id (mt/id :orders)
-          field-id (visible-field-id table-id "ID")
-          page1    (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                         {:table_id table-id
-                                          :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                          :limit    5})
-          page2    (mt/user-http-request :rasta :post 202 "agent/v1/query"
-                                         {:continuation_token (:continuation_token page1)})]
-      (is (=? {:row_count          5
+  (testing "Continuation token returns next page of results when the total limit exceeds the page size"
+    (let [table-id   (mt/id :orders)
+          field-id   (visible-field-id table-id "ID")
+          page-size  200
+          total-rows 250
+          page1      (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                           {:table_id table-id
+                                            :order_by [{:field {:field_id field-id} :direction "asc"}]
+                                            :limit    total-rows})
+          page2      (mt/user-http-request :rasta :post 202 "agent/v1/query"
+                                           {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count          page-size
                :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+               :data               {:rows (fn [rows] (= page-size (count rows)))}}
               page1))
-      (is (=? {:row_count          5
-               :continuation_token string?
-               :data               {:rows (fn [rows] (= 5 (count rows)))}}
+      (is (=? {:row_count          (- total-rows page-size)
+               :continuation_token nil?
+               :data               {:rows (fn [rows] (= (- total-rows page-size) (count rows)))}}
               page2))
       (is (not= (get-in page1 [:data :rows])
                 (get-in page2 [:data :rows]))
@@ -396,12 +459,32 @@
                                   {:table_id     (mt/id :orders)
                                    :aggregations [{:function "count"}]}))))
 
-  (testing "Constraint cap limits results to 200 rows"
+  (testing "Per-page cap limits a single page to 200 rows even when the total limit is higher"
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                   {:table_id (mt/id :orders)
                                    :limit    1000})))))
+
+(defn- make-continuation-token [pagination]
+  (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+       :pagination pagination}
+      json/encode
+      u/encode-base64))
+
+(deftest continuation-token-validation-test
+  (testing "Malformed pagination ints in a continuation token produce a 400, not a 500.
+            This is robustness — the token isn't a trust boundary, since a caller can
+            always issue a fresh program."
+    (doseq [[label pagination] [["zero limit"         {:limit 0      :page 1}]
+                                ["negative limit"     {:limit -10    :page 1}]
+                                ["non-integer limit"  {:limit "lots" :page 1}]
+                                ["zero page"          {:limit 200    :page 0}]
+                                ["negative page"      {:limit 200    :page -1}]
+                                ["non-integer page"   {:limit 200    :page "next"}]]]
+      (testing label
+        (mt/user-http-request :rasta :post 400 "agent/v1/query"
+                              {:continuation_token (make-continuation-token pagination)})))))
 
 (deftest combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"

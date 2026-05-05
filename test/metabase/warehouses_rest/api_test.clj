@@ -124,7 +124,7 @@
     :database_id   (mt/id)
     :dataset_query {:database (mt/id)
                     :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
+                    :native   {:query "SELECT * FROM VENUES"}}}
    kvs))
 
 (defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
@@ -748,6 +748,71 @@
         ;; 4. test the connection was still open at the end of it of the long running process
         (is (true? @connections-stay-open?))
         (tx/destroy-db! driver/*driver* empty-dbdef)))))
+
+(deftest databases-metadata-test
+  (testing "GET /api/database/metadata"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}     {:db_id db-id :name "my_table" :schema "PUBLIC"
+                                                   :description "A test table"}
+                   :model/Field    {f1-id :id}    {:table_id t-id :name "id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/PK}
+                   :model/Field    {f2-id :id}    {:table_id t-id :name "created_at" :base_type :type/Text
+                                                   :database_type "TIMESTAMP"
+                                                   :effective_type :type/DateTime
+                                                   :semantic_type :type/Name
+                                                   :coercion_strategy :Coercion/ISO8601->DateTime
+                                                   :description "The creation time"}
+                   :model/Field    {f3-id :id}    {:table_id t-id :name "parent_id" :base_type :type/Integer
+                                                   :database_type "BIGINT"
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id f1-id}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (=? {:id db-id :name "test-db" :engine "h2"}
+                (m/find-first (comp #{db-id} :id) databases)))
+        (is (=? {:id t-id :db_id db-id :name "my_table" :schema "PUBLIC" :description "A test table"}
+                (m/find-first (comp #{t-id} :id) tables)))
+        (is (=? {:id f1-id :table_id t-id :name "id" :base_type "type/Integer" :database_type "BIGINT"
+                 :semantic_type "type/PK"}
+                (m/find-first (comp #{f1-id} :id) fields)))
+        (is (=? {:id                f2-id
+                 :table_id          t-id
+                 :name              "created_at"
+                 :base_type         "type/Text"
+                 :database_type     "TIMESTAMP"
+                 :effective_type    "type/DateTime"
+                 :semantic_type     "type/Name"
+                 :coercion_strategy "Coercion/ISO8601->DateTime"
+                 :description       "The creation time"}
+                (m/find-first (comp #{f2-id} :id) fields)))
+        (is (=? {:id                 f3-id
+                 :table_id           t-id
+                 :name               "parent_id"
+                 :base_type          "type/Integer"
+                 :database_type      "BIGINT"
+                 :semantic_type      "type/FK"
+                 :fk_target_field_id f1-id}
+                (m/find-first (comp #{f3-id} :id) fields)))))))
+
+(deftest databases-metadata-no-perms-test
+  (testing "GET /api/database/metadata — user without data perms sees nothing"
+    (mt/with-temp [:model/Database {db-id :id} {:name "test-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "my_table" :schema "PUBLIC"}
+                   :model/Field    _           {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT"}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= {:databases [] :tables [] :fields []}
+               (mt/user-http-request :rasta :get 202 "database/metadata")))))))
+
+(deftest databases-metadata-excludes-audit-db-test
+  (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
+    (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "audit_table" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "audit_col" :base_type :type/Integer}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (nil? (m/find-first (comp #{db-id} :id) databases)))
+        (is (nil? (m/find-first (comp #{t-id}  :id) tables)))
+        (is (nil? (m/find-first (comp #{f-id}  :id) fields)))))))
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -2503,27 +2568,27 @@
       (mt/with-temp [:model/Database {id :id} {}]
         (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
-(setting/defsetting api-test-missing-premium-feature
+(defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
   :type :boolean
   :database-local :only
   :feature :forever-withheld-feature)
 
-(setting/defsetting api-test-missing-driver-feature
+(defsetting api-test-missing-driver-feature
   "A feature used for testing /settings-available (2)"
   :type :boolean
   :database-local :only
   ;; Something h2 will never support
   :driver-feature :test/jvm-timezone-setting)
 
-(setting/defsetting api-test-disabled-for-database
+(defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
   :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
-(setting/defsetting api-test-disabled-for-custom-reasons
+(defsetting api-test-disabled-for-custom-reasons
   "A feature used for testing /settings-available (4)"
   :type :boolean
   :database-local :only
@@ -2531,7 +2596,7 @@
                      (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
                                                         {:key :custom/two, :type :warning, :message "Also..."}])))
 
-(setting/defsetting api-test-disabled-for-multiple-reasons
+(defsetting api-test-disabled-for-multiple-reasons
   "A feature used for testing /settings-available (5)"
   :type :boolean
   :database-local :only
@@ -2581,63 +2646,6 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
-
-;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
-
-(deftest workspace-permission-endpoint-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "POST /api/database/:id/permission/workspace/check"
-      (testing "returns cached status when available"
-        ;; First call to populate cache
-        (mt/user-http-request :crowberto :post 200
-                              (format "database/%d/permission/workspace/check" (mt/id))
-                              {:cached false})
-        ;; Second call should return cached result
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)))
-          (is (some? (:checked_at response)))
-          (is (nil? (:error response)))))
-
-      (testing "runs permission check when no cache exists"
-        ;; Clear the cache
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)) (str "response: " (pr-str response)))
-          (is (some? (:checked_at response)))
-          ;; Verify it was cached
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))
-                (str "cached: " (pr-str (:workspace_permissions_status db)))))))
-
-      (testing "cached=false forces permission check"
-        ;; Set a stale cache value
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "ok" (:status response)))
-          ;; Verify cache was updated
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))))))
-
-      (testing "requires superuser"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403
-                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
-
-(deftest workspace-permission-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "returns failed status when permissions check fails"
-      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
-                                  (fn [_driver _database _table]
-                                    "permission denied")]
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "failed" (:status response)))
-          (is (= "permission denied" (:error response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |

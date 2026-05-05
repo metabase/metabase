@@ -2,4 +2,11 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"}}}
+ {at.yawk.lz4/lz4-java                {:mvn/version "1.10.4"} ; pin newer version because version included in JDBC driver has security warnings
+  com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"}
+  ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
+  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
+  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}
+  ;; pinned: databricks-jdbc-thin pulls older transitive versions
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}
+  org.apache.httpcomponents.core5/httpcore5-h2 {:mvn/version "5.3.5"}}}

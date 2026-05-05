@@ -473,7 +473,7 @@ export const Onboarding = () => {
                           t`dashboard with tabs`
                         )
                       } and add text, link, and iframe cards.`}</li>
-                      <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{jt`Add ${<b key="filters">{t`filters`}</b>} to dashboards and connect them to fields on questions to narrow the results.`}</li>
                       <li>{t`Drill-through charts on your dashboard to see different groupings or individual records.`}</li>
                     </ul>
                   </Text>
@@ -543,7 +543,7 @@ export const Onboarding = () => {
                         name="subscription"
                         className={S.inlineIcon}
                       />
-                    )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
+                    )} ${<b key="subscriptions">{t`Subscriptions`}</b>}.`}
                   </Text>
                   {isAdmin && exampleDashboardId && (
                     <Box data-testid="subscription-cta">
@@ -605,7 +605,7 @@ export const Onboarding = () => {
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(<b key="create-alert">{t`Create an alert`}</b>)}.`}
+                    )} ${<b key="create-alert">{t`Create an alert`}</b>}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}

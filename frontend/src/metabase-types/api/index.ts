@@ -44,6 +44,7 @@ export * from "./remote-sync";
 export * from "./revision";
 export * from "./schema";
 export * from "./search";
+export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";
@@ -64,7 +65,6 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
-export * from "./workspace";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

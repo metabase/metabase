@@ -14,10 +14,10 @@
   work, but for now we skip the cache in these cases."
   [query]
   (if (and api/*current-user-id*
-           (or (lib.util.match/match-lite query {:query-permissions/sandboxed-table (_ :guard identity)} true)
+           (or (lib.util.match/match-lite query {:query-permissions/sandboxed-table &truthy} true)
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace-lite query
-      {:persisted-info/native (_ :guard identity)}
+      {:persisted-info/native &truthy}
       (-> &match
           (dissoc :persisted-info/native)
           (assoc :qp/skip-persisted-cache true)))

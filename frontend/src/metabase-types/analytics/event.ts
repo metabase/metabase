@@ -733,6 +733,10 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
+
 export type MetricPageShowMoreClickedEvent = ValidateEvent<{
   event: "metric_page_show_more_clicked";
   target_id: number;
@@ -775,6 +779,11 @@ export type MetricsViewerDimensionTabSwitchedEvent = ValidateEvent<{
 
 export type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
   event: "metrics_viewer_dimension_tab_removed";
+}>;
+
+export type StackedSeriesEnabledEvent = ValidateEvent<{
+  event: "stack_series_enabled";
+  triggered_from: "metrics_viewer" | "viz_settings";
 }>;
 
 export type MetricsViewerEvent =
@@ -847,5 +856,7 @@ export type SimpleEvent =
   | ClickActionPerformedEvent
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
+  | SecurityCenterPageViewedEvent
   | MetricPageShowMoreClickedEvent
+  | StackedSeriesEnabledEvent
   | MetricsViewerEvent;

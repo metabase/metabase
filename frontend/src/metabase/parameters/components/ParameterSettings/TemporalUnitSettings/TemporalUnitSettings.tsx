@@ -102,7 +102,7 @@ function TemporalUnitDropdown({
           variant="stacked"
           onChange={handleAllToggle}
         />
-        <Text c="text-secondary" ml="sm">{t`Select all`}</Text>
+        <Text c="text-secondary" ml="sm" lh="inherit">{t`Select all`}</Text>
       </label>
       <Divider />
       {availableUnits.map((unit) => {

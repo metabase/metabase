@@ -74,10 +74,15 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
-export type MetabotErrorMessage = {
-  type: "message" | "alert";
-  message: string;
-};
+export type MetabotErrorMessage =
+  | {
+      type: "message" | "alert";
+      message: string;
+    }
+  | {
+      type: "locked";
+      message: string;
+    };
 
 export type MetabotToolCall = {
   id: string;

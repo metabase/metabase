@@ -70,23 +70,45 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
+;;; `MB_REDSHIFT_TEST_HOSTS`
+;;;
+;;; We've had lots of problems with Redshift timing out because of too much CPU load on our single cluster in the past;
+;;; instead of continuing to increase the size of the cluster (which doesn't seem to help much) we're switching to a
+;;; handful of smaller clusters, and picking one randomly; there is nothing shared between test runs and no reason they
+;;; all need to be done on a single cluster anyway. Other than the `:host` these are all configured identically with the
+;;; same user, password, and database name.
+
+(defonce ^:private hosts
+  (delay
+    (when-let [hosts (not-empty (tx/db-test-env-var :redshift :hosts))]
+      (str/split hosts #","))))
+
+(defn- random-host
+  "Pick a random host to test against from `MB_REDSHIFT_TEST_HOSTS` if it's set; otherwise fall back to the host in
+  `MB_REDSHIFT_TEST_HOST`."
+  []
+  (u/prog1 (if (seq @hosts)
+             (rand-nth @hosts)
+             (tx/db-test-env-var-or-throw :redshift :host))
+    ;; using println on purpose here for purposes of debugging CI, we can remove in the future when we're happy that
+    ;; multiple hosts works as expected
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "Using Redshift host" (pr-str (first (str/split <> #"\."))))))
+
+(defonce ^:private host (delay (random-host)))
+
 (def db-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+  (delay {:host                    @host
           :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :db                      (tx/db-test-env-var :redshift :db "testdb")
+          :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (def db-routing-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
-          :db                      (tx/db-test-env-var :redshift :db-routing "dev")
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
-          :password                (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type     "inclusion"
-          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+  (delay
+    (assoc @db-connection-details :db (tx/db-test-env-var :redshift :db-routing "dev"))))
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
@@ -230,7 +252,6 @@
         {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
         drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
-      ;; Drop schemas first
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
@@ -238,7 +259,10 @@
                                     [expired-isolation "Dropping expired workspace isolation schema: %s"]]
               schema               collection]
         (log/infof fmt-str schema)
-        (.execute stmt (drop-sql schema))))))
+        (try
+          (.execute stmt (drop-sql schema))
+          (catch Throwable e
+            (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))))))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

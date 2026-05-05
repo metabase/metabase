@@ -69,7 +69,7 @@ export const ButtonBar = ({
         borderTop: "1px solid var(--mb-color-border)",
       }}
     >
-      <Flex gap="md">
+      <Flex gap="md" mr="md">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>

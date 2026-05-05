@@ -4,8 +4,10 @@ import { Box, type BoxProps } from "metabase/ui";
 
 import styles from "./DottedBackground.module.css";
 
-export interface DottedBackgroundProps
-  extends Omit<BoxProps, "children" | "bg"> {
+export interface DottedBackgroundProps extends Omit<
+  BoxProps,
+  "children" | "bg"
+> {
   /** The color for the dots. Defaults to brand color. */
   dotColor?: string;
   /** The opacity of the dots (0-1). Defaults to 0.2. */

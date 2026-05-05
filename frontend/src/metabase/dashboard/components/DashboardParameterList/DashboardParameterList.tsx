@@ -14,14 +14,13 @@ import { ParametersList } from "metabase/parameters/components/ParametersList";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-export interface DashboardParameterListProps
-  extends Pick<
-    ComponentProps<typeof ParametersList>,
-    | "widgetsWithinPortal"
-    | "widgetsPopoverPosition"
-    | "vertical"
-    | "hasTestIdProps"
-  > {
+export interface DashboardParameterListProps extends Pick<
+  ComponentProps<typeof ParametersList>,
+  | "widgetsWithinPortal"
+  | "widgetsPopoverPosition"
+  | "vertical"
+  | "hasTestIdProps"
+> {
   className?: string;
   parameters: UiParameter[];
   isSortable?: boolean;

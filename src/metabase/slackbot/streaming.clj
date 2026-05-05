@@ -11,9 +11,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.util :as metabot.u]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -170,8 +169,14 @@
    - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response"
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
-  (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
+  (let [message         (metabot.envelope/user-message prompt)
+        ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        ;; Persist the user message before setup so failed conversations are captured.
+        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+                                                            :channel-id   channel-id
+                                                            :slack-msg-id req-slack-msg-id
+                                                            :ai-proxy?    ai-proxy?)
+        data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -181,10 +186,6 @@
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
-                                                            :channel-id   channel-id
-                                                            :slack-msg-id req-slack-msg-id
-                                                            :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))
         parts-atom      (atom [])
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
@@ -216,23 +217,28 @@
 
                                    nil)
                                  nil)))]
-    (transduce dispatch-xf (constantly nil) nil
-               (agent/run-agent-loop
-                {:messages   messages
-                 :state      {}
-                 :profile-id :slackbot
-                 :context    context}))
-    (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
-          pk        (metabot.persistence/store-message!
-                     conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
-                     :channel-id   channel-id
-                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                     :user-id      api/*current-user-id*
-                     :ai-proxy?   (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
-      (when stored-msg-id
-        (reset! stored-msg-id pk)))))
+    (try
+      (transduce dispatch-xf (constantly nil) nil
+                 (agent/run-agent-loop
+                  {:messages   messages
+                   :state      {}
+                   :profile-id :slackbot
+                   :context    context}))
+      (finally
+        ;; Persist whatever parts we collected, even if the pipeline threw.
+        ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
+        ;; tool-output :structured-output survives for analytics extraction.
+        (let [parts @parts-atom]
+          (when (seq parts)
+            (let [pk (metabot.persistence/store-native-parts!
+                      conversation-id "slackbot"
+                      (into [] (metabot.persistence/combine-text-parts-xf) parts)
+                      :channel-id   channel-id
+                      :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+                      :user-id      api/*current-user-id*
+                      :ai-proxy?    ai-proxy?)]
+              (when stored-msg-id
+                (reset! stored-msg-id pk)))))))))
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
@@ -478,6 +484,12 @@
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
                                   :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
+(defn- free-limit-error-message
+  [e]
+  (let [{:keys [error-code message]} (ex-data e)]
+    (when (= error-code "metabase_ai_managed_locked")
+      (or message (ex-message e)))))
+
 (defn- prepare-response-context
   "Fetch thread/auth context shared by DM and channel delivery paths."
   [client event]
@@ -576,17 +588,27 @@
   ([client event]
    (send-response client event nil))
   ([client event extra-history]
-   (let [ctx (prepare-response-context client event)]
-     (if (slackbot.events/dm? event)
-       (send-dm-response client event extra-history ctx)
-       (slackbot.channel/send-channel-response client
-                                               event
-                                               extra-history
-                                               ctx
-                                               {:tool-name->friendly        tool-friendly-names
-                                                :make-streaming-ai-request  make-streaming-ai-request
-                                                :collect-viz-blocks         collect-viz-blocks
-                                                :feedback-blocks            feedback-blocks
-                                                :post-viz-error!            post-viz-error!
-                                                :make-viz-prefetch-callback make-viz-prefetch-callback
-                                                :cancel-prefetched-viz!     cancel-prefetched-viz!})))))
+   (let [message-ctx (slackbot.events/event->reply-context event)]
+     (try
+       (metabot.usage/check-metabase-managed-free-limit!)
+       (let [ctx (prepare-response-context client event)]
+         (if (slackbot.events/dm? event)
+           (send-dm-response client event extra-history ctx)
+           (slackbot.channel/send-channel-response client
+                                                   event
+                                                   extra-history
+                                                   ctx
+                                                   {:tool-name->friendly        tool-friendly-names
+                                                    :make-streaming-ai-request  make-streaming-ai-request
+                                                    :collect-viz-blocks         collect-viz-blocks
+                                                    :feedback-blocks            feedback-blocks
+                                                    :post-viz-error!            post-viz-error!
+                                                    :make-viz-prefetch-callback make-viz-prefetch-callback
+                                                    :cancel-prefetched-viz!     cancel-prefetched-viz!})))
+       (catch Exception e
+         (if-let [message (free-limit-error-message e)]
+           (let [result (slackbot.client/post-thread-reply client message-ctx message)]
+             (when-not (:ok result)
+               (log/errorf "[slackbot] Failed to post managed free limit error message: %s" (:error result))
+               (throw e)))
+           (throw e)))))))
