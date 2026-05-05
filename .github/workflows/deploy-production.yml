@@ -84,6 +84,14 @@ jobs:
             MB_ENCRYPTION_SECRET_KEY=${{ secrets.MB_ENCRYPTION_SECRET_KEY }}
             ENV
             echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u '${{ secrets.GHCR_USER }}' --password-stdin
-            docker compose pull
-            docker compose up -d --remove-orphans
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE="docker-compose"
+            else
+              echo "Docker Compose is not installed on the server. Install the Docker Compose plugin or docker-compose."
+              exit 1
+            fi
+            $COMPOSE pull
+            $COMPOSE up -d --remove-orphans
             docker image prune -f
