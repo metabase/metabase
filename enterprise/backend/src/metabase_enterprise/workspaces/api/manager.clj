@@ -36,7 +36,6 @@
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
    [:database_id      ms/PositiveInt]
-   [:database_details :map]
    [:output_schema    :string]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:status           WorkspaceStatus]])
@@ -68,7 +67,7 @@
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
-  (-> (select-keys wsd [:database_id :database_details :output_schema :input_schemas :status])
+  (-> (select-keys wsd [:database_id :output_schema :input_schemas :status])
       (update :status name)))
 
 (defn- present-creator [creator]
@@ -109,7 +108,6 @@
    _query-params
    params :- UpdateWorkspaceParams]
   (api/check-superuser)
-  ;; For now just name updates — structural changes go through the database sub-endpoints
   (when (:name params)
     (t2/update! :model/Workspace :id id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
