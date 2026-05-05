@@ -1826,6 +1826,16 @@ describe("sandbox", () => {
       payload: "var x = history.state;",
       errorPattern: blockedPattern(/API call: History\.get state/),
     },
+    {
+      name: "performance.getEntries",
+      payload: "performance.getEntries();",
+      errorPattern: blockedPattern(/API call: Performance\.getEntries/),
+    },
+    {
+      name: "PerformanceObserver constructor",
+      payload: "new PerformanceObserver(function() {});",
+      errorPattern: blockedPattern(/API call: PerformanceObserver/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {

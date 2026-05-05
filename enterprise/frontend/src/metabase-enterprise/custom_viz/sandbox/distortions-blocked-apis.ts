@@ -129,6 +129,19 @@ block(method(History.prototype, "back"), "History.back");
 block(method(History.prototype, "forward"), "History.forward");
 block(getter(History.prototype, "state"), "History.get state");
 
+// Performance / resource timing — entries expose URLs and timings of every
+// resource the host has fetched (including auth-gated API calls)
+block(method(Performance.prototype, "getEntries"), "Performance.getEntries");
+block(
+  method(Performance.prototype, "getEntriesByType"),
+  "Performance.getEntriesByType",
+);
+block(
+  method(Performance.prototype, "getEntriesByName"),
+  "Performance.getEntriesByName",
+);
+block(window.PerformanceObserver, "PerformanceObserver");
+
 // HTML parsing — these construct DOM from string input without going through
 // the innerHTML/outerHTML/insertAdjacentHTML setters that DOMPurify
 // sanitizes, so they'd otherwise be a clean bypass of that mitigation.
