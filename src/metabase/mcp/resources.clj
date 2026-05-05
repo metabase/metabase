@@ -165,13 +165,17 @@
 (register-ui-tool!
  :visualize-query
  {:name        "visualize_query"
-  :description "Visualize a previously constructed query as an interactive chart or table."
+  :description (str "Visualize a previously constructed query as an interactive chart or table. "
+                    "This renders the final answer in the UI. Do not call execute_query after "
+                    "visualize_query; showing the visualization is enough.")
   :inputSchema {:type       "object"
                 :properties {:query {:type "string" :minLength 1}}
                 :required   ["query"]}
   :response-fn (fn [arguments _opts]
                  (if-let [encoded (:query arguments)]
-                   {:content          [{:type "text" :text "Visualizing query..."}]
+                   {:content          [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                "Do not call execute_query after this; "
+                                                                "the visualization is the final result.")}]
                     :structuredContent {:query encoded}}
                    {:content [{:type "text" :text "Missing query argument."}]
                     :isError true}))})
@@ -180,9 +184,10 @@
  :visualize-query
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
-                    "Call this immediately when asked to show the result, especially for the exact phrase "
-                    "`Show me the result`. "
-                    "The user's message includes a `handle` UUID — pass it as the `handle` argument.")
+                    "Use this tool, not execute_query, when the user asks to show the result and "
+                    "their message includes a `handle` UUID. This is the exact follow-up for the "
+                    "phrase `Show me the result`. Do not execute the query yourself; pass the "
+                    "`handle` UUID as the `handle` argument.")
   :inputSchema {:type       "object"
                 :properties {:handle {:type "string" :format "uuid"
                                       :description "Handle UUID from the user's drill-through message."}}
