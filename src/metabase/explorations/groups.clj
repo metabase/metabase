@@ -7,10 +7,11 @@
      vary by segment. `metabase.explorations.api/generate-queries!` always emits an
      unsegmented base row (`segment_id = nil`) per (metric, dim) pair, so the group's
      display name is taken from that base row.
-   - The `Uninteresting Charts` bin collects every query whose
-     `:contextual_interestingness_score` is `0` — the LLM looked at it and judged it
-     unrelated to the thread's prompt. These queries are pulled out of their (card, dim)
-     bundles before bundling, so each query still belongs to exactly one group.
+   - The `Uninteresting Charts` bin collects every query whose interestingness sits at
+     or below the relevant threshold: `<= 0` for the LLM contextual score when it's
+     present, otherwise `<= 0.5` for the intrinsic statistical score. These queries are
+     pulled out of their (card, dim) bundles before bundling, so each query still
+     belongs to exactly one group.
 
    `auto-groups` is a pure function over already-hydrated query rows — no DB access.
    Future user-defined groups will layer in alongside (`:type \"user\"`) without
@@ -25,13 +26,21 @@
   "auto:uninteresting")
 
 (defn- uninteresting?
-  "True when the LLM scored this query a 0 on contextual interestingness — i.e., it
-   explicitly judged the chart irrelevant to the thread's prompt. `nil` (unscored, no
-   prompt, or LLM unavailable) does NOT count: only an actual 0 sweeps a query into the
-   uninteresting bin."
+  "True when the chart sits at or below the appropriate interestingness threshold.
+
+   Prefers the LLM-driven contextual score (it's prompt-aware): a contextual score `<= 0`
+   means the LLM judged the chart irrelevant. When the contextual score is `nil` (no
+   prompt, LLM unavailable, or unscored) we fall back to the intrinsic statistical score
+   with a more permissive `<= 0.5` cutoff — without prompt-context we only bin charts
+   the pure-stats scorer found genuinely weak. Both `nil` means no signal at all, so the
+   query is left alone."
   [q]
-  (let [s (:contextual_interestingness_score q)]
-    (and (some? s) (zero? s))))
+  (let [c (:contextual_interestingness_score q)
+        i (:interestingness_score q)]
+    (cond
+      (some? c) (<= c 0)
+      (some? i) (<= i 0.5)
+      :else     false)))
 
 (defn- group-id
   "Stable per-thread auto-group id derived from `[card_id dimension_id]`. Treated as
