@@ -33,7 +33,8 @@ const setup = ({
   const getFirstSsoDiscoveryCall = () => {
     // This is GET `/auth/sso` or `auth/sso?preferred_method=...`
     // that returns the method (jwt/saml) and the url of the sso provider.
-    // The JWT validation request is a POST to /auth/sso and must be excluded.
+    // The requests that exchanges the JWT for a session is a POST
+    // to /auth/sso and should not be matched by this.
     return fetchMock.callHistory
       .calls()
       .filter(
