@@ -80,18 +80,15 @@ function parseActive(param: QueryParam): boolean | null {
   return DEFAULT_ACTIVE;
 }
 
-function parseStatus(param: QueryParam): NotificationStatus | null {
+function parseEnum<T extends string, D extends T | null>(
+  param: QueryParam,
+  values: readonly T[],
+  defaultValue: D,
+): T | D {
   const value = getFirstParamValue(param);
-  return value && (STATUS_VALUES as readonly string[]).includes(value)
-    ? (value as NotificationStatus)
-    : null;
-}
-
-function parseChannel(param: QueryParam): NotificationChannelType | null {
-  const value = getFirstParamValue(param);
-  return value && (CHANNEL_VALUES as readonly string[]).includes(value)
-    ? (value as NotificationChannelType)
-    : null;
+  return value && (values as readonly string[]).includes(value)
+    ? (value as T)
+    : defaultValue;
 }
 
 function parseId(param: QueryParam): number | null {
@@ -108,40 +105,39 @@ function parseEmail(param: QueryParam): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function parseSortColumn(param: QueryParam): AdminNotificationSortColumn {
-  const value = getFirstParamValue(param);
-  return value && (SORT_COLUMN_VALUES as readonly string[]).includes(value)
-    ? (value as AdminNotificationSortColumn)
-    : DEFAULT_SORT_COLUMN;
-}
-
-function parseSortDirection(param: QueryParam): AdminNotificationSortDirection {
-  const value = getFirstParamValue(param);
-  return value && (SORT_DIRECTION_VALUES as readonly string[]).includes(value)
-    ? (value as AdminNotificationSortDirection)
-    : DEFAULT_SORT_DIRECTION;
+function serializeActive(active: boolean | null): string | undefined {
+  if (active === DEFAULT_ACTIVE) {
+    return undefined;
+  }
+  if (active === null) {
+    return "all";
+  }
+  return String(active);
 }
 
 export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
     active: parseActive(query.active),
-    status: parseStatus(query.status),
+    status: parseEnum(query.status, STATUS_VALUES, null),
     creator_id: parseId(query.creator_id),
     card_id: parseId(query.card_id),
     recipient_email: parseEmail(query.recipient_email),
-    channel: parseChannel(query.channel),
-    sort_column: parseSortColumn(query.sort_column),
-    sort_direction: parseSortDirection(query.sort_direction),
+    channel: parseEnum(query.channel, CHANNEL_VALUES, null),
+    sort_column: parseEnum(
+      query.sort_column,
+      SORT_COLUMN_VALUES,
+      DEFAULT_SORT_COLUMN,
+    ),
+    sort_direction: parseEnum(
+      query.sort_direction,
+      SORT_DIRECTION_VALUES,
+      DEFAULT_SORT_DIRECTION,
+    ),
   }),
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
-    active:
-      state.active === DEFAULT_ACTIVE
-        ? undefined
-        : state.active === null
-          ? "all"
-          : String(state.active),
+    active: serializeActive(state.active),
     status: state.status ?? undefined,
     creator_id: state.creator_id == null ? undefined : String(state.creator_id),
     card_id: state.card_id == null ? undefined : String(state.card_id),

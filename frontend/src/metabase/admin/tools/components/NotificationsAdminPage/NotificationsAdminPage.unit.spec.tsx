@@ -101,8 +101,6 @@ describe("NotificationsAdminPage", () => {
     expect(screen.getByText("Orphaned")).toBeInTheDocument();
     expect(screen.getByText("No owner")).toBeInTheDocument();
     expect(screen.getByText("Failing")).toBeInTheDocument();
-    // "Deactivated" is no longer used as a status label (it read as
-    // "the alert is off", but really means "the creator is deactivated")
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
