@@ -127,13 +127,16 @@
     #{}))
 
 (defn- load-yamls-of-model
-  "Parse every YAML in `dir` and keep only those whose serdes model equals `model`.
+  "Parse YAMLs in `dir` and keep only those whose serdes model equals `model`.
   Serdes co-locates side-car models in the same directory — e.g. FieldValues and FieldUserSettings
   live next to Field YAMLs under `fields/` (`<field>___fieldvalues.yaml`,
-  `<field>___fieldusersettings.yaml`). Without this filter the side-cars would be counted as
-  Fields and inflate `:field-count`."
+  `<field>___fieldusersettings.yaml`). The `___` separator is a serdes invariant, so we skip those
+  filenames before parsing — both to avoid inflating `:field-count` and to avoid the parse cost on
+  the 2N side-cars that would be discarded anyway."
   [dir model]
-  (filterv #(= model (entity-model %)) (mapv load-yaml (list-yamls dir))))
+  (->> (list-yamls dir)
+       (remove #(str/includes? (.getName ^File %) "___"))
+       (into [] (comp (map load-yaml) (filter #(= model (entity-model %)))))))
 
 (defn- load-table
   "Load one Table directory into `{:table :fields :measures}`, or nil if its self-yaml is missing."
@@ -185,8 +188,7 @@
         f     (if (.isAbsolute given) given (io/file dir embeddings-path))]
     (when-not (.exists f)
       (throw (ex-info (str "Embeddings file not found: " (.getPath f))
-                      {:cli-validation  true
-                       :embeddings-path embeddings-path
+                      {:embeddings-path embeddings-path
                        :resolved-path   (.getPath f)
                        :dir             (str dir)})))
     f))
@@ -221,8 +223,8 @@
         embeddings      (load-embeddings dir embeddings-path)
         lib-coll-ids    (library-collection-ids collections)
         audit-db-names  (audit-database-names databases-dir)
-        non-audit-card? (fn [c] (not (contains? audit-db-names (:database_id c))))
-        non-audit-table? (fn [{t :table}] (not (contains? audit-db-names (:db_id t))))
+        non-audit-card?  (fn [c] (not (contains? audit-db-names (:database_id c))))
+        non-audit-table? (fn [t] (not (contains? audit-db-names (:db_id t))))
         ;; In serdes: Card.archived is in :copy without a default → absent means false.
         ;; Field.active defaults to true; Measure.archived defaults to false (in shapers).
         universe-card?  (fn [c] (and (contains? #{"metric" "model"} (:type c))
@@ -230,9 +232,9 @@
                                      (non-audit-card? c)))
         library-card?   (fn [c] (and (universe-card? c)
                                      (contains? lib-coll-ids (:collection_id c))))
-        universe-table? (fn [{t :table :as bundle}]
+        universe-table? (fn [{t :table}]
                           (and (get t :active true)
-                               (non-audit-table? bundle)))
+                               (non-audit-table? t)))
         library-table?  (fn [{t :table :as bundle}]
                           (and (universe-table? bundle)
                                (:is_published t)

@@ -85,7 +85,11 @@
       :else           (try
                         (write-result! (run-cli options) (:output options))
                         (catch clojure.lang.ExceptionInfo e
-                          (if (:cli-validation (ex-data e))
-                            (fail! (ex-message e))
-                            (throw e))))))
+                          ;; Handle CLI validation failures (`:cli-validation`) and missing-embeddings
+                          ;; failures from representation (`:embeddings-path`) — both are user-facing
+                          ;; misconfigurations rather than bugs.
+                          (let [data (ex-data e)]
+                            (if (or (:cli-validation data) (:embeddings-path data))
+                              (fail! (ex-message e))
+                              (throw e)))))))
   (System/exit 0))

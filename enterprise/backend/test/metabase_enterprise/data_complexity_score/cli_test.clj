@@ -27,6 +27,9 @@
     ;;                 cards (Revenue x2).
     ;;   Universe-only — 2 unpublished tables (events, event_log) + 1 schema-less Table (widgets,
     ;;                 active but not published) + 1 model card (Revenue) in the Outside collection.
+    ;;   Audit DB    — 1 Table (query_log) + 1 metric Card (Audit Metric) live under an
+    ;;                 `is_audit: true` Database. Both are valid on their own, so they would
+    ;;                 inflate Universe by 2 if the audit-DB filter regressed.
     ;;   Embeddings  — orthogonal except clients≈customers (library synonym) and
     ;;                 events≈event_log (extra universe-only synonym). The customers key is in
     ;;                 raw display-name form ("  Customers ") to exercise the on-disk →
@@ -59,7 +62,18 @@
   (testing "the schema-less widgets table (under databases/<db>/tables/, no schema dir) loads into :universe"
     (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)]
       (is (some #(= "widgets" (:name %)) universe)
-          "schema-less Table directory should be picked up by the loader"))))
+          "schema-less Table directory should be picked up by the loader")))
+  (testing "audit-DB content (is_audit: true) is excluded from :universe — both Tables and Cards"
+    ;; Mirrors the live appdb scorer's `[:not= audit/audit-db-id]` filter. The fixture has
+    ;; `databases/audit_database/...` (`is_audit: true`) with a `query_log` Table and a
+    ;; `collections/outside/cards/audit_metric.yaml` Card whose database_id points at it. Both
+    ;; would be valid Universe entries on their own; the filter is what keeps them out.
+    (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)
+          names              (set (map :name universe))]
+      (is (not (contains? names "query_log"))
+          "Table in is_audit DB must not appear in :universe")
+      (is (not (contains? names "Audit Metric"))
+          "Card whose database_id is the audit DB must not appear in :universe"))))
 
 (deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
