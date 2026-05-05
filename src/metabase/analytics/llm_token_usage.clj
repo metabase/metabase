@@ -1,7 +1,7 @@
 (ns metabase.analytics.llm-token-usage
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.analytics.util :as analytics.util]
    [metabase.util.malli :as mu]
@@ -68,13 +68,13 @@
            cache-creation-tokens cache-read-tokens]}
    :- PrometheusArgs]
   (let [labels {:model model-id :source tag}]
-    (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt-tokens)
-    (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion-tokens)
+    (analytics/inc! :metabase-metabot/llm-input-tokens labels prompt-tokens)
+    (analytics/inc! :metabase-metabot/llm-output-tokens labels completion-tokens)
     (when (and cache-creation-tokens (pos? cache-creation-tokens))
-      (prometheus/inc! :metabase-metabot/llm-cache-creation-tokens labels cache-creation-tokens))
+      (analytics/inc! :metabase-metabot/llm-cache-creation-tokens labels cache-creation-tokens))
     (when (and cache-read-tokens (pos? cache-read-tokens))
-      (prometheus/inc! :metabase-metabot/llm-cache-read-tokens labels cache-read-tokens))
-    (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
+      (analytics/inc! :metabase-metabot/llm-cache-read-tokens labels cache-read-tokens))
+    (analytics/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
 
 (mu/defn track-token-usage!
   "Convenience wrapper that fires Snowplow and/or Prometheus token tracking.

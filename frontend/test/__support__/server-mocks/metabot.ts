@@ -1,4 +1,7 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, {
+  type RouteResponse,
+  type UserRouteConfig,
+} from "fetch-mock";
 
 import type {
   MetabotGroupLimit,
@@ -165,10 +168,12 @@ type SetupMetabaseManagedAiEndpointsOptions = {
   billingPeriodMonths?: number;
   metabasePricePerUnit?: number;
   metabotUsageQuota?: {
+    is_locked?: boolean;
     tokens: number | null;
+    free_tokens?: number | null;
     updated_at: string | null;
   } | null;
-  purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  purchaseCloudAddOnResponse?: RouteResponse;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
 };
 
@@ -180,7 +185,9 @@ export function setupMetabaseManagedAiEndpoints({
   removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
+    is_locked: metabotUsageQuota?.is_locked ?? false,
     tokens: metabotUsageQuota?.tokens ?? null,
+    free_tokens: metabotUsageQuota?.free_tokens ?? null,
     updated_at: metabotUsageQuota?.updated_at ?? null,
   });
 
@@ -231,16 +238,12 @@ const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
 
 export function setupMetabotGroupPermissionsEndpoint(
   permissions: MetabotGroupPermission[] = [],
+  advanced = false,
 ) {
   fetchMock.removeRoute(METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
   fetchMock.get(
     "path:/api/ee/ai-controls/permissions",
-    {
-      permissions,
-      limit: 50,
-      offset: 0,
-      total: permissions.length,
-    },
+    { permissions, advanced },
     { name: METABOT_GROUP_PERMISSIONS_ROUTE_NAME },
   );
 }

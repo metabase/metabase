@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
-   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -165,17 +164,11 @@
    (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
-  (testing "inc starts a system if it wasn't started"
-    (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
-
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
-                            (analytics/inc! :metabase-email/unknown-metric)))))
+                            (prometheus/inc! :metabase-email/unknown-metric)))))
   (testing "inc is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
@@ -187,12 +180,6 @@
       (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
 
 (deftest dec!-test
-  (testing "dec starts a system if it wasn't started"
-    (mt/with-temporary-setting-values [prometheus-server-port 0]
-      (with-redefs [prometheus/system nil]
-        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
-        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
-
   (testing "dec throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
@@ -208,24 +195,6 @@
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
-
-(deftest observe!-test
-  (testing "observe! starts a system if it wasn't started"
-    (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
-        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
-
-  (testing "observe! with labels is correctly recorded"
-    (mt/with-prometheus-system! [_ system]
-      (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type :notification/card} 2)
-      (is (approx= 2 (:sum (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type :notification/card}))))))
-
-  (testing "observe! throws when called with an unknown metric"
-    (mt/with-prometheus-system! [_ _system]
-      (is (thrown-with-msg? RuntimeException
-                            #"error when updating metric"
-                            (prometheus/observe! :metabase-email/unknown-metric 1))))))
 
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
@@ -256,6 +225,10 @@
       (prometheus/inc! :metabase-sdk/response {:status "404"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"} 0)
+      (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-public/response {:status "200"} 0)
+      (prometheus/inc! :metabase-embedding-simple/response {:status "200"} 0)
 
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
@@ -265,10 +238,22 @@
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
 
+      ;; Track new embedding responses
+      (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-public/response {:status "200"})
+      (prometheus/inc! :metabase-embedding-simple/response {:status "200"})
+
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
 
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
-        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"})))))))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"}))))
+
+      (testing "new embedding response metrics are recorded correctly"
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
+        (is (approx= 1 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))))))

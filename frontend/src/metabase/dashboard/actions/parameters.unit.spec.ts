@@ -25,7 +25,7 @@ import {
   setParameterType,
 } from "./parameters";
 
-function setup({ routing, ...initialState }: State) {
+function setup(initialState: State) {
   return getStore(mainReducers, initialState);
 }
 
@@ -276,7 +276,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });
@@ -393,7 +392,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });

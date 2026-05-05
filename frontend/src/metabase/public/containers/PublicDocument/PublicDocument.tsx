@@ -11,6 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -24,7 +25,6 @@ import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";

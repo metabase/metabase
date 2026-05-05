@@ -55,6 +55,7 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-data-complexity-score?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
@@ -86,7 +87,6 @@
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
-  enable-workspaces?
   enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?

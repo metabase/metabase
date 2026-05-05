@@ -6,6 +6,7 @@ import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
+import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
 import {
   ChartSettingEnumToggle,
   type ChartSettingEnumToggleProps,
@@ -403,6 +404,11 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
       return visibleDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
+    onUpdate: (value) => {
+      if (value === true) {
+        trackStackedSeriesEnabled();
+      }
+    },
   },
 };
 

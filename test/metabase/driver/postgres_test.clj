@@ -16,7 +16,7 @@
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -1309,23 +1309,34 @@
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
-          (is (= {"start_time" {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "22:00:00"
-                                                         :latest   "22:00:00"}}}
-                  "end_time"   {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "09:00:00"
-                                                         :latest   "09:00:00"}}}
-                  "reason"     {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/Text {:percent-json   0.0
-                                                     :percent-url    0.0
-                                                     :percent-email  0.0
-                                                     :percent-state  0.0
-                                                     :average-length 12.0}}}}
-                 (t2/select-fn->fn :name :fingerprint :model/Field
-                                   :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database))))))))))
+          (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
+                                                :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
+                ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
+                ;; shape (#5911), not the interestingness metrics.
+                extended-keys [:hour-distribution :weekday-distribution :skewness
+                               :mode-fraction :top-3-fraction
+                               :mode-fraction-by-weekday :mode-fraction-by-hour
+                               :min-length :max-length :percent-blank]
+                trim-type     (fn [fp]
+                                (update fp :type
+                                        (fn [types]
+                                          (update-vals types #(apply dissoc % extended-keys)))))]
+            (is (= {"start_time" {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "22:00:00"
+                                                           :latest   "22:00:00"}}}
+                    "end_time"   {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "09:00:00"
+                                                           :latest   "09:00:00"}}}
+                    "reason"     {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/Text {:percent-json   0.0
+                                                       :percent-url    0.0
+                                                       :percent-email  0.0
+                                                       :percent-state  0.0
+                                                       :average-length 12.0}}}}
+                   (update-vals fingerprints trim-type)))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1713,18 +1724,21 @@
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
-    (is (= "SET ROLE ROLE123;"        (driver.sql/set-role-statement :postgres "ROLE123")))
-    (is (= "SET ROLE lowercase_role;" (driver.sql/set-role-statement :postgres "lowercase_role")))
-
-    ;; None (special role in Postgres to revert back to login role; should not be quoted)
-    (is (= "SET ROLE none;"      (driver.sql/set-role-statement :postgres "none")))
-    (is (= "SET ROLE NONE;"      (driver.sql/set-role-statement :postgres "NONE")))
-
-    ;; Special characters
-    (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
-    (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
+    (mt/test-driver :postgres
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :postgres conn role))
+           "MY_ROLE"                      "SET ROLE MY_ROLE;"
+           "ROLE123"                      "SET ROLE ROLE123;"
+           "lowercase_role"               "SET ROLE lowercase_role;"
+           "Role.123"                     "SET ROLE \"Role.123\";"
+           "$role"                        "SET ROLE \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET ROLE none;"
+           "NONE"                         "SET ROLE NONE;"))))))
 
 (deftest get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
@@ -2215,9 +2229,7 @@
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
-  (mt/test-driver
-    :postgres
-
+  (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"

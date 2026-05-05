@@ -14,7 +14,10 @@ import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
+import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
+import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
+import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -41,16 +44,16 @@ import {
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
-  EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/routes";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_AI_CONTROLS,
+  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
@@ -62,6 +65,8 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
+import { AISettingsPage } from "./ai/AISettingsPage";
+import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
@@ -205,6 +210,8 @@ export const getRoutes = (
             )}
 
             <Route path="security" component={EmbeddingSecuritySettings} />
+            <Route path="themes" component={EmbeddingThemeListingApp} />
+            <Route path="themes/:themeId" component={EmbeddingThemeEditorApp} />
           </Route>
         </Route>
 
@@ -260,7 +267,12 @@ export const getRoutes = (
 
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {getMetabotAdminRoutes()}
+          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          <Route key="layout" component={MetabotAdminLayout}>
+            <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
+            {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
+          </Route>
         </Route>
 
         {PLUGIN_SECURITY_CENTER.isEnabled && (

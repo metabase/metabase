@@ -73,14 +73,12 @@
           conv-5       (str (random-uuid))
           conv-6       (str (random-uuid))
           all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5 conv-6]
-          ;; OpenRouter returns model names like "anthropic/claude-haiku-4-5" in its API.
-          ;; This is the bare model name that flows from the SSE adapter → extract-usage → DB.
-          model        "anthropic/claude-haiku-4-5"]
+          model        "claude-sonnet-4-6"]
       (t/with-clock clock
         (try
           ;; -- AI proxy conversations (metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+                                             "metabase/anthropic/claude-sonnet-4-6"]
             ;; conv-1: yesterday, one model
             (send-message! conv-1 "What is 2+2?" model 100 50)
             (backdate-messages! conv-1 yesterday)
@@ -103,7 +101,7 @@
 
           ;; -- BYOK conversation (no metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "openrouter/anthropic/claude-haiku-4-5"]
+                                             "anthropic/claude-sonnet-4-6"]
             (send-message! conv-5 "BYOK question" model 777 777)
             (backdate-messages! conv-5 yesterday))
 
@@ -130,10 +128,10 @@
               (is (every? false? (map :ai_proxied logs)))))
 
           (testing "usage keys are provider/model (metabase/ prefix stripped)"
-            ;; accumulate-usage-xf strips metabase/ prefix → "openrouter/anthropic/claude-haiku-4-5"
-            ;; JSON roundtrip keywordizes → :openrouter/anthropic/claude-haiku-4-5
+            ;; accumulate-usage-xf strips metabase/ prefix → "anthropic/claude-sonnet-4-6"
+            ;; JSON roundtrip keywordizes → :anthropic/claude-sonnet-4-6
             (let [msg (t2/select-one :model/MetabotMessage :conversation_id conv-1 :role :assistant)]
-              (is (contains? (:usage msg) (keyword "openrouter" "anthropic/claude-haiku-4-5"))
+              (is (contains? (:usage msg) (keyword "anthropic" "claude-sonnet-4-6"))
                   "usage key should be provider/model without metabase/ prefix")))
 
           ;; -- Verify stats aggregation --
@@ -144,7 +142,7 @@
               (is (= 430 (:metabot-tokens stats))))
 
             (testing ":metabot-usage aggregates combined tokens by model"
-              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 430}
+              (is (= {"anthropic:claude-sonnet-4-6:tokens" 430}
                      (:metabot-usage stats))))
 
             (testing ":metabot-queries counts ai-proxied user messages for yesterday"
@@ -157,7 +155,7 @@
               (is (= "2026-03-31" (:metabot-usage-date stats))))
 
             (testing ":metabot-rolling-usage aggregates today's combined tokens by model"
-              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 1976}
+              (is (= {"anthropic:claude-sonnet-4-6:tokens" 1976}
                      (:metabot-rolling-usage stats))))
 
             (testing ":metabot-rolling-usage-date is today's date"
@@ -195,6 +193,81 @@
           (finally
             (cleanup! conv-id)))))))
 
+(deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
+  (let [clock      (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+        yesterday  (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+        rasta-id   (mt/user->id :rasta)
+        lucky-id   (mt/user->id :lucky)
+        ;; `:user_id` on the messages is intentionally omitted — this is the legacy
+        ;; scenario from before messages stamped their author.
+        legacy-msg #(hash-map :conversation_id % :created_at yesterday :role "user"
+                              :profile_id "legacy" :total_tokens 100 :ai_proxied true)
+        usage-log  (fn [conv-id user-id]
+                     {:conversation_id conv-id :user_id user-id :created_at yesterday
+                      :source "legacy-test" :total_tokens 100 :prompt_tokens 100
+                      :ai_proxied true})]
+    (t/with-clock clock
+      (mt/with-temp [:model/MetabotConversation {conv-1 :id} {:user_id rasta-id}
+                     :model/MetabotConversation {conv-2 :id} {:user_id lucky-id}
+                     :model/MetabotMessage _ (legacy-msg conv-1)
+                     :model/MetabotMessage _ (legacy-msg conv-2)
+                     :model/AiUsageLog _ (usage-log conv-1 rasta-id)
+                     :model/AiUsageLog _ (usage-log conv-2 lucky-id)]
+        (is (= 2 (:metabot-users (sut/metabot-stats))))))))
+
+(deftest metabot-stats-mixed-user-id-stamping-dedups-test
+  (testing "stamped + unstamped messages from the same user must collapse to one distinct user"
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          rasta-id  (mt/user->id :rasta)
+          mixed-msg (fn [conv-id stamp-user?]
+                      (cond-> {:conversation_id conv-id
+                               :created_at      yesterday
+                               :role            "user"
+                               :profile_id      "mixed"
+                               :total_tokens    100
+                               :ai_proxied      true}
+                        stamp-user? (assoc :user_id rasta-id)))
+          usage-log {:user_id rasta-id
+                     :created_at yesterday
+                     :source "mixed-test"
+                     :total_tokens 100
+                     :prompt_tokens 100
+                     :ai_proxied true}]
+      (t/with-clock clock
+        (mt/with-temp [:model/MetabotConversation {conv-id :id} {:user_id rasta-id}
+                       :model/MetabotMessage _ (mixed-msg conv-id true)
+                       :model/MetabotMessage _ (mixed-msg conv-id false)
+                       :model/AiUsageLog _ (assoc usage-log :conversation_id conv-id)]
+          (is (= 1 (:metabot-users (sut/metabot-stats)))))))))
+
+(deftest metabot-stats-counts-distinct-participants-in-shared-conversation-test
+  (testing "two participants in a single conversation are both counted in :metabot-users"
+    (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+          yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+          rasta-id  (mt/user->id :rasta)
+          lucky-id  (mt/user->id :lucky)
+          msg       (fn [conv-id user-id]
+                      {:conversation_id conv-id
+                       :user_id         user-id
+                       :created_at      yesterday
+                       :role            "user"
+                       :profile_id      "shared"
+                       :total_tokens    100
+                       :ai_proxied      true})
+          log       {:created_at yesterday
+                     :source "shared-test"
+                     :total_tokens 100
+                     :prompt_tokens 100
+                     :ai_proxied true}]
+      (t/with-clock clock
+        (mt/with-temp [:model/MetabotConversation {conv-id :id} {:user_id rasta-id}
+                       :model/MetabotMessage _ (msg conv-id rasta-id)
+                       :model/MetabotMessage _ (msg conv-id lucky-id)
+                       :model/AiUsageLog _ (assoc log :conversation_id conv-id :user_id rasta-id)
+                       :model/AiUsageLog _ (assoc log :conversation_id conv-id :user_id lucky-id)]
+          (is (= 2 (:metabot-users (sut/metabot-stats)))))))))
+
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled
     (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
@@ -219,8 +292,10 @@
           conv-id   (str (random-uuid))]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openai/gpt-4o"]
+          ;; openai is not currently in the metabase managed allow-list, but we still
+          ;; want to test metering in case we ever enable these providers — bypass the
+          ;; validator with `with-redefs` to set the provider directly.
+          (with-redefs [metabot.settings/llm-metabot-provider (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-id "Hello" "gpt-4o" 600 200)
             (backdate-messages! conv-id yesterday))
           (let [stats (sut/metabot-stats)]
@@ -238,16 +313,19 @@
           conv-3    (str (random-uuid))]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+          ;; openrouter/openai are not currently in the metabase managed allow-list,
+          ;; but we still want to test metering in case we ever enable these providers
+          ;; — bypass the validator with `with-redefs` to set the provider directly.
+          (with-redefs [metabot.settings/llm-metabot-provider
+                        (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
             (send-message! conv-1 "Q1" "anthropic/claude-haiku-4-5" 100 50)
             (backdate-messages! conv-1 yesterday))
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                              "metabase/anthropic/claude-sonnet-4-6"]
             (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
             (backdate-messages! conv-2 yesterday))
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openai/gpt-4o"]
+          (with-redefs [metabot.settings/llm-metabot-provider
+                        (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-3 "Q3" "gpt-4o" 300 120)
             (backdate-messages! conv-3 yesterday))
           (let [stats (sut/metabot-stats)]
@@ -300,12 +378,12 @@
           clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
           yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
           today     (t/offset-date-time 2026 4 1 9 0 0 0 (t/zone-offset "+00"))
-          model     "anthropic/claude-haiku-4-5"
+          model     "claude-sonnet-4-6"
           tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]]
       (t/with-clock clock
         (try
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+                                             "metabase/anthropic/claude-sonnet-4-6"]
             ;; Yesterday's generation
             (generate-example-questions! tables model 400 100)
 
@@ -325,9 +403,9 @@
                           {:created_at today})))
 
           (testing "metabot-stats includes yesterday totals and today's rolling usage"
-            (is (=? {:metabot-tokens            500
-                     :metabot-usage             {"openrouter:anthropic/claude-haiku-4-5:tokens" 500}
-                     :metabot-rolling-usage      {"openrouter:anthropic/claude-haiku-4-5:tokens" 260}
+            (is (=? {:metabot-tokens             500
+                     :metabot-usage              {"anthropic:claude-sonnet-4-6:tokens" 500}
+                     :metabot-rolling-usage      {"anthropic:claude-sonnet-4-6:tokens" 260}
                      :metabot-rolling-usage-date "2026-04-01"}
                     (sut/metabot-stats))))
           (finally
@@ -363,13 +441,13 @@
     (let [baseline  (max-usage-log-id)
           clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
           yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
-          model     "anthropic/claude-haiku-4-5"
+          model     "claude-sonnet-4-6"
           tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]
           conv-id   (str (random-uuid))]
       (t/with-clock clock
         (try
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+                                             "metabase/anthropic/claude-sonnet-4-6"]
             ;; Chat conversation
             (send-message! conv-id "What is 2+2?" model 200 50)
             (backdate-messages! conv-id yesterday)
@@ -377,14 +455,14 @@
             ;; Example question generation (no conversation)
             (generate-example-questions! tables model 300 100)
             (t2/update! :model/AiUsageLog {:id [:> baseline]
-                                           :source "example-question-generation"}
+                                           :source "example_question_generation_batch"}
                         {:created_at yesterday}))
 
           (testing "metabot-stats includes both chat and example question generation"
             ;; chat: 250, eqg: 400 → total 650
             (is (=? {:metabot-tokens  650
                      :metabot-queries 1
-                     :metabot-usage   {"openrouter:anthropic/claude-haiku-4-5:tokens" 650}}
+                     :metabot-usage   {"anthropic:claude-sonnet-4-6:tokens" 650}}
                     (sut/metabot-stats))))
           (finally
             (cleanup-usage-logs-after! baseline)

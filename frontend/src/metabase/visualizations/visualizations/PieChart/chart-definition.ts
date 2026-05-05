@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";

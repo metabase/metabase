@@ -12,4 +12,18 @@
  {com.metabase/athena-jdbc-thin {:mvn/version "3.7.0"
                                 :exclusions [software.amazon.awssdk/athena-streaming]}
   ;; not on Maven Central; published to our private maven by the athena workflow
-  com.metabase/athena-streaming {:mvn/version "2.0"}}}
+  com.metabase/athena-streaming {:mvn/version "2.0"}
+
+  ;; Netty — pinned at latest 4.1.x patched release. The Athena JDBC driver's
+  ;; async AWS SDK path requires the 4.1 API; 4.2.x is not binary-compatible
+  ;; with classes the driver calls. 4.1.132 patches CVE-2026-33870 et al.
+  io.netty/netty-common                       {:mvn/version "4.1.132.Final"}
+  io.netty/netty-handler                      {:mvn/version "4.1.132.Final"}
+  io.netty/netty-transport                    {:mvn/version "4.1.132.Final"}
+  io.netty/netty-buffer                       {:mvn/version "4.1.132.Final"}
+  io.netty/netty-codec                        {:mvn/version "4.1.132.Final"}
+  io.netty/netty-codec-http                   {:mvn/version "4.1.132.Final"}
+  io.netty/netty-codec-http2                  {:mvn/version "4.1.132.Final"}
+  io.netty/netty-resolver                     {:mvn/version "4.1.132.Final"}
+  io.netty/netty-transport-native-unix-common {:mvn/version "4.1.132.Final"}
+  io.netty/netty-transport-native-epoll       {:mvn/version "4.1.132.Final"}}}

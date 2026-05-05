@@ -101,6 +101,7 @@
    :table_id            :integer
    :table_schema        :text
    :table_name          :text
+   :table_display_name  :text
    :table_description   :text
    ;; returned for Metric, Segment, and Action
    :database_id         :integer
@@ -452,6 +453,7 @@
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]
+   [:table.display_name :table_display_name]
    [:table.description :table_description]])
 
 (defmethod columns-for-model "metric"

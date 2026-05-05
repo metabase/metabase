@@ -5,8 +5,8 @@ import {
   PLUGIN_TENANTS,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import type { EmbeddingHubStep } from "../types";
 

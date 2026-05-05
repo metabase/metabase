@@ -624,7 +624,7 @@
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
                             id       (lib.util.match/match-many breakouts
-                                       [:field {:binning _} (id :guard pos-int?)]
+                                       [:field {:binning &truthy} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
 
@@ -658,7 +658,7 @@
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
                                            id       (lib.util.match/match-many breakouts
-                                                      [:field {:temporal-unit _} (id :guard pos-int?)]
+                                                      [:field {:temporal-unit &truthy} (id :guard pos-int?)]
                                                       id)]
                                        id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)

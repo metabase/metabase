@@ -12,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import {
   Button,
@@ -23,8 +24,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Transform, UserId } from "metabase-types/api";
 
 import { TitleSection } from "../../../components/TitleSection";

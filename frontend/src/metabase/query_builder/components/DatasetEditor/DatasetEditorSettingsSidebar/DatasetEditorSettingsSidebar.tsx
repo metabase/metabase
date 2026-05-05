@@ -4,9 +4,9 @@ import {
   getIsListViewConfigurationShown,
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 

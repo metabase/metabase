@@ -142,7 +142,7 @@
                         [query <>])))
               ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
               (when-not (map? <>)
-                (throw (ex-info (format "Middleware did not return a valid query.")
+                (throw (ex-info "Middleware did not return a valid query."
                                 {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn middleware-fn]
