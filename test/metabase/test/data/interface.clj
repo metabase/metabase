@@ -449,6 +449,7 @@
 
 (defmacro with-temp-roles!
   "Creates the given roles and permissions for the database user, and drops them after execution"
+  {:style/indent :defn}
   [driver details roles db-user default-role & body]
   `(with-temp-roles-fn!
      ~driver

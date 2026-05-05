@@ -30,7 +30,11 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
-import { useSetArchive, useToast } from "metabase/common/hooks";
+import {
+  useSetArchive,
+  useSetCollection,
+  useToast,
+} from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
@@ -147,6 +151,7 @@ export const CollectionContentView = ({
   }, [bookmarks, collectionId]);
 
   const archive = useSetArchive();
+  const setCollection = useSetCollection();
   const [sendToast] = useToast();
 
   const visibleColumnsMap = useMemo(
@@ -269,7 +274,7 @@ export const CollectionContentView = ({
             await dispatch(Bookmarks.actions.invalidateLists());
           }}
           onMove={({ id }) =>
-            dispatch(Collections.actions.setCollection(actionId, { id }))
+            setCollection({ model: "collection", id: collectionId }, { id })
           }
           onDeletePermanently={() =>
             dispatch(deletePermanently(Collections.actions.delete(actionId)))

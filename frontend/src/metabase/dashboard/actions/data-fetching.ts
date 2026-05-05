@@ -26,6 +26,7 @@ import {
 } from "metabase/dashboard/utils";
 import { entityCompatibleQuery } from "metabase/entities";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
@@ -49,7 +50,6 @@ import { defer } from "metabase/utils/promise";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,

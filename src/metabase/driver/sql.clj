@@ -100,13 +100,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti set-role-statement
-  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
-  {:added "0.47.0" :arglists '([driver role])}
+  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver.
+
+  DEPRECATED: prefer [[metabase.driver.sql-jdbc/set-role-statement]] going forward."
+  {:added "0.47.0", :deprecated "0.61.0", :arglists '([driver role])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod set-role-statement :default
-  [_ _ _]
+  [_driver _role]
   nil)
 
 (defmulti default-database-role

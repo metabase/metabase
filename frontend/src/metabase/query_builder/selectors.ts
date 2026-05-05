@@ -7,7 +7,6 @@ import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import { Timelines } from "metabase/entities/timelines";
 import {
   isQuestionDirty,
@@ -60,6 +59,7 @@ import type {
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import { cleanIndexFlags } from "./model-indexes/actions";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
