@@ -1,10 +1,10 @@
-(ns metabase.warehouses-rest.metadata-file-import.schemas
+(ns metabase-enterprise.serialization.metadata-file-import.schemas
   "Malli schemas describing the element shapes streamed in `MB_TABLE_METADATA_PATH`
   and `MB_FIELD_VALUES_PATH`. The shapes mirror the rows produced by
   `GET /api/database/metadata` and `GET /api/database/field-values`, so the import
   side validates the same structure the export side emits.
 
-  Shared between the file loader (`metabase.warehouses-rest.metadata-file-import`)
+  Shared between the file loader (`metabase-enterprise.serialization.metadata-file-import`)
   and the pure batch processors (`metabase.warehouses-rest.metadata-import-core`)
   so both agree on the per-line contract.
 

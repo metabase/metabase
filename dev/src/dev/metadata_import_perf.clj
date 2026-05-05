@@ -3,7 +3,7 @@
 
   ONE-OFF perf-smoke-test harness — not for CI. Generates four synthetic
   JSON fixture files matching scenario specs, loads each through
-  `metabase.warehouses-rest.metadata-file-import/import-metadata-file!`,
+  `metabase-enterprise.serialization.metadata-file-import/import-metadata-file!`,
   captures timing + heap, prints a comparison table.
 
   Public API:
@@ -24,16 +24,16 @@
     - Flat root    — neither.
 
   Top-level shape: {:databases [...] :tables [...] :fields [...]}.
-  See `metabase.warehouses-rest.metadata-file-import.schemas` for the exact
+  See `metabase-enterprise.serialization.metadata-file-import.schemas` for the exact
   Malli schemas. The generator MUST validate every line against those schemas
   before writing — catches bugs early."
   (:require
    [cheshire.core :as cheshire]
    [clojure.string :as str]
+   [metabase-enterprise.serialization.metadata-file-import :as mfi]
+   [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
+   [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouses-rest.metadata-file-import :as mfi]
-   [metabase.warehouses-rest.metadata-file-import.processors :as processors]
-   [metabase.warehouses-rest.metadata-file-import.schemas :as schemas]
    [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter File FileOutputStream OutputStreamWriter)

@@ -1,4 +1,4 @@
-(ns metabase.warehouses-rest.metadata-file-import.parsers.json
+(ns metabase-enterprise.serialization.metadata-file-import.parsers.json
   "Streaming JSON parser for the metadata file importer. Walks a top-level JSON
   object, advances to a named array, and emits its items in batches via a
   callback. Memory bounded by the in-flight item plus the current batch buffer.

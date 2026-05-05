@@ -1,4 +1,4 @@
-(ns ^:parallel metabase.warehouses-rest.metadata-file-import.schemas-test
+(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.schemas-test
   "Tests for the Malli schemas validating per-line shapes streamed in
   `MB_TABLE_METADATA_PATH`. The schemas describe the **portable-id** wire
   format produced by `GET /api/database/metadata` after Alex Polyankin's
@@ -8,8 +8,8 @@
   both formats."
   (:require
    [clojure.test :refer :all]
-   [metabase.util.malli.registry :as mr]
-   [metabase.warehouses-rest.metadata-file-import.schemas :as schemas]))
+   [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- al
   "Build a `java.util.ArrayList` from `xs` — mimics what Jackson hands the

@@ -1,11 +1,11 @@
-(ns metabase.warehouses-rest.metadata-file-import.parsers.yaml
+(ns metabase-enterprise.serialization.metadata-file-import.parsers.yaml
   "Streaming YAML parser for the metadata file importer. Walks SnakeYAML's
   event iterator (`Yaml.parse(reader)`), advances to a named array, and emits
   its items in batches via a callback. Items are built with a small recursive
   descent over events; memory bounded by the in-flight item plus the current
   batch buffer.
 
-  Mirrors the public shape of [[metabase.warehouses-rest.metadata-file-import.parsers.json]].
+  Mirrors the public shape of [[metabase-enterprise.serialization.metadata-file-import.parsers.json]].
   Aliases (`*name`) and tagged scalars are not supported — our export side is
   mechanically generated and never emits them."
   (:import

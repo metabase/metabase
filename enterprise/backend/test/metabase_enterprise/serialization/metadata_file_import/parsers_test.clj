@@ -1,11 +1,11 @@
-(ns ^:parallel metabase.warehouses-rest.metadata-file-import.parsers-test
+(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.parsers-test
   "Tests for the file-extension format dispatcher. Each test writes a temp file
   with the right extension, then asserts that streaming the file produces the
   expected batches."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.warehouses-rest.metadata-file-import.parsers :as parsers])
+   [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers])
   (:import
    (java.io File)))
 

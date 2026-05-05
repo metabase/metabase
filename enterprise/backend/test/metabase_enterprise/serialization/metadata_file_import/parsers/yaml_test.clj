@@ -1,10 +1,10 @@
-(ns ^:parallel metabase.warehouses-rest.metadata-file-import.parsers.yaml-test
+(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.parsers.yaml-test
   "Tests for the streaming YAML parser. Same shape as the JSON parser tests:
   feed in-memory `StringReader`s and assert on the batches passed to
   `process-batch!`."
   (:require
    [clojure.test :refer :all]
-   [metabase.warehouses-rest.metadata-file-import.parsers.yaml :as yaml])
+   [metabase-enterprise.serialization.metadata-file-import.parsers.yaml :as yaml])
   (:import
    (java.io StringReader)))
 

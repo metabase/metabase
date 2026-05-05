@@ -1,9 +1,9 @@
-(ns ^:parallel metabase.warehouses-rest.metadata-file-import.parsers.json-test
+(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.parsers.json-test
   "Tests for the streaming JSON parser. Tests feed in-memory `StringReader`s and
   assert on the batches passed to `process-batch!`. No file I/O."
   (:require
    [clojure.test :refer :all]
-   [metabase.warehouses-rest.metadata-file-import.parsers.json :as json])
+   [metabase-enterprise.serialization.metadata-file-import.parsers.json :as json])
   (:import
    (java.io StringReader)))
 

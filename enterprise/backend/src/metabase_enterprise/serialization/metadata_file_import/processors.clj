@@ -1,4 +1,4 @@
-(ns metabase.warehouses-rest.metadata-file-import.processors
+(ns metabase-enterprise.serialization.metadata-file-import.processors
   "Pure batch processors for the metadata file importer.
 
   Each `process-*!` function takes a batch of `[line-num row]` tuples (plus
@@ -21,11 +21,11 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouses-rest.metadata-file-import.schemas :as schemas]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)

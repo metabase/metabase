@@ -1,4 +1,4 @@
-(ns ^:parallel metabase.warehouses-rest.metadata-file-import.processors-test
+(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.processors-test
   "Tests for the pure batch processors. Each processor is exercised against an
   appdb populated via `mt/with-temp` — no HTTP, no streaming parser. Tests
   verify the processor's behavior contract: input shape, return shape, batch
@@ -10,9 +10,9 @@
   on `MB_DB_TYPE` in the test environment."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.warehouses-rest.metadata-file-import.processors :as processors]
    [toucan2.core :as t2]))
 
 ;;; ============================== process-databases ==============================

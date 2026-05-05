@@ -1,18 +1,18 @@
-(ns metabase.warehouses-rest.metadata-file-import
+(ns metabase-enterprise.serialization.metadata-file-import
   "Boot-time loader that streams a metadata file (and, eventually, a field-values
   file) into the appdb, populating `:model/Database` (matched, never created),
   `:model/Table`, and `:model/Field`.
 
   The loader is a thin orchestrator over three building blocks:
 
-    - [[metabase.warehouses-rest.metadata-file-import.parsers]] streams batches
+    - [[metabase-enterprise.serialization.metadata-file-import.parsers]] streams batches
       of `[line-num row]` tuples from the file (JSON or YAML, dispatched by
       extension).
-    - [[metabase.warehouses-rest.metadata-file-import.processors]] runs the
+    - [[metabase-enterprise.serialization.metadata-file-import.processors]] runs the
       per-batch SQL — validate, match, insert, update, upsert. Under the
       portable-id design each processor self-resolves cross-table references
       via batched natural-key SELECTs; the loader carries no id-map state.
-    - [[metabase.warehouses-rest.metadata-file-import.schemas]] defines the
+    - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines the
       per-row Malli schemas, shared with the parsers' callers.
 
   Phases (per METADATA_FILE_IMPORT_PLAN.md §5):
@@ -50,9 +50,9 @@
   (:require
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
+   [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.util.log :as log]
-   [metabase.warehouses-rest.metadata-file-import.parsers :as parsers]
-   [metabase.warehouses-rest.metadata-file-import.processors :as processors]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
