@@ -129,25 +129,32 @@
 ;;; ============================== ::field-info ========================================
 
 (def ^:private valid-table-id ["warehouse" "public" "orders"])
+(def ^:private valid-field-id ["warehouse" "public" "orders" "zip"])
 (def ^:private valid-parent-id ["warehouse" "public" "orders" "address"])
 (def ^:private valid-fk-target-id ["warehouse" "public" "users" "id"])
 
-(deftest field-info-accepts-top-level-field-test
-  (is (mr/validate ::schemas/field-info
-                   {:table_id valid-table-id
-                    :name "address"
-                    :base_type "type/Text"})))
+(deftest field-info-accepts-flat-root-field-test
+  (testing "flat root field — :id, :table_id, :name, :base_type required; :parent_id and :nfc_path absent"
+    (is (mr/validate ::schemas/field-info
+                     {:id ["warehouse" "public" "orders" "address"]
+                      :table_id valid-table-id
+                      :name "address"
+                      :base_type "type/Text"}))))
 
-(deftest field-info-accepts-nested-field-with-parent-id-test
-  (is (mr/validate ::schemas/field-info
-                   {:table_id valid-table-id
-                    :name "zip"
-                    :parent_id valid-parent-id
-                    :base_type "type/Text"})))
+(deftest field-info-accepts-convention-a-child-test
+  (testing "Convention A child — :parent_id present, :nfc_path also present (parent ancestry chain)"
+    (is (mr/validate ::schemas/field-info
+                     {:id ["warehouse" "public" "orders" "address" "zip"]
+                      :table_id valid-table-id
+                      :name "zip"
+                      :parent_id valid-parent-id
+                      :nfc_path ["address"]
+                      :base_type "type/Text"}))))
 
 (deftest field-info-accepts-fk-target-test
   (is (mr/validate ::schemas/field-info
-                   {:table_id valid-table-id
+                   {:id ["warehouse" "public" "orders" "user_id"]
+                    :table_id valid-table-id
                     :name "user_id"
                     :base_type "type/Integer"
                     :fk_target_field_id valid-fk-target-id})))
@@ -155,26 +162,35 @@
 (deftest field-info-accepts-arraylist-portable-ids-test
   (testing "Jackson hands us ArrayLists for nested arrays — must validate"
     (is (mr/validate ::schemas/field-info
-                     {:table_id (al valid-table-id)
+                     {:id (al ["warehouse" "public" "orders" "address" "zip"])
+                      :table_id (al valid-table-id)
                       :name "zip"
                       :parent_id (al valid-parent-id)
+                      :nfc_path (al ["address"])
                       :fk_target_field_id (al valid-fk-target-id)
                       :base_type "type/Text"}))))
 
-(deftest field-info-rejects-integer-table-id-test
+(deftest field-info-rejects-integer-id-test
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id 42 :name "address" :base_type "type/Text"}))
-      "integer :table_id is the pre-pivot shape — must reject"))
+                        {:id 42 :table_id valid-table-id :name "address" :base_type "type/Text"}))
+      "integer :id rejected")
+  (is (not (mr/validate ::schemas/field-info
+                        {:id valid-field-id
+                         :table_id 42
+                         :name "address" :base_type "type/Text"}))
+      "integer :table_id rejected"))
 
 (deftest field-info-rejects-integer-parent-or-fk-id-test
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id
+                        {:id valid-field-id
+                         :table_id valid-table-id
                          :name "zip"
                          :parent_id 99
                          :base_type "type/Text"}))
       "integer :parent_id rejected")
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id
+                        {:id valid-field-id
+                         :table_id valid-table-id
                          :name "user_id"
                          :base_type "type/Integer"
                          :fk_target_field_id 99}))
@@ -183,30 +199,42 @@
 (deftest field-info-rejects-malformed-portable-id-test
   (testing "table_id length 2 rejected"
     (is (not (mr/validate ::schemas/field-info
-                          {:table_id ["only" "two"]
+                          {:id valid-field-id
+                           :table_id ["only" "two"]
+                           :name "x"
+                           :base_type "type/Text"}))))
+  (testing ":id length 3 rejected (field ids need ≥ 4 elements)"
+    (is (not (mr/validate ::schemas/field-info
+                          {:id ["w" "s" "orders"]
+                           :table_id valid-table-id
                            :name "x"
                            :base_type "type/Text"}))))
   (testing "parent_id length 3 rejected (parent ids need ≥ 4 elements)"
     (is (not (mr/validate ::schemas/field-info
-                          {:table_id valid-table-id
+                          {:id valid-field-id
+                           :table_id valid-table-id
                            :name "x"
                            :parent_id ["w" "s" "orders"]
                            :base_type "type/Text"})))))
 
 (deftest field-info-rejects-missing-required-keys-test
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id :name "x"}))
+                        {:id valid-field-id :table_id valid-table-id :name "x"}))
       "missing :base_type")
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id :base_type "type/Text"}))
+                        {:id valid-field-id :table_id valid-table-id :base_type "type/Text"}))
       "missing :name")
   (is (not (mr/validate ::schemas/field-info
-                        {:name "x" :base_type "type/Text"}))
-      "missing :table_id"))
+                        {:id valid-field-id :name "x" :base_type "type/Text"}))
+      "missing :table_id")
+  (is (not (mr/validate ::schemas/field-info
+                        {:table_id valid-table-id :name "x" :base_type "type/Text"}))
+      "missing :id"))
 
 (deftest field-info-accepts-all-optional-keys-test
   (is (mr/validate ::schemas/field-info
-                   {:table_id valid-table-id
+                   {:id ["warehouse" "public" "orders" "amount"]
+                    :table_id valid-table-id
                     :name "amount"
                     :base_type "type/Float"
                     :description "order total"
@@ -216,32 +244,35 @@
                     :coercion_strategy "Coercion/UNIXSeconds->DateTime"})))
 
 ;;; Convention B (Postgres JSON-unfolded leaves) — wire carries `:nfc_path`
-;;; verbatim from storage instead of `:parent_id`. The two are mutually
-;;; exclusive; both are optional.
+;;; verbatim from storage and no `:parent_id` (no parent storage row exists).
 
 (deftest field-info-accepts-convention-b-leaf-with-nfc-path-test
   (testing "Convention B: row carries :nfc_path, no :parent_id"
     (is (mr/validate ::schemas/field-info
-                     {:table_id valid-table-id
+                     {:id ["warehouse" "public" "orders" "payload" "address" "zip"]
+                      :table_id valid-table-id
                       :name "payload → address → zip"
                       :nfc_path ["payload" "address" "zip"]
                       :base_type "type/Text"})))
   (testing "Jackson ArrayList for :nfc_path also validates"
     (is (mr/validate ::schemas/field-info
-                     {:table_id valid-table-id
+                     {:id (al ["warehouse" "public" "orders" "payload" "address" "zip"])
+                      :table_id valid-table-id
                       :name "payload → address → zip"
                       :nfc_path (al ["payload" "address" "zip"])
                       :base_type "type/Text"}))))
 
 (deftest field-info-rejects-malformed-nfc-path-test
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id
+                        {:id valid-field-id
+                         :table_id valid-table-id
                          :name "x"
                          :nfc_path "not-a-list"
                          :base_type "type/Text"}))
       ":nfc_path must be a list/vector")
   (is (not (mr/validate ::schemas/field-info
-                        {:table_id valid-table-id
+                        {:id valid-field-id
+                         :table_id valid-table-id
                          :name "x"
                          :nfc_path [1 2 3]
                          :base_type "type/Text"}))

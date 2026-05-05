@@ -1094,8 +1094,8 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              }}
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
+
 
   lib-be
   {:team "Querying Platform"
@@ -1220,6 +1220,7 @@
               metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
+              enterprise/metabot-analytics
               slackbot}
    :uses    #{activity-feed
               agent-lib
@@ -1261,7 +1262,11 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/Metabot :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog
+                    :model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotFeedback
+                    :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1511,7 +1516,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -2198,13 +2202,19 @@
            config
            lib
            lib-be
+           permissions
            premium-features
            search
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
-                    :model/SecurityAdvisory}}
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/SecurityAdvisory
+                    :model/User}}
 
   tiles
   {:team "UX West"
@@ -2578,7 +2588,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2590,7 +2599,6 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -2861,11 +2869,13 @@
            collections
            config
            metabot
+           models
            premium-features
            settings
            startup
            task
            util
+           enterprise/embeddings
            enterprise/semantic-search}
    :model-imports #{:model/Card
                     :model/Collection
@@ -2994,6 +3004,14 @@
                     :model/Table
                     :model/Tenant}}
 
+  enterprise/embeddings
+  {:team "Metabot"
+   :api  #{metabase-enterprise.embeddings.client}
+   ;; Temporary: the impl currently delegates back into semantic-search until
+   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
+   ;; make token tracking a hook). Drop this dep once the relocation lands.
+   :uses #{enterprise/semantic-search}}
+
   enterprise/gsheets
   {:team "Cloud"
    :api  #{metabase-enterprise.gsheets.api
@@ -3059,6 +3077,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
@@ -3067,6 +3086,20 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
+
+  enterprise/metabot-analytics
+  {:team "Metabot"
+   :api  #{metabase-enterprise.metabot-analytics.api}
+   :uses #{api
+           driver
+           metabot
+           permissions
+           query-processor
+           request
+           slackbot
+           sql-tools
+           util}
+   :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3268,6 +3301,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search

@@ -1,0 +1,49 @@
+## Slack thread metadata for Metabot conversations.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-10T15:20:00
+      author: noahmoss
+      comment: Add slack_team_id to metabot_conversation for Slack-originated conversations
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: slack_team_id
+                  type: varchar(255)
+                  remarks: Slack workspace team ID for Slack-originated Metabot conversations
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-10T15:21:00
+      author: noahmoss
+      comment: Add slack_channel_id to metabot_conversation for Slack-originated conversations
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: slack_channel_id
+                  type: varchar(255)
+                  remarks: Slack channel ID for Slack-originated Metabot conversations
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-10T15:22:00
+      author: noahmoss
+      comment: Add slack_thread_ts to metabot_conversation for Slack-originated conversations
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: slack_thread_ts
+                  type: varchar(255)
+                  remarks: Slack root thread timestamp for Slack-originated Metabot conversations
+                  constraints:
+                    nullable: true

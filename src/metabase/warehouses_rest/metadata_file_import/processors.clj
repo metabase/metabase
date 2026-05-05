@@ -309,37 +309,12 @@
   (= stub-database-type database_type))
 
 (defn- portable-field-id-vec
-  "Compute a row's portable field id as a Clojure vector — matches the export's
-  `format-field-id` formula. Branches per the wire's storage convention:
-
-    - **Convention A** (`:parent_id` set): `parent-vec ++ [name]` — the leaf
-      hangs off its parent's portable id.
-    - **Convention B** (`:nfc_path` set, no `:parent_id`): `table-vec ++ nfc_path
-      ++ [name]` — full storage path with the arrow-display name appended.
-    - **Flat root** (neither): `table-vec ++ [name]`.
-
-  Always returns a Clojure vector. PersistentHashMap rejects ArrayList keys past
-  the array-map size threshold (different `hasheq`), so callers normalize
-  defensively."
-  [{:keys [table_id parent_id nfc_path name]}]
-  (cond
-    parent_id (conj (vec parent_id) name)
-    nfc_path  (-> (vec table_id) (into nfc_path) (conj name))
-    :else     (conj (vec table_id) name)))
-
-(defn- decompose-portable-field-id
-  "Split a portable field id `[db schema table & path]` into the column components
-  used by `metabase_field` joins: `:db-name`, `:schema`, `:table-name`,
-  `:leaf-name`, `:anc-path` (vec, nil if depth-1)."
-  [field-vec]
-  (let [v       (vec field-vec)
-        db      (get v 0)
-        schema  (get v 1)
-        tbl     (get v 2)
-        path    (subvec v 3)
-        leaf    (peek path)
-        anc     (not-empty (pop path))]
-    {:db-name db :schema schema :table-name tbl :leaf-name leaf :anc-path anc}))
+  "Wire `:id` normalized to a Clojure vector. The export emits `:id` directly;
+  the importer reads it verbatim and only normalizes container type so it can
+  be used as a hash-map key (Jackson's ArrayList and Clojure's PersistentVector
+  hash differently past the array-map size threshold)."
+  [{:keys [id]}]
+  (vec id))
 
 (defn- resolve-table-ids-batch
   "Resolve each distinct portable `:table_id` triple in `lines` to a target
@@ -383,23 +358,42 @@
     (json/encode anc-path)))
 
 (defn- resolve-parent-ids-batch
-  "Resolve each portable parent id in `parent-vecs` to a target integer field id
+  "Resolve each portable field id in `parent-vecs` to a target integer field id
   via one batched SELECT joining `metabase_field` / `metabase_table` /
   `metabase_database`. Returns `{parent-vec → target-int-id}` (vector keys),
   omitting parents not found on the target.
 
+  Used for both phase-3 parent resolution (where input vecs always point at
+  Convention A storage rows) and phase-4 FK resolution (where input vecs may
+  be ANY storage shape, including Convention B leaves and flat roots).
+  Reconstruction therefore branches per the storage shape, mirroring
+  [[metabase-enterprise.serialization.metadata/external-field-id]]:
+
+    - storage `parent_id` non-NULL (Convention A child):
+      `[db schema table & nfc-path & leaf-name]`
+    - storage `parent_id` NULL but `nfc_path` non-empty (Convention B leaf):
+      `[db schema table & nfc-path]` (no leaf appended — `nfc_path` already
+      terminates at the leaf's structural location)
+    - both NULL (flat root or top-level Convention A parent):
+      `[db schema table leaf-name]`
+
   Match scope drops `[:= :active true]` (so this also resolves stubs left over
   from a prior batch — see §7 audit reminder) but keeps
-  `[:= :is_defective_duplicate false]`."
+  `[:= :is_defective_duplicate false]`. The SELECT is scoped by db + table
+  only — narrowing on `:f.name` would miss Conv B leaves, whose storage `name`
+  is the synthesized arrow-joined display label and doesn't appear in the wire
+  id."
   [parent-vecs]
-  (let [parents     (into #{} (map vec) parent-vecs)
-        decomposed  (mapv decompose-portable-field-id parents)
-        db-names    (into #{} (map :db-name) decomposed)
-        tbl-names   (into #{} (map :table-name) decomposed)
-        leaf-names  (into #{} (map :leaf-name) decomposed)]
+  (let [parents   (into #{} (map vec) parent-vecs)
+        ;; Probe by `(db, table)` only — `:f.name` would be too narrow to catch
+        ;; Convention B leaves (stored `name` differs from anything in the wire
+        ;; id). Intersecting against the full portable id set happens in Clojure.
+        db-names  (into #{} (map #(get % 0)) parents)
+        tbl-names (into #{} (map #(get % 2)) parents)]
     (if (empty? parents)
       {}
       (let [rows (t2/query {:select [[:f.id :id] [:f.name :leaf-name] [:f.nfc_path :nfc-path]
+                                     [:f.parent_id :parent-id]
                                      [:t.schema :schema] [:t.name :tbl-name] [:d.name :db-name]]
                             :from   [[:metabase_field :f]]
                             :join   [[:metabase_table :t]    [:= :f.table_id :t.id]
@@ -409,26 +403,45 @@
                                      [:= :t.active true]
                                      [:= :t.is_defective_duplicate false]
                                      [:in :d.name db-names]
-                                     [:in :t.name tbl-names]
-                                     [:in :f.name leaf-names]]})]
+                                     [:in :t.name tbl-names]]})]
         (into {}
-              (keep (fn [{:keys [id db-name schema tbl-name leaf-name nfc-path]}]
+              (keep (fn [{:keys [id db-name schema tbl-name leaf-name nfc-path parent-id]}]
                       (let [anc (decode-nfc-path nfc-path)
-                            pv  (-> [db-name schema tbl-name]
-                                    (into (or anc []))
-                                    (conj leaf-name))]
+                            pv  (cond
+                                  ;; Convention A child: storage parent_id non-NULL
+                                  (some? parent-id)
+                                  (-> [db-name schema tbl-name]
+                                      (into (or anc []))
+                                      (conj leaf-name))
+                                  ;; Convention B leaf: storage parent_id NULL, nfc_path
+                                  ;; non-empty — full path including the leaf
+                                  (seq anc)
+                                  (into [db-name schema tbl-name] anc)
+                                  ;; Flat root or top-level Conv A parent: both NULL
+                                  :else
+                                  [db-name schema tbl-name leaf-name])]
                         (when (contains? parents pv)
                           [pv id]))))
               rows)))))
 
 (defn- new-stub-field-row
-  "Row map for inserting a placeholder stub field (§11c). Carries the parent
-  ancestry chain in `nfc_path`, the leaf name in `name`, the marker
-  `database_type=\"__stub__\"`+`base_type=\"type/*\"`, and `active=false`. When
-  the real row arrives the match-and-clobber path UPDATEs the stub in place."
+  "Row map for inserting a placeholder stub field (§11c). Stubs are always for
+  Convention A parents — `:parent_id` references in the wire only point at real
+  parent storage rows, never at Convention B leaves. So the parent's storage
+  shape is recoverable from its portable id `[db schema table & nfc-path & leaf]`:
+  `name=leaf`, `nfc_path=nfc-path` (or NULL when empty), `parent_id=resolved`.
+
+  Marker fields `database_type=\"__stub__\"`+`base_type=\"type/*\"` plus
+  `active=false`. When the real row arrives the match-and-clobber path UPDATEs
+  the stub in place."
   [target-table-id parent-vec resolved-parent-id]
-  (let [{:keys [leaf-name anc-path]} (decompose-portable-field-id parent-vec)
-        now (mi/now)]
+  (let [pv         (vec parent-vec)
+        leaf-name  (peek pv)
+        ;; `nfc-path` for the parent storage row = the parent's `:id` minus the
+        ;; `[db schema table]` prefix and the leaf name. Empty for flat-root
+        ;; parents (length-4 :id), non-empty for middle parents.
+        anc-path   (not-empty (subvec pv 3 (dec (count pv))))
+        now        (mi/now)]
     {:table_id               target-table-id
      :name                   leaf-name
      :nfc_path               (encode-nfc-path anc-path)
@@ -652,9 +665,10 @@
   is always FALSE per §11a. `fk_target_field_id` starts NULL — phase 4 fills it
   in.
 
-  The caller (`classify-fields-batch`) computes `store-nfc-path` per the
-  storage convention: derived from `:parent_id` for Convention A, taken
-  verbatim from `:nfc_path` for Convention B, nil for flat root."
+  Per the wire-format contract, `store-nfc-path` is taken verbatim from the
+  caller's `:nfc_path` (the wire's `:nfc_path` already encodes both Convention A
+  parent ancestry and Convention B's full path-including-leaf). No convention
+  branching happens here."
   [{:keys [name base_type database_type description effective_type
            semantic_type coercion_strategy]}
    target-table-id
@@ -680,15 +694,15 @@
 
 (defn- classify-fields-batch
   "Resolve `:target-table-id`, `:resolved-parent`, and `:store-nfc-path` for
-  each row. Branches on the wire's storage convention:
+  each row. Per the wire-format contract, the per-row mapping is uniform —
+  no convention branching required:
 
-    - `:parent_id` present (Convention A) — resolve via the per-batch parent
-      cache (with stubs for missing ancestors per §11c). `:store-nfc-path` is
-      the parent's path stripped of the table prefix.
-    - `:nfc_path` present and `:parent_id` absent (Convention B) — flat-leaf
-      from JSON unfolding. `:resolved-parent` is nil (no parent row exists in
-      the source); `:store-nfc-path` is the wire `:nfc_path` verbatim.
-    - Both absent (flat root) — both nil.
+    - `storage.parent_id` ← if `:parent_id` present on the wire, resolve via
+      the per-batch parent cache (with stubs for missing ancestors per §11c);
+      otherwise NULL.
+    - `storage.nfc_path` ← `:nfc_path` from the wire verbatim, or NULL if
+      absent.
+    - `storage.table_id` ← target int looked up from the wire `:table_id`.
 
   Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
   preserving input order. Drops rows whose `:table_id` doesn't resolve — the
@@ -698,14 +712,10 @@
         (keep (fn [[ln line]]
                 (when-let [tgt-tbl (get table-id-map (vec (:table_id line)))]
                   (let [parent-vec      (some-> (:parent_id line) vec)
-                        wire-nfc-path   (some-> (:nfc_path line) vec)
                         resolved-parent (when parent-vec
                                           (or (get @parent-cache! parent-vec)
                                               (ensure-ancestors! parent-vec tgt-tbl parent-cache!)))
-                        store-nfc-path  (cond
-                                          parent-vec    (vec (drop 3 parent-vec))
-                                          wire-nfc-path wire-nfc-path
-                                          :else         nil)]
+                        store-nfc-path  (some-> (:nfc_path line) vec)]
                     {:line             ln
                      :row              line
                      :target-table-id  tgt-tbl

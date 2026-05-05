@@ -7,8 +7,8 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
+import { type ArchivableItem, useSetArchive } from "metabase/common/hooks";
 import type { Undo } from "metabase/redux/store/undo";
-import type { CollectionItem } from "metabase-types/api";
 
 import type { StaleCollectionItem } from "../types";
 
@@ -28,10 +28,13 @@ export const CleanupCollectionBulkActions = ({
   onArchive,
 }: CleanupCollectionBulkActionsProps) => {
   const [undo, setUndo] = useState<Undo | undefined>();
+  const archive = useSetArchive();
 
-  const handleUndo = async (items: CollectionItem[]) => {
+  const handleUndo = async (items: StaleCollectionItem[]) => {
     return Promise.all(
-      items.map((item) => item?.setArchived?.(false, { notify: false })),
+      items.map((item) =>
+        archive(item as ArchivableItem, false, { notify: false }),
+      ),
     )
       .then(() => resetPagination())
       .finally(() => setUndo(undefined));
@@ -40,10 +43,9 @@ export const CleanupCollectionBulkActions = ({
   const handleBulkArchive = async () => {
     const actions = selected.map((item) => {
       return archiveAndTrack({
-        archive: () =>
-          item.setArchived
-            ? item.setArchived(true, { notify: false })
-            : Promise.resolve(),
+        archive: async () => {
+          await archive(item as ArchivableItem, true, { notify: false });
+        },
         model: item.model,
         modelId: item.id,
         triggeredFrom: "cleanup_modal",

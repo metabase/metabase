@@ -34,8 +34,8 @@ import {
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Icon } from "metabase/ui";
-import { modelToUrl } from "metabase/utils/urls/modelToUrl";
-import { extractEntityId } from "metabase/utils/urls/utils";
+import { modelToUrl } from "metabase/urls/modelToUrl";
+import { extractEntityId } from "metabase/urls/utils";
 import type {
   Card,
   CardDisplayType,

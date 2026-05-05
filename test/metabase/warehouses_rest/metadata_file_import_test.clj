@@ -43,12 +43,16 @@
       (let [meta-file (json-file
                        {:databases [{:name "happy-path-db" :engine "postgres"}]
                         :tables    [{:db_id "happy-path-db" :schema "public" :name "orders"}]
-                        :fields    [{:table_id ["happy-path-db" "public" "orders"] :name "id"
+                        :fields    [{:id ["happy-path-db" "public" "orders" "id"]
+                                     :table_id ["happy-path-db" "public" "orders"] :name "id"
                                      :base_type "type/Integer" :database_type "integer"}
-                                    {:table_id ["happy-path-db" "public" "orders"] :name "address"
+                                    {:id ["happy-path-db" "public" "orders" "address"]
+                                     :table_id ["happy-path-db" "public" "orders"] :name "address"
                                      :base_type "type/Structured" :database_type "json"}
-                                    {:table_id ["happy-path-db" "public" "orders"]
+                                    {:id ["happy-path-db" "public" "orders" "address" "zip"]
+                                     :table_id ["happy-path-db" "public" "orders"]
                                      :parent_id ["happy-path-db" "public" "orders" "address"]
+                                     :nfc_path ["address"]
                                      :name "zip"
                                      :base_type "type/Text" :database_type "text"}]})]
         (loader/import-metadata-file! meta-file nil)
@@ -77,7 +81,8 @@
       (let [meta-file (yaml-file
                        {:databases [{:name "happy-path-yaml-db" :engine "postgres"}]
                         :tables    [{:db_id "happy-path-yaml-db" :schema "public" :name "orders"}]
-                        :fields    [{:table_id ["happy-path-yaml-db" "public" "orders"]
+                        :fields    [{:id ["happy-path-yaml-db" "public" "orders" "id"]
+                                     :table_id ["happy-path-yaml-db" "public" "orders"]
                                      :name "id"
                                      :base_type "type/Integer" :database_type "integer"}]})]
         (loader/import-metadata-file! meta-file nil)
@@ -95,15 +100,20 @@
                        {:databases [{:name "deep-nest-db" :engine "postgres"}]
                         :tables    [{:db_id "deep-nest-db" :schema "public" :name "events"}]
                         ;; intentionally interleaved order — child rows appear before parents
-                        :fields    [{:table_id ["deep-nest-db" "public" "events"]
+                        :fields    [{:id ["deep-nest-db" "public" "events" "root" "mid" "leaf"]
+                                     :table_id ["deep-nest-db" "public" "events"]
                                      :parent_id ["deep-nest-db" "public" "events" "root" "mid"]
+                                     :nfc_path ["root" "mid"]
                                      :name "leaf"
                                      :base_type "type/Text" :database_type "text"}
-                                    {:table_id ["deep-nest-db" "public" "events"]
+                                    {:id ["deep-nest-db" "public" "events" "root"]
+                                     :table_id ["deep-nest-db" "public" "events"]
                                      :name "root"
                                      :base_type "type/Structured" :database_type "json"}
-                                    {:table_id ["deep-nest-db" "public" "events"]
+                                    {:id ["deep-nest-db" "public" "events" "root" "mid"]
+                                     :table_id ["deep-nest-db" "public" "events"]
                                      :parent_id ["deep-nest-db" "public" "events" "root"]
+                                     :nfc_path ["root"]
                                      :name "mid"
                                      :base_type "type/Structured" :database_type "json"}]})]
         (loader/import-metadata-file! meta-file nil)
@@ -129,8 +139,10 @@
       (let [meta-file (json-file
                        {:databases [{:name "orphan-db" :engine "postgres"}]
                         :tables    [{:db_id "orphan-db" :schema "public" :name "t"}]
-                        :fields    [{:table_id ["orphan-db" "public" "t"]
+                        :fields    [{:id ["orphan-db" "public" "t" "missing-parent" "child"]
+                                     :table_id ["orphan-db" "public" "t"]
                                      :parent_id ["orphan-db" "public" "t" "missing-parent"]
+                                     :nfc_path ["missing-parent"]
                                      :name "child"
                                      :base_type "type/Text" :database_type "text"}]})]
         ;; Should NOT throw — unfilled stubs are warned, not failed
@@ -156,10 +168,12 @@
                                     {:name "unmatched-db-x" :engine "h2"}]
                         :tables    [{:db_id "matched-db"     :schema "public" :name "kept"}
                                     {:db_id "unmatched-db-x" :schema "public" :name "skipped"}]
-                        :fields    [{:table_id ["matched-db" "public" "kept"]
+                        :fields    [{:id ["matched-db" "public" "kept" "kept-fld"]
+                                     :table_id ["matched-db" "public" "kept"]
                                      :name "kept-fld"
                                      :base_type "type/Text" :database_type "text"}
-                                    {:table_id ["unmatched-db-x" "public" "skipped"]
+                                    {:id ["unmatched-db-x" "public" "skipped" "skipped-fld"]
+                                     :table_id ["unmatched-db-x" "public" "skipped"]
                                      :name "skipped-fld"
                                      :base_type "type/Text" :database_type "text"}]})]
         (loader/import-metadata-file! meta-file nil)
@@ -181,9 +195,11 @@
       (let [meta-file (json-file
                        {:databases [{:name "fk-db" :engine "postgres"}]
                         :tables    [{:db_id "fk-db" :schema "public" :name "users"}]
-                        :fields    [{:table_id ["fk-db" "public" "users"] :name "id"
+                        :fields    [{:id ["fk-db" "public" "users" "id"]
+                                     :table_id ["fk-db" "public" "users"] :name "id"
                                      :base_type "type/Integer" :database_type "integer"}
-                                    {:table_id ["fk-db" "public" "users"] :name "user_id"
+                                    {:id ["fk-db" "public" "users" "user_id"]
+                                     :table_id ["fk-db" "public" "users"] :name "user_id"
                                      :fk_target_field_id ["fk-db" "public" "users" "id"]
                                      :base_type "type/Integer" :database_type "integer"}]})]
         (loader/import-metadata-file! meta-file nil)
@@ -204,7 +220,8 @@
       (let [meta-file (json-file
                        {:databases [{:name "fv-noop-db" :engine "postgres"}]
                         :tables    [{:db_id "fv-noop-db" :schema "public" :name "users"}]
-                        :fields    [{:table_id ["fv-noop-db" "public" "users"] :name "zip"
+                        :fields    [{:id ["fv-noop-db" "public" "users" "zip"]
+                                     :table_id ["fv-noop-db" "public" "users"] :name "zip"
                                      :base_type "type/Text" :database_type "text"}]})
             ;; The fv file content is irrelevant — phase 5 doesn't read it
             fv-file (json-file
@@ -225,7 +242,8 @@
       (let [meta-file (json-file
                        {:databases [{:name "idem-db" :engine "postgres"}]
                         :tables    [{:db_id "idem-db" :schema "public" :name "users"}]
-                        :fields    [{:table_id ["idem-db" "public" "users"] :name "id"
+                        :fields    [{:id ["idem-db" "public" "users" "id"]
+                                     :table_id ["idem-db" "public" "users"] :name "id"
                                      :base_type "type/Integer" :database_type "integer"}]})]
         (loader/import-metadata-file! meta-file nil)
         (let [tables-after-1 (t2/count :model/Table :db_id tgt-db)

@@ -1,8 +1,8 @@
 import { msgid, ngettext } from "ttag";
 
 import { SearchResult } from "metabase/search/components/SearchResult";
-import type { WrappedResult } from "metabase/search/types";
 import { Paper, Stack, Text } from "metabase/ui";
+import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 
 export const SearchResultSection = ({
   results,
@@ -13,7 +13,7 @@ export const SearchResultSection = ({
   page,
   pageSize,
 }: {
-  results: WrappedResult[];
+  results: ApiSearchResult[];
   totalResults: number;
   searchEngine?: string;
   searchRequestId?: string;

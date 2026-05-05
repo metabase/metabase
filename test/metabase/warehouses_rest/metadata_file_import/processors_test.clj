@@ -228,7 +228,8 @@
             is_defective_duplicate=FALSE, fk_target_field_id=NULL"
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-root-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "users"}]
-      (let [batch  [[1 {:table_id ["fld-root-db" "public" "users"]
+      (let [batch  [[1 {:id ["fld-root-db" "public" "users" "zip"]
+                        :table_id ["fld-root-db" "public" "users"]
                         :name "zip"
                         :base_type "type/Text"
                         :database_type "text"}]]
@@ -255,9 +256,11 @@
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}
                    :model/Field {parent-id :id} {:table_id tbl-id :name "address"
                                                  :base_type "type/Structured"}]
-      (let [batch [[1 {:table_id ["fld-nested-db" "public" "events"]
+      (let [batch [[1 {:id ["fld-nested-db" "public" "events" "address" "zip"]
+                       :table_id ["fld-nested-db" "public" "events"]
                        :name "zip"
                        :parent_id ["fld-nested-db" "public" "events" "address"]
+                       :nfc_path ["address"]
                        :base_type "type/Text"
                        :database_type "text"}]]
             [r]   (into [] (processors/process-fields! batch))
@@ -277,7 +280,8 @@
                    :model/Table    {tbl-id :id}      {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {existing-id :id} {:table_id tbl-id :name "zip"
                                                       :base_type "type/Text"}]
-      (let [batch [[1 {:table_id ["fld-mr-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-mr-db" "public" "t" "zip"]
+                       :table_id ["fld-mr-db" "public" "t"]
                        :name "zip"
                        :base_type "type/Text"}]]
             [r]   (into [] (processors/process-fields! batch))]
@@ -295,9 +299,11 @@
                                                       :parent_id parent-id
                                                       :nfc_path (json/encode ["address"])
                                                       :base_type "type/Text"}]
-      (let [batch [[1 {:table_id ["fld-mn-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-mn-db" "public" "t" "address" "zip"]
+                       :table_id ["fld-mn-db" "public" "t"]
                        :name "zip"
                        :parent_id ["fld-mn-db" "public" "t" "address"]
+                       :nfc_path ["address"]
                        :base_type "type/Text"}]]
             [r]   (into [] (processors/process-fields! batch))]
         (is (= :matched (:status r)))
@@ -315,7 +321,8 @@
                                                  :description "old"
                                                  :semantic_type "type/Quantity"}]
       (into [] (processors/process-fields!
-                [[1 {:table_id ["fld-clobber-db" "public" "t"]
+                [[1 {:id ["fld-clobber-db" "public" "t" "zip"]
+                     :table_id ["fld-clobber-db" "public" "t"]
                      :name "zip"
                      :base_type "type/Text"
                      :description "new desc"
@@ -340,7 +347,8 @@
                                                  :description "preserved"
                                                  :semantic_type "type/ZipCode"}]
       (into [] (processors/process-fields!
-                [[1 {:table_id ["fld-no-patch-db" "public" "t"]
+                [[1 {:id ["fld-no-patch-db" "public" "t" "zip"]
+                     :table_id ["fld-no-patch-db" "public" "t"]
                      :name "zip"
                      :base_type "type/Text"}]]))
       (let [row (t2/select-one :model/Field :id fld-id)]
@@ -351,7 +359,8 @@
   (testing "if the source row's :table_id portable triple doesn't match any target,
             the row is reported as :no-target-table and no SQL runs for it"
     (let [[r] (into [] (processors/process-fields!
-                        [[5 {:table_id ["no-such-db-zzz" "public" "orders"]
+                        [[5 {:id ["no-such-db-zzz" "public" "orders" "zip"]
+                             :table_id ["no-such-db-zzz" "public" "orders"]
                              :name "zip"
                              :base_type "type/Text"}]]))]
       (is (= ["no-such-db-zzz" "public" "orders" "zip"] (:source-id r)))
@@ -367,7 +376,8 @@
                    :model/Table    {_ :id}      {:db_id db-id :schema "public" :name "t"}]
       (try
         (into [] (processors/process-fields!
-                  [[42 {:table_id ["fld-validate-db" "public" "t"]
+                  [[42 {:id ["fld-validate-db" "public" "t" "zip"]
+                        :table_id ["fld-validate-db" "public" "t"]
                         :name "zip"}]]))   ;; missing :base_type
         (is false "should have thrown")
         (catch clojure.lang.ExceptionInfo e
@@ -383,13 +393,16 @@
                    :model/Field    {existing :id} {:table_id tbl-id :name "existing"
                                                    :base_type "type/Text"}]
       (let [results (into [] (processors/process-fields!
-                              [[1 {:table_id ["fld-order-db" "public" "t"]
+                              [[1 {:id ["fld-order-db" "public" "t" "existing"]
+                                   :table_id ["fld-order-db" "public" "t"]
                                    :name "existing"
                                    :base_type "type/Text" :database_type "text"}]
-                               [2 {:table_id ["no-such-db-zzz" "public" "t"]
+                               [2 {:id ["no-such-db-zzz" "public" "t" "no-tbl"]
+                                   :table_id ["no-such-db-zzz" "public" "t"]
                                    :name "no-tbl"
                                    :base_type "type/Text" :database_type "text"}]
-                               [3 {:table_id ["fld-order-db" "public" "t"]
+                               [3 {:id ["fld-order-db" "public" "t" "fresh-1"]
+                                   :table_id ["fld-order-db" "public" "t"]
                                    :name "fresh-1"
                                    :base_type "type/Text" :database_type "text"}]]))]
         (is (= [["fld-order-db" "public" "t" "existing"]
@@ -418,9 +431,11 @@
             active=false, base_type=type/*, database_type=__stub__, nfc_path=NULL"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-orph-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
-      (let [batch [[1 {:table_id ["fld-orph-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-orph-db" "public" "t" "orphan-parent" "zip"]
+                       :table_id ["fld-orph-db" "public" "t"]
                        :name "zip"
                        :parent_id ["fld-orph-db" "public" "t" "orphan-parent"]
+                       :nfc_path ["orphan-parent"]
                        :base_type "type/Text"
                        :database_type "text"}]]
             [r]   (into [] (processors/process-fields! batch))
@@ -442,12 +457,15 @@
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-stub-fill-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
       ;; child row first, parent second — child stubs the parent on its way through
-      (let [batch [[1 {:table_id ["fld-stub-fill-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-stub-fill-db" "public" "t" "address" "zip"]
+                       :table_id ["fld-stub-fill-db" "public" "t"]
                        :name "zip"
                        :parent_id ["fld-stub-fill-db" "public" "t" "address"]
+                       :nfc_path ["address"]
                        :base_type "type/Text"
                        :database_type "text"}]
-                   [2 {:table_id ["fld-stub-fill-db" "public" "t"]
+                   [2 {:id ["fld-stub-fill-db" "public" "t" "address"]
+                       :table_id ["fld-stub-fill-db" "public" "t"]
                        :name "address"
                        :base_type "type/Structured"
                        :database_type "json"
@@ -468,9 +486,11 @@
             are missing in target → both get stubbed, grandparent first then parent"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-3deep-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
-      (let [batch [[1 {:table_id ["fld-3deep-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-3deep-db" "public" "t" "outer" "inner" "zip"]
+                       :table_id ["fld-3deep-db" "public" "t"]
                        :name "zip"
                        :parent_id ["fld-3deep-db" "public" "t" "outer" "inner"]
+                       :nfc_path ["outer" "inner"]
                        :base_type "type/Text"
                        :database_type "text"}]]
             [r]   (into [] (processors/process-fields! batch))
@@ -498,7 +518,8 @@
                                                   :base_type "type/*"
                                                   :database_type "__stub__"
                                                   :active false}]
-      (let [batch [[1 {:table_id ["fld-prior-stub-db" "public" "t"]
+      (let [batch [[1 {:id ["fld-prior-stub-db" "public" "t" "address"]
+                       :table_id ["fld-prior-stub-db" "public" "t"]
                        :name "address"
                        :base_type "type/Structured"
                        :database_type "json"}]]
@@ -517,7 +538,8 @@
             with parent_id=NULL and stores nfc_path verbatim. NO stubs created."
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:table_id ["fld-conv-b-db" "public" "events"]
+      (let [batch [[1 {:id ["fld-conv-b-db" "public" "events" "payload" "address" "zip"]
+                       :table_id ["fld-conv-b-db" "public" "events"]
                        :name "payload → address → zip"
                        :nfc_path ["payload" "address" "zip"]
                        :base_type "type/Text"
@@ -545,7 +567,8 @@
             (table_id, name, parent_id=NULL); no duplicate, no new stubs."
     (mt/with-temp [:model/Database {db-id :id} {:name "fld-conv-b-idem-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:table_id ["fld-conv-b-idem-db" "public" "events"]
+      (let [batch [[1 {:id ["fld-conv-b-idem-db" "public" "events" "payload" "address" "zip"]
+                       :table_id ["fld-conv-b-idem-db" "public" "events"]
                        :name "payload → address → zip"
                        :nfc_path ["payload" "address" "zip"]
                        :base_type "type/Text"
@@ -577,7 +600,8 @@
                    :model/Field    {fld-id :id} {:table_id tbl-id :name "ref-field"
                                                  :base_type "type/Integer"
                                                  :database_type "integer"}]
-      (let [batch [[1 {:table_id ["fkfin-db" "public" "t"]
+      (let [batch [[1 {:id ["fkfin-db" "public" "t" "ref-field"]
+                       :table_id ["fkfin-db" "public" "t"]
                        :name "ref-field"
                        :base_type "type/Integer" :database_type "integer"
                        :fk_target_field_id ["fkfin-db" "public" "t" "fk-target"]}]]
@@ -606,9 +630,11 @@
                                                    :database_type "text"
                                                    :description "untouched"
                                                    :semantic_type "type/ZipCode"}]
-      (let [batch [[1 {:table_id ["fkfin-touch-db" "public" "t"]
+      (let [batch [[1 {:id ["fkfin-touch-db" "public" "t" "parent" "child"]
+                       :table_id ["fkfin-touch-db" "public" "t"]
                        :name "child"
                        :parent_id ["fkfin-touch-db" "public" "t" "parent"]
+                       :nfc_path ["parent"]
                        :base_type "type/Text" :database_type "text"
                        :fk_target_field_id ["fkfin-touch-db" "public" "t" "fk-target"]}]]]
         (into [] (processors/process-fields-fk-resolve! batch))
@@ -634,13 +660,16 @@
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {fld-3 :id}    {:table_id tbl-id :name "ref-3"
                                                    :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[1 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-1"
+      (let [batch [[1 {:id ["fkfin-batch-db" "public" "t" "ref-1"]
+                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-1"
                        :base_type "type/Integer" :database_type "integer"
                        :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]
-                   [2 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-2"
+                   [2 {:id ["fkfin-batch-db" "public" "t" "ref-2"]
+                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-2"
                        :base_type "type/Integer" :database_type "integer"
                        :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-b"]}]
-                   [3 {:table_id ["fkfin-batch-db" "public" "t"] :name "ref-3"
+                   [3 {:id ["fkfin-batch-db" "public" "t" "ref-3"]
+                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-3"
                        :base_type "type/Integer" :database_type "integer"
                        :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]]]
         (into [] (processors/process-fields-fk-resolve! batch))
@@ -653,7 +682,8 @@
             and the row's portable field id"
     (try
       (into [] (processors/process-fields-fk-resolve!
-                [[42 {:table_id ["fkfin-db" "public" "t"]
+                [[42 {:id ["fkfin-db" "public" "t" "x"]
+                      :table_id ["fkfin-db" "public" "t"]
                       :name "x"      ;; missing :base_type
                       :fk_target_field_id ["fkfin-db" "public" "t" "y"]}]]))
       (is false "should have thrown")
@@ -676,7 +706,8 @@
                    :model/Field    {fld-id :id} {:table_id tbl-id :name "no-fk-here"
                                                  :base_type "type/Text" :database_type "text"}]
       (let [results (into [] (processors/process-fields-fk-resolve!
-                              [[1 {:table_id ["fkfin-no-fk-db" "public" "t"]
+                              [[1 {:id ["fkfin-no-fk-db" "public" "t" "no-fk-here"]
+                                   :table_id ["fkfin-no-fk-db" "public" "t"]
                                    :name "no-fk-here"
                                    :base_type "type/Text" :database_type "text"}]]))]
         (is (= [{:source-id ["fkfin-no-fk-db" "public" "t" "no-fk-here"]
@@ -695,16 +726,87 @@
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {b :id}        {:table_id tbl-id :name "b"
                                                    :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[10 {:table_id ["fkfin-order-db" "public" "t"] :name "b"
+      (let [batch [[10 {:id ["fkfin-order-db" "public" "t" "b"]
+                        :table_id ["fkfin-order-db" "public" "t"] :name "b"
                         :base_type "type/Integer" :database_type "integer"
                         :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]
-                   [11 {:table_id ["fkfin-order-db" "public" "t"] :name "a"
+                   [11 {:id ["fkfin-order-db" "public" "t" "a"]
+                        :table_id ["fkfin-order-db" "public" "t"] :name "a"
                         :base_type "type/Integer" :database_type "integer"
                         :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]]
             results (into [] (processors/process-fields-fk-resolve! batch))]
         (is (= [["fkfin-order-db" "public" "t" "b"]
                 ["fkfin-order-db" "public" "t" "a"]]   (mapv :source-id results)))
         (is (= [b a]                                   (mapv :target-id results)))))))
+
+(deftest process-fields-fk-resolve-fk-target-is-convention-b-leaf-test
+  (testing "phase 4 resolves FK targets that are Convention B leaves. Wire :fk_target_field_id
+            of shape [db schema table & nfc-path] (no leaf appended) refers to a storage row
+            with name=arrow-joined, nfc_path=full-path-incl-leaf, parent_id=NULL. The phase-4
+            resolver must locate that storage row and write its int id into the source row's
+            fk_target_field_id column."
+    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-cb-tgt-db" :engine :postgres}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
+                   ;; Convention B leaf storage row: full path in nfc_path, name is the
+                   ;; synthesized arrow-joined display label, parent_id is NULL.
+                   :model/Field    {cb-leaf :id}  {:table_id tbl-id
+                                                   :name "payload → address → zip"
+                                                   :nfc_path (json/encode ["payload" "address" "zip"])
+                                                   :parent_id nil
+                                                   :base_type "type/Text"
+                                                   :database_type "text"}
+                   ;; Plain flat field that points at the Conv B leaf as its FK target.
+                   :model/Field    {ref-id :id}   {:table_id tbl-id :name "ref-zip"
+                                                   :base_type "type/Text"
+                                                   :database_type "text"}]
+      (let [batch [[1 {:id ["fkfin-cb-tgt-db" "public" "events" "ref-zip"]
+                       :table_id ["fkfin-cb-tgt-db" "public" "events"]
+                       :name "ref-zip"
+                       :base_type "type/Text" :database_type "text"
+                       ;; Convention B leaf wire id: no leaf appended past the nfc-path.
+                       :fk_target_field_id ["fkfin-cb-tgt-db" "public" "events"
+                                            "payload" "address" "zip"]}]]
+            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
+        (is (= {:source-id ["fkfin-cb-tgt-db" "public" "events" "ref-zip"]
+                :target-id ref-id :status :updated}
+               r))
+        (is (= cb-leaf
+               (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))
+            "fk_target_field_id resolves to the Conv B leaf's int id")))))
+
+(deftest process-fields-fk-resolve-fk-source-is-convention-b-leaf-test
+  (testing "phase 4 resolves a row whose own portable id is a Convention B leaf and
+            whose :fk_target_field_id points at a flat field. The resolver must locate
+            the Conv B leaf storage row by its [db schema table & nfc-path] wire id and
+            UPDATE its fk_target_field_id column."
+    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-cb-src-db" :engine :postgres}
+                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
+                   ;; Convention B leaf storage row that itself has an FK.
+                   :model/Field    {cb-leaf :id}  {:table_id tbl-id
+                                                   :name "payload → user → zip"
+                                                   :nfc_path (json/encode ["payload" "user" "zip"])
+                                                   :parent_id nil
+                                                   :base_type "type/Text"
+                                                   :database_type "text"}
+                   ;; Flat field this Conv B leaf will FK-reference.
+                   :model/Field    {flat-tgt :id} {:table_id tbl-id :name "zip-codes"
+                                                   :base_type "type/Text"
+                                                   :database_type "text"}]
+      (let [batch [[1 {:id ["fkfin-cb-src-db" "public" "events"
+                            "payload" "user" "zip"]
+                       :table_id ["fkfin-cb-src-db" "public" "events"]
+                       :name "payload → user → zip"
+                       :nfc_path ["payload" "user" "zip"]
+                       :base_type "type/Text" :database_type "text"
+                       :fk_target_field_id ["fkfin-cb-src-db" "public" "events" "zip-codes"]}]]
+            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
+        (is (= {:source-id ["fkfin-cb-src-db" "public" "events"
+                            "payload" "user" "zip"]
+                :target-id cb-leaf :status :updated}
+               r))
+        (is (= flat-tgt
+               (:fk_target_field_id (t2/select-one :model/Field :id cb-leaf)))
+            "Conv B leaf's fk_target_field_id is set to the flat target's int id")))))
 
 ;;; ============================ process-field-values ============================
 ;;;

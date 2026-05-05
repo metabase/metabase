@@ -1465,27 +1465,6 @@ describe("issue 55673", () => {
   });
 });
 
-describe("issue 55637", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
-    H.openOrdersTable();
-    H.tableHeaderColumn("ID").realHover();
-    cy.findByTestId("column-info").should("exist");
-
-    H.tableHeaderColumn("ID").click();
-
-    H.tableHeaderColumn("ID").realHover();
-    cy.findByTestId("column-info").should("not.exist");
-
-    H.tableHeaderColumn("Tax").realHover();
-    cy.findByTestId("column-info").should("not.exist");
-  });
-});
-
 describe("issue 63745", () => {
   beforeEach(() => {
     H.restore();
@@ -1573,5 +1552,31 @@ describe("issue 56094", () => {
     H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
 
     H.queryBuilderFooterDisplayToggle().should("exist");
+  });
+});
+
+describe("issue 57685", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        display: "table",
+        native: {
+          query: 'SELECT id as "" FROM PRODUCTS',
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should handle empty column names without error (metabase#57685)", () => {
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
+
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+
+    H.tableInteractive().should("be.visible");
   });
 });
