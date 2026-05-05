@@ -21,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel newByteChannel-returns-in-memory-channel-test
+(deftest ^:parallel new-byte-channel-returns-in-memory-channel-test
   (testing "newByteChannel on a compressed zip entry returns an in-memory channel rather than extracting
             to a temp file beside the jar. With the stock GraalVM wrapper, the channel is a `FileChannel`
             backed by temp-file extraction — that path fails when the jar's parent dir isn't writable."
