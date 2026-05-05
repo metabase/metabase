@@ -43,10 +43,6 @@ export type SnippetFormModalProps = {
   opened?: boolean;
 };
 
-export type SnippetCollectionMenuProps = {
-  collection: Collection;
-};
-
 export type SnippetCollectionPermissionsModalProps = {
   collectionId: CollectionId;
   onClose: () => void;
@@ -61,7 +57,6 @@ export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
   CollectionFormModal: ComponentType<SnippetFormModalProps>;
-  CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
   CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
@@ -72,8 +67,6 @@ export const getDefaultPluginSnippetFolders = () => ({
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
   CollectionFormModal:
     PluginPlaceholder as ComponentType<SnippetFormModalProps>,
-  CollectionMenu:
-    PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
   CollectionPermissionsModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,

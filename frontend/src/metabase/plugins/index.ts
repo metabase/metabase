@@ -69,6 +69,7 @@ export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export { PLUGIN_ENTITIES } from "./oss/entities";
 export {
   PLUGIN_LIBRARY,
+  type CollectionPermissionsModalProps,
   type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,

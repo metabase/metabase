@@ -10,7 +10,11 @@ import {
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/collections/utils";
 import { useConfirmation } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_SNIPPET_FOLDERS,
+} from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -28,7 +32,6 @@ import { EditCollectionModal } from "./EditCollectionModal";
 
 type CollectionRowMenuProps = {
   collection: Collection;
-  onChangePermissionsClick?: (collectionId: CollectionId) => void;
   onSave?: (details: {
     previousParentId: CollectionId | null;
     newParentId: CollectionId | null;
@@ -38,13 +41,7 @@ type CollectionRowMenuProps = {
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const {
-    collection,
-    onArchiveSuccess,
-    onChangePermissionsClick,
-    onSave,
-    customArchiveMessage,
-  } = props;
+  const { collection, onArchiveSuccess, onSave, customArchiveMessage } = props;
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
@@ -54,6 +51,12 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
   );
   const { show, modalContent: confirmationModal } = useConfirmation();
   const [isEditModalOpen, { toggle: toggleEditModal }] = useDisclosure(false);
+  const [isPermissionsModalOpen, { toggle: togglePermissionsModal }] =
+    useDisclosure(false);
+  const showPermissionsOption =
+    isAdmin &&
+    (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
+    collection.namespace !== "transforms";
 
   const isRoot = isRootCollection(collection);
 
@@ -181,10 +184,10 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
                 : t`Edit collection details`}
             </Menu.Item>
           )}
-          {isAdmin && !!onChangePermissionsClick && (
+          {showPermissionsOption && (
             <Menu.Item
               leftSection={<Icon name="lock" />}
-              onClick={() => onChangePermissionsClick(collection.id)}
+              onClick={togglePermissionsModal}
             >
               {t`Change permissions`}
             </Menu.Item>
@@ -206,6 +209,19 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           collection={collection}
           onSave={onSave}
           onClose={toggleEditModal}
+        />
+      )}
+      {isPermissionsModalOpen && collection.namespace === "snippets" && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
+          collectionId={collection.id}
+          onClose={togglePermissionsModal}
+        />
+      )}
+      {isPermissionsModalOpen && collection.namespace !== "snippets" && (
+        <PLUGIN_LIBRARY.CollectionPermissionsModal
+          collectionId={collection.id}
+          namespace={collection.namespace}
+          onClose={togglePermissionsModal}
         />
       )}
     </Box>

@@ -4,7 +4,6 @@ import {
   isRootTrashCollection,
   isSyncedCollection,
 } from "metabase/collections/utils";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -45,12 +44,12 @@ export function getCollectionIcon(
   }
 
   if (collection.is_library_root) {
-    switch (getLibraryCollectionType(collection.type)) {
-      case "root":
+    switch (collection.type) {
+      case "library":
         return { name: "repository" };
-      case "data":
+      case "library-data":
         return { name: "table" };
-      case "metrics":
+      case "library-metrics":
         return { name: "metric" };
     }
   }

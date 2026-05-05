@@ -16,13 +16,13 @@ import { CollectionRowMenu } from "./CollectionRowMenu";
 interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   collection?: Partial<Collection>;
-  onChangePermissionsClick?: () => void;
+  isAdmin?: boolean;
 }
 
 const setup = ({
   remoteSyncType,
   collection,
-  onChangePermissionsClick,
+  isAdmin = true,
 }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
@@ -30,15 +30,12 @@ const setup = ({
       "remote-sync-enabled": !!remoteSyncType,
       "token-features": createMockTokenFeatures({ remote_sync: true }),
     }),
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
   });
   setupEnterpriseOnlyPlugin("remote_sync");
 
   return renderWithProviders(
-    <CollectionRowMenu
-      collection={createMockCollection(collection)}
-      onChangePermissionsClick={onChangePermissionsClick}
-    />,
+    <CollectionRowMenu collection={createMockCollection(collection)} />,
     {
       storeInitialState: state,
     },
@@ -51,7 +48,7 @@ describe("CollectionRowMenu", () => {
     await openMenu();
     expect(getMenuItem(/Archive/)).toBeInTheDocument();
     expect(getMenuItem(/Edit collection details/)).toBeInTheDocument();
-    expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
+    expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
   });
 
   it("does not render archive and edit options when collection is root", async () => {
@@ -61,10 +58,10 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Edit collection details/)).not.toBeInTheDocument();
   });
 
-  it("renders the change permissions item when onChangePermissions is set", async () => {
-    setup({ onChangePermissionsClick: jest.fn() });
+  it("does not render the change permissions item for non-admins", async () => {
+    setup({ isAdmin: false });
     await openMenu();
-    expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
+    expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
   it("renders nothing if collection is not writable", () => {

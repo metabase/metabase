@@ -2,11 +2,10 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import CS from "metabase/css/core/index.css";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Ellipsified, Icon } from "metabase/ui";
-
-import { SnippetCollectionMenu } from "./SnippetCollectionMenu";
 
 const ICON_SIZE = 16;
 
@@ -43,7 +42,7 @@ class CollectionRow extends Component {
         <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
         </Ellipsified>
-        <SnippetCollectionMenu collection={collection} />
+        <CollectionRowMenu collection={collection} />
       </div>
     );
   }

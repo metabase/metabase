@@ -3,7 +3,6 @@ import { t } from "ttag";
 import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
-  getLibraryCollectionType,
 } from "metabase/data-studio/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
@@ -125,10 +124,28 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
+export type LibraryCollectionType =
+  | "library"
+  | "library-data"
+  | "library-metrics";
+export type LibrarySubCollectionType = "library-data" | "library-metrics";
+
+export function isLibrarySubCollectionType(
+  type: CollectionType | null | undefined,
+): type is LibrarySubCollectionType {
+  return type === "library-data" || type === "library-metrics";
+}
+
+export function isLibraryCollectionType(
+  type: CollectionType | null | undefined,
+): type is LibraryCollectionType {
+  return type === "library" || isLibrarySubCollectionType(type);
+}
+
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return getLibraryCollectionType(collection.type) != null;
+  return isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {

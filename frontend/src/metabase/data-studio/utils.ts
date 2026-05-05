@@ -1,25 +1,12 @@
 import type { CollectionItemModel, CollectionType } from "metabase-types/api";
 
-export type LibraryCollectionType = "root" | "data" | "metrics";
-
-export function getLibraryCollectionType(
-  type: CollectionType | null | undefined,
-): LibraryCollectionType | undefined {
-  switch (type) {
-    case "library":
-      return "root";
-    case "library-data":
-      return "data";
-    case "library-metrics":
-      return "metrics";
-  }
-}
+import { isLibraryCollectionType } from "../collections/utils";
 
 export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  if (getLibraryCollectionType(collectionType) == null) {
+  if (!isLibraryCollectionType(collectionType)) {
     return true;
   }
 

@@ -12,6 +12,10 @@ import {
   tableApi,
   transformApi,
 } from "metabase/api";
+import {
+  isLibraryCollectionType,
+  isLibrarySubCollectionType,
+} from "metabase/collections/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
@@ -31,12 +35,7 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import {
-  getCollectionItemsOptions,
-  getSyntheticLibrarySectionItem,
-  isLibrarySectionType,
-  validCollectionModels,
-} from "../utils";
+import { getCollectionItemsOptions, validCollectionModels } from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
 const allCollectionModels = Array.from(validCollectionModels);
@@ -386,7 +385,7 @@ async function getCollectionPathFromValue({
         }),
       ).unwrap();
 
-  const location = isLibrarySectionType(collection?.type)
+  const location = isLibraryCollectionType(collection?.type)
     ? collection?.location
     : (collection?.effective_location ?? collection?.location);
 
@@ -501,7 +500,7 @@ async function getCollectionPathFromValue({
         isInLibrary &&
         libraryCollection &&
         collectionId === libraryCollection.id &&
-        isLibrarySectionType(collection?.type)
+        isLibrarySubCollectionType(collection?.type)
       ) {
         const promotedItem = collectionItems.data.find(
           (item) =>
@@ -510,21 +509,15 @@ async function getCollectionPathFromValue({
             item.type === collection.type,
         );
 
-        locationPath.push(
-          getSyntheticLibrarySectionItem({
-            libraryCollection: {
-              id: libraryCollection.id,
-              name: libraryCollection.name,
-              model: "collection",
-              type: libraryCollection.type,
-              can_write: libraryCollection.can_write,
-              here: libraryCollection.here,
-              below: libraryCollection.below,
-              location: libraryCollection.location,
-            },
+        const syntheticItem =
+          PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem({
+            collectionId: collection.id,
             type: collection.type,
-          }),
-        );
+          });
+
+        if (syntheticItem) {
+          locationPath.push(syntheticItem);
+        }
 
         if (promotedItem) {
           locationPath.push({

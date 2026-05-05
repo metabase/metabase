@@ -1,10 +1,11 @@
+import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { isLibrarySubCollectionType } from "metabase/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
-import { SnippetCollectionMenu } from "metabase-enterprise/snippets/components/SnippetCollectionMenu";
 import type { CollectionId } from "metabase-types/api";
 
 import { LibraryCollectionRowMenu } from "./LibraryCollectionRowMenu";
@@ -39,12 +40,11 @@ export function ActionCell(props: ActionCellProps) {
   }
 
   if (isSnippetCollection) {
-    return <SnippetCollectionMenu collection={data} />;
+    return <CollectionRowMenu collection={data} />;
   }
 
   const isLibraryCollection =
-    (data.type === "library-data" || data.type === "library-metrics") &&
-    !data.is_library_root;
+    isLibrarySubCollectionType(data.type) && !data.is_library_root;
 
   if (isLibraryCollection) {
     return (

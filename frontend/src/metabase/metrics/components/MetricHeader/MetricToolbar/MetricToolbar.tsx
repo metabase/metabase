@@ -8,10 +8,10 @@ import {
   useListBookmarksQuery,
   useListNotificationsQuery,
 } from "metabase/api";
+import { isLibraryCollectionType } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
@@ -105,7 +105,7 @@ function MetricToolbarButtons({
 
   const showDataStudioLink =
     showDataStudioLinkProp &&
-    getLibraryCollectionType(card.collection?.type) != null &&
+    isLibraryCollectionType(card.collection?.type) &&
     canAccessDataStudio;
 
   return (

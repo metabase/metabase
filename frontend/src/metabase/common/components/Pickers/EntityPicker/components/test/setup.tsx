@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -8,13 +9,14 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
   CollectionItem,
@@ -32,6 +34,7 @@ import {
   createMockSearchResult,
   createMockSearchResults,
   createMockTable,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import {
@@ -376,10 +379,23 @@ export const setup = async ({
     ? createMockLibraryCollectionItem(libraryCollection)
     : undefined;
 
-  PLUGIN_LIBRARY.useGetLibraryCollection = () => ({
-    data: libraryCollectionItem,
-    isLoading: false,
-  });
+  const state = libraryCollectionItem
+    ? createMockState({
+        settings: mockSettings({
+          "token-features": createMockTokenFeatures({ library: true }),
+        }),
+      })
+    : undefined;
+
+  if (libraryCollectionItem) {
+    setupEnterpriseOnlyPlugin("library");
+  }
+  fetchMock.get(
+    "path:/api/ee/library",
+    libraryCollectionItem ?? {
+      message: "not found",
+    },
+  );
 
   // Setup collections
   setupCollectionsEndpoints({
@@ -455,6 +471,7 @@ export const setup = async ({
       ]}
       {...rest}
     />,
+    { storeInitialState: state },
   );
 
   await waitForLoaderToBeRemoved();

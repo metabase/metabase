@@ -1,14 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupLibraryEndpoints,
   setupPublishTablesEndpoint,
   setupPublishTablesEndpointError,
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -20,6 +23,7 @@ import {
   createMockBulkTableSelectionInfo,
   createMockCollection,
   createMockCollectionItem,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { PublishTablesModal } from "./PublishTablesModal";
@@ -46,19 +50,29 @@ function setup({
     name: "Data",
     type: "library-data",
   });
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    }),
+  });
 
-  setupEnterprisePlugins();
-  PLUGIN_LIBRARY.useGetLibraryChildCollectionByType = () =>
-    createMockCollectionItem({
-      id: dataCollection.id as number,
-      name: dataCollection.name,
-      model: "collection",
-      type: dataCollection.type,
-      can_write: true,
-      location: "/6464/",
-      here: ["table", "collection"],
-      below: ["table", "collection"],
-    });
+  setupEnterpriseOnlyPlugin("library");
+  setupLibraryEndpoints(true);
+  setupCollectionItemsEndpoint({
+    collection: { id: 6464 },
+    collectionItems: [
+      createMockCollectionItem({
+        id: dataCollection.id as number,
+        name: dataCollection.name,
+        model: "collection",
+        type: dataCollection.type,
+        can_write: true,
+        location: "/6464/",
+        here: ["table", "collection"],
+        below: ["table", "collection"],
+      }),
+    ],
+  });
   setupCollectionByIdEndpoint({ collections: [dataCollection] });
 
   setupTableSelectionInfoEndpoint(selectionInfo);
@@ -77,6 +91,7 @@ function setup({
       onPublish={onPublish}
       onClose={onClose}
     />,
+    { storeInitialState: state },
   );
 
   return { onPublish, onClose };
@@ -93,7 +108,7 @@ describe("PublishTablesModal", () => {
       }),
     });
     expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Publish this table"));
+    await userEvent.click(await screen.findByText("Publish this table"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
   });
 
@@ -119,9 +134,9 @@ describe("PublishTablesModal", () => {
     expect(
       await screen.findByText("Publish Orders and the tables it depends on?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Publish these tables"));
+    expect(await screen.findByText("Products")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    await userEvent.click(await screen.findByText("Publish these tables"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
   });
 
@@ -134,7 +149,7 @@ describe("PublishTablesModal", () => {
     expect(
       await screen.findByText("Publish these tables?"),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Publish these tables"));
+    await userEvent.click(await screen.findByText("Publish these tables"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
   });
 
@@ -159,9 +174,9 @@ describe("PublishTablesModal", () => {
         "Publish these tables and the tables they depend on?",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Publish these tables"));
+    expect(await screen.findByText("Products")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    await userEvent.click(await screen.findByText("Publish these tables"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
   });
 
@@ -176,7 +191,7 @@ describe("PublishTablesModal", () => {
       hasPublishError: true,
     });
     expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Publish this table"));
+    await userEvent.click(await screen.findByText("Publish this table"));
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(onPublish).not.toHaveBeenCalled();
   });

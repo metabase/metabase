@@ -1,21 +1,25 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupLibraryEndpoints,
   setupPublishTablesEndpoint,
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { BulkTableSelectionInfo } from "metabase-types/api";
 import {
   createMockBulkTableInfo,
   createMockBulkTableSelectionInfo,
   createMockCollection,
   createMockCollectionItem,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { PublishTableModal } from "./PublishTableModal";
@@ -70,19 +74,29 @@ function setup({
     name: "Data",
     type: "library-data",
   });
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    }),
+  });
 
-  setupEnterprisePlugins();
-  PLUGIN_LIBRARY.useGetLibraryChildCollectionByType = () =>
-    createMockCollectionItem({
-      id: dataCollection.id as number,
-      name: dataCollection.name,
-      model: "collection",
-      type: dataCollection.type,
-      can_write: true,
-      location: "/6464/",
-      here: ["table", "collection"],
-      below: ["table", "collection"],
-    });
+  setupEnterpriseOnlyPlugin("library");
+  setupLibraryEndpoints(true);
+  setupCollectionItemsEndpoint({
+    collection: { id: 6464 },
+    collectionItems: [
+      createMockCollectionItem({
+        id: dataCollection.id as number,
+        name: dataCollection.name,
+        model: "collection",
+        type: dataCollection.type,
+        can_write: true,
+        location: "/6464/",
+        here: ["table", "collection"],
+        below: ["table", "collection"],
+      }),
+    ],
+  });
   setupCollectionByIdEndpoint({ collections: [dataCollection] });
 
   setupTableSelectionInfoEndpoint(selectionInfo);
@@ -94,6 +108,7 @@ function setup({
       onClose={onClose}
       onPublished={onPublished}
     />,
+    { storeInitialState: state },
   );
 
   return { dataCollection, onClose, onPublished };
@@ -146,8 +161,8 @@ describe("PublishTableModal", () => {
     expect(
       await screen.findByText("Publish Orders and the tables it depends on?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(await screen.findByText("Products")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
   });
 
   it("should return to picker when publish modal is closed", async () => {
@@ -155,7 +170,7 @@ describe("PublishTableModal", () => {
     await userEvent.click(screen.getByText("Select Orders"));
     expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Cancel"));
+    await userEvent.click(await screen.findByText("Cancel"));
     expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
   });
 

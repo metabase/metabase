@@ -1,4 +1,3 @@
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
@@ -89,12 +88,12 @@ const getCollectionIcon = (item: ObjectWithModel): IconData | void => {
   }
 
   if (item.model === "collection" && item.is_library_root === true) {
-    switch (getLibraryCollectionType(item.type as CollectionType)) {
-      case "root":
+    switch (item.type) {
+      case "library":
         return { name: "repository" };
-      case "data":
+      case "library-data":
         return { name: "table" };
-      case "metrics":
+      case "library-metrics":
         return { name: "metric" };
     }
   }

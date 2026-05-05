@@ -7,7 +7,6 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -84,13 +83,13 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  switch (getLibraryCollectionType(collection?.type)) {
-    case "data":
+  switch (collection?.type) {
+    case "library-data":
       return {
         title: t`No published tables yet`,
         description: t`Publish tables in the Library to see them here.`,
       };
-    case "metrics":
+    case "library-metrics":
       return {
         title: t`No metrics yet`,
         description: t`Put metrics in the Library to see them here.`,

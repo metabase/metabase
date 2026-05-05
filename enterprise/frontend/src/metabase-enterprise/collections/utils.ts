@@ -2,9 +2,9 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
+import { isLibraryCollectionType } from "metabase/collections/utils";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { getIconBase } from "metabase/common/utils/icon";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import type { ItemWithCollection } from "metabase/plugins";
 import type {
   Bookmark,
@@ -72,10 +72,7 @@ export const getIcon = (
 
   if (item.model === "collection") {
     // Library collections keep their special icon regardless of sync status
-    const libraryCollectionType = getLibraryCollectionType(
-      item.type as CollectionType,
-    );
-    if (libraryCollectionType != null) {
+    if (isLibraryCollectionType(item.type as CollectionType)) {
       return getIconBase(item);
     }
 

@@ -3,9 +3,11 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
+import { isLibrarySubCollectionType } from "metabase/collections/utils";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
-import type { CollectionType, SchemaName } from "metabase-types/api";
+import type { SchemaName } from "metabase-types/api";
 
 import type { DataPickerValue } from "../DataPicker";
 
@@ -121,7 +123,7 @@ async function getTablePathFromValue(
 async function getCollectionPathFromValue(
   value: DataPickerValue,
   dispatch: DispatchFn,
-  libraryCollection?: MiniPickerCollectionItem,
+  collectionItem?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
   const table =
     value.model === "table"
@@ -138,7 +140,7 @@ async function getCollectionPathFromValue(
 
   const collection = table?.collection ?? card?.collection;
 
-  const location = isLibrarySectionType(collection?.type)
+  const location = isLibrarySubCollectionType(collection?.type)
     ? collection?.location
     : (collection?.effective_location ?? collection?.location);
 
@@ -154,7 +156,7 @@ async function getCollectionPathFromValue(
     collection?.id,
   ].filter(Boolean);
 
-  if (collectionIds.includes(libraryCollection?.id)) {
+  if (collectionIds.includes(collectionItem?.id)) {
     collectionIds.shift(); // pretend the library is at the top level
     locationPath.shift();
   }
@@ -182,8 +184,8 @@ async function getCollectionPathFromValue(
 
     if (!nextItem) {
       if (
-        collectionId === libraryCollection?.id &&
-        isLibrarySectionType(collection?.type)
+        collectionId === collectionItem?.id &&
+        isLibrarySubCollectionType(collection?.type)
       ) {
         const promotedItem = collectionItems.data.find(
           (item) =>
@@ -192,9 +194,16 @@ async function getCollectionPathFromValue(
             item.type === collection.type,
         );
 
-        locationPath.push(
-          getSyntheticLibrarySectionItem(libraryCollection, collection.type),
-        );
+        const syntheticItem =
+          PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem({
+            collectionId: collectionItem.id,
+            type: collection.type,
+            miniPicker: true,
+          });
+
+        if (syntheticItem) {
+          locationPath.push(syntheticItem);
+        }
 
         if (promotedItem) {
           locationPath.push({
@@ -224,28 +233,6 @@ async function getCollectionPathFromValue(
   }
 
   return locationPath;
-}
-
-function isLibrarySectionType(
-  type: CollectionType | null | undefined,
-): type is "library-data" | "library-metrics" {
-  return type === "library-data" || type === "library-metrics";
-}
-
-function getSyntheticLibrarySectionItem(
-  libraryCollection: MiniPickerCollectionItem,
-  type: "library-data" | "library-metrics",
-): MiniPickerCollectionFolderItem {
-  return {
-    id: `${type}-${libraryCollection.id}`,
-    sourceCollectionId: libraryCollection.id,
-    name: type === "library-data" ? t`Data` : t`Metrics`,
-    model: "collection",
-    type,
-    here: [],
-    below: getOurAnalytics().below,
-    childTypeFilter: type,
-  };
 }
 
 // not a factory
