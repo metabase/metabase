@@ -1836,6 +1836,11 @@ describe("sandbox", () => {
       payload: "new PerformanceObserver(function() {});",
       errorPattern: blockedPattern(/API call: PerformanceObserver/),
     },
+    {
+      name: "document.referrer getter",
+      payload: "var x = document.referrer;",
+      errorPattern: blockedPattern(/API call: Document\.get referrer/),
+    },
   ];
 
   it("blocks browser APIs that are not allowed in the sandbox", () => {

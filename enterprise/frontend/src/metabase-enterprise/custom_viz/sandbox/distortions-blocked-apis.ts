@@ -70,6 +70,11 @@ block(getter(Document.prototype, "cookie"), "Document.get cookie");
 block(setter(Document.prototype, "cookie"), "Document.set cookie");
 block(setter(Document.prototype, "domain"), "Document.set domain");
 
+// Referrer — URL of the page that linked here, which can leak internal
+// admin URLs or embed-link query params. Unlike `location.href`, the plugin
+// has no other way to read this.
+block(getter(Document.prototype, "referrer"), "Document.get referrer");
+
 // Storage exfiltration
 block(getter(Window.prototype, "localStorage"), "Window.get localStorage");
 block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");
