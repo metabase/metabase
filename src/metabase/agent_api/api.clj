@@ -381,7 +381,7 @@
   (str
    "Construct a Metabase MBQL query from a structured program. The body is the program itself — no envelope — shaped:\n"
    "`{\"source\": {...}, \"operations\": [...]}`\n"
-   "Returns `{\"query\": \"<base64>\"}` — pass the string to `execute_query`.\n"
+   "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
    "\n"
    "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
    "Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, "

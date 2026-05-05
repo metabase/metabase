@@ -10,9 +10,11 @@
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (java.io ByteArrayOutputStream)
    (java.net URLEncoder)
@@ -93,6 +95,45 @@
       error            error
       :else            (str "Agent API error: " (:status response)))))
 
+;;; ------------------------------------------- Query Handle Transforms -------------------------------------------
+
+(defn- resolve-query-arg
+  "Resolve the query argument for tools that accept a handle.
+   If :query_handle is present, look it up and replace with :query.
+   If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
+   it too — but log a warning so we can track how often this antipattern fires.
+   Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
+  [tool-name arguments]
+  (cond
+    (:query_handle arguments)
+    (if-let [encoded (mcp.session/read-handle (:query_handle arguments))]
+      (-> arguments (dissoc :query_handle) (assoc :query encoded))
+      ::handle-not-found)
+
+    (mcp.session/valid-id? (:query arguments))
+    (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
+                   tool-name)
+        (if-let [encoded (mcp.session/read-handle (:query arguments))]
+          (assoc arguments :query encoded)
+          ::handle-not-found))
+
+    :else
+    arguments))
+
+(defn- make-store-construct-query-result
+  "Build a body-transform fn for construct_query. Stores the base64 payload server-side
+   under the calling MCP session and returns {:query_handle uuid} instead of {:query base64},
+   so the LLM carries a short opaque UUID rather than the full base64 string."
+  [session-id user-id]
+  (fn [body]
+    (if-let [encoded (:query body)]
+      {:query_handle (mcp.session/store-handle! session-id user-id encoded)}
+      body)))
+
+;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
+(def ^:private tools-accepting-query-handle
+  #{"execute_query" "visualize_query"})
+
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
@@ -149,8 +190,11 @@
    For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
-   are preserved through the synthetic request."
-  [method path token-scopes params]
+   are preserved through the synthetic request.
+
+   `body-transform-fn`, when provided, is applied to the 200 response body before
+   wrapping with text-content. Used to post-process construct_query results."
+  [method path token-scopes params & {:keys [body-transform-fn]}]
   (let [result (promise)]
     (deliver-agent-api-response result method path token-scopes params)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
@@ -160,7 +204,8 @@
         response
 
         (= 200 (:status response))
-        (text-content (:body response))
+        (text-content (cond-> (:body response)
+                        body-transform-fn (body-transform-fn)))
 
         :else
         (error-content (extract-error-message response))))))
@@ -192,13 +237,18 @@
    Looks up method/path from the tool definition, interpolates path params,
    and calls `invoke-agent-api`. For POST requests, remaining args are sent as the
    request body. For GET/DELETE requests, remaining args are sent as query params."
-  [tool-def arguments token-scopes]
+  [tool-def arguments token-scopes session-id]
   (let [{:keys [method path]} (:endpoint tool-def)
+        tool-name             (:name tool-def)
         method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
-        api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api method api-path token-scopes remaining-args)))
+        api-path              (strip-api-prefix resolved-path)
+        body-transform-fn     (when (= tool-name "construct_query")
+                                (make-store-construct-query-result
+                                 session-id api/*current-user-id*))]
+    (invoke-agent-api method api-path token-scopes remaining-args
+                      :body-transform-fn body-transform-fn)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
@@ -215,8 +265,13 @@
     (if-let [tool-def (get (tool-index) tool-name)]
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
-        (try
-          (dispatch-via-agent-api tool-def arguments token-scopes)
-          (catch Exception e
-            (error-content (or (ex-message e) "Internal error")))))
+        (let [arguments (if (tools-accepting-query-handle tool-name)
+                          (resolve-query-arg tool-name arguments)
+                          arguments)]
+          (if (= arguments ::handle-not-found)
+            (error-content "Query handle not found. The query may have expired — try running construct_query again.")
+            (try
+              (dispatch-via-agent-api tool-def arguments token-scopes session-id)
+              (catch Exception e
+                (error-content (or (ex-message e) "Internal error")))))))
       (error-content (str "Unknown tool: " tool-name)))))

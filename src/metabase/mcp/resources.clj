@@ -168,17 +168,32 @@
   :description (str "Visualize a previously constructed query as an interactive chart or table. "
                     "This renders the final answer in the UI. Do not call execute_query after "
                     "visualize_query; showing the visualization is enough.")
+  ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
+  ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
+  ;; The response-fn enforces the at-least-one contract at runtime.
   :inputSchema {:type       "object"
-                :properties {:query {:type "string" :minLength 1}}
-                :required   ["query"]}
+                :properties {:query        {:type "string" :minLength 1
+                                            :description "Base64-encoded MBQL query (use query_handle instead when available)"}
+                             :query_handle {:type "string" :format "uuid"
+                                            :description "Handle returned by construct_query; preferred over raw query"}}}
   :response-fn (fn [arguments _opts]
-                 (if-let [encoded (:query arguments)]
-                   {:content          [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                "Do not call execute_query after this; "
-                                                                "the visualization is the final result.")}]
-                    :structuredContent {:query encoded}}
-                   {:content [{:type "text" :text "Missing query argument."}]
-                    :isError true}))})
+                 (let [query   (:query arguments)
+                       handle  (:query_handle arguments)
+                       encoded (or query (some-> handle mcp.session/read-handle))]
+                   (cond
+                     (and (nil? query) (nil? handle))
+                     {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
+                      :isError true}
+
+                     encoded
+                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                   "Do not call execute_query after this; "
+                                                                   "the visualization is the final result.")}]
+                      :structuredContent {:query encoded}}
+
+                     :else
+                     {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
+                      :isError true})))})
 
 (register-ui-tool!
  :visualize-query
