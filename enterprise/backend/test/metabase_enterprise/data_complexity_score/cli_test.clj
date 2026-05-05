@@ -7,7 +7,8 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.representation :as representation]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,7 +74,15 @@
       (is (not (contains? names "query_log"))
           "Table in is_audit DB must not appear in :universe")
       (is (not (contains? names "Audit Metric"))
-          "Card whose database_id is the audit DB must not appear in :universe"))))
+          "Card whose database_id is the audit DB must not appear in :universe")))
+  (testing "FieldValues side-car YAMLs (`*___fieldvalues.yaml`) under fields/ do not inflate :field-count"
+    ;; The fixture's `events/fields/event_id___fieldvalues.yaml` is a real-shape serdes side-car
+    ;; sitting next to a Field YAML. `load-yamls-of-model` must skip it; otherwise the events Table
+    ;; would jump from 2 fields to 3 and the universe :field-count would land at 6 instead of 5.
+    (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)
+          events             (u/seek #(= "events" (:name %)) universe)]
+      (is (= 2 (:field-count events))
+          "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
 (deftest ^:sequential run-cli-writes-readable-edn-to-output-file-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in

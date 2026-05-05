@@ -51,6 +51,14 @@
   vector."
   (class (float-array 0)))
 
+(defn- ensure-floats
+  "Return `v` as a `float[]`, copying only when it isn't already one.
+
+  ai-service / openai providers already return primitive `float[]` (see `decode-embeddings`
+  in `metabase-enterprise.semantic-search.embedding`), so the common path skips the copy."
+  ^floats [v]
+  (if (instance? floats-class v) v (float-array v)))
+
 (defn file-embedder
   "Build an embedder from a pre-loaded `{name -> [float ...]}` map.
   Keys are run through [[normalize-name]] here so callers can hand in raw display names.
@@ -60,7 +68,7 @@
   (let [normalized (into {}
                          (keep (fn [[k v]]
                                  (when-let [n (normalize-name k)]
-                                   [n (if (instance? floats-class v) v (float-array v))])))
+                                   [n (ensure-floats v)])))
                          name->vec)]
     (fn embed [_entities] normalized)))
 
@@ -77,14 +85,6 @@
 
   The 2026-04-21 analysis suggested names-split as the best default for both Arctic and MiniLM."
   :names-split)
-
-(defn- ensure-floats
-  "Return `v` as a `float[]`, copying only when it isn't already one.
-
-  ai-service / openai providers already return primitive `float[]` (see `decode-embeddings`
-  in `metabase-enterprise.semantic-search.embedding`), so the common path skips the copy."
-  ^floats [v]
-  (if (instance? floats-class v) v (float-array v)))
 
 (def ^:private provider-batch-size
   "Names per `get-embeddings-batch` HTTP call.
