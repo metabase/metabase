@@ -122,6 +122,19 @@
 
 ;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
 
+(def ^:private AvailableDatabaseResponse
+  [:map {:closed true}
+   [:database_id   ms/PositiveInt]
+   [:input_schemas [:sequential :string]]])
+
+(api.macros/defendpoint :get "/database" :- [:sequential AvailableDatabaseResponse]
+  "List databases eligible for workspace assignment, paired with the schemas
+  discovered for each. Excludes the sample DB, the audit DB, router parents/children,
+  and any database whose driver does not support the `:workspace` feature."
+  []
+  (api/check-superuser)
+  (ws/available-databases))
+
 (api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
   "Add a database to a workspace and provision it immediately (blocking)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]

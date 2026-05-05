@@ -3473,6 +3473,7 @@
    :uses #{api
            app-db
            cache
+           database-routing
            driver
            lib
            models
