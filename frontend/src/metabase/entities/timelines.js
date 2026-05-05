@@ -1,6 +1,3 @@
-import { updateIn } from "icepick";
-import _ from "underscore";
-
 import {
   skipToken,
   timelineApi,
@@ -12,7 +9,6 @@ import {
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { TimelineSchema } from "metabase/schema";
 
-import { TimelineEvents } from "./timeline-events";
 import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
@@ -80,49 +76,7 @@ export const Timelines = createEntity({
       );
 
       dispatch({ type: Timelines.actionTypes.INVALIDATE_LISTS_ACTION });
-      dispatch({ type: TimelineEvents.actionTypes.INVALIDATE_LISTS_ACTION });
     },
-  },
-
-  reducer: (state = {}, action) => {
-    if (action.type === TimelineEvents.actionTypes.CREATE && !action.error) {
-      const event = TimelineEvents.HACK_getObjectFromAction(action);
-
-      return updateIn(state, [event.timeline_id, "events"], (eventIds = []) => {
-        return [...eventIds, event.id];
-      });
-    }
-
-    if (action.type === TimelineEvents.actionTypes.UPDATE && !action.error) {
-      const event = TimelineEvents.HACK_getObjectFromAction(action);
-
-      return _.mapObject(state, (timeline) => {
-        const hasEvent = timeline.events?.includes(event.id);
-        const hasTimeline = event.timeline_id === timeline.id;
-
-        return updateIn(timeline, ["events"], (eventIds = []) => {
-          if (hasEvent && !hasTimeline) {
-            return _.without(eventIds, event.id);
-          } else if (!hasEvent && hasTimeline) {
-            return [...eventIds, event.id];
-          } else {
-            return eventIds;
-          }
-        });
-      });
-    }
-
-    if (action.type === TimelineEvents.actionTypes.DELETE && !action.error) {
-      const eventId = action.payload.result;
-
-      return _.mapObject(state, (timeline) => {
-        return updateIn(timeline, ["events"], (eventIds = []) => {
-          return _.without(eventIds, eventId);
-        });
-      });
-    }
-
-    return state;
   },
 });
 
