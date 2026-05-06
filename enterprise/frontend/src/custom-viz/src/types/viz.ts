@@ -271,3 +271,15 @@ declare const ClickBehaviorSymbol: unique symbol;
 export type ClickBehavior = {
   readonly [ClickBehaviorSymbol]: "ClickBehavior";
 };
+
+export type BaseWidgetProps<
+  TValue,
+  TSettings extends Record<string, unknown>,
+> = {
+  id: string;
+  value: TValue | undefined;
+  onChange: (value?: TValue | null) => void;
+  onChangeSettings: (
+    settings: Partial<CustomVisualizationSettings<TSettings>>,
+  ) => void;
+};

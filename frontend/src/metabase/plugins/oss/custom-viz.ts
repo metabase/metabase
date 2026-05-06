@@ -1,3 +1,4 @@
+import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
@@ -42,6 +43,27 @@ const getDefaultPluginCustomViz = () => ({
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,
+
+  /**
+   * Predicate used by ChartSettingsWidget to decide whether the `widget`
+   * field is a custom-viz mount handle (drive lifecycle imperatively) or a
+   * plain React component (render directly). Always false in OSS — there
+   * is no plugin to produce a mount handle.
+   */
+  isWidgetMount: ((_value: unknown) => false) as (
+    value: unknown,
+  ) => value is WidgetMount,
+
+  /**
+   * Host driver that renders a custom-viz setting widget by calling the
+   * plugin's mount/update/unmount handle through the near-membrane
+   * boundary. Placeholder in OSS — never invoked because `isWidgetMount`
+   * always returns false there.
+   */
+  SettingWidget: PluginPlaceholder as ComponentType<{
+    mount: WidgetMount;
+    widgetProps: Record<string, unknown>;
+  }>,
 });
 
 export const PLUGIN_CUSTOM_VIZ = getDefaultPluginCustomViz();

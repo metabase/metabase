@@ -14,7 +14,7 @@ export type CustomVisualizationOpts<TSettings extends Record<string, unknown>> =
   };
 
 class PluginErrorBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; label: string },
   { error: Error | null }
 > {
   state: { error: Error | null } = { error: null };
@@ -25,7 +25,9 @@ class PluginErrorBoundary extends Component<
 
   componentDidCatch(error: Error) {
     const { message, stack } = error;
-    console.error(`[plugin] visualization render failed: ${message}\n${stack}`);
+    console.error(
+      `[plugin] ${this.props.label} render failed: ${message}\n${stack}`,
+    );
   }
 
   render() {
@@ -39,10 +41,11 @@ class PluginErrorBoundary extends Component<
 export function defineConfig<TSettings extends Record<string, unknown>>(
   opts: CustomVisualizationOpts<TSettings>,
 ): CustomVisualization<TSettings> {
-  const { VisualizationComponent, ...rest } = opts;
+  const { VisualizationComponent, settings, ...rest } = opts;
 
   return {
     ...rest,
+    settings,
     VisualizationComponent,
     mount(
       container: Element,
@@ -52,7 +55,7 @@ export function defineConfig<TSettings extends Record<string, unknown>>(
 
       const render = (props: CustomVisualizationProps<TSettings>) => {
         root.render(
-          <PluginErrorBoundary>
+          <PluginErrorBoundary label="visualization">
             <VisualizationComponent {...props} />
           </PluginErrorBoundary>,
         );
