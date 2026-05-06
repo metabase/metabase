@@ -191,6 +191,20 @@
         [:int {:title "table-id" :min 0}]
         ::permissions.schema/data-permission-value]]]]]])
 
+(defn- collapse-uniform-view-data
+  "If every table-level `:perms/view-data` value across every schema for a given (group, db) is the same
+   scalar, collapse the schema/table map to that scalar at the db level. Without this, a newly-added DB
+   whose tables are all uniformly `:blocked` (e.g. via the going-granular path during sync) is reported
+   as a `{schema {table-id :blocked}}` map, which the frontend interprets as `granular`. Only applied to
+   `:perms/view-data`; other granular perm types intentionally retain their map shape."
+  [perm-type->value]
+  (let [view-data-val (:perms/view-data perm-type->value)
+        leaf-vals     (when (map? view-data-val)
+                        (into #{} (mapcat vals) (vals view-data-val)))]
+    (cond-> perm-type->value
+      (= 1 (count leaf-vals))
+      (assoc :perms/view-data (first leaf-vals)))))
+
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
@@ -211,21 +225,19 @@
                                        (when-not audit? [:not= :db_id audit/audit-db-id])
                                        [:not-in :db_id {:select [:id]
                                                         :from   [:metabase_database]
-                                                        :where  [:not= :router_database_id nil]}]]})]
-    (reduce
-     (fn [graph {group-id  :group-id
-                 perm-type :type
-                 value     :value
-                 db-id     :db-id
-                 schema    :schema
-                 table-id  :table-id}]
-       (let [schema (or schema "")
-             path   (if table-id
-                      [group-id db-id perm-type schema table-id]
-                      [group-id db-id perm-type])]
-         (assoc-in graph path value)))
-     {}
-     data-perms)))
+                                                        :where  [:not= :router_database_id nil]}]]})
+        raw-graph  (reduce
+                    (fn [graph {:keys [group-id value db-id schema table-id]
+                                perm-type :type}]
+                      (let [schema (or schema "")
+                            path   (if table-id
+                                     [group-id db-id perm-type schema table-id]
+                                     [group-id db-id perm-type])]
+                        (assoc-in graph path value)))
+                    {}
+                    data-perms)]
+    (update-vals raw-graph (fn [db-id->perms]
+                             (update-vals db-id->perms collapse-uniform-view-data)))))
 
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
