@@ -89,6 +89,7 @@
   offer-metabase-ai-trial?
   offer-metabase-ai-paid?
   premium-embedding-token
+  security-center-disabled
   security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
