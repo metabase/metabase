@@ -9,7 +9,6 @@ import type {
   TransformJob,
   TransformJobId,
   TransformTag,
-  TransformsSettings,
 } from "metabase-types/api";
 
 export function setupListTransformRunsEndpoint(
@@ -75,12 +74,6 @@ export function setupDeleteTransformJobEndpointWithError(
   jobId: TransformJobId,
 ) {
   fetchMock.delete(`path:/api/transform-job/${jobId}`, 500);
-}
-
-export function setupGetTransformsSettingsEndpoint(
-  settings: TransformsSettings,
-) {
-  fetchMock.get(`path:/api/transform/settings`, settings);
 }
 
 export function setupRunInspectorQueryEndpoint(

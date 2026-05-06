@@ -1,28 +1,21 @@
-import { setupGetTransformsSettingsEndpoint } from "__support__/server-mocks/transform";
-import {
-  act,
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
-import type { TransformsSettings } from "metabase-types/api";
+import { mockSettings } from "__support__/settings";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { RunButton } from "./RunButton";
 
 function setup({
-  transformsSettings = {},
+  isMeterLocked = null,
 }: {
-  transformsSettings?: Partial<TransformsSettings>;
+  isMeterLocked?: boolean | null;
 } = {}) {
   jest.useFakeTimers();
-  setupGetTransformsSettingsEndpoint({
-    enabled: true,
-    is_locked: null,
-    ...transformsSettings,
+  const state = createMockState({
+    settings: mockSettings({ "transforms-meter-locked": isMeterLocked }),
   });
-
-  renderWithProviders(<RunButton id={1} run={null} onRun={jest.fn()} />);
+  renderWithProviders(<RunButton id={1} run={null} onRun={jest.fn()} />, {
+    storeInitialState: state,
+  });
 }
 
 describe("RunButton", () => {
@@ -35,9 +28,7 @@ describe("RunButton", () => {
     it("renders an enabled run button and does not have a hover card", async () => {
       setup();
 
-      await waitFor(() =>
-        expect(screen.getByTestId("run-button")).toBeEnabled(),
-      );
+      expect(screen.getByTestId("run-button")).toBeEnabled();
 
       fireEvent.mouseEnter(screen.getByTestId("run-button"));
       act(() => jest.runAllTimers());
@@ -49,11 +40,9 @@ describe("RunButton", () => {
 
   describe("when transforms are locked", () => {
     it("renders a disabled run button and shows an explanatory card on hover", async () => {
-      setup({ transformsSettings: { is_locked: true } });
+      setup({ isMeterLocked: true });
 
-      await waitFor(() =>
-        expect(screen.getByTestId("run-button")).toBeDisabled(),
-      );
+      expect(screen.getByTestId("run-button")).toBeDisabled();
 
       fireEvent.mouseEnter(screen.getByTestId("run-button"));
       act(() => jest.runAllTimers());

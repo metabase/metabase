@@ -7,7 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useGetTransformsSettingsQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { Button, type ButtonProps, Icon, Loader, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -42,12 +42,12 @@ export const RunButton = forwardRef(function RunButton(
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { data: transformsSettings } = useGetTransformsSettingsQuery();
+  const isMeterLocked = useSetting("transforms-meter-locked");
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
     isRecent,
-    isDisabled: isExternallyDisabled || !!transformsSettings?.is_locked,
+    isDisabled: isExternallyDisabled || !!isMeterLocked,
   });
 
   useLayoutEffect(() => {
@@ -86,7 +86,7 @@ export const RunButton = forwardRef(function RunButton(
     </Button.Group>
   );
 
-  if (transformsSettings?.is_locked) {
+  if (isMeterLocked) {
     return <LockedTransformsHoverCard>{runButton}</LockedTransformsHoverCard>;
   }
   return runButton;

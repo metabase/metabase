@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useGetTransformsSettingsQuery } from "metabase/api/transform";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import {
@@ -44,7 +44,7 @@ export function JobEditor({
   onScheduleChange,
   onTagListChange,
 }: JobEditorProps) {
-  const { data: transformsSettings } = useGetTransformsSettingsQuery();
+  const isMeterLocked = useSetting("transforms-meter-locked");
 
   return (
     <PageContainer data-testid="transforms-job-editor" gap="2.5rem">
@@ -57,7 +57,7 @@ export function JobEditor({
               onChange={onNameChange}
               readOnly={readOnly}
             />
-            {transformsSettings?.is_locked && (
+            {isMeterLocked && (
               <LockedTransformsHoverCard>
                 <TransformBadge bg="gold">{t`Disabled`}</TransformBadge>
               </LockedTransformsHoverCard>

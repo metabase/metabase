@@ -9,11 +9,6 @@ import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
-export type TransformsSettings = {
-  enabled: boolean;
-  is_locked: boolean | null;
-};
-
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;

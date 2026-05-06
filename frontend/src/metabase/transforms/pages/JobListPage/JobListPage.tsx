@@ -2,14 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  useGetTransformsSettingsQuery,
-  useListTransformJobsQuery,
-} from "metabase/api";
+import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
@@ -45,7 +43,7 @@ export const JobListPage = () => {
     [dispatch],
   );
 
-  const { data: transformsSettings } = useGetTransformsSettingsQuery();
+  const isMeterLocked = useSetting("transforms-meter-locked");
   const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
     () => [
       {
@@ -70,7 +68,7 @@ export const JobListPage = () => {
             </Ellipsified>
           ) : null,
       },
-      ...(transformsSettings?.is_locked
+      ...(isMeterLocked
         ? ([
             {
               id: "status",
@@ -84,7 +82,7 @@ export const JobListPage = () => {
           ] satisfies TreeTableColumnDef<TransformJob>[])
         : []),
     ],
-    [transformsSettings?.is_locked],
+    [isMeterLocked],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -115,7 +113,7 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack style={{ overflow: "hidden" }}>
-        {transformsSettings?.is_locked && <LockedTransformsBanner />}
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
