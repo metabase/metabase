@@ -7,7 +7,6 @@ import {
 } from "metabase/common/utils/card";
 import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
-import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -23,10 +22,10 @@ import {
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -40,6 +39,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
+import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   getCard,
   getIsResultDirty,

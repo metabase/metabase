@@ -7,9 +7,9 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
+import { getIconBase } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
-import { getIconBase } from "metabase/utils/icon";
 import type {
   BaseEntityId,
   Bookmark,

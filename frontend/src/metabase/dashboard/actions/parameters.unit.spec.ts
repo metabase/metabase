@@ -258,7 +258,6 @@ describe("setParameterMapping", () => {
           collections: {},
           dashboards: {},
           databases: {},
-          documents: {},
           schemas: {},
           tables: {},
           fields:
@@ -276,7 +275,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });
@@ -378,7 +376,6 @@ describe("setParameterMapping", () => {
           collections: {},
           dashboards: {},
           databases: {},
-          documents: {},
           schemas: {},
           tables: {},
           fields: {
@@ -393,7 +390,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });
