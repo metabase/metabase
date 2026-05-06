@@ -128,10 +128,6 @@
   [messages]
   (into [] (mapcat message->generated-queries) messages))
 
-(def new-query-tool-names
-  "Tools that produce a runnable query — used by the analytics `:query_count` metric."
-  metabot.tools/query-generation-tool-names)
-
 (defn- tool-input-block? [block tool-names]
   (and (= "tool-input" (:type block))
        (if (set? tool-names)

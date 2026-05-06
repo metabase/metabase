@@ -1,7 +1,8 @@
 (ns metabase-enterprise.metabot-analytics.queries-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase-enterprise.metabot-analytics.queries :as analytics.queries]))
+   [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
+   [metabase.metabot.tools :as metabot.tools]))
 
 (set! *warn-on-reflection* true)
 
@@ -260,7 +261,7 @@
           (testing "count-tool-invocations reaches tool names directly by :function"
             (is (= 1 (analytics.queries/count-tool-invocations [message] "search")))
             (is (= 1 (analytics.queries/count-tool-invocations
-                      [message] analytics.queries/new-query-tool-names))))
+                      [message] metabot.tools/query-generation-tool-names))))
           (testing "messages->generated-queries surfaces the SQL tool call"
             (let [rows (analytics.queries/messages->generated-queries [message])]
               (is (= 1 (count rows)))
@@ -329,8 +330,6 @@
                       :_type "TOOL_CALL"
                       :tool_calls [{:id "slack-1" :name "search"}]}]}]))
   (testing "accepts a set of tool names; a block counts if its :function is in the set"
-    ;; new-query-tool-names covers every query-generation tool — create_sql_query,
-    ;; edit_sql_query, replace_sql_query, and construct_notebook_query.
     (is (= 5 (analytics.queries/count-tool-invocations
               [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "a"}
                              {:type "tool-input" :function "edit_sql_query" :id "b"}
@@ -338,4 +337,4 @@
                {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}
                              {:type "tool-input" :function "create_sql_query" :id "e"}
                              {:type "tool-input" :function "search" :id "f"}]}]             ; non-query tool
-              analytics.queries/new-query-tool-names)))))
+              metabot.tools/query-generation-tool-names)))))
