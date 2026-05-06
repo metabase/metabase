@@ -59,10 +59,13 @@
 
 (defn- handler-ids-with-raw-value-matching
   "Set of notification_handler IDs whose raw-value (external) recipients have `details.value`
-  satisfying `pred` (a 1-arg fn applied to the lowercased value). Filtered in Clojure rather
-  than SQL: the value lives inside a JSON map (`{:value \"…\"}`) and `notification_recipient.details`
-  is a `TEXT` column — every dialect would need a different JSON-extraction expression to query
-  it cleanly. Bounded by the raw-value recipient count, which is admin-search-cadence small."
+  satisfying `pred` (a 1-arg fn applied to the lowercased value). Matches across every
+  raw-value channel type — `details.value` holds an external email for `:channel/email`
+  handlers, a Slack channel/mention (`#sales-alerts`, `@alice`) for `:channel/slack`, and a
+  webhook URL for `:channel/http`. Filtered in Clojure rather than SQL: the value lives
+  inside a JSON map and `notification_recipient.details` is a `TEXT` column — every dialect
+  would need a different JSON-extraction expression to query it cleanly. Bounded by the
+  raw-value recipient count, which is admin-search-cadence small."
   [pred]
   (->> (t2/select [:model/NotificationRecipient :notification_handler_id :details]
                   :type :notification-recipient/raw-value)

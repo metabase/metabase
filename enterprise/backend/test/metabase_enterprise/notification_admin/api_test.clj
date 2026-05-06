@@ -325,6 +325,29 @@
           (is (contains? ids (:id ext-n)))
           (is (not (contains? ids (:id other-n)))))))))
 
+(deftest query-matches-slack-channel-recipient-test
+  (testing "?query= substring-matches the slack channel of a raw-value recipient on a slack handler"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card                  {card :id}             {}
+                     :model/NotificationCard      {nc1 :id}              {:card_id card}
+                     :model/NotificationCard      {nc2 :id}              {:card_id card}
+                     :model/Notification          slack-n                {:payload_type :notification/card
+                                                                          :payload_id   nc1
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification          other-n                {:payload_type :notification/card
+                                                                          :payload_id   nc2
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/NotificationHandler   {slack-handler :id}    {:notification_id (:id slack-n)
+                                                                          :channel_type    :channel/slack}
+                     :model/NotificationRecipient _r                     {:notification_handler_id slack-handler
+                                                                          :type                    :notification-recipient/raw-value
+                                                                          :details                 {:value "#fuzzy-target-channel"}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :query "fuzzy-target-channel")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id slack-n)))
+          (is (not (contains? ids (:id other-n)))))))))
+
 (deftest query-and-other-filters-and-together-test
   (testing "?query= AND'd with other filters; structured filters narrow the fuzzy result"
     (mt/with-premium-features #{:audit-app}
