@@ -991,11 +991,14 @@
   (testing "set-role-statement should return a parameterized USE ROLE command"
     (are [role expected] (= expected
                             (driver.sql-jdbc/set-role-statement :snowflake nil role))
-      "MY_ROLE"        ["USE ROLE identifier(?);" "MY_ROLE"]
-      "ROLE123"        ["USE ROLE identifier(?);" "ROLE123"]
-      "lowercase_role" ["USE ROLE identifier(?);" "lowercase_role"]
-      "Role.123"       ["USE ROLE identifier(?);" "Role.123"]
-      "$role"          ["USE ROLE identifier(?);" "$role"])))
+      "MY_ROLE"                          ["USE ROLE identifier(?);" "MY_ROLE"]
+      "ROLE123"                          ["USE ROLE identifier(?);" "ROLE123"]
+      "lowercase_role"                   ["USE ROLE identifier(?);" "lowercase_role"]
+      "Role.123"                         ["USE ROLE identifier(?);" "\"Role.123\""]
+      "$role"                            ["USE ROLE identifier(?);" "\"$role\""]
+      "Role-X"                           ["USE ROLE identifier(?);" "\"Role-X\""]
+      ;; should escape quotes in role name
+      "Role-X\"); DROP * FROM TABLE; --" ["USE ROLE identifier(?);" "\"Role-X\"\"); DROP * FROM TABLE; --\""])))
 
 (deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
