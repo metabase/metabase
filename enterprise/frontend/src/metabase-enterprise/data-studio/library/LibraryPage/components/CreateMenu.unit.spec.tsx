@@ -15,6 +15,8 @@ import { CreateMenu } from "./CreateMenu";
 
 interface SetupOptions {
   user?: Partial<User>;
+  dataCollectionId?: number;
+  canWriteToDataCollection?: boolean;
   canWriteToMetricCollection?: boolean;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
@@ -29,12 +31,15 @@ const fullPermissionsUser: Partial<User> = {
 
 const setup = ({
   user,
+  dataCollectionId = 2,
+  canWriteToDataCollection = true,
   canWriteToMetricCollection = true,
   remoteSyncType,
 }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
+        library: true,
         snippet_collections: true,
       }),
       "remote-sync-type": remoteSyncType,
@@ -43,15 +48,19 @@ const setup = ({
     currentUser: createMockUser(user),
   });
   setupEnterprisePlugins();
-  return renderWithProviders(
+  const utils = renderWithProviders(
     <CreateMenu
       metricCollectionId={1}
+      dataCollectionId={dataCollectionId}
+      canWriteToDataCollection={canWriteToDataCollection}
       canWriteToMetricCollection={canWriteToMetricCollection}
     />,
     {
       storeInitialState: state,
     },
   );
+
+  return utils;
 };
 
 describe("CreateMenu", () => {
@@ -107,7 +116,62 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Snippet", "Snippet folder"]);
+    ).toEqual(["Published table", "Collection", "Snippet", "Snippet folder"]);
+  });
+
+  it("renders Collection option when only Data collection is writable", async () => {
+    setup({
+      user: { is_data_analyst: true },
+      canWriteToDataCollection: true,
+      canWriteToMetricCollection: false,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Published table", "Collection"]);
+  });
+
+  it("does not render Collection option without writable Library collections", async () => {
+    setup({
+      user: { is_data_analyst: true },
+      canWriteToDataCollection: false,
+      canWriteToMetricCollection: false,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Published table"]);
+  });
+
+  it("opens the collection modal with Library-only picker options", async () => {
+    const { store } = setup({
+      user: fullPermissionsUser,
+      dataCollectionId: 42,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
+
+    expect(store.getState().modal).toEqual({
+      id: "collection",
+      props: {
+        initialCollectionId: 42,
+        pickerOptions: {
+          hasLibrary: true,
+          hasRootCollection: false,
+          hasPersonalCollections: false,
+          hasRecents: false,
+          hasSearch: false,
+          hasConfirmButtons: true,
+          canCreateCollections: false,
+        },
+        showAuthorityLevelPicker: false,
+      },
+    });
   });
 
   it("renders nothing if remote sync is set to read-only", () => {
