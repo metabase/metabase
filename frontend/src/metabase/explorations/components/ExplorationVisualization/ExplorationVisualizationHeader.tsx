@@ -1,5 +1,6 @@
 import { Group, Text } from "metabase/ui";
 import type {
+  CardDisplayType,
   ExplorationQuery,
   ExplorationThread,
   Timeline,
@@ -17,6 +18,7 @@ interface ExplorationVisualizationHeaderProps {
   onSelectTimelineId?: (timelineId: TimelineId | null) => void;
   showTimelineDropdown?: boolean;
   showDocumentMenu?: boolean;
+  display?: CardDisplayType;
 }
 
 export function ExplorationVisualizationHeader({
@@ -27,6 +29,7 @@ export function ExplorationVisualizationHeader({
   onSelectTimelineId,
   showTimelineDropdown,
   showDocumentMenu,
+  display,
 }: ExplorationVisualizationHeaderProps) {
   return (
     <Group h="2rem" justify="space-between">
@@ -49,6 +52,7 @@ export function ExplorationVisualizationHeader({
           <DocumentMenu
             explorationQuery={explorationQuery}
             explorationThread={explorationThread}
+            display={display}
           />
         )}
       </Group>

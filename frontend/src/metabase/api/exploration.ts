@@ -1,4 +1,5 @@
 import type {
+  CardDisplayType,
   CreateExplorationRequest,
   Dataset,
   DocumentId,
@@ -55,12 +56,27 @@ export const explorationApi = Api.injectEndpoints({
       // inside one session is instant (no skeleton flash on re-select).
       keepUnusedDataFor: 30 * 60,
     }),
+    createExplorationDocument: builder.mutation<
+      ExplorationDocument,
+      {
+        explorationId: ExplorationId;
+        threadId: ExplorationThreadId;
+      }
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/documents`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
     appendChartToDocument: builder.mutation<
       ExplorationDocument,
       {
         threadId: ExplorationThreadId;
         documentId: DocumentId;
         exploration_query_id: ExplorationQueryId;
+        display?: CardDisplayType;
       }
     >({
       query: ({ threadId, documentId, ...body }) => ({
@@ -82,5 +98,6 @@ export const {
   useGetExplorationQuery,
   useCreateExplorationMutation,
   useGetExplorationQueryResultQuery,
+  useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
 } = explorationApi;

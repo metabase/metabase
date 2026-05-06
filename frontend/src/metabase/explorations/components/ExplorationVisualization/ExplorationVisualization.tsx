@@ -18,6 +18,7 @@ import type {
   TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
+import { isCardDisplayType } from "metabase-types/api";
 
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
@@ -104,11 +105,12 @@ function ExplorationVisualizationChart({
     ];
   }, [explorationQuery, dataset, isMetadataLoading, metadata]);
 
+  const display = useMemo(() => series?.[0]?.card?.display, [series]);
+
   const showTimelineDropdown = useMemo(() => {
-    const { card, data } = series?.[0] ?? {};
-    const col = data?.cols[0];
-    return card?.display === "line" && col && isDate(col);
-  }, [series]);
+    const col = series?.[0]?.data?.cols[0];
+    return display === "line" && col && isDate(col);
+  }, [series, display]);
 
   if (!series) {
     return <ExplorationChartSkeleton explorationQuery={explorationQuery} />;
@@ -124,6 +126,7 @@ function ExplorationVisualizationChart({
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
+        display={isCardDisplayType(display) ? display : undefined}
       />
       <Visualization
         rawSeries={series}

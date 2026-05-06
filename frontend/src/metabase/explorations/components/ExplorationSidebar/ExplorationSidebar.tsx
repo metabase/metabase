@@ -48,10 +48,6 @@ interface ExplorationSidebarProps {
   threadsWithSortedQueries: ThreadsWithSortedQueries[];
 }
 
-type ExplorationSidebarItem =
-  | (ExplorationQueryWithName & { type: "query" })
-  | (ExplorationDocument & { type: "document" });
-
 const INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
 export function ExplorationSidebar({
@@ -225,35 +221,12 @@ export function ExplorationSidebar({
     [setSelectedQueryId],
   );
 
-  const threadsWithSortedItems = useMemo(() => {
-    return threadsWithSortedQueries.map((thread) => {
-      const items: ExplorationSidebarItem[] = [
-        ...thread.queries.map((query) => ({
-          ...query,
-          type: "query" as const,
-        })),
-        ...(thread.documents?.map((document) => ({
-          ...document,
-          type: "document" as const,
-        })) ?? []),
-      ];
-
-      return {
-        ...thread,
-        items,
-      };
-    });
-  }, [threadsWithSortedQueries]);
-
   return (
     <Stack h="100%" w="20%" flex="none" gap="lg" pt="3rem">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>
-      {threadsWithSortedItems.map((thread, i) => {
-        const documentItem = thread.items.find(
-          ({ type }) => type === "document",
-        );
+      {threadsWithSortedQueries.map((thread, i) => {
         return (
           <Stack
             key={thread.id}
@@ -265,6 +238,19 @@ export function ExplorationSidebar({
             className={S.threadList}
           >
             <Text fw="bold">{getExplorationThreadName(thread, i)}</Text>
+            {thread.documents?.map((document) => (
+              <ExplorationDocumentRow
+                key={`document-${document.id}`}
+                document={document}
+                isSelected={
+                  selectedEntityId?.type === "document" &&
+                  selectedEntityId.id === document.id
+                }
+                onSelect={() =>
+                  setSelectedEntityId({ type: "document", id: document.id })
+                }
+              />
+            ))}
             <ExplorationThreadQueries
               thread={thread}
               selectedQueryId={selectedQueryId}
@@ -273,19 +259,6 @@ export function ExplorationSidebar({
               openGroupIds={openGroupIds}
               onToggleGroup={handleToggleGroup}
             />
-            {documentItem && thread.queries.length > 0 && (
-              <ExplorationDocumentRow
-                key={`document-${documentItem.id}`}
-                document={documentItem}
-                isSelected={
-                  selectedEntityId?.type === "document" &&
-                  selectedEntityId.id === documentItem.id
-                }
-                onSelect={() =>
-                  setSelectedEntityId({ type: "document", id: documentItem.id })
-                }
-              />
-            )}
           </Stack>
         );
       })}
