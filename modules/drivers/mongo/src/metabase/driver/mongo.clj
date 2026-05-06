@@ -447,34 +447,42 @@
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
+(defn- dbms-version [database]
+  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
+  (when-let [k (some #(when (contains? database %)
+                        %)
+                     [:dbms-version
+                      :dbms_version])]
+    (get database k)))
+
 (defmethod driver/database-supports? [:mongo :window-functions/cumulative]
   [_driver _feat db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
