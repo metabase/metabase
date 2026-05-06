@@ -405,16 +405,22 @@ function createCustomVizWrapper(
   pluginId: CustomVizPluginId,
 ) {
   return function CustomVizWrapper({
+    width,
+    height,
+    series,
+    settings,
     onVisualizationClick,
     onHoverChange,
-    ...rest
   }: VisualizationProps) {
     const { resolvedColorScheme } = useColorScheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const handleRef = useRef<GenericVizMountHandle | null>(null);
 
     const pluginProps: GenericVizPluginProps = {
-      ...rest,
+      width,
+      height,
+      series: series as unknown as GenericVizPluginProps["series"],
+      settings: settings as unknown as GenericVizPluginProps["settings"],
       colorScheme: resolvedColorScheme,
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
