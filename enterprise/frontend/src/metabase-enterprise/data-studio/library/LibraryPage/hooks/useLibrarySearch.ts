@@ -93,11 +93,11 @@ export function useLibrarySearch(
     }
 
     // Client-side filter snippets
-    const filteredSnippets = filterSnippetTree(snippetTree, searchQuery);
+    const filteredSnippets = filterSnippetTree(snippetTree, debouncedQuery);
     sections.push(...filteredSnippets);
 
     return sections;
-  }, [isActive, searchResponse, snippetTree, searchQuery]);
+  }, [isActive, searchResponse, snippetTree, debouncedQuery]);
 
   return {
     tree,
