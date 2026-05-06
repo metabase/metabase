@@ -1,4 +1,4 @@
-(ns metabase-enterprise.erd.core
+(ns metabase-enterprise.erd.impl
   "Entity Relationship Diagram (ERD) logic: resolving focal tables,
    one-layer FK expansion, and response building."
   (:require

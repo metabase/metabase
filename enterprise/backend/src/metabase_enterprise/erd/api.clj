@@ -1,20 +1,20 @@
 (ns metabase-enterprise.erd.api
   (:require
-   [metabase-enterprise.erd.core :as erd]
+   [metabase-enterprise.erd.impl :as impl]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]))
 
-(api.macros/defendpoint :get "/" :- ::erd/erd-response
+(api.macros/defendpoint :get "/" :- ::impl/erd-response
   "Return an Entity Relationship Diagram (ERD) for tables and their FK relationships.
   When `table-ids` is provided, those tables are the focal points (and must belong to `database-id`).
   When only `database-id` is provided, auto-selects the most connected tables."
   [_route-params
-   {:keys [database-id table-ids schema] :as query-params} :- ::erd/erd-request]
-  (erd/erd {:database-id      database-id
-            :table-ids        table-ids
-            :schema           schema
-            :schema-selected? (contains? query-params :schema)}))
+   {:keys [database-id table-ids schema] :as query-params} :- ::impl/erd-request]
+  (impl/erd {:database-id      database-id
+             :table-ids        table-ids
+             :schema           schema
+             :schema-selected? (contains? query-params :schema)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/erd` routes."
