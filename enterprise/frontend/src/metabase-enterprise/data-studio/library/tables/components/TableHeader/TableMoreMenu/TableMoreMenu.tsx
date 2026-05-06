@@ -33,11 +33,11 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
     dispatch(push(Urls.dataStudioLibrary()));
   };
 
-  const handleMove = async (newCollection: { id: number | string }) => {
+  const handleMove = async (newCollection: { id: CollectionId }) => {
     const sourceCollectionId = table.collection_id;
     await updateTable({
       id: table.id,
-      collection_id: newCollection.id as number,
+      collection_id: newCollection.id,
     }).unwrap();
     dispatch(
       collectionApi.util.invalidateTags([
@@ -45,7 +45,7 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
         { type: "collection", id: `${newCollection.id}-items` },
       ]),
     );
-    const affectedIds: CollectionId[] = [newCollection.id as CollectionId];
+    const affectedIds: CollectionId[] = [newCollection.id];
     if (sourceCollectionId != null) {
       affectedIds.push(sourceCollectionId);
     }
