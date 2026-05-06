@@ -2,7 +2,6 @@
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn current-page :- [:maybe ::lib.schema/page]

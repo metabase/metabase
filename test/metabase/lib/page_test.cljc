@@ -1,10 +1,13 @@
 (ns metabase.lib.page-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.page :as lib.page]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel current-page-test
   (let [query (lib.tu/venues-query)]
