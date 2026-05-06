@@ -6,7 +6,7 @@ import type { MetricDimension } from "metabase-types/api";
  * chat agent emits a metrics+dimensions selection).
  */
 export const INTERESTINGNESS_SCORE_THRESHOLD =
-  window.Metabase.INTERESTINGNESS_SCORE_THRESHOLD || 0.7;
+  window.Metabase?.INTERESTINGNESS_SCORE_THRESHOLD || 0.7;
 
 export function passesInterestingnessThreshold(
   score: number | null | undefined,

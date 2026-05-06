@@ -1,4 +1,5 @@
-import type { Dataset } from "metabase-types/api";
+import { passesInterestingnessThreshold } from "metabase/explorations/constants";
+import type { Dataset, ExplorationQuery, TimelineId } from "metabase-types/api";
 
 /**
  * Pick the columns to use as `graph.dimensions` for an exploration query.
@@ -22,4 +23,75 @@ export function getDimensions(dataset: Dataset): string[] | undefined {
     );
   }
   return undefined;
+}
+
+/**
+ * Aggregates `timeline_interestingness` across queries by taking the max
+ * score per timeline. Used by group pages so a timeline counts as
+ * interesting if any sub-query finds it interesting.
+ *
+ * Queries without `timeline_interestingness` (BE may omit the field) and
+ * entries with `null` scores are ignored.
+ */
+export function getMaxTimelineInterestingness(
+  queries: ExplorationQuery[],
+): Map<TimelineId, number> {
+  const map = new Map<TimelineId, number>();
+  for (const q of queries) {
+    for (const e of q.timeline_interestingness ?? []) {
+      if (e.interestingness_score == null) {
+        continue;
+      }
+      const prev = map.get(e.timeline_id);
+      if (prev == null || e.interestingness_score > prev) {
+        map.set(e.timeline_id, e.interestingness_score);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Set of timeline ids whose max-aggregated score across `queries` passes
+ * the global interestingness threshold (see `metabase/explorations/constants`).
+ * Used by `TimelineDropdown` to decide which items get the
+ * `PotentiallyInterestingMarker`.
+ */
+export function getInterestingTimelineIds(
+  queries: ExplorationQuery[],
+): ReadonlySet<TimelineId> {
+  const result = new Set<TimelineId>();
+  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
+    if (passesInterestingnessThreshold(score)) {
+      result.add(id);
+    }
+  }
+  return result;
+}
+
+/**
+ * Picks the most-interesting timeline for `queries` restricted to the
+ * timelines actually available in the dropdown. Returns `null` when no
+ * candidate passes the threshold or when no scored timeline is available.
+ *
+ * Drives the auto-default selection on threads where the user hasn't
+ * manually picked a timeline yet.
+ */
+export function getMostInterestingTimelineId(
+  queries: ExplorationQuery[],
+  availableTimelineIds: ReadonlySet<TimelineId>,
+): TimelineId | null {
+  let best: { id: TimelineId; score: number } | null = null;
+  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
+    if (!availableTimelineIds.has(id)) {
+      continue;
+    }
+    if (!passesInterestingnessThreshold(score)) {
+      continue;
+    }
+    if (best == null || score > best.score) {
+      best = { id, score };
+    }
+  }
+  return best?.id ?? null;
 }

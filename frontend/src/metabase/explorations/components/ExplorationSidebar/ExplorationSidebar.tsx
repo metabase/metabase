@@ -10,7 +10,6 @@ import {
 import { t } from "ttag";
 
 import {
-  Box,
   Ellipsified,
   Icon,
   Loader,
@@ -38,6 +37,7 @@ import {
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { shouldIgnoreKeyboardEvent } from "../../utils";
+import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
 
@@ -686,20 +686,6 @@ function ExplorationQueryRow({
   }
 
   return row;
-}
-
-function PotentiallyInterestingMarker() {
-  return (
-    <Tooltip label={t`Potentially interesting`}>
-      <Box
-        aria-hidden
-        w="0.375rem"
-        h="0.375rem"
-        bg="interesting"
-        className={S.interestingnessIndicator}
-      />
-    </Tooltip>
-  );
 }
 
 const STATUS_ARIA_LABELS: Record<

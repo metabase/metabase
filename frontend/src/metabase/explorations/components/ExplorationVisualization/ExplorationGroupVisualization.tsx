@@ -36,6 +36,7 @@ interface ExplorationGroupVisualizationProps {
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   timelineEvents: TimelineEvent[];
+  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function ExplorationGroupVisualization(
@@ -133,6 +134,7 @@ function ExplorationGroupVisualizationChart({
   selectedTimelineId,
   onSelectTimelineId,
   timelineEvents,
+  interestingTimelineIds,
 }: ExplorationGroupVisualizationProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
@@ -218,6 +220,7 @@ function ExplorationGroupVisualizationChart({
         showDocumentMenu
         groupQueries={queries}
         display={isCardDisplayType(display) ? display : undefined}
+        interestingTimelineIds={interestingTimelineIds}
       />
       <Visualization
         rawSeries={series}

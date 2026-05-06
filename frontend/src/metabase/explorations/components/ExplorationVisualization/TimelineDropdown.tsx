@@ -5,8 +5,10 @@ import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
 } from "metabase/explorations/utils";
-import { Icon, Select } from "metabase/ui";
+import { Group, Icon, Select, Text } from "metabase/ui";
 import type { Timeline, TimelineId } from "metabase-types/api";
+
+import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./TimelineDropdown.module.css";
 
@@ -14,12 +16,14 @@ interface TimelineDropdownProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
+  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function TimelineDropdown({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
+  interestingTimelineIds,
 }: TimelineDropdownProps) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -66,6 +70,16 @@ export function TimelineDropdown({
       clearButtonProps={{
         bg: "background-secondary",
         c: "text-primary",
+      }}
+      renderOption={({ option }) => {
+        const id = Number(option.value);
+        const isInteresting = interestingTimelineIds?.has(id) ?? false;
+        return (
+          <Group gap="xs" wrap="nowrap" w="100%">
+            <Text flex={1}>{option.label}</Text>
+            {isInteresting && <PotentiallyInterestingMarker />}
+          </Group>
+        );
       }}
     />
   );

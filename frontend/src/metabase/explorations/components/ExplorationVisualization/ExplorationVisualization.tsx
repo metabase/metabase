@@ -31,6 +31,7 @@ interface ExplorationVisualizationProps {
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   timelineEvents: TimelineEvent[];
+  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function ExplorationVisualization(props: ExplorationVisualizationProps) {
@@ -76,6 +77,7 @@ function ExplorationVisualizationChart({
   selectedTimelineId,
   onSelectTimelineId,
   timelineEvents,
+  interestingTimelineIds,
 }: ExplorationVisualizationProps) {
   const { currentData: dataset } = useGetExplorationQueryResultQuery(
     explorationQuery.id,
@@ -138,6 +140,7 @@ function ExplorationVisualizationChart({
         showTimelineDropdown={showTimelineDropdown}
         showDocumentMenu
         display={isCardDisplayType(display) ? display : undefined}
+        interestingTimelineIds={interestingTimelineIds}
       />
       <Visualization
         rawSeries={series}

@@ -33,6 +33,10 @@ import {
   ExplorationGroupVisualization,
   ExplorationVisualization,
 } from "../components/ExplorationVisualization";
+import {
+  getInterestingTimelineIds,
+  getMostInterestingTimelineId,
+} from "../components/ExplorationVisualization/utils";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -258,12 +262,52 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
     );
   }, [effectiveSelectedThread, allTimelinesById]);
 
+  // Queries belonging to the currently-selected entity. Drives both the
+  // marker (which timelines are interesting) and the auto-default (which
+  // timeline to pre-select when the user hasn't picked one for this
+  // thread yet). Group views aggregate across all of the group's queries.
+  const entityQueries: ExplorationQuery[] = useMemo(() => {
+    if (selectedQuery) {
+      return [selectedQuery];
+    }
+    if (selectedGroup) {
+      return selectedGroup.queries;
+    }
+    return [];
+  }, [selectedQuery, selectedGroup]);
+
+  const availableTimelineIds: ReadonlySet<TimelineId> = useMemo(
+    () => new Set(availableTimelines.map((t) => t.id)),
+    [availableTimelines],
+  );
+
+  const interestingTimelineIds: ReadonlySet<TimelineId> = useMemo(
+    () => getInterestingTimelineIds(entityQueries),
+    [entityQueries],
+  );
+
   const selectedTimelineId: TimelineId | null = useMemo(() => {
     if (!effectiveSelectedThread) {
       return null;
     }
-    return selectedTimelineIdByThreadId[effectiveSelectedThread.id] ?? null;
-  }, [effectiveSelectedThread, selectedTimelineIdByThreadId]);
+    // User-set override sticks for the whole thread (preserves prior
+    // behavior). `hasOwnProperty` distinguishes "user explicitly cleared
+    // → null" from "no entry yet → fall back to auto-default".
+    if (
+      Object.prototype.hasOwnProperty.call(
+        selectedTimelineIdByThreadId,
+        effectiveSelectedThread.id,
+      )
+    ) {
+      return selectedTimelineIdByThreadId[effectiveSelectedThread.id] ?? null;
+    }
+    return getMostInterestingTimelineId(entityQueries, availableTimelineIds);
+  }, [
+    effectiveSelectedThread,
+    selectedTimelineIdByThreadId,
+    entityQueries,
+    availableTimelineIds,
+  ]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
     if (selectedTimelineId == null) {
@@ -321,6 +365,7 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
           timelineEvents={timelineEvents}
+          interestingTimelineIds={interestingTimelineIds}
         />
       )}
       {selectedGroup && (
@@ -338,6 +383,7 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
           timelineEvents={timelineEvents}
+          interestingTimelineIds={interestingTimelineIds}
         />
       )}
       {selectedDocument && (

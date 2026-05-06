@@ -30,11 +30,6 @@
   color: var(--mb-color-brand);
 }
 
-.interestingnessIndicator {
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .groupQueries {
   padding-left: 1.5rem;
 }

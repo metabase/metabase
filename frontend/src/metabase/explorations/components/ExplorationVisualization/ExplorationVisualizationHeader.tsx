@@ -27,6 +27,7 @@ interface ExplorationVisualizationHeaderProps {
    * single-chart `DocumentMenu`. Used by `ExplorationGroupVisualization`.
    */
   groupQueries?: ExplorationQuery[];
+  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function ExplorationVisualizationHeader({
@@ -40,6 +41,7 @@ export function ExplorationVisualizationHeader({
   showDocumentMenu,
   display,
   groupQueries,
+  interestingTimelineIds,
 }: ExplorationVisualizationHeaderProps) {
   const title = name ?? explorationQuery?.name ?? null;
   const showGroupDocumentMenu =
@@ -68,6 +70,7 @@ export function ExplorationVisualizationHeader({
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={onSelectTimelineId}
+              interestingTimelineIds={interestingTimelineIds}
             />
           )}
         {showGroupDocumentMenu && (
