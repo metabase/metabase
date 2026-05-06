@@ -1,9 +1,11 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
-import { skipToken, useGetTimelineEventQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetTimelineEventQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
 import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import MoveEventModal, {
@@ -18,12 +20,8 @@ import type { ModalParams } from "../../types";
 
 interface OwnProps {
   params: ModalParams;
+  onClose?: () => void;
 }
-
-const timelinesProps = {
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
 
 const collectionProps = {
   id: (state: State, props: OwnProps) =>
@@ -31,9 +29,8 @@ const collectionProps = {
   LoadingAndErrorWrapper,
 };
 
-type ContainerProps = Omit<MoveEventModalProps, "event" | "onSubmit"> & {
-  params: ModalParams;
-};
+type ContainerProps = Omit<MoveEventModalProps, "event" | "onSubmit"> &
+  OwnProps;
 
 function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const setTimeline = useSetTimeline();
@@ -41,9 +38,14 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const {
     data: event,
-    isLoading,
-    error,
+    isLoading: isEventLoading,
+    error: eventError,
   } = useGetTimelineEventQuery(eventId ?? skipToken);
+  const {
+    data: timelines = [],
+    isLoading: isTimelinesLoading,
+    error: timelinesError,
+  } = useListTimelinesQuery({ include: "events" });
 
   const handleSubmit = async (
     event: TimelineEvent,
@@ -58,15 +60,22 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
     }
   };
 
+  const isLoading = isEventLoading || isTimelinesLoading;
+  const error = eventError ?? timelinesError;
+
   if (isLoading || error || !event) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <MoveEventModal {...props} event={event} onSubmit={handleSubmit} />;
+  return (
+    <MoveEventModal
+      {...props}
+      event={event}
+      timelines={timelines}
+      onSubmit={handleSubmit}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelinesProps),
-  Collections.load(collectionProps),
-)(MoveEventModalContainer);
+export default Collections.load(collectionProps)(MoveEventModalContainer);

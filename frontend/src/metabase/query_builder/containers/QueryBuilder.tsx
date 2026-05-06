@@ -8,6 +8,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListTimelinesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
@@ -16,7 +17,6 @@ import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
-import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
@@ -60,7 +60,6 @@ import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Series,
-  Timeline,
 } from "metabase-types/api";
 
 import {
@@ -174,19 +173,9 @@ import { useCreateQuestion } from "./use-create-question";
 import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
-const timelineProps = {
-  query: { include: "events" },
-  loadingAndErrorWrapper: false,
-};
-
 type BookmarkListLoaderOutput = {
   bookmarks: BookmarkType[];
   reloadBookmarks: () => void;
-};
-
-type TimelineListLoaderOutput = {
-  timelines: Timeline[];
-  reloadTimelines: () => void;
 };
 
 type EntityListLoaderMergedProps = {
@@ -195,8 +184,7 @@ type EntityListLoaderMergedProps = {
   allFetched: boolean;
   allError: boolean;
   reload: () => void;
-} & BookmarkListLoaderOutput &
-  TimelineListLoaderOutput;
+} & BookmarkListLoaderOutput;
 
 const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
   return {
@@ -378,6 +366,7 @@ type QueryBuilderInnerProps = ReduxProps &
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useFavicon({ favicon: props.pageFavicon ?? null });
+  useListTimelinesQuery({ include: "events" });
 
   const {
     question,
@@ -656,6 +645,5 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
 export const QueryBuilder = _.compose(
   Bookmarks.loadList(),
-  Timelines.loadList(timelineProps),
   connector,
 )(QueryBuilderInner);

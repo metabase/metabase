@@ -1,7 +1,9 @@
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useCreateTimelineEventMutation } from "metabase/api";
+import {
+  useCreateTimelineEventMutation,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { Timelines } from "metabase/entities/timelines";
 import { useDispatch } from "metabase/redux";
@@ -19,13 +21,8 @@ interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
-  timelines?: Timeline[];
   collection?: Collection;
 }
-
-const timelineProps = {
-  query: { include: "events" },
-};
 
 const collectionProps = {
   id: (state: State, props: NewEventModalContainerProps) => {
@@ -35,11 +32,11 @@ const collectionProps = {
 
 function NewEventModalContainer({
   onClose,
-  timelines,
   collection,
-}: NewEventModalContainerProps) {
+}: NewEventModalContainerProps & { timelines?: Timeline[] }) {
   const dispatch = useDispatch();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -65,7 +62,4 @@ function NewEventModalContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelineProps),
-  Collections.load(collectionProps),
-)(NewEventModalContainer);
+export default Collections.load(collectionProps)(NewEventModalContainer);
