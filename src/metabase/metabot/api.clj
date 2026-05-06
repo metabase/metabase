@@ -289,7 +289,9 @@
         (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/source-feedback" :- :nil
+(api.macros/defendpoint :post "/source-feedback" :- [:map
+                                                     [:status [:= 204]]
+                                                     [:body :nil]]
   "Persist Metabot source feedback locally and proxy it to Harbormaster."
   [_route-params
    _query-params
