@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.experiment :as experiment]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -2246,10 +2247,7 @@
   [driver query]
   (apply-clauses driver {} query))
 
-(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
-  "Build the HoneySQL form we will compile to SQL and execute."
-  [driver :- :keyword
-   query  :- :map]
+(defn- mbql->honeysql* [driver query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
@@ -2265,6 +2263,18 @@
           inner-query       (or (:query query) query)
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
+
+(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5})
+
+(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
+  "Build the HoneySQL form we will compile to SQL and execute."
+  [driver :- :keyword
+   query  :- :map]
+  (if-let [experimental-driver (experimental-mbql5-drivers driver)]
+    (experiment/experiment {:name :experimental-mbql5-driver}
+                           (mbql->honeysql* driver query)
+                           (mbql->honeysql* experimental-driver query))
+    (mbql->honeysql* driver query)))
 
 ;;;; MBQL -> Native
 
