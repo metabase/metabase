@@ -5,7 +5,7 @@ summary: Explore metrics and measures across dimensions and compare them side by
 
 # Metrics explorer
 
-The metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/measures.md)
+The metrics explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/measures.md)
 
 ![Metrics explorer](../questions/images/metrics-explorer.png)
 
@@ -36,7 +36,7 @@ To open a **metric** in the Metrics Explorer:
 
 2. Click **Explore** in the top right corner to open the metrics explorer.
 
-To get back to the metric or's page from the metrics explorer, click the metric card in the search bar and select **Go to metric home page**.
+To get back to the metric's page from the metrics explorer, click the metric card in the search bar and select **Go to metric home page**.
 
 To open a **measure** in the metrics explorer:
 
@@ -46,15 +46,14 @@ To open a **measure** in the metrics explorer:
 
 Once you open a measure or metric in the metrics explorer, Metabase will create tabs plotting the metric/measure along the most appropriate dimensions, as well as the **Totals** tab with the total result of the metric, without any dimensions applied.
 
-You can also [break out](#break-out-by-dimensions) a metric/measure by additional dimensions or [filter the metric/measure](#break-out-by-dimensions).
+You can also [break out](#break-out-by-dimensions) a metric/measure by additional dimensions or [filter the metric/measure](#filter-metrics-and-measures).
 
 ## Compare metrics and measures
 
 To compare multiple metrics or measures:
 
 1. [Open one of the metrics/measures in the metrics explorer](#explore-a-metric-or-a-measure).
-2. Click the top search bar and
-   search for another measure or metric you want to add.
+2. Click the top search bar and search for another measure or metric you want to add.
 
 3. Press **Enter** or click **Run** in the search bar.
 
@@ -123,4 +122,4 @@ To write an expression with metrics/measures, just start entering the formula in
 
 To edit the expression, click on the expression's card in the search bar and click **Edit**.
 
-You can also rename your expressions for convenience - for example, you might want to rename your formula `Revenue / Active users` as Per user revenue`. To rename the expression, click on the expression's card in the search bar, click **Rename**, and type the new name.
+You can also rename your expressions for convenience - for example, you might want to rename your formula `Revenue / Active users` as `Per user revenue`. To rename the expression, click on the expression's card in the search bar, click **Rename**, and type the new name.
