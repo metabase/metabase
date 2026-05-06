@@ -126,7 +126,6 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
             icon: "warning",
           }),
         );
-        console.error("Failed to update collection:", error);
       }
     };
 
