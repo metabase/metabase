@@ -2611,7 +2611,7 @@
 (defn ^:export all-field-ids
   "Return a JS array of all field IDs referenced anywhere in `a-query`."
   [a-query]
-  (clj->js (vec (lib.core/all-field-ids a-query))))
+  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.
