@@ -23,7 +23,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
+  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
@@ -265,7 +265,7 @@
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " (sort allowed-types)) ".")}
+                  ". Allowed types: " (str/join ", " allowed-types) ".")}
     (try
       (let [results (search (merge {:semantic-queries semantic_queries
                                     :term-queries    keyword_queries
@@ -295,7 +295,7 @@
   search-tool
   "Search for tables, models, metrics, dashboards, and saved questions."
   [args :- search-schema]
-  (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))
+  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -312,7 +312,7 @@
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
   [{:keys [database_id] :as args} :- sql-search-schema]
-  (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))
+  (do-search "SQL search" (sorted-set "model" "table") {:database-id database_id} args))
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
@@ -328,7 +328,7 @@
   nlq-search-tool
   "Search for NLQ-queryable data sources (tables, models, metrics, questions)."
   [args :- nlq-search-schema]
-  (do-search "NLQ search" #{"table" "model" "metric" "question"} {:profile-id "nlq"} args))
+  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
@@ -345,5 +345,5 @@
   transform-search-tool
   "Search for transforms, tables, and models."
   [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search "transform search" #{"table" "model" "transform"}
+  (do-search "transform search" (sorted-set "model" "table" "transform")
              {:search-native-query search_native_query} args))
