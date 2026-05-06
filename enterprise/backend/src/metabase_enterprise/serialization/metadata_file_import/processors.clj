@@ -748,4 +748,3 @@
                       {:source-id src-id :target-id own-id :status :updated}
                       {:source-id src-id :status :no-fk}))))
            batch))))))
-

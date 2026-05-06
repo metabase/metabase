@@ -780,4 +780,3 @@
         (is (= flat-tgt
                (:fk_target_field_id (t2/select-one :model/Field :id leaf)))
             "leaf's fk_target_field_id is set to the flat target's int id")))))
-
