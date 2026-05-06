@@ -8,6 +8,8 @@ The user provided: `$ARGUMENTS`
 
 Parse as: `<branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
 
+**Arg-order sanity check:** If the first token starts with `/` (e.g. the user wrote `/autobot /qabot my-branch`), stop immediately and tell the user the correct order is `/autobot <branch> [from <base>] /<command> [args]`. Do not try to guess.
+
 The first token can be either a branch name OR a PR preview environment URL:
 
 - **Branch name** (e.g., `master`, `my-feature-branch`) — launches a local dev environment in a worktree (normal mode).
@@ -40,6 +42,8 @@ Extract the bot name from the inner command by stripping the leading `/` (e.g., 
 
 ### 2. Preflight checks
 
+**Where inner-bot files live:** Inner-bot slash commands are at `.claude/commands/<bot-name>*.md` (e.g. `.claude/commands/qabot.md`, `.claude/commands/qabot-discover.md`). They are NOT under `.claude/skills/`. Read them directly with `Read`; do not `find`/`grep` `.claude/skills/` looking for them.
+
 #### Autobot infrastructure checks
 
 Verify these are available (stop if any fail):
@@ -57,6 +61,8 @@ Generate a timestamp in `YYYYMMDD-HHMMSS` format (use the current wall-clock tim
 
 - `TIMESTAMP=<YYYYMMDD-HHMMSS>`
 - `OUTPUT_DIR=.bot/<BOT_NAME>/<TIMESTAMP>`
+
+Run `mkdir -p <OUTPUT_DIR>` before invoking discover so subsequent file copies / writes never fail on a missing parent directory. The discover skill must be the only producer of artifacts inside `<OUTPUT_DIR>` — do not pre-copy `linear-context.txt` from a previous run; let discover regenerate it.
 
 Run the `/<bot-name>-discover` skill, passing the inner-args plus `--output-dir <OUTPUT_DIR>`. For example, if the command is `/fixbot MB-12345`, run `/fixbot-discover MB-12345 --output-dir <OUTPUT_DIR>`.
 

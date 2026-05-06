@@ -21,8 +21,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
-                                             with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -35,16 +34,13 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
+   [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql
-    Connection
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)
+   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -1284,13 +1280,23 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :postgres
-  [_ role]
+(def ^{:arglists '([driver conn role])} memoized-quote-identifier
+  "Call `quote_ident(?) on Postgres to quote an identifier; presumably this should never change so use a bounded cache
+  to avoid the overhead of calling this on every query.
+
+  Takes `driver` as a parameter so this function can also be used by Redshift without sharing the same cache."
+  (memoize/bounded
+   (-> (fn [_driver conn role]
+         (:quote_ident (next.jdbc/execute-one! conn ["SELECT quote_ident(?);" role])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[driver _conn role]] [driver role])))))
+
+(defmethod sql-jdbc/set-role-statement :postgres
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET ROLE \"%s\";" role)
-      (format "SET ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (memoized-quote-identifier driver conn))]
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
@@ -1352,6 +1358,63 @@
   [conn username]
   (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
 
+(defn- public-create-grant?
+  "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
+
+   When this is the case, REVOKE-ing CREATE from the workspace user is a no-op:
+   the user still inherits CREATE through PUBLIC, can create tables in input
+   schemas, and the resulting orphaned objects make `DROP USER` fail at
+   deprovisioning time. Workspace isolation can't enforce read-only on input
+   schemas in this state.
+
+   Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
+   drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
+   the redshift driver) because it can't cast `aclitem[]` to text."
+  [conn schema-name]
+  (let [{:keys [acl]} (first (jdbc/query conn ["SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname = ?" schema-name]))]
+    (boolean
+     (when (and acl (> (count acl) 1))
+       ;; nspacl text form: `{<grantee>=<perms>/<grantor>,...}`. PUBLIC entries
+       ;; have an empty grantee, so they appear as `=<perms>/<grantor>` after
+       ;; the opening `{` or after a comma.
+       (re-find #"(?:^\{|,)=[^/]*C" acl)))))
+
+(defn raise-public-create-grant!
+  "Throw the standard ex-info for the public-CREATE-grant pre-condition. Shared
+   between drivers (Postgres uses [[public-create-grant?]]; Redshift uses its
+   own check via `SVV_SCHEMA_PRIVILEGES`)."
+  [schema-name]
+  (throw (ex-info (format (str "Schema \"%s\" grants CREATE to PUBLIC; workspace isolation cannot "
+                               "enforce input-schema read-only until this is revoked. Run:\n\n"
+                               "    REVOKE CREATE ON SCHEMA %s FROM PUBLIC;\n\n"
+                               "then retry workspace provisioning.")
+                          schema-name schema-name)
+                  {:status-code 412
+                   :schema schema-name})))
+
+(defn assert-no-public-create-grant!
+  "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
+   from `grant-workspace-read-access!` for each input schema being granted —
+   we want this check per-schema (only the schemas actually used as inputs
+   matter), not a blanket check on `public` at init time."
+  [conn schema-name]
+  (when (public-create-grant? conn schema-name)
+    (raise-public-create-grant! schema-name)))
+
+;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
+;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
+;;; receive privileges either directly or through PUBLIC (the implicit pseudo-role
+;;; every login is a member of). REVOKE-ing CREATE from a specific user only
+;;; removes their *direct* grant — it can't override a PUBLIC grant. So if any
+;;; input schema (most commonly `public` itself, on PostgreSQL ≤14 where that
+;;; was the default) grants CREATE to PUBLIC, the workspace user inherits it
+;;; transitively and our isolation contract leaks: the user can create tables
+;;; in input schemas, becoming their owner, which then makes `DROP USER` fail
+;;; at deprovisioning. The probe at grant time fails fast with a 412 so the
+;;; cluster admin can run `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before
+;;; retrying. PostgreSQL 15+ removed the permissive default on `public`, so
+;;; fresh PG15 clusters typically pass; PG14 and earlier need the manual revoke.
+
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
@@ -1392,27 +1455,35 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
+(defn- grant-workspace-read-access-sqls
+  "Build the sequence of SQL statements that grant `username` read access to every table in each
+  source schema referenced by `tables`. Per source schema we emit three statements:
+  USAGE on the schema, SELECT on all existing tables in the schema, and an ALTER DEFAULT PRIVILEGES
+  covering future tables created by the granting role. Per-table `:name` granularity is intentionally
+  discarded — workspace-scoped users receive schema-wide SELECT."
+  [username tables]
+  (let [qu             (sql.u/quote-name :postgres :field username)
+        source-schemas (into #{} (keep :schema) tables)]
+    (mapcat (fn [s]
+              (let [qs (sql.u/quote-name :postgres :schema s)]
+                [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" qs qu)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
+            source-schemas)))
+
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
   (let [username       (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :postgres :field username)
-        ;; Collect all unique source schemas that contain the tables we need to grant access to
         source-schemas (into #{} (keep :schema) tables)
-        ;; Grant USAGE on source schemas, then SELECT on each table
-        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
-        sqls           (concat
-                        ;; USAGE on each source schema containing tables we're granting access to
-                        (for [s source-schemas]
-                          (format "GRANT USAGE ON SCHEMA %s TO %s"
-                                  (sql.u/quote-name :postgres :schema s) qu))
-                        ;; SELECT on each table
-                        (for [{s :schema, t :name} tables]
-                          (if (str/blank? s)
-                            (format "GRANT SELECT ON TABLE %s TO %s"
-                                    (sql.u/quote-name :postgres :table t) qu)
-                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
-                                    (sql.u/quote-name :postgres :schema s)
-                                    (sql.u/quote-name :postgres :table t) qu))))]
+        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
+        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
+        ;; isolation hole this catches. We probe per-schema so only the schemas
+        ;; actually used as inputs need to be locked down — schemas the workspace
+        ;; never touches can keep their default ACLs.
+        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+                         (doseq [s source-schemas]
+                           (assert-no-public-create-grant! check-conn s)))
+        sqls           (grant-workspace-read-access-sqls username tables)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

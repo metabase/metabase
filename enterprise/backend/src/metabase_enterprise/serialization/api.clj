@@ -3,6 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.serialization.metadata :as metadata]
+   [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -305,6 +307,32 @@
          :body    (on-response! log-file callback)}))
     (finally
       (io/delete-file (:tempfile file)))))
+
+;;; ----------------------------------- GET /api/ee/serialization/metadata/export -----------------------------------
+
+(api.macros/defendpoint :get "/metadata/export"
+  :- (sr/streaming-response-schema ::schema/metadata-export-response)
+  "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
+  current user, with all references emitted in serdes-portable form (database names, table
+  `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).
+
+  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`
+  query parameters — they all default to `false`. The response is streamed for efficiency
+  with large schemas.
+
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
+  `Query builder and native`) permissions on each database and table."
+  [_route-params
+   {:keys [with-databases with-tables with-fields]}
+   :- [:map
+       [:with-databases {:default false} [:maybe :boolean]]
+       [:with-tables    {:default false} [:maybe :boolean]]
+       [:with-fields    {:default false} [:maybe :boolean]]]]
+  (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+    (metadata/write-databases-metadata! os
+                                        {:with-databases? with-databases
+                                         :with-tables?    with-tables
+                                         :with-fields?    with-fields})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."

@@ -10,7 +10,7 @@ Set:
 - `TIMESTAMP=<YYYYMMDD-HHMMSS>`
 - `OUTPUT_DIR=.bot/fixbot/<TIMESTAMP>`
 
-Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/fixbot` invocations in the same repo do not collide.
+Run `mkdir -p <OUTPUT_DIR>` immediately so any subsequent `cp`/`Write` calls into it succeed. Every file this run writes — including discover artifacts — lives under `<OUTPUT_DIR>/`. There must be **no shared paths across runs**, so multiple `/fixbot` invocations in the same repo do not collide. Do not copy artifacts (e.g. `linear-context.txt`) from a previous run's directory; let discover regenerate them.
 
 ### 2. Gather context
 

@@ -76,6 +76,13 @@
                               :workspace                              true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :snowflake
+  [_driver]
+  ;; Snowflake emits `db.schema.table` in compiled SQL when crossing databases
+  ;; (and our Honey-SQL identifier emission qualifies cross-database refs explicitly).
+  ;; `:db` = Snowflake database (SQLGlot `Table.catalog`); `:schema` = schema (SQLGlot `Table.db`).
+  [:db :schema])
+
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
   (let [message (first messages)]
@@ -960,13 +967,9 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :snowflake
-  [_ role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "USE ROLE \"%s\";" role)
-      (format "USE ROLE %s;" role))))
+(defmethod sql-jdbc/set-role-statement :snowflake
+  [_driver _conn role]
+  ["USE ROLE identifier(?);" role])
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]

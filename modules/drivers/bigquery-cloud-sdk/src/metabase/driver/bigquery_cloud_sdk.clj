@@ -845,8 +845,15 @@
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
-                              :workspace                        false}]
+                              :workspace                        true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
+
+(defmethod driver/qualified-name-components :bigquery-cloud-sdk
+  [_driver]
+  ;; BigQuery emits three-part identifiers in compiled SQL: `project.dataset.table`.
+  ;; Project is connection-level identity but it appears in the AST as `Table.catalog`,
+  ;; so we model it as `:db`. Dataset sits at SQLGlot's `Table.db` position, our `:schema`.
+  [:db :schema])
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
@@ -1135,6 +1142,40 @@
                                     (getCredentials [_] creds)))
          ^IAMSettings (.build)))))
 
+(defn create-dataset!
+  "Create `dataset-name` in `project-id` via `client`. Idempotent — no-op when
+   the dataset already exists. `:description` (in `opts`) is optional metadata.
+
+   Used by [[init-workspace-isolation!]] to provision the workspace's output
+   dataset, and by tests to set up per-run source datasets."
+  [^BigQuery client ^String project-id ^String dataset-name & [{:keys [^String description]}]]
+  (let [dataset-id (DatasetId/of project-id dataset-name)]
+    (when-not (.getDataset client dataset-id
+                           ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                           (into-array BigQuery$DatasetOption []))
+      (let [builder (DatasetInfo/newBuilder dataset-id)
+            _       (when description (.setDescription builder description))
+            info    (.build builder)]
+        (.create client info
+                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                 (into-array BigQuery$DatasetOption []))))))
+
+(defn drop-dataset!
+  "Delete `dataset-name` in `project-id` via `client`, including all its tables.
+   Idempotent — no-op when the dataset doesn't exist.
+
+   Used by [[destroy-workspace-isolation!]] to tear down the workspace's output
+   dataset, and by tests to clean up per-run source datasets."
+  [^BigQuery client ^String project-id ^String dataset-name]
+  (let [dataset-id (DatasetId/of project-id dataset-name)]
+    (when (.getDataset client dataset-id
+                       ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
+                       (into-array BigQuery$DatasetOption []))
+      (.delete client dataset-id
+               ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
+               (into-array BigQuery$DatasetDeleteOption
+                           [(BigQuery$DatasetDeleteOption/deleteContents)])))))
+
 (defn- ws-service-account-id
   "Generate the service account ID for a workspace (max 30 chars, lowercase, alphanumeric + hyphens)."
   [workspace]
@@ -1269,20 +1310,29 @@
 
 (defn- ws-wait-for-impersonation-ready!
   "Poll until impersonation is working. GCP IAM changes can take up to 60 seconds to propagate.
-   Tests by actually creating impersonated credentials and making a simple API call."
+   Tests by actually creating impersonated credentials and making a simple API call.
+
+   Each iteration builds a fresh `ServiceAccountCredentials` source (and the
+   derived `ImpersonatedCredentials` + `BigQuery` client). Reusing one across
+   iterations would let GCP's auth-library token-cache and retry/backoff state
+   from an early failure persist for the duration of the loop, so even after
+   the underlying IAM grant propagates, every subsequent check inherits the
+   negative-cached state and the loop times out. Per-iteration creation
+   isolates each attempt."
   [details ^String target-sa-email & {:keys [max-attempts interval-ms]
                                       :or   {max-attempts 120
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
-  (let [base-creds  (.createScoped (ws-service-account-credentials details)
-                                   (doto (java.util.ArrayList.)
-                                     (.add "https://www.googleapis.com/auth/bigquery")))
-        project-id  (get-project-id details)]
+  (let [project-id (get-project-id details)]
     (loop [attempt 1]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
       (let [result (try
-                     ;; Try to create impersonated credentials and use them
-                     (let [impersonated (ImpersonatedCredentials/create
+                     ;; Build fresh credentials each iteration to avoid cached
+                     ;; negative results from earlier attempts.
+                     (let [base-creds   (.createScoped (ws-service-account-credentials details)
+                                                       (doto (java.util.ArrayList.)
+                                                         (.add "https://www.googleapis.com/auth/bigquery")))
+                           impersonated (ImpersonatedCredentials/create
                                          base-creds
                                          target-sa-email
                                          nil  ;; delegates
@@ -1291,6 +1341,7 @@
                                          3600)
                            client       (-> (BigQueryOptions/newBuilder)
                                             ^BigQueryOptions$Builder (.setCredentials impersonated)
+                                            ^BigQueryOptions$Builder (.setProjectId project-id)
                                             ^BigQueryOptions (.build)
                                             ^BigQuery (.getService))]
                        ;; Try a simple operation - list datasets (limited to 1)
@@ -1407,15 +1458,8 @@
         (ws-wait-for-impersonation-ready! details ws-sa-email)
 
         ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
-        (when-not (.getDataset client dataset-id
-                               ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
-                               (into-array BigQuery$DatasetOption []))
-          (let [dataset-info (-> (DatasetInfo/newBuilder dataset-id)
-                                 (.setDescription (format "Metabase workspace isolation for workspace %s" (:id workspace)))
-                                 (.build))]
-            (.create client dataset-info
-                     ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
-                     (into-array BigQuery$DatasetOption []))))
+        (create-dataset! client project-id dataset-name
+                         {:description (format "Metabase workspace isolation for workspace %s" (:id workspace))})
 
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
@@ -1487,20 +1531,12 @@
         client       (ws-database-details->client details)
         iam-client   (ws-database-details->iam-client details)
         project-id   (get-project-id details)
-        dataset-name (driver.u/workspace-isolation-namespace-name workspace)
-        dataset-id   (DatasetId/of project-id dataset-name)]
+        dataset-name (driver.u/workspace-isolation-namespace-name workspace)]
     (try
       (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
 
       ;; Delete the dataset if it exists (deleteContents=true removes all tables)
-      (when (.getDataset client dataset-id
-                         ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
-                         (into-array BigQuery$DatasetOption []))
-        (log/infof "Deleting dataset %s" dataset-name)
-        (.delete client dataset-id
-                 ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
-                 (into-array BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)]))
-        (log/infof "Deleted dataset %s" dataset-name))
+      (drop-dataset! client project-id dataset-name)
 
       ;; Delete the service account (this also removes its IAM bindings)
       (ws-delete-service-account! iam-client project-id workspace)

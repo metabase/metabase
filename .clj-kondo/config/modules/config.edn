@@ -109,7 +109,8 @@
            search
            settings
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1322,7 +1323,8 @@
            task
            task-history
            tracing
-           util}
+           util
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -1745,6 +1747,7 @@
               metabase.query-processor.interface
               metabase.query-processor.metadata
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -1789,7 +1792,8 @@
            system
            tracing
            users
-           util}
+           util
+           workspaces}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
@@ -2146,7 +2150,8 @@
            tracing
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2316,7 +2321,8 @@
            query-processor
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2368,7 +2374,8 @@
            settings
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2588,7 +2595,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2600,8 +2606,13 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
+
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.core
+          metabase.workspaces.table-remapping}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -2672,7 +2683,8 @@
            setup
            sync
            users
-           util}
+           util
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -2934,7 +2946,8 @@
            settings
            util
            warehouse-schema
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -3297,6 +3310,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
@@ -3308,6 +3322,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search
@@ -3456,9 +3471,25 @@
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/workspaces
-  {:team "Metabot"
-   :api  #{}
-   :uses #{premium-features}}}
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           app-db
+           cache
+           driver
+           lib
+           models
+           permissions
+           premium-features
+           query-processor
+           server
+           sql-tools
+           util
+           enterprise/serialization}
+   :model-imports #{:model/Database
+                    :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
