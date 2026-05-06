@@ -142,9 +142,7 @@
 (defn- model-columns
   "Display names of every column the model exposes."
   [doc]
-  (->> (:result_metadata doc)
-       (map :display_name)
-       (filter some?)))
+  (keep :display_name (:result_metadata doc)))
 
 (defn- collect-dashboards [yamls]
   (for [{:keys [path doc]} yamls
@@ -264,14 +262,12 @@
       (str label ":\n\n" (bullet-list items))
       empty-label)))
 
-(defn- bare-list-renderer
-  "Returns a fn that renders items as a plain bullet list. Categorical
-   sections use this — their description already ends with `:`, so no label
-   is needed."
-  []
-  (fn [items]
-    (when (seq items)
-      (bullet-list items))))
+(defn- bare-list
+  "Render items as a plain bullet list. Categorical sections use this — their
+   description already ends with `:`, so no label is needed."
+  [items]
+  (when (seq items)
+    (bullet-list items)))
 
 (defn- render-entity
   "Render one ### subsection: heading, optional description, and the items
@@ -303,7 +299,7 @@
 
 (def ^:private categorical-section
   {:items-key    :values
-   :render-items (bare-list-renderer)})
+   :render-items bare-list})
 
 (defn- render-intro
   "Substitute `{{title}}` into the template content. Pure: the template is
@@ -311,33 +307,18 @@
   [template-content title]
   (str/replace template-content "{{title}}" title))
 
-(def ^:private document-sections
-  "Each entry pairs a top-level heading with the section config that knows how
-   to render its entities. Adding a section means appending one map here, not
-   editing render-document."
-  [{:heading "## Dashboards"
-    :section dashboard-section
-    :data-key :dashboards}
-   {:heading "## Models"
-    :section model-section
-    :data-key :models}
-   {:heading  "## Categorical column values"
-    :preamble "Some columns in the models above hold one of a fixed set of values."
-    :section  categorical-section
-    :data-key :categorical}])
-
-(defn- render-document-section [{:keys [heading preamble section data-key]} data]
-  (str/join "\n\n"
-            (remove str/blank?
-                    [heading
-                     preamble
-                     (render-entities section (data-key data))])))
-
 (defn- render-document
-  [{:keys [intro] :as data}]
+  [{:keys [intro dashboards models categorical]}]
   (str (str/join "\n\n"
-                 (cons (str/trimr intro)
-                       (map #(render-document-section % data) document-sections)))
+                 (remove str/blank?
+                         [(str/trimr intro)
+                          "## Dashboards"
+                          (render-entities dashboard-section dashboards)
+                          "## Models"
+                          (render-entities model-section models)
+                          "## Categorical column values"
+                          "Some columns in the models above hold one of a fixed set of values."
+                          (render-entities categorical-section categorical)]))
        "\n"))
 
 ;; ---------------------------------------------------------------------------
