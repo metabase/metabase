@@ -21,7 +21,7 @@
                                                       :transform-advanced-runs true}]
       (with-mocked-routing! nil
         #(is (false? (transforms.gating/transform-locked?
-                      {:source_type :native})))))))
+                      {:source {:type "query"}})))))))
 
 (deftest transform-locked?-basic-bucket-test
   (testing "basic-bucket transform follows :transform-basic-runs"
@@ -29,16 +29,16 @@
       (fn []
         (testing "locked"
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
-            (is (true? (transforms.gating/transform-locked? {:source_type :native})))))
+            (is (true? (transforms.gating/transform-locked? {:source {:type "query"}})))))
         (testing "unlocked"
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs false}]
-            (is (false? (transforms.gating/transform-locked? {:source_type :native})))))
+            (is (false? (transforms.gating/transform-locked? {:source {:type "query"}})))))
         (testing "missing → unlocked"
           (mt/with-temporary-setting-values [locked-meters {}]
-            (is (false? (transforms.gating/transform-locked? {:source_type :native})))))
+            (is (false? (transforms.gating/transform-locked? {:source {:type "query"}})))))
         (testing "advanced-bucket lock does not bleed into basic"
           (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
-            (is (false? (transforms.gating/transform-locked? {:source_type :native})))))))))
+            (is (false? (transforms.gating/transform-locked? {:source {:type "query"}})))))))))
 
 (deftest transform-locked?-advanced-bucket-test
   (testing "advanced-bucket transform follows :transform-advanced-runs"
@@ -46,35 +46,19 @@
       (fn []
         (testing "python locked"
           (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
-            (is (true? (transforms.gating/transform-locked? {:source_type :python})))))
+            (is (true? (transforms.gating/transform-locked? {:source {:type "python"}})))))
         (testing "python unlocked"
           (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs false}]
-            (is (false? (transforms.gating/transform-locked? {:source_type :python})))))
+            (is (false? (transforms.gating/transform-locked? {:source {:type "python"}})))))
         (testing "basic-bucket lock does not bleed into advanced"
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
-            (is (false? (transforms.gating/transform-locked? {:source_type :python})))))))))
+            (is (false? (transforms.gating/transform-locked? {:source {:type "python"}})))))))))
 
 (deftest transform-locked?-non-transform-meter-ignored-test
   (testing "locks on non-transform meters (e.g. :metabase-ai-tokens) do not affect transforms"
     (with-mocked-routing! "transform-basic"
       #(mt/with-temporary-setting-values [locked-meters {:metabase-ai-tokens true}]
-         (is (false? (transforms.gating/transform-locked? {:source_type :native})))))))
-
-(deftest transform-locked?-source-fallback-test
-  (testing "source-derivation fallback: transform without :source_type uses :source.type"
-    (with-mocked-routing! "transform-basic"
-      #(mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
-         (is (true? (transforms.gating/transform-locked?
-                     {:source {:type "query"}})))))
-    (with-mocked-routing! "transform-advanced"
-      #(mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
-         (is (true? (transforms.gating/transform-locked?
-                     {:source {:type "python"}})))))))
-
-(deftest transform-locked?-cold-cache-test
-  (testing "cold cache (default empty :locked-meters) → unlocked"
-    (with-mocked-routing! "transform-basic"
-      #(is (false? (transforms.gating/transform-locked? {:source_type :native}))))))
+         (is (false? (transforms.gating/transform-locked? {:source {:type "query"}})))))))
 
 (deftest transforms-meter-locked?-test
   (testing "FE-facing aggregate: locked iff either transforms meter is locked"

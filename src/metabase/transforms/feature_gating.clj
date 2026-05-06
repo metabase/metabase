@@ -33,29 +33,17 @@
   {"transform-basic"    :transform-basic-runs
    "transform-advanced" :transform-advanced-runs})
 
-(defn- transform-source-type
-  "Return the source-type keyword (:python / :native / :mbql) for a transform map.
-   Prefers the `:source_type` column (set by the model's before-insert/before-update).
-   Falls back to a minimal derivation from `:source` for un-normalized test fixtures —
-   we only need to distinguish python from query here, since native and mbql route to
-   the same meter bucket via [[premium-features/transform-metered-as]]."
-  [transform]
-  (or (some-> (:source_type transform) keyword)
-      (case (some-> (get-in transform [:source :type]) keyword)
-        :python :python
-        :query  :native
-        nil)))
-
 (defn transform-locked?
   "True if the meter that would be charged for running this transform is locked.
    Returns false for non-metered transforms (OSS, self-hosted basic-only) and when
    no `:locked-meters` mirror has been written yet (cold cache, airgap)."
   [transform]
   (boolean
-   (when-let [meter-key (some-> (transform-source-type transform)
+   (when-let [meter-key (some-> ((requiring-resolve 'metabase.transforms-base.util/transform-source-type)
+                                 (:source transform))
                                 premium-features/transform-metered-as
                                 metered-as->meter-key)]
-     (true? (get (premium-features/locked-meters) meter-key)))))
+     (get (premium-features/locked-meters) meter-key))))
 
 (defn transforms-meter-locked?
   "True if either of the two transforms meters (`:transform-basic-runs` or
@@ -66,5 +54,5 @@
    endpoint to expose a single instance-wide lock flag to the frontend."
   []
   (let [meters (premium-features/locked-meters)]
-    (boolean (or (true? (:transform-basic-runs meters))
-                 (true? (:transform-advanced-runs meters))))))
+    (boolean (or (:transform-basic-runs meters)
+                 (:transform-advanced-runs meters)))))

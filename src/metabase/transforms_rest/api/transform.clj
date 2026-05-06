@@ -154,8 +154,7 @@
   "Get instance-wide transform feature settings: whether transforms are enabled,
    and whether the customer's active transforms meter is locked (trial quota exhausted)."
   []
-  {:enabled   (or (transforms.gating/query-transforms-enabled?)
-                  (transforms.gating/python-transforms-enabled?))
+  {:enabled   (transforms.gating/any-transforms-enabled?)
    :is_locked (transforms.gating/transforms-meter-locked?)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
