@@ -5,7 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.schema :as-alias serialization.schema]
+   [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
@@ -13,6 +13,8 @@
    [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
