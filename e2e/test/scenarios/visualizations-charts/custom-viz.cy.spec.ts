@@ -1621,6 +1621,15 @@ describe("sandbox", () => {
       ),
     },
     {
+      // Refusing the listener also closes the metadata leak ("host wrote
+      // to localStorage") on top of the StorageEvent accessor blocks.
+      name: 'window.addEventListener("storage")',
+      payload: 'window.addEventListener("storage", function(){});',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: storage/,
+      ),
+    },
+    {
       name: 'setAttribute("onclick", ...)',
       payload: 'document.body.setAttribute("onclick", "alert(1)");',
       errorPattern: blockedPattern(
