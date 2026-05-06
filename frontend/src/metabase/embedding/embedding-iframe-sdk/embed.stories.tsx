@@ -20,7 +20,7 @@ const INSTANCE_URL =
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
 // Module-level init: the custom element reads `window.metabaseConfig`
-// in `connectedCallback`, so it must already be set by the time the
+// in `connectedCallback`, so `window.metabaseConfig` must already be set by the time the
 // element mounts. `useMemo` / `useEffect` aren't suitable — `useMemo`
 // is for memoization (not side effects) and `useEffect` runs after
 // children commit, too late for a child custom element's mount.

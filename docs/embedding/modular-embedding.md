@@ -178,7 +178,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 ## Pass parameter values to embedded components
 
-You can pre-populate dashboard filters and SQL parameters from your page, push new values at runtime, and listen for applied changes.
+You can set dashboard filters and SQL parameters from your page, push new values at runtime, and listen for applied changes.
 
 ### Seed values once with `initial-parameters` / `initial-sql-parameters`
 
@@ -250,8 +250,6 @@ The `event.detail` object delivered to a `parameters-change` listener has these 
 - `lastUsedParameters` - the values this user last applied to this dashboard, slug-keyed. Empty if the user hasn't applied any parameters yet.
 
 For SQL questions, listen for `sql-parameters-change` on `<metabase-question>`. Its `event.detail` has the same shape minus `lastUsedParameters`.
-
-If a value you push via `el.parameters` is applied unchanged, no event fires (your page already has the values, no need to echo them back).
 
 ## Page-level config
 

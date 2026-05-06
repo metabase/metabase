@@ -68,14 +68,11 @@ You can pre-populate dashboard filters from your app, and (optionally) keep your
 
 Pre-populate filters once on load. After the dashboard mounts, user widget edits are not reflected back to your app. Pick this when you don't need to react to filter changes.
 
-```tsx
-<InteractiveDashboard
-  dashboardId={1}
-  initialParameters={{ state: "NY" }}
-/>
+```typescript
+{% include_file "{{ dirname }}/snippets/dashboards/initial-parameters.tsx" snippet="example" %}
 ```
 
-For a single value, pass a `string`. For multiple values, pass a list of strings.
+For a single value, pass a `string`. For multiple values, pass an array of `string` values.
 
 ### `parameters` + `onParametersChange` (controlled)
 
