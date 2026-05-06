@@ -394,3 +394,15 @@
     (testing "returns empty set for invalid SQL (graceful failure)"
       (let [result (context/extract-tables-from-sql (mt/id) "THIS IS NOT SQL")]
         (is (= #{} result))))))
+
+(deftest extract-card-ids-from-template-tags-test
+  (testing "extracts card template tag IDs and ignores other tag types"
+    (is (= #{1 2}
+           (context/extract-card-ids-from-template-tags
+            {"#1" {:type "card" :card-id 1}
+             "#2" {:type :card :card_id 2}
+             "id" {:type "dimension"}
+             "orders" {:type "table" :table-id 10}}))))
+
+  (testing "returns an empty set for missing template tags"
+    (is (= #{} (context/extract-card-ids-from-template-tags nil)))))
