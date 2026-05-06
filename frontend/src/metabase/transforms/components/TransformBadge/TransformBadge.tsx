@@ -11,7 +11,7 @@ export const TransformBadge = forwardRef(function TransformBadge(
   return (
     <Box
       ref={ref}
-      c="text-secondary"
+      c="text-primary"
       fz="sm"
       lh="lg"
       fw="bold"
