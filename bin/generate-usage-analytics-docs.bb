@@ -57,8 +57,7 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- non-empty!
-  "Throws if `coll` is empty; returns it otherwise. Use at the end of a
-   `->>` pipeline to fail loudly when an extractor's source has moved."
+  "Returns `coll`, or throws when empty so a moved/renamed source surfaces loudly."
   [label coll]
   (when (empty? coll)
     (throw (ex-info (str "Extracted 0 " label "; source likely moved or changed shape")
@@ -85,9 +84,7 @@
   (boolean (re-find #"\.ya?ml$" (str p))))
 
 (defn- read-yaml
-  "Parse a YAML file into `{:path ... :doc ...}`. The wrapper is the canonical
-   shape passed around the script — every collector destructures it, so paths
-   and parsed bodies never drift apart."
+  "Parse a YAML file into `{:path ... :doc ...}`."
   [path]
   (try
     {:path (str path)
@@ -126,8 +123,6 @@
   (fs/path (fs/parent dashboard-path)
            (str/replace (fs/file-name dashboard-path) #"\.ya?ml$" "")))
 
-;; Cards in the subdir are Card YAMLs, not DashboardCards — the layout fields
-;; (row/col/size_x/size_y) live inline on the parent Dashboard, not here.
 (defn- dashboard-card-names
   "Return card display names from a dashboard's sibling subdir, ordered by filename."
   [dashboard-path]
@@ -144,14 +139,14 @@
   [doc]
   (keep :display_name (:result_metadata doc)))
 
-(defn- collect-dashboards [yamls]
+(defn- dashboard-entries [yamls]
   (for [{:keys [path doc]} yamls
         :when (dashboard? doc)]
     {:name        (:name doc)
      :description (:description doc)
      :cards       (dashboard-card-names path)}))
 
-(defn- collect-models [yamls]
+(defn- model-entries [yamls]
   (for [{:keys [doc]} yamls
         :when (model? doc)]
     {:name        (:name doc)
@@ -162,7 +157,7 @@
 ;; Categorical-column extractors
 ;; ---------------------------------------------------------------------------
 
-(defn- extract-query-sources
+(defn- query-sources
   "Read the [:enum ...] body of `::context` in info.cljc and return its
    keyword names as sorted strings."
   [src]
@@ -179,7 +174,7 @@
          vec
          (non-empty! "query sources"))))
 
-(defn- extract-audit-log-topics
+(defn- audit-log-topics
   "Grep `(derive :event/<topic> ::<parent>)` from the audit-log event file,
    then apply the v_audit_log SQL view's rename and exclusion rules so the
    list matches what users see in the analytics model."
@@ -196,7 +191,7 @@
          vec
          (non-empty! "audit log topics"))))
 
-(defn- extract-content-entity-types
+(defn- content-entity-types
   "Pull `'X' AS entity_type` literals from the latest mysql-content.sql view,
    plus the report_card.type values when the view's CASE-on-type arm is
    present."
@@ -214,8 +209,8 @@
          (non-empty! "content entity types"))))
 
 (defn- assert-view-log-sql-shape!
-  "Sanity-check that the v_view_log SQL view still uses `model AS entity_type`.
-   Throws if the regex sentinel is missing."
+  "Throws if the v_view_log SQL view stops using `model AS entity_type` —
+   the assumption that lets us hardcode [[view-log-entity-types]]."
   [views-dir]
   (let [sql-file (str (fs/path (latest-vN-dir views-dir) "mysql-view_log.sql"))]
     (when-not (re-find #"(?i)model\s+as\s+entity_type" (slurp sql-file))
@@ -225,18 +220,18 @@
 (defn- categorical-sections [{:keys [sources]}]
   [{:name        "Activity log topics"
     :description "The Topic column on the [Activity log](#activity-log) model takes one of:"
-    :values-fn   #(extract-audit-log-topics (:audit-log-events sources))}
+    :values-fn   #(audit-log-topics (:audit-log-events sources))}
    {:name        "Query log query sources"
     :description "The Query Source column on the [Query log](#query-log) model takes one of:"
-    :values-fn   #(extract-query-sources (:query-sources sources))}
+    :values-fn   #(query-sources (:query-sources sources))}
    {:name        "Content entity types"
     :description "The Entity Type column on the [Content](#content) model takes one of:"
-    :values-fn   #(extract-content-entity-types (:content-views sources))}
+    :values-fn   #(content-entity-types (:content-views sources))}
    {:name        "View log entity types"
     :description "The Entity Type column on the [View log](#view-log) model takes one of:"
     :values-fn   (constantly view-log-entity-types)}])
 
-(defn- collect-categorical [sections]
+(defn- categorical-entries [sections]
   (mapv (fn [{:keys [name description values-fn]}]
           {:name        name
            :description description
@@ -263,15 +258,13 @@
       empty-label)))
 
 (defn- bare-list
-  "Render items as a plain bullet list. Categorical sections use this — their
-   description already ends with `:`, so no label is needed."
+  "Render `items` as a plain bullet list, or `nil` when empty."
   [items]
   (when (seq items)
     (bullet-list items)))
 
-(defn- render-entity
-  "Render one ### subsection: heading, optional description, and the items
-   block (whose shape is determined by the section's `render-items` fn)."
+(defn- entity-markdown
+  "Render one `###` subsection from `{:name :description :items :render-items}`."
   [{:keys [name description items render-items]}]
   (str/join "\n\n"
             (remove str/blank?
@@ -279,14 +272,14 @@
                      description
                      (render-items items)])))
 
-(defn- render-entities
+(defn- entities-markdown
   [{:keys [items-key render-items]} entities]
   (->> entities
        (map (fn [e]
-              (render-entity {:name         (:name e)
-                              :description  (:description e)
-                              :items        (items-key e)
-                              :render-items render-items})))
+              (entity-markdown {:name         (:name e)
+                                :description  (:description e)
+                                :items        (items-key e)
+                                :render-items render-items})))
        (str/join "\n\n")))
 
 (def ^:private dashboard-section
@@ -301,42 +294,41 @@
   {:items-key    :values
    :render-items bare-list})
 
-(defn- render-intro
-  "Substitute `{{title}}` into the template content. Pure: the template is
-   slurped by the entry point and passed in here as a string."
+(defn- intro-markdown
+  "Substitute `{{title}}` into `template-content`."
   [template-content title]
   (str/replace template-content "{{title}}" title))
 
-(defn- render-document
+(defn- document-markdown
   [{:keys [intro dashboards models categorical]}]
   (str (str/join "\n\n"
                  (remove str/blank?
                          [(str/trimr intro)
                           "## Dashboards"
-                          (render-entities dashboard-section dashboards)
+                          (entities-markdown dashboard-section dashboards)
                           "## Models"
-                          (render-entities model-section models)
+                          (entities-markdown model-section models)
                           "## Categorical column values"
                           "Some columns in the models above hold one of a fixed set of values."
-                          (render-entities categorical-section categorical)]))
+                          (entities-markdown categorical-section categorical)]))
        "\n"))
 
 ;; ---------------------------------------------------------------------------
 ;; Entry point
 ;; ---------------------------------------------------------------------------
 
-(defn- generate [{:keys [yaml-dir template output title sources] :as cfg}]
+(defn- generate! [{:keys [yaml-dir template output title sources] :as cfg}]
   (when-not (fs/directory? yaml-dir)
     (throw (ex-info (str "YAML directory does not exist: " yaml-dir)
                     {:yaml-dir yaml-dir
                      :cwd      (str (fs/cwd))})))
   (assert-view-log-sql-shape! (:view-log-views sources))
   (let [yamls       (top-level-yamls yaml-dir)
-        dashboards  (collect-dashboards yamls)
-        models      (collect-models     yamls)
-        categorical (collect-categorical (categorical-sections cfg))
-        intro       (render-intro (slurp template) title)
-        content     (render-document
+        dashboards  (dashboard-entries yamls)
+        models      (model-entries     yamls)
+        categorical (categorical-entries (categorical-sections cfg))
+        intro       (intro-markdown (slurp template) title)
+        content     (document-markdown
                      {:intro       intro
                       :dashboards  dashboards
                       :models      models
@@ -356,7 +348,7 @@
 
 (defn -main [& _args]
   (try
-    (generate config)
+    (generate! config)
     (catch Exception e
       (println "Error:" (.getMessage e))
       (when-let [data (ex-data e)]
