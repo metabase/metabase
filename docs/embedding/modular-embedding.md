@@ -178,7 +178,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 ## Pass parameter values to embedded components
 
-See [Modular embedding parameters](./modular-embedding-parameters.md#pass-parameter-values-to-embedded-components).
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).
 
 ## Page-level config
 

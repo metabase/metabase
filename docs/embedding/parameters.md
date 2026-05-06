@@ -18,7 +18,7 @@ You can pre-populate dashboard filters from your app, and (optionally) keep your
 Pre-populate filters once on load. After the dashboard mounts, user widget edits are not reflected back to your app. Pick this when you don't need to react to filter changes.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/dashboards/initial-parameters.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/initial-parameters.tsx" snippet="example" %}
 ```
 
 For a single value, pass a `string`. For multiple values, pass an array of `string` values.
@@ -28,7 +28,7 @@ For a single value, pass a `string`. For multiple values, pass an array of `stri
 Push values from your app, and observe every applied change via `onParametersChange`. This works like a controlled `<input value onChange>` - your app holds the source of truth, the dashboard re-renders when the prop changes, and you receive a callback whenever applied values change.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
 ```
 
 `onParametersChange` receives the [dashboard parameter change payload](#dashboard-parameter-change-payload).
@@ -38,7 +38,7 @@ Push values from your app, and observe every applied change via `onParametersCha
 Set its value to `null`. This strictly clears the parameter and ignores its default value. Missing slugs fall back to `parameter.default ?? null`.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/dashboards/controlled-parameters.tsx" snippet="example-clear-one" %}
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-clear-one" %}
 ```
 
 ##### Clearing all parameters
@@ -46,7 +46,7 @@ Set its value to `null`. This strictly clears the parameter and ignores its defa
 Pass an empty object.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/dashboards/controlled-parameters.tsx" snippet="example-clear-all" %}
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-clear-all" %}
 ```
 
 To switch back to uncontrolled mode (and leave the dashboard's last applied values in place), set the `parameters` prop to `undefined`.
@@ -75,7 +75,7 @@ Don't combine `initialSqlParameters` and `sqlParameters` - pick one. For control
 Sets the parameter value once on load. After the question mounts, if the person viewing the embed changes the value, your app won't know about it.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/snippets/parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
 
 #### Controlled component with `sqlParameters` and `onSqlParametersChange`
@@ -83,7 +83,7 @@ Sets the parameter value once on load. After the question mounts, if the person 
 With this setup, your app maintains the parameter value state. When someone viewing the embed updates the value, a callback fires to update your app with the new value, and the question re-renders with this new value.  This works like a controlled `<input value onChange>`.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
+{% include_file "{{ dirname }}/snippets/parameters/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
 ```
 
 `onSqlParametersChange` receives the [SQL question parameter change payload](#sql-question-parameter-change-payload).
@@ -93,7 +93,7 @@ With this setup, your app maintains the parameter value state. When someone view
 To clear a parameter completely, set its value to `null`. Clearing the parameter with a `null` also ignores the parameter's default value (if any). Missing parameter fall back to `parameter.default ?? null`.
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/modular-embedding-parameters/questions/controlled-sql-parameters.tsx" snippet="example-clear" %}
+{% include_file "{{ dirname }}/snippets/parameters/questions/controlled-sql-parameters.tsx" snippet="example-clear" %}
 ```
 
 ## Modular embedding (web components)

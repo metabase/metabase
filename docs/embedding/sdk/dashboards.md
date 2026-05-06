@@ -62,7 +62,7 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 
 ## Pass parameter values to a dashboard
 
-See [Modular embedding parameters](../modular-embedding-parameters.md#pass-parameter-values-to-a-dashboard).
+See [Modular embedding parameters](../parameters.md#pass-parameter-values-to-a-dashboard).
 
 ## Customizing dashboard height
 

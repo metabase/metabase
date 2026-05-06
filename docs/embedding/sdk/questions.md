@@ -62,7 +62,7 @@ Use this component when you want to allow people to explore their data and custo
 
 ## Pass parameters to SQL questions
 
-See [Modular embedding parameters](../modular-embedding-parameters.md#pass-parameters-to-sql-questions).
+See [Modular embedding parameters](../parameters.md#pass-parameters-to-sql-questions).
 
 ## Enable alerts on embedded questions
 
