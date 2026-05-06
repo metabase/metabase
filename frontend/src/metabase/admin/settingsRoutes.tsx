@@ -1,5 +1,10 @@
 import type { Store } from "@reduxjs/toolkit";
-import { IndexRedirect, IndexRoute, Route } from "react-router";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Route,
+  type RouteComponent,
+} from "react-router";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -9,7 +14,6 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { IsAdmin } from "metabase/route-guards";
 import { getSetting } from "metabase/selectors/settings";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
@@ -34,7 +38,10 @@ import { UpdatesSettingsPage } from "./settings/components/SettingsPages/Updates
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
 
-export const getSettingsRoutes = (store: Store<State>) => {
+export const getSettingsRoutes = (
+  store: Store<State>,
+  IsAdmin: RouteComponent,
+) => {
   const devModeEnabled = getSetting(
     store.getState(),
     "custom-viz-plugin-dev-mode-enabled",
