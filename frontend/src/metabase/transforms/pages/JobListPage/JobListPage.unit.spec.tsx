@@ -9,8 +9,12 @@ import {
   setupUpdateTransformJobEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks/state";
 import type { TransformJob } from "metabase-types/api";
-import { createMockTransformJob } from "metabase-types/api/mocks";
+import {
+  createMockTransformJob,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { JobListPage } from "./JobListPage";
 
@@ -66,7 +70,13 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
   };
 });
 
-async function setup({ jobs }: { jobs: TransformJob[] }) {
+async function setup({
+  jobs,
+  isAdmin = false,
+}: {
+  jobs: TransformJob[];
+  isAdmin?: boolean;
+}) {
   setupListTransformJobsEndpoint(jobs);
   jobs.forEach(setupUpdateTransformJobEndpoint);
   jobs.forEach((job) => setupDeleteTransformJobEndpoint(job.id));
@@ -74,7 +84,13 @@ async function setup({ jobs }: { jobs: TransformJob[] }) {
   const path = "/transforms/jobs";
   const { history } = renderWithProviders(
     <Route path={path} component={JobListPage} />,
-    { withRouter: true, initialRoute: path },
+    {
+      withRouter: true,
+      initialRoute: path,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 
   await screen.findByTestId("tree-table-mock");
@@ -87,8 +103,8 @@ async function findRow(jobId: number) {
 }
 
 describe("JobListPage", () => {
-  it("hides the bulk-action menu when there are no jobs", async () => {
-    await setup({ jobs: [] });
+  it("hides the bulk-action menu for admins when there are no jobs", async () => {
+    await setup({ jobs: [], isAdmin: true });
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
@@ -109,6 +125,7 @@ describe("JobListPage", () => {
   it("opens the row action menu without navigating to the detail page", async () => {
     const { history } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: true,
     });
 
     const row = await findRow(1);
@@ -123,6 +140,7 @@ describe("JobListPage", () => {
   it("disables a job from the row action menu without navigating", async () => {
     const { history } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: true,
     });
 
     const row = await findRow(1);
@@ -148,6 +166,7 @@ describe("JobListPage", () => {
   it("deletes a job from the row action menu without visiting the detail page", async () => {
     const { history } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: true,
     });
     const visited: string[] = [];
     history?.listen((location) => visited.push(location.pathname));
@@ -167,5 +186,29 @@ describe("JobListPage", () => {
       ).toBeDefined();
     });
     expect(visited.some((path) => path.includes("/jobs/1"))).toBe(false);
+  });
+
+  it("hides the row action menu for non-admin users", async () => {
+    await setup({
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: false,
+    });
+
+    const row = await findRow(1);
+    expect(
+      within(row).queryByLabelText("ellipsis icon"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the bulk-action menu for non-admin users even with jobs", async () => {
+    await setup({
+      jobs: [
+        createMockTransformJob({ id: 1, name: "Job A", active: true }),
+        createMockTransformJob({ id: 2, name: "Job B", active: true }),
+      ],
+      isAdmin: false,
+    });
+
+    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 });

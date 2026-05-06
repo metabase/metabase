@@ -3113,7 +3113,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("deep.equal", { active: true });
       H.DataStudio.Jobs.editor().findByText("Disabled").should("not.exist");
 
-      visitJobListPage();
+      H.DataStudio.nav().findByRole("link", { name: "Jobs" }).click();
 
       cy.log("bulk-disable: cancel from the modal does not fire the mutation");
       openBulkActionsMenu();

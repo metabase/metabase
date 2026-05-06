@@ -10,7 +10,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -35,6 +36,8 @@ export const JobListPage = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isAdmin = useSelector(getUserIsAdmin);
+
   const { data: jobs = [], error, isLoading } = useListTransformJobsQuery({});
 
   const handleRowActivate = useCallback(
@@ -44,8 +47,8 @@ export const JobListPage = () => {
     [dispatch],
   );
 
-  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
-    () => [
+  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(() => {
+    const columns: TreeTableColumnDef<TransformJob>[] = [
       {
         id: "name",
         accessorKey: "name",
@@ -74,15 +77,17 @@ export const JobListPage = () => {
         width: 100,
         cell: ({ row }) => (!row.original.active ? <JobDisabledBadge /> : null),
       },
-      {
+    ];
+    if (isAdmin) {
+      columns.push({
         id: "actions",
         header: "",
         width: 40,
         cell: ({ row }) => <JobMoreMenu job={row.original} />,
-      },
-    ],
-    [],
-  );
+      });
+    }
+    return columns;
+  }, [isAdmin]);
 
   const treeTableInstance = useTreeTableInstance({
     data: jobs,
@@ -126,7 +131,7 @@ export const JobListPage = () => {
             component={ForwardRefLink}
             to={Urls.newTransformJob()}
           >{t`New`}</Button>
-          {jobs.length > 0 && <JobListMoreMenu jobs={jobs} />}
+          {isAdmin && jobs.length > 0 && <JobListMoreMenu jobs={jobs} />}
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>

@@ -129,7 +129,7 @@
   [_route-params
    _query-params
    {:keys [active]} :- [:map [:active :boolean]]]
-  (api/check-data-analyst)
+  (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
   (let [op     (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb   (if active "activate" "deactivate")
