@@ -198,13 +198,12 @@
    as a `{schema {table-id :blocked}}` map, which the frontend interprets as `granular`. Only applied to
    `:perms/view-data`; other granular perm types intentionally retain their map shape."
   [perm-type->value]
-  (let [view-data-val (get perm-type->value :perms/view-data)]
-    (if (map? view-data-val)
-      (let [leaf-vals (into #{} (mapcat vals) (vals view-data-val))]
-        (if (= 1 (count leaf-vals))
-          (assoc perm-type->value :perms/view-data (first leaf-vals))
-          perm-type->value))
-      perm-type->value)))
+  (let [view-data-val (:perms/view-data perm-type->value)
+        leaf-vals     (when (map? view-data-val)
+                        (into #{} (mapcat vals) (vals view-data-val)))]
+    (cond-> perm-type->value
+      (= 1 (count leaf-vals))
+      (assoc :perms/view-data (first leaf-vals)))))
 
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
