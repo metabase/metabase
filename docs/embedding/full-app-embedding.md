@@ -167,8 +167,6 @@ To manually log someone out of Metabase, load the following URL (for example, in
 https://metabase.yourcompany.com/auth/logout
 ```
 
-If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
-
 ## Supported postMessage messages _from_ embedded Metabase
 
 To keep up with changes to an embedded Metabase URL (for example, when a filter is applied), set up your app to listen for "location" messages from the embedded Metabase. If you want to use this message for deep-linking, note that "location" mirrors "window.location".
