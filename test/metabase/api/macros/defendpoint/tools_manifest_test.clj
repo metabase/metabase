@@ -19,9 +19,14 @@
     (is (= {:annotations {:destructiveHint false :idempotentHint true}
             :redundant   {}}
            (tools-manifest/infer-annotations :put nil))))
-  (testing "POST defaults (empty — MCP spec defaults apply)"
-    (is (= {:annotations {} :redundant {}}
-           (tools-manifest/infer-annotations :post nil))))
+  (testing "POST defaults to non-destructive (opt in with :destructive? true)"
+    (is (= {:annotations {:destructiveHint false} :redundant {}}
+           (tools-manifest/infer-annotations :post nil)))
+    (is (= {:destructive? false}
+           (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
+  (testing "destructiveHint is dropped when readOnlyHint is true (only meaningful when not read-only)"
+    (is (= {:readOnlyHint true}
+           (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
   (testing "Explicit annotations are merged on top of method defaults"
     (is (= {:annotations {:readOnlyHint true :idempotentHint true}
             :redundant   {}}
@@ -30,11 +35,7 @@
     (is (= {:read-only? true}
            (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
     (is (= {:destructive? false}
-           (:redundant (tools-manifest/infer-annotations :put {:destructive? false})))))
-  (testing "Explicit annotations matching MCP spec defaults are NOT redundant — they may be needed
-            for Claude compliance (e.g. :destructive? true on a destructive POST)"
-    (is (= {} (:redundant (tools-manifest/infer-annotations :post {:destructive? true}))))
-    (is (= {} (:redundant (tools-manifest/infer-annotations :post {:idempotent? false}))))))
+           (:redundant (tools-manifest/infer-annotations :put {:destructive? false}))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
@@ -284,19 +285,6 @@
       (is (thrown-with-msg?
            ExceptionInfo
            #"redundant :annotations"
-           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
-
-(deftest ^:parallel endpoint->tool-definition-claude-connector-compliance-test
-  (testing "Throws when a POST tool declares neither :read-only? nor :destructive?"
-    (let [form {:method   :post
-                :route    {:path "/v1/test-action"}
-                :params   {:body {:schema [:map [:name :string]]}}
-                :docstr   "A test POST action."
-                :metadata {:tool {:name "test_action"}}
-                :body     '(nil)}]
-      (is (thrown-with-msg?
-           ExceptionInfo
-           #"Claude connector requirement"
            (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.

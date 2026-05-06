@@ -638,8 +638,7 @@
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the base64 query string from construct_query. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
-                             "description, and target collection.")
-           :annotations {:destructive? false}}}
+                             "description, and target collection.")}}
   [_route-params
    _query-params
    {:keys [query display description collection_id visualization_settings]
@@ -686,8 +685,7 @@
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
-                             "Cards are auto-positioned on the dashboard grid.")
-           :annotations {:destructive? false}}}
+                             "Cards are auto-positioned on the dashboard grid.")}}
   [_route-params
    _query-params
    {:keys [description collection_id question_ids]

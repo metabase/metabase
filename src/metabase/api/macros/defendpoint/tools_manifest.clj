@@ -160,11 +160,13 @@
    :open-world?  :openWorldHint})
 
 (defn- method-default-annotations
-  "Infer default MCP ToolAnnotations from HTTP method."
+  "Infer default MCP ToolAnnotations from HTTP method. POST defaults to non-destructive — opt
+   in with `:destructive? true` for endpoints that actually destroy data."
   [method]
   (case method
-    (:get :head) {:readOnlyHint   true
-                  :idempotentHint true}
+    (:get :head) {:readOnlyHint    true
+                  :idempotentHint  true}
+    :post        {:destructiveHint false}
     :put         {:destructiveHint false
                   :idempotentHint  true}
     :delete      {:destructiveHint true
@@ -177,10 +179,9 @@
    Callers should reject any `:redundant` entries — explicit declarations must add information
    beyond the HTTP-method default.
 
-   We deliberately don't flag explicit annotations matching MCP spec defaults. Some are required
-   for Claude connector compliance: a destructive POST has no method default for destructiveHint,
-   so `:destructive? true` is the only way to satisfy the connector even though it matches the
-   MCP spec default."
+   `destructiveHint` is dropped from the result when `readOnlyHint` is true, since per the MCP
+   spec it's only meaningful for non-read-only tools. This keeps read-only POSTs from emitting
+   a contradictory `{readOnlyHint: true, destructiveHint: true}`."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
         explicit        (into {}
@@ -188,6 +189,7 @@
                                       (when-let [mcp-key (annotation-key-mapping k)]
                                         [mcp-key v])))
                               explicit-annotations)
+        merged          (merge method-defaults explicit)
         ;; Report redundancies with the developer's original key (e.g. :read-only?), not the
         ;; translated MCP key, so the error points at what they actually wrote.
         redundant       (into {}
@@ -196,7 +198,8 @@
                                         (when (= v (get method-defaults mcp-key))
                                           [k v]))))
                               explicit-annotations)]
-    {:annotations (merge method-defaults explicit)
+    {:annotations (cond-> merged
+                    (true? (:readOnlyHint merged)) (dissoc :destructiveHint))
      :redundant   redundant}))
 
 (defn- schema->properties-and-required
