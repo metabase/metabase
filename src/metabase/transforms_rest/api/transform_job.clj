@@ -133,7 +133,9 @@
   (log/info "Setting active =" active "on all transform jobs")
   (let [op     (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb   (if active "activate" "deactivate")
-        ids    (t2/select-pks-vec :model/TransformJob :active (not active))
+        ids    (->> (t2/select :model/TransformJob :active (not active))
+                    (filter mi/can-write?)
+                    (mapv :id))
         try-op (fn [id]
                  (try
                    (op id)
