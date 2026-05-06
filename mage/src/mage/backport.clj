@@ -61,8 +61,7 @@
         (die! (format "PR #%d is %s, not MERGED. Refusing to backport." pr-number state)))
       (when-not commit
         (die! (format "Could not determine merge commit for PR #%d." pr-number)))
-      (let [short-sha       (subs commit 0 12)
-            backport-branch (format "backport-%d-%s" target-version short-sha)
+      (let [backport-branch (format "backport-%d-%s" target-version commit)
             saved-branch    (current-branch)
             gh-title        (format "🤖 backported \"%s\"" title)
             gh-body         (str "#" pr-number)
@@ -74,7 +73,7 @@
         (println (c/cyan (format "Merge commit: %s" commit)))
         (println (c/cyan (format "Creating %s from %s..." backport-branch remote-ref)))
         (shell/sh "git" "checkout" "-B" backport-branch remote-ref)
-        (println (c/cyan (format "Cherry-picking %s..." short-sha)))
+        (println (c/cyan (format "Cherry-picking %s..." commit)))
         (let [{:keys [exit]} (shell/sh* "git" "cherry-pick" commit)]
           (if (zero? exit)
             (do
