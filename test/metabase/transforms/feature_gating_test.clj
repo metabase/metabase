@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]))
 
 (set! *warn-on-reflection* true)
@@ -82,3 +83,13 @@
       (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    false
                                                         :transform-advanced-runs false}]
         (is (false? (transforms.gating/transforms-meter-locked?)))))))
+
+(deftest transforms-meter-locked-setting-test
+  (testing "the :transforms-meter-locked setting reflects the underlying transforms-meter-locked? predicate.
+            Smoke test only — exhaustive matrix lives on transforms-meter-locked?-test above."
+    (testing "unlocked"
+      (mt/with-temporary-setting-values [locked-meters {}]
+        (is (false? (transforms/transforms-meter-locked)))))
+    (testing "locked"
+      (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+        (is (true? (transforms/transforms-meter-locked)))))))
