@@ -396,7 +396,7 @@
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
    Meters without an `:is-locked` field are dropped."
   [meters]
-  (into {} (keep (fn [[k v]] (when (some? (:is-locked v)) [k (:is-locked v)]))) meters))
+  (into {} (keep (fn [[k v]] (when-some [locked (:is-locked v)] [k locked]))) meters))
 
 (defn- update-locked-meters!
   "Mirror the `:is-locked` flag for each meter in `result` to the local `:locked-meters`
