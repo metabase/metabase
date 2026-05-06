@@ -38,7 +38,6 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
-import { createPluginSandbox } from "./sandbox";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -286,6 +285,11 @@ export async function loadCustomVizPlugin(
 
     const text = await res.text();
 
+    // Lazy-load the sandbox so its top-level references to browser globals
+    // (Document/Window/Navigator/etc. in sandbox/distortions-*.ts) don't end
+    // up in the static-viz bundle, which is evaluated by GraalVM and has no
+    // DOM constructors.
+    const { createPluginSandbox } = await import("./sandbox");
     const sandbox = createPluginSandbox(plugin.id);
     const factory = sandbox.evaluate(text);
 
