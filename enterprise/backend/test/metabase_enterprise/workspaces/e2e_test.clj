@@ -3,13 +3,16 @@
    workspace-supported driver.
 
    Stands up the full pipeline the way `config.yml` does in production:
-   provisions an isolation schema + workspace user via the driver multimethods,
-   creates a Metabase Database row that connects through the workspace user
-   (with `schema-filters` restricting visibility to the main input schema),
-   runs a transform whose target gets rewritten to the isolation schema, and
-   verifies that visibility from Metabase's perspective is confined to the
-   input schema — neither the app-db `Table` rows nor `describe-database`
-   should ever surface the isolation schema.
+   provisions an isolation schema + workspace user via
+   `workspaces.provisioning/*`, builds the canonical `config.yml` map via
+   `workspaces.config/build-workspace-config`, round-trips it through YAML,
+   binds it to `advanced-config.file/*config*`, and calls `initialize!` —
+   which runs the same `:databases` and `:workspace` section loaders the
+   child instance uses at boot. Then it runs a transform whose target gets
+   rewritten to the isolation schema, and verifies that visibility from
+   Metabase's perspective is confined to the input schema — neither the
+   app-db `Table` rows nor `describe-database` should ever surface the
+   isolation schema.
 
    BigQuery is excluded for now: its DDL setup goes through the BigQuery API,
    not JDBC, so the `jdbc/execute!`-based table seeding here doesn't apply to
@@ -18,11 +21,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
@@ -30,6 +34,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -102,17 +107,7 @@
               ;; distinguishable from this one.
               main-schema (str "canonical_schema_" run-id)
               src-name (str "x_input_table_" run-id)
-              tgt-name (str "x_output_table_" run-id)
-              workspace {:id   (Long/parseLong run-id 16)
-                         :name (str "wsd-e2e-" run-id)}
-              ;; Pre-init synthetic ws-state for cleanup. Every driver's destroy
-              ;; impl derives identifiers from `workspace :id` (via the `driver.u`
-              ;; namespace-/user-name helpers), so this skeleton is enough to drive
-              ;; an idempotent destroy even if init never ran. We swap in the real
-              ;; init result once we have it.
-              ws-state (atom (merge workspace
-                                    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
-                                     :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
+              tgt-name (str "x_output_table_" run-id)]
           (try
             ;; --- Setup: DWH main schema + source table ---------------------------
             ;; Schema-creation: most workspace-supported drivers accept `CREATE SCHEMA "<name>"`,
@@ -132,51 +127,53 @@
             ;; iso.<derived>, leaving the canonical contents intact.
             (create-output-table! admin-driver admin-spec main-schema tgt-name
                                   [[99 "pre-existing"] [98 "still-pre-existing"]])
-            ;; --- Setup: isolation schema + workspace user ------------------------
-            (let [init-result (driver/init-workspace-isolation! admin-driver admin-db workspace)
-                  ws-with-details (merge workspace init-result)
-                  _ (reset! ws-state ws-with-details)
-                  isolation-schema (:schema ws-with-details)
-                  user-creds (:database_details ws-with-details)]
-              (driver/grant-workspace-read-access! admin-driver admin-db ws-with-details
-                                                   [{:schema main-schema :name src-name}])
-              ;; --- Setup: Metabase Database wired to the workspace user ----------
-              ;; Mirrors what `metabase-enterprise.workspaces.config/database-entry`
-              ;; emits for `config.yml`: admin connection details overlaid with the
-              ;; workspace user's creds, plus inclusion-mode schema filters that
-              ;; restrict sync to the input schema(s).
-              (let [ws-db-details (-> admin-details
-                                      (merge user-creds)
-                                      (assoc :schema-filters-type "inclusion"
-                                             :schema-filters-patterns main-schema))]
-                (mt/with-temp [:model/Database ws-db {:engine  admin-driver
-                                                      :details ws-db-details
-                                                      :name    (str "ws-e2e-" run-id)}]
-                  (try
-                    ;; --- Setup: instance-side workspace config ------------------
-                    ;; Bootstraps the same in-process state the
-                    ;; `:workspace` section loader installs at boot. For 3-slot drivers
-                    ;; (Snowflake, SQL Server) we populate `:db` from the admin connection
-                    ;; details so the workspace is keyed against the same database the
-                    ;; warehouse is currently bound to. 2-slot drivers (Postgres, MySQL,
-                    ;; Redshift, ClickHouse) carry only `:schema`.
-                    (let [;; For 3-slot drivers (Snowflake, SQL Server), the workspace input/output
-                          ;; namespaces and the resulting `TableRemapping` rows carry `:db`. For
-                          ;; 2-slot drivers, `:db` is absent in the workspace map (and stored as
-                          ;; the empty-string sentinel in the `TableRemapping` row).
-                          input-ns-db (when (three-slot-driver? admin-driver) (:db admin-details))
-                          input-ns    (cond-> {:schema main-schema}
-                                        input-ns-db (assoc :db input-ns-db))
-                          output-ns   (cond-> {:schema isolation-schema}
-                                        input-ns-db (assoc :db input-ns-db))]
-                      (ws/set-instance-workspace!
-                       {:name "e2e-ws"
-                        :databases {(:id ws-db) {:input  [input-ns]
-                                                 :output output-ns}}})
+            ;; --- Setup: a Metabase Database row attached to the warehouse with admin
+            ;; creds. The config-loader path (below) will rewrite its `:details` with
+            ;; workspace user creds + schema-filters when `initialize!` runs the
+            ;; `:databases` section, mirroring what a child instance does at boot.
+            (mt/with-temp [:model/Database ws-db {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "ws-e2e-" run-id)}]
+              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)})]
+                (try
+                  ;; --- Stage 1: provision via the workspace provisioning entrypoint.
+                  ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
+                  ;; multimethods, but through `provisioning/provision-single!`, which writes
+                  ;; the resulting `:database_details` and `:output_schema` back to the
+                  ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
+                  (ws/add-database! ws-id (:id ws-db) [main-schema])
+                  ;; --- Stage 2: build the canonical config.yml-shaped map and round-trip
+                  ;; through YAML, the same way a child instance receives the file from disk.
+                  ;; The round-trip is load-bearing: `build-workspace-config` returns
+                  ;; `:engine :postgres` (keyword), but the `:databases` section spec requires
+                  ;; a string. `yaml/parse-string` of `yaml/generate-string` collapses keyword
+                  ;; values to strings, matching the on-disk wire format.
+                  (let [cfg-map  (ws.config/build-workspace-config ws-id)
+                        yaml-str (ws.config/config->yaml cfg-map)
+                        reparsed (yaml/parse-string yaml-str)
+                        ;; Read the provisioned isolation schema name back from the WSD row;
+                        ;; `provision-single!` derives it from the WSD id, not the workspace id.
+                        wsd      (-> (ws/get-workspace ws-id) :databases first)
+                        isolation-schema (:output_schema wsd)]
+                    ;; --- Stage 3: bind `*config*` and run the file loader. This invokes
+                    ;; `init-from-config-file!` for the `:databases` section (updates the
+                    ;; existing Database row with merged workspace creds + schema-filters)
+                    ;; and `apply-workspace-section!` for the `:workspace` section (resolves
+                    ;; db names → ids and populates `ws/workspace-instance-config`).
+                    (is (= :fail (ordered->plain reparsed)))
+                    (binding [advanced-config.file/*config* reparsed]
+                      (advanced-config.file/initialize!))
+                    ;; The Database row's `:details` was just rewritten by the loader. Re-read
+                    ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
+                    (let [ws-db (t2/select-one :model/Database :id (:id ws-db))
+                          input-ns-db (when (three-slot-driver? admin-driver) (:db admin-details))]
                       (mt/with-db ws-db
                         (sync/sync-database! ws-db {:scan :schema})
 
                       ;; --- Action: define + run a transform ------------------
+                        (is (= :fail [main-schema src-name (:id ws-db) ws-db]))
+                        (is (= :fail (t2/select :model/Table :db_id (:id ws-db))))
                         (let [src-table (t2/select-one :model/Table
                                                        :db_id (:id ws-db)
                                                        :schema main-schema
@@ -322,16 +319,22 @@
                                           tables)
                                     "the input-schema source table appears in the app db")
                                 (is (= [] (filter #(= isolation-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
-                                    "no app-db Table row points at the isolation schema")))))))
-                    (finally
-                      (ws/clear-instance-workspace!))))))
+                                    "no app-db Table row points at the isolation schema"))))))))
+                  (finally
+                    ;; Clear the in-process workspace atom (populated by `apply-workspace-section!`
+                    ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
+                    ;; `:databases` initializer rewrote the `Database.details` to the workspace
+                    ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
+                    ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
+                    ;; `delete-workspace!` then deprovisions any `:provisioned` databases (calls
+                    ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
+                    ;; provision succeeded fully or partially.
+                    (ws/clear-instance-workspace!)
+                    (t2/update! :model/Database (:id ws-db) {:details admin-details})
+                    (try (ws/delete-workspace! ws-id)
+                         (catch Throwable t
+                           (log/warn t "delete-workspace! failed during e2e cleanup")))))))
             (finally
-              ;; Destroy first — driver impls are idempotent (`IF EXISTS` everywhere)
-              ;; so this is safe whether init succeeded fully, partially, or not at
-              ;; all. Catch+log so a destroy failure doesn't shadow the test failure.
-              (try (driver/destroy-workspace-isolation! admin-driver admin-db @ws-state)
-                   (catch Throwable t
-                     (log/warn t "destroy-workspace-isolation! failed during e2e cleanup")))
               (try (jdbc/execute! admin-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE"
                                                       (sql.u/quote-name admin-driver :schema main-schema))])
                    (catch Throwable _ nil)))))))))
