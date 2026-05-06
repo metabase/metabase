@@ -1,4 +1,8 @@
-import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import {
+  b64hash_to_utf8,
+  b64url_to_utf8,
+  utf8_to_b64url,
+} from "metabase/lib/encoding";
 import { stableStringify } from "metabase/lib/objects";
 import { equals } from "metabase/lib/utils";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
@@ -80,4 +84,9 @@ export function serializeCardForUrl(
 
 export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
+}
+
+export function deserializeCardFromQuery(query: string): Card {
+  const base64 = query.replace(/^\/question#/, "");
+  return JSON.parse(b64url_to_utf8(base64));
 }

@@ -109,13 +109,15 @@
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
-        messages         (concat history [message])]
+        messages         (concat history [message])
+        external-id      (str (random-uuid))]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
             ;; Compose: collect parts AND convert to lines for streaming.
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
+                                                       :external-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
@@ -132,7 +134,8 @@
           (finally
             (metabot.persistence/store-native-parts!
              conversation-id profile-id
-             (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom))))))))
+             (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+             :external-id external-id)))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -220,6 +223,22 @@
     (catch Exception e
       (log/error e "Failed to submit feedback to Harbormaster")
       (throw e))))
+
+(api.macros/defendpoint :post "/source-feedback" :- [:map
+                                                     [:status [:= 204]]
+                                                     [:body :nil]]
+  "Persist Metabot source feedback."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:metabot_id   ms/PositiveInt]
+            [:message_id   ms/NonBlankString]
+            [:source_id    ms/PositiveInt]
+            [:source_type  [:enum "table" "card" "model"]]
+            [:positive     :boolean]]]
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-source-feedback! body)
+  api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))

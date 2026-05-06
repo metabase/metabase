@@ -4,7 +4,9 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   CardType,
+  ConcreteTableId,
   DatasetQuery,
+  FieldId,
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
@@ -114,6 +116,18 @@ export function swapClauses(
 
 export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
+}
+
+export function allSourceTableIds(query: Query): ConcreteTableId[] {
+  return ML.all_source_table_ids(query);
+}
+
+export function allSourceCardIds(query: Query): CardId[] {
+  return ML.all_source_card_ids(query);
+}
+
+export function allFieldIds(query: Query): FieldId[] {
+  return ML.all_field_ids(query);
 }
 
 export function canRun(query: Query, cardType: CardType): boolean {

@@ -68,8 +68,9 @@
   Kwargs (all optional):
   - `:channel-id`, `:slack-msg-id` — slackbot metadata stamped on the message row
   - `:user-id` — user id for the message row (defaults to omitted)
+  - `:external-id` — stable id stamped on the row so feedback can resolve back to it
   - `:ai-proxy?` — explicit override; otherwise derived from `llm-metabot-provider`"
-  [conversation-id profile-id parts & {:keys [channel-id slack-msg-id user-id ai-proxy?]}]
+  [conversation-id profile-id parts & {:keys [channel-id slack-msg-id user-id external-id ai-proxy?]}]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
@@ -77,6 +78,7 @@
         ai-proxy?  (if (some? ai-proxy?)
                      ai-proxy?
                      (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
+        external-id (or external-id (str (random-uuid)))
         ;; Filter out :start, :usage, :finish stream metadata. Data parts are
         ;; persisted (so the analytics view can surface them) except :state,
         ;; which is saved to MetabotConversation.state above.
@@ -98,6 +100,7 @@
                                         :usage           usage
                                         :role            :assistant
                                         :profile_id      profile-id
+                                        :external_id     external-id
                                         :total_tokens    (->> (vals usage)
                                                               (map #(+ (:prompt %) (:completion %)))
                                                               (reduce + 0))
@@ -127,13 +130,14 @@
                                       :usage           (:usage finish)
                                       :role            (:role (first messages))
                                       :profile_id      profile-id
+                                      :external_id     (str (random-uuid))
                                       :total_tokens    (->> (vals (:usage finish))
                                                             ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                                             ;; removed when ai-service does not give us `completionTokens` in `usage`
                                                             (filter map?)
                                                             (map #(+ (:prompt %) (:completion %)))
                                                             (apply +))
-                                      :ai_proxied (boolean ai-proxy?)}
+                                      :ai_proxied      (boolean ai-proxy?)}
                                channel-id   (assoc :channel_id channel-id)
                                slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                user-id      (assoc :user_id user-id)))))

@@ -17,6 +17,7 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotCodeEditorBufferContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -36,6 +37,7 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
+  MetabotAgentDataPartMessage,
   MetabotAgentEditSuggestionChatMessage,
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
@@ -53,6 +55,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,
@@ -335,6 +338,18 @@ type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
 };
 
+const findCodeEditBuffer = (
+  context: MetabotChatContext,
+  bufferId: string,
+): MetabotCodeEditorBufferContext | undefined => {
+  const viewedBuffers = context.user_is_viewing.flatMap((item) =>
+    item.type === "code_editor" ? item.buffers : [],
+  );
+  const buffers = [...viewedBuffers, ...(context.code_editor?.buffers ?? [])];
+
+  return buffers.find((buffer) => buffer.id === bufferId);
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
@@ -350,7 +365,6 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
-
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -362,6 +376,13 @@ export const sendAgentRequest = createAsyncThunk<
         },
         {
           onDataPart: function handleDataPart(part) {
+            const pushDataPart = (
+              message: Omit<
+                MetabotAgentDataPartMessage,
+                "id" | "role" | "externalId"
+              >,
+            ) => dispatch(addAgentMessage({ ...message, agentId }));
+
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
@@ -378,6 +399,17 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: {
+                    codeEditBuffer: findCodeEditBuffer(
+                      request.context,
+                      part.value.buffer_id,
+                    ),
+                  },
+                });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
@@ -385,6 +417,7 @@ export const sendAgentRequest = createAsyncThunk<
                 if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {
                 const suggestedTransform = {
@@ -414,6 +447,14 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
               .exhaustive();
+          },
+          onStartMessagePart: function handleStartMessagePart(part) {
+            dispatch(
+              setPendingMessageExternalId({
+                agentId,
+                externalId: part.messageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
