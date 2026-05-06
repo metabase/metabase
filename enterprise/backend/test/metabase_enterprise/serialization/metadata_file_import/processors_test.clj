@@ -13,7 +13,9 @@
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
 
 ;;; ============================== with-staging-tables ==============================
 
@@ -67,6 +69,183 @@
           "exception propagates with its ex-data intact")
       (is (zero? (count-staging))
           "staging tables wiped even though body threw"))))
+
+;;; ============================== drain-tables-into-staging! ==============================
+
+(defn- json-tmp-file
+  "Spool `data` as JSON to a tempfile and return the File. Used by drain tests."
+  ^File [data]
+  (let [f (File/createTempFile "drain-test-" ".json")]
+    (.deleteOnExit f)
+    (spit f (json/encode data))
+    f))
+
+(deftest drain-tables-into-staging-populates-staging-from-file-test
+  (testing "the drain reads :tables from the file, writes one staging row per entry,
+            humanizes display_name from name, copies description verbatim, and leaves
+            resolved-id columns NULL (they're filled later inside the merge txn)"
+    (processors/with-staging-tables
+      (processors/drain-tables-into-staging!
+       (json-tmp-file
+        ;; wire-format convention: :schema is omitted when nil (per ::table-info)
+        {:tables [{:db_id "drn-db" :schema "public" :name "user_orders" :description "all orders"}
+                  {:db_id "drn-db"                  :name "audit_log"}]}))
+      (let [rows (t2/query {:select [:*] :from [:metabase_table_import] :order-by [:table_name]})]
+        (is (= 2 (count rows)))
+        (is (= "audit_log"   (-> rows first :table_name)))
+        (is (= "Audit Log"   (-> rows first :display_name))
+            "display_name humanized at drain time")
+        (is (nil?            (-> rows first :table_schema)))
+        (is (nil?            (-> rows first :description)))
+        (is (= "user_orders" (-> rows second :table_name)))
+        (is (= "User Orders" (-> rows second :display_name)))
+        (is (= "public"      (-> rows second :table_schema)))
+        (is (= "all orders"  (-> rows second :description)))))))
+
+(deftest drain-tables-into-staging-empty-tables-array-test
+  (testing "an empty :tables array yields zero staging rows"
+    (processors/with-staging-tables
+      (processors/drain-tables-into-staging! (json-tmp-file {:tables []}))
+      (is (zero? (t2/count :metabase_table_import))))))
+
+(deftest drain-tables-into-staging-validation-failure-throws-test
+  (testing "a malformed row (missing :name) throws ex-info with :kind :invalid_input
+            and :line attribution so the loader can produce a useful boot-time error"
+    (let [thrown (atom nil)]
+      (try
+        (processors/with-staging-tables
+          (processors/drain-tables-into-staging!
+           (json-tmp-file {:tables [{:db_id "drn-db" :schema "public"}]})))   ;; missing :name
+        (catch clojure.lang.ExceptionInfo e
+          (reset! thrown e)))
+      (is (some? @thrown) "drain throws ex-info on a malformed row")
+      (is (= :invalid_input (:kind (ex-data @thrown)))
+          "the throw carries the standard validation :kind"))))
+
+;;; ============================== merge-tables! ==============================
+
+(deftest merge-tables-empty-staging-is-noop-test
+  (testing "with empty staging, merge-tables! makes no live writes"
+    (mt/with-temp [:model/Database {db-id :id} {:name "merge-noop-db" :engine :postgres}]
+      (let [count-before (t2/count :model/Table :db_id db-id)]
+        (processors/with-staging-tables
+          (processors/merge-tables!))
+        (is (= count-before (t2/count :model/Table :db_id db-id))
+            "no rows written when staging is empty")))))
+
+(deftest merge-tables-inserts-unmatched-table-test
+  (testing "a staging row whose (db_id, schema, name) doesn't exist in metabase_table is
+            INSERTed with active=true, data_layer=internal, display_name from staging,
+            description from staging — column defaulting moves into the merge SQL"
+    (mt/with-temp [:model/Database {db-id :id} {:name "merge-ins-db" :engine :postgres}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "merge-ins-db"
+                                            :table_schema "public"
+                                            :table_name   "fresh_table"
+                                            :description  "owl sightings"
+                                            :display_name "Fresh Table"})
+        (processors/merge-tables!))
+      (let [row (t2/select-one :model/Table :db_id db-id :name "fresh_table")
+            ;; :model/Table strips :is_defective_duplicate from the read map; query directly.
+            defective? (-> (t2/query ["SELECT is_defective_duplicate FROM metabase_table WHERE id = ?"
+                                      (:id row)])
+                           first :is_defective_duplicate)]
+        (is (some? row))
+        (is (= "public"         (:schema row)))
+        (is (= "Fresh Table"    (:display_name row)))
+        (is (= "owl sightings"  (:description row)))
+        (is (true?              (:active row)))
+        (is (= :internal        (:data_layer row))
+            "data_layer string round-trips as keyword via :model/Table read transform")
+        (is (= "complete"       (:initial_sync_status row))
+            "column default kicks in")
+        (is (false?             defective?))))))
+
+(deftest merge-tables-updates-description-on-match-test
+  (testing "an existing matched row gets its description clobbered from staging"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "merge-upd-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "users"
+                                                   :description "old description"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "merge-upd-db"
+                                            :table_schema "public"
+                                            :table_name   "users"
+                                            :description  "fresh description from import"
+                                            :display_name "Users"})
+        (processors/merge-tables!))
+      (let [row (t2/select-one :model/Table :id tbl-id)]
+        (is (= "fresh description from import" (:description row))
+            "description was clobbered by the merge UPDATE")))))
+
+(deftest merge-tables-skips-row-with-unmatched-database-test
+  (testing "a staging row whose db_name has no target Database does NOT insert
+            (silently dropped — orphan-warns happen later, post commit-4)"
+    (processors/with-staging-tables
+      (t2/insert! :metabase_table_import {:db_name      "no-such-target-db-xyz"
+                                          :table_schema "public"
+                                          :table_name   "orphan_no_db"
+                                          :display_name "Orphan No Db"})
+      (processors/merge-tables!))
+    (is (nil? (t2/select-one :model/Table :name "orphan_no_db"))
+        "no live row inserted when staging row's db_name has no matching target")))
+
+(deftest merge-tables-handles-nil-schema-test
+  (testing "schema is nullable; a staging row with NULL table_schema matches an existing
+            table whose schema column is NULL via the COALESCE(col, '') equality"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "merge-nil-schema-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema nil :name "no_schema_tbl"
+                                                   :description "old"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "merge-nil-schema-db"
+                                            :table_schema nil
+                                            :table_name   "no_schema_tbl"
+                                            :description  "patched"})
+        (processors/merge-tables!))
+      (let [row (t2/select-one :model/Table :id tbl-id)]
+        (is (= "patched" (:description row))
+            "NULL-schema match works through COALESCE")))))
+
+(deftest merge-tables-is-idempotent-test
+  (testing "running merge-tables! twice with the same staging contents leaves the appdb
+            in the same shape — NOT EXISTS catches the second pass and skips"
+    (mt/with-temp [:model/Database {db-id :id} {:name "merge-idem-db" :engine :postgres}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "merge-idem-db"
+                                            :table_schema "public"
+                                            :table_name   "idem_tbl"
+                                            :display_name "Idem Tbl"})
+        (processors/merge-tables!)
+        (processors/merge-tables!))
+      (is (= 1 (count (t2/select :model/Table :db_id db-id :name "idem_tbl")))
+          "exactly one row inserted; second merge call was a no-op"))))
+
+;;; ============================== merge-tables! atomicity ==============================
+
+(deftest merge-tables-rolls-back-when-outer-txn-aborts-test
+  (testing "merge-tables! composes with an outer t2/with-transaction: if the outer
+            txn aborts after the merge call returns, the merge's writes roll back
+            too. This is the headline atomicity guarantee that commit 4 relies on
+            (one outer txn wrapping stub-insert + merge-tables + merge-fields + …).
+
+            Mechanics: t2/with-transaction joins the outer txn rather than creating
+            a savepoint, so merge-tables!'s inner txn participates in the outer's
+            all-or-nothing semantics."
+    (mt/with-temp [:model/Database {db-id :id} {:name "merge-atom-db" :engine :postgres}]
+      (let [count-before (t2/count :model/Table :db_id db-id)]
+        (try
+          (processors/with-staging-tables
+            (t2/insert! :metabase_table_import {:db_name      "merge-atom-db"
+                                                :table_schema "public"
+                                                :table_name   "would_have_inserted"
+                                                :display_name "Would Have Inserted"})
+            (t2/with-transaction [_]
+              (processors/merge-tables!)
+              (throw (ex-info "force rollback" {:kind :test_force_rollback}))))
+          (catch clojure.lang.ExceptionInfo _e))
+        (is (= count-before (t2/count :model/Table :db_id db-id))
+            "live row count unchanged after the outer transaction aborted")
+        (is (nil? (t2/select-one :model/Table :db_id db-id :name "would_have_inserted"))
+            "the staging row's would-be live INSERT did not commit")))))
 
 ;;; ============================== process-databases ==============================
 
@@ -142,126 +321,6 @@
             via-seq    (vec (seq result))]
         (is (= {"stream-probe" target-id} via-reduce))
         (is (= 1 (count via-seq)))))))
-
-;;; ============================== process-tables ==============================
-
-(deftest process-tables-matches-by-db-schema-name-test
-  (testing "a source row matching an existing target Table by (target-db-id, schema, name)
-            produces a :matched result with the existing row's id. :source-id carries the
-            portable table id [db-name schema name]."
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-match-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"}]
-      (is (= [{:source-id ["tbl-match-db" "public" "orders"] :target-id tbl-id :status :matched}]
-             (into [] (processors/process-tables!
-                       [[1 {:db_id "tbl-match-db" :schema "public" :name "orders"}]])))))))
-
-(deftest process-tables-inserts-unmatched-test
-  (testing "a source row with no existing target Table is bulk-inserted; the result
-            carries :status :inserted and the new row exists in the appdb"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-insert-db" :engine :postgres}]
-      (let [[r]      (into [] (processors/process-tables!
-                               [[1 {:db_id "tbl-insert-db" :schema "public" :name "fresh-table"}]]))
-            inserted (t2/select-one :model/Table :id (:target-id r))]
-        (is (= ["tbl-insert-db" "public" "fresh-table"] (:source-id r)))
-        (is (= :inserted (:status r)))
-        (is (some? (:target-id r)))
-        (is (= db-id (:db_id inserted)))
-        (is (= "public" (:schema inserted)))
-        (is (= "fresh-table" (:name inserted)))))))
-
-(deftest process-tables-updates-description-on-match-test
-  (testing "description is updated on match"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-patch-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
-                                              :description "old description"}]
-      (is (not-empty (into [] (processors/process-tables!
-                               [[1 {:db_id "tbl-patch-db" :schema "public" :name "orders"
-                                    :description "new description"}]]))))
-      (is (= "new description"
-             (:description (t2/select-one :model/Table :id tbl-id)))))))
-
-(deftest process-tables-leaves-target-description-untouched-when-source-has-none-test
-  (testing "no description, no update"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-no-patch-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
-                                              :description "preserved"}]
-      (is (not-empty (into [] (processors/process-tables!
-                               [[1 {:db_id "tbl-no-patch-db" :schema "public" :name "orders"}]]))))
-      (is (= "preserved"
-             (:description (t2/select-one :model/Table :id tbl-id)))))))
-
-(deftest process-tables-emits-no-target-db-when-source-db-id-does-not-resolve-test
-  (testing "if the source row's :db_id (db name) doesn't resolve to a target Database,
-            the row is reported as :no-target-db and no further SQL runs for it. The
-            loader logs WARN and skips dependent fields."
-    (let [[r] (into [] (processors/process-tables!
-                        [[5 {:db_id "no-such-db-zzz" :schema "public" :name "orders"}]]))]
-      (is (= ["no-such-db-zzz" "public" "orders"] (:source-id r)))
-      (is (= :no-target-db (:status r)))
-      (is (= 5 (:line r)))
-      (is (string? (:detail r)))
-      (is (not (contains? r :target-id))))))
-
-(deftest process-tables-handles-nil-schema-test
-  (testing "schema is optional; a source row with no :schema matches a target Table
-            whose schema column is NULL"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-nil-schema-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema nil :name "no-schema-tbl"}]
-      (let [[r] (into [] (processors/process-tables!
-                          [[1 {:db_id "tbl-nil-schema-db" :name "no-schema-tbl"}]]))]
-        (is (= :matched (:status r)))
-        (is (= tbl-id (:target-id r)))))))
-
-(deftest process-tables-insert-applies-required-defaults-test
-  (testing "newly-inserted tables carry the defaults the import flow requires:
-            display_name (humanized from name), active=true, initial_sync_status=complete,
-            data_layer=internal — these would normally come from :model/Table's insert hooks,
-            which the import flow bypasses (see the call-site comment about
-            set-new-table-permissions! and Postgres lock exhaustion)"
-    (mt/with-temp [:model/Database {_ :id} {:name "tbl-defaults-db" :engine :postgres}]
-      (let [[r] (into [] (processors/process-tables!
-                          [[1 {:db_id "tbl-defaults-db" :schema "public" :name "user_profiles"}]]))
-            row (t2/select-one :model/Table :id (:target-id r))]
-        (is (true?                 (:active row)))
-        (is (= "complete"          (:initial_sync_status row)))
-        (is (= :internal           (:data_layer row))
-            "data_layer is read back as a keyword via :model/Table's hooks")
-        (is (= "User Profiles"     (:display_name row))
-            "display_name is humanized from the source name")))))
-
-(deftest process-tables-validation-failure-throws-with-attribution-test
-  (testing "a malformed row throws ex-info with :kind :invalid_input, the line number,
-            and the row's portable source id"
-    (mt/with-temp [:model/Database {_ :id} {:name "tbl-validate-db" :engine :postgres}]
-      (let [e    (is (thrown? clojure.lang.ExceptionInfo
-                              (into [] (processors/process-tables!
-                                        [[42 {:db_id "tbl-validate-db" :schema "public"}]]))))   ;; missing :name
-            data (ex-data e)]
-        (is (= :invalid_input (:kind data)))
-        (is (= 42 (:line data)))
-        (is (= ["tbl-validate-db" "public" nil] (:source-id data))
-            "portable source id derived from (:db_id :schema :name) — :name is nil since it's missing")))))
-
-(deftest process-tables-preserves-input-order-test
-  (testing "results are in input order regardless of internal SELECT/INSERT ordering or
-            which rows match vs insert vs miss"
-    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-order-db" :engine :postgres}
-                   :model/Table {existing :id} {:db_id db-id :schema "public" :name "existing"}]
-      (let [results (into [] (processors/process-tables!
-                              [[1 {:db_id "tbl-order-db" :schema "public" :name "existing"}]
-                               [2 {:db_id "no-such-db-zzz" :schema "public" :name "no-target-db-row"}]
-                               [3 {:db_id "tbl-order-db" :schema "public" :name "fresh-1"}]]))]
-        (is (= [["tbl-order-db" "public" "existing"]
-                ["no-such-db-zzz" "public" "no-target-db-row"]
-                ["tbl-order-db" "public" "fresh-1"]]            (mapv :source-id results)))
-        (is (= [:matched :no-target-db :inserted]               (mapv :status results)))
-        (is (= existing                                         (:target-id (nth results 0))))
-        (is (= nil                                              (:target-id (nth results 1))))
-        (is (some?                                              (:target-id (nth results 2))))))))
-
-(deftest process-tables-empty-batch-test
-  (testing "empty input → empty output"
-    (is (= [] (into [] (processors/process-tables! []))))))
 
 ;;; ======================== process-fields! ========================
 

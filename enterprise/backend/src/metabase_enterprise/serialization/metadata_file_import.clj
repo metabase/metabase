@@ -92,26 +92,6 @@
                (processors/process-databases! batch))))
     @matched-ids))
 
-;;; ============================== tables ==============================
-
-(defn- load-tables!
-  "Stream the tables array; rows whose source `:db_id` (db name) doesn't match
-  any target are logged and skipped."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :tables processors/import-batch-size
-   (fn [batch]
-     (reduce (fn [_ result]
-               (case (:status result)
-                 (:matched :inserted) nil
-
-                 :no-target-db
-                 (log/warnf "metadata-file-import: skipped table %s (no matching database): %s"
-                            (pr-str (:source-id result)) (:detail result)))
-               nil)
-             nil
-             (processors/process-tables! batch)))))
-
 ;;; ============================== fields ==============================
 
 (defn- load-fields!
@@ -193,10 +173,13 @@
                                     metadata-file
                                     (File. ^String metadata-file))
         matched-target-db-ids     (load-databases! m-file)]
-    (load-tables! m-file)
-    (load-fields! m-file)
-    (resolve-field-fks! m-file)
-    (warn-on-unfilled-stubs! matched-target-db-ids)
+    (processors/with-staging-tables
+      ;; phase 2: drain :tables into staging, then atomic merge into metabase_table
+      (processors/drain-tables-into-staging! m-file)
+      (processors/merge-tables!)
+      (load-fields! m-file)
+      (resolve-field-fks! m-file)
+      (warn-on-unfilled-stubs! matched-target-db-ids))
     (mark-databases-sync-complete! matched-target-db-ids)
     (log/infof "metadata-file-import: complete (matched-databases=%d)"
                (count matched-target-db-ids))

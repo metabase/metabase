@@ -14,6 +14,7 @@
   attribution so the loader can produce useful boot-time error messages."
   (:require
    [malli.error :as me]
+   [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -22,6 +23,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
+   (java.io File)
    (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
@@ -168,135 +170,108 @@
                                   (pr-str name) (pr-str (engine-name engine)))})))
      batch)))
 
-;;; ============================== tables (batch) ==============================
-
-(defn- resolve-db-ids-batch
-  "Resolve each portable `:db_id` (database name, a string) in `lines` to a target
-  integer database id. Returns `{db-name → target-int-id}`, omitting names with no
-  matching target row. One batched SELECT per call."
-  [lines]
-  (let [names (into #{} (keep :db_id) lines)]
-    (if (empty? names)
-      {}
-      (into {}
-            (map (fn [{:keys [id name]}] [name id]))
-            (t2/select [:model/Database :id :name]
-                       {:where [:in :name names]})))))
-
-(defn- match-tables-batch
-  "Look up every existing target Table matching any of the (target-db-id,
-  schema, name) triples in `lines`, scoped to
-  `active=true AND is_defective_duplicate=false`. Returns
-  `{[db-id schema name] → existing-id}` for matching rows."
-  [lines]
-  (let [triples (into #{} (map (juxt :db_id :schema :name)) lines)
-        db-ids  (into #{} (keep :db_id) lines)
-        names   (into #{} (keep :name) lines)]
-    (if (or (empty? db-ids) (empty? names))
-      {}
-      ;; Over-include via `(db_id IN ..., name IN ...)` then intersect in
-      ;; Clojure — keeps nil schemas correct without per-DBMS IS-NULL gymnastics.
-      (let [rows (t2/select [:model/Table :id :db_id :schema :name]
-                            {:where [:and
-                                     [:= :active true]
-                                     [:= :is_defective_duplicate false]
-                                     [:in :db_id db-ids]
-                                     [:in :name names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id db_id schema name]}] [[db_id schema name] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
-
-(defn- new-table-row
-  "Row for inserting into `:metabase_table` via the raw table keyword, deliberately
-  bypassing `:model/Table`'s `define-after-insert` hook → `set-new-table-permissions!`.
-  That hook acquires `with-db-scoped-permissions-lock` per table; on a bulk insert of
-  ~1700+ tables in one transaction it exhausts Postgres' `max_locks_per_transaction`.
-
-  This is **safe on a fresh appdb** whose Database row carries default DB-level
-  permissions, but **not safe** against an appdb where any group has gone
-  table-granular on the target Database — those tables would silently lack their
-  per-table permission rows. TODO: batched-grant fix.
-
-  Replicates the non-permission defaults `:model/Table`'s `define-before-insert`
-  applies (`display_name`, `data_layer`). `field_order` falls back to the column
-  default `'database'`."
-  [{:keys [db_id name schema description]}]
-  (let [now (mi/now)]
-    (cond-> {:db_id               db_id
-             :name                name
-             :schema              schema
-             :display_name        (humanization/name->human-readable-name name)
-             :data_layer          "internal"
-             :active              true
-             :initial_sync_status "complete"
-             :created_at          now
-             :updated_at          now}
-      (some? description) (assoc :description description))))
-
-(defn- patch-matched-tables!
-  "When source carries a non-nil `:description`, write it to the matched target."
-  [target-lines match-idx]
-  (doseq [{:keys [db_id schema name description]} target-lines
-          :when (and (contains? match-idx [db_id schema name])
-                     (some? description))]
-    (t2/update! :model/Table (get match-idx [db_id schema name])
-                {:description description})))
-
-(defn- bulk-insert-unmatched-tables!
-  "Bulk-insert every `target-line` whose `(db_id, schema, name)` triple is absent
-  from `match-idx`. Returns `{[db-id schema name] → new-id}` for the inserted rows
-  so callers can resolve target ids in input order."
-  [target-lines match-idx]
-  (let [unmatched   (filterv (fn [{:keys [db_id schema name]}]
-                               (not (contains? match-idx [db_id schema name])))
-                             target-lines)
-        insert-rows (mapv new-table-row unmatched)
-        new-ids     (when (seq insert-rows)
-                      (t2/insert-returning-pks! :metabase_table insert-rows))]
-    (zipmap (map (juxt :db_id :schema :name) unmatched) new-ids)))
+;;; ============================== tables — drain + merge ==============================
 
 (defn- portable-table-id
-  "The portable id for a row in `process-tables!` — `[db-name schema-or-nil name]`."
+  "The portable id for a table row — `[db-name schema-or-nil name]`. Used for
+  validation-error attribution."
   [{:keys [db_id schema name]}]
   [db_id schema name])
 
-(defn process-tables!
-  "Process a batch of table rows. Returns an eduction of result maps.
+(defn drain-tables-into-staging!
+  "Stream `:tables` from `metadata-file` into `metabase_table_import`.
 
-  Result shapes:
-    `{:source-id [db-name schema name] :target-id M :status :matched}`
-    `{:source-id [db-name schema name] :target-id M :status :inserted}`
-    `{:source-id [db-name schema name] :status :no-target-db :line L :detail S}`
+  Validates each row against [[schemas/table-info]] up front. Computes
+  `display_name` at drain time via [[humanization/name->human-readable-name]] —
+  the merge SQL can then carry the value verbatim instead of re-implementing
+  the algorithm in three SQL dialects. Writes only to staging; no live-data
+  writes."
+  [^File metadata-file]
+  (parsers/stream-array-batches!
+   metadata-file :tables import-batch-size
+   (fn [batch]
+     (doseq [[ln line] batch]
+       (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
+     (when (seq batch)
+       (let [rows (mapv (fn [[_ {:keys [db_id schema name description]}]]
+                          {:db_name      db_id
+                           :table_schema schema
+                           :table_name   name
+                           :description  description
+                           :display_name (humanization/name->human-readable-name name)})
+                        batch)]
+         (t2/insert! :metabase_table_import rows))))))
 
-  `:source-id` is the row's `[db_id schema name]` triple (its portable table id).
+(defn merge-tables!
+  "Merge `metabase_table_import` into `metabase_table` atomically.
 
-  Matched rows: source `:description` overwrites target. No other writes on
-  matched rows."
-  [batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
-  (let [db-id-map    (resolve-db-ids-batch (mapv second batch))
-        target-lines (into []
-                           (keep (fn [[_ln {src-db :db_id :as line}]]
-                                   (when-let [tgt (get db-id-map src-db)]
-                                     (assoc line :db_id tgt))))
-                           batch)
-        match-idx    (match-tables-batch target-lines)]
-    (patch-matched-tables! target-lines match-idx)
-    (let [id-by-nat (bulk-insert-unmatched-tables! target-lines match-idx)]
-      (eduction
-       (map (fn [[ln {src-db :db_id :keys [schema name] :as line}]]
-              (let [src-id (portable-table-id line)]
-                (if-let [tgt-db (get db-id-map src-db)]
-                  (if-let [existing (get match-idx [tgt-db schema name])]
-                    {:source-id src-id :target-id existing :status :matched}
-                    {:source-id src-id :target-id (get id-by-nat [tgt-db schema name])
-                     :status :inserted})
-                  {:source-id src-id :status :no-target-db :line ln
-                   :detail   (format "No target database with name=%s"
-                                     (pr-str src-db))}))))
-       batch))))
+  Two SQL statements wrapped in a single `t2/with-transaction`:
+
+    1. **INSERT** rows whose natural key isn't already present in
+       `metabase_table` (active, non-defective). Sets `active=true` and
+       `data_layer='internal'`; lets column defaults handle `field_order`,
+       `initial_sync_status`, `view_count`, etc.
+    2. **UPDATE** matched rows by clobbering `description` from staging
+       (`updated_at` bumped to `NOW()`).
+
+  Both statements JOIN `metabase_database` on `db_name`, so staging rows whose
+  source DB has no target are silently dropped — the orphan-warn pass (commit
+  4) emits the operator-facing log line.
+
+  The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
+  not fire here because the INSERT goes through the raw table keyword
+  (`:metabase_table`) rather than the model. This preserves today's
+  per-table-permission gap; batched-grant work is tracked separately.
+
+  Composes safely inside a larger transaction: Toucan2's `t2/with-transaction`
+  joins an outer txn rather than creating a savepoint, so when an outer caller
+  (e.g., the commit-4 orchestrator) wraps several merge steps in one txn, this
+  function's inner txn participates in the outer's all-or-nothing semantics."
+  []
+  (t2/with-transaction [_]
+    ;; INSERT rows that don't already exist
+    (t2/query
+     {:insert-into
+      [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
+                         :active :show_in_getting_started :is_defective_duplicate
+                         :created_at :updated_at]]
+       {:select [:d.id :it.table_schema :it.table_name :it.description :it.display_name
+                 [[:inline "internal"]]
+                 [[:inline true]] [[:inline false]] [[:inline false]]
+                 :%now :%now]
+        :from [[:metabase_table_import :it]]
+        :join [[:metabase_database :d] [:= :d.name :it.db_name]]
+        :where [:not [:exists {:select [[[:inline 1]]]
+                               :from [[:metabase_table :t]]
+                               :where [:and
+                                       [:= :t.db_id :d.id]
+                                       [:= [:coalesce :t.schema [:inline ""]]
+                                        [:coalesce :it.table_schema [:inline ""]]]
+                                       [:= :t.name :it.table_name]
+                                       [:= :t.is_defective_duplicate [:inline false]]
+                                       [:= :t.active [:inline true]]]}]]}]})
+    ;; UPDATE matched rows (clobber description, bump updated_at)
+    (t2/query
+     {:update :metabase_table
+      :set    {:description {:select [:it.description]
+                             :from [[:metabase_table_import :it]]
+                             :join [[:metabase_database :d] [:= :d.name :it.db_name]]
+                             :where [:and
+                                     [:= :metabase_table.db_id :d.id]
+                                     [:= [:coalesce :metabase_table.schema [:inline ""]]
+                                      [:coalesce :it.table_schema [:inline ""]]]
+                                     [:= :metabase_table.name :it.table_name]]}
+               :updated_at :%now}
+      :where  [:exists {:select [[[:inline 1]]]
+                        :from [[:metabase_table_import :it]]
+                        :join [[:metabase_database :d] [:= :d.name :it.db_name]]
+                        :where [:and
+                                [:= :metabase_table.db_id :d.id]
+                                [:= [:coalesce :metabase_table.schema [:inline ""]]
+                                 [:coalesce :it.table_schema [:inline ""]]]
+                                [:= :metabase_table.name :it.table_name]
+                                [:= :metabase_table.is_defective_duplicate [:inline false]]
+                                [:= :metabase_table.active [:inline true]]]}]})))
 
 ;;; ==================== fields (batch) ====================
 
