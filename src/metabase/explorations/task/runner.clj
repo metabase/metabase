@@ -8,7 +8,16 @@
   Each iteration also handles per-`(query, timeline)` interestingness scoring: when no query is
   pending, the worker looks for a thread-selected timeline that hasn't yet been scored against a
   done query in the same thread, claims the pair via INSERT (the unique constraint serializes
-  competing claims), runs the LLM scorer, and writes the result."
+  competing claims), runs the LLM scorer, and UPDATEs the row with the score. The INSERT and
+  UPDATE are deliberately separate autocommits — wrapping them in one transaction would hold the
+  unique-index lock for the duration of the LLM call and serialize all scoring workers.
+
+  Crash recovery is via stale-row reclaim: rows whose `scored_at` is still `NULL` longer than
+  [[stale-claim-cutoff-minutes]] are eligible for re-claim by a future iteration. The cutoff
+  comfortably exceeds metabot.self's bounded retry budget for a single LLM call, so a still-alive
+  worker will never be stale-reclaimed. A *caught* scorer failure (poison input, transient LLM
+  error past retries) writes a sentinel row with `score=NULL, scored_at=NOW()` so that pair isn't
+  retried forever."
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
@@ -129,46 +138,86 @@
                          :finished_at   (OffsetDateTime/now)}))))
       :worked)))
 
+(def ^:private ^:const stale-claim-cutoff-minutes
+  "How long after a claim row's `created_at` we treat it as stale and reclaimable. Bounded above
+  by metabot.self's retry budget for a single LLM call (~60s worst case), so a still-alive worker
+  will never be stale-reclaimed. Five minutes gives plenty of headroom."
+  5)
+
+(defn- stale-cutoff
+  "Cutoff `OffsetDateTime`: claim rows with `created_at` older than this and `scored_at` still
+  `NULL` are eligible for stale-reclaim."
+  ^OffsetDateTime []
+  (.minusMinutes (OffsetDateTime/now) stale-claim-cutoff-minutes))
+
 (defn- find-unscored-pair
-  "Return one `{:exploration_query_id _ :timeline_id _}` map for a `(query, timeline)`
-  pair that needs scoring (query is `done`, timeline is selected on the same thread,
-  and no row exists in `exploration_query_timeline_interestingness` yet). Returns nil
-  when there's no pending work."
+  "Return one `{:exploration_query_id _ :timeline_id _ :stale_id _}` map for a `(query, timeline)`
+  pair that needs scoring. A pair is eligible if the query is `done`, the timeline is selected on
+  the same thread, and either:
+   - no claim row exists yet (`:stale_id` is nil → fresh INSERT), or
+   - a claim row exists with `scored_at` still NULL and `created_at` older than
+     [[stale-claim-cutoff-minutes]] (`:stale_id` is the row id → reclaim via CAS UPDATE).
+  Returns nil when there's no pending work."
   []
   (first
    (t2/query
-    {:select   [[:q.id :exploration_query_id]
-                [:ett.timeline_id :timeline_id]]
-     :from     [[:exploration_query :q]]
-     :join     [[:exploration_thread_timeline :ett]
-                [:= :ett.exploration_thread_id :q.exploration_thread_id]]
+    {:select    [[:q.id :exploration_query_id]
+                 [:ett.timeline_id :timeline_id]
+                 [:s.id :stale_id]]
+     :from      [[:exploration_query :q]]
+     :join      [[:exploration_thread_timeline :ett]
+                 [:= :ett.exploration_thread_id :q.exploration_thread_id]]
      :left-join [[:exploration_query_timeline_interestingness :s]
                  [:and [:= :s.exploration_query_id :q.id]
                   [:= :s.timeline_id :ett.timeline_id]]]
-     :where    [:and [:= :q.status "done"] [:= :s.id nil]]
-     :order-by [[:q.id :asc] [:ett.timeline_id :asc]]
-     :limit    1})))
+     :where     [:and [:= :q.status "done"]
+                 [:or [:= :s.id nil]
+                  [:and [:= :s.scored_at nil]
+                   [:< :s.created_at (stale-cutoff)]]]]
+     :order-by  [[:q.id :asc] [:ett.timeline_id :asc]]
+     :limit     1})))
 
 (defn- claim-pending-timeline-pair!
-  "Atomically reserve one unscored `(query, timeline)` pair by INSERTing a row with
-  `scored_at = NULL` (the in-flight marker). The unique constraint serializes
-  competing claims: a losing worker catches the conflict and returns nil to retry on
-  the next iteration. Returns the inserted row on success, nil on no work or race loss."
+  "Reserve one `(query, timeline)` pair. For a fresh pair, INSERT a row with `scored_at=NULL`;
+  the unique constraint serializes competing INSERTs and the loser catches the conflict. For a
+  stale pair (a previous worker's claim row whose `scored_at` is still NULL and `created_at` is
+  older than the cutoff), CAS-bump `created_at` so any other worker that also saw the row stale
+  loses the reclaim race when its `WHERE created_at < cutoff` matches zero rows.
+
+  Returns the claim row's id on success, nil on race loss / no work."
   []
-  (when-let [{:keys [exploration_query_id timeline_id]} (find-unscored-pair)]
-    (try
-      (first (t2/insert-returning-instances!
-              :model/ExplorationQueryTimelineInterestingness
-              {:exploration_query_id exploration_query_id
-               :timeline_id          timeline_id
-               :scored_at            nil}))
-      (catch Throwable e
-        (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
-                    exploration_query_id timeline_id)
-        nil))))
+  (when-let [{:keys [exploration_query_id timeline_id stale_id]} (find-unscored-pair)]
+    (if stale_id
+      (when (pos? (t2/update! :model/ExplorationQueryTimelineInterestingness
+                              :id         stale_id
+                              :scored_at  nil
+                              :created_at [:< (stale-cutoff)]
+                              {:created_at (OffsetDateTime/now)}))
+        (log/infof "Stale-reclaimed timeline pair (q=%s, t=%s, id=%s)"
+                   exploration_query_id timeline_id stale_id)
+        ;; CAS won; we own the row.
+        {:id                   stale_id
+         :exploration_query_id exploration_query_id
+         :timeline_id          timeline_id})
+      (try
+        (when-let [row (first (t2/insert-returning-instances!
+                               :model/ExplorationQueryTimelineInterestingness
+                               {:exploration_query_id exploration_query_id
+                                :timeline_id          timeline_id}))]
+          {:id                   (:id row)
+           :exploration_query_id exploration_query_id
+           :timeline_id          timeline_id})
+        (catch Throwable e
+          (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
+                      exploration_query_id timeline_id)
+          nil)))))
 
 (defn- run-one-timeline-iteration!
-  "Try to claim and score one `(query, timeline)` pair. Returns truthy when work was done."
+  "Try to claim and score one `(query, timeline)` pair. The scorer's own try/catch (in
+  [[explorations.timeline-interestingness/score-query-timeline]]) already returns nil on failure
+  paths, but we wrap the call here too so a poison input that escapes still produces a sentinel
+  row with `score=NULL, scored_at=NOW()` instead of leaving the claim row stuck. Returns truthy
+  when work was done."
   []
   (when-let [{:keys [id exploration_query_id timeline_id]} (claim-pending-timeline-pair!)]
     (let [score (try

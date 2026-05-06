@@ -7,7 +7,11 @@
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private run-one-iteration! #'runner/run-one-iteration!)
 
@@ -293,3 +297,44 @@
         (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
                            :exploration_query_id (:id q)
                            :timeline_id (:id tl))))))))
+
+(deftest timeline-iteration-reclaims-stale-rows-test
+  (testing "A claim row left in the in-flight state (scored_at=NULL) past the cutoff is reclaimed and re-scored"
+    (mt/with-temp [:model/User u {:email "ti-runner-stale@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread     (temp-thread! (:id u))
+            q          (done-query-with-fake-result! (:id thread) (:id card))
+            _link      (t2/insert! :model/ExplorationThreadTimeline
+                                   {:exploration_thread_id (:id thread)
+                                    :timeline_id           (:id tl)
+                                    :position              0})
+            ;; Simulate a worker that died mid-score by manually planting a row whose
+            ;; created_at is well past the stale cutoff and whose scored_at is still NULL.
+            stale-row  (first (t2/insert-returning-instances!
+                               :model/ExplorationQueryTimelineInterestingness
+                               {:exploration_query_id (:id q)
+                                :timeline_id          (:id tl)}))
+            _backdate  (t2/update! :model/ExplorationQueryTimelineInterestingness (:id stale-row)
+                                   {:created_at (.minusMinutes (OffsetDateTime/now) 10)
+                                    :scored_at  nil})]
+        (with-redefs [explorations.timeline-interestingness/score-query-timeline
+                      (fn [_ _] 0.42)]
+          (run-one-iteration!)
+          ;; Drain any unrelated leftover work from earlier tests.
+          (loop [n 5]
+            (let [{:keys [scored_at]} (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                                     :id (:id stale-row))]
+              (when (and (pos? n) (nil? scored_at))
+                (run-one-iteration!)
+                (recur (dec n))))))
+        (let [reclaimed (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                       :id (:id stale-row))]
+          (is (= 0.42 (:interestingness_score reclaimed))
+              "stale row was reclaimed and rescored in place")
+          (is (some? (:scored_at reclaimed))))
+        (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
+                           :exploration_query_id (:id q)
+                           :timeline_id (:id tl)))
+            "no duplicate row was inserted alongside the reclaimed one")))))
