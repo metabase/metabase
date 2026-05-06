@@ -493,33 +493,42 @@
                                          :dataset_query (orders-count-query)}]
         (let [[session-id _] (initialize!)
               orders-id      (mt/id :orders)
-              ;; Read tools — call-tool helper asserts (not :isError) internally.
-              table-data     (call-tool session-id "get_table" {:id orders-id})
-              table-fid      (-> table-data :fields first :field_id)
-              _              (call-tool session-id "get_table_field_values"
-                                        {:id orders-id :field-id (str table-fid)})
-              metric-data    (call-tool session-id "get_metric" {:id (:id metric)})
-              metric-fid     (-> metric-data :queryable_dimensions first :field_id)
-              _              (call-tool session-id "get_metric_field_values"
-                                        {:id (:id metric) :field-id (str metric-fid)})
-              _              (call-tool session-id "search" {:term_queries ["orders"]})
-              ;; Query construction + execution
-              construct-data (call-tool session-id "construct_query"
-                                        {:source     {:type "table" :id orders-id}
-                                         :operations [["limit" 5]]})
-              _              (call-tool session-id "query"
-                                        {:source     {:type "table" :id orders-id}
-                                         :operations [["limit" 5]]})
-              _              (call-tool session-id "execute_query"
-                                        {:query (:query construct-data)})
-              ;; Write tools — clean up after.
-              question-data  (call-tool session-id "create_question"
-                                        {:name  "Smoke Question"
-                                         :query (:query construct-data)})
-              dash-data      (call-tool session-id "create_dashboard"
-                                        {:name "Smoke Dashboard"})]
-          (when-let [qid (:id question-data)] (t2/delete! :model/Card :id qid))
-          (when-let [did (:id dash-data)]     (t2/delete! :model/Dashboard :id did)))))))
+              ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
+              ;; assertion in `call-tool` fails partway through the sequence.
+              question-id    (atom nil)
+              dash-id        (atom nil)]
+          (try
+            (let [;; Read tools — call-tool helper asserts (not :isError) internally.
+                  table-data     (call-tool session-id "get_table" {:id orders-id})
+                  table-fid      (-> table-data :fields first :field_id)
+                  _              (call-tool session-id "get_table_field_values"
+                                            {:id orders-id :field-id (str table-fid)})
+                  metric-data    (call-tool session-id "get_metric" {:id (:id metric)})
+                  metric-fid     (-> metric-data :queryable_dimensions first :field_id)
+                  _              (call-tool session-id "get_metric_field_values"
+                                            {:id (:id metric) :field-id (str metric-fid)})
+                  _              (call-tool session-id "search" {:term_queries ["orders"]})
+                  ;; Query construction + execution
+                  construct-data (call-tool session-id "construct_query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "execute_query"
+                                            {:query (:query construct-data)})
+                  ;; Write tools — record IDs as soon as they're known so the `finally` block
+                  ;; can clean up even if a later step throws.
+                  question-data  (call-tool session-id "create_question"
+                                            {:name  "Smoke Question"
+                                             :query (:query construct-data)})
+                  _              (reset! question-id (:id question-data))
+                  dash-data      (call-tool session-id "create_dashboard"
+                                            {:name "Smoke Dashboard"})]
+              (reset! dash-id (:id dash-data)))
+            (finally
+              (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did)))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"

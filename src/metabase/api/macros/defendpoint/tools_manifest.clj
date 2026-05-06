@@ -188,7 +188,14 @@
                                       (when-let [mcp-key (annotation-key-mapping k)]
                                         [mcp-key v])))
                               explicit-annotations)
-        redundant       (into {} (filter (fn [[k v]] (= v (get method-defaults k))) explicit))]
+        ;; Report redundancies with the developer's original key (e.g. :read-only?), not the
+        ;; translated MCP key, so the error points at what they actually wrote.
+        redundant       (into {}
+                              (keep (fn [[k v]]
+                                      (when-let [mcp-key (annotation-key-mapping k)]
+                                        (when (= v (get method-defaults mcp-key))
+                                          [k v]))))
+                              explicit-annotations)]
     {:annotations (merge method-defaults explicit)
      :redundant   redundant}))
 

@@ -26,10 +26,10 @@
     (is (= {:annotations {:readOnlyHint true :idempotentHint true}
             :redundant   {}}
            (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true}))))
-  (testing "Reports redundant pairs that match what we'd already infer"
-    (is (= {:readOnlyHint true}
+  (testing "Reports redundant pairs that match what we'd already infer (using developer-facing keys)"
+    (is (= {:read-only? true}
            (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
-    (is (= {:destructiveHint false}
+    (is (= {:destructive? false}
            (:redundant (tools-manifest/infer-annotations :put {:destructive? false})))))
   (testing "Explicit annotations matching MCP spec defaults are NOT redundant — they may be needed
             for Claude compliance (e.g. :destructive? true on a destructive POST)"
@@ -255,6 +255,49 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/test" {:form form})]
       (is (nil? (:scope result))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-title-test
+  (testing "Throws when an explicit :title matches the title we'd infer from :name"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name  "get_table"
+                                  :title "Get Table"}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :title"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-annotations-test
+  (testing "Throws when explicit :annotations restate an HTTP-method default (e.g. :read-only? on GET)"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name        "get_table"
+                                  :annotations {:read-only? true}}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :annotations"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
+
+(deftest ^:parallel endpoint->tool-definition-claude-connector-compliance-test
+  (testing "Throws when a POST tool declares neither :read-only? nor :destructive?"
+    (let [form {:method   :post
+                :route    {:path "/v1/test-action"}
+                :params   {:body {:schema [:map [:name :string]]}}
+                :docstr   "A test POST action."
+                :metadata {:tool {:name "test_action"}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"Claude connector requirement"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.
