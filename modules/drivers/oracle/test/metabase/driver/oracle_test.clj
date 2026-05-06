@@ -166,7 +166,9 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
-        (is (= expected (mt/select-keys-sequentially expected actual)))))))
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
+        (is (=? expected actual))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
