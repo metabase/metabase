@@ -203,7 +203,7 @@ const SourceItem = ({
                     miw={0}
                     c="text-secondary"
                     style={{
-                      overflow: "hidden",
+                      overflowX: "hidden",
                       fontSize: "0.75rem",
                       lineHeight: 1,
                       textOverflow: "ellipsis",
