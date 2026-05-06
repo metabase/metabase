@@ -207,9 +207,8 @@
      - `\"singleton\"` — exactly one query; sidebar shows it as a single row
      - `\"page\"`      — multiple queries to render together on one page when opened
      - `\"sidebar\"`   — group expands/collapses inline as a dropdown in the sidebar
-   The (card, dim) heuristic emits `\"singleton\"`/`\"page\"` only; the `Uninteresting
-   Charts` bin (queries the LLM scored 0 for contextual interestingness) is emitted as
-   `\"sidebar\"`."
+   The (card, dim) heuristic emits `\"singleton\"`/`\"page\"` only; `\"sidebar\"` is
+   reserved for future heuristics."
   [:map
    [:id              :string]
    [:parent_group_id [:maybe :string]]

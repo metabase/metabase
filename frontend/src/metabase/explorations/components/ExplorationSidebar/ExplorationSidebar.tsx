@@ -434,9 +434,8 @@ function ExplorationThreadQueries({
           }
 
           case "sidebar": {
-            // Collapsible block with dropdown — historically the default
-            // behavior for any multi-query group; today the BE only
-            // emits this for the `Uninteresting Charts` bin.
+            // Collapsible block with dropdown. The BE doesn't emit this
+            // today, but it's reserved for future grouping heuristics.
             const isOpen = openGroupIds.has(group.id);
             return (
               <ExplorationQueryGroupBlock

@@ -781,112 +781,6 @@
   (testing "An empty input returns an empty vector (no nil)"
     (is (= [] (explorations.groups/auto-groups [])))))
 
-(deftest auto-groups-uninteresting-bin-test
-  (testing "Charts at/under the relevant interestingness threshold land in a single sidebar bin"
-    (let [groups (explorations.groups/auto-groups
-                  ;; contextual present  → uninteresting iff <= 0
-                  ;; contextual nil      → use intrinsic with <= 0.5
-                  ;; both nil            → not uninteresting
-                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"
-                    :interestingness_score 0.1 :contextual_interestingness_score 0.8}
-                   {:id 2 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"
-                    :interestingness_score 0.9 :contextual_interestingness_score 0.0}
-                   {:id 3 :card_id 11 :dimension_id "d2" :segment_id nil :name "Cnt by D2"
-                    :interestingness_score 0.95 :contextual_interestingness_score 0.0}
-                   {:id 4 :card_id 12 :dimension_id "d3" :segment_id nil :name "Spend by D3"
-                    :interestingness_score 0.6 :contextual_interestingness_score nil}
-                   {:id 5 :card_id 13 :dimension_id "d4" :segment_id nil :name "Cost by D4"
-                    :interestingness_score 0.4 :contextual_interestingness_score nil}
-                   {:id 6 :card_id 14 :dimension_id "d5" :segment_id nil :name "Margin by D5"
-                    :interestingness_score 0.5 :contextual_interestingness_score nil}
-                   {:id 7 :card_id 15 :dimension_id "d6" :segment_id nil :name "Tax by D6"
-                    :interestingness_score nil :contextual_interestingness_score nil}])
-          by-id  (into {} (map (juxt :id identity)) groups)
-          bin    (get by-id "auto:uninteresting")]
-      (testing "leaf groups for the truly-interesting queries plus the bin"
-        (is (some? bin))
-        (is (= 4 (count groups)) "(10,d1)+(12,d3)+(15,d6)+bin"))
-      (testing "the bin is a sidebar group named 'Uninteresting Charts'"
-        (is (= "sidebar" (:display_type bin)))
-        (is (= "Uninteresting Charts" (:name bin)))
-        (is (= "auto" (:type bin)))
-        (is (nil? (:parent_group_id bin))))
-      (testing "every below-threshold query is in the bin, in input order"
-        (is (= [2 3 5 6] (:query_ids bin))
-            "ids 2,3 fail contextual<=0; id 5 fails intrinsic<=0.5; id 6 is the boundary 0.5"))
-      (testing "above-threshold queries stay in their (card, dim) bundles"
-        (is (= [1] (:query_ids (get by-id "auto:10:d1")))
-            "contextual 0.8 — interesting; id 2 (contextual 0.0) moved to bin")
-        (is (nil? (get by-id "auto:11:d2"))
-            "id 3's contextual was 0; that solo leaf group disappears entirely")
-        (is (= [4] (:query_ids (get by-id "auto:12:d3")))
-            "nil contextual + intrinsic 0.6 (> 0.5) — stays in its leaf group")
-        (is (nil? (get by-id "auto:13:d4"))
-            "nil contextual + intrinsic 0.4 (< 0.5) — moved to bin")
-        (is (= [7] (:query_ids (get by-id "auto:15:d6")))
-            "both scores nil — no signal, stays in its leaf group"))
-      (testing "the bin always sorts last; leaf groups follow normal score order"
-        (is (= ["Spend by D3" "Rev by D1" "Tax by D6" "Uninteresting Charts"]
-               (mapv :name groups))
-            "0.6 > 0.1 > nil; bin always last")
-        (is (= [0 1 2 3] (mapv :position groups)))
-        (is (= 3 (:position bin)))))))
-
-(deftest auto-groups-uninteresting-threshold-boundaries-test
-  (testing "Threshold semantics: contextual <= 0, intrinsic <= 0.5"
-    (let [run     (fn [scores]
-                    (->> scores
-                         (map-indexed (fn [i [c-score i-score]]
-                                        (cond-> {:id (inc i) :card_id (+ 100 i)
-                                                 :dimension_id (str "d" i) :segment_id nil
-                                                 :name (str "q" i)}
-                                          (some? c-score) (assoc :contextual_interestingness_score c-score)
-                                          (some? i-score) (assoc :interestingness_score i-score))))
-                         explorations.groups/auto-groups))
-          uninteresting? (fn [groups id]
-                           (boolean (some #(when (= "auto:uninteresting" (:id %))
-                                             (some #{id} (:query_ids %)))
-                                          groups)))]
-      (testing "contextual present: <= 0 is uninteresting, anything > 0 is not"
-        (let [gs (run [[0.0 0.9] [0.0001 0.0] [-0.1 0.9]])]
-          (is (uninteresting? gs 1) "contextual exactly 0 → uninteresting")
-          (is (not (uninteresting? gs 2)) "contextual just above 0 → interesting")
-          (is (uninteresting? gs 3) "contextual below 0 (defensive) → uninteresting")))
-      (testing "contextual nil → intrinsic threshold 0.5: <= 0.5 is uninteresting"
-        (let [gs (run [[nil 0.5] [nil 0.5001] [nil 0.4999]])]
-          (is (uninteresting? gs 1) "intrinsic exactly 0.5 → uninteresting (boundary inclusive)")
-          (is (not (uninteresting? gs 2)) "intrinsic just above 0.5 → interesting")
-          (is (uninteresting? gs 3) "intrinsic just below 0.5 → uninteresting")))
-      (testing "intrinsic threshold is ignored when contextual is present"
-        (let [gs (run [[0.9 0.0]])]
-          (is (not (uninteresting? gs 1))
-              "intrinsic 0.0 doesn't matter — contextual 0.9 wins"))))))
-
-(deftest auto-groups-no-uninteresting-bin-when-empty-test
-  (testing "The 'Uninteresting Charts' bin only appears when at least one query is uninteresting"
-    (let [groups (explorations.groups/auto-groups
-                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "x"
-                    :interestingness_score 0.9 :contextual_interestingness_score 0.8}
-                   {:id 2 :card_id 10 :dimension_id "d2" :segment_id nil :name "y"
-                    :interestingness_score 0.6 :contextual_interestingness_score nil}
-                   {:id 3 :card_id 10 :dimension_id "d3" :segment_id nil :name "z"
-                    :interestingness_score nil :contextual_interestingness_score nil}])]
-      (is (every? #(not= "auto:uninteresting" (:id %)) groups))
-      (is (every? #(not= "sidebar" (:display_type %)) groups)))))
-
-(deftest auto-groups-all-uninteresting-test
-  (testing "If every query is uninteresting, the bin is the only group"
-    (let [groups (explorations.groups/auto-groups
-                  [{:id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "a"
-                    :contextual_interestingness_score 0.0}
-                   {:id 2 :card_id 11 :dimension_id "d2" :segment_id nil :name "b"
-                    :interestingness_score 0.3 :contextual_interestingness_score nil}])]
-      (is (= 1 (count groups)))
-      (is (= "auto:uninteresting" (:id (first groups))))
-      (is (= "sidebar" (:display_type (first groups))))
-      (is (= [1 2] (:query_ids (first groups))))
-      (is (= 0 (:position (first groups)))))))
-
 (deftest exploration-get-includes-groups-test
   (testing "GET /:id attaches :groups to each thread, partitioning queries by (card_id, dimension_id)"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
@@ -919,8 +813,7 @@
           (is (= (vec (range (count groups))) (mapv :position groups))
               "positions are 0..N-1 in sort order — if a future heuristic emits nesting this fails on purpose"))
         (testing ":display_type matches the size of :query_ids"
-          (is (every? #(contains? #{"singleton" "page"} (:display_type %)) groups)
-              "no uninteresting queries here, so the 'sidebar' bin isn't produced")
+          (is (every? #(contains? #{"singleton" "page"} (:display_type %)) groups))
           (doseq [g groups]
             (let [expected (if (= 1 (count (:query_ids g))) "singleton" "page")]
               (is (= expected (:display_type g))
