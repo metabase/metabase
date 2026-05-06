@@ -116,8 +116,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
       - name: Run frontend timezones tests
         run: bun run test-timezones
 
