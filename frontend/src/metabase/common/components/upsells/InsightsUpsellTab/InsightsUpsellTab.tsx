@@ -1,52 +1,81 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { useGetAnalyticsTeaserQuery } from "metabase/api/activity";
 import { UpsellUsageAnalytics } from "metabase/common/components/upsells/UpsellUsageAnalytics";
 import { Card, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import { roundFloat } from "metabase/utils/formatting";
-import type { CardType } from "metabase-types/api";
+import { formatNumber, roundFloat } from "metabase/utils/formatting";
+import type { AnalyticsTeaserResponse, CardType } from "metabase-types/api";
 
 import S from "./InsightsUpsellTab.module.css";
 
+// TODO: Maybe use "metabase/query_builder/components/view/ExecutionTime/utils"?
+const formatDuration = (time: number): string => {
+  if (time < 1000) {
+    return t`${time}ms`;
+  }
+
+  return t`${(time / 1000).toFixed(1)}s`;
+};
+
 const AnalyticsTeaser = ({
   heading,
-  body,
+  value,
   trendPct,
   isUpBad,
 }: {
   heading: ReactNode;
-  body: ReactNode;
-  trendPct: number;
+  value: ReactNode;
+  trendPct: number | null;
   isUpBad?: boolean;
 }) => {
   return (
-    <Flex flex={1} px="md" py="sm" direction="column">
+    <Flex flex="1 0 0" px="md" py="sm" direction="column">
       <Text mb="sm">{heading}</Text>
       <Flex align="baseline" py="xs">
         <Text fz="1.75rem" fw="bold" mr="sm">
-          {body}
+          {value}
         </Text>
-        <Icon
-          name={trendPct > 0 ? "arrow_up" : "arrow_down"}
-          c={trendPct > 0 && !isUpBad ? "success" : "error"}
-          size={12}
-          mr="xs"
-        />
-        <Text c={trendPct > 0 && !isUpBad ? "success" : "error"} fw="bold">
-          {roundFloat(trendPct * 100)}
-          {"%"}
-        </Text>
+        {trendPct ? (
+          <>
+            <Icon
+              name={trendPct > 0 ? "arrow_up" : "arrow_down"}
+              c={trendPct > 0 && !isUpBad ? "success" : "error"}
+              size={12}
+              mr="xs"
+            />
+            <Text c={trendPct > 0 && !isUpBad ? "success" : "error"} fw="bold">
+              {roundFloat(trendPct * 100)}
+              {"%"}
+            </Text>
+          </>
+        ) : (
+          <Text>&nbsp;</Text>
+        )}
       </Flex>
     </Flex>
   );
 };
 
-export const InsightsUpsellTab = ({
-  model,
-}: {
-  /** 'Model' in the sense of 'type of thing', not in the sense of 'dataset' */
-  model: "dashboard" | CardType;
-}) => {
+const getPctChange = (curr: number, prev: number | null): number | null => {
+  if (!prev) {
+    return null;
+  }
+  return (curr - prev) / prev;
+};
+
+const AnalyticsSection = ({
+  recent_view_count,
+  recent_view_count_prev,
+  visitor_count,
+  visitor_count_prev,
+  query_average_duration,
+  query_average_duration_prev,
+}: AnalyticsTeaserResponse) => {
+  if (!recent_view_count || !visitor_count) {
+    return null;
+  }
+
   return (
     <>
       <Flex justify="space-between" mb="xs">
@@ -61,8 +90,8 @@ export const InsightsUpsellTab = ({
               {t`Views`}
             </Flex>
           }
-          body="12,345"
-          trendPct={0.012}
+          value={formatNumber(recent_view_count)}
+          trendPct={getPctChange(recent_view_count, recent_view_count_prev)}
         />
         <AnalyticsTeaser
           heading={
@@ -76,22 +105,45 @@ export const InsightsUpsellTab = ({
               </Tooltip>
             </Flex>
           }
-          body="42"
-          trendPct={-0.034}
+          value={formatNumber(visitor_count)}
+          trendPct={getPctChange(visitor_count, visitor_count_prev)}
         />
-        <AnalyticsTeaser
-          heading={
-            <Flex align="center">
-              <Icon name="clock" size={14} mr="sm" />
-              {t`Avg. execution time`}
-            </Flex>
-          }
-          body="8.6s"
-          trendPct={0.53}
-          isUpBad
-        />
+        {query_average_duration != null && (
+          <AnalyticsTeaser
+            heading={
+              <Flex align="center">
+                <Icon name="clock" size={14} mr="sm" />
+                {t`Avg. execution time`}
+              </Flex>
+            }
+            value={formatDuration(roundFloat(query_average_duration, 1))}
+            trendPct={getPctChange(
+              query_average_duration,
+              query_average_duration_prev,
+            )}
+            isUpBad
+          />
+        )}
       </Card>
+    </>
+  );
+};
 
+export const InsightsUpsellTab = ({
+  model,
+  modelId,
+}: {
+  /** 'Model' in the sense of 'type of thing', not in the sense of 'dataset' */
+  model: "dashboard" | CardType;
+  modelId: string | number;
+}) => {
+  const { data } = useGetAnalyticsTeaserQuery(
+    { model: model === "dashboard" ? model : "card", model_id: +modelId },
+    { refetchOnMountOrArgChange: true },
+  );
+  return (
+    <>
+      {data && <AnalyticsSection {...data} />}
       <UpsellUsageAnalytics
         location={`${model}-sidesheet`}
         fullWidth

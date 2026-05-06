@@ -1,4 +1,6 @@
 import type {
+  AnalyticsTeaserRequest,
+  AnalyticsTeaserResponse,
   CreateRecentRequest,
   Field,
   PopularItem,
@@ -58,6 +60,15 @@ export const activityApi = Api.injectEndpoints({
         response?.popular_items,
       providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
+    getAnalyticsTeaser: builder.query<
+      AnalyticsTeaserResponse,
+      AnalyticsTeaserRequest
+    >({
+      query: ({ model, model_id }) => ({
+        method: "GET",
+        url: `/api/activity/analytics-teaser?model=${model}&model_id=${model_id}`,
+      }),
+    }),
     logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
       {
         query: ({ model_id, model }) => ({
@@ -79,8 +90,11 @@ export const activityApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListPopularItemsQuery, useLogRecentItemMutation } =
-  activityApi;
+export const {
+  useGetAnalyticsTeaserQuery,
+  useListPopularItemsQuery,
+  useLogRecentItemMutation,
+} = activityApi;
 
 type GetRecentsQueryOptions = Parameters<
   typeof activityApi.useListRecentsQuery

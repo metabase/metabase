@@ -1,6 +1,7 @@
 (ns metabase.activity-feed.api
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
@@ -276,3 +277,55 @@
   archived, deleted, etc it can usually still get 5. "
   []
   {:popular_items (get-popular-items-model-and-id)})
+
+(def ^:private analytics-teaser-response-schema
+  [:map
+   [:recent_view_count           :int]
+   [:recent_view_count_prev      :int]
+   [:visitor_count               :int]
+   [:visitor_count_prev          :int]
+   [:query_average_duration      [:maybe number?]]
+   [:query_average_duration_prev [:maybe number?]]])
+
+(api.macros/defendpoint :get "/analytics-teaser" :- analytics-teaser-response-schema
+  "Get analytics statistics for a model instance for the analytics teaser UI.
+  Returns view counts, unique visitor counts, and (for cards) average query execution time
+  for the last 30 days and the preceding 30-day period."
+  [_route-params
+   {:keys [model model_id]} :- [:map
+                                [:model    [:enum "card" "dashboard"]]
+                                [:model_id ms/PositiveInt]]]
+  (let [model-type      (case model
+                          "card"      :model/Card
+                          "dashboard" :model/Dashboard)
+        entity          (api/check-404 (t2/select-one model-type :id model_id))
+        _               (api/read-check entity)
+        now             (t/offset-date-time)
+        thirty-days-ago (t/minus now (t/days 30))
+        sixty-days-ago  (t/minus now (t/days 60))
+        view-stats      (fn [start end]
+                          (t2/query-one {:select [[:%count.* :view_count]
+                                                  [[:count [:distinct :user_id]] :visitor_count]]
+                                         :from   [:view_log]
+                                         :where  [:and
+                                                  [:= :model model]
+                                                  [:= :model_id model_id]
+                                                  [:>= :timestamp start]
+                                                  [:< :timestamp end]]}))
+        exec-avg        (fn [start end]
+                          (when (= model "card")
+                            (:avg_duration
+                             (t2/query-one {:select [[:%avg.running_time :avg_duration]]
+                                            :from   [:query_execution]
+                                            :where  [:and
+                                                     [:= :card_id model_id]
+                                                     [:>= :started_at start]
+                                                     [:< :started_at end]]}))))
+        recent          (view-stats thirty-days-ago now)
+        prev            (view-stats sixty-days-ago thirty-days-ago)]
+    {:recent_view_count           (or (:view_count recent) 0)
+     :recent_view_count_prev      (or (:view_count prev) 0)
+     :visitor_count               (or (:visitor_count recent) 0)
+     :visitor_count_prev          (or (:visitor_count prev) 0)
+     :query_average_duration      (exec-avg thirty-days-ago now)
+     :query_average_duration_prev (exec-avg sixty-days-ago thirty-days-ago)}))

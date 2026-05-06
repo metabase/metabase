@@ -104,3 +104,19 @@ export interface CreateRecentRequest {
   model: ActivityModel;
   context: "selection";
 }
+
+export interface AnalyticsTeaserRequest {
+  model: "dashboard" | "card";
+  model_id: number;
+}
+
+export interface AnalyticsTeaserResponse {
+  recent_view_count: number;
+  recent_view_count_prev: number;
+  visitor_count: number;
+  visitor_count_prev: number;
+
+  /** Only present for cards; null if no executions in the period. */
+  query_average_duration: number | null;
+  query_average_duration_prev: number | null;
+}

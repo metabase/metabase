@@ -128,7 +128,10 @@ export const QuestionInfoSidebar = ({
             </SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="insights">
-            <InsightsUpsellTab model={question.type()} />
+            <InsightsUpsellTab
+              model={question.type()}
+              modelId={question.id()}
+            />
           </Tabs.Panel>
         </SidesheetTabPanelContainer>
       </Tabs>

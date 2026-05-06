@@ -170,7 +170,7 @@ export function DashboardInfoSidebarInner({
                 />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.Insights}>
-                <InsightsUpsellTab model="dashboard" />
+                <InsightsUpsellTab model="dashboard" modelId={dashboard.id} />
               </Tabs.Panel>
             </SidesheetTabPanelContainer>
           </Tabs>
