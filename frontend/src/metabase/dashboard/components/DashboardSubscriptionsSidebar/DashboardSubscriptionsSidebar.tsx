@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
+import { skipToken, useListSubscriptionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { useSetArchive } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Pulses } from "metabase/entities/pulses";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
@@ -116,7 +116,7 @@ const getEditingPulseWithDefaults = (
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
-  formInput: getPulseFormInput(state),
+  formInput: getPulseFormInput(state) as ChannelApiResponse,
   user: getUser(state),
 });
 
@@ -153,7 +153,7 @@ interface DashboardSubscriptionsSidebarInnerProps {
   initialCollectionId?: number;
   isAdmin?: boolean;
   pulse: DraftDashboardSubscription;
-  saveEditingPulse: () => Promise<DashboardSubscription>;
+  saveEditingPulse: () => Promise<unknown>;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   updateEditingPulse: (pulse: DraftDashboardSubscription) => void;
   cancelEditingPulse: () => void;
@@ -615,19 +615,19 @@ function AddEditEmailSidebarWithHooks({
   );
 }
 
-const DashboardSubscriptionsSidebarConnected = _.compose(
-  Pulses.loadList({
-    query: (_state: State, { dashboard }: { dashboard: Dashboard }) => ({
-      dashboard_id: dashboard.id,
-    }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+const DashboardSubscriptionsSidebarConnected = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(DashboardSubscriptionsSidebarInner);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
+
+  const { data: pulses, isFetching: isSubscriptionListLoading } =
+    useListSubscriptionsQuery(
+      dashboard ? { dashboard_id: dashboard.id } : skipToken,
+    );
 
   if (!dashboard) {
     return null;
@@ -636,6 +636,8 @@ export default function DashboardSubscriptionsSidebar() {
   return (
     <DashboardSubscriptionsSidebarConnected
       dashboard={dashboard}
+      pulses={pulses}
+      loading={isSubscriptionListLoading}
       onCancel={() => setSharing(false)}
     />
   );

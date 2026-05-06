@@ -1,7 +1,6 @@
 import type {
   BaseEntityId,
   CollectionEssentials,
-  Dashboard,
   DashboardId,
   PaginationRequest,
   PaginationResponse,
@@ -141,11 +140,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  setPinned?: (isPinned: number | boolean) => void;
-  setCollection?: (
-    collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
-  ) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
   is_remote_synced?: boolean;
@@ -181,6 +175,7 @@ export type ListCollectionItemsRequest = {
   namespace?: CollectionNamespace;
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
+  show_dashboard_questions?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

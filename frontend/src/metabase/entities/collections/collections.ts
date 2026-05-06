@@ -9,10 +9,6 @@ import {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import {
-  canonicalCollectionId,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
 import type { Dispatch, GetState, ReduxAction } from "metabase/redux/store";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -25,7 +21,7 @@ import type {
   UpdateCollectionRequest,
 } from "metabase-types/api";
 
-import { createEntity, entityCompatibleQuery, undo } from "../utils";
+import { createEntity, entityCompatibleQuery } from "../utils";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import { getCollectionType } from "./utils";
@@ -105,26 +101,6 @@ export const Collections = createEntity({
         dispatch,
         collectionApi.endpoints.deleteCollection,
       ),
-  },
-
-  objectActions: {
-    setCollection: (
-      { id }: Collection,
-      collection: Collection,
-      opts: Record<string, unknown>,
-    ) =>
-      Collections.actions.update(
-        { id },
-        {
-          parent_id: canonicalCollectionId(collection?.id),
-          archived: isRootTrashCollection(collection),
-        },
-        undo(opts, "collection", "moved"),
-      ),
-  },
-
-  objectSelectors: {
-    getName: (collection?: Collection) => collection?.name,
   },
 
   selectors: {

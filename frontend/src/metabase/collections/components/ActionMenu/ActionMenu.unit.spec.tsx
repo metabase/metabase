@@ -1,7 +1,8 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 import { Collections } from "metabase/entities/collections";
@@ -76,8 +77,8 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: true,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
@@ -86,7 +87,20 @@ describe("ActionMenu", () => {
           await screen.findByText("Don’t show visualization"),
         );
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: false,
+        });
       },
     );
 
@@ -97,15 +111,28 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: false,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
         await userEvent.click(getIcon("ellipsis"));
         await userEvent.click(await screen.findByText("Show visualization"));
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: true,
+        });
       },
     );
 
@@ -114,7 +141,6 @@ describe("ActionMenu", () => {
         item: createMockCollectionItem({
           model: "dataset",
           collection_position: 1,
-          setCollectionPreview: jest.fn(),
         }),
       });
 
@@ -133,7 +159,6 @@ describe("ActionMenu", () => {
         name: "Collection",
         model: "collection",
         can_write: true,
-        setCollection: jest.fn(),
       });
       fetchMock.put("path:/api/collection/1", { ...item, archived: true });
 
@@ -161,7 +186,6 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: true,
         personal_owner_id: 1,
-        setCollection: jest.fn(),
         copy: true,
       });
 
@@ -177,7 +201,6 @@ describe("ActionMenu", () => {
         name: "My Read Only collection",
         model: "collection",
         can_write: false,
-        setCollection: jest.fn(),
         copy: true,
       });
 

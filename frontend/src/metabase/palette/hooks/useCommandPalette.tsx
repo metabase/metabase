@@ -5,6 +5,7 @@ import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { getCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { getIcon } from "metabase/common/utils/icon";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -352,7 +353,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     );
   } else {
     return (
-      <SubtitleText>{wrappedSearchResult.getCollection?.()?.name}</SubtitleText>
+      <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>
     );
   }
 };

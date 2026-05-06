@@ -90,7 +90,6 @@ export function CollectionContent({
       databases={databases}
       bookmarks={bookmarks}
       collection={collection}
-      collections={collections}
       collectionId={collectionId}
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}

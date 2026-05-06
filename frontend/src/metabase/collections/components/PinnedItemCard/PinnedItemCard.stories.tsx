@@ -38,9 +38,7 @@ export const Question = {
       model: "card",
       name: "Question",
       description: "This is a description of the question",
-      setPinned: action("setPinned"),
       copy: true,
-      setCollection: action("setCollection"),
       archived: false,
     },
     onCopy,
@@ -62,7 +60,6 @@ export const Dashboard = {
       description: Array(20)
         .fill("This is a description of the dashboard.")
         .join(" "),
-      setPinned: action("setPinned"),
       archived: false,
     },
     onCopy,
@@ -82,7 +79,6 @@ export const Model = {
       collection_id: null,
       name: "Model",
       description: "This is a description of the model",
-      setPinned: action("setPinned"),
       archived: false,
     },
     onCopy,

@@ -9,7 +9,7 @@
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io OutputStream)
+   (java.io File OutputStream)
    (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
@@ -47,7 +47,8 @@
 
 (defn- create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
-  (b/create-basis {:project "deps.edn", :aliases #{edition}}))
+  (b/create-basis {:project "deps.edn",
+                   :aliases #{edition :drivers}}))
 
 (defn- all-paths [basis]
   (concat (:paths basis)
@@ -78,6 +79,22 @@
    (ns.deps/graph)
    ns-decls))
 
+(def ^:private drivers-excluded-from-aot
+  "Drivers whose JDBC dependencies are not bundled due to licensing restrictions (users must supply the JDBC driver JAR
+  themselves). These drivers are included as source on the classpath and compiled lazily at runtime when their JDBC
+  driver is present in the plugins directory."
+  #{"oracle" "vertica"})
+
+(defn- all-drivers []
+  (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
+       (filter (fn [^File d]
+                 (and
+                  (.isDirectory d)
+                  (not (.isHidden d))
+                  (.exists (io/file d "deps.edn"))
+                  (not (contains? drivers-excluded-from-aot (.getName d))))))
+       (map (comp symbol #(str "metabase.driver." %) #(.getName ^File %)))))
+
 (defn- metabase-namespaces-in-topo-order [basis]
   (let [ns-decls   (into []
                          (comp (map io/file)
@@ -88,7 +105,7 @@
                         ns.deps/topo-sort
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
-        all        (concat orphans sorted)]
+        all        (concat orphans sorted (all-drivers))]
     (assert (contains? (set all) 'metabase.core.bootstrap))
     (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
@@ -121,7 +138,10 @@
    ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
    #"\~$"
    #"^\.?#"
-   #"\.rej$"])
+   #"\.rej$"
+   ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
+   ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
+   #"^modules/"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
@@ -132,7 +152,14 @@
       (u/step (format "Copy resources from %s" path)
         (b/copy-dir {:target-dir class-dir
                      :src-dirs   [path]
-                     :ignores    resource-ignore-patterns})))))
+                     :ignores    resource-ignore-patterns})))
+    ;; Drivers excluded from AOT need their source files in the jar so they can be compiled lazily at runtime.
+    (doseq [driver drivers-excluded-from-aot]
+      (let [src-dir (u/filename u/project-root-directory "modules" "drivers" driver "src")]
+        (when (.isDirectory (io/file src-dir))
+          (u/step (format "Copy source for non-AOT driver %s" driver)
+            (b/copy-dir {:target-dir class-dir
+                         :src-dirs   [src-dir]})))))))
 
 (def ^:private dependency-ignore-patterns
   "Files to ignore when copying resources from our dependencies."
@@ -141,7 +168,11 @@
    ;; tf` -- see Slacc thread
    ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
    #".*module-info\.class"
-   #"^LICENSE$"])
+   #"^LICENSE$"
+   #".*LICENSE.jol.txt"
+   #"META-INF/license/LICENSE.jol.txt"
+   #"META-INF/license.*"
+   #"META-INF/LICENSE.*"])
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"

@@ -276,7 +276,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });
@@ -393,7 +392,6 @@ describe("setParameterMapping", () => {
           metrics: {},
           snippets: {},
           questions: {},
-          indexedEntities: {},
           groups: {},
         },
       });
