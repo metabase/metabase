@@ -2,10 +2,11 @@ import { t } from "ttag";
 
 import {
   useCreateTimelineEventMutation,
+  useCreateTimelineMutation,
   useListTimelinesQuery,
 } from "metabase/api";
+import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
 import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -13,7 +14,7 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type {
   Collection,
   CreateTimelineEventRequest,
-  Timeline,
+  CreateTimelineRequest,
   TimelineEvent,
 } from "metabase-types/api";
 
@@ -33,8 +34,9 @@ const collectionProps = {
 function NewEventModalContainer({
   onClose,
   collection,
-}: NewEventModalContainerProps & { timelines?: Timeline[] }) {
+}: NewEventModalContainerProps) {
   const dispatch = useDispatch();
+  const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
 
@@ -45,7 +47,13 @@ function NewEventModalContainer({
     if (values.timeline_id) {
       await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
     } else if (collection) {
-      await dispatch(Timelines.actions.createWithEvent(values, collection));
+      const timeline = await createTimeline(
+        getDefaultTimeline(collection) as CreateTimelineRequest,
+      ).unwrap();
+      await createTimelineEvent({
+        ...values,
+        timeline_id: timeline.id,
+      } as CreateTimelineEventRequest).unwrap();
     }
     dispatch(addUndo({ message: t`Created event` }));
   };

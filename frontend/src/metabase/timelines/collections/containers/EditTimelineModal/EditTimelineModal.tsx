@@ -1,8 +1,11 @@
 import { push } from "react-router-redux";
 
-import { skipToken, useGetTimelineQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetTimelineQuery,
+  useUpdateTimelineMutation,
+} from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { Timelines } from "metabase/entities/timelines";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
@@ -14,6 +17,7 @@ import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
+  const [updateTimeline] = useUpdateTimelineMutation();
   const id = Urls.extractEntityId(params.timelineId);
   const {
     data: timeline,
@@ -28,7 +32,7 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   }
 
   const handleSubmit = async (timeline: Timeline) => {
-    await dispatch(Timelines.actions.update(timeline));
+    await updateTimeline(timeline).unwrap();
     dispatch(push(Urls.timelineInCollection(timeline)));
   };
 
