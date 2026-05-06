@@ -161,13 +161,9 @@
           (is (re-find #"last_name" msg))
           (is (= [{:id 100 :name "first_name" :table-id 10}
                   {:id 101 :name "last_name" :table-id 10}]
-                 (:available-fields data)))
-          (is (string? (:suggested-ref-shape data)))
-          (is (re-find #"\"field\"" (:suggested-ref-shape data)))
-          ;; no join aliases among candidates -> plain field-ref hint
-          (is (not (re-find #"join-alias" (:suggested-ref-shape data)))))))))
+                 (:available-fields data))))))))
 
-(deftest unavailable-field-error-hints-join-alias-when-present-test
+(deftest unavailable-field-error-includes-join-alias-in-summary-test
   (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
         candidate  {:id 200 :table-id 20 :name "customer_id" :base-type :type/Integer
                     :lib/join-alias "Customers"}]
@@ -176,10 +172,24 @@
         (runtime.fields/resolve-field-in-query {} ::query raw-field))
       (is false "expected ex-info to be thrown")
       (catch clojure.lang.ExceptionInfo e
-        (let [data (ex-data e)
+        (let [msg     (ex-message e)
+              data    (ex-data e)
               summary (first (:available-fields data))]
           (is (= "Customers" (:join-alias summary)))
-          (is (re-find #"join-alias" (:suggested-ref-shape data))))))))
+          (is (re-find #"join-alias=\"Customers\"" msg)))))))
+
+(deftest unavailable-field-error-suppresses-listing-when-no-candidates-test
+  (let [raw-field {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly [])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          (is (re-find #"No fields are visible in this stage" msg))
+          (is (not (re-find #"Fields available in this stage" msg)))
+          (is (= [] (:available-fields data))))))))
 
 (deftest unavailable-field-error-caps-listed-candidates-test
   (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}

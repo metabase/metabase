@@ -292,28 +292,21 @@
 
 (defn- unavailable-field-error
   [raw-field query candidates]
-  (let [summaries       (mapv summarize-candidate candidates)
-        has-join-alias? (boolean (some :join-alias summaries))
-        shown           (take max-candidates-in-error summaries)
-        extra           (max 0 (- (count summaries) max-candidates-in-error))
-        ref-hint        (if has-join-alias?
-                          "To reference a field from a joined table, include its join alias: [\"field\", <id>, {\"join-alias\": \"<alias>\"}]."
-                          "Reference fields with [\"field\", <id>] using one of the ids below.")
-        fields-block    (if (seq shown)
-                          (str/join "\n" (mapv format-candidate-line shown))
-                          "(no fields are visible in this stage)")
-        extra-line      (when (pos? extra) (str "\n... and " extra " more"))]
+  (let [summaries    (mapv summarize-candidate candidates)
+        shown        (take max-candidates-in-error summaries)
+        extra        (max 0 (- (count summaries) max-candidates-in-error))
+        fields-block (if (seq shown)
+                       (str "Fields available in this stage:\n"
+                            (str/join "\n" (mapv format-candidate-line shown))
+                            (when (pos? extra) (str "\n... and " extra " more")))
+                       "No fields are visible in this stage.")]
     (ex-info (str "Field " (pr-str (:name raw-field))
                   " (id " (pr-str (:id raw-field))
                   ") is not available in the current query stage.\n"
-                  ref-hint "\n"
-                  "Fields available in this stage:\n"
-                  fields-block
-                  extra-line)
+                  fields-block)
              {:field raw-field
               :query query
-              :available-fields summaries
-              :suggested-ref-shape ref-hint})))
+              :available-fields summaries})))
 
 (defn resolve-field-in-query
   "Resolve a metadata field against what the current query stage actually
