@@ -1,11 +1,7 @@
 (ns metabase-enterprise.serialization.metadata-file-import.parsers.json
   "Streaming JSON parser for the metadata file importer. Walks a top-level JSON
   object, advances to a named array, and emits its items in batches via a
-  callback. Memory bounded by the in-flight item plus the current batch buffer.
-
-  Lifted from the Montreal hackathon's pull-style Jackson walker; the buffer-and-
-  HTTP-response machinery from that version is gone — callers compose with
-  closures over their own state instead."
+  callback. Memory bounded by the in-flight item plus the current batch buffer."
   (:require
    [metabase.util.performance :as perf])
   (:import
@@ -64,8 +60,7 @@
             (process-batch! (persistent! batch)))
 
           (= t JsonToken/START_OBJECT)
-          ;; LinkedHashMap doesn't satisfy `(map? x)`, so `(into {} raw)` first coerces to a
-          ;; Clojure map (string keys) before `keywordize-keys` rewrites the keys as keywords.
+          ;; LinkedHashMap fails (map? x), so coerce before keywordize-keys.
           (let [raw        (.readValueAs parser LinkedHashMap)
                 item       (perf/keywordize-keys (into {} raw))
                 ln         (inc line-num)

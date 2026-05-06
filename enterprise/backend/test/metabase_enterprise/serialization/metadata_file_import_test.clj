@@ -5,8 +5,8 @@
   post-loader appdb directly — no env-var path is exercised here except in
   the few tests that explicitly bind `*env*`.
 
-  File contents use the **portable-id wire format** (post-2026-04-29 pivot):
-  identifiers are natural keys, never source-instance integer ids."
+  File contents use the **portable-id wire format**: identifiers are natural
+  keys, never source-instance integer ids."
   (:require
    [cheshire.core :as cheshire]
    [clj-yaml.core :as yaml]
@@ -131,10 +131,7 @@
 ;;; ============================== Unfilled stubs (orphan parent) ==============================
 
 (deftest unfilled-stubs-warns-test
-  (testing "a field whose :parent_id references a portable id NOT present in the file
-            (orphan parent) creates a stub for the missing parent. The stub remains
-            after the import — `warn-on-unfilled-stubs!` logs a structured WARN line
-            but does NOT throw (per the 2026-04-29 stubs-policy decision)."
+  (testing "orphan parent: stub remains, warn-on-unfilled-stubs! logs but does not throw"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "orphan-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:name "orphan-db" :engine "postgres"}]
@@ -159,9 +156,7 @@
 ;;; ============================== No-match skipping ==============================
 
 (deftest unmatched-source-database-skips-its-tables-and-fields-test
-  (testing "if a source database in the file has no matching target Database, the loader
-            logs WARN, and the dependent tables/fields are silently skipped (their db_id
-            doesn't resolve to any target). Phase 1 is non-fatal per §10."
+  (testing "unmatched source database: WARN logged, dependent tables/fields silently skipped"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "matched-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:name "matched-db"     :engine "postgres"}

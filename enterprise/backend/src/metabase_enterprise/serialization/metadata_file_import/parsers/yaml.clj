@@ -6,8 +6,8 @@
   batch buffer.
 
   Mirrors the public shape of [[metabase-enterprise.serialization.metadata-file-import.parsers.json]].
-  Aliases (`*name`) and tagged scalars are not supported — our export side is
-  mechanically generated and never emits them."
+  Aliases (`*name`) and tagged scalars are not supported — the export side
+  never emits them."
   (:import
    (java.io Reader)
    (java.util Iterator)

@@ -725,72 +725,65 @@
                 ["fkfin-order-db" "public" "t" "a"]]   (mapv :source-id results)))
         (is (= [b a]                                   (mapv :target-id results)))))))
 
-(deftest process-fields-fk-resolve-fk-target-is-convention-b-leaf-test
-  (testing "phase 4 resolves FK targets that are Convention B leaves. Wire :fk_target_field_id
-            of shape [db schema table & nfc-path] (no leaf appended) refers to a storage row
-            with name=arrow-joined, nfc_path=full-path-incl-leaf, parent_id=NULL. The phase-4
-            resolver must locate that storage row and write its int id into the source row's
-            fk_target_field_id column."
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-cb-tgt-db" :engine :postgres}
+(deftest process-fields-fk-resolve-fk-target-is-json-unfolded-leaf-test
+  (testing "fk-resolve locates a JSON-unfolded leaf as the FK target"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-leaf-tgt-db" :engine :postgres}
                    :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
-                   ;; Convention B leaf storage row: full path in nfc_path, name is the
+                   ;; JSON-unfolded leaf storage row: full path in nfc_path, name is the
                    ;; synthesized arrow-joined display label, parent_id is NULL.
-                   :model/Field    {cb-leaf :id}  {:table_id tbl-id
+                   :model/Field    {leaf :id}     {:table_id tbl-id
                                                    :name "payload → address → zip"
                                                    :nfc_path (json/encode ["payload" "address" "zip"])
                                                    :parent_id nil
                                                    :base_type "type/Text"
                                                    :database_type "text"}
-                   ;; Plain flat field that points at the Conv B leaf as its FK target.
+                   ;; Plain flat field that points at the leaf as its FK target.
                    :model/Field    {ref-id :id}   {:table_id tbl-id :name "ref-zip"
                                                    :base_type "type/Text"
                                                    :database_type "text"}]
-      (let [batch [[1 {:id ["fkfin-cb-tgt-db" "public" "events" "ref-zip"]
-                       :table_id ["fkfin-cb-tgt-db" "public" "events"]
+      (let [batch [[1 {:id ["fkfin-leaf-tgt-db" "public" "events" "ref-zip"]
+                       :table_id ["fkfin-leaf-tgt-db" "public" "events"]
                        :name "ref-zip"
                        :base_type "type/Text" :database_type "text"
-                       ;; Convention B leaf wire id: no leaf appended past the nfc-path.
-                       :fk_target_field_id ["fkfin-cb-tgt-db" "public" "events"
+                       ;; leaf wire id: no leaf appended past the nfc-path.
+                       :fk_target_field_id ["fkfin-leaf-tgt-db" "public" "events"
                                             "payload" "address" "zip"]}]]
             [r]   (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= {:source-id ["fkfin-cb-tgt-db" "public" "events" "ref-zip"]
+        (is (= {:source-id ["fkfin-leaf-tgt-db" "public" "events" "ref-zip"]
                 :target-id ref-id :status :updated}
                r))
-        (is (= cb-leaf
+        (is (= leaf
                (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))
-            "fk_target_field_id resolves to the Conv B leaf's int id")))))
+            "fk_target_field_id resolves to the leaf's int id")))))
 
-(deftest process-fields-fk-resolve-fk-source-is-convention-b-leaf-test
-  (testing "phase 4 resolves a row whose own portable id is a Convention B leaf and
-            whose :fk_target_field_id points at a flat field. The resolver must locate
-            the Conv B leaf storage row by its [db schema table & nfc-path] wire id and
-            UPDATE its fk_target_field_id column."
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-cb-src-db" :engine :postgres}
+(deftest process-fields-fk-resolve-fk-source-is-json-unfolded-leaf-test
+  (testing "fk-resolve UPDATEs a JSON-unfolded leaf that itself carries an FK"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-leaf-src-db" :engine :postgres}
                    :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
-                   ;; Convention B leaf storage row that itself has an FK.
-                   :model/Field    {cb-leaf :id}  {:table_id tbl-id
+                   ;; JSON-unfolded leaf storage row that itself has an FK.
+                   :model/Field    {leaf :id}     {:table_id tbl-id
                                                    :name "payload → user → zip"
                                                    :nfc_path (json/encode ["payload" "user" "zip"])
                                                    :parent_id nil
                                                    :base_type "type/Text"
                                                    :database_type "text"}
-                   ;; Flat field this Conv B leaf will FK-reference.
+                   ;; Flat field this leaf will FK-reference.
                    :model/Field    {flat-tgt :id} {:table_id tbl-id :name "zip-codes"
                                                    :base_type "type/Text"
                                                    :database_type "text"}]
-      (let [batch [[1 {:id ["fkfin-cb-src-db" "public" "events"
+      (let [batch [[1 {:id ["fkfin-leaf-src-db" "public" "events"
                             "payload" "user" "zip"]
-                       :table_id ["fkfin-cb-src-db" "public" "events"]
+                       :table_id ["fkfin-leaf-src-db" "public" "events"]
                        :name "payload → user → zip"
                        :nfc_path ["payload" "user" "zip"]
                        :base_type "type/Text" :database_type "text"
-                       :fk_target_field_id ["fkfin-cb-src-db" "public" "events" "zip-codes"]}]]
+                       :fk_target_field_id ["fkfin-leaf-src-db" "public" "events" "zip-codes"]}]]
             [r]   (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= {:source-id ["fkfin-cb-src-db" "public" "events"
+        (is (= {:source-id ["fkfin-leaf-src-db" "public" "events"
                             "payload" "user" "zip"]
-                :target-id cb-leaf :status :updated}
+                :target-id leaf :status :updated}
                r))
         (is (= flat-tgt
-               (:fk_target_field_id (t2/select-one :model/Field :id cb-leaf)))
-            "Conv B leaf's fk_target_field_id is set to the flat target's int id")))))
+               (:fk_target_field_id (t2/select-one :model/Field :id leaf)))
+            "leaf's fk_target_field_id is set to the flat target's int id")))))
 

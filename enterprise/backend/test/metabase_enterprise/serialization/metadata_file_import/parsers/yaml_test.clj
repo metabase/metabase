@@ -98,9 +98,7 @@
       (is (= "foo"     (:string_plain row))))))
 
 (deftest aliases-rejected-test
-  (testing "YAML aliases (anchors via *name) are not supported by our walker — they
-            would let one file element refer to another and complicate the streaming
-            invariant. Hard-fail with a clear error."
+  (testing "aliases would let one file element refer to another — hard-fail"
     (try
       (collect-batches (str "shared: &anchor\n"
                             "  k: v\n"

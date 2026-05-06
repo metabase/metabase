@@ -1,11 +1,10 @@
 (ns ^:parallel metabase-enterprise.serialization.metadata-file-import.schemas-test
   "Tests for the Malli schemas validating per-line shapes streamed in
   `MB_TABLE_METADATA_PATH`. The schemas describe the **portable-id** wire
-  format produced by `GET /api/database/metadata` after Alex Polyankin's
-  2026-04-29 rework (see plan §16). Both Clojure vectors (YAML parser
-  output) and `java.util.ArrayList` (Jackson JSON parser output) must
-  validate, since `:tuple` rejects ArrayList and the importer reads from
-  both formats."
+  format produced by `GET /api/database/metadata`. Both Clojure vectors
+  (YAML parser output) and `java.util.ArrayList` (Jackson JSON parser
+  output) must validate, since `:tuple` rejects ArrayList and the importer
+  reads from both formats."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
@@ -117,8 +116,7 @@
 
 (deftest table-info-rejects-integer-db-id-test
   (is (not (mr/validate ::schemas/table-info
-                        {:db_id 42 :name "orders"}))
-      "integer :db_id is the pre-pivot shape — must reject"))
+                        {:db_id 42 :name "orders"}))))
 
 (deftest table-info-rejects-missing-required-keys-test
   (is (not (mr/validate ::schemas/table-info {:db_id "warehouse"}))
@@ -141,8 +139,8 @@
                       :name "address"
                       :base_type "type/Text"}))))
 
-(deftest field-info-accepts-convention-a-child-test
-  (testing "Convention A child — :parent_id present, :nfc_path also present (parent ancestry chain)"
+(deftest field-info-accepts-row-with-parent-id-and-nfc-path-test
+  (testing "row carrying both :parent_id and :nfc_path"
     (is (mr/validate ::schemas/field-info
                      {:id ["warehouse" "public" "orders" "address" "zip"]
                       :table_id valid-table-id
@@ -243,11 +241,11 @@
                     :semantic_type "type/Currency"
                     :coercion_strategy "Coercion/UNIXSeconds->DateTime"})))
 
-;;; Convention B (Postgres JSON-unfolded leaves) — wire carries `:nfc_path`
-;;; verbatim from storage and no `:parent_id` (no parent storage row exists).
+;;; JSON-unfolded leaves — wire carries `:nfc_path` verbatim from storage and
+;;; no `:parent_id` (no parent storage row exists).
 
-(deftest field-info-accepts-convention-b-leaf-with-nfc-path-test
-  (testing "Convention B: row carries :nfc_path, no :parent_id"
+(deftest field-info-accepts-row-with-nfc-path-and-no-parent-id-test
+  (testing "row carries :nfc_path, no :parent_id"
     (is (mr/validate ::schemas/field-info
                      {:id ["warehouse" "public" "orders" "payload" "address" "zip"]
                       :table_id valid-table-id
