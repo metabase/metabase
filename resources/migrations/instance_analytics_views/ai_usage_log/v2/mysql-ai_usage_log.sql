@@ -34,10 +34,12 @@ SELECT
      ORDER BY pg.name
      LIMIT 1)                                                         AS group_name,
     c.ip_address                                                      AS ip_address,
+    c.embedding_hostname                                              AS embedding_hostname,
+    c.embedding_path                                                  AS embedding_path,
+    c.user_agent                                                      AS user_agent,
+    c.sanitized_user_agent                                            AS sanitized_user_agent,
     a.tenant_id,
-    a.request_id,
-    a.cache_creation_tokens,
-    a.cache_read_tokens
+    a.request_id
 FROM ai_usage_log a
 LEFT JOIN core_user u
     ON u.id = a.user_id

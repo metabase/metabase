@@ -324,40 +324,42 @@ const getEmbedDashcardParams = (
   }),
 });
 
+const convertSearchParamsToObject = (params: URLSearchParams) => {
+  const object: Record<string, string | string[]> = {};
+  for (const [key, value] of params.entries()) {
+    if (object[key]) {
+      object[key] = ([] as string[]).concat(
+        object[key] as string | string[],
+        value,
+      );
+    } else {
+      object[key] = value;
+    }
+  }
+
+  return object;
+};
+
 const getEmbedQuestionParams = (
   token: EntityToken,
   type: string,
+  params: Record<string, unknown>,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
-  const params = isEmbeddingSdk()
-    ? // For SDK/EmbedJS we must not read params from location search as in both cases
-      // additional params are not supported by a public endpoint
-      null
-    : new URLSearchParams(window.location.search);
-
-  const convertSearchParamsToObject = (params: URLSearchParams) => {
-    const object: Record<string, string | string[]> = {};
-    for (const [key, value] of params.entries()) {
-      if (object[key]) {
-        object[key] = ([] as string[]).concat(
-          object[key] as string | string[],
-          value,
-        );
-      } else {
-        object[key] = value;
-      }
-    }
-
-    return object;
-  };
+  // Guest Embed / Modular embedding SDK embeds receive parameter values via postMessage
+  // from the host page, so window.location.search does not reflect the active
+  // editable filter state. Fall back to the params provided by the caller.
+  // Static embed iframes encode filter values in the iframe URL, so read them
+  // from window.location.search.
+  const downloadParameters = isEmbeddingSdk()
+    ? params
+    : convertSearchParamsToObject(new URLSearchParams(window.location.search));
 
   return {
     method: "GET",
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
-      ...(params && {
-        parameters: JSON.stringify(convertSearchParamsToObject(params)),
-      }),
+      parameters: JSON.stringify(downloadParameters),
       ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
@@ -423,7 +425,7 @@ const getAdHocQuestionParams = (
   },
 });
 
-const getDatasetParams = ({
+export const getDatasetParams = ({
   type,
   question,
   dashboardId,
@@ -494,7 +496,7 @@ const getDatasetParams = ({
       );
     }
     if (resourceType === "question" && token) {
-      return getEmbedQuestionParams(token, type, exportParams);
+      return getEmbedQuestionParams(token, type, params, exportParams);
     }
   }
 

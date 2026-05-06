@@ -89,7 +89,11 @@
   Positional args: `conversation-id`, `profile-id`, `parts`.
 
   Keyword args:
-  - `:ip-address`, `:embed-url` — recorded on the conversation row on first insert only.
+  - `:hostname` — always-on `embedding_hostname`; recorded on first insert only.
+  - `:pii-info` — gated PII map (`analytics.core/pii-fields-from`'s shape: keys
+     `:embedding_path`, `:user_agent`, `:sanitized_user_agent`, `:ip_address`).
+     Nil when the retention flag is off; individual keys recorded on first
+     insert only. Slack persistence never passes this — slack rows stay NULL.
   - `:slack-msg-id`, `:channel-id`, `:slack-team-id`, `:slack-thread-ts` — slack
      metadata. `:slack-team-id`/`:channel-id`/`:slack-thread-ts` land on the
      conversation row on first insert only; `:slack-msg-id`/`:channel-id` land on
@@ -101,7 +105,7 @@
 
   Returns the inserted `MetabotMessage` primary key."
   [conversation-id profile-id parts
-   & {:keys [ip-address embed-url external-id
+   & {:keys [hostname pii-info external-id
              slack-msg-id channel-id slack-team-id slack-thread-ts
              user-id ai-proxy?]}]
   (let [state-part  (u/seek #(and (= :data (:type %))
@@ -135,10 +139,16 @@
                                     (assoc :user_id api/*current-user-id*)
                                     state-part
                                     (assoc :state (:data state-part))
-                                    (and ip-address (nil? (:ip_address existing)))
-                                    (assoc :ip_address ip-address)
-                                    (and embed-url (nil? (:embed_url existing)))
-                                    (assoc :embed_url embed-url)
+                                    (and hostname (nil? (:embedding_hostname existing)))
+                                    (assoc :embedding_hostname hostname)
+                                    (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
+                                    (assoc :embedding_path (:embedding_path pii-info))
+                                    (and (:user_agent pii-info) (nil? (:user_agent existing)))
+                                    (assoc :user_agent (:user_agent pii-info))
+                                    (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
+                                    (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
+                                    (and (:ip_address pii-info) (nil? (:ip_address existing)))
+                                    (assoc :ip_address (:ip_address pii-info))
                                     (and slack-team-id (nil? (:slack_team_id existing)))
                                     (assoc :slack_team_id slack-team-id)
                                     (and channel-id (nil? (:slack_channel_id existing)))

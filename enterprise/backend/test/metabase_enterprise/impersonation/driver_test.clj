@@ -12,11 +12,13 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -1067,3 +1069,25 @@
                             (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
                             (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
                             (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table)))))))))))))))
+
+(deftest ^:parallel impersonated-query-parse-error-message-test
+  (testing "When a native query fails to parse, the validator reports a parse error -- not a misleading 'must be a single select' message (#73593)"
+    (let [validate (fn [sql]
+                     (try
+                       (driver.sql/validate-impersonated-query*
+                        :postgres
+                        {:stages [{:lib/type :mbql.stage/native :native sql}]})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e e)))]
+      (testing "syntax error in a CTE produces a parse-error message, not the single-select message"
+        (let [thrown (validate "with cte as (\n  select 1 as col\n), \nselect * from cte")]
+          (is (some? thrown) "expected validate-impersonated-query* to throw")
+          (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
+          (is (re-find #"Unable to parse native query" (ex-message thrown)))
+          (is (not (re-find #"single select statement" (ex-message thrown)))
+              "should not surface the misleading single-select message for a parse failure")))
+      (testing "well-formed but multi-statement query still reports the single-select message"
+        (let [thrown (validate "SELECT 1; SELECT 2")]
+          (is (some? thrown) "expected validate-impersonated-query* to throw")
+          (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
+          (is (re-find #"single select statement" (ex-message thrown))))))))
