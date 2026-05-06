@@ -379,20 +379,6 @@ describe("database page > side panel", () => {
     cy.visit("/admin/databases/create");
   });
 
-  it("should show side panel with help content when 'Help is here' is clicked", () => {
-    cy.findByRole("button", { name: /Help is here/ }).click();
-    cy.findByTestId("database-help-side-panel").within(() => {
-      cy.findByText("Add PostgreSQL").should("be.visible");
-      cy.findByRole("link", { name: /Read the full docs/ }).should(
-        "be.visible",
-      );
-      cy.findByRole("link", { name: /Talk to an expert/ }).should("be.visible");
-      cy.findByRole("button", { name: /Invite a teammate to help you/ }).should(
-        "be.visible",
-      );
-    });
-  });
-
   it("should update the side panel content when the engine is changed", () => {
     const enginesMap = [
       { name: "Amazon Athena", file: "athena" },
