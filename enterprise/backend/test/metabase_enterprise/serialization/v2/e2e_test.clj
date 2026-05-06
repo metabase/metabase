@@ -1022,7 +1022,7 @@
 (deftest query-with-missing-table-and-field-test
   (testing "An exported query whose table/field have been deleted re-imports by synthesizing inactive rows"
     (mt/with-temp
-      [:model/Database {db-id :id, db-name :name} {}
+      [:model/Database {db-id :id} {}
        :model/Table    {table-id :id, table-name :name, table-schema :schema} {:db_id db-id}
        :model/Field    {field-id :id, field-name :name} {:table_id table-id :base_type :type/Text}]
       (let [mp       (lib-be/application-database-metadata-provider db-id)
