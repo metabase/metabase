@@ -9,7 +9,6 @@ import cx from "classnames";
 
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
 import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -58,8 +57,6 @@ export const ParagraphNodeView = ({
     shouldHideMenus: hideMenusInContext,
   });
 
-  const commentUrl = useCommentUrl({ childTargetId: _id });
-
   return (
     <>
       <NodeViewWrapper
@@ -78,7 +75,7 @@ export const ParagraphNodeView = ({
       {shouldShowMenus && document && (
         <CommentsMenu
           active={isOpen}
-          href={commentUrl}
+          childTargetId={_id}
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}

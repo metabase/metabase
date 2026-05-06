@@ -29,6 +29,7 @@ import {
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
+import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -185,9 +186,7 @@ export const CardEmbedComponent = memo(
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = document
-      ? `/document/${document.id}/comments/${_id}`
-      : "";
+    const commentsPath = useCommentUrl({ childTargetId: _id });
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;

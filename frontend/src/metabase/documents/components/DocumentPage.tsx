@@ -5,13 +5,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
-import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
 import {
@@ -48,7 +46,6 @@ import {
   setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentEditor } from "../hooks/use-document-editor";
-import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
@@ -83,6 +80,7 @@ export const DocumentPage = ({
     setEditorInstance,
     collectionPickerMode,
     setCollectionPickerMode,
+    editorContainerRef,
     isNavigationScheduled,
     scheduleNavigation,
     isNewDocument,
@@ -110,7 +108,6 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
   const [copyDocument] = useCopyDocumentMutation();
   const [duplicateModalMode, setDuplicateModalMode] = useState<
     "duplicate" | "leave" | null
@@ -139,11 +136,6 @@ export const DocumentPage = ({
     dispatch(resetDocuments());
   });
 
-  useBeforeUnload(() => {
-    // warn if you try to navigate away with unsaved changes
-    return hasUnsavedChanges();
-  });
-
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {
     setDocumentTitle("");
@@ -157,14 +149,6 @@ export const DocumentPage = ({
   useEffect(() => {
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
-
-  // Scroll to anchor block when navigating with URL hash
-  const blockId = location.hash ? location.hash.slice(1) : null;
-  useScrollToAnchor({
-    blockId,
-    editorContainerRef,
-    isLoading: isDocumentLoading,
-  });
 
   const handleDuplicate = useCallback(() => {
     if (hasUnsavedChanges()) {

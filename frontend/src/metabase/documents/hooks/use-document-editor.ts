@@ -6,9 +6,11 @@ import {
   type SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { replace } from "react-router-redux";
+import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -44,6 +46,7 @@ import { getDraftCards, getHasUnsavedChanges } from "../selectors";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
+import { useScrollToAnchor } from "./use-scroll-to-anchor";
 
 interface UseDocumentEditorParams {
   documentId: DocumentId | "new" | undefined;
@@ -54,6 +57,7 @@ interface UseDocumentEditorResult {
   setEditorInstance: Dispatch<SetStateAction<TiptapEditor | null>>;
   collectionPickerMode: "save" | "move" | null;
   setCollectionPickerMode: Dispatch<SetStateAction<"save" | "move" | null>>;
+  editorContainerRef: React.RefObject<HTMLDivElement>;
   isNavigationScheduled: boolean;
   scheduleNavigation: ScheduleCallback;
   isNewDocument: boolean;
@@ -94,6 +98,8 @@ export function useDocumentEditor({
   const [collectionPickerMode, setCollectionPickerMode] = useState<
     "save" | "move" | null
   >(null);
+
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
 
@@ -139,12 +145,25 @@ export function useDocumentEditor({
 
   useRegisterDocumentMetabotContext();
 
+  useBeforeUnload(() => {
+    // warn if you try to navigate away with unsaved changes
+    return hasUnsavedChanges();
+  });
+
   // Reset dirty state when document content loads from API
   useEffect(() => {
     if (documentContent && !isNewDocument) {
       dispatch(setHasUnsavedChanges(false));
     }
   }, [dispatch, documentContent, isNewDocument]);
+
+  // Scroll to anchor block when navigating with URL hash
+  const blockId = location.hash ? location.hash.slice(1) : null;
+  useScrollToAnchor({
+    blockId,
+    editorContainerRef,
+    isLoading: isDocumentLoading,
+  });
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
@@ -306,6 +325,7 @@ export function useDocumentEditor({
     setEditorInstance,
     collectionPickerMode,
     setCollectionPickerMode,
+    editorContainerRef,
     isNavigationScheduled,
     scheduleNavigation,
     isNewDocument,

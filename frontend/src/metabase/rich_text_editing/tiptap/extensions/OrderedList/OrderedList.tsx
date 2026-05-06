@@ -79,7 +79,7 @@ export const OrderedListNodeView = ({
       {shouldShowMenus && document && (
         <CommentsMenu
           active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
+          childTargetId={_id}
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}

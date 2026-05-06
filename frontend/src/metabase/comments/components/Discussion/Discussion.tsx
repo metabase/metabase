@@ -7,9 +7,10 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
-import { getCommentsUrl } from "metabase/comments/utils";
+import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
+import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
@@ -51,6 +52,8 @@ export const Discussion = ({
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
+
+  const commentsUrl = useCommentUrl({ childTargetId: effectiveChildTargetId });
 
   const handleSubmit = async (doc: DocumentContent) => {
     const { error } = await createComment({
@@ -131,12 +134,9 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = getCommentsUrl({
-      childTargetId: effectiveChildTargetId,
-      targetId,
-      targetType,
-      comment,
-    });
+    const url = comment
+      ? `${commentsUrl}#${getCommentNodeId(comment)}`
+      : commentsUrl;
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     sendToast({ icon: "check", message: t`Copied link` });

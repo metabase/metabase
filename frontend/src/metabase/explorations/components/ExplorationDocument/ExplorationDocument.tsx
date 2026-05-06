@@ -14,6 +14,7 @@ interface ExplorationDocumentProps {
 export function ExplorationDocument({ document }: ExplorationDocumentProps) {
   const {
     setEditorInstance,
+    editorContainerRef,
     isDocumentLoading,
     error,
     canWrite,
@@ -83,6 +84,7 @@ export function ExplorationDocument({ document }: ExplorationDocumentProps) {
             onChange={handleChange}
             editable={canWrite && !isSaving}
             isLoading={isDocumentLoading}
+            editorContainerRef={editorContainerRef}
           />
         </Box>
       </Stack>

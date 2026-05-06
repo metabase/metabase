@@ -14,6 +14,7 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -141,9 +142,7 @@ const SupportingTextComponent = ({
   const { _id } = node.attrs;
   const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
   const isOpen = childTargetId === _id;
-  const commentsPath = document
-    ? `/document/${document.id}/comments/${_id}`
-    : "";
+  const commentsPath = useCommentUrl({ childTargetId: _id });
   const dispatch = useDispatch();
 
   const canWrite = editor.options.editable;
