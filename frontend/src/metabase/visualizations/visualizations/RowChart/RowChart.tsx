@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import { getFontFamilyValue } from "metabase/embedding-sdk/theme/fonts";
+import { getFontFamilyValue } from "metabase/ui/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";

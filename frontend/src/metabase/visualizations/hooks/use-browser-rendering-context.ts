@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
 import { usePalette } from "metabase/common/hooks/use-palette";
-import { getFontFamilyValue } from "metabase/embedding-sdk/theme/fonts";
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { getFontFamilyValue } from "metabase/ui/fonts";
 import {
   measureTextHeight,
   measureTextWidth,

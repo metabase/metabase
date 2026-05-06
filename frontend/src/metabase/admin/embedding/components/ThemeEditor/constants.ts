@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
-import { PREDEFINED_FONT_FAMILIES_FALLBACK_MAP } from "metabase/embedding-sdk/theme/fonts";
 import { ACCENT_COUNT } from "metabase/ui/colors/palette";
+import { PREDEFINED_FONT_FAMILIES_FALLBACK_MAP } from "metabase/ui/fonts";
 
 export const FONT_FAMILY_OPTIONS: { value: string; label: string }[] =
   Object.keys(PREDEFINED_FONT_FAMILIES_FALLBACK_MAP).map((name) => ({
