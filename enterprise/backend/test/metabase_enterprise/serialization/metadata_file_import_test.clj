@@ -1,4 +1,4 @@
-(ns ^:parallel metabase-enterprise.serialization.metadata-file-import-test
+(ns metabase-enterprise.serialization.metadata-file-import-test
   "Tests for the boot-time file loader. Each test writes a temp JSON or YAML
   file, sets up matching `mt/with-temp` Database/Table/Field rows where
   needed, runs the loader, and asserts on the appdb state. Tests target the
