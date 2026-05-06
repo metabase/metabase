@@ -42,7 +42,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-mixed-entries-test
   (testing "map with mixed entries: only unavailable feature-gated entries removed"
-    (with-redefs [features/feature-available? #(= :available-feature %)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? #(= :available-feature %)]
       (let [input    [:map
                       [:always-present :string]
                       [:gated-available {:feature :available-feature} :int]
@@ -116,7 +116,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-complex-nested-structure-test
   (testing "complex nesting with sequential containing map"
-    (with-redefs [features/feature-available? #(= :enabled %)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? #(= :enabled %)]
       (let [input    [:map
                       [:items [:sequential
                                [:map

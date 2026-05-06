@@ -329,7 +329,7 @@
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
-      (let [orig  setting/set!
+      (let [orig  (mt/original-fn #'setting/set!)
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
         (mt/with-dynamic-fn-redefs [setting/set! (fn [& args]

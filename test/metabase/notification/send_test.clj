@@ -685,10 +685,13 @@
   (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"
     (let [noti-count (atom 0)
           queue-size (notification.settings/notification-thread-pool-size)]
-      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
-                                                                              (assert false))
-                                  notification.send/send-notification-sync! (fn [_notification]
-                                                                              (swap! noti-count inc))]
+      ;; notification thread pool workers don't inherit *local-redefs* — the root swap from
+      ;; with-redefs is required so the patched fns are visible to the worker threads.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.payload/notification-payload (fn [& _]
+                                                                (assert false))
+                    notification.send/send-notification-sync! (fn [_notification]
+                                                                (swap! noti-count inc))]
 
         (notification.tu/with-card-notification
           [notification {}]

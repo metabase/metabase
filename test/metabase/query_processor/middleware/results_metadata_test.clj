@@ -191,7 +191,7 @@
           (middleware.results-metadata/store-previous-result-metadata!
            {:result_metadata cols-1})
           (let [call-count      (atom 0)
-                t2-update!-orig t2/update!]
+                t2-update!-orig (mt/original-fn #'t2/update!)]
             (mt/with-dynamic-fn-redefs [t2/update! (fn [modelable & args]
                                                      (when (= :model/Card modelable)
                                                        (swap! call-count inc))
