@@ -213,6 +213,7 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= {:name           "get_table"
+              :title          "Get Table"
               :description    "Get a table."
               :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
               :inputSchema    {:type       "object"
@@ -296,6 +297,7 @@
   :- [:map [:id :int] [:status ::test-status]]
   "Perform an action on a resource."
   {:tool {:name "test_resource_action"
+          :annotations {:read-only? true}
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
@@ -364,6 +366,7 @@
 
 (deftest ^:parallel generate-tools-manifest-get-with-route-params-test
   (is (= {:name           "test_get_thing"
+          :title          "Test Get Thing"
           :description    "A test endpoint for tools manifest generation."
           :annotations    {:readOnlyHint true :idempotentHint true}
           :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
@@ -374,6 +377,7 @@
 
 (deftest ^:parallel generate-tools-manifest-post-with-annotation-override-test
   (is (= {:name           "test_action"
+          :title          "Test Action"
           :description    "A test POST action."
           :annotations    {:readOnlyHint true}
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
@@ -384,6 +388,7 @@
 
 (deftest ^:parallel generate-tools-manifest-delete-test
   (is (= {:name           "delete_test"
+          :title          "Delete Test"
           :description    "Delete a test resource."
           :annotations    {:destructiveHint true :idempotentHint true}
           :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
@@ -394,6 +399,7 @@
 
 (deftest ^:parallel generate-tools-manifest-get-with-query-params-test
   (is (= {:name           "test_search"
+          :title          "Test Search"
           :description    "Search for things."
           :annotations    {:readOnlyHint true :idempotentHint true}
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
@@ -409,7 +415,9 @@
 
 (deftest ^:parallel generate-tools-manifest-post-with-task-support-test
   (is (= {:name           "test_resource_action"
+          :title          "Test Resource Action"
           :description    "Perform an action on a resource."
+          :annotations    {:readOnlyHint true}
           :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}
@@ -425,6 +433,7 @@
 
 (deftest ^:parallel generate-tools-manifest-put-with-three-way-merge-test
   (is (= {:name           "test_resource"
+          :title          "Test Resource"
           :description    "Update a test resource."
           :annotations    {:destructiveHint false :idempotentHint true}
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}

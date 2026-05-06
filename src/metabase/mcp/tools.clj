@@ -58,9 +58,9 @@
           (comp (filter #(scope-matches? token-scopes (:scope %)))
                 (map (fn [tool]
                        (cond-> {:name        (:name tool)
+                                :title       (:title tool)
                                 :description (:description tool)
                                 :inputSchema (:inputSchema tool)}
-                         (:title tool)       (assoc :title (:title tool))
                          (:annotations tool) (assoc :annotations (:annotations tool))))))
           tools)))
 

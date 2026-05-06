@@ -159,6 +159,15 @@
    :idempotent?  :idempotentHint
    :open-world?  :openWorldHint})
 
+(def ^:private mcp-default-annotations
+  "MCP-spec defaults for ToolAnnotations. Anything matching these is the implicit
+   value, so restating them in `:annotations` is redundant.
+   See https://modelcontextprotocol.io/specification/2025-03-26/server/tools."
+  {:readOnlyHint    false
+   :destructiveHint true
+   :idempotentHint  false
+   :openWorldHint   true})
+
 (defn- method-default-annotations
   "Infer default MCP ToolAnnotations from HTTP method."
   [method]
@@ -170,6 +179,18 @@
     :delete      {:destructiveHint true
                   :idempotentHint  true}
     {}))
+
+(defn- redundant-annotations
+  "Return explicit annotation pairs that already match what we'd infer (the HTTP-method
+   default merged with the MCP spec default). Empty map if none."
+  [method explicit-annotations]
+  (let [inferred (merge mcp-default-annotations (method-default-annotations method))]
+    (into {}
+          (keep (fn [[k v]]
+                  (when-let [mcp-key (annotation-key-mapping k)]
+                    (when (= v (get inferred mcp-key))
+                      [mcp-key v]))))
+          explicit-annotations)))
 
 (defn infer-annotations
   "Build MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations` from `:tool` metadata."
@@ -230,28 +251,60 @@
   [path]
   (str/replace path #":([^/]+)" "{$1}"))
 
+(defn- name->title
+  "Default convention: convert a snake_case tool name to a Title Case title.
+   `get_table` → `Get Table`."
+  [tool-name]
+  (->> (str/split tool-name #"_")
+       (map str/capitalize)
+       (str/join " ")))
+
+(defn- assert-claude-connector-compliant!
+  "Throw if `annotations` lack the readOnlyHint or destructiveHint that the Claude
+   connector requires (every tool must declare one or the other)."
+  [tool-name annotations]
+  (let [{:keys [readOnlyHint destructiveHint]} annotations]
+    (when-not (or (true? readOnlyHint) (boolean? destructiveHint))
+      (throw (ex-info (str "Tool " tool-name
+                           " must declare :read-only? true or :destructive? <boolean> "
+                           "(Claude connector requirement).")
+                      {:tool tool-name :annotations annotations})))))
+
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
   [prefix {:keys [form]}]
-  (let [method       (:method form)
-        route-path   (get-in form [:route :path])
-        tool-md      (get-in form [:metadata :tool])
-        tool-name    (:name tool-md)
-        _            (assert (string? tool-name) "Tool :name must be a string")
-        title        (:title tool-md)
-        description  (or (:description tool-md)
-                         (:docstr form))
-        full-path    (str prefix (route-path->endpoint-path route-path))
-        input-schema (merge-input-schemas form)
-        resp-schema  (response-schema->json-schema (:response-schema form))
-        annotations  (infer-annotations method (:annotations tool-md))
-        task-support (:task-support tool-md)
-        scope        (get-in form [:metadata :scope])]
+  (let [method               (:method form)
+        route-path           (get-in form [:route :path])
+        tool-md              (get-in form [:metadata :tool])
+        tool-name            (:name tool-md)
+        _                    (assert (string? tool-name) "Tool :name must be a string")
+        explicit-title       (:title tool-md)
+        inferred-title       (name->title tool-name)
+        _                    (when (= explicit-title inferred-title)
+                               (throw (ex-info (str "Tool " tool-name " has redundant :title "
+                                                    (pr-str explicit-title)
+                                                    " — matches the title we'd infer from the name.")
+                                               {:tool tool-name :title explicit-title})))
+        description          (or (:description tool-md)
+                                 (:docstr form))
+        full-path            (str prefix (route-path->endpoint-path route-path))
+        input-schema         (merge-input-schemas form)
+        resp-schema          (response-schema->json-schema (:response-schema form))
+        explicit-annotations (:annotations tool-md)
+        _                    (when-let [redundant (not-empty (redundant-annotations method explicit-annotations))]
+                               (throw (ex-info (str "Tool " tool-name
+                                                    " has redundant :annotations matching defaults: "
+                                                    (pr-str redundant))
+                                               {:tool tool-name :method method :redundant redundant})))
+        annotations          (infer-annotations method explicit-annotations)
+        _                    (assert-claude-connector-compliant! tool-name annotations)
+        task-support         (:task-support tool-md)
+        scope                (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
+             :title       (or explicit-title inferred-title)
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
-      (string? title)   (assoc :title title)
       input-schema      (assoc :inputSchema input-schema)
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)

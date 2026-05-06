@@ -185,13 +185,6 @@
         (doseq [tool tools]
           (is (string? (:description tool)))
           (is (map? (:inputSchema tool)))))
-      (testing "Claude connector criteria — every tool has a title and applicable hint"
-        (doseq [tool tools]
-          (is (string? (:title tool))
-              (str (:name tool) " is missing :title (Claude review criterion)"))
-          (let [{:keys [readOnlyHint destructiveHint]} (:annotations tool)]
-            (is (or (true? readOnlyHint) (boolean? destructiveHint))
-                (str (:name tool) " must have readOnlyHint:true or destructiveHint:<bool> (Claude review criterion)")))))
       (testing "search description guides clients toward the expected array shape"
         (let [tools-by-name   (into {} (map (juxt :name identity)) tools)
               search-tool     (get tools-by-name "search")
@@ -479,8 +472,20 @@
                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
       (lib/aggregate (lib/count))))
 
+(def ^:private smoke-tested-tools
+  "Tools exercised by `tools-call-smoke-test`. New tools must be added here (and
+   below) — the test compares this set against `mcp.tools/list-tools` and fails
+   when they diverge, ensuring no tool ships without a basic invocation check."
+  #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
+    "search" "construct_query" "query" "execute_query"
+    "create_question" "create_dashboard"})
+
 (deftest tools-call-smoke-test
-  (testing "Claude review criterion: every tool returns a successful response with valid parameters"
+  (testing "every registered tool is exercised by the smoke test"
+    (is (= (set (map :name (mcp.tools/list-tools nil)))
+           smoke-tested-tools)
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+  (testing "every tool returns a successful response with valid parameters"
     (search.tu/with-legacy-search
       (mt/with-temp [:model/Card metric {:name          "Smoke Metric"
                                          :type          :metric
