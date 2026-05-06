@@ -1,12 +1,10 @@
-import { useEffect } from "react";
+import { t } from "ttag";
 
-import { useGetDocumentQuery } from "metabase/api/document";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Editor } from "metabase/documents/components/Editor";
-import { setCurrentDocument } from "metabase/documents/documents.slice";
-import { useDispatch } from "metabase/redux";
-import { Box, Stack } from "metabase/ui";
+import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
+import { Box, Button, Group, Stack } from "metabase/ui";
 import type { ExplorationDocument } from "metabase-types/api";
 
 interface ExplorationDocumentProps {
@@ -15,23 +13,26 @@ interface ExplorationDocumentProps {
 
 export function ExplorationDocument({ document }: ExplorationDocumentProps) {
   const {
-    data: documentData,
-    isLoading,
+    setEditorInstance,
+    isDocumentLoading,
     error,
-  } = useGetDocumentQuery({ id: document.id });
+    canWrite,
+    isSaving,
+    documentTitle,
+    setDocumentTitle,
+    documentContent,
+    updateCardEmbeds,
+    handleChange,
+    showSaveButton,
+    handleSave,
+  } = useDocumentEditor({
+    documentId: document.id,
+  });
 
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (documentData) {
-      dispatch(setCurrentDocument(documentData));
-    }
-  }, [documentData, dispatch]);
-
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isDocumentLoading || error) {
+    return <LoadingAndErrorWrapper loading={isDocumentLoading} error={error} />;
   }
-  if (!documentData) {
+  if (!documentContent) {
     return null;
   }
   return (
@@ -55,18 +56,34 @@ export function ExplorationDocument({ document }: ExplorationDocumentProps) {
         p="lg"
         gap={0}
       >
-        <EditableText
-          initialValue={documentData.name}
-          placeholder="New Document"
-          fw="bold"
-          fz="h3"
-          lh="h3"
-          isDisabled // todo fixme
-          p={0}
-          w="100%"
-        />
+        <Group h="2.5rem">
+          <EditableText
+            initialValue={documentTitle}
+            onContentChange={setDocumentTitle}
+            placeholder="New Document"
+            fw="bold"
+            fz="h3"
+            lh="h3"
+            isDisabled={!canWrite || isSaving}
+            p={0}
+            flex={1}
+          />
+          {showSaveButton && (
+            <Button
+              variant="filled"
+              onClick={() => handleSave()}
+            >{t`Save`}</Button>
+          )}
+        </Group>
         <Box w="100%">
-          <Editor initialContent={documentData.document} />
+          <Editor
+            onEditorReady={setEditorInstance}
+            onCardEmbedsChange={updateCardEmbeds}
+            initialContent={documentContent}
+            onChange={handleChange}
+            editable={canWrite && !isSaving}
+            isLoading={isDocumentLoading}
+          />
         </Box>
       </Stack>
     </Stack>

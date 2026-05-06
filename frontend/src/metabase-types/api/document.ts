@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import type { Card } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { ExplorationThreadId } from "./exploration";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -27,6 +28,7 @@ export type Document = {
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
   view_count?: number;
+  exploration_thread_id?: ExplorationThreadId | null;
 };
 
 export type GetDocumentRequest = { id: DocumentId };
