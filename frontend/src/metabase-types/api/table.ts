@@ -258,14 +258,11 @@ export interface BulkTableInfo {
   is_published: boolean;
 }
 
-export interface BulkTableSelection {
+export interface BulkTableRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
-}
-
-export interface PublishTablesRequest extends BulkTableSelection {
-  collection_id: number;
+  collection_id?: CollectionId;
 }
 
 export interface BulkTableSelectionInfo {

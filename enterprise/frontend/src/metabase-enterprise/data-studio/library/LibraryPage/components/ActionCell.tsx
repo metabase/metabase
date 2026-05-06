@@ -50,7 +50,7 @@ export function ActionCell(props: ActionCellProps) {
   if (isLibraryCollection) {
     return (
       <LibraryCollectionRowMenu
-        childCount={children?.length}
+        childCount={children?.length ?? 0}
         collection={data}
         refreshMetricCollections={refreshMetricCollections}
         refreshTableCollections={refreshTableCollections}

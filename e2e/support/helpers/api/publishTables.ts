@@ -1,20 +1,12 @@
-import type { BulkTableSelection, Collection } from "metabase-types/api";
+import type { BulkTableRequest, Collection } from "metabase-types/api";
 
 type LibraryResponse = Collection & {
   effective_children?: Collection[];
 };
 
-type PublishTablesRequest = BulkTableSelection & {
-  collection_id?: number;
-};
-
-type RequiredPublishTablesRequest = BulkTableSelection & {
-  collection_id: number;
-};
-
-export const publishTables = (request: PublishTablesRequest) => {
+export const publishTables = (request: BulkTableRequest) => {
   if (request.collection_id != null) {
-    return requestPublishTables(request as RequiredPublishTablesRequest);
+    return requestPublishTables(request);
   }
 
   return cy
@@ -31,7 +23,7 @@ export const publishTables = (request: PublishTablesRequest) => {
     });
 };
 
-const requestPublishTables = (request: RequiredPublishTablesRequest) => {
+const requestPublishTables = (request: BulkTableRequest) => {
   return cy.request(
     "POST",
     "/api/ee/data-studio/table/publish-tables",

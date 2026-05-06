@@ -6,7 +6,7 @@ import { CollectionRowMenu } from "metabase/collections/components/CollectionRow
 import type { Collection, CollectionId } from "metabase-types/api";
 
 type LibraryCollectionRowMenuProps = {
-  childCount?: number;
+  childCount: number;
   collection: Collection;
   refreshMetricCollections: (collectionIds: CollectionId[]) => void;
   refreshTableCollections: (collectionIds: CollectionId[]) => void;
@@ -51,7 +51,7 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
         refreshCollections(getAffectedCollectionIds(details));
       }}
       customArchiveMessage={
-        isLibraryDataCollection && !!childCount
+        isLibraryDataCollection && childCount > 0
           ? t`Archiving this collection will also unpublish the tables inside it and archive any other child items.`
           : undefined
       }

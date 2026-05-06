@@ -24,7 +24,7 @@ function setup({
     type: "library-data",
     parent_id: 22,
   }),
-  childCount,
+  childCount = 0,
 }: Partial<Parameters<typeof LibraryCollectionRowMenu>[0]> = {}) {
   const refreshMetricCollections = jest.fn();
   const refreshTableCollections = jest.fn();

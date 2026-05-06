@@ -28,14 +28,11 @@ import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
+  BulkTableRequest,
   DatabaseId,
   SchemaId,
   TableId,
 } from "metabase-types/api";
-
-type PublishTablesFormValues = {
-  collection_id: number;
-};
 
 export function PublishTablesModal({
   databaseIds,
@@ -127,7 +124,7 @@ function ModalBody({
 
   const { selected_table, unpublished_upstream_tables } = data;
 
-  const handleSubmit = async ({ collection_id }: PublishTablesFormValues) => {
+  const handleSubmit = async ({ collection_id }: BulkTableRequest) => {
     const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
@@ -151,7 +148,7 @@ function ModalBody({
   };
 
   return (
-    <FormProvider<PublishTablesFormValues>
+    <FormProvider<BulkTableRequest>
       enableReinitialize
       initialValues={{ collection_id: dataCollection.id as number }}
       onSubmit={handleSubmit}

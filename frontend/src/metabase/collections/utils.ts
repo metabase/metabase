@@ -373,9 +373,7 @@ export const getCollectionPathAsString = (collection: CollectionEssentials) => {
 
 export const collectionPathSeparator = "/";
 
-export const getCollectionPathAsArray = (
-  collection: Collection,
-): CollectionId[] => {
+export const getCollectionPathAsArray = (collection: Collection): string[] => {
   const parentIds = (collection.location ?? "").split("/").filter(Boolean);
-  return [...parentIds, collection.id];
+  return [...parentIds, String(collection.id)];
 };
