@@ -350,9 +350,9 @@
 
   Returns formatted string for template variable {{recent_views}}."
   [context]
-  (if-not (:user_recently_viewed context)
-    ""
-    (let [items (:user_recently_viewed context)]
+  (let [items (:user_recently_viewed context)]
+    (if-not (seq items)
+      ""
       (te/lines "Here are some items the user has recently viewed:"
                 (for [item items]
                   (format-simple-entity (select-keys item [:type :id :name :description])))

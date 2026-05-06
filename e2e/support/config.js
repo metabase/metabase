@@ -32,13 +32,18 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 const assetsResolverPlugin = {
   name: "assetsResolver",
   setup(build) {
-    // Redirect all paths starting with "assets/" to "resources/"
-    build.onResolve({ filter: /^assets\// }, (args) => {
+    // Redirect all paths starting with "assets/" or "~assets/" to "resources/".
+    // The leading "~" is a legacy css-loader prefix; the trailing "?component"
+    // is the project's SVG-as-component convention handled by rspack. esbuild
+    // doesn't grok either by default, so we strip them before resolving.
+    build.onResolve({ filter: /^~?assets\// }, (args) => {
+      const [assetPath] = args.path.replace(/^~/, "").split("?");
+
       return {
         path: path.join(
           __dirname,
           "../../resources/frontend_client/app",
-          args.path,
+          assetPath,
         ),
       };
     });
