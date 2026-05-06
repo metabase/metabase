@@ -46,6 +46,8 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.datasets :as mtd]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -61,6 +63,18 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO: once h2-mbql5 is on master, share code with that
+(defn- test-driver [driver thunk]
+  (when (contains? (tx.env/test-drivers) driver)
+    (testing (str "\n" driver "\n")
+      (driver/with-driver (tx/the-driver-with-test-extensions driver)
+        (thunk))
+      ;; the above is the original definition of test-driver, but we add in
+      ;; this clause to avoid having to rewrite all the tests below twice:
+      (when (= driver :postgres)
+        (driver/with-driver (tx/the-driver-with-test-extensions :postgres-mbql5)
+          (thunk))))))
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.
@@ -68,7 +82,11 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (mt/with-test-user :rasta (thunk)))))
+                        ;; NB: because of test parallelism, this *will* affect other non-pg
+                        ;; tests, but the check above in the test-driver function will
+                        ;; prevent it from actually doing anything different in those tests.
+                        (with-redefs [mtd/-test-driver test-driver]
+                          (mt/with-test-user :rasta (thunk))))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]

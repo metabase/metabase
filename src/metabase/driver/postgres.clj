@@ -609,11 +609,11 @@
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
-  [driver [_ _opts arg target-timezone source-timezone]]
+  [_ [_ _opts arg target-timezone source-timezone]]
   (sql.qp/->honeysql [:postgres [:convert-timezone arg target-timezone source-timezone]]))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver [_ raw-value {:keys [base-type database-type]}]]
+  [driver [_ raw-value {base-type :base_type database-type :database_type}]]
   (when (some? raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
@@ -625,8 +625,8 @@
        driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :value]
-  [driver [_ opts raw-value]]
-  (sql.qp/->honeysql [:postgres [:value raw-value opts]]))
+  [_ [_ opts raw-value]]
+  (sql.qp/->honeysql :postgres [:value raw-value opts]))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
@@ -693,7 +693,7 @@
     [::regex-match-first identifier pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
-  [driver [_ opts arg pattern]]
+  [_ [_ _opts arg pattern]]
   (sql.qp/->honeysql :postgres-mbql5 [:regex-match-first arg pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
@@ -707,7 +707,7 @@
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :split-part]
-  [driver [_ _opts text divider position]]
+  [_ [_ _opts text divider position]]
   (sql.qp/->honeysql :postgres-mbql5 [:split-part text divider position]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
@@ -715,8 +715,8 @@
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :text]
-  [driver [_ _opts value]]
-  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+  [_ [_ _opts value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql :postgres value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -802,7 +802,7 @@
       identifier)))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :field]
-  [driver [_ opts id-or-name]]
+  [_ [_ opts id-or-name]]
   (sql.qp/->honeysql :postgres [:field id-or-name opts]))
 
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
@@ -829,7 +829,7 @@
 
 (defmethod sql.qp/apply-top-level-clause
   [:postgres-mbql5 :breakout]
-  [driver clause honeysql-form query]
+  [_ clause honeysql-form query]
   ;; (prn :breakout (:breakout query))
   (sql.qp/apply-top-level-clause :postgres clause honeysql-form
                                  (update query :breakout #(for [[a b c] %] [a c b]))))
