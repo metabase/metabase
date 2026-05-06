@@ -15,7 +15,6 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
-   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
@@ -582,13 +581,12 @@
                                   :external_id     external-id
                                   :total_tokens    5
                                   :data            [{:type "text" :text "hi"}]}))]
-          (with-redefs [metabot.feedback/submit-to-harbormaster! (constantly {:status 204})]
-            (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
-                                            {:metabot_id  1
-                                             :message_id  external-id
-                                             :source_id   42
-                                             :source_type "table"
-                                             :positive    true}))))
+          (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
+                                          {:metabot_id  1
+                                           :message_id  external-id
+                                           :source_id   42
+                                           :source_type "table"
+                                           :positive    true})))
           (is (some? (t2/select-one :model/MetabotSourceFeedback
                                     :message_id  message-id
                                     :user_id     user-id
