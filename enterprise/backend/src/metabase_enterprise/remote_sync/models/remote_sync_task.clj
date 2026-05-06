@@ -2,8 +2,8 @@
   "Model for tracking remote sync tasks and their progress."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.models.interface :as mi]
+   [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -126,7 +126,7 @@
                           [:<> :started_at nil]
                           [:= :ended_at nil]
                           [:<
-                           (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms)))
+                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
                            :last_progress_report_at]]
                   :limit 1
                   :order-by [[:started_at :desc]
@@ -148,7 +148,7 @@
   without writing the setting or overwriting bookkeeping."
   []
   (let [cutoff (t/minus (t/offset-date-time)
-                        (t/millis (settings/remote-sync-task-time-limit-ms)))]
+                        (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
     (t2/query {:update (t2/table-name :model/RemoteSyncTask)
                :set    {:cancelled     true
                         :ended_at      (mi/now)
@@ -235,7 +235,7 @@
   [task]
   (and (nil? (:ended_at task))
        (t/< (:last_progress_report_at task)
-            (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms))))))
+            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))))
 
 (defn conflict?
   "Checks if a task ended with conflicts.
