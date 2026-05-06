@@ -112,7 +112,6 @@ export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = (state: State) => state.entities;
 export const getVisibleTimelineEventIds = (state: State) =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: State) =>
