@@ -220,6 +220,132 @@
           (is (contains? ids (:id raw-notif)))
           (is (not (contains? ids (:id unrelated-notif)))))))))
 
+;; ---------------------------------------------------------------------------------------------
+;; Fuzzy ?query= search
+;; ---------------------------------------------------------------------------------------------
+
+(deftest query-matches-card-name-test
+  (testing "?query= substring-matches the card name (case-insensitive)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {sales :id}    {:name "Sales report"}
+                     :model/Card             {orders :id}   {:name "Orders dashboard"}
+                     :model/NotificationCard {nc-sales :id} {:card_id sales}
+                     :model/NotificationCard {nc-orders :id} {:card_id orders}
+                     :model/Notification     sales-n        {:payload_type :notification/card
+                                                             :payload_id   nc-sales
+                                                             :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     orders-n       {:payload_type :notification/card
+                                                             :payload_id   nc-orders
+                                                             :creator_id   (mt/user->id :crowberto)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :query "SALES")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id sales-n)))
+          (is (not (contains? ids (:id orders-n)))))))))
+
+(deftest query-matches-creator-name-test
+  (testing "?query= substring-matches creator first/last/email"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User             {alice :id}    {:first_name "Alice" :last_name "Stone"
+                                                             :email "alice@example.com"}
+                     :model/User             {bob :id}      {:first_name "Bob" :last_name "Jones"
+                                                             :email "bob@example.com"}
+                     :model/Card             {card :id}     {}
+                     :model/NotificationCard {nc-a :id}     {:card_id card}
+                     :model/NotificationCard {nc-b :id}     {:card_id card}
+                     :model/Notification     alice-n        {:payload_type :notification/card
+                                                             :payload_id   nc-a
+                                                             :creator_id   alice}
+                     :model/Notification     bob-n          {:payload_type :notification/card
+                                                             :payload_id   nc-b
+                                                             :creator_id   bob}]
+        (testing "by first_name"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :query "alic")
+                ids            (set (map :id data))]
+            (is (contains? ids (:id alice-n)))
+            (is (not (contains? ids (:id bob-n))))))
+        (testing "by last_name"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :query "stone")
+                ids            (set (map :id data))]
+            (is (contains? ids (:id alice-n)))
+            (is (not (contains? ids (:id bob-n))))))
+        (testing "by email"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                     :query "bob@example")
+                ids            (set (map :id data))]
+            (is (contains? ids (:id bob-n)))
+            (is (not (contains? ids (:id alice-n))))))))))
+
+(deftest query-matches-user-recipient-email-test
+  (testing "?query= substring-matches the email of a user-recipient"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User                  {recipient :id}        {:email "carol@unique-domain.test"}
+                     :model/Card                  {card :id}             {}
+                     :model/NotificationCard      {nc1 :id}              {:card_id card}
+                     :model/NotificationCard      {nc2 :id}              {:card_id card}
+                     :model/Notification          target-n               {:payload_type :notification/card
+                                                                          :payload_id   nc1
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification          other-n                {:payload_type :notification/card
+                                                                          :payload_id   nc2
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/NotificationHandler   {target-handler :id}   {:notification_id (:id target-n)
+                                                                          :channel_type    :channel/email}
+                     :model/NotificationRecipient _r                     {:notification_handler_id target-handler
+                                                                          :type                    :notification-recipient/user
+                                                                          :user_id                 recipient}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :query "unique-domain")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id target-n)))
+          (is (not (contains? ids (:id other-n)))))))))
+
+(deftest query-matches-raw-value-recipient-email-test
+  (testing "?query= substring-matches the email of a raw-value (external) recipient"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card                  {card :id}             {}
+                     :model/NotificationCard      {nc1 :id}              {:card_id card}
+                     :model/NotificationCard      {nc2 :id}              {:card_id card}
+                     :model/Notification          ext-n                  {:payload_type :notification/card
+                                                                          :payload_id   nc1
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification          other-n                {:payload_type :notification/card
+                                                                          :payload_id   nc2
+                                                                          :creator_id   (mt/user->id :crowberto)}
+                     :model/NotificationHandler   {ext-handler :id}      {:notification_id (:id ext-n)
+                                                                          :channel_type    :channel/email}
+                     :model/NotificationRecipient _r                     {:notification_handler_id ext-handler
+                                                                          :type                    :notification-recipient/raw-value
+                                                                          :details                 {:value "fuzzy-target@external.test"}}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :query "FUZZY-TARGET")
+              ids            (set (map :id data))]
+          (is (contains? ids (:id ext-n)))
+          (is (not (contains? ids (:id other-n)))))))))
+
+(deftest query-and-other-filters-and-together-test
+  (testing "?query= AND'd with other filters; structured filters narrow the fuzzy result"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card :id}      {:name "Quarterly fizzbuzz"}
+                     :model/NotificationCard {nc-a :id}      {:card_id card}
+                     :model/NotificationCard {nc-b :id}      {:card_id card}
+                     :model/Notification     active-match    {:payload_type :notification/card
+                                                              :payload_id   nc-a
+                                                              :active       true
+                                                              :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     archived-match  {:payload_type :notification/card
+                                                              :payload_id   nc-b
+                                                              :active       false
+                                                              :creator_id   (mt/user->id :crowberto)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
+                                                   :query "fizzbuzz"
+                                                   :active true)
+              ids            (set (map :id data))]
+          (is (contains? ids (:id active-match)))
+          (is (not (contains? ids (:id archived-match)))))))))
+
 (defn- find-row-by-id [data id]
   (some #(when (= id (:id %)) %) data))
 

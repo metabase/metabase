@@ -5,6 +5,7 @@
   expression ([[status-expr]]) referenced both as a projected column and in the `:status` filter
   WHERE clause, so the filter and the response field can't drift."
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -56,29 +57,26 @@
   [:map
    [:updated ms/IntGreaterThanOrEqualToZero]])
 
-(defn- handler-ids-with-raw-value-email
+(defn- handler-ids-with-raw-value-matching
   "Set of notification_handler IDs whose raw-value (external) recipients have `details.value`
-  matching `email`. Filtered in Clojure rather than SQL: the email lives inside a JSON map
-  (`{:value \"…\"}`), and `notification_recipient.details` is a `TEXT` column — every dialect
-  would need a different JSON-extraction expression to query it cleanly. Loading the raw-value
-  rows and matching with a Clojure equality check sidesteps that entirely. Bounded by the
-  raw-value recipient count, which is admin-search-cadence small in practice."
-  [lower-email]
+  satisfying `pred` (a 1-arg fn applied to the lowercased value). Filtered in Clojure rather
+  than SQL: the value lives inside a JSON map (`{:value \"…\"}`) and `notification_recipient.details`
+  is a `TEXT` column — every dialect would need a different JSON-extraction expression to query
+  it cleanly. Bounded by the raw-value recipient count, which is admin-search-cadence small."
+  [pred]
   (->> (t2/select [:model/NotificationRecipient :notification_handler_id :details]
                   :type :notification-recipient/raw-value)
        (into #{}
-             (comp (filter #(= lower-email
-                               (some-> % :details :value u/lower-case-en)))
+             (comp (filter #(some-> % :details :value u/lower-case-en pred))
                    (map :notification_handler_id)))))
 
 (defn- notification-ids-with-recipient-email
-  "Notification IDs whose recipients (user or raw-value) match `email`. One SQL query unions
-  both paths: user-recipients via an indexed `core_user.email` equality, raw-value recipients
-  via a pre-resolved set of handler IDs from the in-memory scan. Returns at most one round
-  trip — never an empty `IN ()`."
+  "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
+  unions both paths: user-recipients via an indexed `core_user.email` equality, raw-value
+  recipients via a pre-resolved set of handler IDs from an in-memory scan."
   [email]
   (let [lower-email     (u/lower-case-en email)
-        raw-handler-ids (handler-ids-with-raw-value-email lower-email)
+        raw-handler-ids (handler-ids-with-raw-value-matching #(= % lower-email))
         user-clause     [:and
                          [:= :nr.type "notification-recipient/user"]
                          [:= [:lower :cu.email] lower-email]]
@@ -91,6 +89,48 @@
                   [:= :nr.notification_handler_id :notification_handler.id]]
       :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
       :where     where-clause})))
+
+(defn- wildcard-string
+  "`%foo%` substring pattern with the input lowercased. Mirrors
+  [[metabase.users.models.user/wildcard-query]] (private), kept inline here to avoid a
+  cross-module dependency on `users` for a one-line helper."
+  [s]
+  (str "%" (u/lower-case-en s) "%"))
+
+(defn- query-where-clause
+  "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across:
+    - card name (`report_card.name`)
+    - creator first/last name + email (`core_user`)
+    - user-recipient email (correlated EXISTS)
+    - raw-value-recipient email (pre-resolved handler IDs from an in-memory scan)
+  The recipient branches mirror the structured `?recipient_email=` filter so user-typed text
+  finds the same set of alerts a picker click would, just less precisely."
+  [query]
+  (let [lower-q          (u/lower-case-en query)
+        wildcard         (wildcard-string query)
+        raw-handler-ids  (handler-ids-with-raw-value-matching #(str/includes? % lower-q))
+        recipient-exists [:exists
+                          {:select [[1]]
+                           :from   [[(t2/table-name :model/NotificationHandler) :rnh]]
+                           :join   [[(t2/table-name :model/NotificationRecipient) :rnr]
+                                    [:= :rnr.notification_handler_id :rnh.id]
+                                    [:core_user :rcu] [:= :rcu.id :rnr.user_id]]
+                           :where  [:and
+                                    [:= :rnh.notification_id :notification.id]
+                                    [:= :rnr.type "notification-recipient/user"]
+                                    [:like [:lower :rcu.email] wildcard]]}]
+        always-on        [[:like [:lower :c.name]         wildcard]
+                          [:like [:lower :cu.first_name]  wildcard]
+                          [:like [:lower :cu.last_name]   wildcard]
+                          [:like [:lower :cu.email]       wildcard]
+                          recipient-exists]
+        branches         (cond-> always-on
+                           (seq raw-handler-ids)
+                           (conj [:in :notification.id
+                                  {:select [:notification_id]
+                                   :from   [(t2/table-name :model/NotificationHandler)]
+                                   :where  [:in :id raw-handler-ids]}]))]
+    (into [:or] branches)))
 
 (def ^:private status-lookback-days
   "How far back to consider alert-type TaskRuns when computing `failing`/`abandoned`/`healthy`."
@@ -160,7 +200,7 @@
   on every row. We project `card_name` and `creator_name` so they're sortable by alias under
   `SELECT … ORDER BY` (alias-only sort keys side-step the H2 DISTINCT-vs-expression restriction
   even though we no longer use DISTINCT — keeps the contract uniform)."
-  [{:keys [active creator_id card_id recipient_email channel]}]
+  [{:keys [active creator_id card_id recipient_email channel query]}]
   (cond-> {:select [:notification.id
                     :notification.active
                     :notification.creator_id
@@ -196,7 +236,10 @@
     recipient_email
     (sql.helpers/where
      (let [ids (notification-ids-with-recipient-email recipient_email)]
-       (if (seq ids) [:in :notification.id ids] [:= 1 0])))))
+       (if (seq ids) [:in :notification.id ids] [:= 1 0])))
+
+    (not (str/blank? query))
+    (sql.helpers/where (query-where-clause query))))
 
 (defn- status-where
   "WHERE clause filtering to rows where [[status-expr]] equals `status`. Comparing against the
@@ -257,7 +300,7 @@
   "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +
   `offset` query params — handled by the offset-paging middleware), filtering, and sorting."
   [_route
-   {:keys [active status creator_id card_id recipient_email channel sort_column sort_direction]} :-
+   {:keys [active status creator_id card_id recipient_email channel query sort_column sort_direction]} :-
    [:map
     [:active          {:optional true} [:maybe ms/BooleanValue]]
     [:status          {:optional true} ::status-state]
@@ -265,6 +308,7 @@
     [:card_id         {:optional true} ms/PositiveInt]
     [:recipient_email {:optional true} ms/NonBlankString]
     [:channel         {:optional true} ms/NonBlankString]
+    [:query           {:optional true} ms/NonBlankString]
     [:sort_column     {:default :updated_at} ::sort-column]
     [:sort_direction  {:default :desc}       ::sort-direction]]]
   (api/check-superuser)
@@ -276,6 +320,7 @@
                        :card_id         card_id
                        :recipient_email recipient_email
                        :channel         channel
+                       :query           query
                        :sort_column     sort_column
                        :sort_direction  sort_direction}))
 

@@ -198,6 +198,7 @@ export type AdminNotificationListParams = {
   card_id?: CardId;
   recipient_email?: string;
   channel?: NotificationChannelType;
+  query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: AdminNotificationSortDirection;
 };
