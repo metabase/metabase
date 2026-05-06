@@ -43,12 +43,33 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "workspace entry"
+        (testing "workspace entry uses driver-agnostic ::table-namespace shape"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
-                  {:input_schemas ["raw_github"]
-                   :output_schema "mb_isolation_github"}}
+                  {:input  [{:schema "raw_github"}]
+                   :output {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
+
+(deftest build-workspace-config-three-slot-engine-test
+  (testing "Snowflake (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Snowflake DW"
+                    :engine  :snowflake
+                    :details {:db "ANALYTICS" :user "u" :password "p"}}
+                   :model/Workspace {ws-id :id} {:name       "snow"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {}
+                    :output_schema    "WS_ALICE"
+                    :input_schemas    ["PUBLIC"]
+                    :status           :provisioned}]
+      (let [cfg (config/build-workspace-config ws-id)]
+        (is (= {"Snowflake DW"
+                {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
+                 :output {:db "ANALYTICS" :schema "WS_ALICE"}}}
+               (-> cfg :config :workspace :databases)))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
   (testing "Multiple input schemas are comma-joined in schema-filters-patterns"
