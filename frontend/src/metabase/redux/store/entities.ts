@@ -4,7 +4,6 @@ import type {
   NormalizedDashboard,
   NormalizedDatabase,
   NormalizedField,
-  NormalizedMeasure,
   NormalizedMetric,
   NormalizedNativeQuerySnippet,
   NormalizedSchema,
@@ -22,7 +21,6 @@ export interface EntitiesState {
   tables: Record<string, NormalizedTable>;
   fields: Record<string, NormalizedField>;
   segments: Record<string, NormalizedSegment>;
-  measures: Record<string, NormalizedMeasure>;
   metrics: Record<string, NormalizedMetric>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;

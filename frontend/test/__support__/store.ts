@@ -9,7 +9,6 @@ import {
   DashboardSchema,
   DatabaseSchema,
   FieldSchema,
-  MeasureSchema,
   MetricSchema,
   QuestionSchema,
   SchemaSchema,
@@ -57,7 +56,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   tables: [TableSchema],
   fields: [FieldSchema],
   segments: [SegmentSchema],
-  measures: [MeasureSchema],
   metrics: [MetricSchema],
   snippets: [SnippetSchema],
   questions: [QuestionSchema],
@@ -66,7 +64,8 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
 export const createMockEntitiesState = (
   opts: EntitiesStateOpts,
 ): EntitiesState => {
-  const schema = normalize(opts, EntitiesSchema);
+  const { measures: _measures, ...rest } = opts;
+  const schema = normalize(rest, EntitiesSchema);
   return {
     ...createMockNormalizedEntitiesState(),
     ...schema.entities,

@@ -66,7 +66,6 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
 
 export const ForeignKeySchema = new schema.Entity("foreignKeys");
 export const SegmentSchema = new schema.Entity("segments");
-export const MeasureSchema = new schema.Entity("measures");
 export const MetricSchema = new schema.Entity("metrics");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
@@ -88,7 +87,6 @@ TableSchema.define({
   fks: [{ origin: FieldSchema, destination: FieldSchema }],
   metrics: [QuestionSchema],
   segments: [SegmentSchema],
-  measures: [MeasureSchema],
   schema: SchemaSchema,
   collection: CollectionSchema,
 });
@@ -109,10 +107,6 @@ SegmentSchema.define({
   table: TableSchema,
 });
 
-MeasureSchema.define({
-  table: TableSchema,
-});
-
 CacheConfigSchema.define({});
 
 export const ENTITIES_SCHEMA_MAP = {
@@ -123,7 +117,6 @@ export const ENTITIES_SCHEMA_MAP = {
   dashboards: DashboardSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
-  measures: MeasureSchema,
   metrics: MetricSchema,
   snippets: SnippetSchema,
   snippetCollections: SnippetCollectionSchema,
