@@ -6,7 +6,8 @@ import type { SchemaViewerFlowNode } from "../types";
 import { getNodeHeight } from "./flow-graph";
 
 /**
- * Dagre layout algorithm parameters used for spacing nodes in the SchemaViewer's graph layout:
+ * Dagre's algorithm is the default positioning algorithm used by React Flow.
+ * The algorithm parameters used for spacing nodes in the SchemaViewer's graph layout:
  *
  * DAGRE_NODE_SEP_PX - Minimum horizontal separation between nodes on the same rank (row). Controls how far apart adjacent tables are positioned horizontally.
  * DAGRE_RANK_SEP_PX - Minimum vertical separation between ranks (rows). Controls the vertical spacing between different levels of the dependency graph.
@@ -131,12 +132,12 @@ function mergeWithExistingPositions(
   }
 
   // If any existing node was removed, this isn't a pure add — fall back.
+  // (this shouldn't happen in theory)
   if (current.some((n) => !incomingIds.has(n.id))) {
     return null;
   }
 
-  // Track which IDs are already positioned (existing tables, plus any new
-  // tables that have been placed in the iteration below).
+  // Track which IDs are already positioned.
   const placedById = new Map<string, SchemaViewerFlowNode>();
   const placementState = createPlacementState(incoming);
   const newNodes: SchemaViewerFlowNode[] = [];
@@ -456,6 +457,14 @@ function buildAdjacency(
 /**
  * Places nodes whose neighbors are already positioned, iterating until no
  * reachable unplaced nodes remain.
+ *
+ * Each pass scans the currently unplaced nodes and looks for the first
+ * adjacency entry that points to an already placed neighbor. When one is found,
+ * the node is positioned next to that neighbor on the preferred side, adjusted
+ * to avoid collisions, then registered as placed so later nodes in the same or
+ * next pass can anchor to it. Nodes without any placed neighbors are carried
+ * forward. The loop stops once a full pass cannot place anything, leaving only
+ * nodes that are disconnected from the placed component.
  */
 function placeNodesByAdjacency(
   nodes: SchemaViewerFlowNode[],
@@ -500,11 +509,13 @@ function placeNodesByAdjacency(
 }
 
 /**
- * Re-layout the graph centered on the focal node: incoming edges end up on
- * the left, outgoing on the right, remaining nodes get placed next to a
- * connected neighbor using the same non-colliding placement rules that
- * {@link mergeWithExistingPositions} uses for FK expansion. The focal node
- * stays put so the user's camera position remains meaningful.
+ * Re-layouts the graph around a focal node without moving the focal node
+ * itself, so the user's camera position remains meaningful. Direct incoming
+ * neighbors are stacked in a centered column on the left, direct outgoing
+ * neighbors are stacked on the right, and self-references stay attached to the
+ * focal node. Everything outside that focal cluster is laid out with Dagre as
+ * an independent side cluster, then translated to the right of the focal
+ * cluster and vertically centered on the focal node.
  */
 function focusNodeLayout(
   focalId: string,
