@@ -102,7 +102,7 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
-If you're using the SDK, you can use either the [`MetabotQuestion`](./sdk/ai-chat.md#example) component or the [`useMetabot`](./sdk/ai-chat.md#building-custom-uis-with-usemetabot) hook for a custom UI.
+If you're using the SDK, you can use either the [`MetabotQuestion`](./sdk/ai-chat.md#example) component or the [`useMetabot`](./sdk/ai-chat.md#building-custom-ai-chat-uis-with-usemetabot) hook for a custom UI.
 
 ### Attributes
 
