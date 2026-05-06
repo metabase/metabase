@@ -225,6 +225,7 @@
   "Get details for a table by ID."
   {:scope metabot/agent-table-read
    :tool  {:name "get_table"
+           :title "Get Table"
            :description "Get details about a table including its fields, related tables, and metrics."}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
@@ -252,6 +253,7 @@
   "Get statistics and sample values for a table field."
   {:scope metabot/agent-table-read
    :tool  {:name "get_table_field_values"
+           :title "Get Table Field Values"
            :description "Get sample values and statistics for a field in a table."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
@@ -268,6 +270,7 @@
   "Get details for a metric by ID."
   {:scope metabot/agent-metric-read
    :tool  {:name "get_metric"
+           :title "Get Metric"
            :description "Get details about a metric including its queryable dimensions."}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
@@ -290,6 +293,7 @@
   "Get statistics and sample values for a metric field."
   {:scope metabot/agent-metric-read
    :tool  {:name "get_metric_field_values"
+           :title "Get Metric Field Values"
            :description "Get sample values and statistics for a field in a metric."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
@@ -328,6 +332,7 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
+           :title "Search Tables and Metrics"
            :description (str "Search for tables and metrics in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
@@ -400,6 +405,7 @@
   /v1/execute. See the agent_api reference for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
+           :title "Construct Query"
            :description (str "Construct a Metabase query from a structured program. "
                              "The body is a JSON object with `source` and `operations` keys "
                              "where source identifies the table/card/dataset/metric to query "
@@ -524,12 +530,14 @@
   metadata and an optional `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
+           :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query from a structured program and return "
                              "results with column metadata. If more rows are available, the "
                              "response includes a continuation_token — pass it back to get the "
                              "next page.\n\n"
                              "The body is either a structured program (see construct_query) or "
-                             "{\"continuation_token\": \"...\"} from a previous response.")}}
+                             "{\"continuation_token\": \"...\"} from a previous response.")
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    body :- ::query-request]
@@ -595,7 +603,9 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
+           :title "Execute Query"
+           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
@@ -631,10 +641,12 @@
   Optionally specify display type, description, collection, and visualization settings."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
+           :title "Create Question"
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the base64 query string from construct_query. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
-                             "description, and target collection.")}}
+                             "description, and target collection.")
+           :annotations {:read-only? false :destructive? false :idempotent? false}}}
   [_route-params
    _query-params
    {:keys [query display description collection_id visualization_settings]
@@ -679,9 +691,11 @@
   Cards are automatically positioned on the grid based on their display type."
   {:scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
+           :title "Create Dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
-                             "Cards are auto-positioned on the dashboard grid.")}}
+                             "Cards are auto-positioned on the dashboard grid.")
+           :annotations {:read-only? false :destructive? false :idempotent? false}}}
   [_route-params
    _query-params
    {:keys [description collection_id question_ids]

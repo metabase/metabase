@@ -238,6 +238,7 @@
         tool-md      (get-in form [:metadata :tool])
         tool-name    (:name tool-md)
         _            (assert (string? tool-name) "Tool :name must be a string")
+        title        (:title tool-md)
         description  (or (:description tool-md)
                          (:docstr form))
         full-path    (str prefix (route-path->endpoint-path route-path))
@@ -250,6 +251,7 @@
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
+      (string? title)   (assoc :title title)
       input-schema      (assoc :inputSchema input-schema)
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
