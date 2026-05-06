@@ -288,7 +288,7 @@
    [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]])
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
@@ -304,7 +304,7 @@
    [:database_id :int]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]])
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "sql_search.md"
@@ -320,7 +320,7 @@
    [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]])
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "nlq_search.md"
@@ -337,7 +337,7 @@
    [:search_native_query {:optional true} [:maybe :boolean]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]])
+   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
            :prompt    "transform_search"
