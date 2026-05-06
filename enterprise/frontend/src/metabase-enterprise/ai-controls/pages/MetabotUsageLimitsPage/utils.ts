@@ -111,10 +111,7 @@ export function getMaxUsageInputUnit(
   limitType: MetabotLimitType,
   value?: number | null,
 ) {
-  // When no value is set the input shows the "Unlimited" placeholder, but the
-  // unit text is still visible — fall back to a plural-selecting count (2)
-  // so the unit reads as "messages"/"million" rather than a zero-form that
-  // some languages use for null counts.
+  // Default to 2 so the unit reads as plural ("messages") for the placeholder.
   const count = value ?? 2;
 
   if (limitType === "tokens") {

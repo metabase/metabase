@@ -2,13 +2,8 @@
   color: var(--mb-color-text-tertiary);
   cursor: pointer;
   flex-shrink: 0;
-  /* Force block layout so the icon centers via flex instead of inheriting
-     text-baseline alignment from the Tooltip's inline wrapper. */
-  display: block;
-  /* Nudge down 1px — the glyph's "i" sits high in the SVG bounding box, so
-     geometric center alignment with adjacent text reads as slightly raised. */
+  /* Nudge for SVG glyph offset within its bounding box. */
   transform: translateY(1px);
-  /* Re-enable pointer events — the parent input's right section is set to
-     `none` so the unit text doesn't steal clicks meant for the input. */
+  /* Parent input's right section disables pointer events; re-enable here. */
   pointer-events: auto;
 }

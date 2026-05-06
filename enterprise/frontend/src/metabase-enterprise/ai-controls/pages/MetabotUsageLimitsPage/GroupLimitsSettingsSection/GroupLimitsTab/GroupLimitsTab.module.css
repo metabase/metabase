@@ -39,8 +39,7 @@
   color: var(--mb-color-text-primary);
 }
 
-/* Caps the entire NumberInput (input + right-section unit), so it must be
-   wider than the prior input-only cap to leave room for "messages". */
+/* Caps input + right-section unit, hence wider than input-only would be. */
 .LimitInputWrapper {
   max-width: 14rem;
 }
