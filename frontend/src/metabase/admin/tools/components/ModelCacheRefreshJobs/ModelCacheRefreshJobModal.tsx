@@ -12,6 +12,7 @@ import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import { parseNumberParam } from "metabase/urls";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 
@@ -19,8 +20,9 @@ export function ModelCacheRefreshJobModal({
   params,
   onClose,
 }: ModalComponentProps) {
+  const jobId = parseNumberParam(params.jobId);
   const { data: persistedModel } = useGetPersistedInfoQuery(
-    params.jobId ? Number(params.jobId) : skipToken,
+    jobId !== undefined ? jobId : skipToken,
   );
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const prevModelInfo = usePrevious(persistedModel);
