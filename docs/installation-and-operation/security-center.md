@@ -62,3 +62,4 @@ You'll only get notifications about new issues _affecting your instance_. New is
 ## Further reading
 
 - [Security](https://www.metabase.com/security)
+- [Upgrading Metabase](./upgrading-metabase)
