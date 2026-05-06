@@ -10,8 +10,6 @@ import { SegmentedControl, Stack, Text } from "metabase/ui";
 
 import type { MetabaseDashboardElement } from "./embed";
 
-import "./embed";
-
 type Mode = "controlled" | "uncontrolled";
 
 const INSTANCE_URL =
