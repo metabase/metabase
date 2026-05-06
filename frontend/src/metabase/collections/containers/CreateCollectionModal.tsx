@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
-import { useGetCurrentApp } from "metabase/nav/components/AppSwitcher/useGetCurrentApp";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
@@ -23,6 +22,7 @@ export interface CreateCollectionModalOwnProps extends Omit<
 > {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
+  inDataStudio?: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -44,9 +44,9 @@ function CreateCollectionModal({
   onChangeLocation,
   onClose,
   handleCreateCollection,
+  inDataStudio,
   ...props
 }: Props) {
-  const currentApp = useGetCurrentApp();
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
       const action = await handleCreateCollection(values);
@@ -56,24 +56,18 @@ function CreateCollectionModal({
         onCreate(collection);
       } else {
         onClose();
-        let visitUrl: string | undefined;
+        let visitUrl = Urls.collection(collection);
 
-        if (currentApp === "data-studio") {
+        if (inDataStudio) {
           visitUrl = Urls.dataStudioLibrary({
             expandedIds: getCollectionPathAsArray(collection),
           });
         }
 
-        if (currentApp === "main") {
-          visitUrl = Urls.collection(collection);
-        }
-
-        if (visitUrl) {
-          onChangeLocation(visitUrl);
-        }
+        onChangeLocation(visitUrl);
       }
     },
-    [handleCreateCollection, onCreate, onClose, currentApp, onChangeLocation],
+    [handleCreateCollection, onCreate, onClose, inDataStudio, onChangeLocation],
   );
 
   useEscapeToCloseModal(onClose);

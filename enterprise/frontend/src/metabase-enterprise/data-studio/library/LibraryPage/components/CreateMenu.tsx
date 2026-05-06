@@ -69,6 +69,7 @@ export const CreateMenu = ({
                 initialCollectionId: dataCollectionId,
                 pickerOptions: libraryCollectionPickerOptions,
                 showAuthorityLevelPicker: false,
+                inDataStudio: true,
               },
             }),
           )
