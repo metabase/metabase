@@ -480,7 +480,6 @@
            appearance
            collections
            config
-           custom-viz-plugin
            dashboards
            driver
            events
@@ -501,8 +500,7 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/CustomVizPlugin
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
@@ -670,12 +668,6 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
-
-  custom-viz-plugin
-  {:team "Gadget"
-   :api  #{metabase.custom-viz-plugin.core}
-   :uses #{premium-features}
-   :friends #{enterprise/custom-viz-plugin}}
 
   dashboards
   {:team "UX West"
@@ -1105,7 +1097,6 @@
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
-
 
   lib-be
   {:team "Querying Platform"
