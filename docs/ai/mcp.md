@@ -20,7 +20,7 @@ https://{your-metabase.example.com}/api/mcp
 In Claude Code, for example, you can run the following snippet, and Claude will handle the OAuth flow for you:
 
 ```
-claude add --transport sse metabase https://{your-metabase-url}/api/mcp
+claude mcp add --transport sse metabase https://{your-metabase-url}/api/mcp
 ```
 
 Replacing {your-metabase-url} with your Metabase address.
