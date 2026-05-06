@@ -24,9 +24,12 @@
            (tools-manifest/infer-annotations :post nil)))
     (is (= {:destructive? false}
            (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
-  (testing "destructiveHint is dropped when readOnlyHint is true (only meaningful when not read-only)"
+  (testing "destructiveHint is dropped from output when readOnlyHint is true (per MCP spec it's only meaningful for non-read-only tools)"
     (is (= {:readOnlyHint true}
            (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
+  (testing "Flags :contradictory? when readOnlyHint and destructiveHint would both be true before the cleanup"
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :get {:destructive? true}))))
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :delete {:read-only? true})))))
   (testing "Explicit annotations are merged on top of method defaults"
     (is (= {:annotations {:readOnlyHint true :idempotentHint true}
             :redundant   {}}

@@ -175,13 +175,13 @@
 
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
-   Returns `{:annotations <merged> :redundant <explicit-pairs-matching-method-defaults>}`.
-   Callers should reject any `:redundant` entries — explicit declarations must add information
-   beyond the HTTP-method default.
+   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`. Callers should
+   reject `:redundant` entries (explicit declarations must add information beyond the
+   HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive).
 
-   `destructiveHint` is dropped from the result when `readOnlyHint` is true, since per the MCP
-   spec it's only meaningful for non-read-only tools. This keeps read-only POSTs from emitting
-   a contradictory `{readOnlyHint: true, destructiveHint: true}`."
+   `destructiveHint` is dropped from `:annotations` when `readOnlyHint` is true since per the
+   MCP spec it's only meaningful for non-read-only tools — but if both were `true` before the
+   drop, the result is flagged `:contradictory?` rather than silently coalesced."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
         explicit        (into {}
@@ -190,6 +190,7 @@
                                         [mcp-key v])))
                               explicit-annotations)
         merged          (merge method-defaults explicit)
+        read-only?      (true? (:readOnlyHint merged))
         ;; Report redundancies with the developer's original key (e.g. :read-only?), not the
         ;; translated MCP key, so the error points at what they actually wrote.
         redundant       (into {}
@@ -198,9 +199,11 @@
                                         (when (= v (get method-defaults mcp-key))
                                           [k v]))))
                               explicit-annotations)]
-    {:annotations (cond-> merged
-                    (true? (:readOnlyHint merged)) (dissoc :destructiveHint))
-     :redundant   redundant}))
+    (cond-> {:annotations (cond-> merged
+                            read-only? (dissoc :destructiveHint))
+             :redundant   redundant}
+      (and read-only? (true? (:destructiveHint merged)))
+      (assoc :contradictory? true))))
 
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
@@ -291,6 +294,10 @@
         resp-schema    (response-schema->json-schema (:response-schema form))
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)
+        _              (when (:contradictory? inferred)
+                         (throw (ex-info (str "Tool " tool-name
+                                              " is marked both read-only and destructive — these can't both be true.")
+                                         {:tool tool-name :method method})))
         _              (when (seq (:redundant inferred))
                          (throw (ex-info (str "Tool " tool-name
                                               " has redundant :annotations matching defaults: "
