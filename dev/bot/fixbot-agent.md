@@ -135,7 +135,9 @@ After submitting the pull request, monitor the pull request until it passes. NOT
 1. Run `/cibot` to monitor CI results and handle failures
 
 
-{{FILE:dev/bot/common/playwright-guide.md}}
+## Browser Automation
+
+For browser interaction with Metabase, use the **`playwright-mcp-metabase`** skill — it auto-loads on Playwright MCP tool use and documents the snapshot/act/check pattern, Mantine component pitfalls (Menu race, Select/MultiSelect, the Escape-closes-modal trap, portal scoping), and Metabase login flows.
 
 **This is optional for fixbot.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use the Playwright MCP tools when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
 

@@ -12,6 +12,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -81,8 +82,14 @@
       (Thread/sleep 2000))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
-  (if-not (transforms.u/check-feature-enabled transform)
+  (cond
+    (not (transforms.u/check-feature-enabled transform))
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+
+    (transforms.gating/transform-locked? transform)
+    (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
+
+    :else
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}
       (block-until-not-already-running transform-id)
@@ -272,10 +279,24 @@
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
+(defn- timeout-and-notify-old-runs!
+  "Time out stale job runs and notify admins for each cron-scheduled run that was
+  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
+  notification behavior."
+  []
+  (let [timed-out (transforms.job-run/timeout-old-runs!
+                   (transforms.settings/transform-timeout) :minute)]
+    (doseq [{:keys [job_id run_method message]} timed-out
+            :when (= run_method :cron)]
+      (try
+        (notify-job-failure job_id (or message "Timed out by metabase"))
+        (catch Throwable t
+          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
+
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
-  (transforms.job-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))
+  (timeout-and-notify-old-runs!))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

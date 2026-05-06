@@ -19,7 +19,8 @@
 
 (p/import-vars
  [metabase.transforms.settings
-  transform-timeout]
+  transform-timeout
+  transforms-meter-locked]
  [metabase.transforms-base.util
   native-query-transform?
   output-table

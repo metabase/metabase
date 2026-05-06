@@ -2,6 +2,10 @@ import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  useCopyDashboardMutation,
+  useCopyDocumentMutation,
+} from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { entityTypeForObject } from "metabase/entities/utils";
@@ -25,6 +29,8 @@ function CollectionCopyEntityModal({
   onClose: () => void;
   onSaved: (newEntityObject: any) => void;
 }) {
+  const [copyDashboard] = useCopyDashboardMutation();
+  const [copyDocument] = useCopyDocumentMutation();
   const initialCollectionId = useInitialCollectionId({
     collectionId: entityObject.collection_id,
   });
@@ -35,8 +41,26 @@ function CollectionCopyEntityModal({
     setIsShallowCopy(is_shallow_copy);
   };
 
-  const handleSaved = (newEntityObject: any) => {
-    onSaved(newEntityObject);
+  const handleCopy = async (values: Record<string, any>) => {
+    const overrides = dissoc(values, "id");
+
+    if (entityObject.model === "dashboard") {
+      const { is_shallow_copy, ...rest } = overrides;
+      return copyDashboard({
+        id: entityObject.id,
+        ...rest,
+        is_deep_copy: !is_shallow_copy,
+      }).unwrap();
+    }
+
+    if (entityObject.model === "document") {
+      return copyDocument({
+        id: entityObject.id,
+        ...overrides,
+      }).unwrap();
+    }
+
+    throw new Error(`Cannot duplicate entity of type "${entityObject.model}"`);
   };
 
   return (
@@ -48,11 +72,9 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       title={title}
-      copy={async (values) => {
-        return entityObject.copy(dissoc(values, "id"));
-      }}
+      copy={handleCopy}
       onClose={onClose}
-      onSaved={handleSaved}
+      onSaved={onSaved}
       onValuesChange={handleValuesChange}
     />
   );
