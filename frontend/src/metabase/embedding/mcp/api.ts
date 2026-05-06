@@ -28,6 +28,7 @@ export async function storeDrillQuery({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-Metabase-Client": "mcp-apps",
       "X-Metabase-Session": sessionToken,
       "Mcp-Session-Id": mcpSessionId,
     },

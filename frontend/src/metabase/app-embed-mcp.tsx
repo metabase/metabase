@@ -8,10 +8,7 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.isMcpApp = true;
-
-// TODO(EMB-1534): change this header to "embedding-mcp" as we need to
-//                 exclude this from actual embedded analytics
-EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
+EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
