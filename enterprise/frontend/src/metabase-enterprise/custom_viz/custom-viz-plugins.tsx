@@ -1,10 +1,14 @@
 import type {
   CreateCustomVisualizationProps,
+  CustomVisualization,
+  CustomVisualizationMountHandle,
+  CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -28,15 +32,13 @@ import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
-
-// ---------------------------------------------------------------------------
-// Plugin loading & registration
-// ---------------------------------------------------------------------------
+import { createPluginSandbox } from "./sandbox";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -284,16 +286,8 @@ export async function loadCustomVizPlugin(
 
     const text = await res.text();
 
-    // Execute in global scope so `var __customVizPlugin__` assigns to window
-    const script = document.createElement("script");
-    if (window.MetabaseNonce) {
-      script.nonce = window.MetabaseNonce;
-    }
-    script.textContent = text;
-    document.head.appendChild(script);
-    document.head.removeChild(script);
-    const factory = window.__customVizPlugin__;
-    window.__customVizPlugin__ = undefined;
+    const sandbox = createPluginSandbox(plugin.id);
+    const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
       throw new Error(
@@ -320,35 +314,16 @@ export async function loadCustomVizPlugin(
 
     const vizDef = factory(props);
 
-    if (!vizDef || !vizDef.VisualizationComponent) {
+    if (!isValidVizDefinition(vizDef)) {
       throw new Error(
-        t`Factory must return an object with a VisualizationComponent property`,
+        t`Plugin factory must return an object with a mount function`,
       );
     }
 
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
-    const Wrapper = ({
-      onVisualizationClick,
-      onHoverChange,
-      ...rest
-    }: Omit<VisualizationProps, "width" | "height"> & {
-      width: number | null;
-      height: number | null;
-    }) => {
-      const { resolvedColorScheme } = useColorScheme();
-      return React.createElement(vizDef.VisualizationComponent, {
-        ...rest,
-        colorScheme: resolvedColorScheme,
-        onClick: onVisualizationClick as unknown as (
-          clickObject: CustomVizClickObject<Record<string, unknown>> | null,
-        ) => void,
-        onHover: onHoverChange as unknown as (
-          hoverObject?: CustomVizHoverObject | null,
-        ) => void,
-      });
-    };
+    const Wrapper = createCustomVizWrapper(vizDef.mount, plugin.id);
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -414,5 +389,71 @@ export const useCustomVizPluginsIcon = () => {
     [plugins, isLoading],
   );
 };
+
+type GenericVizDefinition = CustomVisualization<Record<string, unknown>>;
+type GenericVizMount = GenericVizDefinition["mount"];
+type GenericVizPluginProps = CustomVisualizationProps<Record<string, unknown>>;
+type GenericVizMountHandle =
+  CustomVisualizationMountHandle<GenericVizPluginProps>;
+
+function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
+  return isObject(value) && typeof value.mount === "function";
+}
+
+function createCustomVizWrapper(
+  mount: GenericVizMount,
+  pluginId: CustomVizPluginId,
+) {
+  return function CustomVizWrapper({
+    width,
+    height,
+    series,
+    settings,
+    onVisualizationClick,
+    onHoverChange,
+  }: VisualizationProps) {
+    const { resolvedColorScheme } = useColorScheme();
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const handleRef = useRef<GenericVizMountHandle | null>(null);
+
+    const pluginProps: GenericVizPluginProps = {
+      width,
+      height,
+      series: series as unknown as GenericVizPluginProps["series"],
+      settings: settings as unknown as GenericVizPluginProps["settings"],
+      colorScheme: resolvedColorScheme,
+      onClick: onVisualizationClick as unknown as (
+        clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+      ) => void,
+      onHover: onHoverChange as unknown as (
+        hoverObject?: CustomVizHoverObject | null,
+      ) => void,
+    };
+
+    useEffect(() => {
+      if (!containerRef.current) {
+        return;
+      }
+      if (!handleRef.current) {
+        handleRef.current = mount(containerRef.current, pluginProps);
+      } else {
+        handleRef.current.update(pluginProps);
+      }
+    });
+
+    useUnmount(() => {
+      handleRef.current?.unmount();
+      handleRef.current = null;
+    });
+
+    return (
+      <div
+        ref={containerRef}
+        data-plugin-sandbox={pluginId}
+        style={{ width: "100%", height: "100%" }}
+      />
+    );
+  };
+}
 
 export { getCustomPluginIdentifier, getPluginAssetUrl };

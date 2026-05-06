@@ -1,6 +1,4 @@
 import type { ColumnTypes, CreateCustomVisualization } from "custom-viz";
-import React from "react";
-import * as jsxRuntime from "react/jsx-runtime";
 
 import {
   measureText,
@@ -13,8 +11,6 @@ import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-col
 declare global {
   interface Window {
     __METABASE_VIZ_API__?: {
-      React: typeof React;
-      jsxRuntime: typeof jsxRuntime;
       columnTypes: ColumnTypes;
       formatValue: typeof formatValue;
       measureText: typeof measureText;
@@ -28,8 +24,6 @@ declare global {
 export function ensureVizApi() {
   window.__METABASE_VIZ_API__ = {
     ...window.__METABASE_VIZ_API__,
-    React,
-    jsxRuntime,
     columnTypes: customVizColumnTypes,
     formatValue,
     measureText,

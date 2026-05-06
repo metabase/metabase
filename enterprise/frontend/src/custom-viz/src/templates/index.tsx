@@ -1,4 +1,8 @@
-import type { CreateCustomVisualization, CustomVisualizationProps } from "../";
+import {
+  type CreateCustomVisualization,
+  type CustomVisualizationProps,
+  defineConfig,
+} from "../";
 
 type Settings = {
   threshold?: number;
@@ -8,10 +12,12 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
   getAssetUrl,
 }) => {
-  const VisualizationComponent = (
-    props: CustomVisualizationProps<Settings>,
-  ) => {
-    const { height, series, settings, width } = props;
+  const VisualizationComponent = ({
+    height,
+    series,
+    settings,
+    width,
+  }: CustomVisualizationProps<Settings>) => {
     const { threshold } = settings;
     const value = series[0].data.rows[0][0];
 
@@ -51,7 +57,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     );
   };
 
-  return {
+  return defineConfig<Settings>({
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_DISPLAY_NAME__",
     minSize: { width: 2, height: 2 },
@@ -102,7 +108,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
       }),
     },
     VisualizationComponent,
-  };
+  });
 };
 
 export default createVisualization;

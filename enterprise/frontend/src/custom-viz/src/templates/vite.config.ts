@@ -4,52 +4,10 @@ import { type ServerResponse, createServer } from "http";
 import { createRequire } from "module";
 import { resolve } from "path";
 
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const __require = createRequire(import.meta.url);
-
-/**
- * Vite plugin that replaces `react` and `react/jsx-runtime` imports with
- * virtual modules that read from Metabase's `window.__METABASE_VIZ_API__`.
- *
- * This is necessary because the ES module output format cannot use
- * `output.globals`, and bare `import 'react'` would fail in the browser.
- */
-function metabaseVizExternals() {
-  const VIRTUAL_REACT = "\0virtual:react";
-  const VIRTUAL_JSX_RUNTIME = "\0virtual:react/jsx-runtime";
-  return {
-    name: "metabase-viz-externals",
-    enforce: "pre" as const,
-
-    resolveId(source) {
-      if (source === "react") {
-        return VIRTUAL_REACT;
-      }
-      if (source === "react/jsx-runtime") {
-        return VIRTUAL_JSX_RUNTIME;
-      }
-      return null;
-    },
-
-    load(id) {
-      if (id === VIRTUAL_REACT) {
-        return [
-          "const React = window.__METABASE_VIZ_API__.React;",
-          "export default React;",
-          "export const { useState, useEffect, useRef, useCallback, useMemo, useReducer, useContext, createElement, Fragment } = React;",
-        ].join("\n");
-      }
-      if (id === VIRTUAL_JSX_RUNTIME) {
-        return [
-          "const jsxRuntime = window.__METABASE_VIZ_API__.jsxRuntime;",
-          "export const { jsx, jsxs, Fragment } = jsxRuntime;",
-        ].join("\n");
-      }
-      return null;
-    },
-  };
-}
 
 /**
  * Vite plugin that copies metabase-plugin.json to dist/ after the build.
@@ -221,10 +179,13 @@ const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
   plugins: [
-    metabaseVizExternals(),
+    react(),
     metabaseCopyManifest(),
     ...(isWatch ? [metabaseDevServer()] : []),
   ],
+  resolve: {
+    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+  },
   publicDir: "public",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

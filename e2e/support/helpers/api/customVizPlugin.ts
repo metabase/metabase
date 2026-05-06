@@ -25,9 +25,10 @@ export function addCustomVizPlugin(
         method: "POST",
         url: "/api/ee/custom-viz-plugin",
         body: formData,
+        failOnStatusCode: false,
       });
     })
-    .then(({ body }) => {
+    .then(({ body, status }) => {
       // Cypress's `cy.request` always returns the response body as an
       // ArrayBuffer when the request body is `FormData` — even for JSON
       // responses. The buffer comes from a different realm than the spec's
@@ -35,6 +36,12 @@ export function addCustomVizPlugin(
       // Decode unconditionally instead of branching.
       const bytes = new Uint8Array(body as ArrayBuffer);
       const text = new TextDecoder("utf-8").decode(bytes);
+      if (status !== 200) {
+        console.error(
+          `[addCustomVizPlugin] upload failed (${status}): ${text}`,
+        );
+        throw new Error(`upload failed (${status}): ${text}`);
+      }
       return JSON.parse(text) as CustomVizPlugin;
     });
 }
