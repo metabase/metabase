@@ -7,7 +7,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
-import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
+import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
 
@@ -24,9 +24,8 @@ type SystemPromptPageProps = {
 
 function SystemPromptPage(props: SystemPromptPageProps) {
   const { title, description, settingKey } = props;
-  const { handleInputChange, inputValue } = useAdminSettingWithDebouncedInput<
-    string | null
-  >(settingKey);
+  const { handleInputChange, handleBlur, inputValue } =
+    useAdminSettingWithBlurInput<string | null>(settingKey);
 
   return (
     <SettingsPageWrapper title={title} mt="sm">
@@ -38,6 +37,7 @@ function SystemPromptPage(props: SystemPromptPageProps) {
           aria-label={title}
           className={S.textareaWrapper}
           onChange={(e) => handleInputChange(e.target.value)}
+          onBlur={handleBlur}
           placeholder={getPlaceholder()}
           value={inputValue || ""}
         />
@@ -46,25 +46,16 @@ function SystemPromptPage(props: SystemPromptPageProps) {
   );
 }
 
-const getPlaceholder = () => {
-  return (
-    t`# Here's a section` +
-    "\n" +
-    t`1. Do this` +
-    "\n" +
-    t`2. And this` +
-    "\n" +
-    t`3. And lastly, this` +
-    "\n\n" +
-    t`# Here's another section` +
-    "\n" +
-    t`1. Do this` +
-    "\n" +
-    t`2. And this` +
-    "\n" +
-    t`3. And lastly, this`
-  );
-};
+const getPlaceholder = () =>
+  t`# Here's a section
+1. Do this
+2. And this
+3. And lastly, this
+
+# Here's another section
+1. Do this
+2. And this
+3. And lastly, this`;
 
 export function MetabotChatPromptPage() {
   const applicationName = useSelector(getApplicationName);
