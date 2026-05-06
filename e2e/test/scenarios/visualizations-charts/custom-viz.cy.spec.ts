@@ -2207,6 +2207,84 @@ describe("sandbox", () => {
     );
   });
 
+  // Direct access is closed by near-membrane-dom's default behavior: it
+  // remaps only the own keys of a fresh sandbox iframe's window from host to plugin.
+  it("does not expose host-app globals to the plugin", () => {
+    const payload = `
+      setTimeout(function() {
+        console.log("plugin sees MetabaseBootstrap:", typeof window.MetabaseBootstrap);
+        try {
+          console.log(
+            "plugin sees parent.MetabaseBootstrap:",
+            typeof (window.parent && window.parent.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees parent.MetabaseBootstrap:", "throws");
+        }
+
+        try {
+          console.log(
+            "plugin sees defaultView.MetabaseBootstrap:",
+            typeof (document.defaultView && document.defaultView.MetabaseBootstrap)
+          );
+        } catch (e) {
+          console.log("plugin sees defaultView.MetabaseBootstrap:", "throws");
+        }
+        console.log("plugin sees MetabaseUserLocalization:", typeof window.MetabaseUserLocalization);
+        console.log("plugin sees MetabaseSiteLocalization:", typeof window.MetabaseSiteLocalization);
+        console.log("plugin sees SECRET:", typeof window.SECRET);
+      }, 500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+      },
+    });
+    cy.window().then((win) => {
+      // @ts-expect-error - test window property
+      win.SECRET = "abracadabra";
+    });
+    cy.wait("@injectedBundle");
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees parent.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees defaultView.MetabaseBootstrap:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseUserLocalization:",
+      "undefined",
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin sees MetabaseSiteLocalization:",
+      "undefined",
+    );
+  });
+
   it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
     const hostSelector = "#root";
     const payload = `
