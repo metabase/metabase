@@ -49,11 +49,13 @@
       (let [schema (transforms.tu/default-schema-or-public)]
         (mt/with-temp [:model/Table     {table1 :id} {:schema schema    :name "output_1"}
                        :model/Field     _            {:table_id table1  :name "foo"}
-                       :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")
-                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
-          (is (= {t1 #{}
-                  t2 #{t1}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
+                       :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")]
+          (t2/insert! :model/Table :name "output_1" :schema schema :transform_id t1)
+          (mt/with-temp [:model/Transform {t2 :id} (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
+
+            (is (= {t1 #{}
+                    t2 #{t1}}
+                   (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]])))))))))))
 
 (deftest python-transform-multiple-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -64,13 +66,15 @@
                        :model/Table     {table2 :id} {:schema   schema  :name "output_2"}
                        :model/Field     _            {:table_id table2  :name "bar"}
                        :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))]     "output_1")
-                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "products" (mt/id :products))] "output_2")
-                       :model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
-                                                             (transforms.tu/source-table-entry "output_2" table2)]             "final_output")]
-          (is (= {t1 #{}
-                  t2 #{}
-                  t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
+                       :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "products" (mt/id :products))] "output_2")]
+          (t2/insert! :model/Table :name "output_1" :schema schema :transform_id t1)
+          (t2/insert! :model/Table :name "output_2" :schema schema :transform_id t2)
+          (mt/with-temp [:model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
+                                                               (transforms.tu/source-table-entry "output_2" table2)]             "final_output")]
+            (is (= {t1 #{}
+                    t2 #{}
+                    t3 #{t1 t2}}
+                   (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))))
 
 (deftest mixed-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
@@ -91,6 +95,8 @@
                        :model/Transform {t3 :id}     (sql-tx {:database (mt/id)
                                                               :type     "query"
                                                               :query    {:source-table table2}}      "final_output")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
+          (t2/update! :model/Transform t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{t1}
                   t3 #{t2}}
