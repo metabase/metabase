@@ -265,12 +265,10 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/feedback"
-  "Persist Metabot feedback locally and proxy it to Harbormaster."
+(api.macros/defendpoint :post "/feedback"  :- [:map
+                                               [:status [:= 204]]
+                                               [:body :nil]]
+  "Persist Metabot feedback."
   [_route-params
    _query-params
    body :- [:map
@@ -280,13 +278,23 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (let [message (metabot.feedback/persist-feedback! body)]
-    (try
-      (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                      (metabot.feedback/harbormaster-payload body message))
-                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
-      (catch Exception e
-        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  (metabot.feedback/persist-feedback! body)
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :post "/source-feedback" :- [:map
+                                                     [:status [:= 204]]
+                                                     [:body :nil]]
+  "Persist Metabot source feedback."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:metabot_id   ms/PositiveInt]
+            [:message_id   ms/NonBlankString]
+            [:source_id    ms/PositiveInt]
+            [:source_type  [:enum "table" "card" "model"]]
+            [:positive     :boolean]]]
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema

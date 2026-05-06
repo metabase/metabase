@@ -556,7 +556,46 @@
              (mt/client :post 401 "metabot/feedback"
                         {:metabot_id 1
                          :message_id "x"
-                         :positive   true}))))))
+                         :positive   true}))))
+    (testing "/source-feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/source-feedback"
+                        {:metabot_id  1
+                         :message_id  "x"
+                         :source_id   1
+                         :source_type "table"
+                         :positive    true}))))))
+
+(deftest source-feedback-returns-no-content-test
+  (testing "POST /metabot/source-feedback returns 204 after persisting feedback"
+    (let [conversation-id (str (random-uuid))
+          external-id     (str (random-uuid))
+          user-id         (mt/user->id :rasta)]
+      (try
+        (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+        (let [message-id (first (t2/insert-returning-pks!
+                                 :model/MetabotMessage
+                                 {:conversation_id conversation-id
+                                  :role            "assistant"
+                                  :profile_id      "gpt-x"
+                                  :external_id     external-id
+                                  :total_tokens    5
+                                  :data            [{:type "text" :text "hi"}]}))]
+          (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
+                                          {:metabot_id  1
+                                           :message_id  external-id
+                                           :source_id   42
+                                           :source_type "table"
+                                           :positive    true})))
+          (is (some? (t2/select-one :model/MetabotSourceFeedback
+                                    :message_id  message-id
+                                    :user_id     user-id
+                                    :source_id   42
+                                    :source_type "table"))))
+        (finally
+          (t2/delete! :model/MetabotSourceFeedback :user_id user-id :source_id 42 :source_type "table")
+          (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+          (t2/delete! :model/MetabotConversation :id conversation-id))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
