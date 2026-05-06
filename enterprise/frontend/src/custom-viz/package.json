@@ -18,6 +18,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metabase/metabase.git",
+    "directory": "enterprise/frontend/src/custom-viz"
+  },
   "files": [
     "dist"
   ],
