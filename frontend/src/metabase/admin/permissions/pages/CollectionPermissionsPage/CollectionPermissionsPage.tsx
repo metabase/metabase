@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -87,6 +87,8 @@ function CollectionsPermissionsPageView({
   initialize,
   route,
 }: CollectionPermissionsPageProps) {
+  useListPermissionsGroupsQuery({});
+
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -148,6 +150,5 @@ export const CollectionPermissionsPage = _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
-  Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPageView);

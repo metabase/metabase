@@ -2,13 +2,13 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
@@ -96,6 +96,8 @@ const CollectionPermissionsModal = ({
   updateCollectionPermission,
   saveCollectionPermissions,
 }: CollectionPermissionsModalProps) => {
+  useListPermissionsGroupsQuery({});
+
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -185,6 +187,5 @@ export default _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
-  Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionPermissionsModal);
