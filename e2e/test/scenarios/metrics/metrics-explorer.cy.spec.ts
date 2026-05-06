@@ -363,9 +363,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
 
-      H.MetricsViewer.getMetricVisualization()
-        .findByText("No results!")
-        .should("exist");
+      cy.findByText("No results!").should("exist");
     });
   });
 
