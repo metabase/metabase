@@ -132,6 +132,32 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
+(defn supersede-stale-tasks!
+  "Marks any genuinely stale task rows as cancelled and terminated.
+
+  A task is considered stale if it has `started_at` set, `ended_at` nil, and `last_progress_report_at`
+  is older than `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at`
+  to be non-null with a default of `current_timestamp`, so a brand-new task always has a recent
+  value (set on insert) and is not considered stale.
+
+  Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
+  JVM/thread is gone or hung. Returns nothing meaningful.
+
+  Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
+  that eventually wakes up and tries to complete will detect that its row is terminated and exit
+  without writing the setting or overwriting bookkeeping."
+  []
+  (let [cutoff (t/minus (t/offset-date-time)
+                        (t/millis (settings/remote-sync-task-time-limit-ms)))]
+    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
+               :set    {:cancelled     true
+                        :ended_at      (mi/now)
+                        :error_message "Superseded after staleness timeout"}
+               :where  [:and
+                        [:<> :started_at nil]
+                        [:= :ended_at nil]
+                        [:< :last_progress_report_at cutoff]]})))
+
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
 
