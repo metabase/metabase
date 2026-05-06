@@ -166,7 +166,7 @@
                                                             :type     :query
                                                             :query    {:source-table (:id out-table)}}}]
                               (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
-                                (testing "card query returns the transform output (read-side remap engaged)"
+                                (testing "card query returns the transform output"
                                   (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                       "card returns the rows the transform wrote to the isolation schema"))))
                             (mt/with-temp [:model/Card card
@@ -187,7 +187,7 @@
                                                               :native   {:query (format "SELECT * FROM \"%s\"" tgt-name)}}}]
                                 (let [rows (try (set (mt/rows (mt/process-query (:dataset_query card))))
                                                 (catch Exception e [::exception-thrown e]))]
-                                  (testing "native card query returns the transform output (Phase 2 SQL rewrite engaged)"
+                                  (testing "native card query returns the transform output"
                                     (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                         "native card returns the rows the transform wrote to the isolation schema"))))
                             (mt/with-temp [:model/Card card
@@ -196,9 +196,8 @@
                                             :dataset_query {:database (:id ws-db)
                                                             :type     :native
                                                             :native   {:query (format "SELECT * FROM \"%s\".\"%s\"" main-schema tgt-name)}}}]
-                              (let [rows (try (set (mt/rows (mt/process-query (:dataset_query card))))
-                                              (catch Exception e (println e)))]
-                                (testing "native card query returns the transform output (Phase 2 SQL rewrite engaged)"
+                              (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
+                                (testing "native card query returns the transform output"
                                   (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                       "native card returns the rows the transform wrote to the isolation schema")))))
                           (testing "app db Table rows stay confined to the input schema after card run"
