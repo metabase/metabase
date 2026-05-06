@@ -25,6 +25,7 @@ import {
   useAdminSetting,
   useAdminSettings,
 } from "metabase/api/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -217,7 +218,7 @@ export function MetabotSetupInner({
     "llm-openrouter-api-key",
   ] as const);
 
-  const handleDisconnect = useCallback(async () => {
+  const disconnectProvider = useCallback(async () => {
     if (!connectedProvider) {
       return;
     }
@@ -286,8 +287,9 @@ export function MetabotSetupInner({
 
   const connectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
-  const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isDisconnectConfirmOpen, setIsDisconnectConfirmOpen] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const handleConnect = async () => {
     if (!connectHandlerRef.current) {
       return;
@@ -302,6 +304,20 @@ export function MetabotSetupInner({
 
   const resetProvider = () => {
     setProvider(undefined);
+  };
+
+  const handleDisconnect = useCallback(() => {
+    setIsDisconnectConfirmOpen(true);
+  }, []);
+
+  const handleConfirmDisconnect = async () => {
+    setIsDisconnecting(true);
+    try {
+      await disconnectProvider();
+      setIsDisconnectConfirmOpen(false);
+    } finally {
+      setIsDisconnecting(false);
+    }
   };
 
   const isLoading =
@@ -392,14 +408,7 @@ export function MetabotSetupInner({
                   c="danger"
                   loading={isLoading}
                   disabled={isLoading}
-                  onClick={async () => {
-                    setIsDisconnecting(true);
-                    try {
-                      await handleDisconnect();
-                    } finally {
-                      setIsDisconnecting(false);
-                    }
-                  }}
+                  onClick={handleDisconnect}
                 >
                   {t`Disconnect`}
                 </Button>
@@ -421,6 +430,14 @@ export function MetabotSetupInner({
             )
             .exhaustive()}
         </Flex>
+        <ConfirmModal
+          opened={isDisconnectConfirmOpen}
+          onClose={() => setIsDisconnectConfirmOpen(false)}
+          title={t`Disconnect AI provider?`}
+          message={t`This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.`}
+          confirmButtonText={t`Disconnect provider`}
+          onConfirm={handleConfirmDisconnect}
+        />
       </Stack>
     </MetabotSetupContext.Provider>
   );
