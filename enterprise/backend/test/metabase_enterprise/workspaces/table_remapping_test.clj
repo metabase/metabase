@@ -22,7 +22,9 @@
   [db-id f]
   (ws.table-remapping/clear-mappings-for-db! db-id)
   (try (f)
-       (finally (ws.table-remapping/clear-mappings-for-db! db-id))))
+       (finally (ws.table-remapping/clear-mappings-for-db! db-id)
+                (sync-tables/sync-tables-and-database!
+                 (t2/select-one :model/Database db-id)))))
 
 (defn- with-provisioned-workspace-db!
   "Set the in-process workspace atom so `db-workspace-schema` returns
