@@ -1,6 +1,6 @@
 import type { DatabaseId, Tenant } from "metabase-types/api";
 
-export * as Urls from "metabase/utils/urls";
+export * as Urls from "metabase/urls";
 
 export function viewDestinationDatabases(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/destination-databases`;
@@ -42,4 +42,8 @@ export function reactivateTenant(tenantId: Tenant["id"]) {
 
 export function editUserStrategy(page: "people" | "tenants") {
   return `/admin/people${page === "tenants" ? "/tenants" : ""}/user-strategy`;
+}
+
+export function adminMetabotUsageAuditingConversation(conversationId: string) {
+  return `/admin/metabot/usage-auditing/conversations/${conversationId}`;
 }

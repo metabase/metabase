@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon } from "metabase/ui";
-import { formatValue } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";

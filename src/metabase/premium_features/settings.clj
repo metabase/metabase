@@ -293,14 +293,26 @@
   "Should we enable the Library?"
   :library)
 
+(defsetting security-center-disabled
+  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  :type             :boolean
+  :feature          :admin-security-center
+  :default          false
+  :visibility       :internal
+  :include-in-list? false
+  :audit            :never
+  :setter           :none
+  :export?          false)
+
 (define-premium-feature security-center-enabled?
   "True if the current instance has Security Center access.
    Requires the `:admin-security-center` feature flag, a non-trial subscription,
-   and a self-hosted instance."
+   a self-hosted instance, and the `security-center-disabled` setting to be unset."
   :admin-security-center
   :getter (fn []
             (and (has-feature? :admin-security-center)
                  (not (is-hosted?))
+                 (not (security-center-disabled))
                  (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
                  (or config/is-test? config/is-e2e?
                      (not= (mdb/db-type) :h2)))))
@@ -320,6 +332,10 @@
 (define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
   "Should we offer users the Metabase-managed AI provider?"
   :offer-metabase-ai-managed)
+
+(define-premium-feature enable-data-complexity-score?
+  "Should we expose Data Complexity Score?"
+  :data-complexity-score)
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
@@ -341,6 +357,7 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)

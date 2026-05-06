@@ -22,9 +22,18 @@ frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embe
 # @metabase/tech-writers
 docs @metabase/tech-writers
 docs/developers-guide # exclude from tech-writer ownership
+docs/api.html # auto-generated
+docs/api.json # auto-generated
+docs/configuring-metabase/environment-variables.md # auto-generated
+docs/configuring-metabase/config-template.md # auto-generated
+docs/installation-and-operation/commands.md # auto-generated
 
 # @metabase/devexp
 .github @metabase/devexp
 
 # @metabase/cloud-ops
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
+
+# @metabase/metabot-frontend
+enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend 
+frontend/src/metabase/metabot @metabase/metabot-frontend

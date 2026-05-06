@@ -40,10 +40,6 @@ export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
 }
 
-export function withDifferentTable(query: Query, tableId: TableId): Query {
-  return ML.with_different_table(query, tableId);
-}
-
 export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }

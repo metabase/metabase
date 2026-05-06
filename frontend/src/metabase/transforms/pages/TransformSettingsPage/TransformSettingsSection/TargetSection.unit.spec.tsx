@@ -6,7 +6,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { EnterpriseSettings, Transform } from "metabase-types/api";
 import {
   createMockDatabase,

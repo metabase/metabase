@@ -1410,7 +1410,6 @@
   extraction-expression]
  [lib.fe-util
   dependent-metadata
-  table-or-card-dependent-metadata
   expression-clause
   expression-parts
   string-filter-clause
