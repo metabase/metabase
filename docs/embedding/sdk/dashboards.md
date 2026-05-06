@@ -62,57 +62,7 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 
 ## Pass parameter values to a dashboard
 
-You can pre-populate dashboard filters from your app, and (optionally) keep your app in sync with what's currently applied. Use one of these props depending on whether you only want to seed initial values or stay in sync over time.
-
-### `initialParameters` (uncontrolled)
-
-Pre-populate filters once on load. After the dashboard mounts, user widget edits are not reflected back to your app. Pick this when you don't need to react to filter changes.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/dashboards/initial-parameters.tsx" snippet="example" %}
-```
-
-For a single value, pass a `string`. For multiple values, pass an array of `string` values.
-
-### `parameters` + `onParametersChange` (controlled)
-
-Push values from your app, and observe every applied change via `onParametersChange`. This works like a controlled `<input value onChange>` - your app holds the source of truth, the dashboard re-renders when the prop changes, and you receive a callback whenever applied values change.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
-```
-
-The callback receives a payload with these fields:
-
-- `source` - why the callback fired:
-  - `"initial-state"` - the post-load snapshot, fired once per dashboard load.
-  - `"manual-change"` - a user edited a filter widget.
-  - `"auto-change"` - values you pushed via `parameters` were stored differently than you sent (for example, a scalar wrapped into an array, an unknown slug ignored, an explicit `null` applied as a clear). Use the payload to re-sync your local state.
-- `parameters` - the currently applied values, slug-keyed.
-- `defaultParameters` - the dashboard's default values, slug-keyed.
-- `lastUsedParameters` - the values this user last applied to this dashboard, slug-keyed. Empty if the user hasn't applied any parameters yet.
-
-If your push is applied unchanged, no callback fires.
-
-#### Clearing a single parameter
-
-Set its value to `null`. This strictly clears the parameter and ignores its default value. Missing slugs fall back to `parameter.default ?? null`.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/dashboards/controlled-parameters.tsx" snippet="example-clear-one" %}
-```
-
-#### Clearing all parameters
-
-Pass an empty object.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/dashboards/controlled-parameters.tsx" snippet="example-clear-all" %}
-```
-
-To switch back to uncontrolled mode (and leave the dashboard's last applied values in place), set the `parameters` prop to `undefined`.
-
-> Don't combine `initialParameters` and `parameters` - pick one. For controlled behavior, only use `parameters`.
+See [Modular embedding parameters](../modular-embedding-parameters.md#pass-parameter-values-to-a-dashboard).
 
 ## Customizing dashboard height
 

@@ -62,53 +62,7 @@ Use this component when you want to allow people to explore their data and custo
 
 ## Pass parameters to SQL questions
 
-You can pass [parameter](../../questions/native-editor/sql-parameters.md) values to SQL questions like so:
-```
-{parameter_name: parameter_value}
-
-```
-
-There are two ways to pass parameters:
-
-- Uncontrolled, where the component owns the state: use `initialSqlParameters` to set initial values.
-- Controlled, where your app owns the parameter state. Use `sqlParameters` and `onSqlParametersChange` to sync the parameter values with your app when people viewing the embed change the filters.
-
-These props can only be used with SQL questions; they don't work for query-builder questions.
-
-Don't combine `initialSqlParameters` and `sqlParameters` - pick one. For controlled behavior, only use `sqlParameters`.
-
-### Uncontrolled component with `initialSqlParameters`
-
-Sets the parameter value once on load. After the question mounts, if the person viewing the embed changes the value, your app won't know about it.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/questions/initial-sql-parameters.tsx" snippet="example" %}
-```
-
-### Controlled component with `sqlParameters` and `onSqlParametersChange`
-
-With this setup, your app maintains the parameter value state. When someone viewing the embed updates the value, a callback fires to update your app with the new value, and the question re-renders with this new value.  This works like a controlled `<input value onChange>`.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
-```
-
-The callback receives a payload with these fields:
-
-- `source`: why the callback fired:
-    - `"initial-state"`: the post-load snapshot, fired once per question load.
-    - `"manual-change"`: someone edited a filter widget.
-    - `"auto-change"`: values you pushed via `sqlParameters` were stored differently than you sent. For example, a scalar wrapped into an array for a multi-select filter, an unknown slug ignored, an explicit `null` applied as a clear. Use the payload to re-sync the local state in your app.
-- `parameters` : the currently applied values, slug-keyed.
-- `defaultParameters`: the question's default values, slug-keyed.
-
-#### Clearing a parameter
-
-To clear a parameter completely, set its value to `null`. Clearing the parameter with a `null` also ignores the parameter's default value (if any). Missing parameter fall back to `parameter.default ?? null`.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/questions/controlled-sql-parameters.tsx" snippet="example-clear" %}
-```
+See [Modular embedding parameters](../modular-embedding-parameters.md#pass-parameters-to-sql-questions).
 
 ## Enable alerts on embedded questions
 
