@@ -61,6 +61,99 @@
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
 
+(deftest message-history-native-shape-test
+  (testing "assistant messages persisted in native-parts shape are translated to AI-SDK messages"
+    (let [conv-id    (str (random-uuid))
+          slack-ts   "1712000000.000001"
+          search-id  "call-search"
+          query-id   "call-query"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    10
+                     :data            [{:type :text :text "Let me check."}
+                                       {:type      :tool-input
+                                        :id        search-id
+                                        :function  "search"
+                                        :arguments {:query "orders"}}
+                                       {:type   :tool-output
+                                        :id     search-id
+                                        :result {:output            "<result>orders</result>"
+                                                 :structured-output {:query-id "qid-1"}}}
+                                       {:type      :tool-input
+                                        :id        query-id
+                                        :function  "construct_notebook_query"
+                                        :arguments {:data_source_ids ["table-1"]}}
+                                       {:type   :tool-output
+                                        :id     query-id
+                                        :result {:output "<result>query</result>"}}]})
+        (let [result (slackbot.persistence/message-history conv-id #{slack-ts})
+              msgs   (get result slack-ts)]
+          (testing "text blocks are skipped — only tool blocks surface"
+            (is (= 4 (count msgs))))
+          (testing "tool-input → assistant message with :tool_calls"
+            (is (= {:role       :assistant
+                    :tool_calls [{:id        search-id
+                                  :name      "search"
+                                  :arguments {:query "orders"}}]}
+                   (first msgs))))
+          (testing "tool-output → tool message with :content and :tool_call_id"
+            (is (= {:role         :tool
+                    :tool_call_id search-id
+                    :content      "<result>orders</result>"}
+                   (second msgs))))
+          (testing "order is preserved — matching tool-call/tool-result pairs stay adjacent"
+            (is (= [search-id search-id query-id query-id]
+                   (mapv #(or (:tool_call_id %)
+                              (-> % :tool_calls first :id))
+                         msgs)))
+            (is (= ["search" "construct_notebook_query"]
+                   (->> msgs
+                        (filter #(= :assistant (:role %)))
+                        (map #(-> % :tool_calls first :name)))))))))))
+
+(deftest message-history-mixed-shape-test
+  (testing "a single message row with both legacy and native blocks round-trips both shapes in order"
+    (let [conv-id  (str (random-uuid))
+          slack-ts "1712000000.000002"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    5
+                     :data            [{:_type      "TOOL_CALL"
+                                        :role       "assistant"
+                                        :tool_calls [{:id "legacy-1" :name "search" :arguments "{}"}]}
+                                       {:_type        "TOOL_RESULT"
+                                        :role         "tool"
+                                        :tool_call_id "legacy-1"
+                                        :content      "legacy output"}
+                                       {:type      :tool-input
+                                        :id        "native-1"
+                                        :function  "construct_notebook_query"
+                                        :arguments {:data_source_ids ["t1"]}}
+                                       {:type   :tool-output
+                                        :id     "native-1"
+                                        :result {:output "native output"}}]})
+        (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
+          (is (= 4 (count msgs)))
+          (testing "legacy blocks still normalize correctly"
+            (is (= :assistant (:role (nth msgs 0))))
+            (is (= "legacy-1" (-> (nth msgs 0) :tool_calls first :id)))
+            (is (= {:role :tool :tool_call_id "legacy-1" :content "legacy output"}
+                   (nth msgs 1))))
+          (testing "native blocks translate alongside legacy blocks"
+            (is (= "native-1" (-> (nth msgs 2) :tool_calls first :id)))
+            (is (= {:role :tool :tool_call_id "native-1" :content "native output"}
+                   (nth msgs 3)))))))))
+
 (deftest soft-delete-response-test
   (testing "soft-delete-response! marks the assistant response as deleted"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]

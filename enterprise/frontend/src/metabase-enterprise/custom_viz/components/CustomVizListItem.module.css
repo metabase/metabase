@@ -1,9 +1,3 @@
-.customVizListItem {
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-}
-
 .customVizListItem:hover {
   background-color: var(--mb-color-background-hover);
 }
@@ -14,8 +8,4 @@
 
 .customVizListItem:hover .menuContainer {
   visibility: visible;
-}
-
-.customVizItemUrl:hover {
-  text-decoration: underline;
 }

@@ -15,6 +15,7 @@ import {
   generateIconSvg,
   generateIndexTsx,
   generateManifest,
+  generatePackScript,
   generatePackageJson,
   generateReadme,
   generateTsConfig,
@@ -60,6 +61,7 @@ program
       writeFile(join(name, "package.json"), generatePackageJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
+      writeFile(join(name, "pack.mjs"), generatePackScript()),
       writeFile(
         join(name, "src", "index.tsx"),
         generateIndexTsx(name, displayName),
@@ -82,6 +84,7 @@ program
     console.log(`  ${name}/package.json`);
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
+    console.log(`  ${name}/pack.mjs`);
     console.log(`  ${name}/src/index.tsx`);
     console.log(`  ${name}/metabase-plugin.json`);
     console.log(`  ${name}/public/assets/icon.svg`);
@@ -94,15 +97,16 @@ program
     console.log(`  cd ${name}`);
     console.log("  npm install");
     console.log("  npm run dev      # Start dev server with hot-reload");
-    console.log("  npm run build    # Production build");
+    console.log(
+      "  npm run build    # Compile to dist/ and produce a .tgz for upload",
+    );
     console.log();
     console.log("Syncing with a Metabase instance:");
     console.log(
-      "  1. Register your plugin in Metabase Admin → Custom visualizations → Development",
+      "  Dev mode (hot-reload):  Admin → Custom visualizations → Development → set dev server URL to http://localhost:5174",
     );
-    console.log("  2. Set the dev server URL to http://localhost:5174");
     console.log(
-      "  3. Changes will hot-reload automatically in your Metabase instance",
+      "  Production:             npm run build, then upload the .tgz in Admin → Custom visualizations → Add",
     );
   });
 

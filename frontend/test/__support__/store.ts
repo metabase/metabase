@@ -11,7 +11,6 @@ import {
   DocumentSchema,
   FieldSchema,
   GroupSchema,
-  IndexedEntitySchema,
   MeasureSchema,
   MetricSchema,
   QuestionSchema,
@@ -64,7 +63,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   measures: [MeasureSchema],
   metrics: [MetricSchema],
   snippets: [SnippetSchema],
-  indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
   groups: [GroupSchema],
 };

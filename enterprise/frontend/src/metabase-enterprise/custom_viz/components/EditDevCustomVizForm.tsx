@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
-  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
@@ -27,28 +25,15 @@ type Props = {
 
 type FormState = {
   devBundleUrl: string;
-  acknowledgedRisk: boolean;
 };
 
 export function EditDevCustomVizForm({ plugin }: Props) {
   const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
 
-  const validationSchema = useMemo(
-    () =>
-      Yup.object({
-        acknowledgedRisk: Yup.boolean().oneOf(
-          [true],
-          t`You must acknowledge the security risk before proceeding.`,
-        ),
-      }),
-    [],
-  );
-
   const initialValues = useMemo<FormState>(
     () => ({
       devBundleUrl: plugin.dev_bundle_url ?? "",
-      acknowledgedRisk: false,
     }),
     [plugin.dev_bundle_url],
   );
@@ -72,7 +57,6 @@ export function EditDevCustomVizForm({ plugin }: Props) {
       <FormProvider
         enableReinitialize
         initialValues={initialValues}
-        validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
         {({ dirty }) => (
@@ -90,7 +74,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                     .with("active", () => (
                       <Group align="center" flex="0 0 auto" gap="xs">
                         <Icon c="success" name="check" />
-                        <Text c="success" fw={700}>{t`Active`}</Text>
+                        <Text c="success" fw={700}>{t`Enabled`}</Text>
                       </Group>
                     ))
                     .with("error", () => (
@@ -112,17 +96,13 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                 label={t`Dev server URL`}
                 placeholder="http://localhost:5174"
               />
-              <FormCheckbox
-                name="acknowledgedRisk"
-                label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
-              />
               <FormErrorMessage />
               <Group justify="flex-end">
                 <Button variant="subtle" color="error" onClick={handleRemove}>
-                  {t`Remove`}
+                  {t`Disable`}
                 </Button>
                 <FormSubmitButton
-                  label={t`Save`}
+                  label={t`Update`}
                   disabled={!dirty}
                   variant="filled"
                 />

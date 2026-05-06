@@ -4,6 +4,7 @@ import type {
   CustomVizPlugin,
   CustomVizPluginId,
   CustomVizPluginRuntime,
+  ReplaceCustomVizPluginBundleRequest,
   UpdateCustomVizPluginRequest,
 } from "metabase-types/api";
 
@@ -36,13 +37,40 @@ export const customVizPluginApi = EnterpriseApi.injectEndpoints({
       CustomVizPlugin,
       CreateCustomVizPluginRequest
     >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/custom-viz-plugin",
-        body,
-      }),
+      query: ({ file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          method: "POST",
+          url: "/api/ee/custom-viz-plugin",
+          body: { formData },
+          formData: true,
+          fetch: true,
+        };
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("custom-viz-plugin")]),
+    }),
+    replaceCustomVizPluginBundle: builder.mutation<
+      CustomVizPlugin,
+      ReplaceCustomVizPluginBundleRequest
+    >({
+      query: ({ id, file }) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          method: "PUT",
+          url: `/api/ee/custom-viz-plugin/${id}/bundle`,
+          body: { formData },
+          formData: true,
+          fetch: true,
+        };
+      },
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("custom-viz-plugin"),
+          idTag("custom-viz-plugin", id),
+        ]),
     }),
     createDevCustomVizPlugin: builder.mutation<
       CustomVizPlugin,
@@ -119,5 +147,6 @@ export const {
   useDeleteCustomVizPluginMutation,
   useUpdateCustomVizPluginMutation,
   useRefreshCustomVizPluginMutation,
+  useReplaceCustomVizPluginBundleMutation,
   useSetCustomVizPluginDevUrlMutation,
 } = customVizPluginApi;

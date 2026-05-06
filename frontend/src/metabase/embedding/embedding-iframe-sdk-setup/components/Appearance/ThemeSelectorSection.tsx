@@ -6,9 +6,27 @@ import { Box, Flex, Icon, SimpleGrid, Tooltip } from "metabase/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
 import type { SdkIframeEmbedSetupTheme } from "../../types";
+import { getConfigurableThemeColors } from "../../utils/theme-colors";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ThemeCard, getThemeColors } from "./ThemeCard";
+
+const pickConfigurableColors = (
+  colors: Partial<MetabaseColors> | undefined,
+): Partial<MetabaseColors> | undefined => {
+  if (!colors) {
+    return undefined;
+  }
+
+  const picked: Partial<MetabaseColors> = {};
+  for (const { key } of getConfigurableThemeColors()) {
+    if (colors[key] !== undefined) {
+      picked[key] = colors[key];
+    }
+  }
+
+  return Object.keys(picked).length > 0 ? picked : undefined;
+};
 
 type ThemeSelection =
   | { type: "default" }
@@ -19,6 +37,7 @@ interface ThemeSelectorSectionProps {
   savedThemes: EmbeddingTheme[];
   theme: SdkIframeEmbedSetupTheme | undefined;
   onThemeChange: (themeId: number | undefined) => void;
+  onCustomSelect: (initialColors: Partial<MetabaseColors> | undefined) => void;
   onColorChange: (colors: Partial<MetabaseColors>) => void;
   onColorReset: () => void;
 }
@@ -27,6 +46,7 @@ export const ThemeSelectorSection = ({
   savedThemes,
   theme,
   onThemeChange,
+  onCustomSelect,
   onColorChange,
   onColorReset,
 }: ThemeSelectorSectionProps) => {
@@ -60,8 +80,15 @@ export const ThemeSelectorSection = ({
   };
 
   const handleCustomClick = () => {
+    const previouslySelectedSavedTheme =
+      selection.type === "saved"
+        ? savedThemes.find((t) => t.id === selection.themeId)
+        : undefined;
+
     setSelection({ type: "custom" });
-    onThemeChange(undefined);
+    onCustomSelect(
+      pickConfigurableColors(previouslySelectedSavedTheme?.settings.colors),
+    );
   };
 
   const hasThemes = savedThemes.length > 0;

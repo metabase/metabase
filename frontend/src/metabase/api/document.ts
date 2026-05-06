@@ -1,5 +1,7 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
+import { hydrateLegacyEntities } from "metabase/api/utils/hydrate-legacy-entities";
+import { DocumentSchema } from "metabase/schema";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
@@ -19,6 +21,7 @@ export const documentApi = Api.injectEndpoints({
       }),
       providesTags: (result, error, { id }) =>
         !error ? [idTag("document", id)] : [],
+      onQueryStarted: hydrateLegacyEntities(DocumentSchema),
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({

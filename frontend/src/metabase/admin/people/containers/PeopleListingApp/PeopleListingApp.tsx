@@ -10,7 +10,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";

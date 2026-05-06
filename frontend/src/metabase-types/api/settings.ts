@@ -231,7 +231,13 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "paused" | "error";
+  status:
+    | "not-connected"
+    | "initializing"
+    | "syncing"
+    | "active"
+    | "paused"
+    | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -255,6 +261,7 @@ const tokenStatusFeatures = [
   "content-management",
   "content-translation",
   "content-verification",
+  "data-complexity-score",
   "dashboard-subscription-filters",
   "database-auth-providers",
   "disable-password-login",
@@ -328,6 +335,7 @@ export const tokenFeatures = [
   "content_verification",
   "custom-viz",
   "custom-viz-available",
+  "data-complexity-score",
   "disable_password_login",
   "embedding",
   "embedding_sdk",

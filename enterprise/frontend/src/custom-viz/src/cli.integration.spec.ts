@@ -65,6 +65,11 @@ describe("build output validation", () => {
     expect(manifest).toHaveProperty("icon");
     expect(manifest).toHaveProperty("assets");
   });
+
+  it("build produces an upload-ready .tgz", () => {
+    const tgzPath = join(projectDir, "test-viz-build-0.0.1.tgz");
+    expect(existsSync(tgzPath)).toBe(true);
+  });
 });
 
 describe("dev server", () => {
