@@ -35,9 +35,7 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
 
-import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
-import { QuestionParametersBridge } from "./QuestionParametersBridge";
 import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
@@ -219,22 +217,16 @@ const SdkIframeEmbedView = ({
               };
 
           return (
-            <DashboardParametersBridge>
-              {({ onParametersChange }) => (
-                <StaticDashboard
-                  key={rerenderKey}
-                  className={SdkIframeEmbedRouteS.Dashboard}
-                  {...entityProps}
-                  autoRefreshInterval={settings.autoRefreshInterval}
-                  withTitle={settings.withTitle}
-                  withDownloads={settings.withDownloads}
-                  initialParameters={settings.initialParameters}
-                  parameters={settings.parameters}
-                  onParametersChange={onParametersChange}
-                  hiddenParameters={settings.hiddenParameters}
-                />
-              )}
-            </DashboardParametersBridge>
+            <StaticDashboard
+              key={rerenderKey}
+              className={SdkIframeEmbedRouteS.Dashboard}
+              {...entityProps}
+              autoRefreshInterval={settings.autoRefreshInterval}
+              withTitle={settings.withTitle}
+              withDownloads={settings.withDownloads}
+              initialParameters={settings.initialParameters}
+              hiddenParameters={settings.hiddenParameters}
+            />
           );
         },
       )
@@ -246,27 +238,21 @@ const SdkIframeEmbedView = ({
           drills: P.optional(true),
         },
         (settings) => (
-          <DashboardParametersBridge>
-            {({ onParametersChange }) => (
-              <InteractiveDashboard
-                key={rerenderKey}
-                className={SdkIframeEmbedRouteS.Dashboard}
-                dashboardId={settings.dashboardId ?? null}
-                token={settings.token}
-                autoRefreshInterval={settings.autoRefreshInterval}
-                withTitle={settings.withTitle}
-                withDownloads={settings.withDownloads}
-                withSubscriptions={settings.withSubscriptions}
-                initialParameters={settings.initialParameters}
-                parameters={settings.parameters}
-                onParametersChange={onParametersChange}
-                hiddenParameters={settings.hiddenParameters}
-                enableEntityNavigation={settings.enableEntityNavigation}
-                drillThroughQuestionHeight="100%"
-                drillThroughQuestionProps={{ isSaveEnabled: false }}
-              />
-            )}
-          </DashboardParametersBridge>
+          <InteractiveDashboard
+            key={rerenderKey}
+            className={SdkIframeEmbedRouteS.Dashboard}
+            dashboardId={settings.dashboardId ?? null}
+            token={settings.token}
+            autoRefreshInterval={settings.autoRefreshInterval}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            withSubscriptions={settings.withSubscriptions}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            enableEntityNavigation={settings.enableEntityNavigation}
+            drillThroughQuestionHeight="100%"
+            drillThroughQuestionProps={{ isSaveEnabled: false }}
+          />
         ),
       )
       // Exists solely to discriminate type from the pattern below when matching `guestEmbedProviderUri: P.nonNullable`
@@ -312,22 +298,16 @@ const SdkIframeEmbedView = ({
               };
 
           return (
-            <QuestionParametersBridge>
-              {({ onSqlParametersChange }) => (
-                <StaticQuestion
-                  key={rerenderKey}
-                  {...entityProps}
-                  withDownloads={settings.withDownloads}
-                  withAlerts={settings.withAlerts}
-                  height="100%"
-                  initialSqlParameters={settings.initialSqlParameters}
-                  sqlParameters={settings.sqlParameters}
-                  onSqlParametersChange={onSqlParametersChange}
-                  hiddenParameters={settings.hiddenParameters}
-                  title={settings.withTitle ?? true}
-                />
-              )}
-            </QuestionParametersBridge>
+            <StaticQuestion
+              key={rerenderKey}
+              {...entityProps}
+              withDownloads={settings.withDownloads}
+              withAlerts={settings.withAlerts}
+              height="100%"
+              initialSqlParameters={settings.initialSqlParameters}
+              hiddenParameters={settings.hiddenParameters}
+              title={settings.withTitle ?? true}
+            />
           );
         },
       )
@@ -339,26 +319,20 @@ const SdkIframeEmbedView = ({
           questionId: P.nonNullable,
         },
         (settings) => (
-          <QuestionParametersBridge>
-            {({ onSqlParametersChange }) => (
-              <SdkQuestion
-                key={rerenderKey}
-                questionId={settings.questionId ?? null}
-                token={settings.token}
-                withDownloads={settings.withDownloads}
-                withAlerts={settings.withAlerts}
-                height="100%"
-                initialSqlParameters={settings.initialSqlParameters}
-                sqlParameters={settings.sqlParameters}
-                onSqlParametersChange={onSqlParametersChange}
-                hiddenParameters={settings.hiddenParameters}
-                title={settings.withTitle ?? true}
-                isSaveEnabled={settings.isSaveEnabled ?? false}
-                targetCollection={settings.targetCollection}
-                entityTypes={settings.entityTypes}
-              />
-            )}
-          </QuestionParametersBridge>
+          <SdkQuestion
+            key={rerenderKey}
+            questionId={settings.questionId ?? null}
+            token={settings.token}
+            withDownloads={settings.withDownloads}
+            withAlerts={settings.withAlerts}
+            height="100%"
+            initialSqlParameters={settings.initialSqlParameters}
+            hiddenParameters={settings.hiddenParameters}
+            title={settings.withTitle ?? true}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
+            targetCollection={settings.targetCollection}
+            entityTypes={settings.entityTypes}
+          />
         ),
       )
       .with(
