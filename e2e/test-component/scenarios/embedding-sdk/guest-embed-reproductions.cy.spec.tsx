@@ -15,6 +15,8 @@ import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
+const { H } = cy;
+
 describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
   const setup = ({ display }: { display?: Card["display"] } = {}) => {
     signInAsAdminAndSetupGuestEmbedding({
@@ -146,17 +148,17 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
 
       getSdkRoot()
         .findAllByTestId("parameter-widget")
-        .filter(':contains("Category")')
+        .button("Category")
         .click();
 
-      cy.findByTestId("parameter-value-dropdown").within(() => {
+      H.popover().within(() => {
         cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });
 
       getSdkRoot()
         .findAllByTestId("parameter-widget")
-        .filter(':contains("Category")')
+        .button("Category")
         .should("contain.text", "Widget");
 
       downloadAndAssert({

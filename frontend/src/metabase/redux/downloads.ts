@@ -346,7 +346,7 @@ const getEmbedQuestionParams = (
   params: Record<string, unknown>,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
-  // Guest Embed / SDK iframe embeds receive parameter values via postMessage
+  // Guest Embed / Modular embedding SDK embeds receive parameter values via postMessage
   // from the host page, so window.location.search does not reflect the active
   // editable filter state. Fall back to the params provided by the caller.
   // Static embed iframes encode filter values in the iframe URL, so read them
