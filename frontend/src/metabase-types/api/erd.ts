@@ -1,7 +1,11 @@
-import type { DatabaseId, FieldId, TableId } from "./";
+import type { ConcreteTableId, DatabaseId, FieldId, TableId } from "./";
 
 export type ErdRelationship = "one-to-one" | "many-to-one";
 
+// The ERD endpoint never traverses cards / saved-question virtual tables —
+// it loads from `:model/Table` and validates `table-ids` as positive ints.
+// Use `ConcreteTableId` here (rather than the wider `TableId` union) so
+// consumers don't need to cast every id.
 export type ErdField = {
   id: FieldId;
   name: string;
@@ -11,11 +15,11 @@ export type ErdField = {
   effective_type: string | null;
   semantic_type: string | null;
   fk_target_field_id: FieldId | null;
-  fk_target_table_id: TableId | null;
+  fk_target_table_id: ConcreteTableId | null;
 };
 
 export type ErdNode = {
-  table_id: TableId;
+  table_id: ConcreteTableId;
   name: string;
   display_name: string;
   schema: string | null;
@@ -24,9 +28,9 @@ export type ErdNode = {
 };
 
 export type ErdEdge = {
-  source_table_id: TableId;
+  source_table_id: ConcreteTableId;
   source_field_id: FieldId;
-  target_table_id: TableId;
+  target_table_id: ConcreteTableId;
   target_field_id: FieldId;
   relationship: ErdRelationship;
 };

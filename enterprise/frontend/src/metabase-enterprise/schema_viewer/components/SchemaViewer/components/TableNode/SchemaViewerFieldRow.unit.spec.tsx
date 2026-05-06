@@ -150,7 +150,7 @@ describe("SchemaViewerFieldRow", () => {
         field: {
           id: 10,
           semantic_type: "type/FK",
-          fk_target_table_id: 99 as ConcreteTableId,
+          fk_target_table_id: 99,
           fk_target_field_id: 999,
         },
         context: {
@@ -171,11 +171,11 @@ describe("SchemaViewerFieldRow", () => {
         field: {
           id: 10,
           semantic_type: "type/FK",
-          fk_target_table_id: 99 as ConcreteTableId,
+          fk_target_table_id: 99,
           fk_target_field_id: 999,
         },
         context: {
-          visibleTableIds: new Set([99 as ConcreteTableId]),
+          visibleTableIds: new Set([99]),
           zoomToNode,
         },
       });
@@ -189,12 +189,12 @@ describe("SchemaViewerFieldRow", () => {
       setup({
         field: {
           semantic_type: "type/FK",
-          fk_target_table_id: 99 as ConcreteTableId,
+          fk_target_table_id: 99,
           fk_target_field_id: 999,
           database_type: "integer",
         },
         context: {
-          expandingTableIds: new Set([99 as ConcreteTableId]),
+          expandingTableIds: new Set([99]),
         },
       });
       expect(screen.queryByText("integer")).not.toBeInTheDocument();
@@ -207,7 +207,7 @@ describe("SchemaViewerFieldRow", () => {
       setup({
         field: {
           semantic_type: "type/FK",
-          fk_target_table_id: 99 as ConcreteTableId,
+          fk_target_table_id: 99,
           fk_target_field_id: 999,
           database_type: "integer",
         },

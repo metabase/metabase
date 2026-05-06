@@ -5,10 +5,10 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, FixedSizeIcon, Group, type IconName, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { ConcreteTableId, ErdField } from "metabase-types/api";
+import type { ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
-import { ROW_HEIGHT } from "../../constants";
+import { ROW_HEIGHT_PX } from "../../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../../types";
 import { getEdgeId, getFieldHandleId, getNodeId } from "../../utils";
 
@@ -58,19 +58,19 @@ export function SchemaViewerFieldRow({
   const canExpand =
     isFkField &&
     field.fk_target_table_id != null &&
-    !visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
+    !visibleTableIds.has(field.fk_target_table_id);
 
   // FK field that has a target table already on the canvas
   const canZoomTo =
     isFkField &&
     field.fk_target_table_id != null &&
-    visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
+    visibleTableIds.has(field.fk_target_table_id);
 
   // True while an FK-click fetch is in flight for this field's target table.
   const isExpanding =
     isFkField &&
     field.fk_target_table_id != null &&
-    expandingTableIds.has(field.fk_target_table_id as ConcreteTableId);
+    expandingTableIds.has(field.fk_target_table_id);
 
   const handleClick = (event: React.MouseEvent) => {
     // Keep the click from bubbling up to the node, otherwise React Flow
@@ -91,7 +91,7 @@ export function SchemaViewerFieldRow({
             ]
           : undefined;
       onExpandToTable(
-        field.fk_target_table_id as ConcreteTableId,
+        field.fk_target_table_id,
         candidateEdgeIds,
       );
     } else if (canZoomTo && field.fk_target_table_id != null) {
@@ -132,7 +132,7 @@ export function SchemaViewerFieldRow({
       className={S.row}
       gap="sm"
       wrap="nowrap"
-      h={ROW_HEIGHT}
+      h={ROW_HEIGHT_PX}
       px="md"
       data-clickable={isClickable || undefined}
       onClick={isClickable ? handleClick : undefined}

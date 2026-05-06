@@ -5,14 +5,9 @@ import type {
   ErdResponse,
 } from "metabase-types/api";
 
-import { HEADER_HEIGHT, ROW_HEIGHT } from "../constants";
+import { HEADER_HEIGHT_PX, ROW_HEIGHT_PX } from "../constants";
 
-import {
-  getNodeId,
-  markSelectedEdge,
-  nodeHeight,
-  toFlowGraph,
-} from "./flow-graph";
+import { getNodeHeight, getNodeId, toFlowGraph } from "./flow-graph";
 
 function field(overrides: Partial<ErdField> = {}): ErdField {
   return {
@@ -58,10 +53,10 @@ describe("getNodeId", () => {
   });
 });
 
-describe("nodeHeight", () => {
+describe("getNodeHeight", () => {
   it("returns HEADER_HEIGHT + fieldCount * ROW_HEIGHT", () => {
-    expect(nodeHeight(0)).toBe(HEADER_HEIGHT);
-    expect(nodeHeight(3)).toBe(HEADER_HEIGHT + 3 * ROW_HEIGHT);
+    expect(getNodeHeight(0)).toBe(HEADER_HEIGHT_PX);
+    expect(getNodeHeight(3)).toBe(HEADER_HEIGHT_PX + 3 * ROW_HEIGHT_PX);
   });
 });
 
@@ -217,28 +212,5 @@ describe("toFlowGraph — memoization", () => {
       edges: [edge({ relationship: "one-to-one" })],
     };
     expect(toFlowGraph(responseA)).not.toBe(toFlowGraph(responseB));
-  });
-});
-
-describe("markSelectedEdge", () => {
-  it("bumps a selected edge's zIndex", () => {
-    const response: ErdResponse = {
-      nodes: [],
-      edges: [edge()],
-    };
-    const [edgeIn] = toFlowGraph(response).edges;
-    const selected = { ...edgeIn, selected: true };
-    expect(markSelectedEdge(selected).zIndex).toBeGreaterThan(
-      edgeIn.zIndex ?? 0,
-    );
-  });
-
-  it("returns the same object when the edge is not selected", () => {
-    const response: ErdResponse = {
-      nodes: [],
-      edges: [edge()],
-    };
-    const [edgeIn] = toFlowGraph(response).edges;
-    expect(markSelectedEdge(edgeIn)).toBe(edgeIn);
   });
 });

@@ -10,15 +10,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "../constants";
+import { HEADER_HEIGHT_PX, NODE_WIDTH_PX, ROW_HEIGHT_PX } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-
-// --- Stable id helpers ----------------------------------------------------
-//
-// Schema Viewer derives React Flow node, edge, and handle ids from backend
-// table / field ids. These helpers are the single source of truth for that
-// mapping — every call site (flow-graph builder, FieldRow handles, FK click
-// edge selection) goes through them so the format only lives in one place.
 
 export function getNodeId(node: { table_id: TableId } | TableId): string {
   const tableId = typeof node === "object" ? node.table_id : node;
@@ -32,21 +25,16 @@ export function getEdgeId(
   return `edge-${sourceFieldId}-${targetFieldId}`;
 }
 
-/**
- * Build the handle id for a field. `side` distinguishes the right-side
- * handle used to anchor self-referential edges (a separate handle is needed
- * because React Flow can't draw a self-loop using a single left-side
- * target).
- */
+ // `side` distinguishes the right-side * handle used to anchor self-referential edges.
 export function getFieldHandleId(fieldId: FieldId, side?: "right"): string {
   return side ? `field-${fieldId}-${side}` : `field-${fieldId}`;
 }
 
-/** Pixel height of a table card given its field count. */
-export function nodeHeight(fieldCount: number): number {
-  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
+export function getNodeHeight(fieldCount: number): number {
+  return HEADER_HEIGHT_PX + fieldCount * ROW_HEIGHT_PX;
 }
 
+// Sort fields so PKs come first, then FKs, then the rest
 function sortFields(fields: ErdField[]): ErdField[] {
   return [...fields].sort((a, b) => {
     const aPK = isTypePK(a.semantic_type);
@@ -87,7 +75,7 @@ const EMPTY_ROLES: TableEdgeRoles = {
 
 // z-index scheme. Nodes sit above all edges so selected-edge highlighting
 // (which bumps the edge to SELECTED_EDGE_Z_INDEX) doesn't paint over node cards.
-// Both stay well below the SchemaViewer chrome (panels at 5).
+// Both stay below other Schema Viewer elements.
 const NODE_Z_INDEX = 2;
 const EDGE_Z_INDEX_DEFAULT = 0;
 const SELECTED_EDGE_Z_INDEX = 1;
@@ -109,8 +97,8 @@ function toFlowNode(
       selfRefTargetFieldIds: roles.selfRefTargetFieldIds,
     },
     style: {
-      width: NODE_WIDTH,
-      height: nodeHeight(node.fields.length),
+      width: NODE_WIDTH_PX,
+      height: getNodeHeight(node.fields.length),
       opacity: 0, // Hide until positioned by dagre layout
     },
   };
@@ -161,7 +149,7 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
 }
 
 const memoizedToFlowGraph = memoize((data: ErdResponse) => {
-  // Per-table roles: which fields act as source, target, or self-ref target
+  // Per-table field roles: which fields act as source, target, or self-ref target
   // of any edge. Handle rendering keys off this (not off semantic_type) so an
   // edge whose target field isn't tagged as a PK still gets a matching handle.
   const rolesByTable = new Map<TableId, TableEdgeRoles>();
@@ -209,7 +197,8 @@ export function markSelectedEdge(
   return edge.selected
     ? {
         ...edge,
-        zIndex: SELECTED_EDGE_Z_INDEX,
+        className: "test",
+        // zIndex: SELECTED_EDGE_Z_INDEX,
       }
     : edge;
 }

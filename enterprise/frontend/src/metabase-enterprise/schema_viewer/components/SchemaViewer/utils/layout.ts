@@ -1,19 +1,23 @@
 import dagre from "@dagrejs/dagre";
 
-import {
-  DAGRE_NODE_SEP,
-  DAGRE_RANK_SEP,
-  HEADER_HEIGHT,
-  NODE_WIDTH,
-} from "../constants";
+import { HEADER_HEIGHT_PX, NODE_WIDTH_PX } from "../constants";
 import type { SchemaViewerFlowNode } from "../types";
 
-import { nodeHeight } from "./flow-graph";
+import { getNodeHeight } from "./flow-graph";
+
+/**
+ * Dagre layout algorithm parameters used for spacing nodes in the SchemaViewer's graph layout:
+ *
+ * DAGRE_NODE_SEP_PX - Minimum horizontal separation between nodes on the same rank (row). Controls how far apart adjacent tables are positioned horizontally.
+ * DAGRE_RANK_SEP_PX - Minimum vertical separation between ranks (rows). Controls the vertical spacing between different levels of the dependency graph.
+ */
+export const DAGRE_NODE_SEP_PX = 60;
+export const DAGRE_RANK_SEP_PX = 120;
 
 // Minimum visual gap to leave between a newly-placed node and any existing one
-const COLLISION_PADDING = 20;
+const COLLISION_PADDING_PX = 20;
 // Vertical step used when walking to find a free slot for an incoming node
-const COLLISION_Y_STEP = 100;
+const COLLISION_Y_STEP_PX = 100;
 // Maximum number of Y steps to try before giving up on a given column
 const MAX_COLLISION_Y_STEPS = 40;
 
@@ -59,15 +63,15 @@ function getNodesWithPositions(
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({
     rankdir: "LR",
-    nodesep: DAGRE_NODE_SEP,
-    ranksep: DAGRE_RANK_SEP,
+    nodesep: DAGRE_NODE_SEP_PX,
+    ranksep: DAGRE_RANK_SEP_PX,
   });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, {
-      width: NODE_WIDTH,
-      height: nodeHeight(node.data.fields?.length ?? 0),
+      width: NODE_WIDTH_PX,
+      height: getNodeHeight(node.data.fields?.length ?? 0),
     });
   });
 
@@ -200,11 +204,11 @@ function findNonCollidingPosition(
     placementState.dimensionsById,
   );
   const preferredX = prefersRight
-    ? neighbor.position.x + neighborWidth + DAGRE_RANK_SEP
-    : neighbor.position.x - width - DAGRE_RANK_SEP;
+    ? neighbor.position.x + neighborWidth + DAGRE_RANK_SEP_PX
+    : neighbor.position.x - width - DAGRE_RANK_SEP_PX;
   const alternateX = prefersRight
-    ? neighbor.position.x - width - DAGRE_RANK_SEP
-    : neighbor.position.x + neighborWidth + DAGRE_RANK_SEP;
+    ? neighbor.position.x - width - DAGRE_RANK_SEP_PX
+    : neighbor.position.x + neighborWidth + DAGRE_RANK_SEP_PX;
   const baseY = neighbor.position.y;
 
   const fits = (x: number, y: number) =>
@@ -224,7 +228,7 @@ function findNonCollidingPosition(
       }
       continue;
     }
-    const dy = i * COLLISION_Y_STEP;
+    const dy = i * COLLISION_Y_STEP_PX;
     if (fits(preferredX, baseY + dy)) {
       return { x: preferredX, y: baseY + dy };
     }
@@ -240,7 +244,7 @@ function findNonCollidingPosition(
   }
 
   // Last resort: fresh column to the right of everything.
-  return { x: placementState.maxRight + DAGRE_RANK_SEP, y: baseY };
+  return { x: placementState.maxRight + DAGRE_RANK_SEP_PX, y: baseY };
 }
 
 /**
@@ -261,23 +265,23 @@ function collidesWithAny(
   const { columns, maxColumnWidth } = placementState;
   const firstColumn = getFirstColumnAtOrAfter(
     columns,
-    left - maxColumnWidth - COLLISION_PADDING,
+    left - maxColumnWidth - COLLISION_PADDING_PX,
   );
 
   for (let i = firstColumn; i < columns.length; i++) {
     const column = columns[i];
-    if (column.left >= right + COLLISION_PADDING) {
+    if (column.left >= right + COLLISION_PADDING_PX) {
       break;
     }
-    if (left >= column.right + COLLISION_PADDING) {
+    if (left >= column.right + COLLISION_PADDING_PX) {
       continue;
     }
     for (const box of column.boxes) {
       if (
-        left < box.right + COLLISION_PADDING &&
-        right + COLLISION_PADDING > box.left &&
-        top < box.bottom + COLLISION_PADDING &&
-        bottom + COLLISION_PADDING > box.top
+        left < box.right + COLLISION_PADDING_PX &&
+        right + COLLISION_PADDING_PX > box.left &&
+        top < box.bottom + COLLISION_PADDING_PX &&
+        bottom + COLLISION_PADDING_PX > box.top
       ) {
         return true;
       }
@@ -308,8 +312,8 @@ function getNodeDimensions(
 ): NodeDimensions {
   return (
     dimensionsById?.get(node.id) ?? {
-      width: getStyleDimension(node, "width") ?? NODE_WIDTH,
-      height: getStyleDimension(node, "height") ?? HEADER_HEIGHT,
+      width: getStyleDimension(node, "width") ?? NODE_WIDTH_PX,
+      height: getStyleDimension(node, "height") ?? HEADER_HEIGHT_PX,
     }
   );
 }
@@ -545,7 +549,7 @@ function focusNodeLayout(
   // Drop each row onto a single column that's vertically centered on the
   // focal node. A small additional gap below COLLISION_PADDING keeps rows
   // from touching.
-  const columnGap = DAGRE_NODE_SEP;
+  const columnGap = DAGRE_NODE_SEP_PX;
 
   /**
    * Places direct focal neighbors into one vertical stack centered on the
@@ -582,8 +586,11 @@ function focusNodeLayout(
     }
   };
 
-  placeColumn(incomingIds, focal.position.x - NODE_WIDTH - DAGRE_RANK_SEP);
-  placeColumn(outgoingIds, focal.position.x + focalWidth + DAGRE_RANK_SEP);
+  placeColumn(
+    incomingIds,
+    focal.position.x - NODE_WIDTH_PX - DAGRE_RANK_SEP_PX,
+  );
+  placeColumn(outgoingIds, focal.position.x + focalWidth + DAGRE_RANK_SEP_PX);
 
   // Everything not in the focal cluster (indirect nodes + fully disconnected
   // ones) is laid out as a separate Dagre subgraph and dropped to the right
@@ -625,7 +632,7 @@ function focusNodeLayout(
     // the focal cluster (a wider gap than the normal Dagre rank separation
     // signals "separate cluster" visually) and is vertically centered on
     // the focal node.
-    const dx = placementState.maxRight + DAGRE_RANK_SEP * 2 - restMinX;
+    const dx = placementState.maxRight + DAGRE_RANK_SEP_PX * 2 - restMinX;
     const dy = focalCenterY - (restMinY + restMaxY) / 2;
 
     for (const node of laidOutRest) {

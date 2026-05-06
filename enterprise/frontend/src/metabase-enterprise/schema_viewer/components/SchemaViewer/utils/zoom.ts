@@ -1,6 +1,6 @@
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { MAX_ZOOM, NODE_WIDTH } from "../constants";
+import { MAX_ZOOM, NODE_WIDTH_PX } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 
 type ZoomTarget = Pick<
@@ -17,7 +17,7 @@ const TOP_MARGIN_PX = 50;
 const HORIZONTAL_PADDING = 0.15;
 // Animation duration for the camera pan/zoom, in milliseconds. Shared with
 // the full-canvas `fitView` callers so every camera move has the same feel.
-const DURATION_MS = 500;
+export const ZOOM_DURATION_MS = 500;
 
 /**
  * Returns a function that pans + zooms the camera to show the given nodes.
@@ -60,7 +60,7 @@ export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
   let maxX = -Infinity;
   for (const node of targets) {
     const width =
-      typeof node.style?.width === "number" ? node.style.width : NODE_WIDTH;
+      typeof node.style?.width === "number" ? node.style.width : NODE_WIDTH_PX;
     if (node.position.x < minX) {
       minX = node.position.x;
     }
@@ -84,5 +84,5 @@ export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
   // in screen space.
   const centerY = minY + (rect.height / 2 - TOP_MARGIN_PX) / zoom;
 
-  instance.setCenter(centerX, centerY, { zoom, duration: DURATION_MS });
+  instance.setCenter(centerX, centerY, { zoom, duration: ZOOM_DURATION_MS });
 }

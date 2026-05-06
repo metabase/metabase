@@ -77,8 +77,6 @@ export function useSchemaPreferencesStore({
     skip: contextKey == null,
   });
 
-  // Per-context cache of extra table IDs. Presence of a context's key
-  // doubles as the "this context has been initialized" flag.
   const [tableIdsByContext, setTableIdsByContext] = useState<
     ReadonlyMap<string, readonly ConcreteTableId[]>
   >(() => {
@@ -118,9 +116,7 @@ export function useSchemaPreferencesStore({
   // Once savedPrefs have loaded for an unrestored context, commit them
   // synchronously. The setState-during-render here is the "adjusting state
   // when an input changes" pattern — React will re-run with the updated
-  // map before flushing to the DOM. `savedPrefs !== undefined` rules out
-  // the brief render where `currentData` hasn't resolved for the new args
-  // yet (a missing-entry response comes back as "", not undefined).
+  // map before flushing to the DOM.
   if (
     isRestoring &&
     contextKey != null &&

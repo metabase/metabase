@@ -1,4 +1,4 @@
-import { HEADER_HEIGHT, NODE_WIDTH, ROW_HEIGHT } from "../constants";
+import { HEADER_HEIGHT_PX, NODE_WIDTH_PX, ROW_HEIGHT_PX } from "../constants";
 import type { SchemaViewerFlowNode } from "../types";
 
 export type FlowNodeFieldSpec = { name: string; isFK?: boolean };
@@ -25,7 +25,7 @@ export function makeFlowNode({
   fields,
   fieldCount,
   position = { x: 0, y: 0 },
-  width = NODE_WIDTH,
+  width = NODE_WIDTH_PX,
   height,
   opacity = 0,
 }: MakeFlowNodeOpts): SchemaViewerFlowNode {
@@ -41,7 +41,7 @@ export function makeFlowNode({
     }));
 
   const computedHeight =
-    height ?? HEADER_HEIGHT + resolvedFields.length * ROW_HEIGHT;
+    height ?? HEADER_HEIGHT_PX + resolvedFields.length * ROW_HEIGHT_PX;
 
   return {
     id: idString,

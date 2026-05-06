@@ -79,7 +79,7 @@ export function SchemaViewer({
 }: SchemaViewerProps) {
   const { colorScheme } = useColorScheme();
 
-  // ReactFlow node/edge state + the instance captured via `onInit`.
+  // ReactFlow node/edge state + instance
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     SchemaViewerFlowNode,
     SchemaViewerFlowEdge
@@ -126,7 +126,7 @@ export function SchemaViewer({
     if (prev.size === nodes.length) {
       let same = true;
       for (const n of nodes) {
-        if (!prev.has(n.data.table_id as ConcreteTableId)) {
+        if (!prev.has(n.data.table_id)) {
           same = false;
           break;
         }
@@ -137,7 +137,7 @@ export function SchemaViewer({
     }
     const next = new Set<ConcreteTableId>();
     for (const n of nodes) {
-      next.add(n.data.table_id as ConcreteTableId);
+      next.add(n.data.table_id);
     }
     visibleTableIdsRef.current = next;
     return next;
@@ -160,9 +160,7 @@ export function SchemaViewer({
   }, [data]);
 
   // Lift selected edges above unselected ones so the highlighted edge
-  // always renders on top of any edges that cross through it. Nodes are
-  // pinned at zIndex 2 in `flow-graph.ts`, so the selected edge at zIndex 1
-  // still renders below table cards — no overlap with node bodies.
+  // always renders on top of any edges that cross through it.
   const edgesForRender = useMemo(
     () => (edges.some((e) => e.selected) ? edges.map(markSelectedEdge) : edges),
     [edges],

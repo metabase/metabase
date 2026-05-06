@@ -2,9 +2,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { zoomToNodes } from "../utils/zoom";
-
-const ZOOM_DURATION_MS = 500;
+import { ZOOM_DURATION_MS, zoomToNodes } from "../utils/zoom";
 
 type PendingFit = { kind: "all" } | { kind: "node"; nodeId: string };
 
@@ -27,21 +25,12 @@ export type SchemaViewerZoomMethods = {
 };
 
 /**
- * rAF-coalesced camera-fit channel: a single-cell pending request that
- * drains once React Flow has committed the latest layout. Returns stable
- * method references so callers can pass them around or memoize without
- * churn.
- *
- * The React Flow instance is captured by the caller (typically via
- * `<ReactFlow onInit={setInstance}>`) and passed in here. It may be `null`
- * during the first render — any zoom requested before the instance arrives
- * is held in a ref and drained as soon as it does.
+ * rAF-based camera-fit channel: a single-item pending request that
+ * drains once React Flow has committed the latest layout.
  */
 export function useSchemaViewerZoomMethods(
   instance: SchemaViewerInstance | null,
 ): SchemaViewerZoomMethods {
-  // Mirror in a ref so the drain closure always sees the latest instance
-  // without needing to be re-created on every capture.
   const instanceRef = useRef(instance);
   instanceRef.current = instance;
 

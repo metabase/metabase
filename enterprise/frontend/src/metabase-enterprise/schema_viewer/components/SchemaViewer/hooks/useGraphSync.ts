@@ -66,7 +66,7 @@ export function useGraphSync({
   zoomToNode,
   zoomToCanvas,
 }: UseGraphSyncArgs) {
-  // Latest registered expansion. Fresh registrations overwrite the previous
+  // Latest registered expansion (from FK click). Fresh registrations overwrite the previous
   // one — if the user expands several FKs in quick succession, we follow
   // the most recent click.
   const pendingExpansionRef = useRef<PendingExpansion | null>(null);
@@ -125,9 +125,7 @@ export function useGraphSync({
     }
 
     // If we expanded via FK click and a matching edge has now arrived in
-    // the new graph, mark it as selected — the existing edge-selection
-    // plumbing (stroke color, node `.selected` class, z-index lift) will
-    // light up the connecting edge AND both connected nodes automatically.
+    // the new graph, mark it as selected.
     let nextEdges: SchemaViewerFlowEdge[] = graph.edges;
     const pending = pendingExpansionRef.current;
     if (pending != null && pending.candidateEdgeIds.length > 0) {
@@ -142,11 +140,7 @@ export function useGraphSync({
     }
     setEdges(nextEdges);
 
-    // Merge incoming nodes with current positions so an incremental expansion
-    // (e.g. clicking an FK to fetch a related table) doesn't blank the canvas
-    // by replacing every node with a fresh opacity-0 copy. `applyLayout`
-    // falls back to a fresh full-canvas Dagre layout for first loads, schema
-    // switches, removals, or disconnected new nodes.
+    // Merge incoming nodes with current already-positioned nodes..
     const currentNodes = nodesRef.current;
     const layout = applyLayout({
       mode: "merge",
@@ -165,7 +159,7 @@ export function useGraphSync({
         return prev;
       }
       const visibleIds = new Set(
-        nextNodes.map((n) => n.data.table_id as ConcreteTableId),
+        nextNodes.map((n) => n.data.table_id),
       );
       let changed = false;
       const next = new Set<ConcreteTableId>();
