@@ -9,9 +9,9 @@ summary: "See token and message counts, chat logs, and more."
 
 _Admin > AI > Usage auditing_
 
-Admins can get an overview of human-robot interactions, from high-level stats like total token counts down to visibility into actual conversations.
+Admins can get an overview of human-robot interactions across Metabase, from high-level stats like total token counts down to visibility into actual conversations. These interactions include the in-product Metabot chat sidebar, Metabot conversations in [Documents](../documents/start.md), [Slack chats](./metabot-slack.md), and [inline SQL editing](./metabot.md#inline-sql-editing).
 
-Usage auditing includes:
+The usage auditing section includes:
 
 - [Stats](#stats): aggregate charts across all Metabot activity.
 - [Conversations](#conversations): a filterable list of every conversation, with a detail view for each.
@@ -35,7 +35,7 @@ The Stats page shows aggregate Metabot activity over a date range you choose, de
 
 Pick what you want to count:
 
-- **Conversations**: distinct Metabot chats. Each visit to the chat sidebar that produces a back-and-forth is one conversation.
+- **Conversations**: one row per distinct Metabot chat, across every surface listed above (chat sidebar, Documents, Slack, inline SQL). Not MCP conversations.
 - **Tokens**: total tokens (input and output) consumed by LLM calls.
 - **Messages**: every message exchanged, both from people and from Metabot.
 
@@ -62,7 +62,7 @@ The Conversations admin page only shows **Profile**. Source is visible in the **
 
 ### Sources
 
-The **By source** chart and the [AI Usage Log](#building-custom-reports) model report a human-readable `source_name`. The AI Usage Log also exposes a raw `source` column with the underlying ID (such as `metabot_agent`, `oss-sql-gen`, or `document_generate_content`); both columns are available when you build custom reports. Conversations with no source land in an `(empty)` bucket on the chart.
+Each conversation is tagged with a source, i.e. where in Metabase the conversation took place. The **By source** chart in [Stats](#stats) groups conversations by a human-readable `source_name`, and the [AI Usage Log](#building-custom-reports) model exposes both `source_name` and a raw `source` ID (e.g. `metabot_agent`, `oss-sql-gen`, `document_generate_content`) for custom reports. Conversations Metabase couldn't classify show up as `(empty)` on the chart.
 
 | Source name         | Where it comes from                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ The **By source** chart and the [AI Usage Log](#building-custom-reports) model r
 
 ### Profiles
 
-A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page and the [Metabot Conversations](#building-custom-reports) model show the human-readable name. The [AI Usage Log](#building-custom-reports) model shows the raw `profile_id` instead (for example, `internal`, `transforms_codegen`, or `embedding_next`).
+A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page, the **By profile** chart in [Stats](#stats), and the **Metabot Conversations** model (see [Building custom reports](#building-custom-reports)) all show the human-readable profile name. The [AI Usage Log](#building-custom-reports) model exposes the raw `profile_id` instead (e.g. `internal`, `transforms_codegen`, `embedding_next`).
 
 | Profile              | What it does                                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -84,10 +84,8 @@ A profile is the configuration Metabot uses for a conversation: which prompt, wh
 | `SQL`                | SQL writing only. Used by [inline SQL editing](./metabot.md#inline-sql-editing) and similar surfaces.                     |
 | `Slackbot`           | The persona behind [Metabot in Slack](./metabot-slack.md).                                                                |
 | `Embedding`          | The Metabot persona used inside [embedded Metabase](../embedding/start.md).                                               |
-| `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md) SQL or Python.                                    |
+| `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md), SQL, or Python.                                  |
 | `Documents`          | Generates content inside [Documents](../documents/start.md).                                                              |
-
-Conversations without a profile show up in an `(empty)` bucket on the **By profile** chart.
 
 ## Conversations
 
