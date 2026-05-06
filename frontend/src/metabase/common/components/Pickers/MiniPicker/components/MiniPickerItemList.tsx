@@ -18,6 +18,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/common/utils/icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
 import {
   Box,
@@ -188,7 +189,7 @@ function LibraryRootItemList({
     type Section = {
       key: string;
       name: string;
-      type: "library-data" | "library-metrics";
+      type: LibrarySubCollectionType;
       realCollection?: CollectionItem;
       hasPromotedChildren: boolean;
     };
@@ -214,13 +215,16 @@ function LibraryRootItemList({
       if (item.model !== "collection") {
         continue;
       }
+
       for (const section of sectionDefs) {
-        if (item.type === section.type) {
-          if (item.is_library_root) {
-            section.realCollection = item;
-          } else {
-            section.hasPromotedChildren = true;
-          }
+        if (item.type !== section.type) {
+          continue;
+        }
+
+        if (item.is_library_root) {
+          section.realCollection = item;
+        } else {
+          section.hasPromotedChildren = true;
         }
       }
     }

@@ -10,6 +10,7 @@ import {
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/collections/utils";
 import { useConfirmation } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
@@ -53,6 +54,8 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
   const [isEditModalOpen, { toggle: toggleEditModal }] = useDisclosure(false);
   const [isPermissionsModalOpen, { toggle: togglePermissionsModal }] =
     useDisclosure(false);
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
   const showPermissionsOption =
     isAdmin &&
     (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
@@ -77,22 +80,11 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
   const handleArchive = async () => {
     try {
       await updateCollection({ id: collection.id, archived: true }).unwrap();
-      void dispatch(
-        addUndo({
-          message: t`"${collection.name}" has been archived`,
-          icon: "check_filled",
-        }),
-      );
+      sendSuccessToast(t`"${collection.name}" has been archived`);
       invalidateTags();
       onArchiveSuccess?.();
-    } catch (error) {
-      void dispatch(
-        addUndo({
-          message: t`"${collection.name}" could not be archived`,
-          icon: "warning",
-        }),
-      );
-      console.error("Failed to update collection:", error);
+    } catch {
+      sendErrorToast(t`"${collection.name}" could not be archived`);
     }
   };
 
