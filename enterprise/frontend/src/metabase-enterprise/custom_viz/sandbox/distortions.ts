@@ -28,8 +28,8 @@ import {
 import {
   ACTIVE_ELEMENT_GETTER,
   activeElementDistortion,
-  getSafeSandboxDomElement,
-  isDomElement,
+  getSafeSandboxDomNode,
+  isDomNode,
 } from "./distortions-dom-read";
 import {
   ADD_EVENT_LISTENER,
@@ -38,8 +38,8 @@ import {
 
 export function makeDistortionCallback(pluginId: CustomVizPluginId) {
   return function distortionCallback(value: object): object {
-    if (isDomElement(value)) {
-      return getSafeSandboxDomElement(value, pluginId);
+    if (isDomNode(value)) {
+      return getSafeSandboxDomNode(value, pluginId);
     }
 
     if (typeof value !== "function") {

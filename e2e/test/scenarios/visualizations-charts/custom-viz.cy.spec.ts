@@ -2142,6 +2142,71 @@ describe("sandbox", () => {
     );
   });
 
+  // `Document` is itself a Node, so it's a valid root for TreeWalker /
+  // NodeIterator and a valid target for `MutationObserver.observe`. With
+  // an Element-only decoy, the plugin could pass `document` as the root
+  // and walk the entire host DOM, surfacing real host Text nodes that
+  // weren't decoyed. Locking this down requires the Node-level decoy.
+  it("decoys non-Element nodes reached via TreeWalker rooted at document", () => {
+    const HOST_MARKER_TEXT = "treewalker-host-canary-do-not-leak";
+
+    const payload = `
+      setTimeout(function() {
+        var walker = document.createTreeWalker(document, NodeFilter.SHOW_TEXT);
+        var sawMarker = false;
+        var node;
+        let nonEmptyCount = 0;
+        while ((node = walker.nextNode())) {
+          if ((node.textContent || "").indexOf(${JSON.stringify(HOST_MARKER_TEXT)}) !== -1) {
+            sawMarker = true;
+            break;
+          }
+          if (node.textContent && node.textContent.trim() !== "") {
+            nonEmptyCount++;
+          }
+        }
+        console.log('plugin treewalker(document) saw host marker:', sawMarker);
+        console.log('plugin treewalker(document) saw non-empty nodes:', nonEmptyCount);
+      }, 1500);
+    `;
+
+    cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", (req) => {
+      req.continue((res) => {
+        res.body = `${payload}\n${String(res.body)};\n`;
+        res.send();
+      });
+    }).as("injectedBundle");
+
+    H.visitQuestion("@sandboxCardId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "log").as("consoleLog");
+      },
+    });
+    cy.wait("@injectedBundle");
+
+    cy.window().then((win) => {
+      const marker = win.document.createElement("span");
+      marker.id = "treewalker-host-marker";
+      marker.textContent = HOST_MARKER_TEXT;
+      win.document.body.appendChild(marker);
+    });
+
+    cy.findByRole("heading", {
+      name: "Custom viz rendered successfully",
+    }).should("be.visible");
+
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin treewalker(document) saw host marker:",
+      false,
+    );
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin treewalker(document) saw non-empty nodes:",
+      13,
+    );
+  });
+
   it("isolates DOM access to the plugin subtree (out-of-scope reads and writes hit a decoy)", () => {
     const hostSelector = "#root";
     const payload = `
