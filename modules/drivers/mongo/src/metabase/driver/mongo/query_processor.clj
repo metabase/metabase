@@ -1732,9 +1732,6 @@ function(bin) {
                               source-alias  driver-api/qp.add.source-alias,
                               desired-alias driver-api/qp.add.desired-alias,
                               :as           opts}]
-            ;; nfc-path includes the field's own name as its last element, so we drop the leaf with `butlast`
-            ;; before joining; otherwise the leaf would appear twice (once in the joined prefix and once as the
-            ;; trailing source-alias).
             (when-let [ancestor-path (and (seq nfc-path) (seq (butlast nfc-path)))]
               (let [nfc-path-str (str/join \. ancestor-path)]
                 (-> opts
