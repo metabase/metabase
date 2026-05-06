@@ -2037,7 +2037,6 @@
               analytics-interface
               api
               channel
-              config
               formatter
               lib
               metabot
@@ -2053,8 +2052,7 @@
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+                    :model/MetabotMessage}}
 
   source-swap
   {:team "Graphy"
