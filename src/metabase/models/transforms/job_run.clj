@@ -77,15 +77,21 @@
                       :is_active nil})))
 
 (defn timeout-old-runs!
-  "Time out all active runs older than the specified age."
+  "Time out all active runs older than the specified age.
+
+  Returns the rows that were timed out so callers can take follow-up action
+  (e.g. sending notifications)."
   [age unit]
-  (t2/update! :model/TransformJobRun
-              :is_active true
-              :updated_at [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-              {:status :timeout
-               :end_time :%now
-               :is_active nil
-               :message "Timed out by metabase"}))
+  (let [pks (t2/update-returning-pks!
+             :model/TransformJobRun
+             :is_active true
+             :updated_at [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+             {:status :timeout
+              :end_time :%now
+              :is_active nil
+              :message "Timed out by metabase"})]
+    (when (seq pks)
+      (t2/select :model/TransformJobRun :id [:in pks]))))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."
