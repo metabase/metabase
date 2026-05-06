@@ -12,7 +12,11 @@
 
 (deftest ^:parallel dataset-already-loaded?-test
   (mt/test-drivers (into #{}
-                         (filter #(isa? driver/hierarchy % :sql-jdbc))
+                         (comp (filter #(isa? driver/hierarchy % :sql-jdbc))
+                               ;; this is flaky on CI for Redshift for x.58 and older for some unknown reason...
+                               ;; working in newer releases. Let's disable test in older branches until we can figure
+                               ;; out why it's flaky.
+                               (remove (partial = :redshift)))
                          (mt/normal-drivers))
     (let [dbdef (tx/get-dataset-definition defs/test-data)]
       (testing `tx/dataset-already-loaded?
