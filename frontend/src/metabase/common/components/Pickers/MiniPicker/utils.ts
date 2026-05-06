@@ -3,7 +3,6 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
-import { isLibrarySubCollectionType } from "metabase/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
@@ -140,7 +139,7 @@ async function getCollectionPathFromValue(
 
   const collection = table?.collection ?? card?.collection;
 
-  const location = isLibrarySubCollectionType(collection?.type)
+  const location = PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)
     ? collection?.location
     : (collection?.effective_location ?? collection?.location);
 
@@ -185,7 +184,7 @@ async function getCollectionPathFromValue(
     if (!nextItem) {
       if (
         collectionId === collectionItem?.id &&
-        isLibrarySubCollectionType(collection?.type)
+        PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)
       ) {
         const promotedItem = collectionItems.data.find(
           (item) =>

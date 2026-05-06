@@ -5,7 +5,7 @@ import {
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -125,28 +125,10 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
-export type LibraryCollectionType =
-  | "library"
-  | "library-data"
-  | "library-metrics";
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
-
-export function isLibrarySubCollectionType(
-  type: CollectionType | null | undefined,
-): type is LibrarySubCollectionType {
-  return type === "library-data" || type === "library-metrics";
-}
-
-export function isLibraryCollectionType(
-  type: CollectionType | null | undefined,
-): type is LibraryCollectionType {
-  return type === "library" || isLibrarySubCollectionType(type);
-}
-
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return isLibraryCollectionType(collection.type);
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
 export function isExamplesCollection(collection: Collection): boolean {

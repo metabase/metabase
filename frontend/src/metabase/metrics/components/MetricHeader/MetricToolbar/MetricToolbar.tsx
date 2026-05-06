@@ -8,13 +8,16 @@ import {
   useListBookmarksQuery,
   useListNotificationsQuery,
 } from "metabase/api";
-import { isLibraryCollectionType } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
-import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_LIBRARY,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddToDashSelectDashModal";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
@@ -105,7 +108,7 @@ function MetricToolbarButtons({
 
   const showDataStudioLink =
     showDataStudioLinkProp &&
-    isLibraryCollectionType(card.collection?.type) &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(card.collection?.type) &&
     canAccessDataStudio;
 
   return (

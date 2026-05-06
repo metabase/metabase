@@ -1,12 +1,11 @@
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionItemModel, CollectionType } from "metabase-types/api";
-
-import { isLibraryCollectionType } from "../collections/utils";
 
 export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  if (!isLibraryCollectionType(collectionType)) {
+  if (!PLUGIN_LIBRARY.isLibraryCollectionType(collectionType)) {
     return true;
   }
 

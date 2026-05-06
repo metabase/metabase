@@ -3,13 +3,15 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import type { LibrarySubCollectionType } from "metabase/collections/utils";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
 import { allCollectionModels } from "metabase/common/components/Pickers/EntityPicker/utils";
-import type { GetEntityPickerSyntheticLibraryItemFunction } from "metabase/plugins/oss/library";
+import type {
+  GetEntityPickerSyntheticLibraryItemFunction,
+  LibrarySubCollectionType,
+} from "metabase/plugins/oss/library";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { CollectionItem, CollectionType } from "metabase-types/api";
 
@@ -170,3 +172,31 @@ export const getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibrar
       childTypeFilter: type,
     };
   };
+
+export const getLibraryCollectionEmptyStateMessages = (
+  type: LibrarySubCollectionType,
+) => {
+  if (type === "library-data") {
+    return {
+      title: t`No published tables yet`,
+      description: t`Publish tables in the Library to see them here.`,
+    };
+  }
+
+  return {
+    title: t`No metrics yet`,
+    description: t`Put metrics in the Library to see them here.`,
+  };
+};
+
+export const isLibrarySubCollectionType = (
+  type?: string | null,
+): type is LibrarySubCollectionType => {
+  return type === "library-data" || type === "library-metrics";
+};
+
+export const isLibraryCollectionType = (
+  type?: string | null,
+): type is LibrarySubCollectionType => {
+  return isLibrarySubCollectionType(type) || type === "library";
+};

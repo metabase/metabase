@@ -12,10 +12,6 @@ import {
   tableApi,
   transformApi,
 } from "metabase/api";
-import {
-  isLibraryCollectionType,
-  isLibrarySubCollectionType,
-} from "metabase/collections/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
@@ -385,7 +381,7 @@ async function getCollectionPathFromValue({
         }),
       ).unwrap();
 
-  const location = isLibraryCollectionType(collection?.type)
+  const location = PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type)
     ? collection?.location
     : (collection?.effective_location ?? collection?.location);
 
@@ -500,7 +496,7 @@ async function getCollectionPathFromValue({
         isInLibrary &&
         libraryCollection &&
         collectionId === libraryCollection.id &&
-        isLibrarySubCollectionType(collection?.type)
+        PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)
       ) {
         const promotedItem = collectionItems.data.find(
           (item) =>

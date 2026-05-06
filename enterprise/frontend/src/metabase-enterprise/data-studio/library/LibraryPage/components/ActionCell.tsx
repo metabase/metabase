@@ -1,10 +1,10 @@
 import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
-import { isLibrarySubCollectionType } from "metabase/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
 import type { CollectionId } from "metabase-types/api";
 
@@ -44,7 +44,8 @@ export function ActionCell(props: ActionCellProps) {
   }
 
   const isLibraryCollection =
-    isLibrarySubCollectionType(data.type) && !data.is_library_root;
+    PLUGIN_LIBRARY.isLibrarySubCollectionType(data.type) &&
+    !data.is_library_root;
 
   if (isLibraryCollection) {
     return (

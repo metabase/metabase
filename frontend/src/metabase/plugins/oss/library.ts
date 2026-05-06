@@ -2,7 +2,6 @@ import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
-import type { LibrarySubCollectionType } from "metabase/collections/utils";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
@@ -54,6 +53,13 @@ export type CollectionPermissionsModalProps = {
   onClose: () => void;
 };
 
+export type LibraryCollectionType =
+  | "library"
+  | "library-data"
+  | "library-metrics";
+
+export type LibrarySubCollectionType = "library-data" | "library-metrics";
+
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
     collectionId: CollectionId;
@@ -101,6 +107,16 @@ type LibraryPlugin = {
   useGetLibraryCollectionQuery: UseQuery<
     QueryDefinition<void, BaseQueryFn, TagType, GetLibraryCollectionResponse>
   >;
+  getLibraryCollectionEmptyStateMessages: (type: LibrarySubCollectionType) => {
+    title: string;
+    description: string;
+  };
+  isLibraryCollectionType: (
+    type?: string | null,
+  ) => type is LibraryCollectionType;
+  isLibrarySubCollectionType: (
+    type?: string | null,
+  ) => type is LibrarySubCollectionType;
 };
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
@@ -124,6 +140,16 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
     PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
   useGetLibraryCollectionQuery:
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
+  getLibraryCollectionEmptyStateMessages: () => ({
+    title: "",
+    description: "",
+  }),
+  isLibraryCollectionType: (
+    _type?: string | null,
+  ): _type is LibraryCollectionType => false,
+  isLibrarySubCollectionType: (
+    _type?: string | null,
+  ): _type is LibrarySubCollectionType => false,
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
