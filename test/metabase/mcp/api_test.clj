@@ -137,7 +137,7 @@
       (is (= 1 (get-in response [:body :id])))
       (let [result (get-in response [:body :result])]
         (is (= "2025-03-26" (:protocolVersion result)))
-        (is (= {:tools {}} (:capabilities result)))
+        (is (= {:tools {} :resources {}} (:capabilities result)))
         (is (= {:name "metabase" :version "0.1.0"} (:serverInfo result)))))))
 
 (deftest notifications-initialized-test
@@ -574,6 +574,42 @@
                   response)))
         (finally
           (oauth-server/reset-provider!))))))
+
+;;; ---------------------------------------------- Resources -------------------------------------------------------
+
+(def ^:private construct-query-uri "metabase://docs/construct-query.md")
+
+(deftest resources-list-test
+  (testing "resources/list returns the registered construct-query reference resource"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/list")
+                                {"mcp-session-id" session-id})
+          resources (get-in response [:body :result :resources])]
+      (is (= 200 (:status response)))
+      (is (=? [{:uri         construct-query-uri
+                :name        "Construct Query Reference"
+                :description string?
+                :mimeType    "text/markdown"}]
+              (filter #(= construct-query-uri (:uri %)) resources))))))
+
+(deftest resources-read-test
+  (testing "resources/read returns the markdown contents for the construct-query reference"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri construct-query-uri})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (=? {:contents [{:uri      construct-query-uri
+                           :mimeType "text/markdown"
+                           :text     #(str/starts-with? % "# Construct Query Reference")}]}
+              (get-in response [:body :result])))))
+  (testing "resources/read for an unknown URI returns -32602"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri "metabase://does/not/exist"})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= -32602 (get-in response [:body :error :code]))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
