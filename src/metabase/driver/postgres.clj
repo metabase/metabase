@@ -59,7 +59,8 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent #{:sql-jdbc :sql-mbql5})
+(driver/register! :postgres, :parent #{:sql-jdbc})
+(driver/register! :postgres-mbql5, :parent #{:postgres :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -595,7 +596,7 @@
   (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ _opts arg target-timezone source-timezone]]
+  [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
@@ -607,8 +608,12 @@
                                                   expr)]]
     (h2x/with-database-type-info expr "timestamp")))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
+  [driver [_ _opts arg target-timezone source-timezone]]
+  (sql.qp/->honeysql [:postgres [:convert-timezone arg target-timezone source-timezone]]))
+
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver [_ {:keys [base-type database-type]} raw-value]]
+  [driver [_ raw-value {:keys [base-type database-type]}]]
   (when (some? raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
@@ -619,7 +624,15 @@
       ((get-method sql.qp/->honeysql [:sql-jdbc :value])
        driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :value]
+  [driver [_ opts raw-value]]
+  (sql.qp/->honeysql [:postgres [:value raw-value opts]]))
+
 (defmethod sql.qp/->honeysql [:postgres :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :median]
   [driver [_ _opts arg]]
   (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
@@ -675,12 +688,16 @@
 (sql/register-fn! ::regex-match-first #'format-regex-match-first)
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
-  [driver [_ _opts arg pattern]]
+  [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
+  [driver [_ opts arg pattern]]
+  (sql.qp/->honeysql :postgres-mbql5 [:regex-match-first arg pattern]))
+
 (defmethod sql.qp/->honeysql [:postgres :split-part]
-  [driver [_ _opts text divider position]]
+  [driver [_ text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
@@ -689,7 +706,15 @@
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :split-part]
+  [driver [_ _opts text divider position]]
+  (sql.qp/->honeysql :postgres-mbql5 [:split-part text divider position]))
+
 (defmethod sql.qp/->honeysql [:postgres :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :text]
   [driver [_ _opts value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
@@ -755,7 +780,7 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ opts id-or-name]]
+  [driver [_ id-or-name opts]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
@@ -776,6 +801,10 @@
       :else
       identifier)))
 
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :field]
+  [driver [_ opts id-or-name]]
+  (sql.qp/->honeysql :postgres [:field id-or-name opts]))
+
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
@@ -783,7 +812,7 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map last breakout-fields)
+  (let [stored-field-ids (map second breakout-fields)
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
@@ -798,10 +827,17 @@
              (select-keys unqualified #{:group-by}))
       qualified)))
 
+(defmethod sql.qp/apply-top-level-clause
+  [:postgres-mbql5 :breakout]
+  [driver clause honeysql-form query]
+  ;; (prn :breakout (:breakout query))
+  (sql.qp/apply-top-level-clause :postgres clause honeysql-form
+                                 (update query :breakout #(for [[a b c] %] [a c b]))))
+
 (defn- order-by-is-json-field?
-  [clause]
-  (let [is-aggregation? (= (-> clause (nth 2) (first)) :aggregation)
-        stored-field-id (-> clause (nth 2) (nth 2))
+  [clause n]
+  (let [is-aggregation? (= (-> clause (nth n) (first)) :aggregation)
+        stored-field-id (-> clause (nth n) (nth n))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
@@ -810,7 +846,14 @@
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 1)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :desc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
@@ -818,7 +861,14 @@
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause)
+  (let [new-clause (if (order-by-is-json-field? clause 1)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :asc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
