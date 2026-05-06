@@ -1,47 +1,56 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { TimelineEvents } from "metabase/entities/timeline-events";
+import { useCreateTimelineEventMutation } from "metabase/api";
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
-import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import type {
+  CreateTimelineEventRequest,
+  Timeline,
+  TimelineEvent,
+} from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
-interface NewEventModalProps {
+interface NewEventModalContainerProps {
   params: ModalParams;
   timeline: Timeline;
 }
 
 const timelineProps = {
-  id: (state: State, props: NewEventModalProps) =>
+  id: (state: State, props: NewEventModalContainerProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
-const mapStateToProps = (state: State, { timeline }: NewEventModalProps) => ({
-  source: "collections",
-  timelines: [timeline],
-});
+function NewEventModalContainer({ timeline }: NewEventModalContainerProps) {
+  const dispatch = useDispatch();
+  const [createTimelineEvent] = useCreateTimelineEventMutation();
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (
+  const onSubmit = async (
     values: Partial<TimelineEvent>,
-    collection: Collection,
-    timeline: Timeline,
+    _collection?: unknown,
+    timeline?: Timeline,
   ) => {
-    await dispatch(TimelineEvents.actions.create(values));
-    dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-});
+    await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
+  };
+
+  return (
+    <NewEventModal
+      source="collections"
+      timelines={[timeline]}
+      onSubmit={onSubmit}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.load(timelineProps),
-  connect(mapStateToProps, mapDispatchToProps),
-)(NewEventModal);
+export default _.compose(Timelines.load(timelineProps))(NewEventModalContainer);
