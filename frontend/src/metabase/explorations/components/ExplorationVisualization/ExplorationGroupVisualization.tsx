@@ -18,7 +18,10 @@ import type {
   TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
-import { isSettledExplorationQueryStatus } from "metabase-types/api";
+import {
+  isCardDisplayType,
+  isSettledExplorationQueryStatus,
+} from "metabase-types/api";
 
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
@@ -35,20 +38,6 @@ interface ExplorationGroupVisualizationProps {
   timelineEvents: TimelineEvent[];
 }
 
-/**
- * Renders all queries belonging to a `display_type: "page"` group as a
- * single combined chart with `graph.split_panels: true` — each query
- * gets its own vertical pane sharing one x-axis at the ECharts level
- * (see `frontend/src/metabase/visualizations/lib/settings/graph.ts` and
- * `echarts/cartesian/option/index.ts`'s `buildSplitPanelGrid`).
- *
- * Mirrors `ExplorationVisualization` chrome (outer `<Stack>`, header,
- * status branching) so single- and multi-query views feel uniform.
- *
- * **Hook count invariant**: the body calls one RTKQ hook per query.
- * The parent (`ExplorationPage`) keys this component on `group.id` so
- * the queries length is stable for the lifetime of a mount.
- */
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
@@ -139,6 +128,7 @@ function ExplorationGroupVisualizationBody(
 function ExplorationGroupVisualizationChart({
   group,
   queries,
+  explorationThread,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -199,6 +189,8 @@ function ExplorationGroupVisualizationChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queries, isMetadataLoading, metadata, ...datasetRefs]);
 
+  const display = useMemo(() => series?.[0]?.card?.display, [series]);
+
   const showTimelineDropdown = useMemo(() => {
     const firstSeries = series?.[0];
     const col = firstSeries?.data?.cols[0];
@@ -218,10 +210,14 @@ function ExplorationGroupVisualizationChart({
     <>
       <ExplorationVisualizationHeader
         name={groupName}
+        explorationThread={explorationThread}
         availableTimelines={availableTimelines}
         selectedTimelineId={selectedTimelineId}
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
+        showDocumentMenu
+        groupQueries={queries}
+        display={isCardDisplayType(display) ? display : undefined}
       />
       <Visualization
         rawSeries={series}

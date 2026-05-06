@@ -34,6 +34,8 @@ jest.mock("metabase/api/exploration", () => ({
     currentData: mockDatasetsByQueryId.get(id),
     isLoading: !mockDatasetsByQueryId.has(id),
   }),
+  useAppendChartToDocumentMutation: () => [jest.fn()],
+  useCreateExplorationDocumentMutation: () => [jest.fn()],
 }));
 
 // Stub adhoc-metadata to be instantly done.
