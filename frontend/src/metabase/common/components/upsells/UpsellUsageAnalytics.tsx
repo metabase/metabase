@@ -9,8 +9,6 @@ import { Box, type BoxProps, Text } from "metabase/ui";
 import { UpsellCard, type UpsellCardProps } from "./UpsellCard";
 import { UPGRADE_URL } from "./constants";
 
-const usageAnalyticsIllustrationSource = "app/assets/img/usage-analytics.png";
-
 export const UpsellUsageAnalytics = (
   props: BoxProps &
     Omit<
@@ -38,7 +36,6 @@ export const UpsellUsageAnalytics = (
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
       campaign={campaign}
-      illustrationSrc={usageAnalyticsIllustrationSource}
       lh="1.5rem"
       onClick={triggerUpsellFlow}
       buttonStyle={{
