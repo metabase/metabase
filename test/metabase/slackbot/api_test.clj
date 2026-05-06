@@ -1023,21 +1023,21 @@
                                   :channel_id      channel-id
                                   :slack_msg_id    message-ts
                                   :total_tokens    5
-                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
-          (let [;; external-id intentionally omitted from the button payload — only channel + ts are present
-                payload (modal-submission-payload {:conv-id     conv-id
-                                                   :external-id nil
-                                                   :user-id     rasta-id
-                                                   :positive    true
-                                                   :freeform    "from a legacy button"
-                                                   :channel-id  channel-id
-                                                   :message-ts  message-ts})
-                result  (#'slackbot/handle-feedback-modal-submission payload)]
-            @result
-            (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
-              (is (some? row) "fallback resolved the message and persisted feedback")
-              (is (true? (:positive row)))
-              (is (= "from a legacy button" (:freeform_feedback row))))))
+                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))
+              ;; external-id intentionally omitted from the button payload — only channel + ts are present
+              payload    (modal-submission-payload {:conv-id     conv-id
+                                                    :external-id nil
+                                                    :user-id     rasta-id
+                                                    :positive    true
+                                                    :freeform    "from a legacy button"
+                                                    :channel-id  channel-id
+                                                    :message-ts  message-ts})
+              result     (#'slackbot/handle-feedback-modal-submission payload)]
+          @result
+          (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+            (is (some? row) "fallback resolved the message and persisted feedback")
+            (is (true? (:positive row)))
+            (is (= "from a legacy button" (:freeform_feedback row)))))
         (finally (tear-down-slackbot-feedback! conv-id))))))
 
 ;; -------------------------------- conversation-permalink ---------------------------------------
