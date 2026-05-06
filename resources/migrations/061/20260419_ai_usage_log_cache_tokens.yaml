@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.2026-04-19T00:00:01
+      id: v61.2026-04-19T00:00:01
       author: tsplude
       comment: Add cache_creation_tokens to ai_usage_log for Anthropic prompt caching
       changes:
@@ -17,7 +17,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.2026-04-19T00:00:02
+      id: v61.2026-04-19T00:00:02
       author: tsplude
       comment: Add cache_read_tokens to ai_usage_log for Anthropic prompt caching
       changes:
@@ -32,7 +32,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v62.2026-04-19T00:00:03
+      id: v61.2026-04-19T00:00:03
       author: tsplude
       runOnChange: true
       comment: Update v_ai_usage_log to v3 - expose cache_creation_tokens, cache_read_tokens
