@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -55,8 +56,12 @@
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- store-aiservice-messages!
-  "Store messages that are going from ai-service"
-  [conversation-id profile-id ip-address embed-url messages]
+  "Store messages that are going from ai-service.
+
+  `hostname` is the always-on `embedding_hostname`; `pii-info` is the gated map
+  returned by `analytics.core/pii-fields-from` (nil when the retention flag is
+  off). Both apply only on first insert per conversation (first-writer-wins)."
+  [conversation-id profile-id hostname pii-info messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -69,10 +74,26 @@
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (fn [existing]
                                 (cond-> {}
-                                  (nil? existing)               (assoc :user_id api/*current-user-id*)
-                                  state                         (assoc :state state)
-                                  (nil? (:ip_address existing)) (assoc :ip_address ip-address)
-                                  (nil? (:embed_url existing))  (assoc :embed_url embed-url))))
+                                  (nil? existing)
+                                  (assoc :user_id api/*current-user-id*)
+
+                                  state
+                                  (assoc :state state)
+
+                                  (and hostname (nil? (:embedding_hostname existing)))
+                                  (assoc :embedding_hostname hostname)
+
+                                  (and (:embedding_path pii-info) (nil? (:embedding_path existing)))
+                                  (assoc :embedding_path (:embedding_path pii-info))
+
+                                  (and (:user_agent pii-info) (nil? (:user_agent existing)))
+                                  (assoc :user_agent (:user_agent pii-info))
+
+                                  (and (:sanitized_user_agent pii-info) (nil? (:sanitized_user_agent existing)))
+                                  (assoc :sanitized_user_agent (:sanitized_user_agent pii-info))
+
+                                  (and (:ip_address pii-info) (nil? (:ip_address existing)))
+                                  (assoc :ip_address (:ip_address pii-info)))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
@@ -123,7 +144,7 @@
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
+  [{:keys [metabot-id profile-id message context history conversation-id state debug? hostname pii-info]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
         messages         (concat history [message])
         external-id      (str (random-uuid))]
@@ -151,8 +172,8 @@
               (metabot.persistence/store-native-parts!
                conversation-id profile-id
                (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-               :ip-address  ip-address
-               :embed-url   embed-url
+               :hostname    hostname
+               :pii-info    pii-info
                :external-id external-id)
               (catch Exception e
                 (log/error e "Failed to persist native agent parts"
@@ -160,17 +181,24 @@
                             :external-id     external-id})))))))))
 
 (defn streaming-request
-  "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} ip-address embed-url]
+  "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
+
+  `request-info` is a map of `{:origin :referer :user-agent :ip-address}`. We split
+  it into:
+    - `hostname`: extracted from the origin URL, always recorded.
+    - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
-        debug?     (and config/is-dev? (boolean debug))]
+        debug?     (and config/is-dev? (boolean debug))
+        hostname   (analytics.core/extract-hostname (:origin request-info))
+        pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (store-aiservice-messages! conversation_id profile-id ip-address embed-url [message])
+    (store-aiservice-messages! conversation_id profile-id hostname pii-info [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
@@ -182,8 +210,8 @@
       :conversation-id conversation_id
       :state           state
       :debug?          debug?
-      :ip-address      ip-address
-      :embed-url       embed-url})))
+      :hostname        hostname
+      :pii-info        pii-info})))
 
 (defn- legacy->modern-query
   [query]
@@ -229,8 +257,13 @@
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)
-  (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
-    (streaming-request body* (request/ip-address req) (request/referer req))))
+  (let [body*          (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)
+        embed-referrer (get-in req [:headers "x-metabase-embed-referrer"])
+        request-info   {:origin     embed-referrer
+                        :referer    embed-referrer
+                        :user-agent (get-in req [:headers "user-agent"])
+                        :ip-address (request/ip-address req)}]
+    (streaming-request body* request-info)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
