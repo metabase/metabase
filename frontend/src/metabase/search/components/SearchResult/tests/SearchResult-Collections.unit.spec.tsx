@@ -7,8 +7,10 @@ import {
 import { getIcon, queryIcon, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { SearchResult } from "metabase/search/components/SearchResult";
-import type { WrappedResult } from "metabase/search/types";
-import type { TokenFeatures } from "metabase-types/api";
+import type {
+  SearchResult as ApiSearchResult,
+  TokenFeatures,
+} from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import { createWrappedSearchResult } from "./util";
@@ -41,7 +43,7 @@ const officialCollectionResult = createWrappedSearchResult({
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
-  result: WrappedResult;
+  result: ApiSearchResult;
 }
 
 const setup = ({
