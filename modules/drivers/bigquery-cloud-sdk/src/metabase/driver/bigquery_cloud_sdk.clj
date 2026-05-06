@@ -336,7 +336,7 @@
 (mu/defn- fields->metabase-field-info
   ([fields]
    (fields->metabase-field-info nil nil fields))
-  ([database-position nfc-path fields]
+  ([database-position parent-nfc-path fields]
    (into
     []
     (map
@@ -344,16 +344,17 @@
        (let [database-position (or database-position idx)
              field-name (.getName field)
              repeated? (= Field$Mode/REPEATED (.getMode field))
-             [database-type base-type] (field->database+base-type field)]
+             [database-type base-type] (field->database+base-type field)
+             current-nfc-path (conj (vec parent-nfc-path) field-name)]
          (into
           (cond-> {:name              field-name
                    :database-type     database-type
                    :base-type         base-type
                    :database-position database-position}
-            nfc-path (assoc :nfc-path nfc-path)
+            parent-nfc-path (assoc :nfc-path current-nfc-path)
             (and (not repeated?) (= :type/Dictionary base-type)) (assoc :nested-fields (set (fields->metabase-field-info
                                                                                              database-position
-                                                                                             (conj (vec nfc-path) field-name)
+                                                                                             current-nfc-path
                                                                                              (.getSubFields field)))))))))
     (m/indexed fields))))
 
@@ -385,18 +386,18 @@
         nested-column-info (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                              (let [field-path (str/split field-path-str #"\.")
                                    [database-type base-type] (raw-type->database+base-type data-type)]
-                               (when-let [nfc-path (not-empty (pop field-path))]
+                               (when (seq (pop field-path))
                                  {:name (peek field-path)
                                   :table-name table-name
                                   :table-schema dataset-id
                                   :database-type database-type
                                   :base-type base-type
-                                  :nfc-path nfc-path})))]
+                                  :nfc-path field-path})))]
     (transduce
      (keep nested-column-info)
      (completing
       (fn [accum col]
-        (update-in accum [(:table-name col) (:nfc-path col)] (fnil conj []) col)))
+        (update-in accum [(:table-name col) (pop (:nfc-path col))] (fnil conj []) col)))
      {}
      results)))
 

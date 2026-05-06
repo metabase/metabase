@@ -471,23 +471,23 @@
                                    :database-type "INTEGER",
                                    :base-type :type/Integer,
                                    :database-position 2,
-                                   :nfc-path ["r"]}
+                                   :nfc-path ["r" "a"]}
                                   {:name "b",
                                    :database-type "STRING",
                                    :base-type :type/Text,
                                    :database-position 2,
-                                   :nfc-path ["r"]}
+                                   :nfc-path ["r" "b"]}
                                   {:name "rr",
                                    :database-type "RECORD",
                                    :base-type :type/Dictionary,
                                    :database-position 2,
-                                   :nfc-path ["r"],
+                                   :nfc-path ["r" "rr"],
                                    :nested-fields
                                    [{:name "aa",
                                      :database-type "INTEGER",
                                      :base-type :type/Integer,
                                      :database-position 2,
-                                     :nfc-path ["r" "rr"]}]}]}]
+                                     :nfc-path ["r" "rr" "aa"]}]}]}]
                 (walk/postwalk
                  (fn [n]
                    (if (set? n)
@@ -501,7 +501,7 @@
                   :nested-fields [{:name "rr",
                                    :database-type "INTEGER",
                                    :base-type :type/Integer,
-                                   :nfc-path ["r"]}]}]
+                                   :nfc-path ["r" "rr"]}]}]
                 (walk/postwalk
                  (fn [n]
                    (if (set? n)
@@ -920,7 +920,7 @@
                       :table-schema (get-test-data-name)
                       :database-type "STRING",
                       :base-type :type/Text,
-                      :nfc-path ["primary"],
+                      :nfc-path ["primary" "name"],
                       :database-position 2}}
                    :visibility-type :details-only}
                   {:name "participants",

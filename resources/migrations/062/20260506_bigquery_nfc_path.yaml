@@ -1,0 +1,32 @@
+## Older versions of the BigQuery driver stored only the ancestors' names in
+## metabase_field.nfc_path, omitting the field's own name. Other drivers
+## (Postgres/MySQL JSON columns) store the full path including the field name.
+## Append the field name to existing nfc_path values for BigQuery databases so
+## the data matches the convention used elsewhere.
+##
+## We splice the field's name straight into the JSON string without escaping
+## because BigQuery column names disallow the characters that would require
+## JSON escaping (`"`, `\`, control chars). They also disallow `]`, so the
+## REPLACE on `]` only matches the closing bracket of the array.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v62.2026-05-06T00:00:00
+      author: alexpolyankin
+      comment: Append field name to nfc_path for existing BigQuery fields
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET nfc_path = REPLACE(nfc_path, ']', CONCAT(',"', name, '"]'))
+              WHERE nfc_path IS NOT NULL
+                AND nfc_path <> ''
+                AND nfc_path <> '[]'
+                AND table_id IN (
+                  SELECT mt.id
+                  FROM metabase_table mt
+                  INNER JOIN metabase_database md ON md.id = mt.db_id
+                  WHERE md.engine = 'bigquery-cloud-sdk'
+                )
+      rollback:
