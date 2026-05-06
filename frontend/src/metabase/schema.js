@@ -13,7 +13,6 @@ export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const CollectionSchema = new schema.Entity("collections");
-export const GroupSchema = new schema.Entity("groups");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");
