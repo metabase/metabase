@@ -35,6 +35,8 @@ function getVersion(
 
 let failed = false;
 
+const normalize = (v: string) => v.replace(/^[\^~]/, "");
+
 for (const packageName of PACKAGES) {
   const versions = [...parsedFiles].map(([label, pkg]) => ({
     label,
@@ -42,7 +44,7 @@ for (const packageName of PACKAGES) {
   }));
 
   const declared = versions.filter((v) => v.version !== undefined);
-  const unique = new Set(declared.map((v) => v.version));
+  const unique = new Set(declared.map((v) => normalize(v.version!)));
   const status = unique.size > 1 ? "MISMATCH" : "ok";
 
   console.log(`\n${packageName} [${status}]`);
