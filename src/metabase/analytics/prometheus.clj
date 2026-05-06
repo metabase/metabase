@@ -675,7 +675,13 @@
                         :labels [:experiment]})
    (prometheus/counter :experiment/candidate-error-duration-ms
                        {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
-                        :labels [:experiment]})])
+                        :labels [:experiment]})
+   ;; security center metrics
+   (prometheus/gauge :metabase-security-center/last-sync-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
+   (prometheus/gauge :metabase-security-center/vulnerable-advisories
+                     {:description "Number of advisories where this Metabase instance is potentially affected."
+                      :labels [:severity :acknowledged]})])
 
 (defn- quartz-collectors
   []
