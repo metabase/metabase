@@ -28,7 +28,9 @@ const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 };
 
 const ControlledParametersEmbedJsPlayground = () => {
-  const elementRef = useRef<MetabaseDashboardElement | null>(null);
+  const elementRef = useRef<InstanceType<
+    typeof MetabaseDashboardElement
+  > | null>(null);
 
   const [ready, setReady] = useState(false);
   const [readValue, setReadValue] = useState<ParameterValues | null>(null);
