@@ -219,9 +219,9 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByTestId("metabot-empty-chat-info")
         .find("svg")
         .should("not.exist");
-      // But the hint text should still be visible
+      // But the hint text should still be visible, with the no-illustration copy
       cy.findByTestId("metabot-empty-chat-info")
-        .findByText(/I can help you/)
+        .findByText(/Explore your metrics and models with AI/)
         .should("be.visible");
     });
 

@@ -1,38 +1,45 @@
 import { push } from "react-router-redux";
-import _ from "underscore";
 
+import { useCreateTimelineMutation } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
 import * as Urls from "metabase/urls";
-import type { Timeline } from "metabase-types/api";
+import type {
+  Collection,
+  CreateTimelineRequest,
+  Timeline,
+} from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
-interface NewTimelineModalProps {
+interface NewTimelineModalContainerProps {
   params: ModalParams;
+  collection: Collection;
+  onClose?: () => void;
 }
 
 const collectionProps = {
-  id: (state: State, props: NewTimelineModalProps) =>
+  id: (state: State, props: NewTimelineModalContainerProps) =>
     Urls.extractCollectionId(props.params.slug),
   LoadingAndErrorWrapper,
 };
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<Timeline>) => {
-    const action = Timelines.actions.create(values);
-    const response = await dispatch(action);
-    const timeline = Timelines.HACK_getObjectFromAction(response);
+function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
+  const dispatch = useDispatch();
+  const [createTimeline] = useCreateTimelineMutation();
+
+  const onSubmit = async (values: Partial<Timeline>) => {
+    const timeline = await createTimeline(
+      values as CreateTimelineRequest,
+    ).unwrap();
     dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-});
+  };
+
+  return <NewTimelineModal {...props} onSubmit={onSubmit} />;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(NewTimelineModal);
+export default Collections.load(collectionProps)(NewTimelineModalContainer);

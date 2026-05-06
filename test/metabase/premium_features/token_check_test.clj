@@ -219,6 +219,88 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
+(deftest ^:parallel extract-locks-test
+  (testing "empty :meters map yields empty result"
+    (is (= {} (#'token-check/extract-locks {}))))
+  (testing "meters without :is-locked are filtered out"
+    (is (= {:transform-basic-runs true}
+           (#'token-check/extract-locks {:transform-basic-runs    {:is-locked    true
+                                                                   :meter-value  10}
+                                         :transform-advanced-runs {:meter-value  5}}))))
+  (testing "false :is-locked is preserved (only nil/missing is dropped)"
+    (is (= {:transform-basic-runs    false
+            :transform-advanced-runs true}
+           (#'token-check/extract-locks {:transform-basic-runs    {:is-locked false}
+                                         :transform-advanced-runs {:is-locked true}}))))
+  (testing "non-transform meter keys pass through (e.g. :metabase-ai-tokens)"
+    (is (= {:transform-basic-runs true
+            :metabase-ai-tokens    false}
+           (#'token-check/extract-locks {:transform-basic-runs {:is-locked true}
+                                         :metabase-ai-tokens   {:is-locked false}})))))
+
+(deftest do-refresh-writes-locked-meters-test
+  (testing "do-refresh! mirrors :meters → :locked-meters setting on every successful refresh"
+    (mt/with-temporary-setting-values [locked-meters {}]
+      (let [token       (tu/random-token)
+            response    (atom {:valid true :status "ok" :canonical? true})
+            local-cache (atom {})
+            checker     (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker {:local-ttl           (t/millis 50)
+                                                     :soft-ttl            (t/hours 12)
+                                                     :hard-ttl            (t/hours 36)
+                                                     :db-hash-local-cache local-cache}))]
+        (try
+          (with-redefs [token-check/http-fetch
+                        (fn [& _] {:status 200 :body (json/encode @response)})]
+            (testing "successful response with :meters writes through"
+              (reset! response {:valid true :status "ok"
+                                :meters {:transform-basic-runs    {:is-locked true}
+                                         :transform-advanced-runs {:is-locked false}}})
+              (token-check/check-token checker token)
+              (is (= {:transform-basic-runs    true
+                      :transform-advanced-runs false}
+                     (premium-features/locked-meters))))
+
+            (testing "successful response WITHOUT :meters leaves the setting untouched"
+              (reset! response {:valid true :status "ok"})
+              (token-check/-clear-cache! checker)
+              (reset! local-cache {})
+              (token-check/check-token checker token)
+              (is (= {:transform-basic-runs    true
+                      :transform-advanced-runs false}
+                     (premium-features/locked-meters))
+                  "Setting should retain previous value when response omits :meters"))
+
+            (testing "successful response with empty :meters {} writes empty map (legitimate unlock)"
+              (reset! response {:valid true :status "ok" :meters {}})
+              (token-check/-clear-cache! checker)
+              (reset! local-cache {})
+              (token-check/check-token checker token)
+              (is (= {} (premium-features/locked-meters)))))
+          (finally
+            (token-check/-clear-cache! checker)))))))
+
+(deftest do-refresh-failure-leaves-locked-meters-untouched-test
+  (testing "Outage / 5xx / circuit breaker open → :locked-meters survives unchanged.
+            (Critical correctness property: a network blip MUST NOT accidentally unlock.)"
+    (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+      (let [token       (tu/random-token)
+            local-cache (atom {})
+            checker     (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker {:local-ttl           (t/millis 50)
+                                                     :soft-ttl            (t/hours 12)
+                                                     :hard-ttl            (t/hours 36)
+                                                     :db-hash-local-cache local-cache}))]
+        (try
+          (with-redefs [token-check/http-fetch
+                        (fn [& _] (throw (ex-info "network failure!" {})))]
+            (token-check/check-token checker token)
+            (is (= {:transform-basic-runs true}
+                   (premium-features/locked-meters))
+                "Failed refresh must not touch :locked-meters"))
+          (finally
+            (token-check/-clear-cache! checker)))))))
+
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."

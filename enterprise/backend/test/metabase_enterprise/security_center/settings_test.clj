@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -21,6 +22,10 @@
   (testing "disabled on trial even with the feature flag"
     (mt/with-premium-features #{:admin-security-center}
       (mt/with-dynamic-fn-redefs [token-check/is-trial? (constantly true)]
+        (is (false? (premium-features/security-center-enabled?))))))
+  (testing "disabled when MB_SECURITY_CENTER_DISABLED escape hatch is set"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-dynamic-fn-redefs [premium-features.settings/security-center-disabled (constantly true)]
         (is (false? (premium-features/security-center-enabled?)))))))
 
 (deftest security-center-email-recipients-test

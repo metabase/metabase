@@ -104,7 +104,7 @@ export function GroupLimitsSettingsSection() {
 
   if (!isUsingTenants) {
     return (
-      <SettingsSection title={t`Group limits`}>
+      <SettingsSection title={t`Group limits`} stackProps={{ gap: 0 }}>
         <GroupLimitsTab
           data-testid="user-group-limits-tab"
           {...commonLimitPeriodProps}
