@@ -514,11 +514,9 @@
       {}
       (let [quads-v    (vec quads)
             n          (count quads-v)
-            tuple-sql  (fn [idx]
-                         (if (zero? idx)
-                           "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
-                           "(?, ?, ?)"))
-            values-sql (str/join ", " (map tuple-sql (range n)))
+            first-row  "SELECT ? AS table_id, ? AS name, ? AS helper"
+            next-row   " UNION ALL SELECT ?, ?, ?"
+            values-sql (apply str first-row (repeat (dec n) next-row))
             params     (into []
                              (mapcat (fn [[t nm _p h]] [t nm h]))
                              quads-v)
@@ -530,8 +528,7 @@
                             "       f.name AS name, "
                             "       f.parent_id AS parent_id "
                             "FROM metabase_field f "
-                            "INNER JOIN (VALUES " values-sql ") AS "
-                            "  v(table_id, name, helper) "
+                            "INNER JOIN (" values-sql ") AS v "
                             "  ON f.name = v.name "
                             "  AND f.table_id = v.table_id "
                             "  AND f.unique_field_helper = v.helper")
@@ -673,23 +670,20 @@
 ;;; ==================== fields (batch) — fk resolve ====================
 
 (defn- finalize-batch-sql+params
-  "Build a single `UPDATE metabase_field` statement that sets `fk_target_field_id` for
-  every `[target-id resolved-fk-target-id]` pair in `tuples`. Uses scalar subqueries
-  over a `VALUES` table — portable across Postgres, H2, and MySQL 8+. The first
-  VALUES row casts to INTEGER so later all-null columns can't be inferred as text."
+  "Return `[sql & params]` for a single `UPDATE metabase_field` statement that
+  sets `fk_target_field_id` for every `[target-id resolved-fk-target-id]` pair
+  in `tuples`."
   [tuples]
   (let [n               (count tuples)
-        tuple-sql       (fn [idx]
-                          (if (zero? idx)
-                            "(CAST(? AS INTEGER), CAST(? AS INTEGER))"
-                            "(?, ?)"))
-        values-sql      (str/join ", " (map tuple-sql (range n)))
+        first-row       "SELECT ? AS id, ? AS fk_target_field_id"
+        next-row        " UNION ALL SELECT ?, ?"
+        values-sql      (apply str first-row (repeat (dec n) next-row))
         in-placeholders (str/join ", " (repeat n "?"))
         values-params   (into [] cat tuples)
         id-params       (mapv first tuples)
         sql (str "UPDATE metabase_field SET "
                  "fk_target_field_id = (SELECT v.fk_target_field_id "
-                 "FROM (VALUES " values-sql ") AS v(id, fk_target_field_id) "
+                 "FROM (" values-sql ") AS v "
                  "WHERE v.id = metabase_field.id) "
                  "WHERE id IN (" in-placeholders ")")]
     (into [sql] (concat values-params id-params))))
