@@ -5,7 +5,10 @@ export const EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID = "metabase-sdk-portal-root";
 type InternalSdkConfig = {
   isEmbeddingSdk: boolean;
   isMcpApp: boolean;
-  metabaseClientRequestHeader: "embedding-sdk-react" | "embedding-simple";
+  metabaseClientRequestHeader:
+    | "embedding-sdk-react"
+    | "embedding-simple"
+    | "mcp-apps";
   enableEmbeddingSettingKey: "enable-embedding-sdk" | "enable-embedding-simple";
   tokenFeatureKey: "embedding_sdk" | "embedding_simple";
 };

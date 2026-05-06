@@ -85,8 +85,9 @@
       (jsonrpc-error id -32602 "Missing required parameter: uri")
       (let [user-id     api/*current-user-id*
             session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
-            result      (mcp.resources/read-resource uri token-scopes {:session-key session-key
-                                                                        :session-id  session-id})]
+            options     {:session-key session-key
+                         :session-id  session-id}
+            result      (mcp.resources/read-resource uri token-scopes options)]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
           :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
@@ -123,7 +124,8 @@
 (defn- sse-body
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
-  (str/join (map #(str "event: message\ndata: " (json/encode %) "\n\n") messages)))
+  (str/join (for [message messages]
+              (str "event: message\ndata: " (json/encode message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
