@@ -105,6 +105,7 @@
            :manifest     manifest}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
+
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
 (api.macros/defendpoint :post "/" :- CustomVizPluginResponse

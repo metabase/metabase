@@ -1493,31 +1493,31 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up SVG should render.",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up image should render.",
       );
-      // Use the plugin's unique viewBox to avoid matching UI icon SVGs.
-      const pluginPath = 'svg[viewBox="0 0 17 16"] > path';
-      H.main().find(pluginPath).should("be.visible");
-      H.main().find(pluginPath).should("not.have.attr", "transform");
+      H.main()
+        .findByAltText("Above threshold")
+        .should("be.visible")
+        .and("have.attr", "src")
+        .and("match", /thumbs-up\.png/);
 
-      cy.log("Modifying plugin source to change the SVG fill color");
+      cy.log("Modifying plugin source to change the alt text via getAssetUrl");
       cy.readFile(pluginSrcPath).then((src) => {
-        const updated = src.replace(
-          'fill="var(--mb-color-brand)"',
-          'fill="red"',
-        );
+        const updated = src.replace('"Above threshold"', '"Way above!"');
         if (updated === src) {
-          throw new Error(`Expected to replace fill in ${pluginSrcPath}`);
+          throw new Error(
+            `Expected to replace "Above threshold" in ${pluginSrcPath}`,
+          );
         }
         cy.writeFile(pluginSrcPath, updated);
       });
 
       cy.log("Checking if hot reload works");
-      H.main().find(pluginPath).should("have.attr", "fill", "red");
+      H.main().findByAltText("Way above!").should("be.visible");
 
       cy.log("Verify plugin settings affect rendering.");
       cy.log(
-        "Set threshold higher than Count(Orders) so it flips to thumbs-down (rotated path).",
+        "Set threshold higher than Count(Orders) so it flips to thumbs-down.",
       );
       cy.findByTestId("viz-settings-button").click();
       cy.findByTestId("chartsettings-sidebar")
@@ -1528,9 +1528,9 @@ describe("admin > custom visualizations", () => {
         name: /Done/,
       }).click();
       H.main()
-        .find(pluginPath)
-        .should("have.attr", "transform")
-        .and("match", /rotate\(-180/);
+        .findByAltText("Below threshold")
+        .should("have.attr", "src")
+        .and("match", /thumbs-down\.png/);
 
       cy.log(
         "Saving the question and reloading to verify persistence of settings and dev URL",
@@ -1541,9 +1541,9 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
       H.main()
-        .find(pluginPath)
-        .should("have.attr", "transform")
-        .and("match", /rotate\(-180/);
+        .findByAltText("Below threshold")
+        .should("have.attr", "src")
+        .and("match", /thumbs-down\.png/);
 
       cy.log(
         "When the dev server is stopped, the visualization should revert to the default",

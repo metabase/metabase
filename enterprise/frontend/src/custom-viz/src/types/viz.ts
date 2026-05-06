@@ -1,7 +1,6 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
-import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
@@ -86,13 +85,6 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
    * Component that renders the visualization.
    */
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
-
-  /**
-   * Component that renders the visualization.
-   */
-  StaticVisualizationComponent?: ComponentType<
-    CustomStaticVisualizationProps<TSettings>
-  >;
 };
 
 export type BaseWidgetProps<
@@ -137,23 +129,6 @@ export type CustomVisualizationProps<
   ) => void;
 
   onHover: (hoverObject?: HoverObject | null) => void;
-};
-
-export type ColorGetter = (colorName: string) => string;
-
-export interface RenderingContext {
-  getColor: ColorGetter;
-  measureText: TextWidthMeasurer;
-  measureTextHeight: TextHeightMeasurer;
-  fontFamily: string;
-}
-
-export type CustomStaticVisualizationProps<
-  TSettings extends Record<string, unknown>,
-> = {
-  series: Series;
-  settings: CustomVisualizationSettings<TSettings>;
-  renderingContext: RenderingContext;
 };
 
 export type ClickObject<TSettings extends Record<string, unknown>> = {
