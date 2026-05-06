@@ -113,6 +113,38 @@ describe("DatabaseForm", () => {
     expect(screen.getByPlaceholderText("Our H2")).toBeInTheDocument();
   });
 
+  it("uploads service account JSON file contents into BigQuery details on submit", async () => {
+    const { onSubmit } = setup({
+      initialValues: { engine: "bigquery-cloud-sdk" },
+    });
+
+    await userEvent.type(screen.getByLabelText("Display name"), "BQ");
+
+    const serviceAccountJSON = '{"foo": 123}';
+    await userEvent.upload(
+      screen.getByLabelText("Select a file"),
+      new File([serviceAccountJSON], "service-account.json", {
+        type: "application/json",
+      }),
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          engine: "bigquery-cloud-sdk",
+          name: "BQ",
+          details: expect.objectContaining({
+            "service-account-json": serviceAccountJSON,
+          }),
+        }),
+      );
+    });
+  });
+
   describe("updating existing database", () => {
     it("should mark form as dirty only when actual fields are changed (#66684)", async () => {
       setup({
