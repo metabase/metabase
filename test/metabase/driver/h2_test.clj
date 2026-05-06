@@ -36,11 +36,16 @@
     (testing (str "\n" driver "\n")
       (driver/with-driver (tx/the-driver-with-test-extensions driver)
         (thunk))
+      ;; the above is the original definition of test-driver, but we add in
+      ;; this clause to avoid having to rewrite all the tests below twice:
       (when (= driver :h2)
         (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
           (thunk))))))
 
 (use-fixtures :each (fn [f]
+                      ;; NB: because of test parallelism, this *will* affect other non-h2
+                      ;; tests, but the check above in the test-driver function will
+                      ;; prevent it from actually doing anything different in those tests.
                       (with-redefs [mtd/-test-driver test-driver]
                         (f))))
 

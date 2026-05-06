@@ -48,10 +48,7 @@
 ;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
 ;; before we can switch this over. once that happens, make regular :h2 have
 ;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
-(driver/register! :h2-mbql5, :parent #{:sql-jdbc
-                                       ::like-escape-char-built-in/like-escape-char-built-in
-                                       :sql-mbql5
-                                       :h2})
+(driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
