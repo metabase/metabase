@@ -26,6 +26,13 @@ type Options = {
   updateParameterValues: (next: ParameterValuesMap) => void;
 };
 
+/**
+ * Wires up the controlled `sqlParameters` prop and `onSqlParametersChange`
+ * callback for `<InteractiveQuestion>` (SQL questions only). Splits into a
+ * push hook (host => query state) and an observe hook (state => host); the
+ * shared ref lets the observer attribute a change to the host's own push
+ * and pick `auto-change` instead of `manual-change`.
+ */
 export const useSdkControlledSqlParameters = ({
   sqlParameters,
   onSqlParametersChange,
@@ -66,6 +73,11 @@ export const useSdkControlledSqlParameters = ({
   });
 };
 
+/**
+ * Pushes the host's controlled `sqlParameters` prop into the question's
+ * applied values whenever it changes. Skips the dispatch when the resolved
+ * values already match what's applied.
+ */
 const usePushControlled = ({
   sqlParameters,
   parameterDefinitions,
@@ -114,6 +126,13 @@ const usePushControlled = ({
   ]);
 };
 
+/**
+ * Observes applied SQL parameter values and fires `onSqlParametersChange`
+ * with the right `source`: `initial-state` (first sighting of a question),
+ * `auto-change` (host's push reshaped en route — payload differs from
+ * `lastSqlParametersPushRef`), or `manual-change` (everything else, e.g.
+ * user widget edit).
+ */
 const useObserveAppliedSqlParameters = ({
   question,
   parameterDefinitions,

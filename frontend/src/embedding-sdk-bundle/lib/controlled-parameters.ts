@@ -7,19 +7,27 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValuesMap } from "metabase-types/api";
 
+/**
+ * Translates an explicit `null` to `""` so the URL-querystring parser treats
+ * it as a strict clear (ignore the parameter's default). Missing slugs fall
+ * back to `parameter.default ?? null`.
+ */
 export const mapExplicitNullToEmpty = (
   values: ParameterValues,
 ): ParameterValues => {
   const result: ParameterValues = {};
 
   for (const [slug, value] of Object.entries(values)) {
-    // Map explicit `null` values to `""` to align with the URL-querystring convention
     result[slug] = value === null ? "" : value;
   }
 
   return result;
 };
 
+/**
+ * Builds the id-keyed parameter values dispatched by the controlled push from
+ * the host's slug-keyed `parameters`/`sqlParameters` prop.
+ */
 export const buildControlledParameters = (
   parameters: ParameterValues,
   parameterDefinitions: UiParameter[],
@@ -29,6 +37,11 @@ export const buildControlledParameters = (
     mapExplicitNullToEmpty(parameters),
   );
 
+/**
+ * Picks which set of seed values to use on mount when both the
+ * controlled (`parameters`) and uncontrolled (`initialParameters`) props are
+ * available. Controlled wins when set; otherwise falls back to initial.
+ */
 export const getEffectiveParameterValues = (
   controlledParameters: ParameterValues | null | undefined,
   initialParameters: ParameterValues | undefined,
@@ -40,6 +53,13 @@ export const getEffectiveParameterValues = (
   return mapExplicitNullToEmpty(controlledParameters);
 };
 
+/**
+ * Builds the slug-keyed payload delivered to `onParametersChange` /
+ * `onSqlParametersChange`: the currently applied values, the defaults from
+ * the parameter definitions, and (dashboards only) the last-used values for
+ * this user. The `lastUsedParameters` field is included only when its
+ * argument is provided.
+ */
 export function buildParametersPayload(
   applied: ParameterValuesMap,
   parameterDefinitions: UiParameter[],

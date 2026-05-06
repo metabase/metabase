@@ -46,6 +46,13 @@ const isParameterSetAction = (action: {
   // We must not fire `change` handler on draft parameter updates
   (action.payload as { isDraft?: boolean } | undefined)?.isDraft === false;
 
+/**
+ * Wires up the controlled `parameters` prop and `onParametersChange` callback
+ * for `<InteractiveDashboard>`. Splits into a push hook (host => Redux) and an
+ * observe hook (Redux => host); the shared ref lets the observer attribute a
+ * change to the host's own push and pick `auto-change` instead of
+ * `manual-change`.
+ */
 export const useSdkControlledParameters = ({
   parameters,
   onParametersChange,
@@ -56,6 +63,11 @@ export const useSdkControlledParameters = ({
   useObserveAppliedParameters(onParametersChange, lastParametersPushRef);
 };
 
+/**
+ * Pushes the host's controlled `parameters` prop into the dashboard's Redux
+ * store whenever it changes. Skips the dispatch when the resolved values
+ * already match what's applied.
+ */
 const usePushControlledParameters = (
   parameters: ParameterValues | null | undefined,
   lastParametersPushRef: MutableRefObject<ParameterValues | null>,
@@ -99,6 +111,13 @@ const usePushControlledParameters = (
   ]);
 };
 
+/**
+ * Subscribes to dashboard parameter mutations in Redux and fires
+ * `onParametersChange` with the right `source`: `initial-state` (post-load),
+ * `auto-change` (host's push reshaped en route — payload differs from
+ * `lastParametersPushRef`), or `manual-change` (everything else, e.g. user
+ * widget edit).
+ */
 const useObserveAppliedParameters = (
   onParametersChange: ((payload: ParameterChangePayload) => void) | undefined,
   lastParametersPushRef: MutableRefObject<ParameterValues | null>,
