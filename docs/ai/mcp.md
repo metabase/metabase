@@ -20,10 +20,10 @@ https://{your-metabase.example.com}/api/mcp
 In the terminal, for example, you can run the following command.
 
 ```
-claude mcp add --transport sse metabase https://{your-metabase-url}/api/mcp
+claude mcp add --transport http metabase https://{your-metabase-url}/api/mcp
 ```
 
-Replacing {your-metabase-url} with your Metabase address.  Once added, Claude Code will handle the OAuth flow for you:
+Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
 
 For Claude Desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
 
