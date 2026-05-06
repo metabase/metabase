@@ -66,14 +66,15 @@ Convention:
    # npm_tag=...
    # git_tag=...
    ```
+
 3. Land the PR through normal review + CI.
 4. Go to the [**Release Custom Viz Package**](https://github.com/metabase/metabase/actions/workflows/release-custom-viz.yml) workflow and click **Run workflow**.
 5. Fill in the inputs:
 
-| Input        | Description                                                                              | Default    |
-| ------------ | ---------------------------------------------------------------------------------------- | ---------- |
-| **branch**   | Branch to release from. Must be `master` or `release-x.NN.x` (e.g. `release-x.60.x`)     | `master`   |
-| **dry_run**  | Skip `npm publish` and `git push --tags`. Useful for validating the plan end-to-end.     | `false`    |
+| Input       | Description                                                                          | Default  |
+| ----------- | ------------------------------------------------------------------------------------ | -------- |
+| **branch**  | Branch to release from. Must be `master` or `release-x.NN.x` (e.g. `release-x.60.x`) | `master` |
+| **dry_run** | Skip `npm publish` and `git push --tags`. Useful for validating the plan end-to-end. | `false`  |
 
 6. Click **Run workflow**.
 
@@ -81,8 +82,12 @@ Convention:
 
 1. `determine-release` — runs [`bin/custom-viz/resolve-release.sh`](../../../bin/custom-viz/resolve-release.sh) to read `version` from `package.json`, derive the npm dist-tag from its pre-release label, and compute the git tag `custom-viz-v<version>`.
 2. `preflight` — fails if the git tag already exists or if the version is already published on npm, then runs `bun run check:package-versions`.
-3. `build-and-publish` — installs, builds, and runs `npm publish --tag <npm_tag>` (skipped when `dry_run=true`).
+3. `build-and-publish` — installs, builds, and runs `npm publish --tag <npm_tag> --provenance` (skipped when `dry_run=true`).
 4. `tag-git` — creates and pushes the annotated git tag `custom-viz-v<version>` (push skipped when `dry_run=true`).
+
+### npm provenance and required `package.json` fields
+
+Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) with `--provenance`, which signs a Sigstore bundle tying the tarball to this repo and the workflow run that built it.
 
 ### Local publishing (manual)
 
