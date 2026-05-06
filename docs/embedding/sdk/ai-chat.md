@@ -57,11 +57,11 @@ Use the `layout` prop to specify which layout to use for the Metabot component:
 - `stacked`: the question visualization stacks on top of the chat interface.
 - `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.
 
-## Building custom UIs with `useMetabot`
+## Building custom AI chat UIs with `useMetabot`
 
 If `MetabotQuestion`'s built-in layouts don't fit your app, use the `useMetabot` hook to read Metabot's conversation state directly and render your own UI. The hook gives you the messages, the chart the agent most recently produced, processing and error state, and actions to submit, cancel, retry, or reset the conversation.
 
-### Inline charts
+### AI chat with inline charts
 
 ![AI chat inline charts](../images/ai-chat-inline-chart.png)
 
@@ -71,20 +71,15 @@ Each agent chart message carries a pre-wired `Chart` component. Walk the message
 {% include_file "{{ dirname }}/snippets/questions/use-metabot-inline-charts.tsx" %}
 ```
 
-### Dedicated chart panel
+### AI chat with dedicated chart panel
 
 ![AI chat dedicated chart](../images/ai-chat-dedicated-chart.png)
 
-`CurrentChart` is a pre-wired component bound to the latest chart the agent produced. Render it once on the side and it swaps as new charts arrive. Filter chart messages out of the transcript so they don't render twice:
+The `CurrentChart` component is bound to the latest chart the agent produced. Render `CurrentChart` once, and it will swap in new charts as the agent creates them. You'll want to filter chart messages out of the transcript so they don't render twice:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/use-metabot-dedicated-chart.tsx" %}
 ```
-
-### Return shape
-
-{% include_file "{{ dirname }}/api/snippets/UseMetabotResult.md" snippet="properties" %}
-
 ### Notes on `useMetabot`
 
 - **Guard against null while waiting for the SDK bundle**: `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted. Always guard before use. If you don't guard it, the first render will throw `Cannot read properties of null` when you reach for `metabot.messages`, `metabot.submitMessage`, etc., because the SDK ships its Metabot internals via a code-split chunk that isn't available synchronously.

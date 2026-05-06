@@ -68,10 +68,10 @@ function MetabotChat() {
               return null;
             }
             // Agent text (message.role === "agent") is markdown: links,
-            // bold, lists, code. Wrap in a markdown renderer (react-markdown,
-            // markdown-to-jsx, etc.) for production use; rendered as plain
+            // bold, lists, code, etc. Wrap in a markdown renderer (react-markdown,
+            // markdown-to-jsx, etc.). Rendered as plain
             // text here for brevity. User text (message.role === "user") is
-            // raw — no markdown rendering needed.
+            // raw, so no markdown rendering needed.
             return (
               <div
                 key={message.id}
