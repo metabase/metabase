@@ -6,7 +6,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";
 import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";

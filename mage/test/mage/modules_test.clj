@@ -19,7 +19,7 @@
          opts))
 
 ;;; =============================================================================
-;;; Priority 3: Quarantine (respected even on master/release)
+;;; Priority 4: Quarantine (respected even on master/release)
 ;;; =============================================================================
 
 (deftest quarantined-driver-skips
@@ -125,12 +125,67 @@
         (is (= "workflow skip (no backend changes)" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 4: Master/release branch
+;;; Priority 3: ci:run-all-drivers / ci:run-<driver> labels
+;;; =============================================================================
+
+(deftest ci-run-all-drivers-forces-run
+  (testing "ci:run-all-drivers forces any driver to run"
+    (doseq [driver [:mysql :mongo :athena :bigquery :snowflake]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {:pr-labels #{"ci:run-all-drivers"}})
+                                                 false ; not affected
+                                                 #{} ; quarantined
+                                                 #{})] ; updated
+        (is (true? (:should-run result))
+            (str driver " should run with ci:run-all-drivers"))
+        (is (= "ci:run-all-drivers label" (:reason result)))))))
+
+(deftest ci-run-specific-driver-forces-run
+  (testing "ci:run-<driver> forces that specific driver to run"
+    (let [result (mage.modules/driver-decision :mysql
+                                               (make-ctx {:pr-labels #{"ci:run-mysql"}})
+                                               false
+                                               #{} ; quarantined
+                                               #{})] ; updated
+      (is (true? (:should-run result)))
+      (is (= "ci:run-mysql label" (:reason result))))))
+
+(deftest ci-run-specific-driver-does-not-force-other-drivers
+  (testing "ci:run-<driver> for a different driver does NOT force the current driver"
+    (let [result (mage.modules/driver-decision :mongo
+                                               (make-ctx {:pr-labels #{"ci:run-mysql"}})
+                                               false
+                                               #{} ; quarantined
+                                               #{})] ; updated
+      (is (false? (:should-run result))))))
+
+(deftest ci-run-all-drivers-overrides-quarantine
+  (testing "ci:run-all-drivers overrides quarantine"
+    (let [result (mage.modules/driver-decision :mysql
+                                               (make-ctx {:pr-labels #{"ci:run-all-drivers"}})
+                                               false
+                                               #{:mysql} ; quarantined
+                                               #{})] ; updated
+      (is (true? (:should-run result)))
+      (is (= "ci:run-all-drivers label" (:reason result))))))
+
+(deftest ci-run-specific-driver-overrides-quarantine
+  (testing "ci:run-<driver> overrides quarantine"
+    (let [result (mage.modules/driver-decision :mysql
+                                               (make-ctx {:pr-labels #{"ci:run-mysql"}})
+                                               false
+                                               #{:mysql} ; quarantined
+                                               #{})] ; updated
+      (is (true? (:should-run result)))
+      (is (= "ci:run-mysql label" (:reason result))))))
+
+;;; =============================================================================
+;;; Priority 5: Master/release branch
 ;;; =============================================================================
 
 (deftest master-branch-runs-all-drivers
   (testing "All drivers run on master/release branch"
-    ;; H2/Postgres hit priority 2 first, others hit priority 4
+    ;; H2/Postgres hit priority 2 first, others hit priority 5
     (doseq [driver [:mysql :mongo :athena :bigquery :snowflake]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:is-master-or-release true})
@@ -142,12 +197,12 @@
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 10: Driver deps affected (self-hosted only)
+;;; Priority 11: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 10
+    ;; H2/Postgres hit priority 2 first, others hit priority 11
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -159,7 +214,7 @@
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 5-9: Cloud driver special rules
+;;; Priority 6-10: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
@@ -224,7 +279,7 @@
         (is (= "no relevant changes for cloud driver" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 11: Self-hosted drivers
+;;; Priority 12: Self-hosted drivers
 ;;; =============================================================================
 
 (deftest self-hosted-driver-not-affected-skips
@@ -294,7 +349,8 @@
           ;; 2026-02-10 Bumped to 38 for sql-tools + sql-parsing
           ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
           ;;            Added premium-features to driver-affecting-overrides (#69561)
-          max-allowed-count 40]
+          ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
+          max-allowed-count 41]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

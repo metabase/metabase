@@ -1,0 +1,22 @@
+name: database_id
+display_name: Database ID
+created_at: '2023-10-31T21:26:33.12521Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_query_log]
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+dimensions: []
+position: 13
+custom_position: 0
+database_position: 13
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_query_log, model: Table}
+- {id: database_id, model: Field}
+database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

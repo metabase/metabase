@@ -1,33 +1,24 @@
 (ns metabase.transforms.crud
   "CRUD operations for transforms. Extracted from `metabase.transforms-rest.api.transform`
-   so that non-REST modules (e.g. metabot-v3, workspaces) can use them without depending
+   so that non-REST modules (e.g. metabot-v3) can use them without depending
    on the `-rest` module."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform.model]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; TODO(FE-source-tables): Remove this function and all call sites when FE adopts the array format for source-tables.
-(defn source-tables-vec->map-for-fe
-  "Convert source-tables from internal vec format to legacy map format for FE compatibility.
-  Remove this when FE adopts the array format."
-  [transform]
-  (if (transforms-base.u/python-transform? transform)
-    (update-in transform [:source :source-tables]
-               transforms-base.u/source-tables-vec->alias-id-map)
-    transform))
 
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
@@ -58,6 +49,18 @@
                     (assoc error
                            :status-code 400)))))
 
+(defn validate-target-schema!
+  "Require a non-blank `:target.schema` when the target database supports schemas.
+
+  On schemas-supporting drivers a nil schema makes post-run sync miss the physical table
+  and leaves the Metabase table with zero fields."
+  [transform]
+  (let [db-id (transforms-base.i/target-db-id transform)
+        db    (t2/select-one :model/Database db-id)]
+    (when (and db (driver.u/supports? (:engine db) :schemas db))
+      (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
+                     (deferred-tru "A target schema is required for this database.")))))
+
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
 
@@ -76,10 +79,12 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
+    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+                                                                  (when database-id
+                                                                    [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
@@ -87,8 +92,7 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map transforms.u/add-source-readable)
-                       (map source-tables-vec->map-for-fe))))))) ;; TODO(FE-source-tables): remove
+                       (map transforms.u/add-source-readable)))))))
 
 (defn get-transform
   "Get a specific transform."
@@ -99,17 +103,17 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        transforms.u/add-source-readable)))
 
 (defn create-transform!
   "Create new transform in the appdb.
-   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+   Optionally accepts a creator-id to use instead of the current user."
   ([body]
    (create-transform! body nil))
   ([body creator-id]
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
+   (validate-target-schema! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -144,6 +148,8 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
+                      (when (contains? body :target)
+                        (validate-target-schema! new))
                       (validate-incremental-column-type! new)
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
@@ -161,8 +167,7 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        transforms.u/add-source-readable)))
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."

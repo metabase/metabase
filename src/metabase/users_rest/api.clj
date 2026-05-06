@@ -16,6 +16,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
@@ -295,21 +296,11 @@
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
   permissions across non-sample databases."
   [user]
-  (let [db-ids              (t2/select-pks-set :model/Database)
-        _                   (perms/prime-db-cache db-ids)
-        create-query-perms  (into #{}
-                                  (map (fn [db-id]
-                                         (perms/most-permissive-database-permission-for-user
-                                          api/*current-user-id* :perms/create-queries db-id)))
-                                  db-ids)
-        can-create-queries? (or (some #(perms/at-least-as-permissive?
-                                        :perms/create-queries % :query-builder)
-                                      create-query-perms)
-                                (perms/user-has-any-published-table-permission?))
-        can-create-native?  (contains? create-query-perms :query-builder-and-native)]
+  (let [{:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities (:id user))]
     (update user :permissions assoc
-            :can_create_queries        (boolean can-create-queries?)
-            :can_create_native_queries can-create-native?)))
+            :can_create_queries        can-create-queries
+            :can_create_native_queries can-create-native-queries)))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
@@ -618,6 +609,25 @@
             response                        {:success    true
                                              :session_id (str session-key)}]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
+  "Generate a password reset URL for a user. Admins can share this URL directly with the user.
+  The link expires in 48 hours."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
+    (api/check-404 (:is_active user))
+    (api/check-404 (= :personal (:type user)))
+    (let [reset-token        (auth-identity/create-password-reset! id)
+          password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
+      (events/publish-event! :event/password-reset-initiated
+                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id id))})
+      {:password_reset_url password-reset-url})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

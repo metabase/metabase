@@ -1,4 +1,3 @@
-import ActionViz from "metabase/actions/components/ActionViz";
 import { ListViz } from "metabase/list-view/components/ListViz";
 import {
   registerVisualization,
@@ -9,13 +8,9 @@ import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { BoxPlot } from "./visualizations/BoxPlot";
 import { ComboChart } from "./visualizations/ComboChart";
-import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import { Gauge } from "./visualizations/Gauge";
-import { Heading } from "./visualizations/Heading";
-import { IFrameViz } from "./visualizations/IFrameViz";
 import { LineChart } from "./visualizations/LineChart";
-import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
 import { ObjectDetail } from "./visualizations/ObjectDetail";
 import { PieChart } from "./visualizations/PieChart";
@@ -27,7 +22,6 @@ import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import { Table } from "./visualizations/Table/Table";
-import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -51,13 +45,6 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
-
-  registerVisualization(ActionViz);
-  registerVisualization(DashCardPlaceholder);
-  registerVisualization(Heading);
-  registerVisualization(LinkViz);
-  registerVisualization(Text);
-  registerVisualization(IFrameViz);
 
   registerVisualization(ListViz);
 

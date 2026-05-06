@@ -1,9 +1,8 @@
 import Color from "color";
 
-import { getColors, staticVizOverrides } from "metabase/lib/colors/colors";
-import { color } from "metabase/lib/colors/palette";
-import type { ColorPalette } from "metabase/lib/colors/types";
-import type { ColorGetter } from "metabase/visualizations/types";
+import { getColors, staticVizOverrides } from "metabase/ui/colors/colors";
+import { color } from "metabase/ui/colors/palette";
+import type { ColorGetter, ColorPalette } from "metabase/ui/colors/types";
 
 export const createColorGetter = (
   instanceColors: ColorPalette = {},

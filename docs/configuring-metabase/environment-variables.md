@@ -101,13 +101,22 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help us improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
@@ -589,8 +598,6 @@ Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
@@ -902,7 +909,7 @@ Key to retrieve the JWT user's tenant attributes.
 - Default: `false`
 - [Configuration file name](./config-file.md): `jwt-enabled`
 
-Is JWT authentication configured and enabled?
+Is JWT authentication enabled?
 
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
@@ -1205,6 +1212,30 @@ The custom illustration for the login page.
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
+### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
+
+- Type: string
+- Default: ``
+- [Configuration file name](./config-file.md): `mcp-apps-cors-custom-origins`
+
+Custom CORS origins for self-hosted MCP clients, space-separated.
+
+### `MB_MCP_APPS_CORS_ENABLED_CLIENTS`
+
+- Type: csv
+- Default: `[]`
+- [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
+
+Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_SLACK_SIGNING_SECRET`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
+
+Signing secret for verifying requests from the Metabot Slack app.
+
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
@@ -1416,6 +1447,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
 ### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
 
 - Type: integer
@@ -1432,6 +1471,14 @@ Time-to-live in seconds for the remote changes check cache. Default is 60 second
 
 The maximum amount of time a remote sync task will be given to complete.
 
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
 ### `MB_REMOTE_SYNC_TRANSFORMS`
 
 - Type: boolean
@@ -1439,6 +1486,22 @@ The maximum amount of time a remote sync task will be given to complete.
 - [Configuration file name](./config-file.md): `remote-sync-transforms`
 
 Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `read-only`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :read-write or :read-only.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1889,8 +1952,6 @@ The name of the channel where bug reports should be posted.
 
 ### `MB_SLACK_CONNECT_ATTRIBUTE_TEAM_ID`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `https://slack.com/team_id`
 - [Configuration file name](./config-file.md): `slack-connect-attribute-team-id`
@@ -1899,17 +1960,13 @@ Slack OIDC claim for the team/workspace ID.
 
 ### `MB_SLACK_CONNECT_AUTHENTICATION_MODE`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
-- Default: `sso`
+- Default: `link-only`
 - [Configuration file name](./config-file.md): `slack-connect-authentication-mode`
 
-Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" (default) or "link-only".
+Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" or "link-only" (default).
 
 ### `MB_SLACK_CONNECT_CLIENT_ID`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
@@ -1919,8 +1976,6 @@ Client ID for your Slack app. Get this from https://api.slack.com/apps.
 
 ### `MB_SLACK_CONNECT_CLIENT_SECRET`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `slack-connect-client-secret`
@@ -1929,17 +1984,20 @@ Client Secret for your Slack app.
 
 ### `MB_SLACK_CONNECT_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `slack-connect-enabled`
 
 Is Slack Connect authentication configured and enabled?
 
-### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
+### `MB_SLACK_CONNECT_SIGNING_SECRET_VERSION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+- Type: integer
+- Default: `0`
+
+Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.
+
+### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
 
 - Type: boolean
 - Default: `true`
@@ -2539,6 +2597,15 @@ Default: `"plugins"`
 Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
+
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
 ### `MB_QP_CACHE_BACKEND`
 

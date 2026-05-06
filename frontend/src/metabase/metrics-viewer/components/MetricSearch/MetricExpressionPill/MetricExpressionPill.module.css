@@ -1,0 +1,35 @@
+.metricExpressionPill {
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  max-width: 100%;
+}
+
+.metricExpressionPill:hover {
+  background-color: var(--mb-color-background-secondary);
+}
+
+.expressionText {
+  white-space: pre-wrap;
+}
+
+.editableName:not([data-css-specificity-hack="🪗"]) {
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.375rem !important;
+  min-width: 2rem;
+
+  &:hover,
+  &:focus-within {
+    border-color: transparent;
+  }
+
+  textarea {
+    white-space: nowrap;
+    cursor: text;
+  }
+}

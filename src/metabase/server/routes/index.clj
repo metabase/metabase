@@ -16,6 +16,7 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
    [ring.util.response :as response]
    [stencil.core :as stencil])
   (:import
@@ -68,7 +69,7 @@
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
 
-(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize load-inline-js*))
+(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize/memo load-inline-js*))
 
 (defn- load-template [path variables]
   (try

@@ -39,7 +39,7 @@ concurrency:
 jobs:
   embedding-sdk-cli-snippets-type-check:
     if: inputs.cli-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
 
   embedding-sdk-docs-snippets-type-check:
     if: inputs.docs-snippets-type-check && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
 
   embedding-sdk-api-documentation-generation-validation:
     if: inputs.documentation-validation && !inputs.skip
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
   embedding-sdk-bundle-size-check:
     if: inputs.bundle-size-check
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       BUNDLE_SIZE_THRESHOLD_PERCENT: 2
@@ -186,7 +186,7 @@ jobs:
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

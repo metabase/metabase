@@ -2,7 +2,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -20,6 +19,7 @@ import {
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { DataPermissionValue } from "metabase-types/api";
 
 import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
@@ -68,6 +68,7 @@ export function initializePlugin() {
         key=":tableId/segmented"
         path=":tableId/segmented"
         modal={EditSandboxingModal}
+        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
@@ -75,6 +76,7 @@ export function initializePlugin() {
         key="segmented/group/:groupId"
         path="segmented/group/:groupId"
         modal={EditSandboxingModal}
+        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);

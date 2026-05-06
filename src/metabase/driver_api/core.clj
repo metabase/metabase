@@ -32,8 +32,8 @@
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
@@ -73,7 +73,6 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
- add/field-reference-mlv2
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info

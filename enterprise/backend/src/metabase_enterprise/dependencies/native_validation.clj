@@ -26,10 +26,11 @@
         compiled    (qp.compile/compile-with-inline-parameters with-params)]
     (lib/native-query with-params (:query compiled))))
 
-(defn- has-card-template-tags?
-  "Returns true if the query has any card-type template tags."
+(defn- has-substitutable-template-tags?
+  "Returns true if the query has any card or table template tags that need
+   placeholder substitution before compilation."
   [query]
-  (some #(= (:type %) :card) (lib/all-template-tags query)))
+  (some #(#{:card :table} (:type %)) (lib/all-template-tags query)))
 
 (def ^:private card-placeholder-prefix
   "Prefix used to generate placeholder table names for card references.
@@ -44,9 +45,15 @@
     (when (str/starts-with? lower card-placeholder-prefix)
       (parse-long (subs lower (count card-placeholder-prefix))))))
 
+(def ^:private table-placeholder-prefix
+  "Prefix used to generate placeholder table names for table-type template tags.
+   Table tag {{table_one}} becomes mb__validat_table__N in the SQL sent to SQLGlot."
+  "mb__validat_table__")
+
 (defn- compile-toplevel-query
-  "Compile a query replacing card references with placeholder table names.
+  "Compile a query replacing card and table references with placeholder table names.
    Card refs like {{#1}} are replaced with mb__validat_card__1.
+   Table refs like {{table_one}} are replaced with mb__validat_table__N.
 
    Returns the compiled native-only-query, or nil if the original SQL contains
    the placeholder prefix (collision guard)."
@@ -54,9 +61,12 @@
   (let [stage     (first (:stages query))
         sql       (:native stage)
         ttags     (:template-tags stage)
-        card-tags (into {} (filter #(= (:type (val %)) :card)) ttags)]
-    (when-not (str/includes? sql card-placeholder-prefix)
-      (let [modified-sql
+        card-tags  (into {} (filter #(= (:type (val %)) :card)) ttags)
+        table-tags (into {} (filter #(= (:type (val %)) :table)) ttags)]
+    (when-not (or (str/includes? sql card-placeholder-prefix)
+                  (str/includes? sql table-placeholder-prefix))
+      (let [;; Replace card tags
+            sql-after-cards
             (reduce (fn [s [tag-name tag]]
                       (str/replace s
                                    (str "{{" tag-name "}}")
@@ -64,24 +74,40 @@
                     sql
                     card-tags)
 
-            non-card-tags
-            (into {} (remove #(= (:type (val %)) :card)) ttags)
+            ;; Replace table tags
+            modified-sql
+            (reduce (fn [s [tag-name tag]]
+                      (str/replace s
+                                   (str "{{" tag-name "}}")
+                                   (str table-placeholder-prefix (:table-id tag))))
+                    sql-after-cards
+                    table-tags)
+
+            remaining-tags
+            (into {} (remove #(#{:card :table} (:type (val %)))) ttags)
 
             modified-query
             (-> query
                 (assoc-in [:stages 0 :native] modified-sql)
-                (assoc-in [:stages 0 :template-tags] non-card-tags))]
+                (assoc-in [:stages 0 :template-tags] remaining-tags))]
         (compile-query modified-query)))))
+
+(defn- table-placeholder?
+  "True if table-name is a table placeholder (e.g. \"mb__validat_table__65478\")."
+  [table-name]
+  (when table-name
+    (str/starts-with? (u/lower-case-en (str table-name)) table-placeholder-prefix)))
 
 (defn- table-deps
   "Returns the set of table dep maps (e.g. {:table \"products\" :schema \"public\"})
    referenced directly in the compiled native query.
-   Excludes card placeholder tables (mb__validat_card__N)."
+   Excludes card and table placeholder tables."
   [driver compiled]
   (into #{}
         (filter (fn [dep]
                   (and (:table dep)
-                       (not (parse-card-placeholder (:table dep))))))
+                       (not (parse-card-placeholder (:table dep)))
+                       (not (table-placeholder? (:table dep))))))
         (driver/native-query-deps driver compiled)))
 
 (defn- extract-source-entity
@@ -230,37 +256,53 @@
               errors)
         errors))))
 
+(defn- has-table-template-tags?
+  "Returns true if the query has any table-type template tags."
+  [query]
+  (some #(= (:type %) :table) (lib/all-template-tags query)))
+
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
-   Returns a set of errors, each enriched with source entity information when possible."
+   Returns a set of errors, each enriched with source entity information when possible.
+   Returns empty set for queries with table-type template tags since the actual
+   table (and therefore columns) is unknown at check time."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (into #{}
-        ;; Strip :unknown source attribution — consumers should not distinguish between
-        ;; "we tried and couldn't determine the source" vs "no source info available".
-        (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
-        (if (has-card-template-tags? query)
-          (if-let [compiled (compile-toplevel-query query)]
-            (let [errors (validate-with-sources driver compiled true)]
+  (if (has-table-template-tags? query)
+    #{}
+    (into #{}
+          (comp
+           ;; Strip :unknown source attribution — consumers should not distinguish between
+           ;; "we tried and couldn't determine the source" vs "no source info available".
+           (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
+           ;; Remove errors referencing table placeholder names
+           (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
+          (if (has-substitutable-template-tags? query)
+            (if-let [compiled (compile-toplevel-query query)]
+              (let [errors (validate-with-sources driver compiled true)]
+                (if (empty? errors)
+                  errors
+                  (fallback-enrich driver compiled errors)))
+              ;; Fallback: cards with placeholder collision
+              (driver/validate-native-query-fields driver (compile-query query)))
+            (let [compiled (compile-query query)
+                  errors   (validate-with-sources driver compiled false)]
               (if (empty? errors)
                 errors
-                (fallback-enrich driver compiled errors)))
-            ;; Fallback: cards with placeholder collision
-            (driver/validate-native-query-fields driver (compile-query query)))
-          (let [compiled (compile-query query)
-                errors   (validate-with-sources driver compiled false)]
-            (if (empty? errors)
-              errors
-              (fallback-enrich driver compiled errors))))))
+                (fallback-enrich driver compiled errors)))))))
 
 (mu/defn native-result-metadata
-  "Compiles a (native) query and calculates its result metadata"
+  "Compiles a (native) query and calculates its result metadata.
+   Returns nil for queries with table-type template tags since the actual
+   table (and therefore columns) is unknown at check time."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (->> query
-       compile-query
-       (driver/native-result-metadata driver)))
+  (when-not (has-table-template-tags? query)
+    (let [compiled (if (has-substitutable-template-tags? query)
+                     (or (compile-toplevel-query query) (compile-query query))
+                     (compile-query query))]
+      (driver/native-result-metadata driver compiled))))
 
 (mu/defn native-query-deps :- [:set
                                [:or
@@ -278,5 +320,6 @@
           (keep #(case (:type %)
                    :snippet {:snippet (:snippet-id %)}
                    :card    {:card (:card-id %)}
+                   :table   {:table (:table-id %)}
                    nil))
           (lib/all-template-tags query))))

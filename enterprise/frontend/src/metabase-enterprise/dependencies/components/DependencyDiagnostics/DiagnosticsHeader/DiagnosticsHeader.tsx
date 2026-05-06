@@ -7,7 +7,7 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const tabs: PaneHeaderTab[] = [

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import type { CardId } from "metabase-types/api";
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Title } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 interface Props {
   children: ReactNode;

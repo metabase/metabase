@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
@@ -9,7 +9,6 @@ import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 import { Alert } from "metabase/common/components/Alert";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { color } from "metabase/lib/colors";
 import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
 
 export const SdkError = ({
@@ -93,18 +92,20 @@ export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
   );
 }
 
-const FORCE_DARK_TEXT_COLOR = {
-  // The Alert component has a light background, we need to force a dark text
-  // color. The sdk aliases text-primary to the primary color, which in dark themes
-  // is a light color, making the text un-readable
-  "--mb-color-text-primary": color("text-primary"),
-  "--mb-color-text-secondary": color("text-secondary"),
-} as CSSProperties;
-
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
-  <Box p="sm" style={FORCE_DARK_TEXT_COLOR}>
+  <Box p="sm" maw={600}>
     <Alert variant="error" icon="warning" onClose={onClose}>
-      {message}
+      <Box
+        style={{
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          display: "-webkit-box",
+          overflow: "hidden",
+          wordBreak: "break-all",
+        }}
+      >
+        {message}
+      </Box>
     </Alert>
   </Box>
 );

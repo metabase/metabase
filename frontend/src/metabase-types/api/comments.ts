@@ -53,7 +53,6 @@ export interface CreateCommentRequest {
   child_target_id: EntityId | null;
   parent_comment_id: CommentId | null;
   content: DocumentContent;
-  html: string;
 }
 
 export interface UpdateCommentRequest {

@@ -4,7 +4,7 @@ import { waitFor } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 import { EntityListLoader } from "metabase/entities/containers/rtk-query";
-import { Api } from "metabase/lib/api";
+import { Api } from "metabase/utils/api";
 
 describe("EntityListLoader", () => {
   let _makeRequest;

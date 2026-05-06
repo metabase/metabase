@@ -21,6 +21,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:default :permissions_group :default]
@@ -120,11 +122,9 @@
 
 (defn- set-default-permission-values!
   [group]
-  (t2/with-transaction [_conn]
-    (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (if (:is_tenant_group group)
-        (data-perms/set-external-group-permissions! group db-id)
-        (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users)))))))
+  (data-perms/with-global-permissions-lock
+    (let [db-ids (t2/select-pks-vec :model/Database :router_database_id nil)]
+      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]
@@ -243,29 +243,52 @@
                   {:group_id group-id
                    :object   (str "/collection/" coll-id "/")}))))
 
-(defn sync-data-analyst-group-for-oss!
-  "On OSS startup, convert the Data Analysts group to a normal visible group and create a new empty magic group.
+(defn- do-sync-conversion!
+  "Convert the Data Analysts magic group (if it has members) to a normal visible group, and create a fresh empty
+  magic group in its place. This ensures that we don't have an invisible group that affects permissions on OSS."
+  []
+  (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
+    (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
+      (log/info "Converting Data Analysts group to normal group for OSS")
+      (binding [*allow-modifying-magic-groups* true]
+        (t2/with-transaction [_conn]
+          ;; Rename and demote the existing group to a normal visible group
+          (t2/update! :model/PermissionsGroup (:id existing-group)
+                      {:name             (unique-converted-group-name (:name existing-group))
+                       :magic_group_type nil})
+          ;; Create new empty magic group with default library permissions, reusing the old name
+          (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
+                                                                  {:name             (:name existing-group)
+                                                                   :magic_group_type data-analyst-magic-group-type})]
+            (grant-library-permissions! new-group-id))
+          (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))))))
 
-  In OSS, we don't want the Data Analysts group to be invisible while still granting permissions - that's a hidden
+(def ^:private seconds-to-sleep-per-attempt 1)
+
+(defn sync-data-analyst-group-for-oss!
+  "On startup, convert the Data Analysts group to a normal visible group if this instance definitively lacks
+  the `:advanced-permissions` premium feature.
+
+  In OSS, we don't want the Data Analysts group to be invisible while still granting permissions — that's a hidden
   backdoor. Instead, we convert any existing Data Analysts group (with members) to a normal group with a unique name
   like 'Data Analysts (converted)' that admins can see and manage. We then create a fresh empty Data Analysts magic
   group.
 
+  Uses [[premium-features/canonically-has-feature?]] to distinguish between 'definitively no feature' and 'token
+  check failed (indeterminate)'. If the token check is indeterminate, retries in a background thread until a
+  canonical response is received.
+
   This is idempotent: if the magic group has no members, nothing happens."
   []
-  (when-not (premium-features/enable-advanced-permissions?)
-    (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
-      (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
-        (log/info "Converting Data Analysts group to normal group for OSS")
-        (binding [*allow-modifying-magic-groups* true]
-          (t2/with-transaction [_conn]
-            ;; Rename and demote the existing group to a normal visible group
-            (t2/update! :model/PermissionsGroup (:id existing-group)
-                        {:name             (unique-converted-group-name (:name existing-group))
-                         :magic_group_type nil})
-            ;; Create new empty magic group with default library permissions, reusing the old name
-            (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
-                                                                    {:name             (:name existing-group)
-                                                                     :magic_group_type data-analyst-magic-group-type})]
-              (grant-library-permissions! new-group-id))
-            (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false})))))))
+  (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
+    (case result
+      true  nil
+      false (do-sync-conversion!)
+      nil   (future
+              (loop [attempt 1]
+                (Thread/sleep (long (* 1000 (min (* attempt seconds-to-sleep-per-attempt) 60))))
+                (let [result (premium-features/canonically-has-feature? :advanced-permissions)]
+                  (case result
+                    true  nil
+                    false (do-sync-conversion!)
+                    nil   (recur (inc attempt)))))))))

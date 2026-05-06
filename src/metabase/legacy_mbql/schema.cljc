@@ -42,7 +42,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
+   [metabase.util.performance :refer [every? select-keys #?(:clj doseq) some mapv update-keys empty? not-empty]]
    [metabase.util.time :as u.time]))
 
 (defn infer-mbql-clause-schema
@@ -298,7 +298,7 @@
    (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
    [:fn
     {:error/message    "MBQL 4 :expression options should not be empty, use a nil map instead"
-     :decode/normalize perf/not-empty}
+     :decode/normalize not-empty}
     seq]])
 
 (mr/def ::ExpressionName
@@ -341,7 +341,7 @@
     (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})
     [:fn
      {:error/message    "MBQL 4 :field ref options should not be empty, use nil instead"
-      :decode/normalize perf/not-empty}
+      :decode/normalize not-empty}
      seq]]])
 
 (mr/def ::require-base-type-for-field-name
@@ -391,8 +391,11 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
+                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
                         ;; if someone accidentally nests `:field` clauses fix it for them
-                        (if (sequential? id-or-name)
+                        (if (and (sequential? id-or-name)
+                                 ((some-fn keyword? string?) (first id-or-name))
+                                 (= (keyword (first id-or-name)) :field))
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
                           [:field id-or-name (not-empty opts)]))
@@ -645,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
@@ -951,12 +954,11 @@
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     [:field id-or-name (:and opts {:temporal-unit (unit :guard #{:day-of-week :month-of-year :quarter-of-year})})]
      & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+        (let [field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
               extract-expr (case unit
                              :day-of-week     [:get-day-of-week field :iso]
                              :month-of-year   [:get-month field]
@@ -2069,7 +2071,7 @@
     [:expressions  {:optional true} [:ref ::Expressions]]
     [:fields       {:optional true} [:ref ::Fields]]
     [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:limit        {:optional true} nat-int?]
     [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
@@ -2118,7 +2120,7 @@
 
 (defclause* dimension
   [:and
-   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:fn {:error/message "must be a `:dimension` clause"} (partial is-clause? :dimension)]
    [:catn
     [:tag [:= :dimension]]
     [:target [:schema [:or [:ref ::FieldOrExpressionRef] [:ref ::template-tag]]]]

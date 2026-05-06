@@ -3,12 +3,13 @@ import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
-import { METAKEY } from "metabase/lib/browser";
 import { Icon, Popover, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
+import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
@@ -22,8 +23,8 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
-  dataPickerOptions,
 }: NotebookStepProps) => {
+  const { dataPickerOptions } = useNotebookContext();
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId

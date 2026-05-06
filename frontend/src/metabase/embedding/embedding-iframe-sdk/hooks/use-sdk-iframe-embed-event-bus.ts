@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { isWithinIframe } from "metabase/lib/dom";
+import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
@@ -10,6 +11,8 @@ import type {
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
+
+import { trackEmbeddedAnalyticsJs } from "./analytics";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
@@ -24,8 +27,10 @@ const sendMessage = (message: SdkIframeEmbedTagMessage) => {
 
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
+  store,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
+  store: SdkStore;
 }) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
@@ -49,7 +54,21 @@ export function useSdkIframeEmbedEventBus({
             usage: data.usageAnalytics,
             embedHostUrl: data.embedHostUrl,
           });
-        });
+        })
+
+        /**
+         * This handler is needed for the guest embed initial token flow. It also handles
+         * the refresh flow, but `request-session-token.ts` handles that too — that file
+         * covers both the SSO and the JWT refresh token flows.
+         */
+        .with(
+          { type: "metabase.embed.reportAuthenticationError" },
+          ({ data }) => {
+            store.dispatch(
+              setGuestTokenFetchError({ message: data.error?.message }),
+            );
+          },
+        );
     };
 
     window.addEventListener("message", messageHandler);
@@ -60,7 +79,7 @@ export function useSdkIframeEmbedEventBus({
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged]);
+  }, [onSettingsChanged, store]);
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {
@@ -69,7 +88,7 @@ export function useSdkIframeEmbedEventBus({
         usageAnalytics.embedHostUrl,
       );
       if (!isEmbeddedAnalyticsJsPreview) {
-        trackSchemaEvent("embedded_analytics_js", usageAnalytics.usage);
+        trackEmbeddedAnalyticsJs(usageAnalytics.usage);
       }
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);

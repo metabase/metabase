@@ -16,7 +16,7 @@
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -33,13 +33,13 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -528,8 +528,8 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
-                  "  \"source\".\"count\" AS \"count\""
+                  "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
+                  "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("
                   "    SELECT"
@@ -541,7 +541,7 @@
                   "      \"json_alias_test\""
                   "    ORDER BY"
                   "      \"json_alias_test\" ASC"
-                  "  ) AS \"source\""
+                  "  ) AS \"__mb_source\""
                   "LIMIT"
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
@@ -740,21 +740,23 @@
       (mt/with-db db
         (thunk)))))
 
+(deftest ^:parallel money-columns-in-results-test
+  (mt/test-driver :postgres
+    (testing "It should be possible to return money column results (#3754)"
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres
+       (mt/db)
+       nil
+       (fn [conn]
+         (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
+                     rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
+           (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
+             (is (= [1000.00M]
+                    (row-thunk))))))))))
+
 (deftest money-columns-test
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
-      (testing "It should be possible to return money column results (#3754)"
-        (sql-jdbc.execute/do-with-connection-with-options
-         :postgres
-         (mt/db)
-         nil
-         (fn [conn]
-           (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                       rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
-             (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
-               (is (= [1000.00M]
-                      (row-thunk))))))))
-
       (do-with-money-test-db!
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
@@ -766,7 +768,6 @@
                   (mt/rows
                    (mt/run-mbql-query bird_prices
                      {:aggregation [[:avg $price]]})))))
-
          (testing "Should be able to filter on a money column"
            (is (= [["Katie Parakeet" 23.99M]]
                   (mt/rows
@@ -776,13 +777,25 @@
                   (mt/rows
                    (mt/run-mbql-query bird_prices
                      {:filter [:!= $price $price]})))))
-
          (testing "Should be able to sort by price"
            (is (= [["Katie Parakeet" 23.99M]
                    ["Lucky Pigeon" 6.00M]]
                   (mt/rows
                    (mt/run-mbql-query bird_prices
-                     {:order-by [[:desc $price]]}))))))))))
+                     {:order-by [[:desc $price]]})))))
+         (testing "Should support floor/ceil/round (#32068)"
+           (doseq [[expr expected] (mt/$ids bird_prices
+                                     {[:ceil $price]                      [[24M]  [6M]]
+                                      [:floor $price]                     [[23M]  [6M]]
+                                      [:round $price]                     [[24M]  [6M]]
+                                      [:* [:floor [:/ $price 10.0]] 10.0] [[20.0] [0.0]]})]
+             (testing (pr-str expr)
+               (let [query (mt/mbql-query bird_prices
+                             {:fields      [[:expression "expr"]]
+                              :expressions {"expr" expr}
+                              :order-by    [[:desc $price]]})]
+                 (is (= expected
+                        (mt/rows (qp/process-query query)))))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
@@ -1081,6 +1094,43 @@
              (is (re-find #"CAST" sql))
              (is (some? (mt/rows (qp/process-query query)))))))))))
 
+(deftest create-schema-if-needed-nil-guard-test
+  (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
+    (let [executed-queries (atom [])]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                  (swap! executed-queries conj queries))]
+        (driver/create-schema-if-needed! :postgres ::fake-conn nil)
+        (driver/create-schema-if-needed! :postgres ::fake-conn "")
+        (driver/create-schema-if-needed! :postgres ::fake-conn "   ")
+        (is (empty? @executed-queries)
+            "nil/blank schema should not issue any SQL")))))
+
+(deftest ^:parallel describe-fields-sql-nil-schema-test
+  (testing "describe-fields-sql for Postgres handles nil schema-names correctly (GDGT-2144)"
+    (let [[nil-schema-sql]   (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [mixed-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil "public"]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [normal-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                               :postgres
+                               {:schema-names ["public"]
+                                :table-names  ["my_table"]
+                                :details      {}})]
+      (is (not (re-find #"(?i)IN \(NULL\)" nil-schema-sql))
+          "rendered SQL must not contain `IN (NULL)` which never matches anything")
+      (is (re-find #"\"table_schema\" IS NULL" nil-schema-sql)
+          "passing [nil] schemas should produce an IS NULL check on table_schema")
+      (is (re-find #"\"table_schema\" IN .+OR .+\"table_schema\" IS NULL" mixed-schema-sql)
+          "mixed nil + non-nil schemas should include both IN and IS NULL")
+      (is (not (re-find #"\"table_schema\" IS NULL" normal-schema-sql))
+          "non-nil-only schemas should not have IS NULL on table_schema"))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
@@ -1259,23 +1309,34 @@
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
-          (is (= {"start_time" {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "22:00:00"
-                                                         :latest   "22:00:00"}}}
-                  "end_time"   {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/DateTime {:earliest "09:00:00"
-                                                         :latest   "09:00:00"}}}
-                  "reason"     {:global {:distinct-count 1
-                                         :nil%           0.0}
-                                :type   {:type/Text {:percent-json   0.0
-                                                     :percent-url    0.0
-                                                     :percent-email  0.0
-                                                     :percent-state  0.0
-                                                     :average-length 12.0}}}}
-                 (t2/select-fn->fn :name :fingerprint :model/Field
-                                   :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database))))))))))
+          (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
+                                                :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
+                ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
+                ;; shape (#5911), not the interestingness metrics.
+                extended-keys [:hour-distribution :weekday-distribution :skewness
+                               :mode-fraction :top-3-fraction
+                               :mode-fraction-by-weekday :mode-fraction-by-hour
+                               :min-length :max-length :percent-blank]
+                trim-type     (fn [fp]
+                                (update fp :type
+                                        (fn [types]
+                                          (update-vals types #(apply dissoc % extended-keys)))))]
+            (is (= {"start_time" {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "22:00:00"
+                                                           :latest   "22:00:00"}}}
+                    "end_time"   {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/DateTime {:earliest "09:00:00"
+                                                           :latest   "09:00:00"}}}
+                    "reason"     {:global {:distinct-count 1
+                                           :nil%           0.0}
+                                  :type   {:type/Text {:percent-json   0.0
+                                                       :percent-url    0.0
+                                                       :percent-email  0.0
+                                                       :percent-state  0.0
+                                                       :average-length 12.0}}}}
+                   (update-vals fingerprints trim-type)))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1663,18 +1724,21 @@
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
-    (is (= "SET ROLE ROLE123;"        (driver.sql/set-role-statement :postgres "ROLE123")))
-    (is (= "SET ROLE lowercase_role;" (driver.sql/set-role-statement :postgres "lowercase_role")))
-
-    ;; None (special role in Postgres to revert back to login role; should not be quoted)
-    (is (= "SET ROLE none;"      (driver.sql/set-role-statement :postgres "none")))
-    (is (= "SET ROLE NONE;"      (driver.sql/set-role-statement :postgres "NONE")))
-
-    ;; Special characters
-    (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
-    (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
+    (mt/test-driver :postgres
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :postgres conn role))
+           "MY_ROLE"                      "SET ROLE MY_ROLE;"
+           "ROLE123"                      "SET ROLE ROLE123;"
+           "lowercase_role"               "SET ROLE lowercase_role;"
+           "Role.123"                     "SET ROLE \"Role.123\";"
+           "$role"                        "SET ROLE \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET ROLE \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET ROLE none;"
+           "NONE"                         "SET ROLE NONE;"))))))
 
 (deftest get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
@@ -2165,9 +2229,7 @@
                 (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
-  (mt/test-driver
-    :postgres
-
+  (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"

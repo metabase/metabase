@@ -1,8 +1,7 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
-import type { Collection } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
+import type { Dispatch, State } from "metabase/redux/store";
 
 import type { UseQuery } from "./rtk";
 
@@ -45,8 +44,6 @@ export type EntityType =
   | "documents"
   | "fields"
   | "groups"
-  | "indexedEntities"
-  | "persistedModels"
   | "pulses"
   | "questions"
   | "revisions"
@@ -56,7 +53,6 @@ export type EntityType =
   | "snippetCollections"
   | "snippets"
   | "tables"
-  | "timelineEvents"
   | "timelines"
   | "users";
 
@@ -93,11 +89,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   nameOne: string;
   normalize: (object: unknown) => { object: unknown };
   normalizeList: (list: unknown) => { list: unknown };
-  objectSelectors: {
-    getName: (entity: Entity | EntityWrapper) => string;
-    getColor: (entity: Entity | EntityWrapper) => string | undefined;
-    getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
-  };
   rtk: {
     getUseGetQuery: (fetchType: FetchType) => {
       action?: string;
@@ -115,6 +106,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
       >
     >;
   };
+
   selectors: {
     getError: Selector<unknown | null | undefined>;
     getFetched: Selector<boolean | undefined>;

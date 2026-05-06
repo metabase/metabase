@@ -41,7 +41,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
                 "instanceUrl": "http://localhost:4000",
               });
             </script>
-            <metabase-dashboard dashboard-id='9' />
+            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
           </body>
           </html>
             `);
@@ -75,7 +75,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
                 "jwtProviderUri": "http://auth-provider/sso?response=json",
               });
             </script>
-            <metabase-dashboard dashboard-id='9' />
+            <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
           </body>
           </html>
             `);
@@ -150,10 +150,11 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     frame.within(() => {
-      cy.findByTestId("sdk-error-container", { timeout: 10_000 }).should(
-        "contain",
-        /Failed to authenticate using an existing Metabase user session./,
-      );
+      cy.findByTestId("sdk-error-container")
+        .findByText(
+          "Failed to authenticate using an existing Metabase user session.",
+        )
+        .should("be.visible");
 
       cy.findByRole("link", { name: "Read more." })
         .should("have.attr", "href")

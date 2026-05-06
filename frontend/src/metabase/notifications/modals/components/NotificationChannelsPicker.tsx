@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
@@ -10,6 +8,8 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
+import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {
@@ -129,48 +129,50 @@ export const NotificationChannelsPicker = ({
 
   return (
     <Stack gap="xl" align="start">
-      {channels.email?.configured && !!emailHandler && (
-        <ChannelSettingsBlock
-          title={t`Email`}
-          iconName="mail"
-          onRemoveChannel={() => onRemoveChannel(emailHandler)}
-        >
-          <EmailChannelEdit
-            channel={emailHandler}
-            users={usersListOptions}
-            invalidRecipientText={getInvalidRecipientText}
-            onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
-          />
-        </ChannelSettingsBlock>
-      )}
-
-      {channels.slack?.configured && !!slackHandler && (
-        <ChannelSettingsBlock
-          title={t`Slack`}
-          iconName="int"
-          onRemoveChannel={() => onRemoveChannel(slackHandler)}
-        >
-          <SlackChannelFieldNew
-            channel={slackHandler}
-            channelSpec={channels.slack}
-            onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
-          />
-        </ChannelSettingsBlock>
-      )}
-
-      {userCanAccessSettings &&
-        hookHandlers &&
-        hookHandlers.map((channel) => (
+      <Stack gap="xl" align="start" data-testid="alert-configured-channel">
+        {channels.email?.configured && !!emailHandler && (
           <ChannelSettingsBlock
-            key={`webhook-${channel.channel_id}`}
-            title={
-              httpChannelsConfig.find(({ id }) => id === channel.channel_id)
-                ?.name || t`Webhook`
-            }
-            iconName="webhook"
-            onRemoveChannel={() => onRemoveChannel(channel)}
-          />
-        ))}
+            title={t`Email`}
+            iconName="mail"
+            onRemoveChannel={() => onRemoveChannel(emailHandler)}
+          >
+            <EmailChannelEdit
+              channel={emailHandler}
+              users={usersListOptions}
+              invalidRecipientText={getInvalidRecipientText}
+              onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
+            />
+          </ChannelSettingsBlock>
+        )}
+
+        {channels.slack?.configured && !!slackHandler && (
+          <ChannelSettingsBlock
+            title={t`Slack`}
+            iconName="int"
+            onRemoveChannel={() => onRemoveChannel(slackHandler)}
+          >
+            <SlackChannelFieldNew
+              channel={slackHandler}
+              channelSpec={channels.slack}
+              onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
+            />
+          </ChannelSettingsBlock>
+        )}
+
+        {userCanAccessSettings &&
+          hookHandlers &&
+          hookHandlers.map((channel) => (
+            <ChannelSettingsBlock
+              key={`webhook-${channel.channel_id}`}
+              title={
+                httpChannelsConfig.find(({ id }) => id === channel.channel_id)
+                  ?.name || t`Webhook`
+              }
+              iconName="webhook"
+              onRemoveChannel={() => onRemoveChannel(channel)}
+            />
+          ))}
+      </Stack>
 
       <NotificationChannelsAddMenu
         notificationHandlers={notificationHandlers}

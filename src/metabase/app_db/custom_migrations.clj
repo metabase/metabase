@@ -996,7 +996,7 @@
             :let [is-pg-specical-case? (= [db-type table column]
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
-        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+        (t2/query ["DROP VIEW IF EXISTS v_users;"]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
@@ -2051,3 +2051,165 @@
           (t2/query {:update :transform
                      :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
                      :where  [:= :id id]}))))))
+
+(defn- batched-data-layer-update!
+  "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
+   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+   rows inserted during the migration."
+  [from-values case-expr]
+  (let [batch-size 500000
+        {:keys [min-id max-id]} (t2/query-one
+                                 {:select [[[:min :id] :min-id]
+                                           [[:max :id] :max-id]]
+                                  :from   [:metabase_table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (t2.execute/query-one
+           {:update :metabase_table
+            :set    {:data_layer case-expr}
+            :where  [:and
+                     [:>= :id start]
+                     [:< :id (+ start batch-size)]
+                     [:not-in :data_layer from-values]]})
+          (recur (+ start batch-size))))
+      ;; catch any rows inserted above the original max-id during the migration
+      (t2.execute/query-one
+       {:update :metabase_table
+        :set    {:data_layer case-expr}
+        :where  [:and
+                 [:> :id max-id]
+                 [:not-in :data_layer from-values]]}))))
+
+;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
+;; A single long transaction on millions of rows can hit connection/transaction timeouts.
+;; Each batch runs as its own implicit transaction instead.
+;; Partial completion is safe: :model/Table's transform-data-layer handles on-read conversion
+;; of any unconverted rows in both directions (58<->59).
+(defrecord DropMedallionNamesForDataLayer []
+  CustomTaskChange
+  (execute [_ _database]
+    (batched-data-layer-update!
+     ["hidden" "internal" "final"]
+     [:case [:= :data_layer "copper"] "hidden" :else "final"]))
+  (getConfirmationMessage [_]
+    "Custom migration: DropMedallionNamesForDataLayer")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (batched-data-layer-update!
+       ["copper" "bronze" "silver" "gold"]
+       [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
+
+(defn- find-table-id
+  "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
+   preferring an exact case match when one exists."
+  [db-id schema table-name]
+  (:id (first (t2/query {:select   [:id]
+                         :from     [:metabase_table]
+                         :where    [:and
+                                    [:= :db_id db-id]
+                                    (if (some? schema)
+                                      [:= [:lower :schema] [:lower schema]]
+                                      [:is :schema nil])
+                                    [:= [:lower :name] [:lower table-name]]]
+                         :order-by [[[:case
+                                      [:and
+                                       [:= :name table-name]
+                                       (if (some? schema)
+                                         [:= :schema schema]
+                                         [:is :schema nil])]
+                                      0
+                                      :else 1]
+                                     :asc]]
+                         :limit    1}))))
+
+(define-migration BackfillTransformTargetTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :transform_target    true
+                                                        :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; Create provisional tables for transform targets that don't exist yet
+    (run! (fn [{:keys [target target_db_id]}]
+            (let [target-map (json-out target false)]
+              (when-let [table-name (get target-map "name")]
+                (let [schema (get target-map "schema")
+                      db-id  target_db_id]
+                  (upsert-table! db-id schema table-name)))))
+          (t2/reducible-query {:select [:target :target_db_id]
+                               :from   [:transform]
+                               :where  [:not= :target_db_id nil]}))))
+
+(define-migration BackfillTransformTargetTableId
+  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
+  ;; If table_id is present in the JSON, use it directly.
+  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  (run! (fn [{:keys [id target target_db_id]}]
+          (let [target-map (json-out target false)
+                table-id   (or (get target-map "table_id")
+                               (when-let [table-name (get target-map "name")]
+                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
+            (when table-id
+              (t2/query {:update :transform
+                         :set    {:target_table_id table-id}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :target :target_db_id]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_db_id nil]
+                                      [:= :target_table_id nil]]})))
+
+(define-migration BackfillMetabotConversationEmbeddingHostname
+  ;; Carry over the hostname portion of metabot_conversation.embed_url into the
+  ;; new embedding_hostname column. Only the hostname is migrated — the path
+  ;; portion of pre-flag embed_url values has no consent basis under
+  ;; analytics-pii-retention-enabled and is intentionally discarded.
+  (run! (fn [{:keys [id embed_url]}]
+          (let [^java.net.URI parsed (try (java.net.URI. ^String embed_url) (catch Exception _ nil))
+                host                 (some-> parsed .getHost not-empty)
+                host*                (when host (subs host 0 (min (count host) 512)))]
+            (when host*
+              (t2/query {:update :metabot_conversation
+                         :set    {:embedding_hostname host*}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :embed_url]
+                             :from   [:metabot_conversation]
+                             :where  [:and
+                                      [:not= :embed_url nil]
+                                      [:= :embedding_hostname nil]]})))

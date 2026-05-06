@@ -9,7 +9,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
@@ -46,7 +45,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [graph & [_opts]]
   graph)
 
@@ -135,7 +134,8 @@
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])
+                                                                     [:= :router_database_id nil]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -155,7 +155,8 @@
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
         db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                                    {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])
+                                                                            [:= :router_database_id nil]]}))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -190,6 +191,20 @@
         [:int {:title "table-id" :min 0}]
         ::permissions.schema/data-permission-value]]]]]])
 
+(defn- collapse-uniform-view-data
+  "If every table-level `:perms/view-data` value across every schema for a given (group, db) is the same
+   scalar, collapse the schema/table map to that scalar at the db level. Without this, a newly-added DB
+   whose tables are all uniformly `:blocked` (e.g. via the going-granular path during sync) is reported
+   as a `{schema {table-id :blocked}}` map, which the frontend interprets as `granular`. Only applied to
+   `:perms/view-data`; other granular perm types intentionally retain their map shape."
+  [perm-type->value]
+  (let [view-data-val (:perms/view-data perm-type->value)
+        leaf-vals     (when (map? view-data-val)
+                        (into #{} (mapcat vals) (vals view-data-val)))]
+    (cond-> perm-type->value
+      (= 1 (count leaf-vals))
+      (assoc :perms/view-data (first leaf-vals)))))
+
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
@@ -207,21 +222,22 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
-    (reduce
-     (fn [graph {group-id  :group-id
-                 perm-type :type
-                 value     :value
-                 db-id     :db-id
-                 schema    :schema
-                 table-id  :table-id}]
-       (let [schema (or schema "")
-             path   (if table-id
-                      [group-id db-id perm-type schema table-id]
-                      [group-id db-id perm-type])]
-         (assoc-in graph path value)))
-     {}
-     data-perms)))
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])
+                                       [:not-in :db_id {:select [:id]
+                                                        :from   [:metabase_database]
+                                                        :where  [:not= :router_database_id nil]}]]})
+        raw-graph  (reduce
+                    (fn [graph {:keys [group-id value db-id schema table-id]
+                                perm-type :type}]
+                      (let [schema (or schema "")
+                            path   (if table-id
+                                     [group-id db-id perm-type schema table-id]
+                                     [group-id db-id perm-type])]
+                        (assoc-in graph path value)))
+                    {}
+                    data-perms)]
+    (update-vals raw-graph (fn [db-id->perms]
+                             (update-vals db-id->perms collapse-uniform-view-data)))))
 
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
@@ -261,7 +277,7 @@
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.impersonation.model
+  metabase-enterprise.impersonation.models
   [_])
 
 (defn ee-permissions-exception
@@ -480,14 +496,13 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (cluster-lock/with-cluster-lock ::update-data-perms-graph
+     (perms/with-global-permissions-lock
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
-         (t2/with-transaction [_conn]
-           (update-data-perms-graph!* group-updates)
-           (delete-impersonations-if-needed-after-permissions-change! group-updates)
-           (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

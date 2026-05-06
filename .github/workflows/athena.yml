@@ -7,32 +7,49 @@ on:
         description: 'Athena JDBC driver version to publish'
         required: true
         type: string
+      force:
+        description: 'Re-deploy even if version already exists'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
     name: Publish Athena JDBC Driver
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
 
       - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@v1.7.0
+        uses: turtlequeue/setup-babashka@2d4df498c7a578b4f3e906283f9af913590bdec7 # v1.7.0
         with:
           babashka-version: 1.12.197
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_MAVEN_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_MAVEN_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_MAVEN_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy Athena JDBC driver
-        run: ./bin/athena.bb ${{ github.event.inputs.version }} --deploy
+        run: ./bin/athena.bb "${VERSION}" --deploy ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+        env:
+          VERSION: ${{ github.event.inputs.version }}
 
       - name: Verify deployment
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/${{ github.event.inputs.version }}/
-          echo "Athena JDBC driver version ${{ github.event.inputs.version }} has been deployed"
+          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/"${VERSION}"/
+          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc-thin/"${VERSION}"/
+          echo "Verifying thin jar pom exists..."
+          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc-thin/"${VERSION}"/athena-jdbc-thin-"${VERSION}".pom
+          echo "Verifying athena-streaming..."
+          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-streaming/2.0/
+          echo "Athena JDBC driver version ${VERSION} has been deployed (uber-jar, thin jar, and athena-streaming)"

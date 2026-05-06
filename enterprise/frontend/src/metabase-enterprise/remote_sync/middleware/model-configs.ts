@@ -13,11 +13,11 @@ import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { transformApi } from "metabase/api/transform";
 import { transformTagApi } from "metabase/api/transform-tag";
+import type { State } from "metabase/redux/store";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   InvalidationType,
@@ -36,10 +36,7 @@ function getOriginalArgs<T>(action: UnknownAction): T | undefined {
 function getOriginalDocument(originalState: State, id: number) {
   // RTK Query selector requires RootState type, but our State type is compatible
   const selector = documentApi.endpoints.getDocument.select({ id });
-  return (
-    selector(originalState as Parameters<typeof selector>[0])?.data ||
-    originalState.entities.documents[id]
-  );
+  return selector(originalState as Parameters<typeof selector>[0])?.data;
 }
 
 function getOriginalDashboard(originalState: State, id: DashboardId) {

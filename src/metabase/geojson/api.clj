@@ -64,7 +64,8 @@
       :else (:body resp))))
 
 (defn- url->reader [url]
-  (if-let [resource (io/resource url)]
+  (if-let [resource (and (geojson.settings/valid-geojson-resource-path? url)
+                         (io/resource url))]
     (io/reader resource)
     (url->geojson url)))
 
@@ -90,9 +91,9 @@
    _request
    respond
    raise]
-  (when-not (or (geojson.settings/custom-geojson-enabled) ((geojson.settings/builtin-geojson) (keyword k)))
+  (when-not (geojson.settings/custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
-  (if-let [url (get-in (geojson.settings/custom-geojson) [(keyword k) :url])]
+  (if-let [url (get-in (geojson.settings/user-defined-custom-geojson) [(keyword k) :url])]
     (try
       (read-url-and-respond url respond)
       (catch Throwable e

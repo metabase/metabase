@@ -7,8 +7,9 @@ import { setupTableEndpoints } from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import MetabaseSettings from "metabase/lib/settings";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
@@ -22,7 +23,6 @@ import {
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
 
@@ -139,7 +139,7 @@ function setup({
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
-    onEditSummary: jest.fn(),
+    editSummary: jest.fn(),
     onOpenQuestionInfo: jest.fn(),
     onCloseSummary: jest.fn(),
     onSave: jest.fn(),
@@ -320,12 +320,12 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to summarize query results", () => {
-          const { onEditSummary } = setup({
+          const { editSummary } = setup({
             card,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Summarize"));
-          expect(onEditSummary).toHaveBeenCalled();
+          expect(editSummary).toHaveBeenCalled();
         });
 
         it("allows to open notebook editor", () => {

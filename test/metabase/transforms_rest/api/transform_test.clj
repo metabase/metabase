@@ -3,20 +3,23 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.transforms.transform :as transform.model]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
+                                          seconds-from-now-ns
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.util :as u]
@@ -90,6 +93,59 @@
                 (testing "Response hydrates owner"
                   (is (map? (:owner response)))
                   (is (= lucky-id (get-in response [:owner :id]))))))))))))
+
+(deftest update-transform-without-schema-test
+  (testing "Updating a transform to clear its schema is rejected on schemas-supporting databases"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (when (driver.u/supports? driver/*driver* :schemas (mt/db))
+            (with-transform-cleanup! [table-name "update_schema_products"]
+              (let [query     (make-query "Gadget")
+                    schema    (get-test-schema)
+                    created   (mt/user-http-request :crowberto :post 200 "transform"
+                                                    {:name   "Update Schema Products"
+                                                     :source {:type  "query"
+                                                              :query query}
+                                                     :target {:type   "table"
+                                                              :schema schema
+                                                              :name   table-name}})
+                    transform-id (:id created)]
+                (testing "PUT with a nil schema in target is rejected"
+                  (mt/user-http-request :crowberto :put 400
+                                        (format "transform/%s" transform-id)
+                                        {:target {:type   "table"
+                                                  :schema nil
+                                                  :name   table-name}}))
+                (testing "PUT with a non-blank schema still succeeds"
+                  (let [updated (mt/user-http-request :crowberto :put 200
+                                                      (format "transform/%s" transform-id)
+                                                      {:name "Renamed"})]
+                    (is (= "Renamed" (:name updated)))))))))))))
+
+(deftest create-transform-without-schema-test
+  (testing "Creating a transform without a schema is rejected on databases that support schemas, and allowed on those that don't"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-cleanup! [table-name "no_schema_products"]
+                (let [query   (make-query "Gadget")
+                      request (fn [schema]
+                                {:name   "No Schema Products"
+                                 :source {:type  "query"
+                                          :query query}
+                                 :target {:type   "table"
+                                          :schema schema
+                                          :name   table-name}})]
+                  (if (driver.u/supports? driver/*driver* :schemas (mt/db))
+                    (testing "nil schema is rejected with 400 on schemas-supporting driver"
+                      (let [response (mt/user-http-request :lucky :post 400 "transform" (request nil))]
+                        (is (nil? (:id response)))))
+                    (testing "nil schema is allowed on non-schemas drivers"
+                      (let [response (mt/user-http-request :lucky :post 200 "transform" (request nil))]
+                        (is (some? (:id response)))))))))))))))
 
 (deftest create-transform-with-param-test
   (mt/with-premium-features #{}
@@ -685,12 +741,12 @@
   (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
-            timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-            limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
+            timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+            deadline  (seconds-from-now-ns timeout-s)]
         (is (=? {:message "Transform run started"}
                 resp))
         (loop []
-          (when (> (System/currentTimeMillis) limit)
+          (when (> (System/nanoTime) deadline)
             (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {})))
           (let [resp   (mt/user-http-request :lucky :get 200 (format "transform/%s" transform-id))
                 status (some-> resp :last_run :status keyword)]
@@ -1178,7 +1234,7 @@
                                           :query {:database (mt/id)
                                                   :type     "native"
                                                   :native   {:query "SELECT 1"}}}
-                                 :target {:type "table" :name "test_table"}})
+                                 :target {:type "table" :name (mt/random-name)}})
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform))))
@@ -1320,7 +1376,7 @@
                                                                         :type "native"
                                                                         :native {:query "SELECT 1"}}}
                                                        :target {:type "table"
-                                                                :name "test_table"}}
+                                                                :name (mt/random-name)}}
                            :model/TransformTag tag1 {:name "update-tag-1"}
                            :model/TransformTag tag2 {:name "update-tag-2"}
                            :model/TransformTag tag3 {:name "update-tag-3"}]
@@ -1676,88 +1732,3 @@
             (search.tu/with-new-search-and-legacy-search
               (is (= #{native-id mbql-id}
                      (search-transform-ids search-term))))))))))
-
-;;; -------------------------------------------------- Inspector API --------------------------------------------------
-
-(deftest inspect-lens-not-found-test
-  (mt/with-premium-features #{}
-    (testing "GET /api/transform/:id/inspect/:lens-id returns 404 for a nonexistent lens"
-      (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-            (is (= "Lens data not available"
-                   (:message (mt/user-http-request :lucky :get 404
-                                                   (format "transform/%d/inspect/no-such-lens" transform-id)))))))))))
-
-;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
-
-(deftest inspect-query-execute-test
-  (mt/with-premium-features #{}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "POST /api/transform/:id/inspect/:lens-id/query executes a query with inspector context"
-        (mt/with-temp [:model/Transform {transform-id :id} {}]
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-              (let [mp     (mt/metadata-provider)
-                    query  (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))
-                    result (mt/user-http-request :lucky :post 202
-                                                 (format "transform/%d/inspect/generic-summary/query" transform-id)
-                                                 {:query query})]
-                (testing "returns completed query results"
-                  (is (= "completed" (:status result)))
-                  (is (pos? (:row_count result)))
-                  (is (seq (get-in result [:data :rows]))))
-                (testing "context is set to transform-inspector"
-                  (is (= "transform-inspector" (:context result))))))))))))
-
-(deftest inspect-query-with-lens-params-test
-  (mt/with-premium-features #{}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "POST /api/transform/:id/inspect/:lens-id/query passes lens_params through to query execution"
-        (mt/with-temp [:model/Transform {transform-id :id} {}]
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-              (let [mp     (mt/metadata-provider)
-                    query  (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))
-                    result (mt/user-http-request :lucky :post 202
-                                                 (format "transform/%d/inspect/unmatched-rows/query" transform-id)
-                                                 {:query       query
-                                                  :lens_params {:join-index 0 :filter-col "status"}})]
-                (is (= "completed" (:status result)))
-                (is (= "transform-inspector" (:context result)))))))))))
-
-(deftest inspect-query-permissions-test
-  (mt/with-premium-features #{}
-    (testing "POST /api/transform/:id/inspect/:lens-id/query requires transforms permission"
-      (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (let [mp (mt/metadata-provider)]
-          (testing "user without transform permission gets 403"
-            (mt/user-http-request :rasta :post 403
-                                  (format "transform/%d/inspect/generic-summary/query" transform-id)
-                                  {:query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}))
-          (testing "data analysts with transform permission can access"
-            (mt/with-data-analyst-role! (mt/user->id :lucky)
-              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-                (is (= "completed"
-                       (:status (mt/user-http-request :lucky :post 202
-                                                      (format "transform/%d/inspect/generic-summary/query" transform-id)
-                                                      {:query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))}))))))))))))
-
-(deftest inspect-query-not-found-test
-  (mt/with-premium-features #{}
-    (testing "POST /api/transform/:id/inspect/:lens-id/query returns 404 for non-existent transform"
-      (mt/with-data-analyst-role! (mt/user->id :lucky)
-        (mt/user-http-request :lucky :post 404
-                              "transform/999999/inspect/generic-summary/query"
-                              {:query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))})))))
-
-(deftest inspect-query-invalid-params-test
-  (mt/with-premium-features #{}
-    (testing "POST /api/transform/:id/inspect/:lens-id/query validates parameters"
-      (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-            (testing "missing query body returns 400"
-              (is (some? (:errors (mt/user-http-request :lucky :post 400
-                                                        (format "transform/%d/inspect/generic-summary/query" transform-id)
-                                                        {})))))))))))

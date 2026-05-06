@@ -4,7 +4,7 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import type { OnBeforeRequestHandlerData } from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { getEmbedBase, internalBase, publicBase } from "metabase/services";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
@@ -187,7 +187,8 @@ const overrideRequests = async ({
   method,
   url,
   options,
-}: OnBeforeRequestHandlerData & {
+  data,
+}: OnBeforeRequestHandlerConfig & {
   embedType: EmbedType;
 }) => {
   const transformation = getRequestTransformation({
@@ -198,22 +199,18 @@ const overrideRequests = async ({
   });
 
   if (!transformation) {
-    return { method, url, options };
+    return { method, url, options, data };
   }
 
   if (!options.headers) {
     options.headers = {};
   }
 
-  /**
-   * Set header to indicate that this request is for guest embed.
-   */
-  options.headers["x-metabase-guest-embed"] = "true";
-
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
     options: transformation.options,
+    data,
   };
 };
 

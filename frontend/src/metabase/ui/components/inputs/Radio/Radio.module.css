@@ -20,8 +20,11 @@
 }
 
 .radio {
-  cursor: pointer;
   border-color: var(--mb-color-text-tertiary);
+
+  &:not(:disabled) {
+    cursor: pointer;
+  }
 
   &:checked {
     border-color: var(--mb-color-brand);

@@ -3,17 +3,19 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
-import { getIconBase } from "metabase/lib/icon";
+import type {
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase/collections/types";
+import { getIconBase } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {
   BaseEntityId,
   Bookmark,
   Collection,
-  CollectionAuthorityLevelConfig,
   CollectionEssentials,
   CollectionId,
-  CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
 
 // Types

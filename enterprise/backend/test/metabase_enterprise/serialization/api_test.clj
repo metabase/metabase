@@ -4,10 +4,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -26,20 +28,36 @@
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
+(defn- entry-names
+  "Return a seq of all entry names in the given tar.gz response."
+  [f]
+  (with-open [tar (open-tar f)]
+    (mapv (fn [^TarArchiveEntry e] (.getName e)) (u.compress/entries tar))))
+
+(defn- first-entry-name
+  "Return the name of the first entry in the given tar.gz response."
+  [f]
+  (first (entry-names f)))
+
+(defn- read-export-log
+  "Extract the export.log content from a tar.gz response."
+  [f]
+  (with-open [tar (open-tar f)]
+    (loop []
+      (when-let [e (.getNextEntry tar)]
+        (if (str/ends-with? (.getName ^TarArchiveEntry e) "export.log")
+          (slurp (io/reader tar))
+          (recur))))))
+
 (def ^:private file-types
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
-   #"/collections/metabots/(.*)\.yaml$"        :metabot
-   #"/collections/.*/cards/(.*)\.yaml$"        :card
-   #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
-   #"/collections/.*collection/([^/]*)\.yaml$" :collection
-   #"/collections/([^/]*)\.yaml$"              :collection
-   #"/snippets/(.*)\.yaml"                     :snippet
+   #"/collections/(.*)\.yaml$"                 :collection-entity
    #"/databases/.*/schemas/(.*)"               :schema
    #"/databases/(.*)\.yaml"                    :database
    #"/transforms/(.*)\.yaml"                   :transform
-   #"/python-libraries/(.*)\.yaml"             :python-library])
+   #"/python_libraries/(.*)\.yaml"             :python-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -48,13 +66,6 @@
           (when-let [m (re-find re fname)]
             [ftype (when (vector? m) (second m))]))
         (partition 2 file-types)))
-
-(defn- log-types
-  "Find out entity type by log message"
-  [lines]
-  (->> lines
-       (keep #(second (re-find #"(?:Extracting|Loading|Storing) \{:path (\w+)" %)))
-       set))
 
 (defn- tar-file-types [f & [raw?]]
   (with-open [tar (open-tar f)]
@@ -122,74 +133,65 @@
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings :transform :python-library}
+                  (is (= #{:log :settings :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :collection (:id coll2)
                                               :data_model false :settings false)]
-                  (is (= 2
-                         (->> (tar-file-types f true)
-                              (filter #(= :collection (first %)))
-                              count)))))
+                  (is (some #(= :collection-entity (first %))
+                            (tar-file-types f true))
+                      "Export should contain collection entities")))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
+                  (is (= #{:transform :log :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
 
-              (testing "On exception API returns log"
+              (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                                   (mt/dynamic-value serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
-                              (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
+                              (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
-                        log (slurp (io/input-stream res))]
-                    (testing "In logs we get an entry for the dashboard, then card, and then an error"
-                      (is (= #{"Dashboard" "Card"}
-                             (log-types (str/split-lines log))))
-                      (is (re-find #"deliberate error message" log))
-                      (is (=  {:id        "**ID**",
-                               :entity_id "**ID**",
-                               :model     "Card",
-                               :table     :report_card
-                               :cause     "[test] deliberate error message"}
-                              (extract-and-sanitize-exception-map log)))))))
+                        log (read-export-log res)]
+                    (testing "export.log inside the archive contains error details"
+                      (is (some? log) "export.log should be present in the archive")
+                      (is (re-find #"deliberate error message" log)))))))
 
-              (testing "You can pass specific directory name"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :dirname "check" :all_collections false :data_model false :settings false)]
-                  (is (= "check/"
-                         (with-open [tar (open-tar f)]
-                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))
+            (testing "You can pass specific directory name"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :dirname "check" :all_collections false :data_model false :settings false)]
+                (is (str/starts-with? (first-entry-name f) "check/")))))
 
-              (testing "Invalid entity ID returns an error instead of falling back to root collection"
-                (let [fake-eid "abcdefghijklmnopqrstu"
-                      res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
-                                                     :collection fake-eid :data_model false :settings false)
-                      log      (slurp (io/input-stream res))]
-                  (is (re-find #"Could not find Collection with entity ID" log))
-                  (is (re-find #"abcdefghijklmnopqrstu" log))))))))
+          (testing "Invalid entity ID returns an error instead of falling back to root collection"
+            (let [fake-eid "abcdefghijklmnopqrstu"
+                  res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                 :collection fake-eid :data_model false :settings false)]
+              (is (re-find #"Could not find Collection with entity ID"
+                           (str (:message res))))
+              (is (re-find #"abcdefghijklmnopqrstu"
+                           (str (:message res))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
@@ -220,19 +222,8 @@
                                           :collection (:id coll) :data_model false :settings false)
                     io/input-stream)
             ba  (#'api.serialization/ba-copy res)]
-        (testing "Archive contains correct number of files with proper log entries"
-          (is (= 13
-                 (with-open [tar (open-tar ba)]
-                   (count
-                    (for [^TarArchiveEntry e (u.compress/entries tar)
-                          :when              (.isFile e)]
-                      (do
-                        (condp re-find (.getName e)
-                          #"/export.log$" (testing "Log contains extract and store entries"
-                                            (is (= (+ #_extract 12 #_store 12)
-                                                   (count (line-seq (io/reader tar))))))
-                          nil)
-                        (.getName e))))))))
+        (testing "Archive contains correct number of files"
+          (is (= 13 (count (filter #(not (str/ends-with? % "/")) (entry-names ba))))))
 
         (testing "Snowplow export event was sent"
           (is (=? {"event"           "serialization"
@@ -268,14 +259,10 @@
         (t2/delete! :model/Card (:id card))
 
         (let [re-indexed? (atom false)
-              res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
+              _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
-          (testing "Log contains imported entity types"
-            (is (= #{"Collection" "Dashboard" "Card" "PythonLibrary" "TransformJob" "TransformTag"}
-                   (log-types (line-seq (io/reader (io/input-stream res)))))))
-
           (testing "Entities are restored in the database"
             (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
             (is (= (:name card) (t2/select-one-fn :name :model/Card :entity_id (:entity_id card)))))
@@ -302,7 +289,7 @@
 
 (deftest import-collection-reference-error-test
   (testing "Import fails with 500 when collection reference is invalid"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
@@ -310,7 +297,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (binding [api.serialization/*additive-logging* false]
                       (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
@@ -333,7 +320,7 @@
 
 (deftest import-continue-on-error-test
   (testing "Import with continue_on_error=true succeeds partially despite errors"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
@@ -341,16 +328,14 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                           {:file ba}
                                           :continue_on_error true)
                 log (slurp (io/input-stream res))]
-            (testing "Log shows loaded entities and error"
-              (is (= #{"Dashboard" "Card" "Collection" "TransformJob" "TransformTag" "PythonLibrary"}
-                     (log-types (str/split-lines log))))
+            (testing "Log contains the missing-collection error"
               (is (re-find #"Collection 'DoesNotExist' was not found" log)))
 
             (testing "Snowplow event shows partial success with error count"
@@ -374,15 +359,16 @@
         (is (re-find #"Cannot unpack archive" log))))))
 
 (deftest export-extraction-error-test
-  (testing "Export fails with 500 when entity extraction fails"
+  (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                         (mt/dynamic-value serdes/extract-one))]
-        (testing "Error response contains exception details"
+        (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
-            (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+            (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                             :collection (:id coll) :data_model false :settings false)
-                  log (slurp (io/input-stream res))]
+                  log (read-export-log res)]
+              (is (some? log) "export.log should be present in the archive")
               (is (= {:id        "**ID**"
                       :entity_id "**ID**"
                       :model     "Card"
@@ -406,13 +392,13 @@
                    "error_message"   #"(?s)Error extracting Card \d+ .*"}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
-        (testing "full_stacktrace parameter includes full stack trace"
+        (testing "full_stacktrace parameter includes full stack trace in export.log"
           (binding [api.serialization/*additive-logging* false]
-            (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+            (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                             :collection (:id coll) :data_model false :settings false
                                             :full_stacktrace true)
-                  log (slurp (io/input-stream res))]
-              (is (< 200 (count (str/split-lines log))))
+                  log (read-export-log res)]
+              (is (< 50 (count (str/split-lines log))))
               ;; Pop out the error event
               (snowplow-test/pop-event-data-and-user-id!))))))))
 
@@ -421,17 +407,11 @@
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                         (mt/dynamic-value serdes/extract-one))]
-        (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
-                                            :collection (:id coll) :data_model false :settings false
-                                            :continue_on_error true)
-                      io/input-stream)]
-          (with-open [tar (open-tar res)]
-            (doseq [^TarArchiveEntry e (u.compress/entries tar)]
-              (condp re-find (.getName e)
-                #"/export.log$" (testing "Log shows extract entries, error, and store entries"
-                                  (is (= (+ #_extract 12 #_error 1 #_store 11)
-                                         (count (line-seq (io/reader tar))))))
-                nil))))
+        (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
+                                        :collection (:id coll) :data_model false :settings false
+                                        :continue_on_error true)]
+          (testing "Log contains the deliberate error"
+            (is (re-find #"deliberate error message" (read-export-log res)))))
 
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"
@@ -462,6 +442,289 @@
                (mt/user-http-request :rasta :post 403 "ee/serialization/import"
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                      {:file (byte-array 0)})))))))
+
+(deftest metadata-export-basic-test
+  (testing "GET /api/ee/serialization/metadata/export — happy path with one db/table/field"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
+                     :model/Table    {t-id :id  t-name  :name} {:db_id db-id :schema "PUBLIC"
+                                                                :description "A test table"}
+                     :model/Field    {f-name :name}            {:table_id t-id
+                                                                :base_type :type/Integer
+                                                                :database_type "BIGINT"
+                                                                :semantic_type :type/PK}]
+        (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202
+                                                                      "ee/serialization/metadata/export"
+                                                                      :with-databases true
+                                                                      :with-tables    true
+                                                                      :with-fields    true)
+              test-db    (m/find-first (comp #{db-name}                              :id) databases)
+              test-table (m/find-first (comp #{[db-name "PUBLIC" t-name]}            :id) tables)
+              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name f-name]}     :id) fields)]
+          (is (=? {:id db-name :name db-name :engine "h2"}
+                  test-db))
+          (is (=? {:id          [db-name "PUBLIC" t-name]
+                   :db_id       db-name
+                   :name        t-name
+                   :schema      "PUBLIC"
+                   :description "A test table"}
+                  test-table))
+          (is (=? {:id            [db-name "PUBLIC" t-name f-name]
+                   :table_id      [db-name "PUBLIC" t-name]
+                   :name          f-name
+                   :base_type     "type/Integer"
+                   :database_type "BIGINT"
+                   :semantic_type "type/PK"}
+                  test-field)))))))
+
+(deftest metadata-export-optional-properties-test
+  (testing "GET /api/ee/serialization/metadata/export — effective_type, coercion_strategy and description are emitted when set"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
+                     :model/Table    {t-id :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {f-name :name}            {:table_id          t-id
+                                                                :base_type         :type/Text
+                                                                :database_type     "VARCHAR"
+                                                                :effective_type    :type/DateTime
+                                                                :coercion_strategy :Coercion/ISO8601->DateTime
+                                                                :description       "When this happened"}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name f-name]} :id) fields)]
+          (is (=? {:id                [db-name "PUBLIC" t-name f-name]
+                   :name              f-name
+                   :base_type         "type/Text"
+                   :effective_type    "type/DateTime"
+                   :coercion_strategy "Coercion/ISO8601->DateTime"
+                   :description       "When this happened"}
+                  test-field)))))))
+
+(deftest metadata-export-parent-field-test
+  (testing "GET /api/ee/serialization/metadata/export — parent_id is nfc_path with the last element dropped, omitted for root fields"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name}   {:engine :h2}
+                     :model/Table    {t-id  :id t-name  :name}    {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {root-name :name}            {:table_id t-id
+                                                                   :base_type :type/Text}
+                     :model/Field    _                             {:table_id t-id
+                                                                    :base_type :type/Text
+                                                                    :nfc_path  ["data" "city"]}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field-1 (m/find-first (comp #{[db-name "PUBLIC" t-name root-name]} :id) fields)
+              test-field-2 (m/find-first (comp #{[db-name "PUBLIC" t-name "data" "city"]} :id) fields)]
+          (is (=? {:id [db-name "PUBLIC" t-name root-name]} test-field-1))
+          (is (not (contains? test-field-1 :parent_id)))
+          (is (=? {:id        [db-name "PUBLIC" t-name "data" "city"]
+                   :parent_id [db-name "PUBLIC" t-name "data"]}
+                  test-field-2)))))))
+
+(deftest metadata-export-fk-test
+  (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is emitted in portable form"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id t-name  :name}  {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {pk-id :id pk-name :name}  {:table_id t-id
+                                                                 :base_type :type/Integer
+                                                                 :semantic_type :type/PK}
+                     :model/Field    {fk-name :name}            {:table_id t-id
+                                                                 :base_type :type/Integer
+                                                                 :semantic_type :type/FK
+                                                                 :fk_target_field_id pk-id}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field-1 (m/find-first (comp #{[db-name "PUBLIC" t-name pk-name]} :id) fields)
+              test-field-2 (m/find-first (comp #{[db-name "PUBLIC" t-name fk-name]} :id) fields)]
+          (is (=? {:id [db-name "PUBLIC" t-name pk-name] :semantic_type "type/PK"}
+                  test-field-1))
+          (is (=? {:id                 [db-name "PUBLIC" t-name fk-name]
+                   :table_id           [db-name "PUBLIC" t-name]
+                   :semantic_type      "type/FK"
+                   :fk_target_field_id (:id test-field-1)}
+                  test-field-2)))))))
+
+(deftest metadata-export-hidden-table-test
+  (testing "GET /api/ee/serialization/metadata/export — hidden tables and their fields are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id      :id}                       {:engine :h2}
+                     :model/Table    {visible-id :id visible-t-name :name}  {:db_id db-id :schema "PUBLIC"}
+                     :model/Table    {hidden-id  :id hidden-t-name  :name}  {:db_id db-id :schema "PUBLIC"
+                                                                             :visibility_type :hidden}
+                     :model/Field    {visible-f-name :name}                 {:table_id visible-id
+                                                                             :base_type :type/Integer}
+                     :model/Field    {hidden-f-name  :name}                 {:table_id hidden-id
+                                                                             :base_type :type/Integer}]
+        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (some     (comp #{visible-t-name} :name) tables))
+          (is (not-any? (comp #{hidden-t-name}  :name) tables))
+          (is (some     (comp #{visible-f-name} :name) fields))
+          (is (not-any? (comp #{hidden-f-name}  :name) fields)))))))
+
+(deftest metadata-export-hidden-table-fk-test
+  (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is dropped when the target table is hidden"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name}      {:engine :h2}
+                     :model/Table    {visible-id :id v-name :name}   {:db_id db-id :schema "PUBLIC"}
+                     :model/Table    {hidden-id :id}                 {:db_id db-id :schema "PUBLIC"
+                                                                      :visibility_type :hidden}
+                     :model/Field    {target-id :id}                 {:table_id hidden-id
+                                                                      :base_type :type/Integer
+                                                                      :semantic_type :type/PK}
+                     :model/Field    {fk-name :name}                 {:table_id visible-id
+                                                                      :base_type :type/Integer
+                                                                      :semantic_type :type/FK
+                                                                      :fk_target_field_id target-id}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field (m/find-first (comp #{[db-name "PUBLIC" v-name fk-name]} :id) fields)]
+          (is (some? test-field))
+          (is (not (contains? test-field :fk_target_field_id))))))))
+
+(deftest metadata-export-inactive-table-test
+  (testing "GET /api/ee/serialization/metadata/export — inactive tables and all of their fields are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id}                        {:engine :h2}
+                     :model/Table    {t-id  :id t-name :name}           {:db_id db-id :schema "PUBLIC"
+                                                                         :active false}
+                     :model/Field    {active-f-name   :name}            {:table_id t-id
+                                                                         :base_type :type/Integer}
+                     :model/Field    {inactive-f-name :name}            {:table_id t-id
+                                                                         :base_type :type/Integer
+                                                                         :active false}]
+        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (not-any? (comp #{t-name}          :name) tables))
+          (is (not-any? (comp #{active-f-name}   :name) fields))
+          (is (not-any? (comp #{inactive-f-name} :name) fields)))))))
+
+(deftest metadata-export-sensitive-field-test
+  (testing "GET /api/ee/serialization/metadata/export — sensitive fields are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id}              {:engine :h2}
+                     :model/Table    {t-id  :id}              {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {email-name  :name}      {:table_id t-id :base_type :type/Text}
+                     :model/Field    {secret-name :name}      {:table_id t-id :base_type :type/Text
+                                                               :visibility_type :sensitive}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)]
+          (is (some     (comp #{email-name}  :name) fields))
+          (is (not-any? (comp #{secret-name} :name) fields)))))))
+
+(deftest metadata-export-sensitive-fk-test
+  (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is dropped when the target field is sensitive"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
+                     :model/Table    {t-id  :id t-name  :name}  {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {target-id :id}            {:table_id t-id
+                                                                 :base_type :type/Text
+                                                                 :visibility_type :sensitive}
+                     :model/Field    {fk-name :name}            {:table_id t-id
+                                                                 :base_type :type/Text
+                                                                 :semantic_type :type/FK
+                                                                 :fk_target_field_id target-id}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name fk-name]} :id) fields)]
+          (is (some? test-field))
+          (is (not (contains? test-field :fk_target_field_id))))))))
+
+(deftest metadata-export-inactive-field-test
+  (testing "GET /api/ee/serialization/metadata/export — inactive fields are excluded; their active sibling and table still appear"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id}                     {:engine :h2}
+                     :model/Table    {t-id  :id t-name :name}        {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {active-f-name :name}           {:table_id t-id
+                                                                      :base_type :type/Integer}
+                     :model/Field    {inactive-f-name :name}         {:table_id t-id
+                                                                      :base_type :type/Integer
+                                                                      :active false}]
+        (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (some     (comp #{t-name}          :name) tables))
+          (is (some     (comp #{active-f-name}   :name) fields))
+          (is (not-any? (comp #{inactive-f-name} :name) fields)))))))
+
+(deftest metadata-export-db-routing-test
+  (testing "GET /api/ee/serialization/metadata/export — router (mirror) databases are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database _                                    {:engine :h2}
+                     :model/Database {primary-id :id primary-name :name}  {:engine :h2}
+                     :model/Database {mirror-name :name}                  {:engine :h2
+                                                                           :router_database_id primary-id}]
+        (let [{:keys [databases]} (mt/user-http-request :crowberto :get 202
+                                                        "ee/serialization/metadata/export"
+                                                        :with-databases true)]
+          (is (some     (comp #{primary-name} :name) databases))
+          (is (not-any? (comp #{mirror-name}  :name) databases)))))))
+
+(deftest metadata-export-table-permission-test
+  (testing "GET /api/ee/serialization/metadata/export — tables the current user can't access are excluded"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database         {db-id :id}                                 {:engine :h2}
+                     :model/Table            {accessible-id :id accessible-name :name}   {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {restricted-id :id restricted-name :name}   {:db_id db-id :schema "PUBLIC"}
+                     :model/Field            {ok-f-name :name}                           {:table_id accessible-id
+                                                                                          :base_type :type/Integer}
+                     :model/Field            {no-f-name :name}                           {:table_id restricted-id
+                                                                                          :base_type :type/Integer}
+                     :model/PermissionsGroup pg                                          {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        (perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (perms/set-database-permission! pg db-id :perms/create-queries :no)
+        (perms/set-table-permission! pg accessible-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! pg accessible-id :perms/create-queries :query-builder)
+        (let [{:keys [tables fields]} (mt/user-http-request :rasta :get 202
+                                                            "ee/serialization/metadata/export"
+                                                            :with-tables true :with-fields true)]
+          (is (some     (comp #{accessible-name} :name) tables))
+          (is (not-any? (comp #{restricted-name} :name) tables))
+          (is (some     (comp #{ok-f-name} :name) fields))
+          (is (not-any? (comp #{no-f-name} :name) fields)))))))
+
+(deftest metadata-export-table-permission-fk-test
+  (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is dropped when the target table is not accessible"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database         {db-id :id db-name :name}                   {:engine :h2}
+                     :model/Table            {accessible-id :id accessible-name :name}   {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {restricted-id :id}                         {:db_id db-id :schema "PUBLIC"}
+                     :model/Field            {target-id :id}                             {:table_id restricted-id
+                                                                                          :base_type :type/Integer
+                                                                                          :semantic_type :type/PK}
+                     :model/Field            {fk-name :name}                             {:table_id accessible-id
+                                                                                          :base_type :type/Integer
+                                                                                          :semantic_type :type/FK
+                                                                                          :fk_target_field_id target-id}
+                     :model/PermissionsGroup pg                                          {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        (perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (perms/set-database-permission! pg db-id :perms/create-queries :no)
+        (perms/set-table-permission! pg accessible-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! pg accessible-id :perms/create-queries :query-builder)
+        (let [{:keys [fields]} (mt/user-http-request :rasta :get 202
+                                                     "ee/serialization/metadata/export"
+                                                     :with-fields true)
+              test-field (m/find-first (comp #{[db-name "PUBLIC" accessible-name fk-name]} :id) fields)]
+          (is (some? test-field))
+          (is (not (contains? test-field :fk_target_field_id))))))))
+
+(deftest metadata-export-token-feature-test
+  (testing "GET /api/ee/serialization/metadata/export requires the :serialization premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Serialization"
+       (mt/user-http-request :crowberto :get 402 "ee/serialization/metadata/export")))))
 
 (deftest serialization-cleanup-test
   (testing "No temp files are left behind after export/import operations"

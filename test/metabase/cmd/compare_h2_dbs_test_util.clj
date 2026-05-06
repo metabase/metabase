@@ -38,7 +38,9 @@
     "QUERY"
     "QUERY_QUERYEXECUTION"
     "QUERY_CACHE"
-    "TASK_HISTORY"})
+    "TASK_HISTORY"
+    ;; EE-only table populated by migration but only dumped when EE is available
+    "METABOT_PERMISSIONS"})
 
 (defn- table-names
   "Return a sorted collection of all non-system table names."

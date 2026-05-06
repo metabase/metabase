@@ -11,7 +11,7 @@
    [metabase.driver :as driver]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -25,8 +25,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -439,6 +440,39 @@
              (testing "driver/describe-table-fks returns empty set for dynamic table"
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
+
+(deftest ^:sequential describe-table-fields-uuid-column-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "uuid_test_" (u.random/random-name))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [^java.sql.Connection conn]
+           (try
+             (doseq [stmt [(format "CREATE OR REPLACE TABLE \"%s\".\"PUBLIC\".\"%s\" (\"uuid_col\" UUID, \"name\" VARCHAR, \"description\" VARCHAR);"
+                                   db-name table-name)
+                           (format "INSERT INTO \"%s\".\"PUBLIC\".\"%s\" VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test', 'a row');"
+                                   db-name table-name)]]
+               (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))
+             (let [table  {:name table-name :schema "PUBLIC"}
+                   fields (sql-jdbc.sync/describe-table-fields :snowflake conn table db-name)]
+               (testing "All columns including UUID should be synced"
+                 (is (= #{"uuid_col" "name" "description"}
+                        (into #{} (map :name) fields))))
+               (testing "UUID column should have a usable base type"
+                 (let [uuid-field (first (filter #(= "uuid_col" (:name %)) fields))]
+                   (is (some? uuid-field)
+                       "UUID column should exist as a synced field")
+                   (when uuid-field
+                     (is (isa? (:base-type uuid-field) :type/*)
+                         "UUID column should have a valid base type")))))
+             (finally
+               (jdbc/execute! {:connection conn}
+                              [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
+                              {:transaction? false})))))))))
 
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
@@ -950,15 +984,14 @@
                  (:write_data_details db))))))))
 
 (deftest ^:parallel set-role-statement-test
-  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
-    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
-    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
-
-    ;; Special characters
-    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
-    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+  (testing "set-role-statement should return a parameterized USE ROLE command"
+    (are [role expected] (= expected
+                            (driver.sql-jdbc/set-role-statement :snowflake nil role))
+      "MY_ROLE"        ["USE ROLE identifier(?);" "MY_ROLE"]
+      "ROLE123"        ["USE ROLE identifier(?);" "ROLE123"]
+      "lowercase_role" ["USE ROLE identifier(?);" "lowercase_role"]
+      "Role.123"       ["USE ROLE identifier(?);" "Role.123"]
+      "$role"          ["USE ROLE identifier(?);" "$role"])))
 
 (deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
@@ -1227,28 +1260,28 @@
         (testing "password takes precedence if use-password is true"
           (when (and password use-password)
             (is (= :password (first result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "password comes last if use-password is false or nil"
           (when (and password (not use-password))
             (is (= :password (last result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "path is preferred if options is local"
           (when (and (= "local" options) private-key-value private-key-path)
             (is (= :private-key-path (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "value is preferred if options is nil or uploaded"
           (when (and (not= "local" options) private-key-value private-key-path)
             (is (= :private-key-value (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "ID is checked last if path or value exists"
           (when (or (and private-key-value private-key-id)
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
-                [idxs result])))))))
+                (str [idxs result]))))))))
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake
@@ -1474,3 +1507,25 @@
             table (:table-row (first rows))]
         (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
         (is (= "PUBLIC" (:schema table)))))))
+
+(deftest hour-bucketing-time-field-in-source-query-test
+  (testing "Hour group-by on time fields from a source query should work (#68065)"
+    (mt/test-driver :snowflake
+      (mt/dataset time-test-data
+        (let [mp         (mt/metadata-provider)
+              users      (lib.metadata/table mp (mt/id :users))
+              time-field (lib.metadata/field mp (mt/id :users :last_login_time))
+              ;; Build a two-stage query: the first stage selects the time field,
+              ;; the second stage groups it by :hour. In the second stage the field is
+              ;; referenced by name (string), not by integer ID — this is where the bug
+              ;; manifests: field-metadata is nil and database-type info is lost, causing
+              ;; Snowflake to incorrectly cast to TIMESTAMPNTZ.
+              query      (-> (lib/query mp users)
+                             (lib/with-fields [time-field])
+                             lib/append-stage
+                             (notebook-helpers/add-breakout
+                              "Summaries" "Last Login Time"
+                              {:col-fn #(lib/with-temporal-bucket % :hour)}))]
+          (mt/with-native-query-testing-context query
+            (is (some? (mt/rows (qp/process-query query)))
+                "Hour bucketing on a time field from a source query should not error")))))))

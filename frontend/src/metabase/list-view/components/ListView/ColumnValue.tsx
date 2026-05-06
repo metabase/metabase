@@ -1,13 +1,18 @@
 import { useMemo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
-  formatNumber,
-  formatValue,
-  getCurrencySymbol,
-} from "metabase/lib/formatting";
-import { Badge, Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+  Badge,
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Image,
+  Stack,
+  Text,
+} from "metabase/ui";
+import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { TYPE } from "metabase-lib/v1/types/constants";

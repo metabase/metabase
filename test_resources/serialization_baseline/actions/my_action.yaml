@@ -1,0 +1,16 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+entity_id: aCtiOn00ExAmPlEx00001
+http: []
+implicit:
+- kind: row/update
+model_id: sRcMoDeL00ExAmPlEx001
+name: My Action
+parameter_mappings: []
+parameters: []
+query: []
+type: implicit
+serdes/meta:
+- id: aCtiOn00ExAmPlEx00001
+  label: my_action
+  model: Action

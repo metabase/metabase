@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
 export const deletePermanently = createThunkAction(

@@ -1,7 +1,7 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi, UtilApi } from "metabase/services";
 

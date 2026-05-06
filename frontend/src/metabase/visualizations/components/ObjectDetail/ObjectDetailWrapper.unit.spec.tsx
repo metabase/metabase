@@ -8,17 +8,17 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 registerVisualizations();
 
@@ -74,6 +74,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
       viewPreviousObjectDetail={() => null}
       viewNextObjectDetail={() => null}
       closeObjectDetail={() => null}
+      isDashboard={false}
       {...options}
     />,
     { storeInitialState: state },

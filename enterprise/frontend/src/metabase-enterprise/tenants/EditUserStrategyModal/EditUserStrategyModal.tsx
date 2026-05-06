@@ -7,7 +7,7 @@ import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 import S from "./EditUserStrategyModal.module.css";

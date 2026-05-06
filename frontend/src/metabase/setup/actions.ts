@@ -1,20 +1,20 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { createDatabase } from "metabase/admin/databases/database";
+import { userApi } from "metabase/api";
+import { createDatabase } from "metabase/redux/databases";
 import {
   initializeSettings,
   updateSetting,
   updateSettings,
-} from "metabase/admin/settings/settings";
-import { userApi } from "metabase/api";
-import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/redux/settings";
+import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
+import { loadLocalization } from "metabase/utils/i18n";
+import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import {
   trackAddDataLaterClicked,
@@ -82,9 +82,6 @@ export const updateLocale = createAsyncThunk(
     await loadLocalization(locale.code);
   },
 );
-
-export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
-export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",

@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import type {
   MetabaseColors,
@@ -18,14 +20,16 @@ import {
   Icon,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params";
 
-import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
+import { BaseAppearanceSection } from "./Appearance/BaseAppearanceSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
+import { ThemeSelectorSection } from "./Appearance/ThemeSelectorSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -262,9 +266,19 @@ const BehaviorSection = () => {
   return (
     <Card p="md">
       <Flex align="center" justify="space-between" gap="xs" mb="md">
-        <Text size="lg" fw="bold">
-          {t`Behavior`}
-        </Text>
+        <Flex align="center" gap="xs">
+          <Text size="lg" fw="bold">
+            {t`Behavior`}
+          </Text>
+          {!isSimpleEmbedFeatureAvailable && (
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins can see the EmbedJS Wizard
+            <Tooltip label={t`Available on Metabase Pro plans`}>
+              <Flex align="center">
+                <UpsellGem />
+              </Flex>
+            </Tooltip>
+          )}
+        </Flex>
         {!!behaviorDocsParams?.page && (
           <Anchor
             data-testid="behavior-docs-link"
@@ -318,6 +332,28 @@ const AppearanceSection = () => {
 
   const { theme } = settings;
 
+  const { data: savedThemes } = useListEmbeddingThemesQuery(undefined, {
+    skip: !isSimpleEmbedFeatureAvailable,
+  });
+
+  const updateThemeId = useCallback(
+    (themeId: number | undefined) => {
+      updateSettings({
+        theme: themeId ? { id: themeId } : undefined,
+      } satisfies Partial<typeof settings>);
+    },
+    [updateSettings],
+  );
+
+  const initializeCustomTheme = useCallback(
+    (initialColors: Partial<MetabaseColors> | undefined) => {
+      updateSettings({
+        theme: initialColors ? { colors: initialColors } : undefined,
+      } satisfies Partial<typeof settings>);
+    },
+    [updateSettings],
+  );
+
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
       updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
@@ -333,6 +369,16 @@ const AppearanceSection = () => {
     },
     [theme, updateSettings],
   );
+
+  const resetTheme = useCallback(
+    () =>
+      updateSettings({ theme: undefined } satisfies Partial<typeof settings>),
+    [updateSettings],
+  );
+
+  const hasSavedThemes = (savedThemes?.length ?? 0) > 0;
+  const showHeaderReset =
+    isSimpleEmbedFeatureAvailable && !hasSavedThemes && !!theme?.colors;
 
   const appearanceSection = match(settings)
     .with({ template: "exploration" }, () => null)
@@ -362,23 +408,38 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      {isSimpleEmbedFeatureAvailable ? (
-        <ColorCustomizationSection
-          theme={theme}
-          onColorChange={updateColors}
-          onColorReset={() =>
-            updateSettings({ theme: undefined } satisfies Partial<
-              typeof settings
-            >)
-          }
-        />
-      ) : (
-        <SimpleThemeSwitcherSection
-          preset={theme?.preset}
-          onPresetChange={updateThemePreset}
-        />
-      )}
-
+      <BaseAppearanceSection
+        icons={
+          showHeaderReset ? (
+            <Tooltip label={t`Reset colors`}>
+              <Icon
+                name="revert"
+                size={16}
+                c="brand"
+                onClick={resetTheme}
+                aria-label={t`Reset colors`}
+                style={{ cursor: "pointer" }}
+              />
+            </Tooltip>
+          ) : null
+        }
+      >
+        {isSimpleEmbedFeatureAvailable ? (
+          <ThemeSelectorSection
+            savedThemes={savedThemes ?? []}
+            theme={theme}
+            onThemeChange={updateThemeId}
+            onCustomSelect={initializeCustomTheme}
+            onColorChange={updateColors}
+            onColorReset={resetTheme}
+          />
+        ) : (
+          <SimpleThemeSwitcherSection
+            preset={theme?.preset}
+            onPresetChange={updateThemePreset}
+          />
+        )}
+      </BaseAppearanceSection>
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
     </Card>

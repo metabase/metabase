@@ -6,7 +6,8 @@ import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
-from sqlglot.errors import ParseError, OptimizeError
+from sqlglot.errors import OptimizeError, ParseError
+
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
     if not isinstance(name, str):
@@ -1012,6 +1013,11 @@ class FieldReferenceWalker:
             alias = expr.alias
             for result in inner_results:
                 if "col" in result:
+                    # Shallow-copy before overwriting alias — the same dict may
+                    # be referenced as a source-column by other scopes. Mutating
+                    # it replaces the inner alias (e.g. "datum") with the outer
+                    # alias (e.g. "b"), breaking column resolution upstream.
+                    result["col"] = dict(result["col"])
                     result["col"]["alias"] = alias
             return inner_results
 
@@ -1373,8 +1379,10 @@ class FieldReferenceWalker:
                                 "source_columns": source_ref
                             }
                         }]
-                # Return custom_field as-is to preserve structure
-                return [{"col": source_column}]
+                # Copy before returning — callers may mutate the alias
+                # (e.g. _find_returned_fields sets alias for outer SELECT AS),
+                # and source_column is shared with the source's returned_fields.
+                return [{"col": dict(source_column)}]
             # For composite_field, etc.: return as-is to preserve structure
             else:
                 return [{"col": source_column}]
@@ -1522,3 +1530,95 @@ class FieldReferenceWalker:
     def _missing_column_error(self, column_name):
         """Create a missing column error."""
         return frozenset([("type", "missing_column"), ("column", column_name)])
+
+#############################################################################
+# Transpile sql
+#############################################################################
+
+_METABASE_TEMPLATE_RE = re.compile(r"\{\{|\[\[")
+
+def has_metabase_templates(sql: str) -> bool:
+    """Detect if SQL contains any Metabase template syntax.
+
+    Metabase templates include:
+    - {{variable}} - basic variables
+    - {{#model_id}} - model references
+    - {{snippet: name}} - SQL snippets
+    - [[optional clause]] - optional filter clauses
+
+    We skip validation for templated queries because accurately normalizing
+    all template types for parsing is brittle. For example, model references
+    can appear as subqueries in CTEs or EXISTS clauses, not just FROM clauses.
+    """
+    return bool(_METABASE_TEMPLATE_RE.search(sql))
+
+# Dialects that require identifier quoting due to case sensitivity.
+# These dialects fold unquoted identifiers to uppercase or lowercase,
+# which can cause issues when the LLM generates mixed-case identifiers.
+CASE_SENSITIVE_DIALECTS: set[str] = {
+    "snowflake",  # Folds unquoted to UPPERCASE
+    "oracle",  # Folds unquoted to UPPERCASE
+    "redshift",  # PostgreSQL-based, folds to lowercase
+    "postgres",  # Folds unquoted to lowercase
+}
+
+def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
+    """Transpile sql string from one dialect to another.
+
+    Args:
+        sql: SQL query string
+        from_dialect: source sql dialect
+        to_dialect: target sql dialect
+
+    Returns:
+        JSON string with keys transpiled and use_identify on success.
+        On failure the object contains keys is_valid and error_message.
+    """
+    result = {}
+    if has_metabase_templates(sql):
+        result['transpiled_sql'] = sql
+        result['status'] = 'skipped'
+        result['reason'] = 'contains_templates'
+    elif not from_dialect or not to_dialect:
+        result['transpiled_sql'] = sql
+        result['status'] = 'skipped'
+        result['reason'] = 'missing_dialect'
+    else:
+        try:
+            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
+                            or to_dialect in CASE_SENSITIVE_DIALECTS)
+
+            transpiled = sqlglot.transpile(
+                sql,
+                read=from_dialect,
+                write=to_dialect,
+                pretty=True,
+                identify=use_identify,
+            )
+
+            if len(transpiled) > 1:
+                result['status'] = 'error'
+                result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
+            else:
+                result['transpiled_sql'] = transpiled[0]
+                result['status'] = 'success'
+        except Exception as e:
+            result['status'] = 'error'
+            result['error_message'] = e.args[0]
+
+    return json.dumps(result)
+
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
+    """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
+    and returns the query reconstructed from the parsed AST.
+    """
+    result = {"is_single_stmt?": False}
+    try:
+        stmts = sqlglot.parse(sql, read=dialect)
+        allowed_types = (exp.Select,) if stmt_type == "read" else (exp.Update, exp.Insert, exp.Delete)
+        if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
+            result["is_single_stmt?"] = True
+            result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+    except Exception as e:
+        result["error"] = str(e)
+    return json.dumps(result)

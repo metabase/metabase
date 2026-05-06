@@ -1,0 +1,18 @@
+## Track whether metabot messages were routed through the AI proxy
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-04-01T15:00:00
+      author: solovyov
+      comment: Add ai_proxied flag to metabot_message to track proxy vs BYOK routing
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: ai_proxied
+                  type: ${boolean.type}
+                  remarks: Whether this message was routed through the Metabase Cloud AI proxy (true) or directly via BYOK keys (false). Null for messages created before this migration.
+                  constraints:
+                    nullable: true

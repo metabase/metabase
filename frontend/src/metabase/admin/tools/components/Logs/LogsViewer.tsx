@@ -6,7 +6,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import type { Log } from "metabase-types/api";
 
 import { LogsContent } from "./Logs.styled";
-import { formatLog } from "./utils";
+import { createLogFormatter, getAllProcessUUIDs } from "./utils";
 
 type LogsViewerProps = React.ComponentPropsWithoutRef<"div"> & {
   logs: Log[];
@@ -14,7 +14,11 @@ type LogsViewerProps = React.ComponentPropsWithoutRef<"div"> & {
 
 // TODO(egorgrushin): use it in frontend/src/metabase/admin/tools/components/Logs/Logs.tsx
 export const LogsViewer = ({ logs, ...rest }: LogsViewerProps) => {
-  const logText = useMemo(() => logs.map(formatLog).join("\n"), [logs]);
+  const logText = useMemo(() => {
+    const processUUIDs = getAllProcessUUIDs(logs);
+    const formatLog = createLogFormatter("ALL", processUUIDs);
+    return logs.map(formatLog).join("\n");
+  }, [logs]);
   const displayLogs = useMemo(() => reactAnsiStyle(React, logText), [logText]);
 
   return (

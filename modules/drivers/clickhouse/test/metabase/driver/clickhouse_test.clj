@@ -12,8 +12,8 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
@@ -487,17 +487,27 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(defn- check-legacy-dbname [dbname exp-name]
+  (let [details (assoc (:details (mt/db)) :dbname dbname)
+        spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+    (is (true? (driver/can-connect? :clickhouse details)))
+    (is (= (format "//localhost:8123/%s" exp-name)
+           (:subname spec)))))
+
 (deftest ^:parallel handle-db-names-with-spaces-test
   (mt/test-driver :clickhouse
-    (are [dbname exp-name] (let [details (assoc (:details (mt/db)) :dbname dbname)
-                                 spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-                             (is (true? (driver/can-connect? :clickhouse details)))
-                             (is (= (format "//localhost:8123/%s" exp-name)
-                                    (:subname spec))))
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
       "test_data default fake_db" "test_data"
-      "test_data" "test_data"
-      "" ""
-      nil "default")))
+      "test_data"                 "test_data"
+      ""                          ""
+      nil                         "default")))
+
+(deftest ^:parallel handle-db-names-with-commas-test
+  (mt/test-driver :clickhouse
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
+      "test_data, fake_db" "test_data"
+      "test_data,fake_db"  "test_data"
+      "test_data,"         "test_data")))
 
 ;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further
@@ -519,3 +529,17 @@
                                     (driver/native-result-metadata :clickhouse broken-query)))
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (are [role sql] (= sql
+                     (sql-jdbc/set-role-statement :clickhouse nil role))
+    "x"                             "SET ROLE \"x\""
+    ;; don't re-quote something that already has quotes
+    "\"x\""                         "SET ROLE \"x\""
+    ;; split on commas and quote separately
+    "x,y"                           "SET ROLE \"x\",\"y\""
+    ;; default database role, don't quote
+    "NONE"                          "SET ROLE NONE"
+    ;; escape double-quotes in the role
+    "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))

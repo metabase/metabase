@@ -8,6 +8,7 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
+   [metabase.api.common :as api]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as img]
@@ -41,7 +42,7 @@
   [part]
   (-> part
       (assoc-in [:card :include_csv] true)
-      email.result-attachment/result-attachment
+      (email.result-attachment/result-attachment api/*current-user-id*)
       first
       :content
       slurp

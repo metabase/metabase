@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
@@ -13,10 +14,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.query-processor :as qp]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -1098,8 +1100,8 @@
                 [str str u.date/temporal-str->iso8601-str 2.0 4.0]
                 (qp/process-query query))))))))
 
-(deftest ^:parallel mlv2-references-in-join-conditions-test
-  (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
+(deftest ^:parallel mbql5-references-in-join-conditions-test
+  (testing "Make sure join conditions that contain Lib-generated refs with extra info like `:base-type` work correctly (#33083)"
     (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                       [(mt/mbql-query reviews
                                          {:joins       [{:source-table $$products
@@ -1141,7 +1143,7 @@
 
 ;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
-  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+  (testing "Make sure queries built with Lib that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
                              (mt/metadata-provider)
                              mt/id)]
@@ -1524,6 +1526,56 @@
                                [:asc &o.orders.id]]
                  :limit       3})))))))
 
+(deftest datetime-diff-with-card-join-test
+  (testing "datetime-diff between a table field and a joined card field should produce correct results (#71551)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :datetime-diff)
+      (mt/with-report-timezone-id! "US/Pacific"
+        (let [mp             (mt/metadata-provider)
+              orders         (lib.metadata/table mp (mt/id :orders))
+              orders-created (lib.metadata/field mp (mt/id :orders :created_at))
+              orders-product (lib.metadata/field mp (mt/id :orders :product_id))
+              build-query    (fn [joined-q join-group-spec]
+                               (let [joined-created (notebook-helpers/find-col-with-spec
+                                                     joined-q
+                                                     (lib/filterable-columns joined-q)
+                                                     join-group-spec
+                                                     {:semantic-type :type/CreationTimestamp})]
+                                 (-> joined-q
+                                     (lib/expression "diff" (lib/expression-clause
+                                                             :datetime-diff
+                                                             [orders-created joined-created :hour]
+                                                             nil))
+                                     (as-> $q (lib/with-fields $q [(lib/expression-ref $q "diff")]))
+                                     (lib/order-by orders-created :asc)
+                                     (lib/limit 5))))
+              tbl-query      (build-query
+                              (-> (lib/query mp orders)
+                                  (lib/join (-> (lib/join-clause
+                                                 (lib.metadata/table mp (mt/id :products))
+                                                 [(lib/= orders-product
+                                                         (lib.metadata/field mp (mt/id :products :id)))])
+                                                (lib/with-join-alias "P"))))
+                              {:name "P"})
+              mp2            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                              [(mt/mbql-query products)])
+              card           (lib.metadata/card mp2 1)
+              card-query     (build-query
+                              (-> (lib/query mp2 orders)
+                                  (as-> $q
+                                        (lib/join $q (-> (lib/join-clause card)
+                                                         (lib/with-join-alias "Card")
+                                                         (lib/with-join-conditions
+                                                          [(let [rhs-cols (lib/join-condition-rhs-columns
+                                                                           $q card (lib/ref orders-product) nil)]
+                                                             (lib/= orders-product
+                                                                    (-> (notebook-helpers/find-col-with-spec
+                                                                         $q rhs-cols "Card 1" "ID")
+                                                                        (lib/with-join-alias "Card"))))])))))
+                              "Card 1")]
+          (mt/with-native-query-testing-context card-query
+            (is (= (mt/rows (qp/process-query tbl-query))
+                   (mt/rows (qp/process-query card-query))))))))))
+
 (deftest ^:parallel self-join-in-source-card-test
   (testing "When query uses a source card with a self-join, query should work (#27521)"
     (let [mp (mt/metadata-provider)
@@ -1572,6 +1624,95 @@
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
                      2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
                    (mt/rows (qp/process-query q2))))))))))
+
+(deftest ^:parallel join-model-with-model-joining-jsonb-table-test
+  (testing (str "Joining a plain model with a model that itself joins another table containing a JSON column "
+                "should compile correctly when the plain model is the LHS of the join (#73198)")
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns :left-join)
+      (mt/dataset (mt/dataset-definition "issue-73198"
+                                         [["test01"
+                                           [{:field-name "name", :base-type :type/Text}]
+                                           [["t01_A"]
+                                            ["t01_B"]]]
+                                          ["test02"
+                                           [{:field-name "name",      :base-type :type/Text}
+                                            {:field-name "test01_id", :base-type :type/Integer, :fk :test01}]
+                                           [["t02_A1" 1]
+                                            ["t02_A2" 1]
+                                            ["t02_B1" 2]]]
+                                          ["test03"
+                                           [{:field-name "name",      :base-type :type/Text}
+                                            {:field-name "test02_id", :base-type :type/Integer, :fk :test02}
+                                            {:field-name "data",      :base-type :type/JSON,
+                                             :semantic-type :type/SerializedJSON}]
+                                           [["t03_1" 1 "{\"key1\":\"value1\",\"key2\":\"value2\"}"]
+                                            ["t03_2" 1 "{\"items\":[1,2,3]}"]
+                                            ["t03_3" 2 "{\"items\":[{\"a\":10},{\"a\":20}]}"]
+                                            ["t03_4" 3 "{\"flag\":true,\"count\":5}"]]]])
+        ;; The bug requires a JSON nfc child to be referenced through a join, so this test
+        ;; only makes sense on drivers that reify nested JSON fields as their own columns
+        ;; at sync time. MariaDB shares the :mysql driver but stores JSON as text and
+        ;; doesn't unfold it, so the `data → key1` field this test references won't exist.
+        (when-not (mysql/mariadb? (mt/db))
+          (let [mp (mt/metadata-provider)
+                ;; Model A: just test01.
+                q1 (lib/query mp (lib.metadata/table mp (mt/id :test01)))
+                ;; Model B: test02 joined with test03 on test02.id = test03.test02_id.
+                q2 (-> (lib/query mp (lib.metadata/table mp (mt/id :test02)))
+                       (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :test03)))
+                                     (lib/with-join-conditions
+                                      [(lib/= (lib.metadata/field mp (mt/id :test02 :id))
+                                              (lib.metadata/field mp (mt/id :test03 :test02_id)))])
+                                     (lib/with-join-fields :all))))
+                mp (lib.tu/mock-metadata-provider
+                    mp
+                    {:cards [{:id            1
+                              :type          :model
+                              :name          "Test01"
+                              :dataset-query q1}
+                             {:id            2
+                              :type          :model
+                              :name          "Test02 + Test03"
+                              :dataset-query q2}]})
+                ;; Question: Model A (Test01) joined with Model B (Test02 + Test03)
+                ;; The join projects an explicit list of fields including one JSON nfc child
+                ;; (`data → key1`), which is what triggers the buggy SQL compilation.
+                query (-> (lib/query mp (lib.metadata/card mp 1))
+                          (lib/join (-> (lib/join-clause (lib.metadata/card mp 2))
+                                        (lib/with-join-conditions
+                                         [(lib/= (lib.metadata/field mp (mt/id :test01 :id))
+                                                 (lib.metadata/field mp (mt/id :test02 :test01_id)))])
+                                        (lib/with-join-fields
+                                          [(lib.metadata/field mp (mt/id :test02 :id))
+                                           (lib.metadata/field mp (mt/id :test02 :name))
+                                           (lib.metadata/field mp (mt/id :test03 :id))
+                                           (lib.metadata/field mp (mt/id :test03 :name))
+                                           (lib.metadata/field mp (mt/id :test03 "data → key1"))])))
+                          (lib/order-by (lib.metadata/field mp (mt/id :test01 :id)) :asc)
+                          (lib/order-by (lib.metadata/field mp (mt/id :test03 :id)) :asc))]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "t01_A" 1 "t02_A1" 1 "t03_1" "value1"]
+                      [1 "t01_A" 1 "t02_A1" 2 "t03_2" nil]
+                      [1 "t01_A" 2 "t02_A2" 3 "t03_3" nil]
+                      [2 "t01_B" 3 "t02_B1" 4 "t03_4" nil]]
+                     (-> query qp/process-query mt/rows))))))))))
+
+(deftest ^:parallel self-join-with-capitalized-table-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:left-join]})
+    (mt/dataset (mt/dataset-definition "self-join-db"
+                                       [["TableA"
+                                         [{:field-name "foo" :base-type :type/Integer}]
+                                         [[1] [2]]]])
+      (let [mp    (mt/metadata-provider)
+            table-kw (try (mt/id :TableA) :TableA (catch Exception _ :tablea))
+            table-a   (lib.metadata/table mp (mt/id table-kw))
+            id   (lib.metadata/field mp (mt/id table-kw :id))
+            query (-> (lib/query mp table-a)
+                      (lib/join (lib/join-clause table-a [(lib/= id id)]))
+                      (lib/order-by id :asc))]
+        (is (= [[1 1 1 1] [2 2 2 2]]
+               (mt/formatted-rows [int int int int]
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel dangling-join-condition-lhs-errors-if-fuzzy-matched-to-rhs-test
   (testing (str "When upstream changes leave a dangling ref in a join condition LHS, QP throws if it is fuzzy-matched"

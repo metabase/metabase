@@ -11,6 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 # Defaults
@@ -18,6 +19,7 @@ SOURCE_VERSION=""
 TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
+RESULT_FILE="${RESULT_FILE:-/tmp/cross-version-result.json}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -28,6 +30,17 @@ NC='\033[0m' # No Color
 log() { echo -e "${GREEN}[cross-version]${NC} $*"; }
 warn() { echo -e "${YELLOW}[cross-version]${NC} $*"; }
 error() { echo -e "${RED}[cross-version]${NC} $*" >&2; }
+
+# Write a structured result file on failure so CI can categorize the failure
+write_failure() {
+  local phase="$1"  # "migration" or "e2e"
+  jq -n \
+    --arg phase "$phase" \
+    --arg source "$SOURCE_VERSION" \
+    --arg target "$TARGET_VERSION" \
+    '{phase:$phase, source:$source, target:$target}' > "$RESULT_FILE"
+  log "Wrote failure result to $RESULT_FILE"
+}
 
 usage() {
   cat <<EOF
@@ -65,6 +78,41 @@ fi
 cli() {
   bun "$SCRIPT_DIR/cli.ts" "$@"
 }
+
+run_e2e() {
+  local phase="$1"
+  local version="$2"
+  local major specs_dir
+
+  major=$(cli major "$version")
+  specs_dir="$REPO_ROOT/e2e/cross-version/${major}"
+  if [[ ! -d "$specs_dir" ]]; then
+    local closest="" closest_dist=999
+    for dir in "$REPO_ROOT"/e2e/cross-version/[0-9]*/; do
+      local v=$(basename "$dir")
+      (( v < major )) && continue
+      local dist=$(( v - major ))
+      if (( dist < closest_dist )); then
+        closest_dist=$dist
+        closest="$dir"
+      fi
+    done
+    if [[ -n "$closest" ]]; then
+      specs_dir="${closest%/}"
+      log "No exact specs for v${major} — using closest: ${specs_dir##*/}/"
+    else
+      specs_dir="$REPO_ROOT/e2e/cross-version/latest"
+      log "No exact specs for v${major} — falling back to latest/"
+    fi
+  else
+    log "Found exact specs for v${major}"
+  fi
+
+  log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
+  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+}
+
 
 wait_for_health() {
   local timeout="$1"
@@ -194,6 +242,11 @@ migrate_down_step() {
     error "migrate down encountered errors (check logs above)"
     return 1
   fi
+
+  if echo "$output" | grep -q "not rolled back"; then
+    error "migrate down had changesets that were not rolled back (check logs above)"
+    return 1
+  fi
 }
 
 # Cascading migrate down: rolls back multiple major versions one at a time
@@ -319,17 +372,25 @@ main() {
   if ! wait_for_health "$HEALTH_TIMEOUT"; then
     error "❌ SOURCE version ($SOURCE_VERSION) failed health check"
     docker compose logs metabase
+    write_failure "migration"
     exit 1
   fi
 
   log "✅ SOURCE version ($SOURCE_VERSION) is healthy"
 
   log ""
-  log "Step 2: Stopping SOURCE version ($SOURCE_VERSION)..."
+  log "Step 2: Running e2e tests (@source)..."
+  if ! run_e2e source "$SOURCE_VERSION"; then
+    write_failure "e2e"
+    exit 1
+  fi
+
+  log ""
+  log "Step 3: Stopping SOURCE version ($SOURCE_VERSION)..."
   stop_metabase
 
   log ""
-  log "Step 3: Starting TARGET version ($TARGET_VERSION)..."
+  log "Step 4: Starting TARGET version ($TARGET_VERSION)..."
   start_metabase "$target_image"
 
   if [[ "$direction" == "upgrade" ]]; then
@@ -337,15 +398,24 @@ main() {
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
       error "❌ TARGET version ($TARGET_VERSION) failed health check after upgrade"
       docker compose logs metabase
+      write_failure "migration"
       exit 1
     fi
     log "✅ UPGRADE successful - TARGET version ($TARGET_VERSION) is healthy"
+
+    log ""
+    log "Step 5: Running e2e tests (@target)..."
+    if ! run_e2e target "$TARGET_VERSION"; then
+      write_failure "e2e"
+      exit 1
+    fi
 
   else
     # Downgrade: should refuse to start, then we run migrate down
     if ! check_downgrade_refused; then
       error "❌ TARGET version ($TARGET_VERSION) did not properly detect downgrade"
       docker compose logs metabase
+      write_failure "migration"
       exit 1
     fi
 
@@ -353,25 +423,32 @@ main() {
     stop_metabase
 
     log ""
-    log "============================================"
-    log "Step 4: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
-    log "============================================"
+    log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
     if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
       error "❌ migrate down failed"
+      write_failure "migration"
       exit 1
     fi
 
     # Try starting again
     log ""
-    log "Step 5: Starting TARGET version ($TARGET_VERSION) after migrate down..."
+    log "Step 6: Starting TARGET version ($TARGET_VERSION) after migrate down..."
     start_metabase "$target_image"
 
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
       error "❌ TARGET version ($TARGET_VERSION) failed health check after migrate down"
       docker compose logs metabase
+      write_failure "migration"
       exit 1
     fi
     log "✅ DOWNGRADE successful - TARGET version ($TARGET_VERSION) is healthy after migrate down"
+
+    log ""
+    log "Step 7: Running e2e tests (@target)..."
+    if ! run_e2e target "$TARGET_VERSION"; then
+      write_failure "e2e"
+      exit 1
+    fi
   fi
 
   log ""

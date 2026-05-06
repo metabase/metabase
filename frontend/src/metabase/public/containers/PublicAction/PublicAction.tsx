@@ -3,12 +3,12 @@ import { useCallback, useState } from "react";
 import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import type { AppErrorDescriptor } from "metabase/redux/store";
 import { PublicApi } from "metabase/services";
 import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type { AppErrorDescriptor } from "metabase-types/store";
 
 import {
   FormContainer,

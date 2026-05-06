@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { IndexRoute, Redirect, Route } from "react-router";
 
 import { DataModelMeasureDependenciesPage } from "metabase/data-studio/measures/pages/DataModelMeasureDependenciesPage";
@@ -9,11 +10,10 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IsAdmin } from "metabase/route-guards";
 
 import { DataModel } from "./pages/DataModel";
 
-export function getDataStudioMetadataRoutes() {
+export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
   return (
     <>
       <IndexRoute component={DataModel} />
@@ -71,6 +71,10 @@ export function getDataStudioMetadataRoutes() {
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+      />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
         component={DataModel}
@@ -81,15 +85,7 @@ export function getDataStudioMetadataRoutes() {
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
-      />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-      />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"

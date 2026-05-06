@@ -10,7 +10,7 @@
    [metabase.api.routes.common]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.urls :as urls]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.malli.schema :as ms])
   (:import

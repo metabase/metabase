@@ -121,6 +121,7 @@
    {:write? false}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)
+                 ;; Prefix must match driver.u/workspace-isolated-prefix
                  rs (.executeQuery stmt "SHOW SCHEMAS LIKE 'mb__isolation_%' IN ACCOUNT")]
        (let [three-hours-ago (-> (Instant/now)
                                  (.minus 3 ChronoUnit/HOURS)

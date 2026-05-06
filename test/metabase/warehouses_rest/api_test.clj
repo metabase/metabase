@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -47,6 +49,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
+   (java.util.concurrent CountDownLatch)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -113,7 +116,7 @@
     (select-keys
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
-      :position]))))
+      :position :dimension_interestingness]))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
   (merge
@@ -121,7 +124,7 @@
     :database_id   (mt/id)
     :dataset_query {:database (mt/id)
                     :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
+                    :native   {:query "SELECT * FROM VENUES"}}}
    kvs))
 
 (defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
@@ -276,6 +279,39 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
+
+(defn- find-in-clauses
+  "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
+  [hsql]
+  (let [results (volatile! [])]
+    (walk/postwalk
+     (fn [form]
+       (when (and (vector? form)
+                  (let [[op _ coll] form]
+                    (and
+                     (= :in op)
+                     (= 3 (count form))
+                     (coll? coll)
+                     (not (map? coll)))))
+         (vswap! results conj form))
+       form)
+     hsql)
+    @results))
+
+(deftest get-database-usage-info-no-large-in-test
+  (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
+    (mt/with-temp
+      [:model/Database {db-id :id} {}
+       :model/Table    _           {:db_id db-id}]
+      (let [queries    (volatile! [])
+            orig-query mdb/query]
+        (with-redefs [mdb/query (fn [hsql]
+                                  (vswap! queries conj hsql)
+                                  (orig-query hsql))]
+          (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
+        (doseq [q @queries]
+          (is (empty? (find-in-clauses q))
+              "usage_info should not generate IN clauses with inline collections"))))))
 
 (deftest ^:parallel get-database-usage-info-test-2
   (mt/with-temp
@@ -823,16 +859,17 @@
                         :tables)]
         (is (= () tables))))))
 
-(deftest ^:parallel fetch-database-metadata-skip-fields-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    table       {:db_id db-id}
-                 :model/Field    _           {:table_id (u/the-id table)}]
-    (testing "GET /api/database/:id/metadata?skip_fields=true"
-      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                        :tables
-                        first
-                        :fields)]
-        (is (= () fields))))))
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-empty-h2-app-db!
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/Field _ {:table_id (u/the-id table)}]
+      (testing "GET /api/database/:id/metadata?skip_fields=true"
+        (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                          :tables
+                          first
+                          :fields)]
+          (is (= () fields)))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -1035,20 +1072,21 @@
                     :total 0}
                    (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
-(deftest ^:parallel databases-list-can-upload-test
-  (testing "GET /api/database"
-    (let [old-ids (t2/select-pks-set :model/Database)]
-      (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temp [:model/Database _ {:engine          :postgres
-                                            :name            "The Chosen One"
-                                            :uploads_enabled uploads-enabled?
-                                            :uploads_schema_name "public"}]
-            (let [result (get-all :crowberto "database" old-ids)]
-              (is (= 1
-                     (:total result)))
-              (is (= uploads-enabled?
-                     (-> result :data first :can_upload))))))))))
+(deftest databases-list-can-upload-test
+  (mt/with-empty-h2-app-db!
+    (testing "GET /api/database"
+      (let [old-ids (t2/select-pks-set :model/Database)]
+        (doseq [uploads-enabled? [true false]]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+            (mt/with-temp [:model/Database _ {:engine              :postgres
+                                              :name                "The Chosen One"
+                                              :uploads_enabled     uploads-enabled?
+                                              :uploads_schema_name "public"}]
+              (let [result (get-all :crowberto "database" old-ids)]
+                (is (= 1
+                       (:total result)))
+                (is (= uploads-enabled?
+                       (-> result :data first :can_upload)))))))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -1187,22 +1225,22 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
-(deftest ^:parallel databases-list-include-saved-questions-tables-test-5
+(deftest databases-list-include-saved-questions-tables-test-5
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db   {:engine ::no-nested-query-support, :details {}}
-                     :model/Card     bad-card {:name            "Bad Card"
-                                               :dataset_query   {:database (u/the-id bad-db)
-                                                                 :type     :native
-                                                                 :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name         "sparrows"
-                                                                  :display_name "Sparrows"
-                                                                  :base_type    :type/Integer}]
-                                               :database_id     (u/the-id bad-db)}
-                     :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name         "finches"
-                                                                        :display_name "Finches"
-                                                                        :base_type    :type/Integer}])]
+      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
+                     :model/Card bad-card {:name            "Bad Card"
+                                           :dataset_query   {:database (u/the-id bad-db)
+                                                             :type     :native
+                                                             :native   {:query "[QUERY GOES HERE]"}}
+                                           :result_metadata [{:name         "sparrows"
+                                                              :display_name "Sparrows"
+                                                              :base_type    :type/Integer}]
+                                           :database_id     (u/the-id bad-db)}
+                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name         "finches"
+                                                                   :display_name "Finches"
+                                                                   :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1511,6 +1549,27 @@
                 (is (=?
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+
+(deftest sync-schema-executes-when-executor-busy-test
+  (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
+    (let [sync-called?  (promise)
+          blocker-latch (CountDownLatch. 1)]
+      (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
+        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db!             (constantly nil)]
+          ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
+          ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
+          ;; the quick-task timeout and gets evicted.
+          (with-redefs [quick-task/task-timeout-ms (constantly 1000)]
+            (quick-task/submit-task! (fn [] (.await blocker-latch))))
+          (try
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
+            ;; The sync task is queued behind the blocker. After the blocker times out
+            ;; and is cancelled, the sync task should execute.
+            (testing "sync executes after stuck task is evicted"
+              (is (true? (deref sync-called? 10000 :sync-never-called))))
+            (finally
+              (.countDown blocker-latch))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -2444,27 +2503,27 @@
       (mt/with-temp [:model/Database {id :id} {}]
         (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
-(setting/defsetting api-test-missing-premium-feature
+(defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
   :type :boolean
   :database-local :only
   :feature :forever-withheld-feature)
 
-(setting/defsetting api-test-missing-driver-feature
+(defsetting api-test-missing-driver-feature
   "A feature used for testing /settings-available (2)"
   :type :boolean
   :database-local :only
   ;; Something h2 will never support
   :driver-feature :test/jvm-timezone-setting)
 
-(setting/defsetting api-test-disabled-for-database
+(defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
   :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
-(setting/defsetting api-test-disabled-for-custom-reasons
+(defsetting api-test-disabled-for-custom-reasons
   "A feature used for testing /settings-available (4)"
   :type :boolean
   :database-local :only
@@ -2472,7 +2531,7 @@
                      (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
                                                         {:key :custom/two, :type :warning, :message "Also..."}])))
 
-(setting/defsetting api-test-disabled-for-multiple-reasons
+(defsetting api-test-disabled-for-multiple-reasons
   "A feature used for testing /settings-available (5)"
   :type :boolean
   :database-local :only
@@ -2522,63 +2581,6 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
-
-;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
-
-(deftest workspace-permission-endpoint-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "POST /api/database/:id/permission/workspace/check"
-      (testing "returns cached status when available"
-        ;; First call to populate cache
-        (mt/user-http-request :crowberto :post 200
-                              (format "database/%d/permission/workspace/check" (mt/id))
-                              {:cached false})
-        ;; Second call should return cached result
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)))
-          (is (some? (:checked_at response)))
-          (is (nil? (:error response)))))
-
-      (testing "runs permission check when no cache exists"
-        ;; Clear the cache
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)) (str "response: " (pr-str response)))
-          (is (some? (:checked_at response)))
-          ;; Verify it was cached
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))
-                (str "cached: " (pr-str (:workspace_permissions_status db)))))))
-
-      (testing "cached=false forces permission check"
-        ;; Set a stale cache value
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "ok" (:status response)))
-          ;; Verify cache was updated
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))))))
-
-      (testing "requires superuser"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403
-                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
-
-(deftest workspace-permission-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "returns failed status when permissions check fails"
-      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
-                                  (fn [_driver _database _table]
-                                    "permission denied")]
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "failed" (:status response)))
-          (is (= "permission denied" (:error response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |

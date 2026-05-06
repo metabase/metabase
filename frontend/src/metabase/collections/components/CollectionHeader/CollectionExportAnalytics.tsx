@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useExportAnalyticsMutation } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { hasActiveExport } from "metabase/redux/analytics-export";
 import { Box, Text, Tooltip } from "metabase/ui";
 

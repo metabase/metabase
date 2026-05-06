@@ -1,0 +1,68 @@
+name: Revenue Gauge
+entity_id: GWrIQqjbzxysSCm8PLU5j
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: gauge
+collection_id: cOlViZsEtTiNgS0ExAmP1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+visualization_settings:
+  column_settings: null
+  gauge.segments:
+  - color: '#ED6E6E'
+    label: Low
+    max: 50000
+    min: 0
+  - color: '#F9CF48'
+    label: Medium
+    max: 150000
+    min: 50000
+  - color: '#84BB4C'
+    label: High
+    max: 300000
+    min: 150000
+card_schema: 23
+serdes/meta:
+- id: GWrIQqjbzxysSCm8PLU5j
+  label: revenue_gauge
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

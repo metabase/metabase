@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
+import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -92,6 +93,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const displayValue = settingDetails?.value ?? initialValue;
 
   const handleChange = (newValue: EnterpriseSettingValue) => {
     if (newValue === initialValue) {
@@ -117,7 +119,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       ) : (
         <BasicAdminSettingInput
           name={name}
-          value={initialValue}
+          value={displayValue}
           onChange={handleChange}
           options={options}
           placeholder={placeholder}
@@ -284,11 +286,7 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
   settingDetails,
   children,
 }: SetByEnvVarWrapperProps<SettingName>) {
-  if (
-    settingDetails &&
-    settingDetails?.is_env_setting &&
-    settingDetails?.env_name
-  ) {
+  if (isSettingSetFromEnvVar(settingDetails)) {
     return (
       <Box mb="lg">
         <SettingHeader

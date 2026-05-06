@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -163,7 +164,13 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockSourceSnapshot [source-id base-url branch fail-mode files-atom]
+(defn- top-level-dir
+  "Extracts the first path segment from a file path."
+  [path]
+  (when-let [idx (str/index-of path "/")]
+    (subs path 0 idx)))
+
+(defrecord MockSourceSnapshot [source-id base-url branch fail-mode files-atom managed-dirs]
   source.p/SourceSnapshot
   (list-files [_this]
     (case fail-mode
@@ -190,28 +197,25 @@ width: fixed
       :write-files-error (throw (Exception. "Failed to write files"))
       :store-error (throw (Exception. "Store failed"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default success case - handle both writes and removals
-      (let [write-entries (remove #(or (:remove? %) (str/blank? (:path %))) files)
-            removal-prefixes (into #{} (comp (filter :remove?)
-                                             (map :path)
-                                             (remove str/blank?))
-                                   files)
+      ;; Default success case - remove all files in managed dirs, then add new files
+      (let [write-entries (remove #(str/blank? (:path %)) files)
+            write-paths (into #{} (map :path) write-entries)
             current-files (get @files-atom branch {})
-            ;; Remove files matching removal prefixes
-            after-removals (into {}
-                                 (remove (fn [[path _]]
-                                           (some #(or (= path %) (str/starts-with? path %))
-                                                 removal-prefixes))
-                                         current-files))
+            ;; Keep files outside managed dirs or in the write set
+            kept-files (into {}
+                             (filter (fn [[path _]]
+                                       (or (not (contains? managed-dirs (top-level-dir path)))
+                                           (contains? write-paths path))))
+                             current-files)
             ;; Add new files
-            final-files (into after-removals (map (juxt :path :content) write-entries))]
+            final-files (into kept-files (map (juxt :path :content) write-entries))]
         (swap! files-atom assoc branch final-files)))
     "write-files-version")
 
   (version [_this]
     "mock-version"))
 
-(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom]
+(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom managed-dirs]
   source.p/Source
   (create-branch [_this branch _base]
     (swap! branches-atom conj [branch (str branch "-ref")]))
@@ -228,14 +232,15 @@ width: fixed
     "main")
 
   (snapshot [_this]
-    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom)))
+    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs)))
 
 (defn create-mock-source
-  "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, and `:initial-files`."
-  [& {:keys [branch fail-mode initial-files]
+  "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, `:initial-files`, and `:managed-dirs`."
+  [& {:keys [branch fail-mode initial-files managed-dirs]
       :or {branch "main"
            fail-mode nil
-           initial-files nil}}]
+           initial-files nil
+           managed-dirs ingest/legal-top-level-paths}}]
   (let [default-files {"main" {"collections/M-Q4pcV0qkiyJ0kiSWECl_some_collection/M-Q4pcV0qkiyJ0kiSWECl_some_collection.yaml"
                                (generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")
 
@@ -254,7 +259,7 @@ width: fixed
 
         files-atom (atom (or initial-files default-files))
         branches-atom (atom #{["main" "main-ref"] ["develop" "develop-ref"]})]
-    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom)))
+    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom managed-dirs)))
 
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
@@ -671,3 +676,16 @@ serdes/meta:
 "
           name entity-id content (or collection-id "null")
           entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-transform-tag-yaml
+  "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
+  [entity-id name]
+  (format "created_at: '2024-08-28T09:46:18.671622Z'
+entity_id: %s
+name: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: TransformTag
+"
+          entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

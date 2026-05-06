@@ -1,6 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import { metadataProvider } from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { type Metadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
@@ -39,10 +38,6 @@ export function queryFromTableOrCardMetadata(
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
-}
-
-export function withDifferentTable(query: Query, tableId: TableId): Query {
-  return ML.with_different_table(query, tableId);
 }
 
 export function suggestedName(query: Query): string {
@@ -171,4 +166,18 @@ export function createTestNativeQuery(
   nativeQuerySpec: TestNativeQuerySpec,
 ): Query {
   return ML.test_native_query(metadataProvider, nativeQuerySpec);
+}
+
+export function createTestJsQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: TestQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestQuery(metadataProvider, querySpec));
+}
+
+export function createTestJsNativeQuery(
+  metadataProvider: MetadataProvider,
+  nativeQuerySpec: TestNativeQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestNativeQuery(metadataProvider, nativeQuerySpec));
 }

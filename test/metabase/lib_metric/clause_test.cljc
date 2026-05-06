@@ -43,7 +43,7 @@
 
 (deftest ^:parallel replace-clause-projection-test
   (testing "replace-clause replaces a projection by UUID match"
-    (let [definition     (assoc base-definition :projections [{:type :metric :id 1 :projection [projection-1 projection-2]}])
+    (let [definition     (assoc base-definition :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-1 projection-2]}])
           new-projection [:dimension {:lib/uuid uuid-1 :temporal-unit :month} "dim-a"]
           result         (lib-metric.clause/replace-clause definition projection-1 new-projection)]
       (is (= new-projection (get-in result [:projections 0 :projection 0])))
@@ -81,7 +81,7 @@
 
 (deftest ^:parallel remove-clause-projection-test
   (testing "remove-clause removes a projection by UUID match"
-    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :projection [projection-1 projection-2]}])
+    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-1 projection-2]}])
           result     (lib-metric.clause/remove-clause definition projection-1)]
       (is (= [projection-2] (get-in result [:projections 0 :projection]))))))
 
@@ -111,13 +111,13 @@
 
 (deftest ^:parallel remove-clause-first-of-many-test
   (testing "remove-clause removes first projection element of many"
-    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :projection [projection-1 projection-2 projection-3]}])
+    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-1 projection-2 projection-3]}])
           result     (lib-metric.clause/remove-clause definition projection-1)]
       (is (= [projection-2 projection-3] (get-in result [:projections 0 :projection]))))))
 
 (deftest ^:parallel remove-clause-last-of-many-test
   (testing "remove-clause removes last projection element of many"
-    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :projection [projection-1 projection-2 projection-3]}])
+    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-1 projection-2 projection-3]}])
           result     (lib-metric.clause/remove-clause definition projection-3)]
       (is (= [projection-1 projection-2] (get-in result [:projections 0 :projection]))))))
 
@@ -133,7 +133,7 @@
 
 (deftest ^:parallel swap-clauses-within-projections-test
   (testing "swap-clauses swaps two projections"
-    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :projection [projection-1 projection-2 projection-3]}])
+    (let [definition (assoc base-definition :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-1 projection-2 projection-3]}])
           result     (lib-metric.clause/swap-clauses definition projection-1 projection-2)]
       (is (= [projection-2 projection-1 projection-3]
              (get-in result [:projections 0 :projection]))))))
@@ -142,7 +142,7 @@
   (testing "swap-clauses swaps filter with projection"
     (let [definition (assoc base-definition
                             :filters [inst-filter-1 inst-filter-2]
-                            :projections [{:type :metric :id 1 :projection [projection-3]}])
+                            :projections [{:type :metric :id 1 :lib/uuid expr-uuid :projection [projection-3]}])
           result     (lib-metric.clause/swap-clauses definition filter-1 projection-3)]
       ;; filter-1's spot now has projection-3
       (is (= projection-3 (get-in result [:filters 0 :filter])))

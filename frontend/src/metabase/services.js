@@ -1,16 +1,15 @@
-import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
+import { isNative } from "metabase/common/utils/card";
+import { isEmbedPreview } from "metabase/embedding/config";
+import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
-
-import { getIsEmbedPreview } from "./get-is-embed-preview";
 
 export const internalBase = "/api";
 export const publicBase = "/api/public";
 // use different endpoints for embed previews
 export function getEmbedBase() {
-  return getIsEmbedPreview() ? "/api/preview_embed" : "/api/embed";
+  return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";
 }
 
 export const ActivityApi = {
@@ -352,6 +351,7 @@ export const UserApi = {
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
 
+// TODO: move to all functions to RTK (metabase/api/util.ts)
 export const UtilApi = {
   password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
@@ -365,6 +365,10 @@ export const UtilApi = {
 
     return href;
   },
+};
+
+export const FrontendErrorsApi = {
+  report: POST("/api/frontend-errors"),
 };
 
 export const ActionsApi = {

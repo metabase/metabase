@@ -101,11 +101,11 @@
        (when (= path-type :lib.walk/stage)
          (lib.util.match/match-lite clause
            ;; first update all the `:binning` options
-           [:field (_opts :guard :binning) _id-or-name]
+           [:field {:binning &truthy} _id-or-name]
            (update-binned-field query path (path->field-id-or-name->filters path) clause)
 
            ;; then do another pass and update `:lib/original-binning` options
-           [:field (_opts :guard :lib/original-binning) _id-or-name]
+           [:field {:lib/original-binning &truthy} _id-or-name]
            (propagate-original-binning query path clause)
 
            _ nil))))))
