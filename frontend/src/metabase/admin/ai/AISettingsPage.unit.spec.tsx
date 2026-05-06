@@ -70,7 +70,12 @@ const setup = async ({
 
   const { render } = createScenario()
     .withSettings(settingValues)
-    .withEnterprise({ tokenFeatures: { embedding_sdk: enableEmbedding } })
+    .withEnterprise({
+      tokenFeatures: {
+        embedding_sdk: enableEmbedding,
+        content_verification: contentVerification,
+      },
+    })
     .build();
 
   setupEnterprisePlugins();

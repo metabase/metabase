@@ -4,6 +4,7 @@ import { P, match } from "ts-pattern";
 import {
   setupCollectionsScenario,
   setupDashboardScenario,
+  setupNotificationChannelsScenario,
 } from "__support__/scenarios";
 import {
   setupAlertsEndpoints,
@@ -186,6 +187,8 @@ export const setup = async () => {
   setupDatabaseEndpoints(TEST_DATABASE);
   setupDatabaseListEndpoint([TEST_DATABASE]);
   setupTableEndpoints(TEST_TABLE);
+
+  setupNotificationChannelsScenario();
 
   const state = setupSdkState({ currentUser: createMockUser() });
 
