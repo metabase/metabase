@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import {
@@ -21,8 +20,8 @@ import {
 import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -43,6 +42,7 @@ function TenantSpecificCollectionPermissionsPageView({
   params,
   route,
 }: TenantSpecificCollectionPermissionsPageProps) {
+  useListPermissionsGroupsQuery({});
   const dispatch = useDispatch();
 
   const props = useMemo(() => ({ params }), [params]);
@@ -150,9 +150,6 @@ function TenantSpecificCollectionPermissionsPageView({
   );
 }
 
-export const TenantSpecificCollectionPermissionsPage = _.compose(
-  Collections.loadList({
-    entityQuery: tenantSpecificCollectionsQuery,
-  }),
-  Groups.loadList(),
-)(TenantSpecificCollectionPermissionsPageView);
+export const TenantSpecificCollectionPermissionsPage = Collections.loadList({
+  entityQuery: tenantSpecificCollectionsQuery,
+})(TenantSpecificCollectionPermissionsPageView);

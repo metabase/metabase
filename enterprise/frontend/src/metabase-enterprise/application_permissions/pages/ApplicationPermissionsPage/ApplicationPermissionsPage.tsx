@@ -1,11 +1,10 @@
 import { useCallback, useEffect } from "react";
 import type { Route } from "react-router";
-import _ from "underscore";
 
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { Groups } from "metabase/entities/groups";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { connect } from "metabase/redux";
 import {
   initializeApplicationPermissions,
@@ -51,6 +50,8 @@ const ApplicationPermissionsPage = ({
   updatePermission,
   route,
 }: ApplicationPermissionsPageProps) => {
+  useListPermissionsGroupsQuery({});
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -89,7 +90,7 @@ const ApplicationPermissionsPage = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Groups.loadList(),
-  connect(mapStateToProps, mapDispatchToProps),
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(ApplicationPermissionsPage);
