@@ -1064,7 +1064,8 @@
                    :database-position 2,
                    :base-type :type/Dictionary,
                    :name "b",
-                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c"}}}}}}
+                   :nfc-path ["a" "b"],
+                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c", :nfc-path ["a" "b" "c"]}}}}}}
              @nested-fields)))))
 
 (deftest nulls-are-last-test
@@ -1082,7 +1083,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b"}}}
+                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 
@@ -1102,7 +1103,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b"}}}
+                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 

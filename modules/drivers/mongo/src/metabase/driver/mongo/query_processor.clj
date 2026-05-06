@@ -156,12 +156,20 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
-  (concat
-   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
-   (when parent-id
-     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
-   [field-name]))
+(defn- col->name-components [{:keys [parent-id nfc-path], field-name :name, :as _col}]
+  (cond
+    ;; nfc-path is the full structural path including the field's own name, so when sync has populated it we can
+    ;; return it directly without walking parent_id.
+    (seq nfc-path)
+    nfc-path
+
+    ;; fall back to walking parent_id for fields synced before nfc-path was populated for Mongo subdocuments
+    parent-id
+    (concat (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id))
+            [field-name])
+
+    :else
+    [field-name]))
 
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
@@ -1724,8 +1732,11 @@ function(bin) {
                               source-alias  driver-api/qp.add.source-alias,
                               desired-alias driver-api/qp.add.desired-alias,
                               :as           opts}]
-            (when (seq nfc-path)
-              (let [nfc-path-str (str/join \. nfc-path)]
+            ;; nfc-path includes the field's own name as its last element, so we drop the leaf with `butlast`
+            ;; before joining; otherwise the leaf would appear twice (once in the joined prefix and once as the
+            ;; trailing source-alias).
+            (when-let [ancestor-path (and (seq nfc-path) (seq (butlast nfc-path)))]
+              (let [nfc-path-str (str/join \. ancestor-path)]
                 (-> opts
                     (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
                            driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))

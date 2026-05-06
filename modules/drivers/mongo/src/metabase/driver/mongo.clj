@@ -371,16 +371,24 @@
 
 (defn- ftree->nested-fields
   "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
-  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details."
+  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details.
+
+  Each nested field is annotated with `:nfc-path` — the chain of ancestor names from the root document, including
+  the field's own name."
   [ftree]
-  (letfn [(ftree->nested-fields*
-            [ftree*]
-            (-> ftree*
-                (cond-> (contains? ftree* :children)
-                  (-> (update :children #(set (map ftree->nested-fields* (vals %))))
-                      (set/rename-keys {:children :nested-fields})))
-                (dissoc :index)))]
-    (:nested-fields (ftree->nested-fields* ftree))))
+  (letfn [(walk
+            [field ancestor-path]
+            (let [self-path (conj ancestor-path (:name field))]
+              (cond-> field
+                (seq ancestor-path)
+                (assoc :nfc-path self-path)
+                (contains? field :children)
+                (-> (update :children
+                            (fn [children]
+                              (set (map #(walk % self-path) (vals children)))))
+                    (set/rename-keys {:children :nested-fields}))
+                true (dissoc :index))))]
+    (set (map #(walk % []) (vals (:children ftree))))))
 
 (defn- fetch-dbfields-rff
   [_metadata]
