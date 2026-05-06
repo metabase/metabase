@@ -67,7 +67,7 @@ export const CreateMenu = ({
               id: "collection",
               props: {
                 initialCollectionId: dataCollectionId,
-                pickerOptions: libraryCollectionPickerOptions,
+                pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
                 showAuthorityLevelPicker: false,
                 inDataStudio: true,
               },
@@ -154,7 +154,7 @@ export const CreateMenu = ({
   );
 };
 
-const libraryCollectionPickerOptions = {
+const LIBRARY_COLLECTION_PICKER_OPTIONS = {
   hasLibrary: true,
   hasRootCollection: false,
   hasPersonalCollections: false,
