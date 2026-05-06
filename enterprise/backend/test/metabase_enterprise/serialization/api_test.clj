@@ -514,15 +514,15 @@
                                                                     :base_type :type/Text
                                                                     :parent_id parent-id
                                                                     :nfc_path  [parent-name]}
-                     :model/Field    {convb-name :name}            {:table_id t-id
-                                                                    :base_type :type/Text
-                                                                    :nfc_path  ["data" "city"]}]
+                     :model/Field    {leaf-name :name}            {:table_id t-id
+                                                                   :base_type :type/Text
+                                                                   :nfc_path  ["data" "city"]}]
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/metadata/export"
                                                      :with-fields true)
               test-root  (m/find-first (comp #{[db-name "PUBLIC" t-name root-name]} :id) fields)
               test-child (m/find-first (comp #{[db-name "PUBLIC" t-name parent-name child-name]} :id) fields)
-              test-convb (m/find-first (comp #{[db-name "PUBLIC" t-name "data" "city"]} :id) fields)]
+              test-leaf (m/find-first (comp #{[db-name "PUBLIC" t-name "data" "city"]} :id) fields)]
           (testing "flat root: no :parent_id, no :nfc_path"
             (is (=? {:id [db-name "PUBLIC" t-name root-name]} test-root))
             (is (not (contains? test-root :parent_id)))
@@ -536,9 +536,9 @@
           (testing "JSON-unfolded leaf (no parent storage row): :parent_id omitted, :nfc_path verbatim, :id = [db schema table & nfc-path]"
             (is (=? {:id       [db-name "PUBLIC" t-name "data" "city"]
                      :nfc_path ["data" "city"]
-                     :name     convb-name}
-                    test-convb))
-            (is (not (contains? test-convb :parent_id)))))))))
+                     :name     leaf-name}
+                    test-leaf))
+            (is (not (contains? test-leaf :parent_id)))))))))
 
 (deftest metadata-export-fk-test
   (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is emitted in portable form"

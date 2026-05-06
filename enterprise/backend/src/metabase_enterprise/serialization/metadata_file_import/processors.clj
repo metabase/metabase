@@ -90,10 +90,8 @@
   (when engine (name engine)))
 
 (defn- match-databases-batch
-  "Look up every existing target Database matching any source row in the batch. Returns
-  a `{[name engine-string] → existing-id}` map. Over-includes by `(name IN ..., engine IN ...)`
-  then intersects against the actual source pairs in Clojure — keeps the SQL portable across
-  Postgres / H2 / MySQL (no `(col, col) IN ((?, ?), ...)` tuple form)."
+  "Look up every existing target Database matching any source row in the
+  batch. Returns `{[name engine-string] → existing-id}` for matching rows."
   [lines]
   (let [pairs   (into #{}
                       (map (fn [{:keys [name engine]}] [name (engine-name engine)]))
@@ -102,6 +100,9 @@
         engines (into #{} (map second) pairs)]
     (if (or (empty? names) (empty? engines))
       {}
+      ;; Over-include via `(name IN ..., engine IN ...)` then intersect in
+      ;; Clojure — keeps the SQL portable (no `(col, col) IN ((?, ?), ...)`
+      ;; tuple form across Postgres / H2 / MySQL).
       (let [rows (t2/select [:model/Database :id :name :engine]
                             {:where [:and
                                      [:in :name names]
@@ -154,17 +155,18 @@
                        {:where [:in :name names]})))))
 
 (defn- match-tables-batch
-  "Look up every existing target Table matching any of the (target-db-id, schema, name)
-  triples in `lines`, scoped to `active=true AND is_defective_duplicate=false`. Returns
-  `{[db-id schema name] → existing-id}`. Over-includes by `(db_id IN ..., name IN ...)`
-  in SQL then intersects in Clojure — keeps nil schemas correct without per-DBMS
-  IS-NULL gymnastics."
+  "Look up every existing target Table matching any of the (target-db-id,
+  schema, name) triples in `lines`, scoped to
+  `active=true AND is_defective_duplicate=false`. Returns
+  `{[db-id schema name] → existing-id}` for matching rows."
   [lines]
   (let [triples (into #{} (map (juxt :db_id :schema :name)) lines)
         db-ids  (into #{} (keep :db_id) lines)
         names   (into #{} (keep :name) lines)]
     (if (or (empty? db-ids) (empty? names))
       {}
+      ;; Over-include via `(db_id IN ..., name IN ...)` then intersect in
+      ;; Clojure — keeps nil schemas correct without per-DBMS IS-NULL gymnastics.
       (let [rows (t2/select [:model/Table :id :db_id :schema :name]
                             {:where [:and
                                      [:= :active true]
@@ -499,8 +501,8 @@
   target-parent-id) triple in `lines`. Returns
   `{[table-id name parent-id] → existing-id}`.
 
-  Scoped to `is_defective_duplicate=false` but **not** `active=true` — stubs
-  must match a later real-row arrival so phase 3 can fill them via UPDATE."
+  Scoped to `is_defective_duplicate=false`; `active` is not filtered (stubs
+  included)."
   [lines]
   ;; helper = COALESCE(parent_id, 0); matches the GENERATED column on
   ;; idx_unique_field. Defective rows store helper=NULL and never match.
@@ -718,12 +720,12 @@
                     (let [own-id (get id-by-vec own-vec)
                           fk-id  (get id-by-vec fk-vec)]
                       (when-not own-id
-                        (throw (ex-info "phase 4: row's own portable id not found in target"
+                        (throw (ex-info "fk-resolve: row's own portable id not found in target appdb"
                                         {:kind :not_found :line ln :source-id own-vec
                                          :detail (format "Row not found in target appdb: %s"
                                                          (pr-str own-vec))})))
                       (when-not fk-id
-                        (throw (ex-info "phase 4: fk_target_field_id portable id not found in target"
+                        (throw (ex-info "fk-resolve: fk_target_field_id portable id not found in target appdb"
                                         {:kind :not_found :line ln :source-id own-vec
                                          :detail (format "FK target not found in target appdb: %s"
                                                          (pr-str fk-vec))})))
@@ -735,7 +737,7 @@
                           (catch Throwable e
                             (throw (wrap-row-error e nil nil))))]
         (when (not= affected (count fk-rows))
-          (throw (ex-info "phase 4 UPDATE affected fewer rows than the fk-row batch"
+          (throw (ex-info "fk-resolve UPDATE affected fewer rows than the fk-row batch"
                           {:kind   :server_error
                            :detail (format "updated=%d fk-rows=%d" affected (count fk-rows))})))
         (let [own-by-line (zipmap (mapv first fk-rows) (mapv first tuples))]

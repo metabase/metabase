@@ -158,7 +158,7 @@
                     :fk_target_field_id valid-fk-target-id})))
 
 (deftest field-info-accepts-arraylist-portable-ids-test
-  (testing "Jackson hands us ArrayLists for nested arrays — must validate"
+  (testing "Jackson emits ArrayLists for nested arrays — must validate"
     (is (mr/validate ::schemas/field-info
                      {:id (al ["warehouse" "public" "orders" "address" "zip"])
                       :table_id (al valid-table-id)

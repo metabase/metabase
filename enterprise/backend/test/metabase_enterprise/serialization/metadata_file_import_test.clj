@@ -92,9 +92,7 @@
 ;;; ============================== Single-pass stubs ==============================
 
 (deftest single-pass-stubs-three-deep-nested-fields-test
-  (testing "fields nested 3 levels deep, interleaved (children before parents) — a
-            single pass with on-the-fly stubbing handles all of them. Stubs created
-            during phase 3 get clobbered by their real-row arrival in the same pass."
+  (testing "interleaved order (children before parents): stubs get filled by their real rows in the same pass"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "deep-nest-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:name "deep-nest-db" :engine "postgres"}]
@@ -180,12 +178,10 @@
           (is (some? (t2/select-one :model/Field :table_id (:id kept-tbl) :name "kept-fld")))
           (is (nil? (t2/select-one :model/Field :name "skipped-fld"))))))))
 
-;;; ============================== Phase 4 (fk_target_field_id) ==============================
+;;; ============================== fk-resolve ==============================
 
-(deftest fk-target-field-id-resolved-in-phase-4-test
-  (testing "after phase 3 inserts a field referenced by another field's
-            fk_target_field_id, phase 4 walks the file again and updates the
-            referencing field's fk_target_field_id to the resolved target id"
+(deftest fk-target-field-id-resolved-after-import-test
+  (testing "after import, a field's fk_target_field_id resolves to the referenced field's int id"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "fk-db" :engine :postgres}]
       (let [meta-file (json-file
                        {:databases [{:name "fk-db" :engine "postgres"}]

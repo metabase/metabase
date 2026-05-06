@@ -14,18 +14,18 @@
     - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines the
       per-row Malli schemas, shared with the parsers' callers.
 
-  Phases:
+  The loader runs four passes:
 
-    1. Databases — match by `(name, engine)`, never create. Unmatched source
+    1. databases — match by `(name, engine)`, never create. Unmatched source
        databases produce WARN logs (non-fatal).
-    2. Tables — match-or-insert by `(target-db-id, schema, name)`.
-    3. Fields — match-or-insert with on-the-fly stubs for missing parents.
-    4. Fields-finalize — walk fields again to set `fk_target_field_id`.
+    2. tables — match-or-insert by `(target-db-id, schema, name)`.
+    3. fields — match-or-insert with on-the-fly stubs for missing parents.
+    4. fk-resolve — walk fields again to set `fk_target_field_id`.
 
-  After phases 1–4 complete: a `warn-on-unfilled-stubs!` self-check scans the
-  matched databases for stubs that never got filled; operator gets a structured
-  WARN line. Then `initial_sync_status` is flipped to `\"complete\"` on every
-  matched target Database so the UI surfaces tables immediately."
+  After all four passes complete: a `warn-on-unfilled-stubs!` self-check scans
+  the matched databases for stubs that never got filled; operator gets a
+  structured WARN line. Then `initial_sync_status` is flipped to `\"complete\"`
+  on every matched target Database so the UI surfaces tables immediately."
   (:require
    [clojure.string :as str]
    [environ.core :as env]
@@ -67,7 +67,7 @@
                       {:kind :file_not_readable, :path path})))
     f))
 
-;;; ============================== Phase 1: databases ==============================
+;;; ============================== databases ==============================
 
 (defn- load-databases!
   "Stream the `databases` array, run [[processors/process-databases!]] per
@@ -85,16 +85,16 @@
                    (vswap! matched-ids conj (:target-id result))
 
                    :no-match
-                   (log/warnf "metadata-file-import: skipped source database %s (no_match): %s"
+                   (log/warnf "metadata-file-import: skipped source database %s (no matching target): %s"
                               (pr-str (:source-id result)) (:detail result)))
                  nil)
                nil
                (processors/process-databases! batch))))
     @matched-ids))
 
-;;; ============================== Phase 2: tables ==============================
+;;; ============================== tables ==============================
 
-(defn- run-phase-2!
+(defn- load-tables!
   "Stream the tables array; rows whose source `:db_id` (db name) doesn't match
   any target are logged and skipped."
   [^File file]
@@ -106,15 +106,15 @@
                  (:matched :inserted) nil
 
                  :no-target-db
-                 (log/warnf "metadata-file-import: skipped table %s (no-target-db): %s"
+                 (log/warnf "metadata-file-import: skipped table %s (no matching database): %s"
                             (pr-str (:source-id result)) (:detail result)))
                nil)
              nil
              (processors/process-tables! batch)))))
 
-;;; ============================== Phase 3: fields (single-pass with stubs) ==============================
+;;; ============================== fields ==============================
 
-(defn- run-phase-3!
+(defn- load-fields!
   "Stream the fields array; missing parents are stubbed on the fly so the file
   order doesn't matter."
   [^File file]
@@ -126,15 +126,15 @@
                  (:matched :inserted) nil
 
                  :no-target-table
-                 (log/warnf "metadata-file-import: skipped field %s (no-target-table): %s"
+                 (log/warnf "metadata-file-import: skipped field %s (no matching table): %s"
                             (pr-str (:source-id result)) (:detail result)))
                nil)
              nil
              (processors/process-fields! batch)))))
 
-;;; ============================== Phase 4: fields-fk-resolve ==============================
+;;; ============================== fk-resolve ==============================
 
-(defn- run-phase-4!
+(defn- resolve-field-fks!
   "Walk the fields array again to set `fk_target_field_id` on rows that have one."
   [^File file]
   (parsers/stream-array-batches!
@@ -142,7 +142,7 @@
    (fn [batch]
      (run! identity (processors/process-fields-fk-resolve! batch)))))
 
-;;; ============================== Post-phase-3: unfilled-stubs scan ==============================
+;;; ============================== Unfilled-stubs scan ==============================
 
 (def ^:private ^:const unfilled-stubs-sample-cap
   "Maximum number of unfilled stubs reported in the WARN line."
@@ -163,7 +163,7 @@
                             :limit unfilled-stubs-sample-cap})]
       (when (seq stubs)
         (log/warnf
-         "metadata-file-import: %d unfilled stub field(s) remain after phase-3 (sample up to %d): %s"
+         "metadata-file-import: %d unfilled stub field(s) remain after import (sample up to %d): %s"
          (count stubs)
          unfilled-stubs-sample-cap
          (pr-str (mapv (fn [{:keys [id name table_id nfc_path]}]
@@ -193,9 +193,9 @@
                        metadata-file
                        (File. ^String metadata-file))]
     (let [matched-target-db-ids (load-databases! m-file)]
-      (run-phase-2! m-file)
-      (run-phase-3! m-file)
-      (run-phase-4! m-file)
+      (load-tables! m-file)
+      (load-fields! m-file)
+      (resolve-field-fks! m-file)
       (warn-on-unfilled-stubs! matched-target-db-ids)
       (mark-databases-sync-complete! matched-target-db-ids)
       (log/infof "metadata-file-import: complete (matched-databases=%d)"

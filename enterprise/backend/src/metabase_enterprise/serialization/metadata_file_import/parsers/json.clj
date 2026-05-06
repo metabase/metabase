@@ -15,11 +15,11 @@
 (def ^:private ^ObjectMapper object-mapper (ObjectMapper.))
 
 (defn- advance-to-array!
-  "Advance `parser` from start-of-input through a top-level JSON object until we
-  enter the array valued at `target-key` (parser has just consumed the
-  START_ARRAY token). Throws `:bad_shape` if the document doesn't begin with an
-  object or the value at `target-key` isn't an array; throws `:missing_key` if
-  the key is absent."
+  "Advance `parser` from start-of-input through a top-level JSON object to the
+  array valued at `target-key` (parser has just consumed the START_ARRAY
+  token). Throws `:bad_shape` if the document doesn't begin with an object or
+  the value at `target-key` isn't an array; throws `:missing_key` if the key
+  is absent."
   [^JsonParser parser ^String target-key]
   (let [t (.nextToken parser)]
     (when-not (= t JsonToken/START_OBJECT)

@@ -28,7 +28,7 @@
 
 (deftest process-databases-emits-no-match-when-name-or-engine-differs-test
   (testing "an unmatched row emits a :no-match result with line attribution and a
-            human-readable detail string. Phase 1 is non-fatal — the loader logs and
+            human-readable detail string. Mismatches are non-fatal — the loader logs and
             skips dependents rather than aborting boot."
     (let [[result] (into [] (processors/process-databases!
                              [[7 {:name "no-such-db-zzz" :engine "h2"}]]))]
@@ -164,9 +164,9 @@
 (deftest process-tables-insert-applies-required-defaults-test
   (testing "newly-inserted tables carry the defaults the import flow requires:
             display_name (humanized from name), active=true, initial_sync_status=complete,
-            data_layer=internal — these would normally come from :model/Table's insert hooks
-            but we bypass those (see comment at the call site about set-new-table-permissions!
-            and Postgres lock exhaustion)"
+            data_layer=internal — these would normally come from :model/Table's insert hooks,
+            which the import flow bypasses (see the call-site comment about
+            set-new-table-permissions! and Postgres lock exhaustion)"
     (mt/with-temp [:model/Database {_ :id} {:name "tbl-defaults-db" :engine :postgres}]
       (let [[r] (into [] (processors/process-tables!
                           [[1 {:db_id "tbl-defaults-db" :schema "public" :name "user_profiles"}]]))
@@ -234,12 +234,12 @@
         (is (= "zip" (:name row)))
         (is (nil? (:parent_id row)))
         (is (nil? (:fk_target_field_id row))
-            "fk_target_field_id stays NULL during phase 3; phase 4 fills it in")
+            "fk_target_field_id starts NULL — set later by process-fields-fk-resolve!")
         (is (= false
                (:is_defective_duplicate
                 (first (t2/query ["SELECT is_defective_duplicate FROM metabase_field WHERE id = ?"
                                   (:target-id r)]))))
-            "phase 3 must insert with is_defective_duplicate=FALSE")))))
+            "is_defective_duplicate=FALSE on insert")))))
 
 (deftest process-fields-inserts-nested-field-test
   (testing "a nested field with :parent_id pointing at an existing parent inserts
@@ -595,8 +595,8 @@
                (:fk_target_field_id (t2/select-one :model/Field :id fld-id))))))))
 
 (deftest process-fields-fk-resolve-only-touches-fk-target-field-id-column-test
-  (testing "phase 4 writes ONLY fk_target_field_id — not parent_id, not metadata.
-            Phase 3 sets the right values once and trusts them through phase 4."
+  (testing "process-fields-fk-resolve! writes ONLY fk_target_field_id — not parent_id, not metadata.
+            process-fields! sets those once and they're trusted from then on."
     (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-touch-db" :engine :postgres}
                    :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {parent-id :id} {:table_id tbl-id :name "parent"
@@ -680,9 +680,7 @@
     (is (= [] (into [] (processors/process-fields-fk-resolve! []))))))
 
 (deftest process-fields-fk-resolve-passes-through-rows-without-fk-target-test
-  (testing "rows without :fk_target_field_id are passed through with :status :no-fk —
-            no SQL is run for them. The phase 4 batch typically arrives pre-filtered
-            by the loader, but the processor handles unfiltered batches defensively."
+  (testing "rows without :fk_target_field_id pass through with :status :no-fk; the processor handles unfiltered batches defensively"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fkfin-no-fk-db" :engine :postgres}
                    :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
                    :model/Field    {fld-id :id} {:table_id tbl-id :name "no-fk-here"

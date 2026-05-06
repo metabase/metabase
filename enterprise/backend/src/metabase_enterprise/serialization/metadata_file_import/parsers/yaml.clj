@@ -102,10 +102,10 @@
                           {:kind :bad_shape}))))
 
 (defn- advance-to-array!
-  "Advance `iter` from start-of-input through the top-level mapping until we
-  reach the `SequenceStartEvent` for `target-key`. Throws `:bad_shape` if the
-  document doesn't begin with a mapping or the value at `target-key` isn't a
-  sequence; throws `:missing_key` if the key is absent."
+  "Advance `iter` from start-of-input through the top-level mapping to the
+  `SequenceStartEvent` for `target-key`. Throws `:bad_shape` if the document
+  doesn't begin with a mapping or the value at `target-key` isn't a sequence;
+  throws `:missing_key` if the key is absent."
   [^Iterator iter ^String target-key]
   ;; consume StreamStart, DocumentStart, top-level MappingStart
   (let [e1 (.next iter)]

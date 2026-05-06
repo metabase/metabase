@@ -71,7 +71,7 @@
 (deftest reader-is-closed-after-streaming-test
   (testing "the dispatcher manages the file lifecycle: the InputStream and Reader are
             closed after streaming completes (or throws). Verified by deleting the file
-            afterward — on Windows we'd hit a sharing violation if the FD was leaked."
+            afterward — on Windows a sharing violation would surface if the FD were leaked."
     (let [file (temp-file ".json" "{\"xs\":[]}")]
       (parsers/stream-array-batches! file :xs 10 (fn [_]))
       (is (.delete file)))))
