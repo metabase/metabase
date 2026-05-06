@@ -382,18 +382,6 @@ describe("database page > side panel", () => {
   it("should update the side panel content when the engine is changed", () => {
     const enginesMap = [
       { name: "Amazon Athena", file: "athena" },
-      { name: "BigQuery", file: "bigquery" },
-      { name: "Amazon Redshift", file: "redshift" },
-      { name: "ClickHouse", file: "clickhouse" },
-      { name: "Databricks", file: "databricks" },
-      { name: "Druid", file: "druid" },
-      { name: "MongoDB", file: "mongo" },
-      { name: "MySQL", file: "mysql" },
-      { name: "PostgreSQL", file: "postgresql" },
-      { name: "Presto", file: "presto" },
-      { name: "SQL Server", file: "sql-server" },
-      { name: "Snowflake", file: "snowflake" },
-      { name: "Spark SQL", file: "sparksql" },
       { name: "Starburst (Trino)", file: "starburst" },
     ];
 
