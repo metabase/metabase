@@ -51,6 +51,7 @@
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
           (is (= {t1 #{}
                   t2 #{t1}}
                  (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
@@ -68,6 +69,8 @@
                        :model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
                                                              (transforms.tu/source-table-entry "output_2" table2)]
                                                             "final_output")]
+          (t2/update! :model/Transform t1 {:target_table_id table1})
+          (t2/update! :model/Transform t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
