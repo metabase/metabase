@@ -2194,3 +2194,22 @@
                              :where  [:and
                                       [:not= :target_db_id nil]
                                       [:= :target_table_id nil]]})))
+
+(define-migration BackfillMetabotConversationEmbeddingHostname
+  ;; Carry over the hostname portion of metabot_conversation.embed_url into the
+  ;; new embedding_hostname column. Only the hostname is migrated — the path
+  ;; portion of pre-flag embed_url values has no consent basis under
+  ;; analytics-pii-retention-enabled and is intentionally discarded.
+  (run! (fn [{:keys [id embed_url]}]
+          (let [^java.net.URI parsed (try (java.net.URI. ^String embed_url) (catch Exception _ nil))
+                host                 (some-> parsed .getHost not-empty)
+                host*                (when host (subs host 0 (min (count host) 512)))]
+            (when host*
+              (t2/query {:update :metabot_conversation
+                         :set    {:embedding_hostname host*}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :embed_url]
+                             :from   [:metabot_conversation]
+                             :where  [:and
+                                      [:not= :embed_url nil]
+                                      [:= :embedding_hostname nil]]})))
