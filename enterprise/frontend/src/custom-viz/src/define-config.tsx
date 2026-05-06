@@ -43,6 +43,7 @@ export function defineConfig<TSettings extends Record<string, unknown>>(
 
   return {
     ...rest,
+    VisualizationComponent,
     mount(
       container: Element,
       initial: CustomVisualizationProps<TSettings>,
