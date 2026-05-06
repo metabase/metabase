@@ -120,6 +120,16 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     initializeIframeResizer();
   });
 
+  const externalCardDataValue = useMemo(
+    () => ({
+      cards: document?.cards ?? {},
+      documentUuid: uuid,
+      loadCardQuery: (cardId: number) =>
+        PublicApi.documentCardQuery({ uuid, cardId }) as Promise<Dataset>,
+    }),
+    [document?.cards, uuid],
+  );
+
   return (
     <EmbedFrame
       theme={theme}
@@ -139,17 +149,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
         }}
       >
         {document && editor && (
-          <ExternalCardDataProvider
-            value={{
-              cards: document.cards ?? {},
-              documentUuid: uuid,
-              loadCardQuery: (cardId) =>
-                PublicApi.documentCardQuery({
-                  uuid,
-                  cardId,
-                }) as Promise<Dataset>,
-            }}
-          >
+          <ExternalCardDataProvider value={externalCardDataValue}>
             <Box maw={900} mx="auto" p="xl" w="100%">
               <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
               <div className={S.editorContent}>
