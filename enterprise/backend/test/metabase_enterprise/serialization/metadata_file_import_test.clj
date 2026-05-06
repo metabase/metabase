@@ -8,15 +8,17 @@
   File contents use the **portable-id wire format**: identifiers are natural
   keys, never source-instance integer ids."
   (:require
-   [cheshire.core :as cheshire]
    [clj-yaml.core :as yaml]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import :as loader]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ============================== Test helpers ==============================
 
@@ -27,7 +29,7 @@
     f))
 
 (defn- json-file ^File [data]
-  (temp-file ".json" (cheshire/encode data)))
+  (temp-file ".json" (json/encode data)))
 
 (defn- yaml-file ^File [data]
   (temp-file ".yaml" (yaml/generate-string data)))

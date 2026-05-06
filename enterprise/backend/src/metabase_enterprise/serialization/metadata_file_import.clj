@@ -189,18 +189,18 @@
 
   Returns `:ok` on success; throws on hard-fail conditions."
   [metadata-file]
-  (let [^File m-file (if (instance? File metadata-file)
-                       metadata-file
-                       (File. ^String metadata-file))]
-    (let [matched-target-db-ids (load-databases! m-file)]
-      (load-tables! m-file)
-      (load-fields! m-file)
-      (resolve-field-fks! m-file)
-      (warn-on-unfilled-stubs! matched-target-db-ids)
-      (mark-databases-sync-complete! matched-target-db-ids)
-      (log/infof "metadata-file-import: complete (matched-databases=%d)"
-                 (count matched-target-db-ids))
-      :ok)))
+  (let [^File m-file              (if (instance? File metadata-file)
+                                    metadata-file
+                                    (File. ^String metadata-file))
+        matched-target-db-ids     (load-databases! m-file)]
+    (load-tables! m-file)
+    (load-fields! m-file)
+    (resolve-field-fks! m-file)
+    (warn-on-unfilled-stubs! matched-target-db-ids)
+    (mark-databases-sync-complete! matched-target-db-ids)
+    (log/infof "metadata-file-import: complete (matched-databases=%d)"
+               (count matched-target-db-ids))
+    :ok))
 
 (defn initialize-from-env!
   "If `MB_TABLE_METADATA_PATH` is set in the environment, run the import

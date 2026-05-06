@@ -7,7 +7,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.serialization.metadata-file-import.parsers.json :as json]
-   [metabase-enterprise.serialization.metadata-file-import.parsers.yaml :as yaml])
+   [metabase-enterprise.serialization.metadata-file-import.parsers.yaml :as yaml]
+   [metabase.util :as u])
   (:import
    (java.io File FileInputStream InputStreamReader)
    (java.nio.charset StandardCharsets)))
@@ -18,7 +19,7 @@
   "Return `:json`, `:yaml`, or throw. Extension match is case-insensitive."
   [^File file]
   (let [name  (.getName file)
-        lower (str/lower-case name)]
+        lower (u/lower-case-en name)]
     (cond
       (str/ends-with? lower ".json") :json
       (str/ends-with? lower ".yaml") :yaml

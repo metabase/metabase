@@ -54,15 +54,13 @@
             :kind :invalid_input, the file line number, and the row's portable
             source id (its :name) — the loader uses these for the boot-time error
             message"
-    (try
-      (into [] (processors/process-databases!
-                [[42 {:name "missing-engine"}]]))   ;; no :engine
-      (is false "should have thrown")
-      (catch clojure.lang.ExceptionInfo e
-        (let [data (ex-data e)]
-          (is (= :invalid_input (:kind data)))
-          (is (= 42 (:line data)))
-          (is (= "missing-engine" (:source-id data))))))))
+    (let [e    (is (thrown? clojure.lang.ExceptionInfo
+                            (into [] (processors/process-databases!
+                                      [[42 {:name "missing-engine"}]]))))   ;; no :engine
+          data (ex-data e)]
+      (is (= :invalid_input (:kind data)))
+      (is (= 42 (:line data)))
+      (is (= "missing-engine" (:source-id data))))))
 
 (deftest process-databases-preserves-input-order-test
   (testing "results are in input order regardless of internal SELECT ordering or
@@ -123,9 +121,9 @@
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "old description"}]
-      (into [] (processors/process-tables!
-                [[1 {:db_id "tbl-patch-db" :schema "public" :name "orders"
-                     :description "new description"}]]))
+      (is (not-empty (into [] (processors/process-tables!
+                               [[1 {:db_id "tbl-patch-db" :schema "public" :name "orders"
+                                    :description "new description"}]]))))
       (is (= "new description"
              (:description (t2/select-one :model/Table :id tbl-id)))))))
 
@@ -134,8 +132,8 @@
     (mt/with-temp [:model/Database {db-id :id} {:name "tbl-no-patch-db" :engine :postgres}
                    :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "orders"
                                               :description "preserved"}]
-      (into [] (processors/process-tables!
-                [[1 {:db_id "tbl-no-patch-db" :schema "public" :name "orders"}]]))
+      (is (not-empty (into [] (processors/process-tables!
+                               [[1 {:db_id "tbl-no-patch-db" :schema "public" :name "orders"}]]))))
       (is (= "preserved"
              (:description (t2/select-one :model/Table :id tbl-id)))))))
 
@@ -171,7 +169,7 @@
       (let [[r] (into [] (processors/process-tables!
                           [[1 {:db_id "tbl-defaults-db" :schema "public" :name "user_profiles"}]]))
             row (t2/select-one :model/Table :id (:target-id r))]
-        (is (= true                (:active row)))
+        (is (true?                 (:active row)))
         (is (= "complete"          (:initial_sync_status row)))
         (is (= :internal           (:data_layer row))
             "data_layer is read back as a keyword via :model/Table's hooks")
@@ -182,16 +180,14 @@
   (testing "a malformed row throws ex-info with :kind :invalid_input, the line number,
             and the row's portable source id"
     (mt/with-temp [:model/Database {_ :id} {:name "tbl-validate-db" :engine :postgres}]
-      (try
-        (into [] (processors/process-tables!
-                  [[42 {:db_id "tbl-validate-db" :schema "public"}]]))   ;; missing :name
-        (is false "should have thrown")
-        (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            (is (= :invalid_input (:kind data)))
-            (is (= 42 (:line data)))
-            (is (= ["tbl-validate-db" "public" nil] (:source-id data))
-                "portable source id derived from (:db_id :schema :name) — :name is nil since it's missing")))))))
+      (let [e    (is (thrown? clojure.lang.ExceptionInfo
+                              (into [] (processors/process-tables!
+                                        [[42 {:db_id "tbl-validate-db" :schema "public"}]]))))   ;; missing :name
+            data (ex-data e)]
+        (is (= :invalid_input (:kind data)))
+        (is (= 42 (:line data)))
+        (is (= ["tbl-validate-db" "public" nil] (:source-id data))
+            "portable source id derived from (:db_id :schema :name) — :name is nil since it's missing")))))
 
 (deftest process-tables-preserves-input-order-test
   (testing "results are in input order regardless of internal SELECT/INSERT ordering or
@@ -310,21 +306,21 @@
                                                  :base_type "type/Text"
                                                  :description "old"
                                                  :semantic_type "type/Quantity"}]
-      (into [] (processors/process-fields!
-                [[1 {:id ["fld-clobber-db" "public" "t" "zip"]
-                     :table_id ["fld-clobber-db" "public" "t"]
-                     :name "zip"
-                     :base_type "type/Text"
-                     :description "new desc"
-                     :semantic_type "type/ZipCode"
-                     :effective_type "type/Text"
-                     :coercion_strategy "Coercion/String->Float"}]]))
+      (is (not-empty (into [] (processors/process-fields!
+                               [[1 {:id ["fld-clobber-db" "public" "t" "zip"]
+                                    :table_id ["fld-clobber-db" "public" "t"]
+                                    :name "zip"
+                                    :base_type "type/Text"
+                                    :description "new desc"
+                                    :semantic_type "type/ZipCode"
+                                    :effective_type "type/Text"
+                                    :coercion_strategy "Coercion/String->Float"}]]))))
       (let [row (t2/select-one :model/Field :id fld-id)]
         (is (= "new desc"              (:description row)))
         (is (= :type/ZipCode           (:semantic_type row)))
         (is (= :type/Text              (:effective_type row)))
         (is (= :Coercion/String->Float (:coercion_strategy row)))
-        (is (= true                    (:active row)))))))
+        (is (true?                     (:active row)))))))
 
 (deftest process-fields-clobber-skips-cols-source-omits-test
   (testing "when the source row omits an optional metadata key, that column on the
@@ -336,11 +332,11 @@
                                                  :base_type "type/Text"
                                                  :description "preserved"
                                                  :semantic_type "type/ZipCode"}]
-      (into [] (processors/process-fields!
-                [[1 {:id ["fld-no-patch-db" "public" "t" "zip"]
-                     :table_id ["fld-no-patch-db" "public" "t"]
-                     :name "zip"
-                     :base_type "type/Text"}]]))
+      (is (not-empty (into [] (processors/process-fields!
+                               [[1 {:id ["fld-no-patch-db" "public" "t" "zip"]
+                                    :table_id ["fld-no-patch-db" "public" "t"]
+                                    :name "zip"
+                                    :base_type "type/Text"}]]))))
       (let [row (t2/select-one :model/Field :id fld-id)]
         (is (= "preserved"   (:description row)))
         (is (= :type/ZipCode (:semantic_type row)))))))
@@ -364,17 +360,15 @@
             with :kind :invalid_input, the line number, and the row's portable id"
     (mt/with-temp [:model/Database {db-id :id}  {:name "fld-validate-db" :engine :postgres}
                    :model/Table    {_ :id}      {:db_id db-id :schema "public" :name "t"}]
-      (try
-        (into [] (processors/process-fields!
-                  [[42 {:id ["fld-validate-db" "public" "t" "zip"]
-                        :table_id ["fld-validate-db" "public" "t"]
-                        :name "zip"}]]))   ;; missing :base_type
-        (is false "should have thrown")
-        (catch clojure.lang.ExceptionInfo e
-          (let [data (ex-data e)]
-            (is (= :invalid_input (:kind data)))
-            (is (= 42 (:line data)))
-            (is (= ["fld-validate-db" "public" "t" "zip"] (:source-id data)))))))))
+      (let [e    (is (thrown? clojure.lang.ExceptionInfo
+                              (into [] (processors/process-fields!
+                                        [[42 {:id ["fld-validate-db" "public" "t" "zip"]
+                                              :table_id ["fld-validate-db" "public" "t"]
+                                              :name "zip"}]]))))   ;; missing :base_type
+            data (ex-data e)]
+        (is (= :invalid_input (:kind data)))
+        (is (= 42 (:line data)))
+        (is (= ["fld-validate-db" "public" "t" "zip"] (:source-id data)))))))
 
 (deftest process-fields-preserves-input-order-test
   (testing "results are in input order regardless of which rows match, insert, or miss"
@@ -466,7 +460,7 @@
             "child got inserted; parent's real row matched the stub child created")
         (is (false? (processors/stub-row? parent-row))
             "after clobber, the parent is no longer marked as a stub")
-        (is (= true (:active parent-row))     "clobber flipped active=false to true")
+        (is (true? (:active parent-row))      "clobber flipped active=false to true")
         (is (= :type/Structured (:base_type parent-row)) "base_type clobbered from type/* to real")
         (is (= "json"          (:database_type parent-row)) "database_type clobbered from __stub__ to real")
         (is (= "real description" (:description parent-row)))))))
@@ -515,7 +509,7 @@
             row   (t2/select-one :model/Field :id stub-id)]
         (is (= :matched (:status r))           "match found the inactive stub")
         (is (= stub-id (:target-id r))         "same int id — no insert, just clobber")
-        (is (= true (:active row))             "stub flipped to active=true")
+        (is (true? (:active row))              "stub flipped to active=true")
         (is (= :type/Structured (:base_type row)) "base_type clobbered to real")
         (is (= "json" (:database_type row))    "database_type clobbered from __stub__ to real")))))
 
@@ -619,7 +613,7 @@
                        :nfc_path ["parent"]
                        :base_type "type/Text" :database_type "text"
                        :fk_target_field_id ["fkfin-touch-db" "public" "t" "fk-target"]}]]]
-        (into [] (processors/process-fields-fk-resolve! batch))
+        (is (not-empty (into [] (processors/process-fields-fk-resolve! batch))))
         (let [row (t2/select-one :model/Field :id fld-id)]
           (is (= tgt-fk            (:fk_target_field_id row)) "fk_target_field_id is set")
           (is (= parent-id         (:parent_id row))          "parent_id is preserved")
@@ -654,7 +648,7 @@
                        :table_id ["fkfin-batch-db" "public" "t"] :name "ref-3"
                        :base_type "type/Integer" :database_type "integer"
                        :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]]]
-        (into [] (processors/process-fields-fk-resolve! batch))
+        (is (not-empty (into [] (processors/process-fields-fk-resolve! batch))))
         (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-1))))
         (is (= tgt-b (:fk_target_field_id (t2/select-one :model/Field :id fld-2))))
         (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-3))))))))
@@ -662,18 +656,16 @@
 (deftest process-fields-fk-resolve-validation-failure-throws-with-attribution-test
   (testing "a malformed row (missing required key) throws ex-info with :kind :invalid_input
             and the row's portable field id"
-    (try
-      (into [] (processors/process-fields-fk-resolve!
-                [[42 {:id ["fkfin-db" "public" "t" "x"]
-                      :table_id ["fkfin-db" "public" "t"]
-                      :name "x"      ;; missing :base_type
-                      :fk_target_field_id ["fkfin-db" "public" "t" "y"]}]]))
-      (is false "should have thrown")
-      (catch clojure.lang.ExceptionInfo e
-        (let [data (ex-data e)]
-          (is (= :invalid_input (:kind data)))
-          (is (= 42 (:line data)))
-          (is (= ["fkfin-db" "public" "t" "x"] (:source-id data))))))))
+    (let [e    (is (thrown? clojure.lang.ExceptionInfo
+                            (into [] (processors/process-fields-fk-resolve!
+                                      [[42 {:id ["fkfin-db" "public" "t" "x"]
+                                            :table_id ["fkfin-db" "public" "t"]
+                                            :name "x"      ;; missing :base_type
+                                            :fk_target_field_id ["fkfin-db" "public" "t" "y"]}]]))))
+          data (ex-data e)]
+      (is (= :invalid_input (:kind data)))
+      (is (= 42 (:line data)))
+      (is (= ["fkfin-db" "public" "t" "x"] (:source-id data))))))
 
 (deftest process-fields-fk-resolve-empty-batch-test
   (testing "empty input → empty output, no SQL"
@@ -700,7 +692,7 @@
   (testing "results are in input order"
     (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-order-db" :engine :postgres}
                    :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {tgt :id}      {:table_id tbl-id :name "tgt"
+                   :model/Field    {_tgt :id}     {:table_id tbl-id :name "tgt"
                                                    :base_type "type/Integer" :database_type "integer"}
                    :model/Field    {a :id}        {:table_id tbl-id :name "a"
                                                    :base_type "type/Integer" :database_type "integer"}

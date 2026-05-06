@@ -444,57 +444,61 @@
               (recur (vec (butlast pid)) (conj missing pid)))))))))
 
 ;; TODO: use or delete
-(defn- match-fields-batch-loose-in
-  "Reference implementation: loose IN + Clojure intersect. Replaced by
+(comment
+  #_{:clj-kondo/ignore [:unused-private-var]}
+  (defn- match-fields-batch-loose-in
+    "Reference implementation: loose IN + Clojure intersect. Replaced by
   [[match-fields-batch]] — loose IN over-includes by `|tbl-ids| × |names|`."
-  [lines]
-  (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
-        tbl-ids (into #{} (keep :table_id) lines)
-        names   (into #{} (keep :name) lines)]
-    (if (or (empty? tbl-ids) (empty? names))
-      {}
-      (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
-                            {:where [:and
-                                     [:= :is_defective_duplicate false]
-                                     [:in :table_id tbl-ids]
-                                     [:in :name names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id table_id name parent_id]}]
-                           [[table_id name parent_id] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
+    [lines]
+    (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
+          tbl-ids (into #{} (keep :table_id) lines)
+          names   (into #{} (keep :name) lines)]
+      (if (or (empty? tbl-ids) (empty? names))
+        {}
+        (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
+                              {:where [:and
+                                       [:= :is_defective_duplicate false]
+                                       [:in :table_id tbl-ids]
+                                       [:in :name names]]})]
+          (into {}
+                (comp (map (fn [{:keys [id table_id name parent_id]}]
+                             [[table_id name parent_id] id]))
+                      (filter (fn [[triple _]] (contains? triples triple))))
+                rows))))))
 
 ;; TODO: use or delete
-(defn- match-fields-batch-values-join
-  "Reference implementation: INNER JOIN against an inline VALUES table. Replaced
+(comment
+  #_{:clj-kondo/ignore [:unused-private-var]}
+  (defn- match-fields-batch-values-join
+    "Reference implementation: INNER JOIN against an inline VALUES table. Replaced
   by [[match-fields-batch]] — can't cleanly probe `idx_unique_field` because the
   Postgres planner doesn't rewrite OR-of-IS-NULL into a helper-column equality."
-  [lines]
-  (let [triples (vec (into #{} (map (juxt :table_id :name :parent_id)) lines))]
-    (if (empty? triples)
-      {}
-      (let [n            (count triples)
-            tuple-sql    (fn [idx]
-                           (if (zero? idx)
-                             "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
-                             "(?, ?, ?)"))
-            values-sql   (str/join ", " (map tuple-sql (range n)))
-            params       (into [] cat triples)
-            sql          (str "SELECT f.id AS id, f.table_id AS table_id, "
-                              "       f.name AS name, f.parent_id AS parent_id "
-                              "FROM metabase_field f "
-                              "INNER JOIN (VALUES " values-sql ") AS "
-                              "  v(table_id, name, parent_id) "
-                              "  ON f.table_id = v.table_id "
-                              "  AND f.name = v.name "
-                              "  AND ((f.parent_id = v.parent_id) "
-                              "       OR (f.parent_id IS NULL AND v.parent_id IS NULL)) "
-                              "WHERE f.is_defective_duplicate = false")
-            rows         (t2/query (into [sql] params))]
-        (into {}
-              (map (fn [{:keys [id table_id name parent_id]}]
-                     [[table_id name parent_id] id]))
-              rows)))))
+    [lines]
+    (let [triples (vec (into #{} (map (juxt :table_id :name :parent_id)) lines))]
+      (if (empty? triples)
+        {}
+        (let [n            (count triples)
+              tuple-sql    (fn [idx]
+                             (if (zero? idx)
+                               "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
+                               "(?, ?, ?)"))
+              values-sql   (str/join ", " (map tuple-sql (range n)))
+              params       (into [] cat triples)
+              sql          (str "SELECT f.id AS id, f.table_id AS table_id, "
+                                "       f.name AS name, f.parent_id AS parent_id "
+                                "FROM metabase_field f "
+                                "INNER JOIN (VALUES " values-sql ") AS "
+                                "  v(table_id, name, parent_id) "
+                                "  ON f.table_id = v.table_id "
+                                "  AND f.name = v.name "
+                                "  AND ((f.parent_id = v.parent_id) "
+                                "       OR (f.parent_id IS NULL AND v.parent_id IS NULL)) "
+                                "WHERE f.is_defective_duplicate = false")
+              rows         (t2/query (into [sql] params))]
+          (into {}
+                (map (fn [{:keys [id table_id name parent_id]}]
+                       [[table_id name parent_id] id]))
+                rows))))))
 
 (defn- match-fields-batch
   "Look up every existing target Field matching any (target-table-id, name,

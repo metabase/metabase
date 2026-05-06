@@ -3,11 +3,12 @@
   with the right extension, then asserts that streaming the file produces the
   expected batches."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers])
   (:import
    (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 (defn- temp-file ^File [suffix content]
   (let [f (File/createTempFile "parsers-test-" suffix)]
@@ -15,7 +16,7 @@
     (spit f content)
     f))
 
-(defn- collect-batches [^File file array-key batch-size]
+(defn- collect-batches! [^File file array-key batch-size]
   (let [batches (atom [])]
     (parsers/stream-array-batches! file array-key batch-size
                                    (fn [batch] (swap! batches conj (vec batch))))
@@ -26,7 +27,7 @@
     (let [file (temp-file ".json" "{\"databases\":[{\"id\":17,\"name\":\"pg\",\"engine\":\"postgres\"}]}")]
       (try
         (is (= [[[1 {:id 17 :name "pg" :engine "postgres"}]]]
-               (collect-batches file :databases 100)))
+               (collect-batches! file :databases 100)))
         (finally (.delete file))))))
 
 (deftest dispatches-yaml-extension-to-yaml-parser-test
@@ -34,7 +35,7 @@
     (let [file (temp-file ".yaml" "databases:\n- id: 17\n  name: pg\n  engine: postgres\n")]
       (try
         (is (= [[[1 {:id 17 :name "pg" :engine "postgres"}]]]
-               (collect-batches file :databases 100)))
+               (collect-batches! file :databases 100)))
         (finally (.delete file))))))
 
 (deftest dispatches-yml-extension-to-yaml-parser-test
@@ -42,7 +43,7 @@
     (let [file (temp-file ".yml" "xs:\n- v: 1\n- v: 2\n")]
       (try
         (is (= [[[1 {:v 1}] [2 {:v 2}]]]
-               (collect-batches file :xs 100)))
+               (collect-batches! file :xs 100)))
         (finally (.delete file))))))
 
 (deftest unknown-extension-throws-test
@@ -50,7 +51,7 @@
     (let [file (temp-file ".xml" "<not-supported/>")]
       (try
         (try
-          (collect-batches file :anything 10)
+          (collect-batches! file :anything 10)
           (is false "should have thrown")
           (catch clojure.lang.ExceptionInfo e
             (is (= :unknown_format (:kind (ex-data e))))
@@ -62,8 +63,8 @@
     (let [json-file (temp-file ".JSON" "{\"xs\":[{\"v\":1}]}")
           yaml-file (temp-file ".Yaml" "xs:\n- v: 1\n")]
       (try
-        (is (= [[[1 {:v 1}]]] (collect-batches json-file :xs 100)))
-        (is (= [[[1 {:v 1}]]] (collect-batches yaml-file :xs 100)))
+        (is (= [[[1 {:v 1}]]] (collect-batches! json-file :xs 100)))
+        (is (= [[[1 {:v 1}]]] (collect-batches! yaml-file :xs 100)))
         (finally
           (.delete json-file)
           (.delete yaml-file))))))

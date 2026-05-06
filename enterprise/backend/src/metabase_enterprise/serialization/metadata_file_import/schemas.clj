@@ -12,6 +12,8 @@
   (:require
    [metabase.util.malli.registry :as mr]))
 
+(set! *warn-on-reflection* true)
+
 (defn- nilable-string? [x] (or (nil? x) (string? x)))
 
 (mr/def ::portable-database-id :string)

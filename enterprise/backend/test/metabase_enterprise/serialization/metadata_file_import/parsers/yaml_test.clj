@@ -8,7 +8,7 @@
   (:import
    (java.io StringReader)))
 
-(defn- collect-batches
+(defn- collect-batches!
   [yaml-string array-key batch-size]
   (let [batches (atom [])]
     (with-open [r (StringReader. yaml-string)]
@@ -27,7 +27,7 @@
                        "- id: 18\n"
                        "  name: '18'\n"          ;; quoted — stays string
                        "  engine: h2\n")
-          batches (collect-batches yaml :databases 100)]
+          batches (collect-batches! yaml :databases 100)]
       (is (= 1 (count batches)))
       (is (= [[1 {:id 17 :name "pg" :engine "postgres"}]
               [2 {:id 18 :name "18" :engine "h2"}]]
@@ -37,7 +37,7 @@
   (testing "line-num is 1-indexed and continues across batch boundaries"
     (let [yaml    (apply str "xs:\n"
                          (for [i (range 1 6)] (format "- v: %d\n" i)))
-          batches (collect-batches yaml :xs 2)]
+          batches (collect-batches! yaml :xs 2)]
       (is (= 3 (count batches)))
       (is (= [[1 {:v 1}] [2 {:v 2}]]      (nth batches 0)))
       (is (= [[3 {:v 3}] [4 {:v 4}]]      (nth batches 1)))
@@ -45,18 +45,18 @@
 
 (deftest empty-array-invokes-callback-zero-times-test
   (testing "empty named array → no callback invocations, no throw"
-    (is (= [] (collect-batches "xs: []\n" :xs 100)))))
+    (is (= [] (collect-batches! "xs: []\n" :xs 100)))))
 
 (deftest accepts-keyword-or-string-array-key-test
   (testing "array-key can be passed as keyword or string"
     (let [yaml "databases:\n- id: 1\n"]
-      (is (= [[[1 {:id 1}]]] (collect-batches yaml :databases 10)))
-      (is (= [[[1 {:id 1}]]] (collect-batches yaml "databases" 10))))))
+      (is (= [[[1 {:id 1}]]] (collect-batches! yaml :databases 10)))
+      (is (= [[[1 {:id 1}]]] (collect-batches! yaml "databases" 10))))))
 
 (deftest missing-array-key-throws-shape-error-test
   (testing "missing target key throws ex-info with :kind :missing_key"
     (try
-      (collect-batches "other: []\n" :databases 10)
+      (collect-batches! "other: []\n" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (is (= :missing_key (:kind (ex-data e))))
@@ -65,7 +65,7 @@
 (deftest non-sequence-value-at-key-throws-shape-error-test
   (testing "if the value at the target key is a mapping (not a sequence), throws :bad_shape"
     (try
-      (collect-batches "databases:\n  not: an array\n" :databases 10)
+      (collect-batches! "databases:\n  not: an array\n" :databases 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (is (= :bad_shape (:kind (ex-data e))))))))
@@ -84,13 +84,13 @@
                        "  null_empty:\n"
                        "  string_quoted: '42'\n"
                        "  string_plain: foo\n")
-          [[_ row]] (first (collect-batches yaml :xs 10))]
+          [[_ row]] (first (collect-batches! yaml :xs 10))]
       (is (= 42        (:int_val row)))
       (is (= -7        (:neg_int row)))
       (is (= 3.14      (:float_val row)))
-      (is (= true      (:bool_t row)))
+      (is (true?       (:bool_t row)))
       (is (= false     (:bool_f row)))
-      (is (= true      (:bool_upper row)))
+      (is (true?       (:bool_upper row)))
       (is (nil?        (:null_tilde row)))
       (is (nil?        (:null_word row)))
       (is (nil?        (:null_empty row)))
@@ -100,11 +100,11 @@
 (deftest aliases-rejected-test
   (testing "aliases would let one file element refer to another — hard-fail"
     (try
-      (collect-batches (str "shared: &anchor\n"
-                            "  k: v\n"
-                            "xs:\n"
-                            "- *anchor\n")
-                       :xs 10)
+      (collect-batches! (str "shared: &anchor\n"
+                             "  k: v\n"
+                             "xs:\n"
+                             "- *anchor\n")
+                        :xs 10)
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (is (= :unsupported_alias (:kind (ex-data e))))))))
@@ -123,18 +123,18 @@
                        "- 5\n"
                        "databases:\n"
                        "- id: 99\n")
-          batches (collect-batches yaml :databases 10)]
+          batches (collect-batches! yaml :databases 10)]
       (is (= [[[1 {:id 99}]]] batches)))))
 
 (deftest exact-batch-size-emits-single-batch-test
   (testing "boundary: when item count equals batch size, callback fires exactly once"
     (let [yaml    "xs:\n- v: 1\n- v: 2\n"
-          batches (collect-batches yaml :xs 2)]
+          batches (collect-batches! yaml :xs 2)]
       (is (= 1 (count batches)))
       (is (= 2 (count (first batches)))))))
 
 (deftest single-item-with-batch-size-1-test
   (testing "boundary: batch size 1 fires the callback once per item"
     (let [yaml    "xs:\n- v: 1\n- v: 2\n- v: 3\n"
-          batches (collect-batches yaml :xs 1)]
+          batches (collect-batches! yaml :xs 1)]
       (is (= 3 (count batches))))))
