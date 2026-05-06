@@ -32,10 +32,13 @@
   []
   (subs (str (random-uuid)) 0 8))
 
+(def workspaces-supported-dwh-drivers
+  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery :snowflake})
+
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
 (deftest ^:synchronized workspace-full-e2e-test
-  (mt/test-driver :postgres
+  (mt/test-drivers workspaces-supported-dwh-drivers
     (mt/with-premium-features #{:workspaces}
       (testing "transform run on a workspaced DB → app db + describe-database stay in the input schema"
         (let [admin-driver driver/*driver*
@@ -171,7 +174,7 @@
                                             :database_id   (:id ws-db)
                                             :dataset_query {:database (:id ws-db)
                                                             :type     :native
-                                                            :native   {:query (format "SELECT * FROM \"%s\".\"%s\"" isolation-schema #p to_table_name)}}}]
+                                                            :native   {:query (format "SELECT * FROM \"%s\".\"%s\"" isolation-schema to_table_name)}}}]
                               (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                 (testing "querying the isolation table directly works like querying any other table"
                                   (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
