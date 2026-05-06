@@ -2281,8 +2281,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2315,8 +2314,7 @@
            lib-be
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
