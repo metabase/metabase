@@ -5,10 +5,10 @@ import _ from "underscore";
 import {
   createCardPublicLink,
   deleteCardPublicLink,
+  timelineEventApi,
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
-import { TimelineEvents } from "metabase/entities/timeline-events";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
@@ -601,14 +601,11 @@ export const visibleTimelineEventIds = createReducer<number[]>(
           return state.filter((eventId) => !eventIdsToHide.includes(eventId));
         },
       )
-      .addCase<
-        string,
-        { type: string; payload: { timelineEvent: { id: number } } }
-      >(TimelineEvents.actionTypes.CREATE, (state, action) => [
-        ...state,
-        action.payload.timelineEvent.id,
-      ])
-      .addCase(RESET_QB, () => []);
+      .addCase(RESET_QB, () => [])
+      .addMatcher(
+        timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
+        (state, action) => [...state, action.payload.id],
+      );
   },
 );
 

@@ -179,7 +179,6 @@ export const moveDashCardToTab =
     dispatch(
       addUndo({
         message: getDashCardMoveToTabUndoMessage(dashCard),
-        undo: true,
         action: () => {
           dispatch(
             undoMoveDashCardToTab({

@@ -11,7 +11,7 @@
    [metabase.driver :as driver]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -984,15 +984,14 @@
                  (:write_data_details db))))))))
 
 (deftest ^:parallel set-role-statement-test
-  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
-    ;; No special characters
-    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
-    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
-    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
-
-    ;; Special characters
-    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
-    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+  (testing "set-role-statement should return a parameterized USE ROLE command"
+    (are [role expected] (= expected
+                            (driver.sql-jdbc/set-role-statement :snowflake nil role))
+      "MY_ROLE"        ["USE ROLE identifier(?);" "MY_ROLE"]
+      "ROLE123"        ["USE ROLE identifier(?);" "ROLE123"]
+      "lowercase_role" ["USE ROLE identifier(?);" "lowercase_role"]
+      "Role.123"       ["USE ROLE identifier(?);" "Role.123"]
+      "$role"          ["USE ROLE identifier(?);" "$role"])))
 
 (deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"

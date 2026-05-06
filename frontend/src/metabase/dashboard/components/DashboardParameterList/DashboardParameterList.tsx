@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { type ComponentProps, forwardRef, useMemo } from "react";
 
 import {
@@ -7,7 +6,6 @@ import {
   setParameterValue,
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { useDispatch } from "metabase/redux";
@@ -65,7 +63,7 @@ export const DashboardParameterList = forwardRef<
   return (
     <ParametersList
       ref={ref}
-      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
+      className={className}
       parameters={parameters}
       linkedFilterParameters={linkedFilterParameters}
       editingParameter={editingParameter}

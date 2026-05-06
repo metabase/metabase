@@ -18,11 +18,11 @@ import { SearchResult } from "metabase/search/components/SearchResult/SearchResu
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/utils/constants";
-import { modelToUrl } from "metabase/utils/urls";
 import type {
   CollectionItem,
   SearchModel,

@@ -4,7 +4,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { advanceServerClockBy } from "../admin/performance/helpers/e2e-performance-helpers";
+const advanceServerClockBy = (milliseconds) =>
+  cy.request("POST", "/api/testing/set-time", { "add-ms": milliseconds });
 
 describe("search > recently viewed", () => {
   beforeEach(() => {

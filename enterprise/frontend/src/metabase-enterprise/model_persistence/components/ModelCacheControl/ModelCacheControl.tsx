@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -8,6 +7,7 @@ import {
   useUnpersistModelMutation,
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { hasFeature } from "metabase/common/utils/database";
 import { Switch, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";

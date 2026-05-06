@@ -1,5 +1,5 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
-import { formatValue } from "metabase/utils/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import type { SankeyChartColumns, SankeyFormatters, SankeyNode } from "./types";

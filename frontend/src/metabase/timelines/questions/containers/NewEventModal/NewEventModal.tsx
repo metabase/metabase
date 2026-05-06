@@ -1,19 +1,26 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useCreateTimelineEventMutation } from "metabase/api";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
 import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import type { Collection, TimelineEvent } from "metabase-types/api";
+import type {
+  Collection,
+  CreateTimelineEventRequest,
+  Timeline,
+  TimelineEvent,
+} from "metabase-types/api";
 
-interface NewEventModalProps {
+interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: number;
   onClose?: () => void;
+  timelines?: Timeline[];
+  collection?: Collection;
 }
 
 const timelineProps = {
@@ -21,32 +28,44 @@ const timelineProps = {
 };
 
 const collectionProps = {
-  id: (state: State, props: NewEventModalProps) => {
+  id: (state: State, props: NewEventModalContainerProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
 
-const mapStateToProps = (state: State, { onClose }: NewEventModalProps) => ({
-  source: "question",
-  onSubmitSuccess: onClose,
-  onCancel: onClose,
-});
+function NewEventModalContainer({
+  onClose,
+  timelines,
+  collection,
+}: NewEventModalContainerProps) {
+  const dispatch = useDispatch();
+  const [createTimelineEvent] = useCreateTimelineEventMutation();
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
+  const onSubmit = async (
+    values: Partial<TimelineEvent>,
+    collection?: Collection,
+  ) => {
     if (values.timeline_id) {
-      await dispatch(TimelineEvents.actions.create(values));
-    } else {
+      await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
+    } else if (collection) {
       await dispatch(Timelines.actions.createWithEvent(values, collection));
     }
-
     dispatch(addUndo({ message: t`Created event` }));
-  },
-});
+  };
+
+  return (
+    <NewEventModal
+      source="question"
+      timelines={timelines}
+      collection={collection}
+      onSubmit={onSubmit}
+      onSubmitSuccess={onClose}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.loadList(timelineProps),
   Collections.load(collectionProps),
-  connect(mapStateToProps, mapDispatchToProps),
-)(NewEventModal);
+)(NewEventModalContainer);
