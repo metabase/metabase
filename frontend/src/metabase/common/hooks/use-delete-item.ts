@@ -43,7 +43,7 @@ export function canDelete(item: {
   model: string;
   can_delete?: boolean;
 }): item is DeletableItem {
-  return item.can_delete !== false && DELETABLE_MODELS.has(item.model);
+  return item.can_delete === true && DELETABLE_MODELS.has(item.model);
 }
 
 export function useDeleteItem() {
