@@ -33,7 +33,7 @@ Metabase checks for new security advisories periodically, but you can also force
 
 Every security issue posted in **Admin > Security** will come with remediation steps. They will usually involve upgrading your Metabase.
 
-See [Upgrading a self-hosted Metabase](./upgrading-metabase.md#upgrading-a-self-hosted-metabase).
+See [Upgrading a self-hosted Metabase](upgrading-metabase.md#upgrading-a-self-hosted-metabase).
 
 If you have questions or need help remedying a security issue, you can always [reach out to us](https://www.metabase.com/help-premium).
 
@@ -62,4 +62,4 @@ You'll only get notifications about new issues _affecting your instance_. New is
 ## Further reading
 
 - [Security](https://www.metabase.com/security)
-- [Upgrading Metabase](./upgrading-metabase)
+- [Upgrading Metabase](upgrading-metabase.md)
