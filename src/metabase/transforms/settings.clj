@@ -1,6 +1,7 @@
 (ns metabase.transforms.settings
   (:require
    [metabase.settings.core :as setting]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
@@ -24,3 +25,14 @@
   :default    false
   :export?    false
   :audit      :getter)
+
+(setting/defsetting transforms-meter-locked
+  (deferred-tru "True when the customer''s active transforms meter is locked (trial quota exhausted).")
+  :type       :boolean
+  :visibility :authenticated
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :default    false
+  :doc        false
+  :getter     transforms.gating/transforms-meter-locked?)
