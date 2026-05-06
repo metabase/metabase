@@ -29,8 +29,12 @@
   (testing "Reports redundant pairs that match what we'd already infer"
     (is (= {:readOnlyHint true}
            (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
-    (is (= {:idempotentHint false}
-           (:redundant (tools-manifest/infer-annotations :post {:idempotent? false}))))))
+    (is (= {:destructiveHint false}
+           (:redundant (tools-manifest/infer-annotations :put {:destructive? false})))))
+  (testing "Explicit annotations matching MCP spec defaults are NOT redundant — they may be needed
+            for Claude compliance (e.g. :destructive? true on a destructive POST)"
+    (is (= {} (:redundant (tools-manifest/infer-annotations :post {:destructive? true}))))
+    (is (= {} (:redundant (tools-manifest/infer-annotations :post {:idempotent? false}))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"

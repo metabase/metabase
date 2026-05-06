@@ -159,15 +159,6 @@
    :idempotent?  :idempotentHint
    :open-world?  :openWorldHint})
 
-(def ^:private mcp-default-annotations
-  "MCP-spec defaults for ToolAnnotations. Anything matching these is the implicit
-   value, so restating them in `:annotations` is redundant.
-   See https://modelcontextprotocol.io/specification/2025-03-26/server/tools."
-  {:readOnlyHint    false
-   :destructiveHint true
-   :idempotentHint  false
-   :openWorldHint   true})
-
 (defn- method-default-annotations
   "Infer default MCP ToolAnnotations from HTTP method."
   [method]
@@ -182,18 +173,22 @@
 
 (defn infer-annotations
   "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
-   Returns `{:annotations <merged> :redundant <explicit-pairs-matching-defaults>}`. Callers
-   should reject any `:redundant` entries — explicit declarations must add information beyond
-   what we'd already infer (HTTP-method default or MCP spec default)."
+   Returns `{:annotations <merged> :redundant <explicit-pairs-matching-method-defaults>}`.
+   Callers should reject any `:redundant` entries — explicit declarations must add information
+   beyond the HTTP-method default.
+
+   We deliberately don't flag explicit annotations matching MCP spec defaults. Some are required
+   for Claude connector compliance: a destructive POST has no method default for destructiveHint,
+   so `:destructive? true` is the only way to satisfy the connector even though it matches the
+   MCP spec default."
   [method explicit-annotations]
   (let [method-defaults (method-default-annotations method)
-        full-defaults   (merge mcp-default-annotations method-defaults)
         explicit        (into {}
                               (keep (fn [[k v]]
                                       (when-let [mcp-key (annotation-key-mapping k)]
                                         [mcp-key v])))
                               explicit-annotations)
-        redundant       (into {} (filter (fn [[k v]] (= v (get full-defaults k))) explicit))]
+        redundant       (into {} (filter (fn [[k v]] (= v (get method-defaults k))) explicit))]
     {:annotations (merge method-defaults explicit)
      :redundant   redundant}))
 

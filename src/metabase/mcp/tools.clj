@@ -103,7 +103,7 @@
   [response]
   (let [body                                              (:body response)
         body-map                                          (when (map? body) body)
-        body-str                                          (when (string? body) body)
+        body-str                                          (when (and (string? body) (not (str/blank? body))) body)
         {msg :message :keys [specific-errors errors error]} body-map
         detail (cond
                  (seq specific-errors) (format-validation-detail specific-errors)
