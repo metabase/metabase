@@ -13,6 +13,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseId,
+  EmbeddingParameterVisibility,
   NativeDatasetQuery,
   RowValue,
   TemplateTag,

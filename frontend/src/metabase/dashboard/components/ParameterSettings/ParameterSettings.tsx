@@ -34,6 +34,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   DashboardCard,
+  EmbeddingParameterVisibility,
   Parameter,
   TemporalUnit,
   ValuesQueryType,

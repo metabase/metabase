@@ -25,6 +25,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
   DimensionReference,
+  EmbeddingParameterVisibility,
   FieldId,
   Parameter,
   ParameterValuesConfig,
