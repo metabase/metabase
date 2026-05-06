@@ -1,13 +1,11 @@
-// Used by the decide-what-runs job in .github/workflows/run-tests.yml.
+// Used by the compute-test-plan job in .github/workflows/run-tests.yml.
 // Test files are listed via `git ls-files` (no glob lib needed) so counts
 // match what's tracked at HEAD.
 
 const { execFileSync } = require("node:child_process");
 
-const {
-  elements,
-  rules,
-} = require("../../frontend/lint/module-boundaries");
+const { elements, rules } = require("../../frontend/lint/module-boundaries");
+
 const { SUITES, createTestSelection } = require("./test-suites");
 
 const { decideAll } = createTestSelection({ elements, rules, suites: SUITES });

@@ -19,7 +19,7 @@ const SUITES = {
       "babel.config.json",
       "tsconfig.json",
       "package.json",
-      "bun.lockb",
+      "bun.lock",
       "rspack.*.js",
       ".github/workflows/frontend.yml",
       ".github/workflows/run-tests.yml",
@@ -34,7 +34,7 @@ const SUITES = {
       "babel.config.json",
       "tsconfig.json",
       "package.json",
-      "bun.lockb",
+      "bun.lock",
       "rspack.*.js",
       ".github/workflows/loki.yml",
       ".github/workflows/run-tests.yml",
@@ -96,7 +96,7 @@ function createTestSelection({ elements, rules, suites }) {
 
     const decisions = {};
     const stats = {
-      modules_directly_touched: direct.size,
+      modules_changed: direct.size,
       modules_affected: affected.size,
       affected_modules: [...affected].sort(),
     };

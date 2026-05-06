@@ -121,7 +121,7 @@ describe("decideAll", () => {
     expect(result.e2e_tests_to_run).toEqual(E2E_FILES);
 
     expect(result.stats).toEqual({
-      modules_directly_touched: 1,
+      modules_changed: 1,
       modules_affected: 1,
       affected_modules: ["feature/foo"],
       unit_tests_total: 4,
