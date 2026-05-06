@@ -313,6 +313,9 @@
   {:postgres   {:db-name      "test-data (postgres)"
                 :input        [{:schema "public"}]
                 :output       {:schema "mb__isolation_44490_1933"}}
+   :redshift   {:db-name      "test-data (redshift)"
+                :input        [{:schema "public"}]
+                :output       {:schema "mb__isolation_44490_1933"}}
    :mysql      {:db-name      "test-data (mysql)"
                 :input        [{:schema "prod_db"}]
                 :output       {:schema "ws_alice"}}
