@@ -129,10 +129,8 @@
   (into [] (mapcat message->generated-queries) messages))
 
 (def new-query-tool-names
-  "Tools that construct a fresh query. Excludes `edit_sql_query` and
-   `replace_sql_query`, which refine an existing query rather than create
-   a new one."
-  #{"create_sql_query" "construct_notebook_query"})
+  "Tools that produce a runnable query — used by the analytics `:query_count` metric."
+  metabot.tools/query-generation-tool-names)
 
 (defn- tool-input-block? [block tool-names]
   (and (= "tool-input" (:type block))
