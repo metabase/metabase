@@ -62,7 +62,9 @@ There is one thing to know about the Custom reports collection: its metadata res
 
 The Usage analytics collection ships a set of read-only dashboards and models that you can browse from the **collections** sidebar.
 
-For an exhaustive, up-to-date list of every dashboard (with the cards it contains) and every model (with its columns), see the [Usage analytics reference](./usage-analytics-reference.md). That page is regenerated from the shipped YAML by `bin/generate-usage-analytics-docs.bb`, so it always matches what's in the product.
+For dashboards and models specifically about Metabot and LLM usage, see [AI usage auditing](../ai/usage-auditing.md).
+
+See also the [Usage analytics reference](./usage-analytics-reference.md).
 
 ### Performance overview on MySQL or MariaDB
 
