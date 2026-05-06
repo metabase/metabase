@@ -130,18 +130,33 @@ For controlled behavior, set the JS property on the element instead of the attri
 <script>
   const el = document.getElementById("my-dashboard");
   el.parameters = { state: "NY" };
-
-  // Later, change a filter from your app:
-  document.getElementById("clear-state-button").addEventListener("click", () => {
-    // `null` strictly clears the parameter (ignores its default).
-    el.parameters = { ...el.parameters, state: null };
-  });
 </script>
 ```
 
 The same pattern works for `metabase-question` via the `sqlParameters` property.
 
-To switch a component back to uncontrolled mode (leaving the last applied values in place), set the property to `undefined`. To clear every parameter, assign an empty object `{}`.
+To switch a component back to uncontrolled mode (leaving the last applied values in place), set the property to `undefined`.
+
+#### Clearing parameters
+
+To clear a single parameter, set its value to `null`. This strictly clears the parameter and ignores its default value.
+
+```html
+<script>
+  const el = document.getElementById("my-dashboard");
+  // `null` strictly clears the parameter (ignores its default).
+  el.parameters = { ...el.parameters, state: null };
+</script>
+```
+
+To clear every parameter, assign an empty object `{}`.
+
+```html
+<script>
+  const el = document.getElementById("my-dashboard");
+  el.parameters = {};
+</script>
+```
 
 #### Observe applied changes with `parameters-change` / `sql-parameters-change`
 
