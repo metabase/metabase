@@ -502,15 +502,16 @@
       (is (not (re-find #"`ds`\.`orders`" rewritten))
           "the canonical dataset.table is gone"))))
 
-;;; =========== T0.1 — native-origin queries: :native :query must be rewritten ============
+;;; =========== T0.1 — native-origin queries: stage `:native` must be rewritten ============
 ;;;
-;;; For native-origin queries `:native` is populated at preprocess time. The rename in
-;;; metabase.query-processor.execute/run only sets `:native` from `:qp/compiled` when
-;;; `:native` is absent — for native-origin queries it's already set, so without explicit
-;;; rewriting of `:native` here, the original (canonical) SQL would hit the warehouse.
+;;; The stage's `:native` is the source of truth for native-origin SQL. `lib/->legacy-MBQL`
+;;; (called inside `metabase.query-processor.execute/run` immediately before driver dispatch)
+;;; rebuilds the legacy top-level `:native` from `(get-in query [:stages -1 :native])`. So
+;;; patching legacy `:native` directly is futile — the rebuild from the stage clobbers it.
+;;; Patch the stage; the rebuild propagates the rewrite to legacy `:native`.
 
-(deftest phase-2-rewrites-native-key-test
-  (testing "Phase 2 rewrites :native :query for native-origin queries (security boundary)"
+(deftest phase-2-rewrites-native-stage-test
+  (testing "Phase 2 rewrites stage's :native for native-origin queries (security boundary)"
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
@@ -519,18 +520,85 @@
         (let [called-with (atom nil)
               mock-qp    (fn [query _rff] (reset! called-with query) :ok)
               wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
-              ;; Native-origin: both :native and :qp/compiled are populated by preprocess.
-              query      {:database    synthetic-db-id
-                          :native      {:query "SELECT * FROM PUBLIC.VENUES"}
+              query      {:lib/type    :mbql/query
+                          :database    synthetic-db-id
+                          :stages      [{:lib/type :mbql.stage/native
+                                         :native   "SELECT * FROM PUBLIC.VENUES"}]
                           :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}]
           (wrapped query identity)
-          (testing ":qp/compiled is rewritten"
+          (testing ":qp/compiled is rewritten (covers FE :native_form display)"
             (is (re-find #"(?i)ws_alice" (get-in @called-with [:qp/compiled :query]))))
-          (testing ":native is also rewritten — without this the warehouse sees canonical SQL"
-            (is (re-find #"(?i)ws_alice" (get-in @called-with [:native :query]))
-                "native-origin SQL must reach the warehouse with workspace identifiers")
-            (is (not (re-find #"(?i)PUBLIC\.VENUES" (get-in @called-with [:native :query])))
-                "no canonical reference survives in :native")))))))
+          (testing "stage's :native is rewritten -- this is what reaches the warehouse via lib/->legacy-MBQL"
+            (is (re-find #"(?i)ws_alice" (get-in @called-with [:stages 0 :native])))
+            (is (not (re-find #"(?i)PUBLIC\.VENUES" (get-in @called-with [:stages 0 :native])))
+                "no canonical reference survives in the stage")))))))
+
+(deftest phase-2-walks-multi-stage-native-test
+  (testing "Phase 2 rewrites :native on every native stage, not just the last"
+    (mt/with-premium-features #{:workspaces}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {synthetic-db-id
+                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                driver/*driver*                :h2]
+        (let [called-with (atom nil)
+              mock-qp    (fn [query _rff] (reset! called-with query) :ok)
+              wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+              ;; native stage at index 0 (a source query) with an MBQL stage on top.
+              query      {:lib/type :mbql/query
+                          :database synthetic-db-id
+                          :stages   [{:lib/type :mbql.stage/native
+                                      :native   "SELECT * FROM PUBLIC.VENUES"}
+                                     {:lib/type :mbql.stage/mbql}]}]
+          (wrapped query identity)
+          (is (re-find #"(?i)ws_alice" (get-in @called-with [:stages 0 :native]))
+              "the leading native stage (not the last stage) is rewritten"))))))
+
+(deftest phase-2-walks-native-in-join-test
+  (testing "Phase 2 recurses into joins' :stages and rewrites their native SQL"
+    (mt/with-premium-features #{:workspaces}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {synthetic-db-id
+                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                driver/*driver*                :h2]
+        (let [called-with (atom nil)
+              mock-qp    (fn [query _rff] (reset! called-with query) :ok)
+              wrapped    (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
+              query      {:lib/type :mbql/query
+                          :database synthetic-db-id
+                          :stages   [{:lib/type :mbql.stage/mbql
+                                      :joins    [{:stages [{:lib/type :mbql.stage/native
+                                                            :native   "SELECT * FROM PUBLIC.VENUES"}]}]}]}]
+          (wrapped query identity)
+          (is (re-find #"(?i)ws_alice"
+                       (get-in @called-with [:stages 0 :joins 0 :stages 0 :native]))
+              "native SQL nested inside a join is rewritten"))))))
+
+(deftest phase-2-idempotent-test
+  (testing "Phase 2 running twice is a no-op on the second pass"
+    (mt/with-premium-features #{:workspaces}
+      (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
+                                                {synthetic-db-id
+                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                driver/*driver*                :h2]
+        (let [run-once    (fn [query]
+                            (let [captured (atom nil)
+                                  mock-qp  (fn [q _rff] (reset! captured q) :ok)
+                                  wrapped  (#'ws.middleware/apply-workspace-sql-remapping mock-qp)]
+                              (wrapped query identity)
+                              @captured))
+              query       {:lib/type    :mbql/query
+                           :database    synthetic-db-id
+                           :stages      [{:lib/type :mbql.stage/native
+                                          :native   "SELECT * FROM PUBLIC.VENUES"}]
+                           :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}
+              first-pass  (run-once query)
+              second-pass (run-once first-pass)]
+          (is (= (get-in first-pass [:stages 0 :native])
+                 (get-in second-pass [:stages 0 :native]))
+              "second pass leaves the already-rewritten stage SQL unchanged")
+          (is (= (get-in first-pass [:qp/compiled :query])
+                 (get-in second-pass [:qp/compiled :query]))
+              "second pass leaves the already-rewritten :qp/compiled unchanged"))))))
 
 ;;; =========== T0.2 — workspace remapping engages without `:workspaces` token ============
 ;;;
