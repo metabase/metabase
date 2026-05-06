@@ -275,9 +275,9 @@
                     api/*current-user-id* 1]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
-            (with-redefs [search-core/search (fn [context]
-                                               (reset! captured (:models context))
-                                               {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
             (is (= #{"table" "dataset" "metric" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
@@ -286,17 +286,17 @@
 
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
-            (with-redefs [search-core/search (fn [context]
-                                               (reset! captured (:models context))
-                                               {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
 
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
-            (with-redefs [search-core/search (fn [context]
-                                               (reset! captured (:models context))
-                                               {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))))))
 
@@ -308,17 +308,17 @@
                     api/*current-user-id* 1]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
-            (with-redefs [search-core/search (fn [context]
-                                               (reset! captured (:limit-int context))
-                                               {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
 
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
-            (with-redefs [search-core/search (fn [context]
-                                               (reset! captured (:limit-int context))
-                                               {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
 
