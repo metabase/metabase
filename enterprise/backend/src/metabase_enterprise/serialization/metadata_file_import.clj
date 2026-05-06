@@ -16,23 +16,11 @@
 
   Phases:
 
-    1. Databases — match by `(name, engine)`, never create. Track matched
-       target-db-ids for the post-import sync-status flip and the unfilled-
-       stubs scan. Unmatched source databases produce WARN logs.
-    2. Tables — `process-tables!` self-resolves portable `:db_id` (db name) to
-       a target int via SELECT, match-or-insert by
-       `(target-db-id, schema, name)`. No id-map; portable references resolve
-       per-batch.
-    3. Fields — single-pass with stubs. `process-fields!` self-resolves
-       portable `:table_id` and `:parent_id`. When a child references a parent
-       that doesn't yet exist on target, the processor inserts a placeholder
-       stub for the parent (recursively, depth-first). When the parent's real
-       row arrives later (same batch or a later one), match-and-clobber
-       UPDATEs the stub in place. No multi-pass loop. No `:phase-3-stuck`
-       case — `nfc_path` is a tree, cycles are impossible by construction.
-    4. Fields-finalize — walk the file once more. `process-fields-fk-resolve!`
-       self-resolves both the row's own portable id and its
-       `:fk_target_field_id` portable id, batched UPDATE.
+    1. Databases — match by `(name, engine)`, never create. Unmatched source
+       databases produce WARN logs (non-fatal).
+    2. Tables — match-or-insert by `(target-db-id, schema, name)`.
+    3. Fields — match-or-insert with on-the-fly stubs for missing parents.
+    4. Fields-finalize — walk fields again to set `fk_target_field_id`.
 
   After phases 1–4 complete: a `warn-on-unfilled-stubs!` self-check scans the
   matched databases for stubs that never got filled; operator gets a structured
@@ -107,9 +95,8 @@
 ;;; ============================== Phase 2: tables ==============================
 
 (defn- run-phase-2!
-  "Stream the `tables` array. [[processors/process-tables!]] self-resolves
-  portable `:db_id`. Rows whose `:db_id` doesn't resolve produce `:no-target-db`
-  results which are logged WARN."
+  "Stream the tables array; rows whose source `:db_id` (db name) doesn't match
+  any target are logged and skipped."
   [^File file]
   (parsers/stream-array-batches!
    file :tables processors/import-batch-size
@@ -128,9 +115,8 @@
 ;;; ============================== Phase 3: fields (single-pass with stubs) ==============================
 
 (defn- run-phase-3!
-  "Single-pass over the `fields` array. The processor inserts placeholder
-  stubs for any missing parents on-the-fly so out-of-order children are no
-  problem. No multi-pass loop, no cycle case (`nfc_path` is a tree)."
+  "Stream the fields array; missing parents are stubbed on the fly so the file
+  order doesn't matter."
   [^File file]
   (parsers/stream-array-batches!
    file :fields processors/import-batch-size
@@ -149,10 +135,7 @@
 ;;; ============================== Phase 4: fields-fk-resolve ==============================
 
 (defn- run-phase-4!
-  "Walk the `fields` array a second time. The processor self-resolves both the
-  row's own portable id and its `:fk_target_field_id` portable id, then issues
-  one batched UPDATE. Rows without `:fk_target_field_id` flow through as
-  `:no-fk` (no SQL written for them)."
+  "Walk the fields array again to set `fk_target_field_id` on rows that have one."
   [^File file]
   (parsers/stream-array-batches!
    file :fields processors/import-batch-size

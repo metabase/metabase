@@ -570,10 +570,6 @@
             "exactly one Field row exists, no stubs")))))
 
 ;;; ======================== process-fields-fk-resolve! ========================
-;;;
-;;; Tuple shape: `[ln row]`. Bare batches — the processor self-resolves both
-;;; the row's own portable id and its `:fk_target_field_id` portable id via
-;;; one batched natural-key SELECT, then issues a single VALUES-table UPDATE.
 
 (deftest process-fields-fk-resolve-writes-fk-target-field-id-test
   (testing "happy path: the target row's fk_target_field_id is updated to the

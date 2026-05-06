@@ -1,10 +1,9 @@
 (ns metabase-enterprise.serialization.metadata-file-import.processors
   "Pure batch processors for the metadata file importer.
 
-  Each `process-*!` function takes a batch of `[line-num row]` tuples (plus
-  loader-pre-resolved id mappings where relevant), validates every row up
-  front, runs the bulk SQL once per batch, and returns an `eduction` that
-  emits one result map per input row in input order.
+  Each `process-*!` function takes a batch of `[line-num row]` tuples,
+  validates every row up front, runs the bulk SQL once per batch, and returns
+  an `eduction` that emits one result map per input row in input order.
 
   The eduction shape lets callers compose with `reduce` / `transduce` without
   ever materializing a full per-batch result vector. The eager work (validation,
@@ -114,8 +113,7 @@
               rows)))))
 
 (defn process-databases!
-  "Validate every row, look up each by `(name, engine)` against `:model/Database`, and emit
-  one result map per input row in input order. Returns an eduction.
+  "Process a batch of database rows. Returns an eduction of result maps.
 
   Result shapes:
     `{:source-id <db-name> :target-id M :status :matched}`
@@ -123,8 +121,8 @@
 
   `:source-id` is the row's `:name` (its portable database id).
 
-  Phase 1 is **non-fatal**: unmatched databases produce `:no-match` results that the loader
-  logs as WARN and uses to skip dependent tables/fields. Validation failures throw."
+  Validation failures throw; lookup misses produce `:no-match` results
+  (non-fatal)."
   [batch]
   (doseq [[ln line] batch]
     (validate-line! ::schemas/database-info ln line {:source-id (:name line)}))
@@ -233,10 +231,7 @@
   [db_id schema name])
 
 (defn process-tables!
-  "Validate every row, self-resolve each row's portable `:db_id` (a string = database
-  name) to a target integer database id via one batched SELECT, match-or-insert by
-  `(target-db-id, schema, name)`, and emit one result map per input row in input
-  order. Returns an eduction.
+  "Process a batch of table rows. Returns an eduction of result maps.
 
   Result shapes:
     `{:source-id [db-name schema name] :target-id M :status :matched}`
@@ -390,9 +385,8 @@
               rows)))))
 
 (defn- new-stub-field-row
-  "Row map for inserting a placeholder stub field. Marker fields
-  `database_type=\"__stub__\"` + `base_type=\"type/*\"` + `active=false`. When
-  the real row arrives, the match-and-clobber path UPDATEs the stub in place."
+  "Row map for inserting a placeholder stub field — marker fields
+  `database_type=\"__stub__\"` + `base_type=\"type/*\"` + `active=false`."
   [target-table-id parent-vec resolved-parent-id]
   (let [pv         (vec parent-vec)
         leaf-name  (peek pv)
@@ -546,10 +540,10 @@
               rows)))))
 
 (defn- field-clobber
-  "Payload that overwrites a matched field row. Excludes `parent_id` (already
-  correct on the matched row — it's part of the match key) and
-  `fk_target_field_id` (set by [[process-fields-fk-resolve!]]). Sets
-  `active=true` to flip stubs to live."
+  "Payload that overwrites a matched field row. Excludes `parent_id` — the
+  natural-key match already fixes it on the matched row. `fk_target_field_id`
+  is set by [[process-fields-fk-resolve!]]. Sets `active=true` to flip stubs
+  to live."
   [{:keys [base_type database_type description semantic_type effective_type coercion_strategy]}]
   (cond-> {:active true}
     (some? base_type)         (assoc :base_type base_type)

@@ -159,16 +159,8 @@
                 :description description))
 
 (defn format-field-row
-  "JSON shape for one field row, with portable references for `:id`, `:table_id`,
-  `:parent_id`, and `:fk_target_field_id`.
-
-    - `:id` is built via [[external-field-id]].
-    - `:parent_id` is emitted only when storage `parent_id` is non-NULL.
-    - `:nfc_path` is emitted verbatim when the storage column is non-empty.
-    - `:fk_target_field_id` is the portable id of the FK target row, built
-      via the same [[external-field-id]] function.
-
-  Optional fields are omitted when nil."
+  "JSON shape for one field row. Optional fields are omitted when nil; portable
+  identifiers are built via [[external-field-id]]."
   [{:keys [db_name table_schema table_name field_name description base_type database_type
            effective_type semantic_type coercion_strategy nfc_path parent_id_int
            fk_db_name fk_table_schema fk_table_name fk_field_name fk_field_nfc_path
@@ -176,11 +168,9 @@
   (let [nfc-path        (decode-nfc-path nfc_path)
         has-parent?     (some? parent_id_int)
         parent-id       (when has-parent?
-                          ;; The parent's portable id is always
-                          ;; `(into [db schema table] nfc-path)`, regardless of the parent's
-                          ;; own parent state. Both has-parent? branches in external-field-id
-                          ;; produce that expression when applied to the parent — so we can
-                          ;; construct it directly without re-reading the parent row.
+                          ;; The parent's portable id is always `[db schema table & nfc-path]` —
+                          ;; both has-parent? branches of [[external-field-id]] collapse to that
+                          ;; when applied to the parent.
                           (into [db_name table_schema table_name] nfc-path))
         fk-field-nfc    (decode-nfc-path fk_field_nfc_path)
         fk-has-parent?  (some? fk_parent_id_int)
