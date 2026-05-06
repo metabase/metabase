@@ -33,7 +33,7 @@
   (subs (str (random-uuid)) 0 8))
 
 (def workspaces-supported-dwh-drivers
-  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery :snowflake})
+  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk :snowflake})
 
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
