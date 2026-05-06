@@ -172,6 +172,15 @@
                 [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
+  backport
+  {:doc "Backport a merged PR onto release-x.<version>.x via cherry-pick"
+   :requires [[mage.backport :as backport]]
+   :examples [["./bin/mage backport 73718 55" "Backport PR #73718 to release-x.55.x"]]
+   :arg-schema [:tuple
+                [:string {:name "pr-number" :description "Merged PR number to backport"}]
+                [:string {:name "target-version" :description "Target major release (e.g. 55)"}]]
+   :task (task! (backport/backport parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
