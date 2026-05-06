@@ -103,14 +103,22 @@
                 [:field.semantic_type :semantic_type]
                 [:field.coercion_strategy :coercion_strategy]
                 [:field.nfc_path :nfc_path]
+                ;; raw int storage values (not for emission) — used by
+                ;; format-field-row to build :id and decide whether to
+                ;; emit :parent_id. See external-field-id.
+                [:field.parent_id :parent_id_int]
                 [:fk_db.name :fk_db_name]
                 [:fk_table.schema :fk_table_schema]
                 [:fk_table.name :fk_table_name]
                 [:fk_field.name :fk_field_name]
-                [:fk_field.nfc_path :fk_field_nfc_path]]
+                [:fk_field.nfc_path :fk_field_nfc_path]
+                [:fk_field.parent_id :fk_parent_id_int]]
     :from      [[:metabase_field :field]]
     :join      [[:metabase_table :table]    [:= :field.table_id :table.id]
                 [:metabase_database :db]    [:= :table.db_id :db.id]]
+    ;; FK-target visibility lives in LEFT JOIN ON predicates (not WHERE)
+    ;; so an inaccessible target fails the join — fk_* cols come back
+    ;; NULL and format-field-row drops :fk_target_field_id for that row.
     :left-join [[:metabase_field :fk_field]    [:and [:= :field.fk_target_field_id :fk_field.id] (visible-field-where :fk_field)]
                 [:metabase_table :fk_table]    [:and [:= :fk_field.table_id :fk_table.id]        (visible-table-where :fk_table opts)]
                 [:metabase_database :fk_db]    [:and [:= :fk_table.db_id :fk_db.id]              (visible-db-where :fk_db opts)]]
@@ -140,13 +148,23 @@
   [db-name schema table-name])
 
 (defn- external-field-id
-  "Portable id for a field. When `nfc-path` is set (JSON-nested column), the path replaces
-  the field's display name; the field's own name is the leaf of `nfc-path` joined with
-  arrows, so the path is the canonical structural representation."
-  [db-name schema table-name field-name nfc-path]
-  (if (seq nfc-path)
-    (into [db-name schema table-name] nfc-path)
-    [db-name schema table-name field-name]))
+  "Portable id for a field. Three cases, branching on whether the storage row
+  had a non-NULL `parent_id` (`has-parent?`) and whether `nfc-path` is set:
+
+    - `has-parent?` true: the row has a real parent storage row, and `nfc-path`
+      is the parent ancestry chain. Portable id:
+      `[db schema table & nfc-path & field-name]` — leaf name appended.
+    - `has-parent?` false, `nfc-path` non-empty: no parent storage row;
+      `nfc-path` is the full structural path including the leaf, and
+      `field-name` is the synthesized arrow-joined display label. Portable
+      id: `[db schema table & nfc-path]` — `field-name` NOT appended
+      (`nfc-path` already terminates at the leaf).
+    - `has-parent?` false, `nfc-path` empty/nil: `[db schema table field-name]`."
+  [db-name schema table-name field-name nfc-path has-parent?]
+  (cond
+    has-parent?    (-> [db-name schema table-name] (into nfc-path) (conj field-name))
+    (seq nfc-path) (into [db-name schema table-name] nfc-path)
+    :else          [db-name schema table-name field-name]))
 
 (defn format-database-row
   "JSON shape for one database row, identifying the database by its portable id."
@@ -164,21 +182,25 @@
                 :description description))
 
 (defn format-field-row
-  "JSON shape for one field row, with portable references for `:id`, `:table_id`, `:parent_id`,
-  and `:fk_target_field_id`. `:parent_id` is derived from `nfc_path` (the portable id with the
-  last path element dropped) and is only emitted when `nfc_path` has at least two elements.
-  Optional fields are omitted when nil."
+  "JSON shape for one field row. Optional fields are omitted when nil; portable
+  identifiers are built via [[external-field-id]]."
   [{:keys [db_name table_schema table_name field_name description base_type database_type
-           effective_type semantic_type coercion_strategy nfc_path
-           fk_db_name fk_table_schema fk_table_name fk_field_name fk_field_nfc_path]}]
-  (let [nfc-path     (decode-nfc-path nfc_path)
-        parent-id    (when-some [parent-nfc (seq (butlast nfc-path))]
-                       (external-field-id db_name table_schema table_name nil parent-nfc))
-        fk-field-nfc (decode-nfc-path fk_field_nfc_path)
-        fk-target-id (when (and fk_db_name fk_table_name fk_field_name)
-                       (external-field-id fk_db_name fk_table_schema fk_table_name
-                                          fk_field_name fk-field-nfc))]
-    (m/assoc-some {:id       (external-field-id db_name table_schema table_name field_name nfc-path)
+           effective_type semantic_type coercion_strategy nfc_path parent_id_int
+           fk_db_name fk_table_schema fk_table_name fk_field_name fk_field_nfc_path
+           fk_parent_id_int]}]
+  (let [nfc-path        (decode-nfc-path nfc_path)
+        has-parent?     (some? parent_id_int)
+        parent-id       (when has-parent?
+                          ;; The parent's portable id is always `[db schema table & nfc-path]` —
+                          ;; both has-parent? branches of [[external-field-id]] collapse to that
+                          ;; when applied to the parent.
+                          (into [db_name table_schema table_name] nfc-path))
+        fk-field-nfc    (decode-nfc-path fk_field_nfc_path)
+        fk-has-parent?  (some? fk_parent_id_int)
+        fk-target-id    (when (and fk_db_name fk_table_name fk_field_name)
+                          (external-field-id fk_db_name fk_table_schema fk_table_name
+                                             fk_field_name fk-field-nfc fk-has-parent?))]
+    (m/assoc-some {:id       (external-field-id db_name table_schema table_name field_name nfc-path has-parent?)
                    :table_id (external-table-id db_name table_schema table_name)
                    :name     field_name}
                   :description description

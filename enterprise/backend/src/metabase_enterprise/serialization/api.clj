@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.serialization.metadata :as metadata]
+   [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
    [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
@@ -28,7 +29,7 @@
    [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
   (:import
-   (java.io ByteArrayOutputStream File)))
+   (java.io ByteArrayOutputStream File InputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -333,6 +334,56 @@
                                         {:with-databases? with-databases
                                          :with-tables?    with-tables
                                          :with-fields?    with-fields})))
+
+;;; ----------------------------------- POST /api/ee/serialization/metadata/import -----------------------------------
+
+(defn- spool-to-temp-file!
+  "Stream `is` to a freshly-created temp file in 64 KB chunks. Returns the
+  `File`. If streaming fails the temp file is removed before the throw
+  propagates; otherwise the caller owns cleanup."
+  ^File [^InputStream is]
+  (let [tmp (File/createTempFile "metadata-import-" ".json")]
+    (try
+      (with-open [os (io/output-stream tmp)]
+        (io/copy is os :buffer-size (* 64 1024)))
+      tmp
+      (catch Throwable t
+        (.delete tmp)
+        (throw t)))))
+
+(api.macros/defendpoint :post "/metadata/import"
+  :- [:map [:success :boolean]]
+  "Import warehouse metadata previously emitted by `GET /metadata/export`. The
+  request body is the JSON document `{databases, tables, fields}`; sections are
+  parsed incrementally so memory stays bounded regardless of payload size.
+
+  To bypass the JSON-parsing request middleware, send with `Content-Type:
+  application/octet-stream`. Restricted to superusers."
+  [_route-params
+   _query-params
+   _body
+   {:keys [body], :as _request}]
+  (api/check-superuser)
+  (cond
+    (nil? body)
+    (throw (ex-info "Empty request body" {:status-code 400}))
+
+    (not (instance? InputStream body))
+    (throw (ex-info (str "Expected a raw stream body. Send the request with "
+                         "Content-Type: application/octet-stream so the JSON "
+                         "middleware does not pre-parse the payload.")
+                    {:status-code 415}))
+
+    :else
+    ;; The loader walks the file across four passes (databases → tables → fields → fk-resolve),
+    ;; so the body is spooled to disk before the import runs. Spooling is chunked; JVM heap
+    ;; never holds more than one buffer at a time.
+    (let [tmp (spool-to-temp-file! body)]
+      (try
+        (metadata-file-import/import-metadata-file! tmp)
+        {:success true}
+        (finally
+          (.delete tmp))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."
