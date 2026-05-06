@@ -49,15 +49,39 @@
               fields))
     {:fields-scored 0 :fields-failed 0}))
 
+(mu/defn- score-missing-leftovers!
+  "Backup pass after the per-table sweep: any Field in `database` whose persisted
+  `dimension_interestingness` is still `NULL` gets one more compute attempt. This catches Fields
+  on tables that aren't in `reducible-sync-tables` plus any fields the normal pipeline missed
+  (initial backfill, prior compute failure, null'ed interestingness to force a recompute).
+  Independent of fingerprint state; doesn't touch `last_analyzed`."
+  [database :- i/DatabaseInstance]
+  (let [fields (t2/select :model/Field
+                          {:where [:and
+                                   [:= :active true]
+                                   [:= :dimension_interestingness nil]
+                                   [:not-in :visibility_type ["sensitive" "retired"]]
+                                   [:in :table_id {:select [:id]
+                                                   :from   [(t2/table-name :model/Table)]
+                                                   :where  [:= :db_id (u/the-id database)]}]]})]
+    (reduce (fn [stats field]
+              (let [result (score-and-save! field)]
+                (if (instance? Exception result)
+                  (update stats :fields-failed inc)
+                  (update stats :fields-scored inc))))
+            {:fields-scored 0 :fields-failed 0}
+            fields)))
+
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."
   [database        :- i/DatabaseInstance
    log-progress-fn]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    (transduce (map (fn [table]
-                      (let [result (score-fields! table)]
-                        (log-progress-fn "score-interestingness" table)
-                        result)))
-               (partial merge-with +)
-               {:fields-scored 0 :fields-failed 0}
-               tables)))
+  (let [tables (sync-util/reducible-sync-tables database)
+        per-table-stats (transduce (map (fn [table]
+                                          (let [result (score-fields! table)]
+                                            (log-progress-fn "score-interestingness" table)
+                                            result)))
+                                   (partial merge-with +)
+                                   {:fields-scored 0 :fields-failed 0}
+                                   tables)]
+    (merge-with + per-table-stats (score-missing-leftovers! database))))
