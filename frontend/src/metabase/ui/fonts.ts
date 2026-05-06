@@ -3,6 +3,7 @@ export type MetabaseFontFamily =
   | "Merriweather"
   | "Open Sans"
   | "Lato"
+  | "Inter"
   | "Noto Sans"
   | "Roboto Slab"
   | "Source Sans Pro"
@@ -22,10 +23,19 @@ export type MetabaseFontFamily =
 
 type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 
-// For cases when selected font doesn't support certain glyph (e.g. Lato doesn't support some parts of extended
-// Latin alphabet, Poppins doesn't support cyrillic), browser will use fallback font to render it.
-// So we set a per-font fallback which matches original font's style as much as possible, so glyphs
-// rendered with fallback don't look too out of place on a page.
+// NOTE: This map is NOT the source of truth for the fonts Metabase ships.
+// The canonical list is computed by `src/metabase/util/fonts.clj`, which
+// scans `resources/frontend_client/app/fonts/` at runtime and exposes the
+// result via the `available-fonts` setting — that's what populates the
+// main admin appearance dropdown.
+//
+// This map is consumed by the embedding ThemeEditor (its dropdown and the
+// `MetabaseFontFamily` union above) and by `getFontFamilyValue` to pick a
+// per-font CSS fallback chain on a best-effort basis for cases when selected
+// font may lack some glyphs.
+//
+// When adding or removing a directory under `resources/frontend_client/app/fonts/`,
+// please keep this map and `MetabaseFontFamily` in sync.
 export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   PredefinedFontName,
   string
@@ -34,6 +44,7 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   Merriweather: '"Lora", serif',
   "Open Sans": '"Lato", sans-serif',
   Lato: "Arial, sans-serif",
+  Inter: "sans-serif",
   "Noto Sans": "sans-serif",
   "Roboto Slab": "serif",
   "Source Sans Pro": '"Lato", sans-serif',
@@ -51,13 +62,13 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   Lora: "serif",
 };
 
+function isPredefinedFontName(font: string): font is PredefinedFontName {
+  return font in PREDEFINED_FONT_FAMILIES_FALLBACK_MAP;
+}
+
 export function getFontFamilyValue(font: string): string {
-  const fallback =
-    (
-      PREDEFINED_FONT_FAMILIES_FALLBACK_MAP as Record<
-        string,
-        string | undefined
-      >
-    )[font] ?? "sans-serif";
+  const fallback = isPredefinedFontName(font)
+    ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[font]
+    : "sans-serif";
   return `"${font}", ${fallback}`;
 }
