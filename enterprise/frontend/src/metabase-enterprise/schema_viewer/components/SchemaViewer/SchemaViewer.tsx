@@ -42,7 +42,6 @@ import { useGraphSync } from "./hooks/useGraphSync";
 import { useSchemaViewerZoomMethods } from "./hooks/useSchemaViewerZoomMethods";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { toFlowGraph } from "./utils";
-import { markSelectedEdge } from "./utils/flow-graph";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -159,13 +158,6 @@ export function SchemaViewer({
     return toFlowGraph(data);
   }, [data]);
 
-  // Lift selected edges above unselected ones so the highlighted edge
-  // always renders on top of any edges that cross through it.
-  const edgesForRender = useMemo(
-    () => (edges.some((e) => e.selected) ? edges.map(markSelectedEdge) : edges),
-    [edges],
-  );
-
   const hasDbSelected = databaseId != null;
   const { registerPendingExpansion } = useGraphSync({
     hasDbSelected,
@@ -193,8 +185,6 @@ export function SchemaViewer({
   const { handleEdgeClick } = useEdgeZoom({
     zoomToNode,
   });
-
-  // --- Handlers -------------------------------------------------------------
 
   // FK click: persist the new focal table, mark its fetch as in-flight, and
   // register a pending expansion target so graph sync can auto-select the FK
@@ -246,9 +236,6 @@ export function SchemaViewer({
     (nodeId: string | null) => {
       setSelectedNodeId(nodeId);
       if (nodeId != null) {
-        // Node selection and edge selection are conceptually exclusive in
-        // this UI — the right-side info panel is about the node, not about
-        // whichever edge happened to be highlighted before.
         setEdges((currentEdges) =>
           currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
         );
@@ -257,8 +244,6 @@ export function SchemaViewer({
     [setEdges],
   );
 
-  // Schema picker is about to push a new URL — drop selection-intent and
-  // any pending camera fit so the new context starts clean.
   const handleSchemaChange = useCallback(() => {
     setSelectedNodeId(null);
     cancelZoom();
@@ -288,7 +273,7 @@ export function SchemaViewer({
       <ReactFlow
         className={S.reactFlow}
         nodes={nodes}
-        edges={edgesForRender}
+        edges={edges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         proOptions={PRO_OPTIONS}

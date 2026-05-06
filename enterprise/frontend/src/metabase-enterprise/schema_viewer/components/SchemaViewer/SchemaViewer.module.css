@@ -4,14 +4,15 @@
   min-height: 500px;
   /* Empirical value used by React Flow for its internal elements */
   --canvas-element-z-index: 5;
-  --regular-edge-z-index: 1;
-  --selected-edge-z-index: 2;
+  --regular-edge-z-index: 0;
+  --selected-edge-z-index: 1;
+  --node-z-index: 2;
 
-  :global(.react-flow__edge) {
+  :global(.react-flow__edges > svg) {
     z-index: var(--regular-edge-z-index);
   }
   /* Class added by ReactFlow for selected edges */
-  :global(.react-flow__edge.selected) {
+  :global(.react-flow__edges > svg:has(> .react-flow__edge.selected)) {
     z-index: var(--selected-edge-z-index);
   }
 }

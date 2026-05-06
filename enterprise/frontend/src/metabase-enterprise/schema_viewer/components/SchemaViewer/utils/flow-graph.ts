@@ -25,7 +25,7 @@ export function getEdgeId(
   return `edge-${sourceFieldId}-${targetFieldId}`;
 }
 
- // `side` distinguishes the right-side * handle used to anchor self-referential edges.
+// `side` distinguishes the right-side * handle used to anchor self-referential edges.
 export function getFieldHandleId(fieldId: FieldId, side?: "right"): string {
   return side ? `field-${fieldId}-${side}` : `field-${fieldId}`;
 }
@@ -73,12 +73,10 @@ const EMPTY_ROLES: TableEdgeRoles = {
   selfRefTargetFieldIds: new Set(),
 };
 
-// z-index scheme. Nodes sit above all edges so selected-edge highlighting
-// (which bumps the edge to SELECTED_EDGE_Z_INDEX) doesn't paint over node cards.
-// Both stay below other Schema Viewer elements.
+// Nodes should sit above all edges and have higher z-index, but it should be provided
+// here (not from CSS), because otherwise React Flow inlines it with "0" value (even when
+// set to `null`).
 const NODE_Z_INDEX = 2;
-const EDGE_Z_INDEX_DEFAULT = 0;
-const SELECTED_EDGE_Z_INDEX = 1;
 
 function toFlowNode(
   node: ErdNode,
@@ -116,7 +114,8 @@ function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
       isSelfRef ? "right" : undefined,
     ),
     type: "schemaViewerEdge",
-    zIndex: EDGE_Z_INDEX_DEFAULT,
+    // @ts-expect-error - without providing null here, ReactFlow inlines it as 0.
+    zIndex: null,
     data: {
       relationship: edge.relationship,
     },
@@ -189,16 +188,4 @@ export function toFlowGraph(data: ErdResponse): {
   edges: SchemaViewerFlowEdge[];
 } {
   return memoizedToFlowGraph(data);
-}
-
-export function markSelectedEdge(
-  edge: SchemaViewerFlowEdge,
-): SchemaViewerFlowEdge {
-  return edge.selected
-    ? {
-        ...edge,
-        className: "test",
-        // zIndex: SELECTED_EDGE_Z_INDEX,
-      }
-    : edge;
 }
