@@ -1436,17 +1436,26 @@ describe("admin > custom visualizations", () => {
         );
       });
 
+      // Use current version of the SDK in the plugin.
+      cy.readFile(`${projectDir}/package.json`).then((pkg) => {
+        cy.writeFile(
+          `${projectDir}/package.json`,
+          JSON.stringify(
+            {
+              ...pkg,
+              devDependencies: {
+                ...(pkg?.devDependencies ?? {}),
+                "@metabase/custom-viz": `file:${sdkDir}`,
+              },
+            },
+            null,
+            2,
+          ),
+        );
+      });
+
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-
-      // The scaffolded template pins @metabase/custom-viz to the current local
-      // version, but npm pulls that version from the registry — which may lag
-      // behind the in-repo SDK. Overwrite the installed dist/ with the local
-      // build so the plugin exercises the SDK on this branch.
-      cy.exec(
-        `rm -rf "${projectDir}/node_modules/@metabase/custom-viz/dist" && cp -R "${sdkDir}/dist" "${projectDir}/node_modules/@metabase/custom-viz/dist"`,
-        { timeout: TIMEOUT },
-      );
       // Start the plugin dev server and keep it running
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
