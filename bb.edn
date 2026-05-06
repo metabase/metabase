@@ -175,7 +175,11 @@
   backport
   {:doc "Backport a merged PR onto release-x.<version>.x via cherry-pick"
    :requires [[mage.backport :as backport]]
-   :examples [["./bin/mage backport 73718 55" "Backport PR #73718 to release-x.55.x"]]
+   :examples [["./bin/mage backport 73718 55" "Cherry-pick PR #73718 onto release-x.55.x locally"]
+              ["./bin/mage backport 73718 55 --push" "...and push the backport branch"]
+              ["./bin/mage backport 73718 55 --pr" "...and push + open the backport PR via gh"]]
+   :options [["-p" "--push" "Push the backport branch to origin after a clean cherry-pick"]
+             [nil  "--pr"   "Push and open a draft PR via `gh pr create` (implies --push)"]]
    :arg-schema [:tuple
                 [:string {:name "pr-number" :description "Merged PR number to backport"}]
                 [:string {:name "target-version" :description "Target major release (e.g. 55)"}]]

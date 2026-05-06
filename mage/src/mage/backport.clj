@@ -40,12 +40,14 @@
 
 (defn backport
   "Cherry-pick a merged PR onto a release branch."
-  [{:keys [arguments]}]
+  [{:keys [arguments options]}]
   (let [[pr-number-str target-version-str] arguments
         pr-number      (parse-long pr-number-str)
         target-version (parse-long target-version-str)
         target-branch  (format "release-x.%d.x" target-version)
-        remote-ref     (str "origin/" target-branch)]
+        remote-ref     (str "origin/" target-branch)
+        open-pr?       (boolean (:pr options))
+        push?          (or open-pr? (boolean (:push options)))]
     (when-not (working-tree-clean?)
       (die! "Working tree has uncommitted/staged changes. Commit or stash them first."))
     (println (c/green (format "Fetching origin (looking for %s)..." target-branch)))
@@ -61,7 +63,10 @@
         (die! (format "Could not determine merge commit for PR #%d." pr-number)))
       (let [short-sha       (subs commit 0 12)
             backport-branch (format "backport-%d-%s" target-version short-sha)
-            saved-branch    (current-branch)]
+            saved-branch    (current-branch)
+            gh-title        (format "🤖 backported \"%s\"" title)
+            gh-body         (str "#" pr-number)
+            assignee        (or author-login "@me")]
         (when (ref-exists? backport-branch)
           (die! (format "Branch %s already exists locally. Delete it (git branch -D %s) and retry."
                         backport-branch backport-branch)))
@@ -70,31 +75,49 @@
         (println (c/cyan (format "Creating %s from %s..." backport-branch remote-ref)))
         (shell/sh "git" "checkout" "-B" backport-branch remote-ref)
         (println (c/cyan (format "Cherry-picking %s..." short-sha)))
-        (let [{:keys [exit]} (shell/sh* "git" "cherry-pick" commit)
-              gh-title       (format "🤖 backported \"%s\"" title)
-              gh-body        (str "#" pr-number)
-              assignee       (or author-login "@me")]
+        (let [{:keys [exit]} (shell/sh* "git" "cherry-pick" commit)]
           (if (zero? exit)
             (do
-              (println)
               (println (c/green (format "✓ Clean cherry-pick onto %s." backport-branch)))
+              (if push?
+                (do
+                  (println (c/cyan (format "Pushing %s to origin..." backport-branch)))
+                  (shell/sh "git" "push" "-u" "origin" backport-branch))
+                (do
+                  (println (c/yellow "Skipping push (pass --push or --pr to do it automatically)."))
+                  (println (format "  git push -u origin %s" backport-branch))))
+              (if open-pr?
+                (do
+                  (println (c/cyan "Opening backport PR..."))
+                  (shell/sh "gh" "pr" "create"
+                            "--base" target-branch
+                            "--head" backport-branch
+                            "--label" "was-backported"
+                            "--assignee" assignee
+                            "--title" gh-title
+                            "--body" gh-body))
+                (when-not open-pr?
+                  (println (c/yellow "Skipping PR creation (pass --pr to do it automatically)."))
+                  (println (format "  gh pr create --base %s --head %s \\"
+                                   target-branch backport-branch))
+                  (println (format "    --label was-backported --assignee %s \\" assignee))
+                  (println (format "    --title %s \\" (pr-str gh-title)))
+                  (println (format "    --body %s" (pr-str gh-body)))))
+              (println (c/cyan (format "Returning to %s..." saved-branch)))
+              (shell/sh "git" "checkout" saved-branch)
+              (println (c/green (format "✓ Done. Backport branch: %s" backport-branch))))
+            (do
               (println)
-              (println (c/green "Suggested next steps:"))
+              (println (c/yellow (format "Cherry-pick produced conflicts on %s. Resolve them, then:"
+                                         backport-branch)))
+              (println "  git add <files>")
+              (println "  git cherry-pick --continue")
               (println (format "  git push -u origin %s" backport-branch))
               (println (format "  gh pr create --base %s --head %s \\"
                                target-branch backport-branch))
               (println (format "    --label was-backported --assignee %s \\" assignee))
               (println (format "    --title %s \\" (pr-str gh-title)))
               (println (format "    --body %s" (pr-str gh-body)))
-              (println)
-              (println (c/yellow (format "(currently on %s; previous branch was %s)"
-                                         backport-branch saved-branch))))
-            (do
-              (println)
-              (println (c/yellow "Cherry-pick produced conflicts. Resolve them, then:"))
-              (println "  git add <files>")
-              (println "  git cherry-pick --continue")
-              (println (format "  git push -u origin %s" backport-branch))
               (println)
               (println (c/yellow "To abort and return to your previous branch:"))
               (println "  git cherry-pick --abort")
