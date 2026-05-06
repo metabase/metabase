@@ -14,10 +14,11 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
+   (java.io ByteArrayInputStream File)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream)))
 
@@ -744,6 +745,67 @@
       (mt/assert-has-premium-feature-error
        "Serialization"
        (mt/user-http-request :crowberto :get 402 "ee/serialization/metadata/export")))))
+
+;;; --------------------------------------- /metadata/import ---------------------------------------
+
+(defn- import-metadata!
+  "Helper: POST `payload` (a Clojure map) to `/api/ee/serialization/metadata/import`
+  as a streamed body with `Content-Type: application/octet-stream`. The map is
+  JSON-encoded and sent as a raw `InputStream` so the request middleware does
+  not pre-parse it."
+  ([payload] (import-metadata! :crowberto 200 payload))
+  ([user expected-status payload]
+   (mt/user-http-request
+    user :post expected-status "ee/serialization/metadata/import"
+    {:request-options
+     {:headers {"content-type" "application/octet-stream"}
+      :body    (ByteArrayInputStream.
+                (.getBytes ^String (json/encode payload) "UTF-8"))}})))
+
+(deftest metadata-import-roundtrip-test
+  (testing "POST /api/ee/serialization/metadata/import is the inverse of GET /metadata/export"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Database {db-id :id}        {:engine :h2}
+                     :model/Table    {t-id  :id}        {:db_id db-id :schema "PUBLIC"
+                                                         :description "round trip"}
+                     :model/Field    _                  {:table_id      t-id
+                                                         :base_type     :type/Integer
+                                                         :database_type "BIGINT"
+                                                         :semantic_type :type/PK}]
+        (let [exported      (mt/user-http-request :crowberto :get 202
+                                                  "ee/serialization/metadata/export"
+                                                  :with-databases true
+                                                  :with-tables    true
+                                                  :with-fields    true)
+              before-tables (t2/count :model/Table :db_id db-id)
+              before-fields (t2/count :model/Field :table_id t-id)]
+          (is (= {:success true} (import-metadata! exported)))
+          (testing "no rows are added by re-importing the same payload"
+            (is (= before-tables (t2/count :model/Table :db_id db-id)))
+            (is (= before-fields (t2/count :model/Field :table_id t-id))))
+          (testing "the table description is preserved"
+            (is (= "round trip"
+                   (t2/select-one-fn :description :model/Table t-id)))))))))
+
+(deftest metadata-import-wrong-content-type-test
+  (testing "POST /api/ee/serialization/metadata/import — JSON content-type is rejected with 415"
+    (mt/with-premium-features #{:serialization}
+      (mt/user-http-request :crowberto :post 415
+                            "ee/serialization/metadata/import"
+                            {:tables [] :fields []}))))
+
+(deftest metadata-import-superuser-test
+  (testing "POST /api/ee/serialization/metadata/import — non-admins get a 403"
+    (mt/with-premium-features #{:serialization}
+      (is (= "You don't have permissions to do that."
+             (import-metadata! :rasta 403 {:tables [] :fields []}))))))
+
+(deftest metadata-import-token-feature-test
+  (testing "POST /api/ee/serialization/metadata/import requires the :serialization premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Serialization"
+       (import-metadata! :crowberto 402 {:tables [] :fields []})))))
 
 (deftest serialization-cleanup-test
   (testing "No temp files are left behind after export/import operations"
