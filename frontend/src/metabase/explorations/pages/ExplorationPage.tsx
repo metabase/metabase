@@ -14,6 +14,8 @@ import type {
   Exploration,
   ExplorationDocument,
   ExplorationQuery,
+  ExplorationQueryGroup,
+  ExplorationQueryGroupId,
   ExplorationQueryId,
   ExplorationQueryWithName,
   ExplorationThread,
@@ -27,12 +29,19 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
-import { ExplorationVisualization } from "../components/ExplorationVisualization";
+import {
+  ExplorationGroupVisualization,
+  ExplorationVisualization,
+} from "../components/ExplorationVisualization";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 interface ExplorationPageProps {
-  params: { id: string; entityType?: "query" | "document"; entityId?: string };
+  params: {
+    id: string;
+    entityType?: "query" | "document" | "group";
+    entityId?: string;
+  };
   children?: React.ReactNode;
 }
 
@@ -55,22 +64,39 @@ interface SelectedDocumentId {
   id: DocumentId;
 }
 
-export type SelectedEntityId = SelectedQueryId | SelectedDocumentId;
+interface SelectedGroupId {
+  type: "group";
+  id: ExplorationQueryGroupId;
+}
+
+export type SelectedEntityId =
+  | SelectedQueryId
+  | SelectedDocumentId
+  | SelectedGroupId;
 
 export function ExplorationPage({ params, children }: ExplorationPageProps) {
   const selectedEntityId: SelectedEntityId | null = useMemo(() => {
-    if (params.entityType && params.entityId) {
-      return { type: params.entityType, id: Number(params.entityId) };
+    if (!params.entityType || !params.entityId) {
+      return null;
     }
-    return null;
+    // Group ids are opaque strings (e.g. "auto:42:dim-foo") with colons —
+    // we URL-encode them on push and decode them here.
+    if (params.entityType === "group") {
+      return { type: "group", id: decodeURIComponent(params.entityId) };
+    }
+    return { type: params.entityType, id: Number(params.entityId) };
   }, [params.entityType, params.entityId]);
 
   const dispatch = useDispatch();
 
   const setSelectedEntityId = useCallback(
     (entityId: SelectedEntityId) => {
+      const idSegment =
+        entityId.type === "group"
+          ? encodeURIComponent(entityId.id)
+          : entityId.id;
       dispatch(
-        push(`/explorations/${params.id}/${entityId.type}/${entityId.id}`),
+        push(`/explorations/${params.id}/${entityId.type}/${idSegment}`),
       );
     },
     [dispatch, params.id],
@@ -185,20 +211,59 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
       : undefined;
   }, [selectedEntityId, documentIdToDocument]);
 
+  const groupIdToGroupAndQueries: Map<
+    ExplorationQueryGroupId,
+    {
+      group: ExplorationQueryGroup;
+      thread: ExplorationThread;
+      queries: ExplorationQuery[];
+    }
+  > = useMemo(() => {
+    const map = new Map<
+      ExplorationQueryGroupId,
+      {
+        group: ExplorationQueryGroup;
+        thread: ExplorationThread;
+        queries: ExplorationQuery[];
+      }
+    >();
+    for (const thread of exploration?.threads ?? []) {
+      const queriesById = new Map((thread.queries ?? []).map((q) => [q.id, q]));
+      for (const group of thread.groups ?? []) {
+        const queries = group.query_ids
+          .map((id) => queriesById.get(id))
+          .filter((q): q is ExplorationQuery => q !== undefined);
+        map.set(group.id, { group, thread, queries });
+      }
+    }
+    return map;
+  }, [exploration]);
+
+  const selectedGroup = useMemo(() => {
+    return selectedEntityId?.type === "group"
+      ? groupIdToGroupAndQueries.get(selectedEntityId.id)
+      : undefined;
+  }, [selectedEntityId, groupIdToGroupAndQueries]);
+
+  // For a selected group, treat the group's thread as the "selected thread"
+  // so timeline plumbing (timeline dropdown, per-thread selection memory)
+  // continues to work uniformly.
+  const effectiveSelectedThread = selectedThread ?? selectedGroup?.thread;
+
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
-      selectedThread?.timelines
+      effectiveSelectedThread?.timelines
         ?.map((timeline) => allTimelinesById.get(timeline.timeline_id))
         .filter((timeline) => timeline !== undefined) ?? []
     );
-  }, [selectedThread, allTimelinesById]);
+  }, [effectiveSelectedThread, allTimelinesById]);
 
   const selectedTimelineId: TimelineId | null = useMemo(() => {
-    if (!selectedThread) {
+    if (!effectiveSelectedThread) {
       return null;
     }
-    return selectedTimelineIdByThreadId[selectedThread.id] ?? null;
-  }, [selectedThread, selectedTimelineIdByThreadId]);
+    return selectedTimelineIdByThreadId[effectiveSelectedThread.id] ?? null;
+  }, [effectiveSelectedThread, selectedTimelineIdByThreadId]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
     if (selectedTimelineId == null) {
@@ -212,15 +277,15 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
 
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
-      if (!selectedThread) {
+      if (!effectiveSelectedThread) {
         return;
       }
       setSelectedTimelineIdByThreadId((prev) => ({
         ...prev,
-        [selectedThread.id]: timelineId,
+        [effectiveSelectedThread.id]: timelineId,
       }));
     },
-    [selectedThread, setSelectedTimelineIdByThreadId],
+    [effectiveSelectedThread, setSelectedTimelineIdByThreadId],
   );
 
   if (isLoading || error) {
@@ -252,6 +317,23 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
         <ExplorationVisualization
           explorationQuery={selectedQuery}
           explorationThread={selectedThread}
+          availableTimelines={availableTimelines}
+          selectedTimelineId={selectedTimelineId}
+          onSelectTimelineId={handleSelectTimelineId}
+          timelineEvents={timelineEvents}
+        />
+      )}
+      {selectedGroup && (
+        <ExplorationGroupVisualization
+          // Key on group id so the component remounts when the user
+          // navigates between `page` groups. The body calls one
+          // RTKQ hook per query, so the hook count must be stable for
+          // the lifetime of a single mount; remounting on group switch
+          // guarantees that.
+          key={selectedGroup.group.id}
+          group={selectedGroup.group}
+          queries={selectedGroup.queries}
+          explorationThread={selectedGroup.thread}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}

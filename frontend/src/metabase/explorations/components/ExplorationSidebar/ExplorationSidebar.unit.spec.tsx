@@ -43,9 +43,9 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
   exploration: Exploration;
   threadsWithSortedQueries: ThreadsWithSortedQueries[];
 } {
-  // Default to one auto-group per query so each query renders as a flat row
-  // (single-query groups skip the collapsible wrapper). Tests that need
-  // multi-query groups pass `groups` explicitly.
+  // Default to one `singleton` auto-group per query so each query renders
+  // as a flat row (singleton groups skip the collapsible wrapper). Tests
+  // that need multi-query groups pass `groups` explicitly.
   const finalGroups: ExplorationQueryGroup[] =
     groups ??
     queries.map((q, i) => ({
@@ -53,6 +53,7 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
       parent_group_id: null,
       position: i,
       type: "auto" as const,
+      display_type: "singleton" as const,
       name: q.name,
       query_ids: [q.id],
     }));
@@ -85,16 +86,35 @@ function createExploration({ queries, groups }: CreateExplorationOpts): {
     threads,
   };
 
-  return { exploration, threadsWithSortedQueries: threads };
+  // Test fixture: queries are constructed via `createQuery` which returns
+  // the wider `ExplorationQuery` (`name: string | null`); the prod page
+  // narrows to `ExplorationQueryWithName` by filtering. We trust the
+  // fixture inputs here and cast.
+  return {
+    exploration,
+    threadsWithSortedQueries: threads as ThreadsWithSortedQueries[],
+  };
 }
+
+type TestSelectedEntityId =
+  | { type: "query"; id: number }
+  | { type: "group"; id: string }
+  | { type: "document"; id: number }
+  | null;
 
 interface SetupOpts {
   queries: ExplorationQuery[];
   groups?: ExplorationQueryGroup[];
   selectedQueryId?: number | null;
+  selectedEntityId?: TestSelectedEntityId;
 }
 
-function setup({ queries, groups, selectedQueryId = null }: SetupOpts) {
+function setup({
+  queries,
+  groups,
+  selectedQueryId = null,
+  selectedEntityId,
+}: SetupOpts) {
   const setSelectedEntityId = jest.fn();
 
   const { exploration, threadsWithSortedQueries } = createExploration({
@@ -102,12 +122,17 @@ function setup({ queries, groups, selectedQueryId = null }: SetupOpts) {
     groups,
   });
 
+  const resolvedEntityId =
+    selectedEntityId !== undefined
+      ? selectedEntityId
+      : selectedQueryId == null
+        ? null
+        : { type: "query" as const, id: selectedQueryId };
+
   renderWithProviders(
     <ExplorationSidebar
       exploration={exploration}
-      selectedEntityId={
-        selectedQueryId == null ? null : { type: "query", id: selectedQueryId }
-      }
+      selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       threadsWithSortedQueries={threadsWithSortedQueries}
     />,
@@ -215,6 +240,7 @@ describe("ExplorationSidebar", () => {
         parent_group_id: null,
         position: 0,
         type: "auto",
+        display_type: "sidebar",
         name: "Revenue by plan",
         query_ids: planQueries.map((q) => q.id),
       },
@@ -223,6 +249,7 @@ describe("ExplorationSidebar", () => {
         parent_group_id: null,
         position: 1,
         type: "auto",
+        display_type: "sidebar",
         name: "Revenue by region",
         query_ids: regionQueries.map((q) => q.id),
       },
@@ -287,6 +314,7 @@ describe("ExplorationSidebar", () => {
             parent_group_id: null,
             position: 0,
             type: "auto",
+            display_type: "singleton",
             name: "Solo dimension",
             query_ids: [onlyQuery.id],
           },
@@ -324,6 +352,7 @@ describe("ExplorationSidebar", () => {
           parent_group_id: null,
           position: 0,
           type: "auto",
+          display_type: "sidebar",
           name: "Still running",
           query_ids: runningGroupQueries.map((q) => q.id),
         },
@@ -332,6 +361,7 @@ describe("ExplorationSidebar", () => {
           parent_group_id: null,
           position: 1,
           type: "auto",
+          display_type: "sidebar",
           name: "Has an error",
           query_ids: errorGroupQueries.map((q) => q.id),
         },
@@ -340,6 +370,7 @@ describe("ExplorationSidebar", () => {
           parent_group_id: null,
           position: 2,
           type: "auto",
+          display_type: "sidebar",
           name: "All settled",
           query_ids: doneGroupQueries.map((q) => q.id),
         },
@@ -395,6 +426,101 @@ describe("ExplorationSidebar", () => {
       expect(
         screen.queryByText("Revenue by plan (all)"),
       ).not.toBeInTheDocument();
+    });
+
+    describe("display_type: page", () => {
+      const pageQueries: ExplorationQuery[] = [
+        createQuery({ id: 31, name: "Revenue (US)", status: "done" }),
+        createQuery({ id: 32, name: "Revenue (EU)", status: "done" }),
+      ];
+      const pageGroup: ExplorationQueryGroup = {
+        id: "auto:1:revenue-page",
+        parent_group_id: null,
+        position: 0,
+        type: "auto",
+        display_type: "page",
+        name: "Revenue across regions",
+        query_ids: pageQueries.map((q) => q.id),
+      };
+
+      it("renders a single sidebar row labeled with the group's name and exposes no individual queries", () => {
+        setup({ queries: pageQueries, groups: [pageGroup] });
+
+        // The group's name is visible…
+        expect(getRow("Revenue across regions")).toBeInTheDocument();
+        // …and the individual queries' names are NOT exposed in the
+        // sidebar.
+        expect(screen.queryByText("Revenue (US)")).not.toBeInTheDocument();
+        expect(screen.queryByText("Revenue (EU)")).not.toBeInTheDocument();
+        // No expand/collapse chevron either.
+        expect(
+          screen.queryByRole("button", { expanded: false }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("clicking the row selects the group entity (not a query)", async () => {
+        const { setSelectedEntityId } = setup({
+          queries: pageQueries,
+          groups: [pageGroup],
+        });
+
+        await userEvent.click(getRow("Revenue across regions"));
+
+        expect(setSelectedEntityId).toHaveBeenCalledWith({
+          type: "group",
+          id: pageGroup.id,
+        });
+      });
+
+      it("marks the selected group row as pressed when the entity matches", () => {
+        const setSelectedEntityId = jest.fn();
+        const { exploration, threadsWithSortedQueries } = createExploration({
+          queries: pageQueries,
+          groups: [pageGroup],
+        });
+        renderWithProviders(
+          <ExplorationSidebar
+            exploration={exploration}
+            selectedEntityId={{ type: "group", id: pageGroup.id }}
+            setSelectedEntityId={setSelectedEntityId}
+            threadsWithSortedQueries={threadsWithSortedQueries}
+          />,
+        );
+
+        expect(getRow("Revenue across regions")).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      });
+
+      it("group row status reflects the worst case across its queries", () => {
+        const mixedPageQueries = [
+          createQuery({ id: 41, name: "OK", status: "done" }),
+          createQuery({
+            id: 42,
+            name: "Boom",
+            status: "error",
+            error_message: "kaboom",
+          }),
+        ];
+        setup({
+          queries: mixedPageQueries,
+          groups: [
+            {
+              ...pageGroup,
+              id: "auto:1:mixed-page",
+              query_ids: mixedPageQueries.map((q) => q.id),
+              name: "Mixed page",
+            },
+          ],
+        });
+
+        expect(
+          within(getRow("Mixed page")).getByLabelText(
+            "Failed to generate chart",
+          ),
+        ).toBeInTheDocument();
+      });
     });
 
     describe("arrow-key navigation", () => {
@@ -465,6 +591,129 @@ describe("ExplorationSidebar", () => {
         });
         expect(planHeader).toHaveAttribute("aria-expanded", "true");
         expect(regionHeader).toHaveAttribute("aria-expanded", "false");
+      });
+
+      it("Right onto a page group selects the group entity (and collapses the source sidebar group)", () => {
+        const pageGroupNav: ExplorationQueryGroup = {
+          id: "auto:1:page-after-plan",
+          parent_group_id: null,
+          position: 1,
+          type: "auto",
+          display_type: "page",
+          name: "Page after plan",
+          query_ids: [101, 102],
+        };
+        const pageQueriesNav = [
+          createQuery({ id: 101, name: "Page q1", status: "done" }),
+          createQuery({ id: 102, name: "Page q2", status: "done" }),
+        ];
+        const { setSelectedEntityId } = setup({
+          queries: [...planQueries, ...pageQueriesNav],
+          groups: [
+            {
+              ...groups[0], // plan group, sidebar
+              position: 0,
+            },
+            pageGroupNav,
+          ],
+          selectedQueryId: planQueries[planQueries.length - 1].id,
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "group",
+          id: pageGroupNav.id,
+        });
+        // The plan (sidebar) group collapses since we left it.
+        const planHeader = screen.getByRole("button", {
+          name: /Revenue by plan/,
+        });
+        expect(planHeader).toHaveAttribute("aria-expanded", "false");
+      });
+
+      it("Right from a selected page group advances to the next entity", () => {
+        const pageGroupNav: ExplorationQueryGroup = {
+          id: "auto:1:page-before-region",
+          parent_group_id: null,
+          position: 0,
+          type: "auto",
+          display_type: "page",
+          name: "Page before region",
+          query_ids: [201, 202],
+        };
+        const pageQueriesNav = [
+          createQuery({ id: 201, name: "Page q1", status: "done" }),
+          createQuery({ id: 202, name: "Page q2", status: "done" }),
+        ];
+        const { setSelectedEntityId } = setup({
+          queries: [...pageQueriesNav, ...regionQueries],
+          groups: [
+            pageGroupNav,
+            {
+              ...groups[1], // region group, sidebar
+              position: 1,
+            },
+          ],
+          selectedEntityId: { type: "group", id: pageGroupNav.id },
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+        // Lands on the first query of the region (sidebar) group, which
+        // also auto-expands.
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "query",
+          id: regionQueries[0].id,
+        });
+        const regionHeader = screen.getByRole("button", {
+          name: /Revenue by region/,
+        });
+        expect(regionHeader).toHaveAttribute("aria-expanded", "true");
+      });
+
+      it("Left from a selected page group lands on the previous singleton query", () => {
+        const singletonQuery = createQuery({
+          id: 901,
+          name: "Solo before page",
+          status: "done",
+        });
+        const pageGroupNav: ExplorationQueryGroup = {
+          id: "auto:1:page-trailing",
+          parent_group_id: null,
+          position: 1,
+          type: "auto",
+          display_type: "page",
+          name: "Trailing page",
+          query_ids: [301, 302],
+        };
+        const pageQueriesNav = [
+          createQuery({ id: 301, name: "Page q1", status: "done" }),
+          createQuery({ id: 302, name: "Page q2", status: "done" }),
+        ];
+        const { setSelectedEntityId } = setup({
+          queries: [singletonQuery, ...pageQueriesNav],
+          groups: [
+            {
+              id: "auto:1:singleton",
+              parent_group_id: null,
+              position: 0,
+              type: "auto",
+              display_type: "singleton",
+              name: "Solo before page",
+              query_ids: [singletonQuery.id],
+            },
+            pageGroupNav,
+          ],
+          selectedEntityId: { type: "group", id: pageGroupNav.id },
+        });
+
+        fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
+          type: "query",
+          id: singletonQuery.id,
+        });
       });
     });
   });

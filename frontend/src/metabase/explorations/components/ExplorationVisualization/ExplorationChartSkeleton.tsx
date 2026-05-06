@@ -8,17 +8,21 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
  * Loading placeholder shown while an exploration query is `pending` or
  * `running`. The visual mimics a tiny chart card — title bar, y-axis ticks,
  * and a flat area-chart silhouette in the body.
- *
- * Matches the design at `frontend/src/metabase/explorations/img.png`.
  */
 export function ExplorationChartSkeleton({
+  name,
   explorationQuery,
 }: {
+  name: string | null;
   explorationQuery: ExplorationQuery;
 }) {
   return (
     <>
-      <ExplorationVisualizationHeader explorationQuery={explorationQuery} />
+      <ExplorationVisualizationHeader
+        name={name}
+        explorationQuery={explorationQuery}
+      />
+
       <Stack gap="md" h="100%" className={S.root}>
         <Stack gap={6} className={S.titleBlock}>
           <Skeleton h={14} w="40%" radius="sm" />

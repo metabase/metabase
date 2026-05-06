@@ -37,9 +37,25 @@ import {
 } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
-import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
+import { shouldIgnoreKeyboardEvent } from "../../utils";
 
 import S from "./ExplorationSidebar.module.css";
+
+/**
+ * A row that arrow-key navigation can land on. Either a single query
+ * (singleton group's query, sidebar group's expanded child, or an
+ * ungrouped query) or a `page` group's row. `groupId` is the
+ * collapsible (`display_type: "sidebar"`) group the query belongs to,
+ * or `null` if the query is rendered flat — this drives auto-open /
+ * auto-close behavior when navigation crosses a group boundary.
+ */
+type NavEntity =
+  | {
+      type: "query";
+      id: ExplorationQueryId;
+      groupId: ExplorationQueryGroupId | null;
+    }
+  | { type: "group"; id: ExplorationQueryGroupId };
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
@@ -56,14 +72,23 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   threadsWithSortedQueries,
 }: ExplorationSidebarProps) {
-  const selectedQueryRef = useRef<HTMLButtonElement | null>(null);
+  const selectedRowRef = useRef<HTMLButtonElement | null>(null);
 
   const selectedQueryId =
     selectedEntityId?.type === "query" ? selectedEntityId.id : null;
+  const selectedGroupId =
+    selectedEntityId?.type === "group" ? selectedEntityId.id : null;
 
   const setSelectedQueryId = useCallback(
     (queryId: ExplorationQueryId) => {
       return setSelectedEntityId({ id: queryId, type: "query" });
+    },
+    [setSelectedEntityId],
+  );
+
+  const setSelectedGroupId = useCallback(
+    (groupId: ExplorationQueryGroupId) => {
+      return setSelectedEntityId({ id: groupId, type: "group" });
     },
     [setSelectedEntityId],
   );
@@ -78,48 +103,75 @@ export function ExplorationSidebar({
   >(() => new Set());
 
   useEffect(() => {
-    if (selectedEntityId?.type !== "query") {
+    if (
+      selectedEntityId?.type !== "query" &&
+      selectedEntityId?.type !== "group"
+    ) {
       return;
     }
-    selectedQueryRef.current?.scrollIntoView({
+    selectedRowRef.current?.scrollIntoView({
       block: "nearest",
     });
   }, [selectedEntityId]);
 
-  // Visual-order list of queries (group order × group's query_ids ×
-  // ungrouped tail) per thread, flattened across threads. This is the
-  // sequence keyboard arrow keys walk through.
-  const orderedNavQueries = useMemo<ExplorationQueryWithName[]>(() => {
+  // Visual-order list of *navigable entities* — the rows arrow-keys walk
+  // through. A row is either a single query (singleton group's query, a
+  // sidebar group's expanded child, or an ungrouped query) or a `page`
+  // group's row. Entities carry the `groupId` of the collapsible block
+  // they belong to (sidebar-type) so the keydown handler can open/close
+  // groups when navigation crosses a boundary.
+  const orderedNavEntities = useMemo<NavEntity[]>(() => {
     return threadsWithSortedQueries.flatMap((thread) => {
       const queriesById = new Map(thread.queries.map((q) => [q.id, q]));
       const sortedGroups = (thread.groups ?? [])
         .slice()
         .sort((a, b) => a.position - b.position);
       const groupedIds = new Set<ExplorationQueryId>();
-      const groupedFlat = sortedGroups.flatMap((group) =>
-        group.query_ids
-          .map((id) => {
-            groupedIds.add(id);
-            return queriesById.get(id);
-          })
-          .filter((q): q is ExplorationQueryWithName => q != null),
-      );
-      return [
-        ...groupedFlat,
-        ...thread.queries.filter((q) => !groupedIds.has(q.id)),
-      ];
+      const groupedFlat = sortedGroups.flatMap((group): NavEntity[] => {
+        switch (group.display_type) {
+          case "page":
+            // The page group exposes itself as a single entity; its
+            // queries are reachable only via the group, not individually.
+            for (const id of group.query_ids) {
+              groupedIds.add(id);
+            }
+            return [{ type: "group", id: group.id }];
+          case "sidebar":
+            return group.query_ids
+              .map((id): NavEntity | null => {
+                groupedIds.add(id);
+                const q = queriesById.get(id);
+                return q
+                  ? { type: "query", id: q.id, groupId: group.id }
+                  : null;
+              })
+              .filter((e): e is NavEntity => e != null);
+          case "singleton":
+            return group.query_ids
+              .map((id): NavEntity | null => {
+                groupedIds.add(id);
+                const q = queriesById.get(id);
+                return q ? { type: "query", id: q.id, groupId: null } : null;
+              })
+              .filter((e): e is NavEntity => e != null);
+        }
+      });
+      const ungrouped: NavEntity[] = thread.queries
+        .filter((q) => !groupedIds.has(q.id))
+        .map((q) => ({ type: "query", id: q.id, groupId: null }));
+      return [...groupedFlat, ...ungrouped];
     });
   }, [threadsWithSortedQueries]);
 
-  // Look up which group (if any) a query belongs to. Used to detect a
-  // group-boundary crossing during arrow-key navigation.
+  // Look up which collapsible group (if any) a query belongs to. Used to
+  // detect a group-boundary crossing during arrow-key navigation. Only
+  // `display_type: "sidebar"` groups are collapsible; singleton groups
+  // render flat, and page groups don't expose their queries at all.
   const queryIdToGroupId = useMemo(() => {
     const map = new Map<ExplorationQueryId, ExplorationQueryGroupId>();
     for (const thread of threadsWithSortedQueries) {
       for (const group of thread.groups ?? []) {
-        // Single-query groups are rendered flat in the sidebar — they don't
-        // have a header to collapse — so don't track them as collapsible.
-        if (group.query_ids.length <= 1) {
+        if (group.display_type !== "sidebar") {
           continue;
         }
         for (const id of group.query_ids) {
@@ -149,13 +201,17 @@ export function ExplorationSidebar({
     });
   }, [selectedQueryId, queryIdToGroupId]);
 
-  // Arrow-key navigation. Walks queries in sidebar order; when crossing a
-  // group boundary, collapses the source group and opens the destination.
+  // Arrow-key navigation. Walks navigable entities (queries and `page`
+  // groups) in sidebar order; when crossing a `sidebar`-type group's
+  // boundary, collapses the source and opens the destination.
   // Bound to Left/Right because TimelineDropdown owns Up/Down (see
   // ExplorationPage.tsx for the original comment about that constraint).
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedQueryId == null) {
+      // Engage when sitting on any navigable entity. Documents are the
+      // only entity type we don't traverse via arrows — they live in a
+      // separate visual section of the sidebar.
+      if (selectedEntityId == null || selectedEntityId.type === "document") {
         return;
       }
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
@@ -165,41 +221,57 @@ export function ExplorationSidebar({
         return;
       }
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextQuery = getAdjacentById(
-        orderedNavQueries,
-        selectedQueryId,
-        direction,
+      const currentIndex = orderedNavEntities.findIndex(
+        (e) => e.type === selectedEntityId.type && e.id === selectedEntityId.id,
       );
-      if (nextQuery == null || nextQuery.id === selectedQueryId) {
+      if (currentIndex === -1) {
         return;
       }
+      const nextIndex = currentIndex + direction;
+      if (nextIndex < 0 || nextIndex >= orderedNavEntities.length) {
+        return;
+      }
+      const nextEntity = orderedNavEntities[nextIndex];
       event.preventDefault();
 
-      const currentGroupId = queryIdToGroupId.get(selectedQueryId);
-      const nextGroupId = queryIdToGroupId.get(nextQuery.id);
-      if (currentGroupId && nextGroupId && currentGroupId !== nextGroupId) {
+      const currentGroupId =
+        selectedEntityId.type === "query"
+          ? (queryIdToGroupId.get(selectedEntityId.id) ?? null)
+          : null;
+      const nextGroupId =
+        nextEntity.type === "query" ? nextEntity.groupId : null;
+
+      if (currentGroupId && currentGroupId !== nextGroupId) {
         setOpenGroupIds((prev) => {
           const next = new Set(prev);
           next.delete(currentGroupId);
-          next.add(nextGroupId);
+          if (nextGroupId) {
+            next.add(nextGroupId);
+          }
           return next;
         });
-      } else if (nextGroupId) {
+      } else if (nextGroupId && nextGroupId !== currentGroupId) {
         setOpenGroupIds((prev) =>
           prev.has(nextGroupId) ? prev : new Set(prev).add(nextGroupId),
         );
       }
-      setSelectedQueryId(nextQuery.id);
+
+      if (nextEntity.type === "group") {
+        setSelectedGroupId(nextEntity.id);
+      } else {
+        setSelectedQueryId(nextEntity.id);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [
-    orderedNavQueries,
+    orderedNavEntities,
     queryIdToGroupId,
-    selectedQueryId,
+    selectedEntityId,
     setSelectedQueryId,
+    setSelectedGroupId,
   ]);
 
   const handleToggleGroup = useCallback(
@@ -255,7 +327,9 @@ export function ExplorationSidebar({
               thread={thread}
               selectedQueryId={selectedQueryId}
               setSelectedQueryId={setSelectedQueryId}
-              selectedQueryRef={selectedQueryRef}
+              selectedGroupId={selectedGroupId}
+              setSelectedGroupId={setSelectedGroupId}
+              selectedRowRef={selectedRowRef}
               openGroupIds={openGroupIds}
               onToggleGroup={handleToggleGroup}
             />
@@ -270,7 +344,9 @@ interface ExplorationThreadQueriesProps {
   thread: ThreadsWithSortedQueries;
   selectedQueryId: ExplorationQueryId | null;
   setSelectedQueryId: (queryId: ExplorationQueryId) => void;
-  selectedQueryRef: Ref<HTMLButtonElement>;
+  selectedGroupId: ExplorationQueryGroupId | null;
+  setSelectedGroupId: (groupId: ExplorationQueryGroupId) => void;
+  selectedRowRef: Ref<HTMLButtonElement>;
   openGroupIds: ReadonlySet<ExplorationQueryGroupId>;
   onToggleGroup: (group: ExplorationQueryGroup) => void;
 }
@@ -279,7 +355,9 @@ function ExplorationThreadQueries({
   thread,
   selectedQueryId,
   setSelectedQueryId,
-  selectedQueryRef,
+  selectedGroupId,
+  setSelectedGroupId,
+  selectedRowRef,
   openGroupIds,
   onToggleGroup,
 }: ExplorationThreadQueriesProps) {
@@ -323,45 +401,72 @@ function ExplorationThreadQueries({
           return null;
         }
 
-        // Single-query groups skip the wrapper entirely — the lone query is
-        // rendered as a normal row.
-        if (groupQueries.length === 1) {
-          const query = groupQueries[0];
-          const isSelected = selectedQueryId === query.id;
+        switch (group.display_type) {
+          case "singleton": {
+            // Render the lone query as a flat row — no group header.
+            const query = groupQueries[0];
+            const isSelected = selectedQueryId === query.id;
+            return (
+              <ExplorationQueryRow
+                key={query.id}
+                query={query}
+                isSelected={isSelected}
+                buttonRef={isSelected ? selectedRowRef : undefined}
+                onSelect={() => setSelectedQueryId(query.id)}
+              />
+            );
+          }
 
-          return (
-            <ExplorationQueryRow
-              key={query.id}
-              query={query}
-              isSelected={isSelected}
-              buttonRef={isSelected ? selectedQueryRef : undefined}
-              onSelect={() => setSelectedQueryId(query.id)}
-            />
-          );
+          case "page": {
+            // Single sidebar row labeled with the group name; opens a
+            // multi-chart page (`ExplorationGroupVisualization`).
+            const isSelected = selectedGroupId === group.id;
+            return (
+              <ExplorationQueryGroupPageRow
+                key={group.id}
+                group={group}
+                queries={groupQueries}
+                isSelected={isSelected}
+                buttonRef={isSelected ? selectedRowRef : undefined}
+                onSelect={() => setSelectedGroupId(group.id)}
+              />
+            );
+          }
+
+          case "sidebar": {
+            // Collapsible block with dropdown — historically the default
+            // behavior for any multi-query group; today the BE only
+            // emits this for the `Uninteresting Charts` bin.
+            const isOpen = openGroupIds.has(group.id);
+            return (
+              <ExplorationQueryGroupBlock
+                key={group.id}
+                group={group}
+                queries={groupQueries}
+                isOpen={isOpen}
+                onToggle={() => onToggleGroup(group)}
+                selectedQueryId={selectedQueryId}
+                setSelectedQueryId={setSelectedQueryId}
+                selectedRowRef={selectedRowRef}
+              />
+            );
+          }
+
+          default: {
+            // Exhaustiveness guard — adding a new `display_type` should
+            // be a TS error here.
+            const _exhaustive: never = group.display_type;
+            void _exhaustive;
+            return null;
+          }
         }
-
-        const isOpen = openGroupIds.has(group.id);
-        return (
-          <ExplorationQueryGroupBlock
-            key={group.id}
-            group={group}
-            queries={groupQueries}
-            isOpen={isOpen}
-            onToggle={() => onToggleGroup(group)}
-            selectedQueryId={selectedQueryId}
-            setSelectedQueryId={setSelectedQueryId}
-            selectedQueryRef={selectedQueryRef}
-          />
-        );
       })}
       {ungroupedQueries.map((query) => (
         <ExplorationQueryRow
           key={query.id}
           query={query}
           isSelected={selectedQueryId === query.id}
-          buttonRef={
-            selectedQueryId === query.id ? selectedQueryRef : undefined
-          }
+          buttonRef={selectedQueryId === query.id ? selectedRowRef : undefined}
           onSelect={() => setSelectedQueryId(query.id)}
         />
       ))}
@@ -376,7 +481,7 @@ interface ExplorationQueryGroupBlockProps {
   onToggle: () => void;
   selectedQueryId: ExplorationQueryId | null;
   setSelectedQueryId: (queryId: ExplorationQueryId) => void;
-  selectedQueryRef: Ref<HTMLButtonElement>;
+  selectedRowRef: Ref<HTMLButtonElement>;
 }
 
 function ExplorationQueryGroupBlock({
@@ -386,7 +491,7 @@ function ExplorationQueryGroupBlock({
   onToggle,
   selectedQueryId,
   setSelectedQueryId,
-  selectedQueryRef,
+  selectedRowRef,
 }: ExplorationQueryGroupBlockProps) {
   const groupStatus = getExplorationQueryGroupStatus(queries);
   const groupInterestingness = getExplorationQueryGroupInterestingness(queries);
@@ -409,7 +514,7 @@ function ExplorationQueryGroupBlock({
               query={query}
               isSelected={selectedQueryId === query.id}
               buttonRef={
-                selectedQueryId === query.id ? selectedQueryRef : undefined
+                selectedQueryId === query.id ? selectedRowRef : undefined
               }
               onSelect={() => setSelectedQueryId(query.id)}
             />
@@ -479,15 +584,51 @@ function ExplorationQueryGroupRow({
         {name}
       </Ellipsified>
       {(interestingness ?? 0) > INTERESTINGNESS_SCORE_THRESHOLD && (
-        <Tooltip label={t`Potentially interesting`}>
-          <Box
-            aria-hidden
-            w={6}
-            h={6}
-            bg="interesting"
-            className={S.interestingnessIndicator}
-          />
-        </Tooltip>
+        <PotentiallyInterestingMarker />
+      )}
+    </UnstyledButton>
+  );
+}
+
+interface ExplorationQueryGroupPageRowProps {
+  group: ExplorationQueryGroup;
+  queries: ExplorationQueryWithName[];
+  isSelected: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
+  onSelect: () => void;
+}
+
+/**
+ * Sidebar row for a `display_type: "page"` group: shows the group's name,
+ * combined status icon, and combined interestingness badge — no chevron.
+ * Clicking it opens the multi-chart page.
+ */
+function ExplorationQueryGroupPageRow({
+  group,
+  queries,
+  isSelected,
+  buttonRef,
+  onSelect,
+}: ExplorationQueryGroupPageRowProps) {
+  const status = getExplorationQueryGroupStatus(queries);
+  const interestingness = getExplorationQueryGroupInterestingness(queries);
+  const name = group.name ?? queries[0]?.name ?? t`Group`;
+  return (
+    <UnstyledButton
+      ref={buttonRef}
+      role="listitem"
+      aria-pressed={isSelected}
+      className={cx(S.queryRow, {
+        [S.queryRowSelected]: isSelected,
+      })}
+      onClick={onSelect}
+    >
+      <ExplorationQueryStatusIcon status={status} />
+      <Ellipsified flex={1} size="md" lh="1.5rem">
+        {name}
+      </Ellipsified>
+      {(interestingness ?? 0) > INTERESTINGNESS_SCORE_THRESHOLD && (
+        <PotentiallyInterestingMarker />
       )}
     </UnstyledButton>
   );
@@ -526,15 +667,7 @@ function ExplorationQueryRow({
         {query.name}
       </Ellipsified>
       {(query.interestingness_score ?? 0) > INTERESTINGNESS_SCORE_THRESHOLD && (
-        <Tooltip label={t`Potentially interesting`}>
-          <Box
-            aria-hidden
-            w={6}
-            h={6}
-            bg="interesting"
-            className={S.interestingnessIndicator}
-          />
-        </Tooltip>
+        <PotentiallyInterestingMarker />
       )}
     </UnstyledButton>
   );
@@ -554,6 +687,20 @@ function ExplorationQueryRow({
   }
 
   return row;
+}
+
+function PotentiallyInterestingMarker() {
+  return (
+    <Tooltip label={t`Potentially interesting`}>
+      <Box
+        aria-hidden
+        w="0.375rem"
+        h="0.375rem"
+        bg="interesting"
+        className={S.interestingnessIndicator}
+      />
+    </Tooltip>
+  );
 }
 
 const STATUS_ARIA_LABELS: Record<

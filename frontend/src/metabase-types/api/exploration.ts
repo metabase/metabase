@@ -116,11 +116,14 @@ export interface ExplorationDocument {
 
 export type ExplorationQueryGroupId = string;
 
+export type ExplorationQueryGroupDisplayType = "singleton" | "sidebar" | "page";
+
 export interface ExplorationQueryGroup {
   id: ExplorationQueryGroupId;
   parent_group_id: ExplorationQueryGroupId | null;
   position: number;
   type: "auto";
+  display_type: ExplorationQueryGroupDisplayType;
   name: string | null;
   query_ids: ExplorationQueryId[];
 }

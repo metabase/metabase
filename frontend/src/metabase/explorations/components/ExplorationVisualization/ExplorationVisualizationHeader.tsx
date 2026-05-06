@@ -11,7 +11,8 @@ import { DocumentMenu } from "./DocumentMenu";
 import { TimelineDropdown } from "./TimelineDropdown";
 
 interface ExplorationVisualizationHeaderProps {
-  explorationQuery: ExplorationQuery;
+  name: string | null;
+  explorationQuery?: ExplorationQuery;
   explorationThread?: ExplorationThread;
   availableTimelines?: Timeline[];
   selectedTimelineId?: TimelineId | null;
@@ -22,6 +23,7 @@ interface ExplorationVisualizationHeaderProps {
 }
 
 export function ExplorationVisualizationHeader({
+  name,
   explorationQuery,
   explorationThread,
   availableTimelines,
@@ -31,10 +33,11 @@ export function ExplorationVisualizationHeader({
   showDocumentMenu,
   display,
 }: ExplorationVisualizationHeaderProps) {
+  const title = name ?? explorationQuery?.name ?? null;
   return (
     <Group h="2rem" justify="space-between">
       <Text fw="bold" size="lg">
-        {explorationQuery.name}
+        {title}
       </Text>
       <Group align="center" gap="sm">
         {showTimelineDropdown &&
@@ -48,7 +51,7 @@ export function ExplorationVisualizationHeader({
               onSelectTimelineId={onSelectTimelineId}
             />
           )}
-        {explorationThread && showDocumentMenu && (
+        {explorationQuery && explorationThread && showDocumentMenu && (
           <DocumentMenu
             explorationQuery={explorationQuery}
             explorationThread={explorationThread}

@@ -11,7 +11,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Dataset,
   ExplorationQuery,
   ExplorationThread,
   Timeline,
@@ -23,6 +22,7 @@ import { isCardDisplayType } from "metabase-types/api";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
+import { getDimensions } from "./utils";
 
 interface ExplorationVisualizationProps {
   explorationQuery: ExplorationQuery;
@@ -58,7 +58,12 @@ function ExplorationVisualizationBody(props: ExplorationVisualizationProps) {
   }
 
   if (explorationQuery.status !== "done") {
-    return <ExplorationChartSkeleton explorationQuery={explorationQuery} />;
+    return (
+      <ExplorationChartSkeleton
+        name={explorationQuery.name}
+        explorationQuery={explorationQuery}
+      />
+    );
   }
 
   return <ExplorationVisualizationChart {...props} />;
@@ -113,12 +118,18 @@ function ExplorationVisualizationChart({
   }, [series, display]);
 
   if (!series) {
-    return <ExplorationChartSkeleton explorationQuery={explorationQuery} />;
+    return (
+      <ExplorationChartSkeleton
+        name={explorationQuery.name}
+        explorationQuery={explorationQuery}
+      />
+    );
   }
 
   return (
     <>
       <ExplorationVisualizationHeader
+        name={explorationQuery.name}
         explorationQuery={explorationQuery}
         explorationThread={explorationThread}
         availableTimelines={availableTimelines}
@@ -137,23 +148,15 @@ function ExplorationVisualizationChart({
   );
 }
 
-function getDimensions(dataset: Dataset) {
-  const cols = dataset.data.cols;
-  if (cols.length === 3) {
-    // the first column is the date column and should be the x-axis
-    // the second column is the breakout
-    // we have to provide these manually, otherwise viz settings might swap them based on cardinality
-    return [cols[0]?.name, cols[1]?.name];
-  }
-  return undefined;
-}
-
 function ExplorationVisualizationError({
   explorationQuery,
 }: ExplorationVisualizationProps) {
   return (
     <>
-      <ExplorationVisualizationHeader explorationQuery={explorationQuery} />
+      <ExplorationVisualizationHeader
+        name={explorationQuery.name}
+        explorationQuery={explorationQuery}
+      />
       <Stack
         align="center"
         justify="center"
