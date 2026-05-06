@@ -1,5 +1,6 @@
 import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 import { Route } from "react-router";
 
 import {
@@ -178,8 +179,14 @@ export const setup = async ({
     initialRoute: `/admin/settings${initialRoute}`,
   });
 
+  const PassThroughGuard = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+
   testingLibraryRender(
-    <Route path="admin/settings">{getSettingsRoutes(store)}</Route>,
+    <Route path="admin/settings">
+      {getSettingsRoutes(store, PassThroughGuard)}
+    </Route>,
     { wrapper },
   );
 
