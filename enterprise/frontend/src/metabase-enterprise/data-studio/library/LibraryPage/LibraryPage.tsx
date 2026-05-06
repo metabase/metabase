@@ -38,8 +38,10 @@ export function LibraryPage() {
 
 function LibraryPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showPublishTableModal, { toggle: toggleShowPublishTableModal }] =
-    useDisclosure(false);
+  const [
+    showPublishTableModal,
+    { open: openPublishTableModal, close: closePublishTableModal },
+  ] = useDisclosure(false);
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
       "exclude-other-user-collections": true,
@@ -50,7 +52,7 @@ function LibraryPageContent() {
     useLibraryTreeTableInstance({
       collections,
       searchQuery,
-      onPublishTable: toggleShowPublishTableModal,
+      onPublishTableClick: openPublishTableModal,
     });
 
   const { libraryCollection, tableCollection } =
@@ -130,8 +132,8 @@ function LibraryPageContent() {
       </SectionLayout>
       <PublishTableModal
         opened={showPublishTableModal}
-        onClose={toggleShowPublishTableModal}
-        onPublished={toggleShowPublishTableModal}
+        onClose={closePublishTableModal}
+        onPublished={closePublishTableModal}
       />
     </>
   );

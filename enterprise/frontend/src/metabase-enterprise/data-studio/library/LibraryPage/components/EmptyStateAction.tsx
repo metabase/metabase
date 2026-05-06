@@ -4,12 +4,12 @@ import { Anchor } from "metabase/ui";
 
 interface EmptyStateActionProps {
   data: EmptyStateData;
-  onPublishTable: () => void;
+  onPublishTableClick: () => void;
 }
 
 export function EmptyStateAction({
   data,
-  onPublishTable,
+  onPublishTableClick,
 }: EmptyStateActionProps) {
   if (data.sectionType === "data") {
     return (
@@ -19,7 +19,7 @@ export function EmptyStateAction({
         fz="inherit"
         onClick={(e) => {
           e.stopPropagation();
-          onPublishTable();
+          onPublishTableClick();
         }}
       >
         {data.actionLabel}

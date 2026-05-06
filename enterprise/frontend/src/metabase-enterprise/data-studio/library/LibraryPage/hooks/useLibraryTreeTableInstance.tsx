@@ -32,13 +32,13 @@ import { useLibrarySearch } from "./useLibrarySearch";
 type Params = {
   collections: Collection[];
   searchQuery: string;
-  onPublishTable: VoidFunction;
+  onPublishTableClick: VoidFunction;
 };
 
 export function useLibraryTreeTableInstance({
   collections,
   searchQuery,
-  onPublishTable,
+  onPublishTableClick,
 }: Params) {
   const { location } = useRouter();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
@@ -133,7 +133,7 @@ export function useLibraryTreeTableInstance({
                 {!isRemoteSyncReadOnly && (
                   <EmptyStateAction
                     data={data}
-                    onPublishTable={onPublishTable}
+                    onPublishTableClick={onPublishTableClick}
                   />
                 )}
               </Flex>
@@ -193,7 +193,7 @@ export function useLibraryTreeTableInstance({
     ],
     [
       isRemoteSyncReadOnly,
-      onPublishTable,
+      onPublishTableClick,
       refreshMetricCollections,
       refreshTableCollections,
     ],
