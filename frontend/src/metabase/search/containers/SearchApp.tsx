@@ -1,3 +1,4 @@
+import type { LocationDescriptorObject } from "history";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
@@ -25,19 +26,23 @@ import {
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import {
+  filterEnabledSearchTypes,
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { Box, Group, Paper, Text } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
 
-const getPageFromLocation = (location) => {
+import type { SearchAwareLocation, URLSearchFilterQueryParams } from "../types";
+
+const getPageFromLocation = (location: SearchAwareLocation) => {
   const maybePage = location.query?.page
     ? parseInt(location.query.page, 10)
     : 0;
   return maybePage || 0;
 };
 
-function SearchApp({ location }) {
+function SearchApp({ location }: { location: SearchAwareLocation }) {
   const dispatch = useDispatch();
 
   usePageTitle(t`Search`);
@@ -58,20 +63,22 @@ function SearchApp({ location }) {
   const query = {
     q: searchText,
     ..._.omit(searchFilters, SearchFilterKeys.Type),
-    models: models && (Array.isArray(models) ? models : [models]),
+    models:
+      filterEnabledSearchTypes(Array.isArray(models) ? models : [models]) ||
+      undefined,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     context: SearchContextTypes.SEARCH_APP,
     include_dashboard_questions: true,
-  };
+  } as SearchRequest;
 
   const onChangeLocation = useCallback(
-    (nextLocation) => dispatch(push(nextLocation)),
+    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
     [dispatch],
   );
 
   const onFilterChange = useCallback(
-    (newFilters) => {
+    (newFilters: URLSearchFilterQueryParams) => {
       onChangeLocation({
         pathname: "search",
         query: { q: searchText.trim(), ...newFilters },
@@ -83,7 +90,11 @@ function SearchApp({ location }) {
   const advancePage = (howMany = 1) => {
     onChangeLocation({
       pathname: "search",
-      query: { q: searchText.trim(), ...searchFilters, page: page + howMany },
+      query: {
+        q: searchText.trim(),
+        ...searchFilters,
+        page: String(page + howMany),
+      },
     });
   };
 
@@ -117,9 +128,9 @@ function SearchApp({ location }) {
           {!error && !isFetching && list.length > 0 && (
             <Box>
               <SearchResultSection
-                totalResults={data.total}
+                totalResults={data?.total ?? 0}
                 results={list}
-                searchEngine={data.engine}
+                searchEngine={data?.engine}
                 searchRequestId={requestId}
                 searchTerm={searchText}
                 page={page}
@@ -131,7 +142,7 @@ function SearchApp({ location }) {
                   pageSize={PAGE_SIZE}
                   page={page}
                   itemsLength={list.length}
-                  total={data.total}
+                  total={data?.total ?? 0}
                   onNextPage={() => advancePage(1)}
                   onPreviousPage={() => advancePage(-1)}
                 />
