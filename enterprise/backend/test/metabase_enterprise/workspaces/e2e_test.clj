@@ -16,6 +16,7 @@
    it. A BigQuery e2e variant is a separate follow-up."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver :as driver]
@@ -72,6 +73,19 @@
     (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
     (jdbc/execute! admin-spec [(format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)])))
 
+(defn- create-output-table!
+  "Pre-create the canonical *output* target with `rows` (each `[id v]`). Same
+   driver-aware DDL as `create-source-table!`. Used by the canonical-table-protection
+   test to seed `main_schema.tgt-name` with distinct rows before the workspace
+   transform writes to that same name (which gets redirected to iso.<derived>)."
+  [driver admin-spec schema table rows]
+  (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
+        text-type (sql.tx/field-base-type->sql-type driver :type/Text)
+        qual      (qualified-table-sql driver schema table)
+        values    (str/join ", " (map (fn [[id v]] (format "(%d, '%s')" id v)) rows))]
+    (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
+    (jdbc/execute! admin-spec [(format "INSERT INTO %s (id, v) VALUES %s" qual values)])))
+
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
 (deftest ^:synchronized workspace-full-e2e-test
@@ -109,6 +123,15 @@
             (jdbc/execute! admin-spec [(format "CREATE SCHEMA %s"
                                                (sql.u/quote-name admin-driver :schema main-schema))])
             (create-source-table! admin-driver admin-spec main-schema src-name)
+            ;; --- Setup: pre-existing canonical OUTPUT table with distinct rows ---------
+            ;; The workspace transform writes to canonical {schema main-schema, name tgt-name}.
+            ;; We seed that table with rows BEFORE the workspace is provisioned so we can
+            ;; later verify (a) the workspace's view of the canonical name returns the
+            ;; transform's output (via remap), and (b) the canonical warehouse table itself
+            ;; was never mutated by the transform - the workspace transform only wrote to
+            ;; iso.<derived>, leaving the canonical contents intact.
+            (create-output-table! admin-driver admin-spec main-schema tgt-name
+                                  [[99 "pre-existing"] [98 "still-pre-existing"]])
             ;; --- Setup: isolation schema + workspace user ------------------------
             (let [init-result (driver/init-workspace-isolation! admin-driver admin-db workspace)
                   ws-with-details (merge workspace init-result)
@@ -239,7 +262,8 @@
                                 (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                   (testing "querying the isolation table directly works like querying any other table"
                                     (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                            ;; FIXME: native sql w/ default from-schema fails for now (Bug 2).
+                              ;; FIXME: native sql w/ default from-schema fails for now (Bug 2).
+                              ;; More info: https://gist.github.com/escherize/721764240c300e995c54add2d71ff356
                               #_(mt/with-temp [:model/Card card
                                                {:name          (str "ws-e2e-card-native-" run-id)
                                                 :database_id   (:id ws-db)
@@ -265,6 +289,32 @@
                                   (testing "native card query returns the transform output"
                                     (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                         "native card returns the rows the transform wrote to the isolation schema")))))
+                            ;; --- Assertion: canonical-table-protection invariant (GHY-3513 item 4) ----
+                            ;; Pre-seeded canonical `main_schema.tgt-name` with rows A *before* workspace
+                            ;; provisioning (see `create-output-table!` call at the top of the test). The
+                            ;; transform writes its output (rows B = src's [1,a],[2,b],[3,c]) to the
+                            ;; canonical target name, which the transform-hook redirects to iso.<derived>.
+                            ;; The card reads above already verified workspace queries see rows B (remap
+                            ;; engaged). What's load-bearing for *this* assertion: the workspace transform
+                            ;; must NOT have mutated the canonical warehouse table. Probe it directly via
+                            ;; `admin-spec` (bypasses the QP and workspace mode entirely).
+                            (testing "the workspace transform does not mutate the canonical warehouse table"
+                              ;; jdbc/query returns column names as keywords with case that varies by
+                              ;; driver (Postgres lowercases, Snowflake uppercases, etc). Pull values
+                              ;; by `vals` after asserting two columns -- avoids fragile per-driver
+                              ;; key-case handling.
+                              (let [canonical-rows (->> (jdbc/query admin-spec
+                                                                    [(format "SELECT id, v FROM %s ORDER BY id"
+                                                                             (qualified-table-sql admin-driver main-schema tgt-name))])
+                                                        (map (fn [row]
+                                                               (let [vs (vals row)]
+                                                                 (assert (= 2 (count vs))
+                                                                         "expected 2 columns from canonical select")
+                                                                 (vec vs))))
+                                                        set)]
+                                (is (= #{[99 "pre-existing"] [98 "still-pre-existing"]}
+                                       canonical-rows)
+                                    "canonical main_schema.tgt-name still has its pre-seeded rows; transform output went to iso.<derived> instead")))
                             (testing "app db Table rows stay confined to the input schema after card run"
                               (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)]
                                 (is (some #(and (= main-schema (:schema %))
