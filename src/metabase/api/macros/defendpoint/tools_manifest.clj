@@ -180,28 +180,22 @@
                   :idempotentHint  true}
     {}))
 
-(defn- redundant-annotations
-  "Return explicit annotation pairs that already match what we'd infer (the HTTP-method
-   default merged with the MCP spec default). Empty map if none."
-  [method explicit-annotations]
-  (let [inferred (merge mcp-default-annotations (method-default-annotations method))]
-    (into {}
-          (keep (fn [[k v]]
-                  (when-let [mcp-key (annotation-key-mapping k)]
-                    (when (= v (get inferred mcp-key))
-                      [mcp-key v]))))
-          explicit-annotations)))
-
 (defn infer-annotations
-  "Build MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations` from `:tool` metadata."
+  "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
+   Returns `{:annotations <merged> :redundant <explicit-pairs-matching-defaults>}`. Callers
+   should reject any `:redundant` entries — explicit declarations must add information beyond
+   what we'd already infer (HTTP-method default or MCP spec default)."
   [method explicit-annotations]
-  (let [defaults (method-default-annotations method)
-        explicit (into {}
-                       (keep (fn [[k v]]
-                               (when-let [mcp-key (annotation-key-mapping k)]
-                                 [mcp-key v])))
-                       explicit-annotations)]
-    (merge defaults explicit)))
+  (let [method-defaults (method-default-annotations method)
+        full-defaults   (merge mcp-default-annotations method-defaults)
+        explicit        (into {}
+                              (keep (fn [[k v]]
+                                      (when-let [mcp-key (annotation-key-mapping k)]
+                                        [mcp-key v])))
+                              explicit-annotations)
+        redundant       (into {} (filter (fn [[k v]] (= v (get full-defaults k))) explicit))]
+    {:annotations (merge method-defaults explicit)
+     :redundant   redundant}))
 
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
@@ -273,33 +267,33 @@
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
   [prefix {:keys [form]}]
-  (let [method               (:method form)
-        route-path           (get-in form [:route :path])
-        tool-md              (get-in form [:metadata :tool])
-        tool-name            (:name tool-md)
-        _                    (assert (string? tool-name) "Tool :name must be a string")
-        explicit-title       (:title tool-md)
-        inferred-title       (name->title tool-name)
-        _                    (when (= explicit-title inferred-title)
-                               (throw (ex-info (str "Tool " tool-name " has redundant :title "
-                                                    (pr-str explicit-title)
-                                                    " — matches the title we'd infer from the name.")
-                                               {:tool tool-name :title explicit-title})))
-        description          (or (:description tool-md)
-                                 (:docstr form))
-        full-path            (str prefix (route-path->endpoint-path route-path))
-        input-schema         (merge-input-schemas form)
-        resp-schema          (response-schema->json-schema (:response-schema form))
-        explicit-annotations (:annotations tool-md)
-        _                    (when-let [redundant (not-empty (redundant-annotations method explicit-annotations))]
-                               (throw (ex-info (str "Tool " tool-name
-                                                    " has redundant :annotations matching defaults: "
-                                                    (pr-str redundant))
-                                               {:tool tool-name :method method :redundant redundant})))
-        annotations          (infer-annotations method explicit-annotations)
-        _                    (assert-claude-connector-compliant! tool-name annotations)
-        task-support         (:task-support tool-md)
-        scope                (get-in form [:metadata :scope])]
+  (let [method         (:method form)
+        route-path     (get-in form [:route :path])
+        tool-md        (get-in form [:metadata :tool])
+        tool-name      (:name tool-md)
+        _              (assert (string? tool-name) "Tool :name must be a string")
+        explicit-title (:title tool-md)
+        inferred-title (name->title tool-name)
+        _              (when (= explicit-title inferred-title)
+                         (throw (ex-info (str "Tool " tool-name " has redundant :title "
+                                              (pr-str explicit-title)
+                                              " — matches the title we'd infer from the name.")
+                                         {:tool tool-name :title explicit-title})))
+        description    (or (:description tool-md)
+                           (:docstr form))
+        full-path      (str prefix (route-path->endpoint-path route-path))
+        input-schema   (merge-input-schemas form)
+        resp-schema    (response-schema->json-schema (:response-schema form))
+        inferred       (infer-annotations method (:annotations tool-md))
+        annotations    (:annotations inferred)
+        _              (when (seq (:redundant inferred))
+                         (throw (ex-info (str "Tool " tool-name
+                                              " has redundant :annotations matching defaults: "
+                                              (pr-str (:redundant inferred)))
+                                         {:tool tool-name :method method :redundant (:redundant inferred)})))
+        _              (assert-claude-connector-compliant! tool-name annotations)
+        task-support   (:task-support tool-md)
+        scope          (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
              :title       (or explicit-title inferred-title)
              :description description

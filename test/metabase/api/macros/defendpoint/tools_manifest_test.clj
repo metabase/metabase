@@ -8,24 +8,29 @@
 
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :get nil))))
   (testing "DELETE defaults"
-    (is (= {:destructiveHint true
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint true :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :delete nil))))
   (testing "PUT defaults"
-    (is (= {:destructiveHint false
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint false :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :put nil))))
-  (testing "POST defaults (empty — MCP defaults apply)"
-    (is (= {}
+  (testing "POST defaults (empty — MCP spec defaults apply)"
+    (is (= {:annotations {} :redundant {}}
            (tools-manifest/infer-annotations :post nil))))
-  (testing "Explicit annotations override defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
-           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true})))))
+  (testing "Explicit annotations are merged on top of method defaults"
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+            :redundant   {}}
+           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true}))))
+  (testing "Reports redundant pairs that match what we'd already infer"
+    (is (= {:readOnlyHint true}
+           (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
+    (is (= {:idempotentHint false}
+           (:redundant (tools-manifest/infer-annotations :post {:idempotent? false}))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
