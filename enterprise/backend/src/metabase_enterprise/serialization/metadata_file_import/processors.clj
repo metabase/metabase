@@ -13,7 +13,6 @@
   Errors propagate as `ex-info` with `:kind`, `:line`, and `:source-id`
   attribution so the loader can produce useful boot-time error messages."
   (:require
-   [clojure.string :as str]
    [malli.error :as me]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
    [metabase.models.humanization :as humanization]
@@ -443,63 +442,6 @@
               ;; recurse on the parent of pid
               (recur (vec (butlast pid)) (conj missing pid)))))))))
 
-;; TODO: use or delete
-(comment
-  #_{:clj-kondo/ignore [:unused-private-var]}
-  (defn- match-fields-batch-loose-in
-    "Reference implementation: loose IN + Clojure intersect. Replaced by
-  [[match-fields-batch]] — loose IN over-includes by `|tbl-ids| × |names|`."
-    [lines]
-    (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
-          tbl-ids (into #{} (keep :table_id) lines)
-          names   (into #{} (keep :name) lines)]
-      (if (or (empty? tbl-ids) (empty? names))
-        {}
-        (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
-                              {:where [:and
-                                       [:= :is_defective_duplicate false]
-                                       [:in :table_id tbl-ids]
-                                       [:in :name names]]})]
-          (into {}
-                (comp (map (fn [{:keys [id table_id name parent_id]}]
-                             [[table_id name parent_id] id]))
-                      (filter (fn [[triple _]] (contains? triples triple))))
-                rows))))))
-
-;; TODO: use or delete
-(comment
-  #_{:clj-kondo/ignore [:unused-private-var]}
-  (defn- match-fields-batch-values-join
-    "Reference implementation: INNER JOIN against an inline VALUES table. Replaced
-  by [[match-fields-batch]] — can't cleanly probe `idx_unique_field` because the
-  Postgres planner doesn't rewrite OR-of-IS-NULL into a helper-column equality."
-    [lines]
-    (let [triples (vec (into #{} (map (juxt :table_id :name :parent_id)) lines))]
-      (if (empty? triples)
-        {}
-        (let [n            (count triples)
-              tuple-sql    (fn [idx]
-                             (if (zero? idx)
-                               "(CAST(? AS INTEGER), ?, CAST(? AS INTEGER))"
-                               "(?, ?, ?)"))
-              values-sql   (str/join ", " (map tuple-sql (range n)))
-              params       (into [] cat triples)
-              sql          (str "SELECT f.id AS id, f.table_id AS table_id, "
-                                "       f.name AS name, f.parent_id AS parent_id "
-                                "FROM metabase_field f "
-                                "INNER JOIN (VALUES " values-sql ") AS "
-                                "  v(table_id, name, parent_id) "
-                                "  ON f.table_id = v.table_id "
-                                "  AND f.name = v.name "
-                                "  AND ((f.parent_id = v.parent_id) "
-                                "       OR (f.parent_id IS NULL AND v.parent_id IS NULL)) "
-                                "WHERE f.is_defective_duplicate = false")
-              rows         (t2/query (into [sql] params))]
-          (into {}
-                (map (fn [{:keys [id table_id name parent_id]}]
-                       [[table_id name parent_id] id]))
-                rows))))))
-
 (defn- match-fields-batch
   "Look up every existing target Field matching any (target-table-id, name,
   target-parent-id) triple in `lines`. Returns
@@ -508,38 +450,20 @@
   Scoped to `is_defective_duplicate=false`; `active` is not filtered (stubs
   included)."
   [lines]
-  ;; helper = COALESCE(parent_id, 0); matches the GENERATED column on
-  ;; idx_unique_field. Defective rows store helper=NULL and never match.
-  (let [quads (into #{}
-                    (map (fn [{:keys [table_id name parent_id]}]
-                           [table_id name parent_id (or parent_id 0)]))
-                    lines)]
-    (if (empty? quads)
+  (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
+        tbl-ids (into #{} (keep :table_id) lines)
+        names   (into #{} (keep :name) lines)]
+    (if (or (empty? tbl-ids) (empty? names))
       {}
-      (let [quads-v    (vec quads)
-            n          (count quads-v)
-            first-row  "SELECT ? AS table_id, ? AS name, ? AS helper"
-            next-row   " UNION ALL SELECT ?, ?, ?"
-            values-sql (apply str first-row (repeat (dec n) next-row))
-            params     (into []
-                             (mapcat (fn [[t nm _p h]] [t nm h]))
-                             quads-v)
-            ;; Plain equalities on (name, table_id, helper) let the planner
-            ;; use idx_unique_field with one probe per row, no heap recheck.
-            ;; OR-of-IS-NULL would defeat the index.
-            sql        (str "SELECT f.id AS id, "
-                            "       f.table_id AS table_id, "
-                            "       f.name AS name, "
-                            "       f.parent_id AS parent_id "
-                            "FROM metabase_field f "
-                            "INNER JOIN (" values-sql ") AS v "
-                            "  ON f.name = v.name "
-                            "  AND f.table_id = v.table_id "
-                            "  AND f.unique_field_helper = v.helper")
-            rows       (t2/query (into [sql] params))]
+      (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
+                            {:where [:and
+                                     [:= :is_defective_duplicate false]
+                                     [:in :table_id tbl-ids]
+                                     [:in :name names]]})]
         (into {}
-              (map (fn [{:keys [id table_id name parent_id]}]
-                     [[table_id name parent_id] id]))
+              (comp (map (fn [{:keys [id table_id name parent_id]}]
+                           [[table_id name parent_id] id]))
+                    (filter (fn [[triple _]] (contains? triples triple))))
               rows)))))
 
 (defn- field-clobber
@@ -673,24 +597,20 @@
 
 ;;; ==================== fields (batch) — fk resolve ====================
 
-(defn- finalize-batch-sql+params
-  "Return `[sql & params]` for a single `UPDATE metabase_field` statement that
-  sets `fk_target_field_id` for every `[target-id resolved-fk-target-id]` pair
-  in `tuples`."
+(defn- finalize-batch!
+  "Run a single `UPDATE metabase_field` that sets `fk_target_field_id` for every
+  `[target-id resolved-fk-target-id]` pair in `tuples`. Returns the affected-row
+  count."
   [tuples]
-  (let [n               (count tuples)
-        first-row       "SELECT ? AS id, ? AS fk_target_field_id"
-        next-row        " UNION ALL SELECT ?, ?"
-        values-sql      (apply str first-row (repeat (dec n) next-row))
-        in-placeholders (str/join ", " (repeat n "?"))
-        values-params   (into [] cat tuples)
-        id-params       (mapv first tuples)
-        sql (str "UPDATE metabase_field SET "
-                 "fk_target_field_id = (SELECT v.fk_target_field_id "
-                 "FROM (" values-sql ") AS v "
-                 "WHERE v.id = metabase_field.id) "
-                 "WHERE id IN (" in-placeholders ")")]
-    (into [sql] (concat values-params id-params))))
+  (let [case-expr (-> (reduce (fn [c [id fk]]
+                                (-> c (conj [:= :id id]) (conj fk)))
+                              [:case]
+                              tuples)
+                      (conj :else :fk_target_field_id))
+        ids       (mapv first tuples)]
+    (first (t2/query {:update :metabase_field
+                      :set    {:fk_target_field_id case-expr}
+                      :where  [:in :id ids]}))))
 
 (defn process-fields-fk-resolve!
   "Process a batch of `[line-num row]` field tuples, writing `:fk_target_field_id`
@@ -731,7 +651,7 @@
                   fk-rows
                   own-vecs
                   fk-vecs)
-            affected (try (first (t2/query (finalize-batch-sql+params tuples)))
+            affected (try (finalize-batch! tuples)
                           (catch Throwable e
                             (throw (wrap-row-error e nil nil))))]
         (when (not= affected (count fk-rows))
