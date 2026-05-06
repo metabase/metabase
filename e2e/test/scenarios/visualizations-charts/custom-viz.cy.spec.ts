@@ -1665,6 +1665,19 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/createElement: area/),
     },
     {
+      // Media elements load URLs via `src` / `srcset` — exfil GETs.
+      name: 'createElement("video")',
+      payload: 'document.createElement("video");',
+      errorPattern: blockedPattern(/createElement: video/),
+    },
+    {
+      // <input type="image"> fires a GET to src on render; the broader
+      // <input> block also covers phishing UI.
+      name: 'createElement("input")',
+      payload: 'document.createElement("input");',
+      errorPattern: blockedPattern(/createElement: input/),
+    },
+    {
       name: 'createElementNS(SVG, "use")',
       payload: 'document.createElementNS("http://www.w3.org/2000/svg", "use");',
       errorPattern: blockedPattern(/createElementNS: use/),

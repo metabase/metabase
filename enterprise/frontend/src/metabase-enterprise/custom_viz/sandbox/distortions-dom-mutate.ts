@@ -105,6 +105,13 @@ const BLOCKED_TAGS = new Set([
   // (GDGT-2373). DOMPurify already strips `<style>` from sanitized HTML, but
   // the createElement path skips DOMPurify entirely.
   "style",
+  // Media elements load URLs via `src`/`srcset`
+  "video",
+  "audio",
+  "source",
+  "track",
+  // `<input type="image">` fires a GET to `src` on render. `<input type=image src="…">` is a vector for exfiltration.
+  "input",
   // SVG external-resource / mutation-XSS vectors
   "use",
   "image",
