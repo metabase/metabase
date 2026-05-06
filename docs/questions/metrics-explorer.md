@@ -34,9 +34,9 @@ To open a **metric** in the Metrics Explorer:
 
    To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
 
-2. Click **Explore** in the top right corner to open the metrics explorer.
+2. To view the metric in the explorer, click **Explore** in the top right corner.
 
-To get back to the metric's page from the metrics explorer, click the metric card in the search bar and select **Go to metric home page**.
+To return to the metric's home page, click the metric card in the search bar and select **Go to metric home page**.
 
 To open a **measure** in the metrics explorer:
 
@@ -59,7 +59,7 @@ To compare multiple metrics or measures:
 
    ![Compare metrics](./images/compare-metrics.png)
 
-You can add the same metric/measure multiple times. This is useful if you want to later [break it out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures), for example if you want to compare the trend of total revenue to the trend of the same revenue but restricted to a single product category.
+You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visibile. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
 
 Once you pick the metrics, you'll see the dimensions of the first metric/measure below the search bar. You can pick a dimension to compare metrics/measures (for example, if you want to see how both Number of Orders and Revenue change by date, state, or product category).
 
@@ -114,12 +114,12 @@ You'll see the filter added below the metric or measure's card in the search bar
 
 You can use the four basic math operations (`+`,`-`,`*`,`/`) on metrics/measures in the metrics explorer. For example, you can explore how revenue per user, `Revenue / Active users`, changes with time.
 
-It's especially useful when metric/measures are associated with different data sources, e.g. Revenue metric on the `Subscriptions` table and Active users metric on the `Events` table. In this case, using the query builder would mean creating complicated joins, but metrics explorer lets you examine this, uh, metric by just typing a formula.
+The metrics explorer is especially useful when metrics and measures are associated with different data sources, likeif you have a  "Revenue" metric on the `Subscriptions` table and an "Active users" metric on the `Events` table. If you were to compare these metrics in the query builder, you'd have to wrangle their tables with joins, but the metrics explorer lets you compare these metrics by just typing out a formula.
 
 ![Math with metrics](./images/math-with-metrics.png)
 
-To write an expression with metrics/measures, just start entering the formula into the search bar. You can use `+`,`-`,`*`,`/`, parentheses, numbers, or other metrics (including using the same metric multiple times). Press Enter when you're done entering the formula to visualize it.
+To write an expression with metrics/measures, just start entering the formula into the search bar. You can use `+`,`-`,`*`,`/`, parentheses, numbers, or other metrics (including using the same metric multiple times). To visualize the results, just press Enter.
 
 To edit the expression, click on the expression's card in the search bar and click **Edit**.
 
-You can also rename your expressions for convenience - for example, you might want to rename your formula `Revenue / Active users` as `Per user revenue`. To rename the expression, click on the expression's card in the search bar, click **Rename**, and type the new name.
+You can also rename your expressions. For example, you might want to rename your formula `Revenue / Active users` as `Per user revenue`. To rename the expression, click the expression's card in the search bar, click **Rename**, and type the new name.
