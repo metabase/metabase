@@ -1070,3 +1070,62 @@
 
          "webapp@localhost"
          "SET ROLE 'webapp'@'localhost';")))))
+
+(deftest ^:synchronized include-type-in-parameterized-temporal-literals-test
+  (testing "Parameterized temporal literals should be typed (#46680)"
+    (mt/test-driver :mysql
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (doseq [{:keys [v expected-sql expected-value]}
+                [{:v              "2026-05-06"
+                  :expected-sql   "date '2026-05-06'"
+                  :expected-value #t "2026-05-06"}
+                 ;; local date time
+                 {:v              "2026-05-06T14:03:00"
+                  :expected-sql   "timestamp '2026-05-06 14:03:00.000000'"
+                  :expected-value #t "2026-05-06T14:03:00"}
+                 ;; offset datetime
+                 {:v              "2026-05-06T14:03:00-07:00"
+                  :expected-sql   "timestamp '2026-05-06 14:03:00.000000-07:00'"
+                  ;; due to MySQL constraints a timestamp literal always comes back as a `DATETIME` which we treat as
+                  ;; a `LocalDateTime` =(
+                  :expected-value #t "2026-05-06T21:03"}
+                 {:v              "2026-05-06T14:03:00Z"
+                  :expected-sql   "timestamp '2026-05-06 14:03:00.000000+00:00'"
+                  :expected-value #t "2026-05-06T14:03"}
+                 ;; zoned date time
+                 {:v              "2026-05-06T14:03:00-07:00[America/Los_Angeles]"
+                  :expected-sql   "timestamp '2026-05-06 14:03:00.000000-07:00'"
+                  :expected-value #t "2026-05-06T21:03"}
+                 ;; local time
+                 {:v              "14:03:00"
+                  :expected-sql   "time '14:03:00.000000'"
+                  :expected-value #t "14:03:00"}
+                 ;; OffsetTime not fully supported so just treat it as a local
+                 {:v              "14:03:00-07:00"
+                  :expected-sql   "time '14:03:00.000000'"
+                  :expected-value #t "14:03:00"}]]
+          (testing (format "v = %s" (pr-str v))
+            (let [query {:type       :native
+                         :native     {:query         "SELECT {{t_}} AS t FROM venues LIMIT 1;"
+                                      :template-tags {"t_" {:name         "t_"
+                                                            :display-name "Date"
+                                                            :type         :date}}}
+                         :database   (mt/id)
+                         :parameters [{:type   :number
+                                       :target [:variable [:template-tag "t_"]]
+                                       :slug   "t_"
+                                       :value  v}]
+                         :middleware {:format-rows? false}}]
+              (testing "inline compilation should inline the literal correctly"
+                (is (= {:lib/type :mbql.stage/native
+                        :params   []
+                        :query    (format "SELECT %s AS t FROM venues LIMIT 1;" expected-sql)}
+                       (qp.compile/compile-with-inline-parameters query))))
+              (testing "parameterized compilation should still inline the literal"
+                (is (= {:lib/type :mbql.stage/native
+                        :params   []
+                        :query    (format "SELECT %s AS t FROM venues LIMIT 1;" expected-sql)}
+                       (qp.compile/compile query))))
+              (testing "Column should come back as a temporal value rather than VARCHAR"
+                (is (= [[expected-value]]
+                       (mt/rows (qp/process-query query))))))))))))
