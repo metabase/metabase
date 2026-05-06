@@ -79,6 +79,36 @@
                        :detail (.getMessage e)})
                e))))
 
+;;; ============================== Staging tables ==============================
+
+(defn clear-staging-tables!
+  "Delete every row from `metabase_table_import` and `metabase_field_import`.
+  Called by [[with-staging-tables]] on entry and on exit (try/finally) so a
+  crashed prior attempt cannot leak rows into the next run.
+
+  Goes through `t2/query` with a HoneySQL `:delete-from` map — t2 picks the
+  right dialect-specific shape; no driver dispatch needed."
+  []
+  (t2/query {:delete-from :metabase_table_import})
+  (t2/query {:delete-from :metabase_field_import}))
+
+(defmacro with-staging-tables
+  "Run `body` with the staging tables pre-cleared, and clear them again on exit.
+
+  The exit clear is a `finally` so a thrown exception from the body still
+  wipes staging — both branches of the contract matter:
+
+    - **Entry clear** ensures the body sees an empty staging area regardless
+      of any leftover rows from a crashed prior attempt.
+    - **Exit clear** ensures we leak nothing to the next attempt, whether the
+      body returned normally or threw.
+
+  The body's exception is re-raised after the finally runs."
+  [& body]
+  `(do (clear-staging-tables!)
+       (try ~@body
+            (finally (clear-staging-tables!)))))
+
 ;;; ============================== databases (batch) ==============================
 
 (defn- engine-name

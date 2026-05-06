@@ -1,0 +1,192 @@
+## Staging tables for the metadata file importer (GHY-3517).
+##
+## Two scratch tables drained into during an import, then merged into
+## metabase_table / metabase_field inside a single short transaction so
+## live-data writes are atomic. Both tables live permanently in the
+## schema; the importer wipes them on entry and exit (try/finally) so a
+## crashed prior attempt cannot leak rows into the next run.
+##
+## No surrogate `id` column and no indexes — staging is scan-once-then-merge.
+## Indexes would slow the bulk INSERT during drain without helping the merge
+## plan (which probes live tables via their existing indexes).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-06T00:00:00
+      author: galdre
+      comment: Create metabase_table_import staging table
+      changes:
+        - createTable:
+            tableName: metabase_table_import
+            remarks: Staging table for the metadata file importer's tables phase. Drained outside the merge txn, merged into metabase_table inside it.
+            columns:
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Portable database id (column 0 of wire :id).
+              - column:
+                  name: table_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Mirrors metabase_table.schema nullability.
+              - column:
+                  name: table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: display_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Pre-humanized at drain time so the merge SQL doesn't replicate the algorithm in three dialects.
+
+  - changeSet:
+      id: v62.2026-05-06T00:00:01
+      author: galdre
+      comment: Create metabase_field_import staging table
+      changes:
+        - createTable:
+            tableName: metabase_field_import
+            remarks: Staging table for the metadata file importer's fields phase. Carries decomposed natural-key components (no JSON-encoded portable-id blobs) plus the clobber payload, so resolution JOINs work cleanly across PG / H2 / MySQL.
+            columns:
+              # --- own natural-key components ---
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Column 0 of wire :table_id.
+              - column:
+                  name: table_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Column 1 of wire :table_id.
+              - column:
+                  name: table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Column 2 of wire :table_id.
+              - column:
+                  name: field_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Wire :name.
+              - column:
+                  name: nfc_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: NULL for empty/absent paths, JSON-encoded array string otherwise — same encoding as metabase_field.nfc_path.
+              # --- parent natural-key components (resolved during compute) ---
+              - column:
+                  name: parent_db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Decomposed wire :parent_id (column 0). NULL when the row has no parent.
+              - column:
+                  name: parent_table_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: parent_table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: parent_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: Parent's own nfc_path. Same encoding as nfc_path so the resolve JOIN compares like-for-like.
+              - column:
+                  name: parent_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Last column of the parent's :id (the parent's storage name).
+              - column:
+                  name: parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved by resolve-existing-parents-in-staging!.
+              # --- fk-target natural-key components ---
+              - column:
+                  name: fk_target_db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Decomposed wire :fk_target_field_id (column 0). NULL when the row has no FK.
+              - column:
+                  name: fk_target_table_schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: fk_target_table_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: fk_target_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: fk_target_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: fk_target_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved by resolve-fk-target-ids-in-staging!.
+              # --- clobber payload ---
+              - column:
+                  name: base_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: effective_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: semantic_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: coercion_strategy
+                  type: varchar(254)
+                  constraints:
+                    nullable: true

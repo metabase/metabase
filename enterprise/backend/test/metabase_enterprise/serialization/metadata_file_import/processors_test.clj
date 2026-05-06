@@ -15,6 +15,59 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+;;; ============================== with-staging-tables ==============================
+
+(defn- count-staging
+  "Total row count across both staging tables. Used by macro tests to assert
+  the entry/exit wipes."
+  []
+  (+ (t2/count :metabase_table_import)
+     (t2/count :metabase_field_import)))
+
+(deftest clear-staging-tables-empties-both-tables-test
+  (testing "clear-staging-tables! deletes every row from both staging tables"
+    (t2/insert! :metabase_table_import {:db_name "x" :table_name "t"})
+    (t2/insert! :metabase_field_import {:db_name "x" :table_name "t" :field_name "f"})
+    (processors/clear-staging-tables!)
+    (is (zero? (count-staging))
+        "both staging tables empty after clear-staging-tables!")))
+
+(deftest with-staging-tables-returns-body-value-test
+  (testing "with-staging-tables yields the value of the body's last form"
+    (is (= ::sentinel
+           (processors/with-staging-tables ::sentinel)))))
+
+(deftest with-staging-tables-clears-on-entry-test
+  (testing "rows present before the macro are gone by the time the body runs"
+    (t2/insert! :metabase_table_import {:db_name "leftover" :table_name "t"})
+    (t2/insert! :metabase_field_import {:db_name "leftover" :table_name "t" :field_name "f"})
+    (let [observed (processors/with-staging-tables (count-staging))]
+      (is (zero? observed)
+          "macro entry wipes pre-existing rows so the body sees an empty staging area"))))
+
+(deftest with-staging-tables-clears-on-successful-exit-test
+  (testing "rows inserted inside the body are gone after the macro returns normally"
+    (processors/with-staging-tables
+      (t2/insert! :metabase_table_import {:db_name "x" :table_name "t"})
+      (t2/insert! :metabase_field_import {:db_name "x" :table_name "t" :field_name "f"}))
+    (is (zero? (count-staging))
+        "macro exit wipes rows the body added")))
+
+(deftest with-staging-tables-clears-on-thrown-exit-and-propagates-test
+  (testing "if the body throws, the exception bubbles AND staging tables are still wiped (try/finally)"
+    (let [thrown (atom nil)]
+      (try
+        (processors/with-staging-tables
+          (t2/insert! :metabase_table_import {:db_name "x" :table_name "t"})
+          (t2/insert! :metabase_field_import {:db_name "x" :table_name "t" :field_name "f"})
+          (throw (ex-info "boom" {:kind ::test-error})))
+        (catch clojure.lang.ExceptionInfo e
+          (reset! thrown e)))
+      (is (= ::test-error (:kind (ex-data @thrown)))
+          "exception propagates with its ex-data intact")
+      (is (zero? (count-staging))
+          "staging tables wiped even though body threw"))))
+
 ;;; ============================== process-databases ==============================
 
 (deftest process-databases-matches-by-name-and-engine-test
