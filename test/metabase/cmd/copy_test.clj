@@ -39,6 +39,7 @@
     :model/Dependency
     :model/DependencyStatus
     :model/ExplorationQueryResult
+    :model/ExplorationQueryTimelineInterestingness
     :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit

@@ -4,7 +4,7 @@ import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { DatasetQuery } from "./query";
 import type { SegmentId } from "./segment";
-import type { TimelineId } from "./timeline";
+import type { Timeline, TimelineEvent, TimelineId } from "./timeline";
 import type { UserId } from "./user";
 
 export type GetExplorationDataRequest = {
@@ -74,6 +74,12 @@ export interface ExplorationThreadTimeline {
   exploration_thread_id: ExplorationThreadId;
   timeline_id: TimelineId;
   position: number;
+  timeline?: Timeline & { events?: TimelineEvent[] };
+}
+
+export interface ExplorationQueryTimelineInterestingness {
+  timeline_id: TimelineId;
+  interestingness_score: number | null;
 }
 
 export type ExplorationQueryStatus = "pending" | "running" | "done" | "error";
@@ -100,6 +106,8 @@ export interface ExplorationQuery {
   finished_at: string | null;
   entity_id: string;
   interestingness_score: number | null;
+  contextual_interestingness_score?: number | null;
+  timeline_interestingness?: ExplorationQueryTimelineInterestingness[];
   dataset_query: DatasetQuery;
   segment_id: SegmentId | null;
 }

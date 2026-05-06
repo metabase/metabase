@@ -28,6 +28,7 @@
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
+    "timeline_interestingness"
     "unknown"
     "user-intent-classification"})
 

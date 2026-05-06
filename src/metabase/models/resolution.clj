@@ -50,6 +50,7 @@
     :model/Exploration                       metabase.explorations.models.exploration
     :model/ExplorationQuery                  metabase.explorations.models.exploration-query
     :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
+    :model/ExplorationQueryTimelineInterestingness metabase.explorations.models.exploration-query-timeline-interestingness
     :model/ExplorationThread                 metabase.explorations.models.exploration-thread
     :model/ExplorationThreadDimension        metabase.explorations.models.exploration-thread-dimension
     :model/ExplorationThreadMetric           metabase.explorations.models.exploration-thread-metric

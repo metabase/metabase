@@ -52,9 +52,11 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadTimeline
-                         :exploration_thread_id [:in (map :id threads)]
-                         {:order-by [[:position :asc] [:id :asc]]}))
+              (t2/hydrate
+               (t2/select :model/ExplorationThreadTimeline
+                          :exploration_thread_id [:in (map :id threads)]
+                          {:order-by [[:position :asc] [:id :asc]]})
+               :timeline))
    :id
    {:default []}))
 
@@ -68,7 +70,8 @@
                           :exploration_thread_id [:in (map :id threads)]
                           {:order-by [[:position :asc] [:id :asc]]})
                :interestingness_score
-               :contextual_interestingness_score))
+               :contextual_interestingness_score
+               :timeline_interestingness))
    :id
    {:default []}))
 

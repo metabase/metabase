@@ -958,3 +958,77 @@
             thread    (-> resp :threads first)]
         (is (= [] (:queries thread)))
         (is (= [] (:groups thread)))))))
+
+(deftest exploration-hydrates-timeline-events-and-per-query-scores-test
+  (testing "GET /:id hydrates :timelines with the underlying Timeline + :events, and :queries with :timeline_interestingness"
+    (mt/with-temp [:model/User u {:email "ti-hydrate@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))
+                   :model/Timeline tl {:name       "Promotions"
+                                       :creator_id (:id u)
+                                       :icon       "star"}
+                   :model/TimelineEvent _e {:timeline_id  (:id tl)
+                                            :name         "Big sale"
+                                            :timestamp    #t "2025-04-01T00:00:00Z"
+                                            :time_matters true
+                                            :timezone     "UTC"
+                                            :icon         "star"
+                                            :creator_id   (:id u)}]
+      (let [create   (mt/user-http-request u :post 200 "exploration"
+                                           {:name         "ti-hydrate"
+                                            :prompt       "why did promotions move the needle"
+                                            :metrics      [{:card_id (:id metric)
+                                                            :dimension_mappings [{:dimension_id "d1"
+                                                                                  :table_id (mt/id :venues)
+                                                                                  :target ["field" {} (mt/id :venues :price)]}]}]
+                                            :dimensions   [{:dimension_id "d1"}]
+                                            :timeline_ids [(:id tl)]})
+            eid      (:id create)
+            qid      (-> create :threads first :queries first :id)
+            score-row (first (t2/insert-returning-instances!
+                              :model/ExplorationQueryTimelineInterestingness
+                              {:exploration_query_id qid
+                               :timeline_id          (:id tl)
+                               :interestingness_score 0.62}))
+            fetched  (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+            thread   (-> fetched :threads first)
+            tl-link  (-> thread :timelines first)
+            q        (-> thread :queries first)]
+        (is (some? score-row))
+        (is (= (:id tl) (:timeline_id tl-link)))
+        (is (some? (:timeline tl-link)) ":timelines join row hydrates the underlying Timeline")
+        (is (= "Promotions" (-> tl-link :timeline :name)))
+        (is (= 1 (count (-> tl-link :timeline :events)))
+            ":events are hydrated under :timeline")
+        (is (= "Big sale" (-> tl-link :timeline :events first :name)))
+        (let [scores (:timeline_interestingness q)]
+          (is (some? scores))
+          (is (= 1 (count scores)))
+          (is (= (:id tl) (-> scores first :timeline_id)))
+          (is (= 0.62 (-> scores first :interestingness_score))))))))
+
+(deftest exploration-queries-endpoint-includes-timeline-interestingness-test
+  (testing "GET /:id/queries also hydrates :timeline_interestingness"
+    (mt/with-temp [:model/User u {:email "ti-list@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))
+                   :model/Timeline tl {:name "Releases" :creator_id (:id u)}]
+      (let [create (mt/user-http-request u :post 200 "exploration"
+                                         {:name         "ti-list"
+                                          :metrics      [{:card_id (:id metric)
+                                                          :dimension_mappings [{:dimension_id "d1"
+                                                                                :table_id 1
+                                                                                :target ["field" {} 1]}]}]
+                                          :dimensions   [{:dimension_id "d1"}]
+                                          :timeline_ids [(:id tl)]})
+            eid    (:id create)
+            qid    (-> create :threads first :queries first :id)]
+        (t2/insert! :model/ExplorationQueryTimelineInterestingness
+                    {:exploration_query_id  qid
+                     :timeline_id           (:id tl)
+                     :interestingness_score 0.4})
+        (let [list-resp (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))
+              q         (first (filter #(= qid (:id %)) list-resp))]
+          (is (some? q))
+          (let [scores (:timeline_interestingness q)]
+            (is (= 1 (count scores)))
+            (is (= (:id tl) (-> scores first :timeline_id)))
+            (is (= 0.4 (-> scores first :interestingness_score)))))))))
