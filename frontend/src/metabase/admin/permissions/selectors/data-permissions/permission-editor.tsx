@@ -210,7 +210,7 @@ export const getDatabasesPermissionEditor = createSelector(
     params,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
-    group: Group | null,
+    group: Group | null | undefined,
     groups: Group[],
     isLoading,
     showTransformPermissions,

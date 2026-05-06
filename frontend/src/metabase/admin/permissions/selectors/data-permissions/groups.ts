@@ -24,8 +24,9 @@ export const selectGroupList = (state: State): Group[] =>
   (permissionApi.endpoints.listPermissionsGroups.select({})(state).data ??
     EMPTY_GROUP_LIST) as Group[];
 
-export const selectGroupById = (state: State, id: GroupId): Group =>
-  permissionApi.endpoints.getPermissionsGroup.select(id)(state).data as Group;
+export const selectGroupById = (state: State, id: GroupId): Group | undefined =>
+  permissionApi.endpoints.getPermissionsGroup.select(id)(state).data ??
+  selectGroupList(state).find((group) => group.id === id);
 
 export const getOrderedGroups = createSelector(
   selectGroupList,
