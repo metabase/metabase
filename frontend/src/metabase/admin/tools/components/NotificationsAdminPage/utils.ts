@@ -1,4 +1,3 @@
-import type { MantineColor } from "@mantine/core/lib/core/MantineProvider";
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -8,25 +7,21 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import type { BadgeProps, IconName } from "metabase/ui";
+import type { IconName } from "metabase/ui";
 import {
   type AdminNotificationListParams,
   type AdminNotificationSortColumn,
   type NotificationChannelType,
   type NotificationRunStatus,
-  type NotificationStatus,
   type SortDirection,
   guardSortDirection,
 } from "metabase-types/api";
-
-type StatusBadgeColor = NonNullable<BadgeProps["color"]>;
 
 export type NotificationsTab = "all" | "failing" | "ownerless";
 
 export type NotificationsUrlState = {
   page: number;
   active: boolean | null;
-  status: NotificationStatus | null;
   query: string;
   channel: NotificationChannelType | null;
   last_sent_status: NotificationRunStatus | null;
@@ -44,9 +39,9 @@ export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "updated_at";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
 export const SORT_COLUMN_VALUES: AdminNotificationSortColumn[] = [
-  "last_sent_at",
+  "last_sent",
   "card_name",
-  "creator_name",
+  "owner_name",
   "updated_at",
 ];
 
@@ -96,26 +91,6 @@ const parseGuardedEnum = <T extends string, D extends T | null>(
   defaultValue: D,
 ): T | D =>
   valueToParse && guardFn(valueToParse) ? valueToParse : defaultValue;
-
-const guardAdminNotificationStatus = (
-  value: string,
-): value is NotificationStatus =>
-  (
-    [
-      "healthy",
-      "orphaned_card",
-      "orphaned_creator",
-      "failing",
-      "abandoned",
-    ] satisfies NotificationStatus[]
-  ).includes(value as NotificationStatus);
-
-const parseStatusEnum = (param: QueryParam): NotificationsUrlState["status"] =>
-  parseGuardedEnum(
-    getFirstParamValue(param),
-    guardAdminNotificationStatus,
-    null,
-  );
 
 const guardChannel = (value: string): value is NotificationChannelType =>
   (
@@ -187,7 +162,6 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
     active: parseActive(query.active),
-    status: parseStatusEnum(query.status),
     query: parseQuery(query.query),
     channel: parseChannelEnum(query.channel),
     last_sent_status: parseLastSentStatusEnum(query.last_sent_status),
@@ -200,7 +174,6 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
     active: serializeActive(state.active),
-    status: state.status ?? undefined,
     query: state.query || undefined,
     channel: state.channel ?? undefined,
     last_sent_status: state.last_sent_status ?? undefined,
@@ -248,34 +221,6 @@ export const buildListParams = (
   };
 };
 
-export const getStatusLabel = (status: NotificationStatus): string =>
-  match(status)
-    .with("healthy", () => t`Healthy`)
-    .with("orphaned_card", () => t`Orphaned`)
-    .with("orphaned_creator", () => t`Deactivated owner`)
-    .with("failing", () => t`Failing`)
-    .with("abandoned", () => t`Abandoned`)
-    .exhaustive();
-
-export const getStatusColor = (status: NotificationStatus): StatusBadgeColor =>
-  match(status)
-    .returnType<StatusBadgeColor>()
-    .with("healthy", () => "success")
-    .with("failing", "abandoned", () => "error")
-    .with("orphaned_card", "orphaned_creator", () => "warning")
-    .exhaustive();
-
-export const getStatusBackground = (status: NotificationStatus): MantineColor =>
-  match(status)
-    .with("healthy", () => "background-primary" as const)
-    .with(
-      "orphaned_card",
-      "orphaned_creator",
-      () => "background-warning" as const,
-    )
-    .with("failing", "abandoned", () => "background-error" as const)
-    .exhaustive();
-
 export const getChannelLabel = (channel: NotificationChannelType): string =>
   match(channel)
     .with("channel/email", () => t`Email`)
@@ -290,19 +235,6 @@ export const getChannelIconName = (
     .with("channel/email", () => "mail" as const)
     .with("channel/slack", () => "slack" as const)
     .with("channel/http", () => "webhook" as const)
-    .exhaustive();
-
-type StatusIcon = { name: IconName; color: MantineColor };
-
-export const getStatusIcon = (status: NotificationStatus): StatusIcon =>
-  match<NotificationStatus, StatusIcon>(status)
-    .with("healthy", () => ({ name: "verified", color: "success" }))
-    .with("orphaned_creator", () => ({ name: "verified", color: "success" }))
-    .with("orphaned_card", () => ({ name: "warning", color: "warning" }))
-    .with("failing", "abandoned", () => ({
-      name: "warning_round",
-      color: "error",
-    }))
     .exhaustive();
 
 export const formatRelativeDate = (
