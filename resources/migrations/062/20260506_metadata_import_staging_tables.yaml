@@ -6,9 +6,10 @@
 ## schema; the importer wipes them on entry and exit (try/finally) so a
 ## crashed prior attempt cannot leak rows into the next run.
 ##
-## No surrogate `id` column and no indexes — staging is scan-once-then-merge.
-## Indexes would slow the bulk INSERT during drain without helping the merge
-## plan (which probes live tables via their existing indexes).
+## Staging is scan-once-then-merge. The only index is on
+## metabase_field_import.target_field_id, which the merge UPDATE keys
+## on for set-based clobber — without it each correlated subquery in
+## merge-fields!'s UPDATE seq-scans staging once per row of metabase_field.
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
@@ -190,3 +191,24 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.2026-05-07T00:00:00
+      author: galdre
+      comment: Add metabase_field_import.target_field_id and index for set-based merge UPDATE
+      changes:
+        - addColumn:
+            tableName: metabase_field_import
+            columns:
+              - column:
+                  name: target_field_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved by resolve-target-field-ids-in-staging!. NULL means no live row matches; row is an insert candidate. Indexed below so merge-fields!'s UPDATE keys on it via a single-column lookup instead of seq-scanning staging once per outer row.
+        - createIndex:
+            tableName: metabase_field_import
+            indexName: idx_mfi_target_field_id
+            columns:
+              - column:
+                  name: target_field_id

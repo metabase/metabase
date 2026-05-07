@@ -516,6 +516,173 @@
           (is (nil? (:parent_id row))
               "defective parent is excluded from the resolve JOIN"))))))
 
+;;; ============================== resolve-target-field-ids-in-staging! ==============================
+
+(deftest resolve-target-field-ids-populates-when-match-exists-test
+  (testing "for a staging row whose match key (db, schema, table, name, parent_id)
+            corresponds to an existing metabase_field row, resolve sets
+            staging.target_field_id to that row's int id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rt-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "users"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "id"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-db"
+                                            :table_schema  "public"
+                                            :table_name    "users"
+                                            :field_name    "id"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= f-id (:target_field_id row))
+              "target_field_id resolved to the existing metabase_field row's id"))))))
+
+(deftest resolve-target-field-ids-leaves-null-when-no-match-test
+  (testing "a staging row whose natural key matches no metabase_field row keeps
+            target_field_id NULL — the SET subquery returns no row, so it leaves
+            the column unchanged from its NULL default"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rt-miss-db" :engine :postgres}
+                   :model/Table   {_t :id}     {:db_id db-id :schema "public" :name "users"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-miss-db"
+                                            :table_schema  "public"
+                                            :table_name    "users"
+                                            :field_name    "no-such-field"
+                                            :base_type     "type/Text"
+                                            :database_type "varchar"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (nil? (:target_field_id row))
+              "target_field_id stays NULL — no metabase_field row to match"))))))
+
+(deftest resolve-target-field-ids-uses-parent-id-in-match-test
+  (testing "matching uses unique_field_helper (= COALESCE(parent_id, 0)) so two
+            fields with same (table, name) but different parent_id are
+            distinguished — only the staging row whose parent_id matches the
+            nested field's parent_id resolves"
+    (mt/with-temp [:model/Database {db-id :id}     {:name "rt-uniq-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}     {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {parent-id :id}  {:table_id tbl-id :name "outer"
+                                                    :base_type "type/Structured"
+                                                    :database_type "json"}
+                   :model/Field   {flat-id :id}    {:table_id tbl-id :name "x"
+                                                    :base_type "type/Integer"
+                                                    :database_type "integer"}
+                   :model/Field   {nested-id :id}  {:table_id tbl-id :name "x"
+                                                    :parent_id parent-id
+                                                    :nfc_path (json/encode ["outer"])
+                                                    :base_type "type/Text"
+                                                    :database_type "varchar"}]
+      (processors/with-staging-tables
+        ;; Two staging rows: one with parent_id = parent-id (nested), one without (flat).
+        (t2/insert! :metabase_field_import {:db_name       "rt-uniq-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :nfc_path      (json/encode ["outer"])
+                                            :parent_id     parent-id
+                                            :base_type     "type/Text"
+                                            :database_type "varchar"})
+        (t2/insert! :metabase_field_import {:db_name       "rt-uniq-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [rows         (t2/query {:select [:field_name :parent_id :target_field_id]
+                                      :from   [:metabase_field_import]})
+              by-parent    (group-by :parent_id rows)
+              flat-row     (first (get by-parent nil))
+              nested-row   (first (get by-parent parent-id))]
+          (is (= 2 (count rows)))
+          (is (= flat-id   (:target_field_id flat-row))   "flat staging row resolves to flat field")
+          (is (= nested-id (:target_field_id nested-row)) "nested staging row resolves to nested field"))))))
+
+(deftest resolve-target-field-ids-matches-stub-test
+  (testing "a stub row (active=false, database_type='__stub__') is a valid match —
+            resolve sets target_field_id to the stub's id so merge-fields! UPDATE
+            can clobber it. Defective duplicates are still excluded."
+    (mt/with-temp [:model/Database {db-id :id}  {:name "rt-stub-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {stub-id :id} {:table_id tbl-id :name "p"
+                                                 :base_type "type/*"
+                                                 :database_type "__stub__"
+                                                 :active false
+                                                 :is_defective_duplicate false}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-stub-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "p"
+                                            :base_type     "type/Structured"
+                                            :database_type "json"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= stub-id (:target_field_id row))
+              "stub matches by natural key — merge-fields! will then flip it to active"))))))
+
+(deftest resolve-target-field-ids-handles-nil-table-schema-test
+  (testing "NULL table_schema works through COALESCE on both sides of the JOIN"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rt-nil-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema nil :name "t"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-nil-db"
+                                            :table_schema  nil
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= f-id (:target_field_id row))))))))
+
+(deftest resolve-target-field-ids-skips-defective-test
+  (testing "is_defective_duplicate metabase_field rows are excluded from match —
+            a staging row whose only candidate is defective gets target_field_id NULL"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rt-def-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {_d :id}     {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"
+                                                :is_defective_duplicate true}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-def-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (nil? (:target_field_id row))
+              "defective candidate excluded — target_field_id stays NULL"))))))
+
+(deftest resolve-target-field-ids-idempotent-test
+  (testing "running resolve twice yields the same target_field_id — UPDATE on
+            an already-set target_field_id replays the same value"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rt-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "rt-idem-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/resolve-target-field-ids-in-staging!)
+        (processors/resolve-target-field-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= f-id (:target_field_id row))))))))
+
 ;;; ============================== compute-stubs! ==============================
 
 (deftest compute-stubs-empty-when-no-missing-parents-test
@@ -788,6 +955,7 @@
                                             :description       "primary key"
                                             :semantic_type     "type/PK"
                                             :effective_type    "type/Integer"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (let [row (t2/select-one :model/Field :table_id tbl-id :name "id")]
         (is (some? row))
@@ -820,6 +988,7 @@
                                             :database_type  "varchar"
                                             :description    "new"
                                             :semantic_type  "type/Description"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (let [row (t2/select-one :model/Field :id f-id)]
         (is (= :type/Text         (:base_type row)))
@@ -846,6 +1015,7 @@
                                             :base_type      "type/Structured"
                                             :database_type  "json"
                                             :description    "real row"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (let [row (t2/select-one :model/Field :id stub-id)]
         (is (true?              (:active row)) "stub flipped to active")
@@ -881,6 +1051,7 @@
                                             :base_type      "type/Text"
                                             :database_type  "varchar"
                                             :description    "nested-new"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (is (= "nested-new" (:description (t2/select-one :model/Field :id nested-id))))
       (is (= "flat-old"   (:description (t2/select-one :model/Field :id flat-id)))
@@ -901,12 +1072,15 @@
                                             :base_type     "type/Text"
                                             :database_type "varchar"
                                             :description   "patched"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (is (= "patched" (:description (t2/select-one :model/Field :id f-id)))))))
 
 (deftest merge-fields-idempotent-test
-  (testing "running merge-fields! twice with the same staging contents is a no-op
-            on the second pass (NOT EXISTS catches insert; UPDATE re-applies same payload)"
+  (testing "running resolve+merge twice with the same staging contents is a no-op
+            on the second pass: the second resolve picks up the row inserted by the
+            first merge so target_field_id is set, the UPDATE re-applies the same
+            payload, and the INSERT skips because no row has target_field_id NULL"
     (mt/with-temp [:model/Database {db-id :id} {:name "mf-idem-db" :engine :postgres}
                    :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
       (processors/with-staging-tables
@@ -916,7 +1090,9 @@
                                             :field_name    "x"
                                             :base_type     "type/Text"
                                             :database_type "varchar"})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!)
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fields!))
       (is (= 1 (count (t2/select :model/Field :table_id tbl-id :name "x")))))))
 
@@ -934,6 +1110,7 @@
                                                 :field_name    "would-be-inserted"
                                                 :base_type     "type/Text"
                                                 :database_type "varchar"})
+            (processors/resolve-target-field-ids-in-staging!)
             (t2/with-transaction [_]
               (processors/merge-fields!)
               (throw (ex-info "force rollback" {:kind :test_force_rollback}))))

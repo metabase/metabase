@@ -160,6 +160,7 @@
           (processors/insert-stubs-where-not-exists! stub-specs)
           (processors/resolve-existing-parents-in-staging!)        ; round 2 — picks up just-inserted stubs
           (processors/assert-no-unresolved-parent-refs!)
+          (processors/resolve-target-field-ids-in-staging!)        ; staging now knows which rows are matches vs inserts
           (processors/merge-fields!)
           (processors/resolve-fk-target-ids-in-staging!)
           (processors/assert-no-unresolved-fk-targets!)
