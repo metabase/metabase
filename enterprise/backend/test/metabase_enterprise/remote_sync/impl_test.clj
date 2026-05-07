@@ -1546,8 +1546,8 @@ serdes/meta:
                      :model/RemoteSyncTask
                      {:sync_task_type "import"
                       :initiated_by   (mt/user->id :rasta)
-                      :started_at     (java.time.OffsetDateTime/now)
-                      :ended_at       (java.time.OffsetDateTime/now)
+                      :started_at     (t/offset-date-time)
+                      :ended_at       (t/offset-date-time)
                       :cancelled      true
                       :error_message  "Cancelled by admin"
                       :progress       0.5})]
