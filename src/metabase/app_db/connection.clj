@@ -89,21 +89,16 @@
     :lock        (ReentrantReadWriteLock.)}))
 
 (def ^:private ^:dynamic ^ApplicationDB *application-db*
-  "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Don't read or rebind this
-  directly; instead use [[the-application-db]], [[application-db-root]], [[with-application-db]],
-  [[reset-application-db!]], or [[swap-application-db!]]."
+  "The current Metabase application database."
   (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
 
 (defn the-application-db
-  "Returns the current application DB. Prefer this over reading the underlying var directly so we can change where
-  the value is stored later."
+  "Returns the current application DB."
   ^ApplicationDB []
   *application-db*)
 
 (defn application-db-root
-  "Returns the root binding of the application DB, ignoring any thread-local rebinding established
-  by [[with-application-db]]. Use this when capturing the prior root for cross-thread promotion patterns where you
-  need to restore it later."
+  "Returns the root binding of the application DB, ignoring any thread-local rebinding."
   ^ApplicationDB []
   (.getRawRoot ^clojure.lang.Var #'*application-db*))
 
@@ -114,21 +109,18 @@
     (thunk)))
 
 (defmacro with-application-db
-  "Bind the current application database for the dynamic extent of `body`. Use this instead of binding
-  [[*application-db*]] directly."
+  "Bind the application DB to `application-db` for the dynamic extent of `body`."
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (fn [] ~@body)))
 
 (defn reset-application-db!
-  "Set the root binding of the application DB to `new-application-db`. Mirrors [[clojure.core/reset!]]. Use this
-  instead of `alter-var-root` on [[*application-db*]]."
+  "Set the root binding of the application DB to `new-application-db`."
   [new-application-db]
   (alter-var-root #'*application-db* (constantly new-application-db)))
 
 (defn swap-application-db!
-  "Update the root binding of the application DB by applying `f` (and any extra `args`) to its current value. Mirrors
-  [[clojure.core/swap!]]. Use this instead of `alter-var-root` on [[*application-db*]]."
+  "Update the root binding of the application DB by applying `f` to its current value, plus any `args`."
   [f & args]
   (apply alter-var-root #'*application-db* f args))
 
