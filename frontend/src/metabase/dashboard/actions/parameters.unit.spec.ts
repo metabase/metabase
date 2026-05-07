@@ -271,6 +271,7 @@ describe("setParameterMapping", () => {
                 }
               : {},
           segments: {},
+          measures: {},
           metrics: {},
           snippets: {},
           questions: {},
@@ -384,6 +385,7 @@ describe("setParameterMapping", () => {
             }),
           },
           segments: {},
+          measures: {},
           metrics: {},
           snippets: {},
           questions: {},

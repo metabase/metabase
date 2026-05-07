@@ -15,7 +15,7 @@ import type Segment from "./Segment";
 
 interface Table extends Omit<
   NormalizedTable,
-  "db" | "schema" | "fields" | "fks" | "segments" | "metrics"
+  "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
 > {
   db?: Database;
   schema?: Schema;

@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { measureApi } from "metabase/api/measure";
 import type { State } from "metabase/redux/store";
 import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
@@ -90,23 +89,7 @@ const getNormalizedFields = createSelector(
 );
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
-
-const selectListMeasures = measureApi.endpoints.listMeasures.select();
-
-const getMeasures = createSelector(
-  [selectListMeasures],
-  (result): Record<string, Measure> => {
-    const measures: Record<string, Measure> = {};
-    for (const measure of result.data ?? []) {
-      // _plainObject is read by the CLJS metadata-provider in
-      // src/metabase/lib/js/metadata.cljc — it tells the parser to use
-      // the raw object directly via js->clj rather than walking JS keys.
-      measures[measure.id] = { ...measure, _plainObject: measure } as Measure;
-    }
-    return measures;
-  },
-);
-
+const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
@@ -126,7 +109,7 @@ export const getMetadata: (
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
-    getMeasures,
+    getNormalizedMeasures,
     getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
@@ -163,7 +146,7 @@ export const getMetadata: (
     metadata.segments = Object.fromEntries(
       Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
     );
-    metadata.measures = measures;
+    metadata.measures = measures as Metadata["measures"];
     metadata.metrics = Object.fromEntries(
       Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
     );
@@ -398,9 +381,8 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
 }
 
 function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
-  return Object.values(metadata.measures).filter(
-    (measure) => measure.table_id === table.id,
-  );
+  const measureIds = table.getPlainObject().measures ?? [];
+  return measureIds.map((id) => metadata.measure(id)).filter(isNotNull);
 }
 
 function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {
