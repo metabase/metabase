@@ -4,11 +4,11 @@ import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
 import CS from "metabase/css/core/index.css";
-import { Search } from "metabase/entities/search";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
 import {
@@ -249,6 +249,17 @@ class SnippetSidebarInner extends React.Component {
   }
 }
 
+function SnippetSidebarWithSearch(props) {
+  const collectionId =
+    props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
+  const { data: searchResponse } = useListCollectionItemsQuery({
+    id: collectionId,
+    namespace: "snippets",
+  });
+  const search = searchResponse?.data ?? [];
+  return <SnippetSidebarInner {...props} search={search} />;
+}
+
 export const SnippetSidebar = _.compose(
   Snippets.loadList(),
   SnippetCollections.loadList(),
@@ -257,17 +268,10 @@ export const SnippetSidebar = _.compose(
       props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
     wrapped: true,
   }),
-  Search.loadList({
-    query: (state, props) => ({
-      collection:
-        props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-      namespace: "snippets",
-    }),
-  }),
   connect((state, { list }) => ({
     isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
   })),
-)(SnippetSidebarInner);
+)(SnippetSidebarWithSearch);
 
 function ArchivedSnippetsInner(props) {
   const {

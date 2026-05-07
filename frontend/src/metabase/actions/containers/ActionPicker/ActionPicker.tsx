@@ -1,14 +1,13 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
+import { useSearchQuery } from "metabase/api";
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { Actions } from "metabase/entities/actions";
-import { Search } from "metabase/entities/search";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -153,14 +152,14 @@ function ModelActionPicker({
   );
 }
 
-export const ConnectedActionPicker = _.compose(
-  Search.loadList({
-    query: () => ({
-      models: ["dataset"],
-    }),
-    listName: "models",
-  }),
-  Actions.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(ActionPicker);
+function ActionPickerWithModels(
+  props: Omit<Parameters<typeof ActionPicker>[0], "models">,
+) {
+  const { data: searchResponse } = useSearchQuery({ models: ["dataset"] });
+  const models = (searchResponse?.data ?? []) as unknown as Card[];
+  return <ActionPicker {...props} models={models} />;
+}
+
+export const ConnectedActionPicker = Actions.loadList({
+  loadingAndErrorWrapper: false,
+})(ActionPickerWithModels);
