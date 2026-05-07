@@ -8,10 +8,7 @@ import {
   CollectionSchema,
   DashboardSchema,
   DatabaseSchema,
-  DocumentSchema,
   FieldSchema,
-  GroupSchema,
-  IndexedEntitySchema,
   MeasureSchema,
   MetricSchema,
   QuestionSchema,
@@ -56,7 +53,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   collections: [CollectionSchema],
   dashboards: [DashboardSchema],
   databases: [DatabaseSchema],
-  documents: [DocumentSchema],
   schemas: [SchemaSchema],
   tables: [TableSchema],
   fields: [FieldSchema],
@@ -64,9 +60,7 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   measures: [MeasureSchema],
   metrics: [MetricSchema],
   snippets: [SnippetSchema],
-  indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
-  groups: [GroupSchema],
 };
 
 export const createMockEntitiesState = (

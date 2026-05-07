@@ -9,9 +9,11 @@ import {
   type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/utils/formatting";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/utils/formatting";
+} from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";

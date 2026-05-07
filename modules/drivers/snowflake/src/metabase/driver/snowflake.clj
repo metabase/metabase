@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -36,7 +36,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv empty? not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -223,6 +223,13 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
+(defn- set-put-get [additional-options]
+  (cond (empty? additional-options) "enablePutGet=false"
+        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
+                                                                       #"enablePutGet=[^&]+"
+                                                                       "enablePutGet=false")
+        :else (str additional-options "&enablePutGet=false")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -274,7 +281,8 @@
                    (m/update-existing :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
-        (sql-jdbc.common/handle-additional-options details)
+        (sql-jdbc.common/handle-additional-options (update details
+                                                           :additional-options set-put-get))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details))))
@@ -959,13 +967,9 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :snowflake
-  [_ role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "USE ROLE \"%s\";" role)
-      (format "USE ROLE %s;" role))))
+(defmethod sql-jdbc/set-role-statement :snowflake
+  [_driver _conn role]
+  ["USE ROLE identifier(?);" role])
 
 (defmethod driver.sql/default-database-role :snowflake
   [_ database]

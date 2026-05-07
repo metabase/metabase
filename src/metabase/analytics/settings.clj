@@ -5,22 +5,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
-
-(defsetting prometheus-server-port
-  (deferred-tru (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
-                     " and served from `localhost:<port>/metrics`."))
-  :type       :integer
-  :visibility :internal
-  ;; settable only through environmental variable
-  :setter     :none
-  :getter     (fn reading-prometheus-port-setting []
-                (let [parse (fn [raw-value]
-                              (if-let [parsed (parse-long raw-value)]
-                                parsed
-                                (log/warnf "MB_PROMETHEUS_SERVER_PORT value of '%s' is not parseable as an integer." raw-value)))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -107,8 +92,9 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru (str "Enable logging of embed path, query parameters, user agent, and IP address of who views your "
-                     "internal data and embeds. This information will be shown in your usage analytics."))
+  (deferred-tru (str "Enable logging of embed path, query parameters, user agent, IP address, and Metabot "
+                     "conversation metadata for users of your internal data and embeds. This information "
+                     "will be shown in your usage analytics."))
   :type       :boolean
   :default    false
   :visibility :admin

@@ -179,6 +179,29 @@
                    :opts     {:ai-proxy? true}}
                   @captured)))))))
 
+(deftest extract-sources-test
+  (testing "POST /api/llm/extract-sources returns SQL tables and native card/model references"
+    (mt/with-temp [:model/Database db    {:engine :h2}
+                   :model/Table    table {:db_id  (:id db)
+                                          :name   "orders"
+                                          :schema "PUBLIC"}
+                   :model/Field    _     {:table_id  (:id table)
+                                          :name      "id"
+                                          :base_type :type/Integer}
+                   :model/Card     model {:name          "Orders model"
+                                          :type          :model
+                                          :dataset_query {:database (:id db)
+                                                          :type     :query
+                                                          :query    {:source-table (:id table)}}}]
+      (is (=? {:tables   [{:id   (:id table)
+                           :name "orders"}]
+               :card_ids [(:id model)]}
+              (mt/user-http-request :crowberto :post 200 "llm/extract-sources"
+                                    {:database_id   (:id db)
+                                     :sql           "SELECT * FROM orders"
+                                     :template_tags {"#model" {:type    "card"
+                                                               :card-id (:id model)}}}))))))
+
 ;;; ------------------------------------------- Snowplow Tests -------------------------------------------
 
 (defn- token-usage-event? [event]

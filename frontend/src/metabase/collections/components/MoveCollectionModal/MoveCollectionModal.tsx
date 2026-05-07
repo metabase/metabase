@@ -1,15 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type {
   MoveDestination,
   OnMoveWithSourceAndDestination,
 } from "metabase/collections/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
-import { useCollectionQuery } from "metabase/common/hooks";
-import { Collections } from "metabase/entities/collections";
-import { useDispatch } from "metabase/redux";
+import { useSetCollection } from "metabase/common/hooks";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -60,17 +59,17 @@ export const MoveCollectionModal = ({
   params?: { slug: string };
   onClose: () => void;
 }) => {
-  const dispatch = useDispatch();
+  const setCollection = useSetCollection();
   const collectionIdfromUrl = Urls.extractCollectionId(params?.slug);
 
+  const resolvedCollectionId = collectionId ?? collectionIdfromUrl;
   const {
     data: collection,
     isLoading,
     error,
-  } = useCollectionQuery({
-    id: collectionId ?? collectionIdfromUrl,
-    enabled: Boolean(collectionId || collectionIdfromUrl),
-  });
+  } = useGetCollectionQuery(
+    resolvedCollectionId != null ? { id: resolvedCollectionId } : skipToken,
+  );
 
   if (!collection || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -80,7 +79,10 @@ export const MoveCollectionModal = ({
     <MoveCollectionModalView
       collection={collection}
       onMove={async (source, destination) => {
-        await dispatch(Collections.actions.setCollection(source, destination));
+        await setCollection(
+          { model: "collection", id: source.id },
+          destination,
+        );
       }}
       onClose={onClose}
     />

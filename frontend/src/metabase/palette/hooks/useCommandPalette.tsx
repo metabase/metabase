@@ -5,6 +5,8 @@ import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { getCollection } from "metabase/collections/utils";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
 import { getIcon } from "metabase/common/utils/icon";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -24,8 +26,8 @@ import { modelToUrl } from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
+  type RecentCollectionItem,
   type RecentItem,
-  isRecentCollectionItem,
   isRecentTableItem,
 } from "metabase-types/api";
 
@@ -352,7 +354,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     );
   } else {
     return (
-      <SubtitleText>{wrappedSearchResult.getCollection?.()?.name}</SubtitleText>
+      <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>
     );
   }
 };
@@ -401,3 +403,8 @@ const SubtitleText = ({ children }: PropsWithChildren) => (
     {children}
   </Text>
 );
+
+const isRecentCollectionItem = (
+  item: OmniPickerItem,
+): item is RecentCollectionItem =>
+  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);

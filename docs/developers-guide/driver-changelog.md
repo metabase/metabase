@@ -8,6 +8,10 @@ title: Driver interface changelog
 
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
 
+- `metabase.driver.sql/set-role-statement` has been deprecated in favor of
+  `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
+  the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
+
 ## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.

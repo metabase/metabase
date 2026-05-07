@@ -1150,7 +1150,7 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1256,7 +1256,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
@@ -1518,7 +1517,6 @@
   {:team "DevEx"
    :api  #{metabase.plugins.core}
    :uses #{classloader
-           config
            driver
            util}}
 
@@ -2047,7 +2045,6 @@
               analytics-interface
               api
               channel
-              config
               formatter
               lib
               metabot
@@ -2063,8 +2060,7 @@
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+                    :model/MetabotMessage}}
 
   source-swap
   {:team "Graphy"
@@ -2290,8 +2286,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2324,8 +2319,7 @@
            lib-be
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2597,7 +2591,6 @@
            request
            sample-data
            secrets
-           server
            settings
            sync
            upload
@@ -2609,7 +2602,6 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -3088,6 +3080,7 @@
               permissions
               premium-features
               settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
@@ -3311,6 +3304,7 @@
            lib
            logger
            models
+           permissions
            plugins
            premium-features
            search

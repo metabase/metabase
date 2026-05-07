@@ -13,8 +13,10 @@ import {
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { SearchResult } from "metabase/search/components/SearchResult";
-import type { WrappedResult } from "metabase/search/types";
-import type { TokenFeatures } from "metabase-types/api";
+import type {
+  SearchResult as ApiSearchResult,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -51,7 +53,7 @@ const officialCollectionResult = createWrappedSearchResult({
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  result: WrappedResult;
+  result: ApiSearchResult;
 }
 
 const setup = ({

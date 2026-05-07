@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as document]
+   [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -815,3 +817,19 @@
         (is (contains? descendants ["Card" 111]))
         (is (contains? descendants ["Dashboard" 222]))
         (is (contains? descendants ["Table" 333]))))))
+
+(deftest no-events-during-deserialization-test
+  (testing "Document after-update hook does not publish events during deserialization (#72293)"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"}]
+      (let [events-published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events-published conj [topic event]))]
+          (testing "events fire normally"
+            (t2/update! :model/Document doc-id {:name "Updated Name"})
+            (is (= 1 (count @events-published)))
+            (is (= :event/document-update (ffirst @events-published))))
+          (reset! events-published [])
+          (testing "events are suppressed during deserialization"
+            (binding [mi/*deserializing?* true]
+              (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
+            (is (empty? @events-published))))))))

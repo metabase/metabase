@@ -1,0 +1,201 @@
+## BOT-1406 — Metabot GDPR PII gating.
+##
+## Bring metabot_conversation PII collection under analytics-pii-retention-enabled,
+## matching the gating already in place for view_log and query_execution.
+##
+## Order matters: addColumn → discard pre-flag PII → backfill → dropColumn →
+## re-create analytics views. All steps must live in this single file (and run
+## in this order) because Liquibase processes change-log files alphabetically;
+## splitting across files would re-order the steps.
+##
+## Pre-flag PII is discarded rather than carried forward:
+## - The path portion of the existing embed_url is intentionally NOT migrated
+##   to embedding_path. It is the PII fraction of the URL and was collected
+##   before the flag existed; there is no consent basis for those legacy values.
+##   Only the hostname survives, into embedding_hostname.
+## - Existing ip_address values are NULLed for the same reason: they predate
+##   analytics-pii-retention-enabled gating, so there is no consent basis to
+##   keep them.
+## Carrying either forward would launder unconsented PII into a post-flag schema.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2wozp4
+      author: tyler
+      comment: Add embedding_hostname to metabot_conversation
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: embedding_hostname
+                  type: varchar(512)
+                  remarks: Hostname extracted from the embed referrer header at conversation creation. Always populated when an embed referrer is present.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: embedding_hostname
+
+  - changeSet:
+      id: v61.ljr45i
+      author: tyler
+      comment: Add embedding_path to metabot_conversation, PII
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: embedding_path
+                  type: varchar(2048)
+                  remarks: Path extracted from the embed referrer header at conversation creation, PII.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: embedding_path
+
+  - changeSet:
+      id: v61.g2jc0k
+      author: tyler
+      comment: Add user_agent to metabot_conversation, PII
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: Raw User-Agent header captured at conversation creation, PII.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: user_agent
+
+  - changeSet:
+      id: v61.gc7wz4
+      author: tyler
+      comment: Add sanitized_user_agent to metabot_conversation, PII
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Sanitized User-Agent string (browser + OS family) at the originating conversation, for analytics display.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: sanitized_user_agent
+
+  - changeSet:
+      id: v61.uabwhr
+      author: tyler
+      comment: Discard pre-flag ip_address values on metabot_conversation (collected without analytics-pii-retention-enabled gating, no consent basis going forward)
+      changes:
+        - update:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: ip_address
+                  value: null
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v61.9q8n1e
+      author: tyler
+      comment: Backfill embedding_hostname on metabot_conversation from existing embed_url values (path portion intentionally not migrated)
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BackfillMetabotConversationEmbeddingHostname
+
+  - changeSet:
+      id: v61.vcwds2
+      author: tyler
+      comment: Drop metabot_conversation.embed_url. The non-PII hostname portion has been migrated to embedding_hostname; the PII path portion is intentionally discarded.
+      changes:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: embed_url
+      rollback:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: embed_url
+                  type: varchar(2048)
+                  remarks: Referer URL captured at conversation creation; restored on rollback. Original values are not recoverable — only the hostname survives, in embedding_hostname.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.pc3opb
+      author: tyler
+      runOnChange: true
+      comment: Update v_metabot_conversations to project embedding_hostname, embedding_path, user_agent, sanitized_user_agent
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v2/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v2/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v2/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v1/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v1/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v1/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v61.4j9n7o
+      author: tyler
+      runOnChange: true
+      comment: Update v_ai_usage_log to project embedding_hostname, embedding_path, user_agent, sanitized_user_agent
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v2/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v2/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v2/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v1/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v1/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v1/h2-ai_usage_log.sql
+            relativeToChangelogFile: true

@@ -1,32 +1,19 @@
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import { renderWithProviders, screen } from "__support__/ui";
-import { PersistedModels } from "metabase/entities/persisted-models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
 import { ModelCacheRefreshJobs } from "./ModelCacheRefreshJobs";
 
 async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
-  const onRefreshMock = jest
-    .spyOn(PersistedModels.objectActions, "refreshCache")
-    .mockReturnValue({ type: "__MOCK__" });
-
   setupModelPersistenceEndpoints(logs);
 
   renderWithProviders(<ModelCacheRefreshJobs />);
 
   await screen.findByTestId("model-cache-logs");
-
-  return {
-    onRefreshMock,
-  };
 }
 
 describe("ModelCacheRefreshJobs", () => {
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
   it("shows empty state when there are no cache logs", async () => {
     await setup({ logs: [] });
     expect(screen.getByText("No results")).toBeInTheDocument();
