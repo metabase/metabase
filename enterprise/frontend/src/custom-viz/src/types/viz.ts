@@ -95,18 +95,6 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
 };
 
-export type BaseWidgetProps<
-  TValue,
-  TSettings extends Record<string, unknown>,
-> = {
-  id: string;
-  value: TValue | undefined;
-  onChange: (value?: TValue | null) => void;
-  onChangeSettings: (
-    settings: Partial<CustomVisualizationSettings<TSettings>>,
-  ) => void;
-};
-
 export type VisualizationGridSize = {
   /**
    * Number of grid columns in a Metabase dashboard.
