@@ -66,7 +66,7 @@ export const ChartSettingSelect = ({
       searchable={!!searchProp}
       comboboxProps={{
         withinPortal: false,
-        floatingStrategy: "fixed",
+        floatingStrategy: "absolute",
       }}
       icon={icon}
       iconWidth={iconWidth}
