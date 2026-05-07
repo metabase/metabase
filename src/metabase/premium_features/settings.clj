@@ -337,8 +337,6 @@
   "Should we allow users to view database schemas as ER diagrams?"
   :schema-viewer)
 
-
-
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
