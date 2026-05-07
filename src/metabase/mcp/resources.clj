@@ -30,19 +30,11 @@
     (swap! registry assoc (:uri resource) resource)
     resource))
 
-(defn- accessible?
-  "True when a resource with `scope` is visible to a caller with `token-scopes`.
-   Resources without a scope are public; otherwise scope matching is the same as for
-   tools."
-  [scope token-scopes]
-  (or (nil? scope)
-      (mcp.scope/matches? token-scopes scope)))
-
 (defn list-resources
   "Return the MCP `resources/list` payload, filtered by `token-scopes`."
   [token-scopes]
   {:resources (into []
-                    (comp (filter #(accessible? (:scope %) token-scopes))
+                    (comp (filter #(mcp.scope/public-or-matches? token-scopes (:scope %)))
                           (map #(select-keys % [:uri :name :description :mimeType])))
                     (vals @registry))})
 
@@ -52,7 +44,7 @@
    collapses both to nil."
   [uri token-scopes]
   (if-let [{:keys [scope]} (get @registry uri)]
-    (if (accessible? scope token-scopes)
+    (if (mcp.scope/public-or-matches? token-scopes scope)
       :ok
       :scope-denied)
     :not-found))

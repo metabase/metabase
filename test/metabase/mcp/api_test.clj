@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
@@ -610,6 +611,70 @@
                                 {"mcp-session-id" session-id})]
       (is (= 200 (:status response)))
       (is (= -32602 (get-in response [:body :error :code]))))))
+
+(def ^:private scoped-test-uri "test://mcp/api-test/scoped")
+
+(defn- with-scoped-test-resource! [f]
+  (let [registry @#'mcp.resources/registry
+        snapshot @registry]
+    (try
+      (mcp.resources/register-resource!
+       {:uri         scoped-test-uri
+        :name        "Scoped Test Resource"
+        :description "Requires the agent:search scope."
+        :scope       "agent:search"
+        :mimeType    "text/plain"
+        :render-fn   (constantly "secret body")})
+      (f)
+      (finally
+        (reset! registry snapshot)))))
+
+(deftest resources-read-scope-denied-test
+  (testing "resources/read returns -32602 \"Resource not found\" when caller lacks the required scope"
+    (with-scoped-test-resource!
+      (fn []
+        (let [response (#'mcp.api/dispatch-request
+                        (jsonrpc-request "resources/read" {:uri scoped-test-uri})
+                        "session-id"
+                        #{"agent:other"})]
+          (is (=? {:jsonrpc "2.0"
+                   :id      1
+                   :error   {:code    -32602
+                             :message "Resource not found"}}
+                  response))))))
+  (testing "resources/read for a scoped resource succeeds when the caller has a matching scope"
+    (with-scoped-test-resource!
+      (fn []
+        (let [response (#'mcp.api/dispatch-request
+                        (jsonrpc-request "resources/read" {:uri scoped-test-uri})
+                        "session-id"
+                        #{"agent:search"})]
+          (is (=? {:result {:contents [{:uri  scoped-test-uri
+                                        :text "secret body"}]}}
+                  response)))))))
+
+(deftest resources-list-scope-filtering-test
+  (testing "resources/list omits scoped resources the caller cannot access"
+    (with-scoped-test-resource!
+      (fn []
+        (let [response (#'mcp.api/dispatch-request
+                        (jsonrpc-request "resources/list")
+                        "session-id"
+                        #{"agent:other"})
+              uris    (set (map :uri (get-in response [:result :resources])))]
+          (is (contains? uris construct-query-uri)
+              "public construct-query reference is still listed")
+          (is (not (contains? uris scoped-test-uri))
+              "scoped resource must not leak via resources/list")))))
+  (testing "resources/list includes scoped resources for callers with matching scope"
+    (with-scoped-test-resource!
+      (fn []
+        (let [response (#'mcp.api/dispatch-request
+                        (jsonrpc-request "resources/list")
+                        "session-id"
+                        #{"agent:search"})
+              uris    (set (map :uri (get-in response [:result :resources])))]
+          (is (contains? uris scoped-test-uri)))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
