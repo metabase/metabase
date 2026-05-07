@@ -377,6 +377,12 @@ You work with different types of data sources, each with different reliability l
 
 # Important Context
 
+{% if viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
 {% if recent_views %}
 
 {{ recent_views|safe }}

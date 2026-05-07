@@ -1,6 +1,10 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [clojure.string :as str]
+   [clojure.walk]
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
@@ -10,7 +14,8 @@
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.warehouses.core :as warehouses]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -222,3 +227,188 @@
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Read / update tools for an open document
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- ast->text
+  "Render a ProseMirror AST node into a markdown-ish text string for the LLM."
+  [node]
+  (cond
+    (nil? node) ""
+    (string? node) node
+    (map? node)
+    (let [t        (:type node)
+          children (:content node)
+          inline   (apply str (map ast->text children))]
+      (case t
+        "doc"            (str/join "\n\n" (remove str/blank? (map ast->text children)))
+        "paragraph"      inline
+        "heading"        (str (apply str (repeat (or (-> node :attrs :level) 1) "#"))
+                              " " inline)
+        "text"           (or (:text node) "")
+        "bulletList"     (str/join "\n" (map ast->text children))
+        "orderedList"    (str/join "\n" (map ast->text children))
+        "listItem"       (str "- " (str/trim inline))
+        "codeBlock"      (str "```\n" inline "\n```")
+        "blockquote"     (str "> " inline)
+        "hardBreak"      "\n"
+        "horizontalRule" "---"
+        "cardEmbed"      (let [{:keys [id name]} (:attrs node)]
+                           (str "[Card #" id (when name (str " " (pr-str name))) "]"))
+        "smartLink"      (let [{:keys [model entityId]} (:attrs node)]
+                           (str "[SmartLink " (or model "?") " " entityId "]"))
+        "metabotEmbed"   (str "[MetabotEmbed " (pr-str (-> node :attrs :prompt)) "]")
+        ;; default: just inline whatever children we have
+        inline))
+    :else ""))
+
+(def ^:private document-read-schema
+  [:map {:closed true}
+   [:document_id :int]])
+
+(defn- viewing-document-with-id
+  "Find the `user_is_viewing` entry for a given document id, if any."
+  [document-id]
+  (some (fn [item]
+          (when (and (= "document" (:type item))
+                     (= document-id (:id item)))
+            item))
+        (-> (shared/current-context) :user_is_viewing)))
+
+(def ^:private id-bearing-node-types
+  "ProseMirror node types that the frontend tags with an `_id` UUID via
+  `createIdAttribute` (frontend/.../NodeIds/utils.ts). The persisted AST must
+  carry `_id`s for these nodes so that loading the doc into the editor doesn't
+  immediately produce a dirty diff."
+  #{"paragraph" "heading" "bulletList" "orderedList" "blockquote" "codeBlock"
+    "supportingText" "cardEmbed"})
+
+(defn- inject-node-ids
+  "Walk a ProseMirror AST and add a UUID `:_id` attr to any
+  `id-bearing-node-types` node that lacks one. Returns the updated ast."
+  [ast]
+  (clojure.walk/postwalk
+   (fn [node]
+     (if (and (map? node)
+              (contains? id-bearing-node-types (:type node))
+              (not (get-in node [:attrs :_id])))
+       (assoc-in node [:attrs :_id] (str (random-uuid)))
+       node))
+   ast))
+
+(defn- unsaved-changes-output
+  "Standard refusal message when the user has unsaved local edits in the editor."
+  [verb]
+  (str "I can't " verb " the document right now: the user has unsaved changes "
+       "in the editor that I would clobber. Tell the user to save or discard "
+       "their changes and then ask again."))
+
+(mu/defn ^{:tool-name "document_read"
+           :scope     scope/agent-document-read}
+  document-read-tool
+  "Read the contents of a Document the user is viewing.
+
+  The user's current document id is available in `user_is_viewing` (entries with
+  `type: \"document\"`). Pass that id as `document_id`.
+
+  Returns a textual rendering of the doc plus the underlying ProseMirror AST in
+  `structured_output`. Use the AST as the basis for any later `document_update`
+  call so that card embeds and unrelated content are preserved.
+
+  Refuses to read when the user has unsaved local changes, since the persisted
+  contents would not match what the user sees on screen."
+  [{:keys [document_id]} :- document-read-schema]
+  (try
+    (if (some-> (viewing-document-with-id document_id) :has_unsaved_changes)
+      {:output (unsaved-changes-output "read")}
+      (let [doc (t2/select-one :model/Document :id document_id)]
+        (cond
+          (nil? doc)
+          {:output (str "Document " document_id " not found.")}
+
+          :else
+          (do
+            (api/read-check doc)
+            (let [ast      (:document doc)
+                  rendered (ast->text ast)
+                  output   (str "<document>\n"
+                                "Title: " (:name doc) "\n"
+                                "Id: " (:id doc) "\n"
+                                "\n"
+                                (if (str/blank? rendered) "(empty)" rendered)
+                                "\n</document>")]
+              {:output            output
+               :structured-output {:id            (:id doc)
+                                   :name          (:name doc)
+                                   :collection_id (:collection_id doc)
+                                   :content_type  (:content_type doc)
+                                   :document      ast}})))))
+    (catch Exception e
+      (log/error e "Error reading document")
+      {:output (str "Failed to read document " document_id ": "
+                    (or (ex-message e) "Unknown error"))})))
+
+(def ^:private document-update-schema
+  [:map {:closed true}
+   [:document_id :int]
+   [:document :map]
+   [:name {:optional true} [:maybe :string]]])
+
+(mu/defn ^{:tool-name "document_update"
+           :scope     scope/agent-document-write}
+  document-update-tool
+  "Replace the contents of a Document the user is viewing.
+
+  Always call `document_read` first and base the new `document` value on the AST
+  it returned, only changing the parts you intend to change. Preserve existing
+  `cardEmbed` and `smartLink` nodes unless the user explicitly asks for them to
+  be removed.
+
+  - `document_id`: the id of the document to update.
+  - `document`: the full new ProseMirror AST (a map shaped like
+    `{\"type\": \"doc\", \"content\": [...]}`).
+  - `name`: optional new title.
+
+  This tool replaces the document content wholesale; per-section editing will
+  come in a later release."
+  [{:keys [document_id document name]} :- document-update-schema]
+  (try
+    (let [existing (t2/select-one :model/Document :id document_id)]
+      (cond
+        (some-> (viewing-document-with-id document_id) :has_unsaved_changes)
+        {:output (unsaved-changes-output "update")}
+
+        (nil? existing)
+        {:output (str "Document " document_id " not found.")}
+
+        (:archived existing)
+        {:output (str "Document " document_id " is archived and cannot be updated.")}
+
+        (not (and (map? document) (= "doc" (:type document))))
+        {:output "Invalid document AST: expected a map with :type \"doc\" and a :content vector."}
+
+        :else
+        (do
+          (api/write-check existing)
+          (let [document-with-ids (inject-node-ids document)
+                updates (cond-> {:document document-with-ids}
+                          (and (string? name) (not (str/blank? name)))
+                          (assoc :name name))]
+            (t2/update! :model/Document document_id updates)
+            (let [updated (t2/select-one :model/Document :id document_id)]
+              (events/publish-event! :event/document-update
+                                     {:object  updated
+                                      :user-id api/*current-user-id*})
+              {:output            (str "Document " document_id " updated.")
+               :structured-output {:tool        "document_update"
+                                   :id          document_id
+                                   :name        (:name updated)
+                                   :result-type :document-updated}})))))
+    (catch Exception e
+      (log/error e "Error updating document")
+      (if (:agent-error? (ex-data e))
+        {:output (ex-message e)}
+        {:output (str "Failed to update document " document_id ": "
+                      (or (ex-message e) "Unknown error"))}))))

@@ -219,6 +219,12 @@
                     #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
                     llm-rep/dashboard->xml))
 
+(defmethod format-entity "document"
+  [entity]
+  (te/lines (str "The user is currently viewing a Document (id: " (:id entity) ").")
+            "Call the `document_read` tool with this id to read its contents,"
+            "and `document_update` to modify it."))
+
 ;;; Viewing Context Formatting
 
 ;; Format adhoc query (notebook editor) viewing context.

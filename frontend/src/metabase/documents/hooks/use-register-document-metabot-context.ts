@@ -1,6 +1,8 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getLocation } from "metabase/selectors/routing";
 
+import { getHasUnsavedChanges } from "../selectors";
+
 export const useRegisterDocumentMetabotContext = () => {
   useRegisterMetabotContextProvider(async (state) => {
     const location = getLocation(state);
@@ -12,12 +14,14 @@ export const useRegisterDocumentMetabotContext = () => {
     }
 
     const documentId = parseInt(documentMatch[1], 10);
+    const hasUnsavedChanges = getHasUnsavedChanges(state);
 
     return {
       user_is_viewing: [
         {
           type: "document",
           id: documentId,
+          has_unsaved_changes: hasUnsavedChanges,
         },
       ],
     };

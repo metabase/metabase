@@ -67,6 +67,7 @@ import {
   setIsHistorySidebarOpen,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
+import { useMetabotDocumentSync } from "../hooks/use-metabot-document-sync";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
@@ -174,6 +175,7 @@ export const DocumentPage = ({
   });
 
   useRegisterDocumentMetabotContext();
+  useMetabotDocumentSync(typeof documentId === "number" ? documentId : null);
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
