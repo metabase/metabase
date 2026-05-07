@@ -540,12 +540,42 @@
                 fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
             (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
                      both reflect the new numeric column"
-              ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Decimal
-              (is (=? {:base_type         :type/Decimal
-                       :effective_type    :type/Decimal
+              ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Number on Snowflake
+              (is (=? {:base_type         :type/Number
+                       :effective_type    :type/Number
                        :coercion_strategy nil
                        :semantic_type     nil}
-                      fresh-field))))
+                      fresh-field)))
+            ;; ----- repro v3: simulate the user setting a coercion strategy on the TEXT column
+            ;; (via the UI cast-toggle) before the underlying type changes. When the DB column
+            ;; becomes numeric natively, sync should clear the now-meaningless coercion strategy
+            ;; and reset effective_type to match the new base_type. If sync leaves the coercion
+            ;; sticky, effective_type will diverge from base_type — the observable GHY-3388 symptom.
+            (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+            (t2/delete! :model/Field :table_id (:id fresh-table))
+            (t2/delete! :model/Table :id (:id fresh-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
+            ;; user enables coercion: this TEXT column is really an integer
+            (t2/update! :model/Field (:id pre-coerce-field)
+                        {:coercion_strategy :Coercion/String->Integer
+                         :effective_type    :type/Integer})
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-database! (mt/db))
+            (let [after-field (t2/select-one :model/Field :id (:id pre-coerce-field))]
+              (testing "after the underlying TEXT column becomes a native number, the previously
+                       user-set coercion strategy should be cleared and effective_type should
+                       match the new base_type"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field)))))
           (finally
             (let [t (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
               (when t
