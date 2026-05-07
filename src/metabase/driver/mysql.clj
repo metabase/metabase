@@ -40,7 +40,7 @@
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -605,6 +605,38 @@
      [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
      "datetime")))
 
+(defn- format-offset [t]
+  (let [offset (t/format "ZZZZZ" (t/zone-offset t))]
+    (if (= offset "Z")
+      "+00:00"
+      offset)))
+
+(defmethod sql.qp/->honeysql [:mysql LocalDate]
+  [_driver t]
+  [:raw (format "date '%s'" (u.date/format "yyyy-MM-dd" t))])
+
+(defmethod sql.qp/->honeysql [:mysql LocalDateTime]
+  [_driver ^LocalDateTime t]
+  [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSS" t))])
+
+(defmethod sql.qp/->honeysql [:mysql OffsetDateTime]
+  [_driver ^OffsetDateTime t]
+  [:raw (format "timestamp '%s%s'"
+                (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSS" t)
+                (format-offset t))])
+
+(defmethod sql.qp/->honeysql [:mysql ZonedDateTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time t)))
+
+(defmethod sql.qp/->honeysql [:mysql LocalTime]
+  [_driver ^LocalTime t]
+  [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSSSSS" t))])
+
+(defmethod sql.qp/->honeysql [:mysql OffsetTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/local-time t)))
+
 (defn- timestampdiff-dates [unit x y]
   [:timestampdiff [:raw (name unit)] (h2x/->date x) (h2x/->date y)])
 
@@ -786,7 +818,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   ;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
-  ;; LocalDateTime), and normalize it to a UTC timestamp if so.
+  ;; LocalDateTime), and normalize it to a UTC timestamp if so. Note that this only works for columns from tables, it
+  ;; is impossible to have a literal come back as a `TIMESTAMP`... `SELECT timestamp ...` will always return a `DATETIME`
   (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
     (fn read-timestamp-thunk []
       (when-let [t (.getObject rs i LocalDateTime)]
@@ -824,32 +857,6 @@
         (.getYear (.toLocalDate ^java.sql.Date x))))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       parent-thunk)))
-
-(defn- format-offset [t]
-  (let [offset (t/format "ZZZZZ" (t/zone-offset t))]
-    (if (= offset "Z")
-      "UTC"
-      offset)))
-
-(defmethod sql.qp/inline-value [:mysql OffsetTime]
-  [_ t]
-  ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
-  ;; it to the appropriate timezone
-  (format "convert_tz('%s', '%s', @@session.time_zone)"
-          (t/format "HH:mm:ss.SSS" t)
-          (format-offset t)))
-
-(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
-  [_ t]
-  (format "convert_tz('%s', '%s', @@session.time_zone)"
-          (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-          (format-offset t)))
-
-(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
-  [_ t]
-  (format "convert_tz('%s', '%s', @@session.time_zone)"
-          (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-          (str (t/zone-id t))))
 
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
