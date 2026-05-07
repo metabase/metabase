@@ -279,10 +279,12 @@ export function DashCardVisualization({
   );
 
   const visualizerErrMsg = useMemo(() => {
-    // If the dashcard couldn't be loaded (e.g. permission denied), skip the
+    // If the user can't view the underlying card (permission denied), skip the
     // missing-columns check. Every column would look "missing" when there is
-    // no data, and that would mask the real error message.
-    if (error != null) {
+    // no data, and that would mask the real "no permission" message. Other
+    // errors (e.g. SQL failures in one of several sources) still get the
+    // missing-columns hint, since the visualizer can partially render.
+    if (error?.icon === "key") {
       return;
     }
     if (
