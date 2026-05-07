@@ -166,7 +166,6 @@
         (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
         (t2.with-temp/with-temp [:model/Database db cluster-details]
           (mt/with-db db (sync.core/sync-database! db)
-
             (letfn [(check-impersonation! [roles expected]
                       (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -176,13 +175,11 @@
                                    mt/native-query
                                    mt/process-query
                                    mt/rows)))))]
-
               (is (= [["a"] ["b"] ["c"]]
                      (-> {:query select-query}
                          mt/native-query
                          mt/process-query
                          mt/rows)))
-
               (check-impersonation! "row_a" [["a"]])
               (check-impersonation! "row_b" [["b"]])
               (check-impersonation! "row_c" [["c"]])
