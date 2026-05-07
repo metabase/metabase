@@ -5,6 +5,7 @@
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
    [metabase.root.mutable-component :as mc]
+   [metabase.root.system :as system]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -90,24 +91,15 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
-(def ^:private ^:dynamic ^ApplicationDB *application-db*
-  "The current Metabase application database. Only [[ApplicationDbHandle]] may reference this var directly; everyone
-  else accesses it through `(->ApplicationDbHandle)`."
-  (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+(defn ->ApplicationDbHandle
+  "Return a mutable component handle to the application db"
+  []
+  (system/mutable-component-handle ::application-db))
 
-(defrecord ApplicationDbHandle []
-  mc/MutableComponentHandle
-  (current [_] *application-db*)
-  (root [_] (.getRawRoot ^clojure.lang.Var #'*application-db*))
-  (do-with-value [_ new-value thunk]
-    (binding [*application-db* new-value]
-      (thunk)))
-  (reset-value! [_ new-value]
-    (alter-var-root #'*application-db* (constantly new-value)))
-  (swap-value! [_ f]
-    (alter-var-root #'*application-db* f))
-  (swap-value! [_ f args]
-    (apply alter-var-root #'*application-db* f args)))
+(defonce ^:private _init
+  ; Initialize the current Metabase application database.
+  (do (mc/reset-value! (->ApplicationDbHandle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+      ::done))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
