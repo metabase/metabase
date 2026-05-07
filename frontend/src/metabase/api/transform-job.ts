@@ -136,7 +136,7 @@ export const transformJobApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("transform-job")]),
     }),
     bulkUpdateTransformJobsActive: builder.mutation<
-      { updated: number },
+      { updated: number; failed: number },
       { active: boolean }
     >({
       query: (body) => ({

@@ -22,8 +22,8 @@ export function JobListMoreMenu({ jobs }: JobListMoreMenuProps) {
   const hasDisabledJobs = jobs.some((job) => !job.active);
 
   const handleReEnableAll = async () => {
-    const { error } = await bulkUpdate({ active: true });
-    if (error) {
+    const { data, error } = await bulkUpdate({ active: true });
+    if (error || (data?.failed ?? 0) > 0) {
       sendErrorToast(t`Failed to re-enable all jobs`);
     } else {
       sendSuccessToast(t`All jobs re-enabled`);

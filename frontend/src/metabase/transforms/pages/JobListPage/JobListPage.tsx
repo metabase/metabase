@@ -75,7 +75,10 @@ export const JobListPage = () => {
         id: "active",
         header: "",
         width: 100,
-        cell: ({ row }) => (!row.original.active ? <JobDisabledBadge /> : null),
+        cell: ({ row }) =>
+          !row.original.active ? (
+            <JobDisabledBadge textProps={{ bg: "background-secondary" }} />
+          ) : null,
       },
     ];
     if (isAdmin) {

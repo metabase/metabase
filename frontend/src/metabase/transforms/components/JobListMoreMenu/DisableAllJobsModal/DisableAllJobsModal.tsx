@@ -36,7 +36,10 @@ function DisableAllJobsForm({ onConfirm, onClose }: DisableAllJobsModalProps) {
   const [bulkUpdate] = useBulkUpdateTransformJobsActiveMutation();
 
   const handleSubmit = async () => {
-    await bulkUpdate({ active: false }).unwrap();
+    const { failed } = await bulkUpdate({ active: false }).unwrap();
+    if (failed > 0) {
+      throw new Error(t`Failed to disable all jobs`);
+    }
     onConfirm();
   };
 
