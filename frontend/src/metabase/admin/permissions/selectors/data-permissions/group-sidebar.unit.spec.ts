@@ -27,6 +27,15 @@ const stateWithLegacyValues = assocIn(
 ) as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
+  // Tests in this suite mutate `PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn`,
+  // which is read inside the selector body but is not a selector input.
+  // Reselect would otherwise return cached results across tests on the same state
+  // reference and the mutation would go unobserved.
+  beforeEach(() => {
+    getGroupsDataPermissionEditor.clearCache();
+    getGroupsDataPermissionEditor.memoizedResultFunc.clearCache();
+  });
+
   it("returns data for permission editor header", () => {
     const permissionEditorData = getGroupsDataPermissionEditor(
       stateWithLegacyValues,
