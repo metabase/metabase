@@ -14,7 +14,7 @@
      parses `config.yml` and stores the resulting workspace map in
      [[workspace-instance-config]]. Workspace-aware code (transform target
      rewriting, table-remapping QP middleware) reads from that atom via
-     [[workspace-mode?]] / [[db-workspace-schema]]. The atom is fresh per process
+     [[workspace-mode?]] / [[db-workspace-namespace]]. The atom is fresh per process
      — every boot re-reads `config.yml` and replaces the prior value.
 
    Per-database lifecycle for the manager-side rows:
@@ -107,7 +107,7 @@
    section was loaded from `config.yml` at boot). Single source of truth for
    gating features that conflict with workspace remapping (DB routing,
    impersonation, writeback, CSV upload, model persistence). Use
-   [[db-workspace-schema]] when you need per-database scoping.
+   [[db-workspace-namespace]] when you need per-database scoping.
 
    Deliberately ungated on premium features: a workspace child instance bootstraps
    from `config.yml` *before* its token is installed; if the workspace map is
@@ -126,16 +126,6 @@
    `ai-reports/2026-05-04-table-namespace-mapping-spec.md` for the contract."
   [db-id]
   (get-in @*workspace-instance-config* [:databases db-id :output]))
-
-(defn db-workspace-schema
-  "Return the workspace-isolated output `:schema` slot for `db-id`, or `nil`
-   when this instance has no workspace entry for `db-id` OR the entry's
-   output namespace doesn't populate `:schema`. Thin shim over
-   [[db-workspace-namespace]] preserved for predicate-style callers
-   (`(if (db-workspace-schema db-id) ...)`); new code that needs the full
-   namespace should call `db-workspace-namespace` directly."
-  [db-id]
-  (:schema (db-workspace-namespace db-id)))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."

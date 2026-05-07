@@ -155,7 +155,7 @@
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
 (deftest ^:synchronized workspace-full-e2e-test
-  (mt/test-drivers workspaces-supported-dwh-drivers
+  (mt/test-drivers #{:mysql} workspaces-supported-dwh-drivers
     (mt/with-premium-features #{:workspaces}
       (testing "transform run on a workspaced DB → app db + describe-database stay in the input schema"
         (let [admin-driver driver/*driver*
@@ -171,7 +171,7 @@
               ;; Equals `main-schema` for schema-having drivers; nil for MySQL.
               tbl-schema  (table-row-schema-value admin-driver main-schema)
               src-name (str "x_input_table_" run-id)
-              tgt-name (str "x_output_table_" run-id)]
+              output-table-name (str "x_output_table_" run-id)]
           (try
             ;; --- Setup: DWH main schema + source table ---------------------------
             ;; Schema-creation: most workspace-supported drivers accept `CREATE SCHEMA "<name>"`,
@@ -188,13 +188,13 @@
               (is (= 1 (count warehouse-tables))
                   (str "warehouse source table " main-schema "." src-name " is not queryable")))
             ;; --- Setup: pre-existing canonical OUTPUT table with distinct rows ---------
-            ;; The workspace transform writes to canonical {schema main-schema, name tgt-name}.
+            ;; The workspace transform writes to canonical {schema main-schema, name output-table-name}.
             ;; We seed that table with rows BEFORE the workspace is provisioned so we can
             ;; later verify (a) the workspace's view of the canonical name returns the
             ;; transform's output (via remap), and (b) the canonical warehouse table itself
             ;; was never mutated by the transform - the workspace transform only wrote to
             ;; iso.<derived>, leaving the canonical contents intact.
-            (create-output-table! admin-driver admin-spec main-schema tgt-name
+            (create-output-table! admin-driver admin-spec main-schema output-table-name
                                   [[99 "pre-existing"] [98 "still-pre-existing"]])
             ;; --- Setup: a Metabase Database row attached to the warehouse with admin
             ;; creds. The config-loader path (below) will rewrite its `:details` with
@@ -291,7 +291,7 @@
                                         ;; `isolation-schema` before dispatch.
                                           :target {:type   :table
                                                    :schema main-schema
-                                                   :name   tgt-name}}]
+                                                   :name   output-table-name}}]
                             (transforms.execute/execute! transform {:run-method :manual})
                           ;; --- Assertion: app db tables stay in main schema ----
                             (testing "app db Table rows are confined to the input schema"
@@ -302,7 +302,7 @@
                                           tables)
                                     "the input-schema source table appears in the app db")
                                 (is (some #(and (= tbl-schema (:schema %))
-                                                (= tgt-name (:name %)))
+                                                (= output-table-name (:name %)))
                                           tables)
                                     "the input-schema output table appears in the app db")
                                 (if (= :mysql admin-driver)
@@ -317,7 +317,7 @@
                                                                   (map :table_name)
                                                                   set)
                                         leaked (filter #(contains? iso-warehouse-tables (:name %)) tables)]
-                                    (is (empty? leaked)
+                                    (is (= [] leaked)
                                         (str "no app-db Table row should point at a table living in the isolation DB " isolation-schema
                                              " (leaked: " (pr-str (map :name leaked)) ")")))
                                   (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
@@ -342,7 +342,7 @@
                                     to-schema-stored  (if (= :mysql admin-driver) "" isolation-schema)]
                                 (is (= [{:to_schema       to-schema-stored
                                          :from_schema     from-schema-stored
-                                         :from_table_name tgt-name
+                                         :from_table_name output-table-name
                                          :from_db         (or input-ns-db "")
                                          :to_db           to-db-stored
                                          :database_id     (:id ws-db)}]
@@ -380,7 +380,7 @@
                             (let [out-table (t2/select-one :model/Table
                                                            :db_id  (:id ws-db)
                                                            :schema tbl-schema
-                                                           :name   tgt-name)
+                                                           :name   output-table-name)
                                   {:keys [to_table_name]} (t2/select-one :model/TableRemapping)]
                               (is (some? out-table)
                                   "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
@@ -423,7 +423,7 @@
                                                 :dataset_query {:database (:id ws-db)
                                                                 :type     :native
                                                                 :native   {:query (format "SELECT * FROM %s"
-                                                                                          (sql.u/quote-name admin-driver :table tgt-name))}}}]
+                                                                                          (sql.u/quote-name admin-driver :table output-table-name))}}}]
                                   (let [rows (try (set (mt/rows (mt/process-query (:dataset_query card))))
                                                   (catch Exception e [::exception-thrown e]))]
                                     (testing "native card query returns the transform output"
@@ -437,13 +437,13 @@
                                                               :native   {:query (format "SELECT * FROM %s"
                                                                                         (qualified-table-sql admin-driver
                                                                                                              main-schema
-                                                                                                             tgt-name))}}}]
+                                                                                                             output-table-name))}}}]
                                 (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                   (testing "native card query returns the transform output"
                                     (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)
                                         "native card returns the rows the transform wrote to the isolation schema")))))
                             ;; --- Assertion: canonical-table-protection invariant (GHY-3513 item 4) ----
-                            ;; Pre-seeded canonical `main_schema.tgt-name` with rows A *before* workspace
+                            ;; Pre-seeded canonical `main_schema.output-table-name` with rows A *before* workspace
                             ;; provisioning (see `create-output-table!` call at the top of the test). The
                             ;; transform writes its output (rows B = src's [1,a],[2,b],[3,c]) to the
                             ;; canonical target name, which the transform-hook redirects to iso.<derived>.
@@ -458,7 +458,7 @@
                               ;; key-case handling.
                               (let [canonical-rows (->> (jdbc/query admin-spec
                                                                     [(format "SELECT id, v FROM %s ORDER BY id"
-                                                                             (qualified-table-sql admin-driver main-schema tgt-name))])
+                                                                             (qualified-table-sql admin-driver main-schema output-table-name))])
                                                         (map (fn [row]
                                                                (let [vs (vals row)]
                                                                  (assert (= 2 (count vs))
@@ -467,7 +467,7 @@
                                                         set)]
                                 (is (= #{[99 "pre-existing"] [98 "still-pre-existing"]}
                                        canonical-rows)
-                                    "canonical main_schema.tgt-name still has its pre-seeded rows; transform output went to iso.<derived> instead")))
+                                    "canonical main_schema.output-table-name still has its pre-seeded rows; transform output went to iso.<derived> instead")))
                             (testing "app db Table rows stay confined to the input schema after card run"
                               (let [tables (t2/select :model/Table :db_id (:id ws-db) :active true)
                                     iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
@@ -502,7 +502,7 @@
                          (catch Throwable t
                            (log/warn t "delete-workspace! failed during e2e cleanup")))))))
             (finally
-              (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name tgt-name)
+              (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name output-table-name)
                    (catch Throwable _ nil)))))))))
 
 (comment

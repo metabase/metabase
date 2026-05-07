@@ -19,7 +19,7 @@
 
   When `target-db-id` returns nil (no per-type impl, or transform shape doesn't
   identify a target DB), the hook is skipped — workspace rewriting requires a
-  known DB id to look up `db-workspace-schema`."
+  known DB id to look up `db-workspace-namespace`."
   [transform]
   (if-let [db-id (transforms-base.i/target-db-id transform)]
     (assoc transform :target

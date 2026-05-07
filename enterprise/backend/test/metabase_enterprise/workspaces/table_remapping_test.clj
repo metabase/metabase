@@ -27,8 +27,8 @@
                  (t2/select-one :model/Database db-id)))))
 
 (defn- with-provisioned-workspace-db!
-  "Set the in-process workspace atom so `db-workspace-schema` returns
-   `output-schema` for `db-id`, run `f`, clear the atom on the way out."
+  "Set the in-process workspace atom so `db-workspace-namespace` returns
+   `{:schema output-schema}` for `db-id`, run `f`, clear the atom on the way out."
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"
@@ -42,7 +42,7 @@
   (clean-db-fixture!
    (mt/id)
    (fn []
-     (is (nil? (ws.table-remapping/remap-table (mt/id) "nope_schema" "nope_table"))))))
+     (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "nope_schema" :name "nope_table"}))))))
 
 (deftest add-then-remap-table-test
   (clean-db-fixture!
@@ -52,8 +52,8 @@
       (mt/id)
       {:schema "PUBLIC" :table "ORDERS"}
       {:schema "ws_schema" :table "orders_copy"})
-     (is (= ["ws_schema" "orders_copy"]
-            (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))
+     (is (= {:db nil :schema "ws_schema" :name "orders_copy"}
+            (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
 
 (deftest all-mappings-for-db-test
   (clean-db-fixture!
@@ -63,8 +63,8 @@
       (mt/id) {:schema "PUBLIC" :table "ORDERS"}   {:schema "ws_schema" :table "orders_copy"})
      (ws.table-remapping/add-mapping!
       (mt/id) {:schema "PUBLIC" :table "PRODUCTS"} {:schema "ws_schema" :table "products_copy"})
-     (is (= {["" "PUBLIC" "ORDERS"]   ["" "ws_schema" "orders_copy"]
-             ["" "PUBLIC" "PRODUCTS"] ["" "ws_schema" "products_copy"]}
+     (is (= {{:db "" :schema "PUBLIC" :table "ORDERS"}   {:db "" :schema "ws_schema" :table "orders_copy"}
+             {:db "" :schema "PUBLIC" :table "PRODUCTS"} {:db "" :schema "ws_schema" :table "products_copy"}}
             (ws.table-remapping/all-mappings-for-db (mt/id)))))))
 
 (deftest remove-mapping!-test
@@ -74,7 +74,7 @@
      (ws.table-remapping/add-mapping!
       (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"})
      (ws.table-remapping/remove-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"})
-     (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))
+     (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
 
 (deftest clear-mappings-for-db!-test
   (clean-db-fixture!
@@ -97,7 +97,7 @@
        (is (some? (ws.table-remapping/add-mapping!
                    (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"}))
            "second identical insert resolves cleanly without throwing")
-       (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_schema" "orders_copy"]}
+       (is (= {{:db "" :schema "PUBLIC" :table "ORDERS"} {:db "" :schema "ws_schema" :table "orders_copy"}}
               (ws.table-remapping/all-mappings-for-db (mt/id)))
            "only one row persists")))))
 
@@ -113,8 +113,8 @@
          (fn []
            (ws.table-remapping/add-transform-target-mapping!
             (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})
-           (is (= ["ws_fresh" "PUBLIC__ORDERS"]
-                  (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))
+           (is (= {:db nil :schema "ws_fresh" :name "PUBLIC__ORDERS"}
+                  (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
                "to-side is rewritten to <from-schema>__<from-name> so cross-schema collisions are avoided")))))))
 
 (deftest add-transform-target-mapping!-is-idempotent-test
@@ -128,7 +128,7 @@
            (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}]
              (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
              (ws.table-remapping/add-transform-target-mapping! (mt/id) target)
-             (is (= {["" "PUBLIC" "ORDERS"] ["" "ws_idem" "PUBLIC__ORDERS"]}
+             (is (= {{:db "" :schema "PUBLIC" :table "ORDERS"} {:db "" :schema "ws_idem" :table "PUBLIC__ORDERS"}}
                     (ws.table-remapping/all-mappings-for-db (mt/id)))))))))))
 
 (defn- with-provisioned-workspace-db-namespace!
@@ -175,11 +175,11 @@
                  (testing "to-side spec carries both :db and :schema from the workspace namespace"
                    (is (= "WS_DB" (:db to-spec)))
                    (is (= "WS_ALICE" (:schema to-spec)))
-                   (is (= "PUBLIC__ORDERS" (:table to-spec))
+                   (is (= "PUBLIC__ORDERS" (:name to-spec))
                        "table is renamed via remapped-table-name to avoid cross-schema collisions"))
                  (testing "TableRemapping row stores both slots, source-side too"
-                   (is (= {["ANALYTICS" "PUBLIC" "ORDERS"]
-                           ["WS_DB" "WS_ALICE" "PUBLIC__ORDERS"]}
+                   (is (= {{:db "ANALYTICS" :schema "PUBLIC"   :table "ORDERS"}
+                           {:db "WS_DB"     :schema "WS_ALICE" :table "PUBLIC__ORDERS"}}
                           (ws.table-remapping/all-mappings-for-db (mt/id)))
                        "from_db = ANALYTICS (from spec-for-table on :snowflake), to_db = WS_DB (from workspace namespace)")))))))))))
 
@@ -189,13 +189,13 @@
       (clean-db-fixture!
        db-id
        (fn []
-         (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
+         (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
              "without a remapping, the hook returns nil so sync queries the logical table")
          (ws.table-remapping/add-mapping! db-id
                                           {:schema "PUBLIC"     :table "ORDERS"}
                                           {:schema "mb_iso_ws"  :table "orders_copy"})
-         (is (= ["mb_iso_ws" "orders_copy"]
-                (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
+         (is (= {:db nil :schema "mb_iso_ws" :name "orders_copy"}
+                (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
              "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
 
 (deftest table-fields-metadata-honors-workspace-remapping-test
@@ -238,7 +238,7 @@
                  (is false (str "unexpected path " (:path call))))))))))))
 
 (deftest add-transform-target-mapping!-requires-workspaced-db-test
-  (testing "throws with a clear error when db is not workspaced (db-workspace-schema returns nil)"
+  (testing "throws with a clear error when db is not workspaced (db-workspace-namespace returns nil)"
     (clean-db-fixture!
      (mt/id)
      (fn []
@@ -251,7 +251,7 @@
          (is (re-find #"not workspaced" (ex-message ex)))
          (is (= (mt/id) (:db-id (ex-data ex)))))
        (testing "no app-db row was written"
-         (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))))))
+         (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))))
 
 ;;; ------------------------------------------------- remapped-table-name -------------------------------------------------
 ;;;
@@ -400,14 +400,14 @@
                  b-spec (ws.table-remapping/add-transform-target-mapping!
                          (mt/id) {:schema "schemaB" :name "ORDERS" :type :table})]
              (testing "the two writers return distinct to-side specs"
-               (is (= "schemaA__ORDERS" (:table a-spec)))
-               (is (= "schemaB__ORDERS" (:table b-spec))))
+               (is (= "schemaA__ORDERS" (:name a-spec)))
+               (is (= "schemaB__ORDERS" (:name b-spec))))
              (testing "both rows are present and resolve to distinct warehouse names"
-               (is (= ["ws_collide" "schemaA__ORDERS"]
-                      (ws.table-remapping/remap-table (mt/id) "schemaA" "ORDERS"))
+               (is (= {:db nil :schema "ws_collide" :name "schemaA__ORDERS"}
+                      (ws.table-remapping/remap-table (mt/id) {:schema "schemaA" :name "ORDERS"}))
                    "schemaA.ORDERS resolves to a unique warehouse identifier")
-               (is (= ["ws_collide" "schemaB__ORDERS"]
-                      (ws.table-remapping/remap-table (mt/id) "schemaB" "ORDERS"))
+               (is (= {:db nil :schema "ws_collide" :name "schemaB__ORDERS"}
+                      (ws.table-remapping/remap-table (mt/id) {:schema "schemaB" :name "ORDERS"}))
                    "schemaB.ORDERS resolves to a different warehouse identifier")))))))))
 
 ;;; --------------------------- Pre-sync ordering: to-side has no :model/Table yet -------------------------------
@@ -430,8 +430,8 @@
          (ws.table-remapping/add-mapping! (mt/id)
                                           {:schema "PUBLIC"   :table "ORDERS"}
                                           {:schema to-schema  :table to-table})
-         (is (= [to-schema to-table]
-                (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))
+         (is (= {:db nil :schema to-schema :name to-table}
+                (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
              "remap-table operates on strings only — no :model/Table lookup on the to-side"))))))
 
 (deftest workspace-remap-schema+name-works-without-to-side-model-table-test
@@ -446,8 +446,8 @@
          (ws.table-remapping/add-mapping! (mt/id)
                                           {:schema "PUBLIC"   :table "ORDERS"}
                                           {:schema to-schema  :table to-table})
-         (is (= [to-schema to-table]
-                (ws.table-remapping/workspace-remap-schema+name (mt/id) "PUBLIC" "ORDERS"))
+         (is (= {:db nil :schema to-schema :name to-table}
+                (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
              "sync hook returns the remap pair regardless of to-side sync state"))))))
 
 (deftest all-mappings-for-db-works-without-to-side-model-tables-test
@@ -459,9 +459,9 @@
        (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "PEOPLE"}   {:schema "ws_unsynced" :table "people_copy"})
        (ws.table-remapping/add-mapping! (mt/id) {:schema "PUBLIC" :table "PRODUCTS"} {:schema "ws_unsynced" :table "products_copy"})
        (let [mappings (ws.table-remapping/all-mappings-for-db (mt/id))]
-         (is (= {["" "PUBLIC" "ORDERS"]   ["" "ws_unsynced" "orders_copy"]
-                 ["" "PUBLIC" "PEOPLE"]   ["" "ws_unsynced" "people_copy"]
-                 ["" "PUBLIC" "PRODUCTS"] ["" "ws_unsynced" "products_copy"]}
+         (is (= {{:db "" :schema "PUBLIC" :table "ORDERS"}   {:db "" :schema "ws_unsynced" :table "orders_copy"}
+                 {:db "" :schema "PUBLIC" :table "PEOPLE"}   {:db "" :schema "ws_unsynced" :table "people_copy"}
+                 {:db "" :schema "PUBLIC" :table "PRODUCTS"} {:db "" :schema "ws_unsynced" :table "products_copy"}}
                 mappings)
              "all-mappings-for-db is purely (db, schema, name) string-based — no :model/Table required"))))))
 
@@ -551,7 +551,7 @@
   [[:postgres             [:schema]        {:name "analytics"}                              {:schema "public"  :name "orders"} {:db ""              :schema "public"   :table "orders"}]
    [:redshift             [:schema]        {:name "analytics"}                              {:schema "public"  :name "orders"} {:db ""              :schema "public"   :table "orders"}]
    [:h2                   [:schema]        {:name "mem:test"}                               {:schema "PUBLIC"  :name "ORDERS"} {:db ""              :schema "PUBLIC"   :table "ORDERS"}]
-   [:mysql                []               {:name "analytics"}                              {:schema nil      :name "orders"} {:db ""              :schema ""         :table "orders"}]
+   [:mysql                [:db]            {:name "ignored" :details {:db "analytics"}}     {:schema nil      :name "orders"} {:db "analytics"     :schema ""         :table "orders"}]
    [:clickhouse           [:schema]        {:name "analytics"}                              {:schema nil      :name "events"} {:db ""              :schema "analytics" :table "events"}]
    [:snowflake            [:db :schema]    {:name "ignored" :details {:db "ANALYTICS"}}     {:schema "PUBLIC" :name "ORDERS"} {:db "ANALYTICS"     :schema "PUBLIC"   :table "ORDERS"}]
    [:sqlserver            [:db :schema]    {:name "ignored" :details {:db "AnalyticsDB"}}   {:schema "dbo"    :name "orders"} {:db "AnalyticsDB"   :schema "dbo"      :table "orders"}]

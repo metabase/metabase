@@ -3,7 +3,7 @@
 
    On boot, parses the section and stores it in the in-process atom
    `metabase-enterprise.workspaces.core/workspace-instance-config`. That atom is the
-   instance-side source of truth for `db-workspace-schema`.
+   instance-side source of truth for `db-workspace-namespace`.
 
    The atom is fresh per process — every boot re-reads `config.yml` and replaces the
    prior value. There is no durable storage of instance-side workspace state, by

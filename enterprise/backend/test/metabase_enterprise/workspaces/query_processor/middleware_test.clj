@@ -15,16 +15,22 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- ->spec
+  "Project a `[schema table]` 2-tuple, `[db schema table]` 3-tuple, or `::table-spec`
+   map into the canonical `::table-spec` shape. Test convenience: callers pass the
+   shape that's most readable for their case."
+  [x]
+  (cond
+    (map? x)         x
+    (= 2 (count x)) {:db "" :schema (first x) :table (second x)}
+    :else            {:db (nth x 0) :schema (nth x 1) :table (nth x 2)}))
+
 (defn- widen-2-tuples
-  "Test convenience: callers in this file pass `[schema table]` 2-tuples, but
-   [[ws.remapping/MapRemappingStore]] requires 3-tuples `[db schema table]` with `\"\"`
-   as the sentinel for drivers that don't emit a `:db` slot. Widen any 2-tuple
-   to a 3-tuple by prepending `\"\"`. 3-tuples pass through unchanged."
+  "Project a map of `{from-key to-key}` (where keys may be 2-tuples, 3-tuples, or
+   spec maps) to the canonical `{::table-spec ::table-spec}` shape the store
+   requires."
   [m]
-  (into {} (map (fn [[k v]]
-                  [(if (= 2 (count k)) (into [""] k) k)
-                   (if (= 2 (count v)) (into [""] v) v)]))
-        m))
+  (into {} (map (fn [[k v]] [(->spec k) (->spec v)])) m))
 
 (defmacro ^:private with-remappings [db-id remappings & body]
   `(binding [ws.remapping/*remapping-store* (ws.remapping/map-store
@@ -169,8 +175,8 @@
 
 (deftest build-table-replacements-test
   (testing "builds replacement map with raw identifiers (SQLGlot handles quoting per dialect)"
-    (let [remappings {["" "public" "orders"] ["" "mb_iso" "orders"]
-                      ["" "public" "users"]  ["" "mb_iso" "users"]}
+    (let [remappings {{:db "" :schema "public" :table "orders"} {:db "" :schema "mb_iso" :table "orders"}
+                      {:db "" :schema "public" :table "users"}  {:db "" :schema "mb_iso" :table "users"}}
           result (#'ws.middleware/build-table-replacements remappings)]
       (is (= 2 (count result)))
       ;; Empty-string sentinels are pruned before being handed to SQLGlot.
@@ -180,13 +186,13 @@
              (get result {:schema "public" :table "users"})))))
 
   (testing "3-level remappings (BigQuery-style) preserve :db"
-    (let [remappings {["proj" "ds" "orders"] ["proj" "ws_ds" "orders"]}
+    (let [remappings {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
           result (#'ws.middleware/build-table-replacements remappings)]
       (is (= {:db "proj" :schema "ws_ds" :table "orders"}
              (get result {:db "proj" :schema "ds" :table "orders"})))))
 
   (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
-    (let [remappings {["" "" "orders"] ["" "ws_db" "orders"]}
+    (let [remappings {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
           result (#'ws.middleware/build-table-replacements remappings)]
       (is (= {:schema "ws_db" :table "orders"}
              (get result {:table "orders"}))))))
@@ -457,7 +463,7 @@
 
 (defn- rewrite-via-phase-2-with-driver
   "Phase 2 rewrite for an arbitrary driver and remappings, against a synthetic db-id.
-   Remappings must be 3-tuple-keyed (no widening). For h2 + real `(mt/id)`, use
+   Remappings must be `::table-spec`-keyed (no widening). For h2 + real `(mt/id)`, use
    [[rewrite-via-phase-2]]."
   [driver remappings sql]
   (mt/with-premium-features #{:workspaces}
@@ -473,7 +479,7 @@
   (testing "MySQL-style: bare-table SQL with empty-string sentinels in the remapping rewrites correctly"
     (let [rewritten (rewrite-via-phase-2-with-driver
                      :mysql
-                     {["" "" "orders"] ["" "ws_db" "orders"]}
+                     {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
                      "SELECT * FROM orders")]
       (is (re-find #"(?i)ws_db" rewritten)
           "the to-side schema (db-as-namespace) appears in the rewritten SQL")
@@ -483,7 +489,7 @@
   (testing "Postgres-style: schema.table SQL with the from_db sentinel pruned"
     (let [rewritten (rewrite-via-phase-2-with-driver
                      :postgres
-                     {["" "public" "orders"] ["" "ws_alice" "orders"]}
+                     {{:db "" :schema "public" :table "orders"} {:db "" :schema "ws_alice" :table "orders"}}
                      "SELECT * FROM public.orders")]
       (is (re-find #"(?i)ws_alice" rewritten))
       (is (not (re-find #"(?i)public\.orders" rewritten))
@@ -493,7 +499,7 @@
   (testing "BigQuery-style: project.dataset.table SQL preserves the project, swaps the dataset"
     (let [rewritten (rewrite-via-phase-2-with-driver
                      :bigquery-cloud-sdk
-                     {["proj" "ds" "orders"] ["proj" "ws_ds" "orders"]}
+                     {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
                      "SELECT * FROM `proj`.`ds`.`orders`")]
       (is (re-find #"(?i)ws_ds" rewritten)
           "the workspace dataset appears in the rewritten SQL")
@@ -515,7 +521,7 @@
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
-                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                                                 {{:db "" :schema "PUBLIC" :table "VENUES"} {:db "" :schema "ws_alice" :table "venues"}}})
                 driver/*driver*                :h2]
         (let [called-with (atom nil)
               mock-qp    (fn [query _rff] (reset! called-with query) :ok)
@@ -538,7 +544,7 @@
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
-                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                                                 {{:db "" :schema "PUBLIC" :table "VENUES"} {:db "" :schema "ws_alice" :table "venues"}}})
                 driver/*driver*                :h2]
         (let [called-with (atom nil)
               mock-qp    (fn [query _rff] (reset! called-with query) :ok)
@@ -558,7 +564,7 @@
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
-                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                                                 {{:db "" :schema "PUBLIC" :table "VENUES"} {:db "" :schema "ws_alice" :table "venues"}}})
                 driver/*driver*                :h2]
         (let [called-with (atom nil)
               mock-qp    (fn [query _rff] (reset! called-with query) :ok)
@@ -578,7 +584,7 @@
     (mt/with-premium-features #{:workspaces}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
-                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                                                 {{:db "" :schema "PUBLIC" :table "VENUES"} {:db "" :schema "ws_alice" :table "venues"}}})
                 driver/*driver*                :h2]
         (let [run-once    (fn [query]
                             (let [captured (atom nil)
@@ -628,7 +634,7 @@
     (mt/with-premium-features #{}
       (binding [ws.remapping/*remapping-store* (ws.remapping/map-store
                                                 {synthetic-db-id
-                                                 {["" "PUBLIC" "VENUES"] ["" "ws_alice" "venues"]}})
+                                                 {{:db "" :schema "PUBLIC" :table "VENUES"} {:db "" :schema "ws_alice" :table "venues"}}})
                 driver/*driver*                :h2]
         (let [called-with (atom nil)
               mock-qp    (fn [query _rff] (reset! called-with query) :ok)

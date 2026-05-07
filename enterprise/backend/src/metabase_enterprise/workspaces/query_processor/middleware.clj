@@ -81,14 +81,14 @@
   "Convert remappings map into the format expected by `sql-tools/replace-names`.
    SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
 
-   Remapping tuples are 3-wide: `[db schema table]`. Storage `\"\"` sentinels are
-   pruned via `ws.table-remapping/prune-no-level` so SQLGlot treats them as
-   wildcards rather than matching the literal empty string."
+   Remappings are `{from-spec to-spec}` `::table-spec` maps. Sentinel `\"\"` levels are
+   pruned so SQLGlot treats them as wildcards rather than matching the literal empty
+   string."
   [remappings]
   (into {}
-        (map (fn [[[from-db from-schema from-table] [to-db to-schema to-table]]]
-               [(ws.table-remapping/prune-no-level {:db from-db :schema from-schema :table from-table})
-                (ws.table-remapping/prune-no-level {:db to-db   :schema to-schema   :table to-table})]))
+        (map (fn [[from-spec to-spec]]
+               [(ws.table-remapping/prune-no-level from-spec)
+                (ws.table-remapping/prune-no-level to-spec)]))
         remappings))
 
 (defn- rewrite-sql
@@ -118,8 +118,11 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [metadata-provider remappings]
-  (doseq [[[_from-db from-schema from-name] [_to-db to-schema to-name]] remappings
-          :let [from-schema-match (ws.table-remapping/denormalize-level from-schema)
+  ; TODO check if we need :db here, or generalize to table-specs
+  (doseq [[from-spec to-spec] remappings
+          :let [{from-schema :schema from-name :table} from-spec
+                {to-schema :schema to-name :table}     to-spec
+                from-schema-match (ws.table-remapping/denormalize-level from-schema)
                 candidates        (lib.metadata.protocols/metadatas
                                    metadata-provider
                                    {:lib/type :metadata/table, :name #{from-name}})

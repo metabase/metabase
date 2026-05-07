@@ -290,7 +290,7 @@
         ;;      manifest and runs without the premium token. Workspace child instances bootstrap from a `config.yml`
         ;;      *before* their token is installed; the file is the delivery mechanism for the token (and the
         ;;      workspace itself). The `defenterprise` gates on workspace mode (`workspace-mode?`,
-        ;;      `db-workspace-schema`) still keep non-EE builds from acting on the rows.
+        ;;      `db-workspace-namespace`) still keep non-EE builds from acting on the rows.
         (when-not (or (= section-name :settings)
                       bring-up?)
           (when-not (premium-features/enable-config-text-file?)

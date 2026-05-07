@@ -13,7 +13,7 @@
 
 (deftest resolve-transform-target-no-workspace-passthrough-test
   (testing "without a provisioned WorkspaceDatabase, target passes through unchanged"
-    (with-redefs [ws/db-workspace-schema     (constantly nil)
+    (with-redefs [ws/db-workspace-namespace  (constantly nil)
                   ws.table-remapping/add-transform-target-mapping!
                   (fn [& _] (throw (ex-info "add-transform-target-mapping! must not be called when no workspace is active" {})))]
       (let [target {:schema "public" :name "orders" :type :table}]
@@ -22,12 +22,12 @@
 (deftest resolve-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
     (let [recorded (atom nil)]
-      (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
+      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})
                       ;; Mimic real return: collision-resistant to-spec.
-                      {:db "" :schema "ws_alice" :table "public__orders"})]
+                      {:db nil :schema "ws_alice" :name "public__orders"})]
         (let [target {:schema "public" :name "orders" :type :table}
               result (ws.transform-hooks/resolve-transform-target 42 target)]
           (is (= "ws_alice" (:schema result))
@@ -40,11 +40,11 @@
 (deftest resolve-transform-target-records-remapping-test
   (testing "with a workspace active, the canonical->workspace remapping is recorded"
     (let [recorded (atom nil)]
-      (with-redefs [ws/db-workspace-schema     (constantly "ws_alice")
+      (with-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
                     ws.table-remapping/add-transform-target-mapping!
                     (fn [db-id target]
                       (reset! recorded {:db-id db-id :target target})
-                      {:db "" :schema "ws_alice" :table "public__orders"})]
+                      {:db nil :schema "ws_alice" :name "public__orders"})]
         (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table})
         (is (= {:db-id  42
                 :target {:schema "public" :name "orders" :type :table}}
@@ -52,8 +52,9 @@
             "add-transform-target-mapping! receives the db-id and the canonical target map verbatim")))))
 
 (defn- with-instance-workspace-for-db!
-  "Set the in-process workspace atom so that `db-workspace-schema` returns
-   `output-schema` for the test database, run `body-fn`, clear it on the way out."
+  "Set the in-process workspace atom so that `db-workspace-namespace` returns
+   `{:schema output-schema}` for the test database, run `body-fn`, clear it on
+   the way out."
   [output-schema body-fn]
   (try
     (ws/set-instance-workspace! {:name "test-ws"
@@ -71,7 +72,7 @@
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
           (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}
                 result (ws.transform-hooks/resolve-transform-target (mt/id) target)]
-            (is (= {:schema "ws_test_schema" :name "PUBLIC__ORDERS" :type :table}
+            (is (= {:db nil :schema "ws_test_schema" :name "PUBLIC__ORDERS" :type :table}
                    result)
                 "the executor target gets the workspace schema and the collision-resistant name")
             (testing "TableRemapping row was inserted with the canonical (schema, name) on the from-side"

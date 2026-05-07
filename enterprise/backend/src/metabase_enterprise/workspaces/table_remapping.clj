@@ -47,6 +47,7 @@
    [[spec-for-table]] uses [[metabase.driver/qualified-name-components]] to fill the
    right slots from a `:model/Database` and `:model/Table` row."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
@@ -197,12 +198,37 @@
    from-spec
    (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)))
 
+;;; ---------------------------------- canonical / isolated translators ----------------------------------
+
+(mu/defn canonical->isolated :- [:maybe ::table-spec]
+  "Look up the isolated `::table-spec` for canonical `table` in `remappings`. Returns
+   nil when no remap exists.
+
+   Driver-aware projection: only the slots `(qualified-name-components driver)`
+   plus `:table` participate in the match. Slots the driver doesn't emit (e.g. `:db`
+   on Postgres) are ignored even if present on `table` or on the remapping keys, so
+   the empty-string sentinel can't cause a false miss."
+  [driver     :- :keyword
+   remappings :- [:map-of ::table-spec ::table-spec]
+   table      :- ::table-spec]
+  (let [target-keys       (into [:table] (driver/qualified-name-components driver))
+        driver-remappings (update-keys remappings #(select-keys % target-keys))]
+    (get driver-remappings (select-keys table target-keys))))
+
+(mu/defn isolated->canonical :- [:maybe ::table-spec]
+  "Inverse of [[canonical->isolated]]: look up the canonical `::table-spec` for an
+   isolated `table` in `remappings`."
+  [driver     :- :keyword
+   remappings :- [:map-of ::table-spec ::table-spec]
+   table      :- ::table-spec]
+  (canonical->isolated driver (set/map-invert remappings) table))
+
 ;;; -------------------------------------------- Read API --------------------------------------------
 ;;;
 ;;; All reads route through the active store ([[ws.remapping/*remapping-store*]]) so tests
-;;; can swap in a [[ws.remapping/map-store]] without app-DB access. The store always returns
-;;; canonical 3-tuple shapes; the helpers below project them into the various per-call shapes
-;;; production callers want.
+;;; can swap in a [[ws.remapping/map-store]] without app-DB access. The store returns
+;;; `{from-spec to-spec}` maps; consumer-facing helpers below project them into the
+;;; `:model/Table`-row vocabulary (`{:db :schema :name}` with nil sentinels) where needed.
 
 (defn denormalize-level
   "Inverse of `normalize-level`: `\"\"` (the storage sentinel meaning \"this driver
@@ -222,51 +248,49 @@
   [m]
   (into {} (remove (fn [[_ v]] (= no-level v))) m))
 
-(defn- store-tuple->table-spec
-  "Project a 3-tuple `[db-slot schema-slot table-name]` from the store into the
-   `{:db :schema :name}` shape `:model/Table`-row callers want. Empty-string
-   sentinels become `nil` so a select on `:schema nil` matches Table rows JDBC
-   filled in as null (MySQL et al.) and a select on `:schema \"public\"` matches
-   Postgres rows verbatim."
-  [[db-slot schema-slot table-name]]
-  {:db     (denormalize-level db-slot)
-   :schema (denormalize-level schema-slot)
-   :name   table-name})
-
-(defn- spec->table-spec
-  "Project a storage-shaped `::table-spec` map (`{:db :schema :table}` with `\"\"`
-   sentinels) into the consumer-shaped `{:db :schema :name}` map (with `nil` for
-   absent slots). Symmetric with [[store-tuple->table-spec]] — every value that
-   crosses the storage boundary outward gets denormalized once, here.
-
-   Storage layer concerns (the `\"\"` sentinel keeping the unique constraint
-   enforceable) stay below this line; consumers (`:model/Table` predicates,
+; TODO Is this the same as prune-no-level?
+(defn- spec->consumer-shape
+  "Project a storage `::table-spec` (`{:db :schema :table}` with `\"\"` sentinels) into
+   the consumer-shaped `{:db :schema :name}` map (with `nil` for absent slots). The
+   storage sentinel stays below this line; consumers (`:model/Table` predicates,
    transform targets, sync's describe-fields lookups) work with `nil`."
   [{:keys [db schema table]}]
   {:db     (denormalize-level db)
    :schema (denormalize-level schema)
    :name   table})
 
+(defn- consumer-shape->spec
+  "Project a `{:db :schema :name}` consumer-shape map into a storage `::table-spec`,
+   normalizing nil slots to the empty-string sentinel."
+  [{:keys [db schema name]}]
+  {:db     (normalize-level db)
+   :schema (normalize-level schema)
+   :table  name})
+
+(defn- driver-for-db
+  ; TODO think about whether we can keep track of the db driver in a more efficient way
+  "Fetch the engine keyword for `db-id`. Used by translators that take a consumer-shape
+   spec (no driver in scope) and need driver-aware key projection. The app-DB cache
+   keeps repeat lookups cheap."
+  [db-id]
+  (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword))
+
 (defn remap-table
   "Returns `{:db :schema :name}` for the workspace destination of canonical
    `from-spec`, or nil if no remapping exists.
 
-   **Hot path** -- called per-table during sync via the `workspace-remap-schema+name`
-   defenterprise hook. Routes through the store's targeted [[ws.remapping/get-mapping]]
-   so the AppDB impl uses an indexed select-one (matches the unique constraint on
-   `(database_id, from_db, from_schema, from_table_name)`) and the MapStore impl is a
-   hash-map get. O(1) per call.
+   Called per-table during sync via the `workspace-remap-schema+name` defenterprise hook.
+   Uses driver-aware key projection so engines like MySQL (whose canonical/isolated
+   tables differ at the `:db` AST position rather than `:schema`) match correctly.
 
-   `from-spec` is `{:db :schema :name}`. `:db` is allowed but unused today: the
-   store key is built from `[\"\" from_schema from_name]` because the H7 second
-   half (cross-DB workspaces) hasn't widened the lookup index. Output uses
-   nil-instead-of-empty-string for slots the driver doesn't emit."
+   `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
+   slots the driver doesn't emit."
   [database-id from-spec]
-  (let [{:keys [schema name]} from-spec]
-    (when-let [tuple (ws.remapping/get-mapping
-                      database-id
-                      [no-level (normalize-level schema) name])]
-      (store-tuple->table-spec tuple))))
+  (when-let [driver (driver-for-db database-id)]
+    (some-> (canonical->isolated driver
+                                 (ws.remapping/remappings-for-db database-id)
+                                 (consumer-shape->spec from-spec))
+            spec->consumer-shape)))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
@@ -279,13 +303,12 @@
   (remap-table db-id from-spec))
 
 (defn all-mappings-for-db
-  "Return all remappings for a given database as a map of
-   `[from-db, from-schema, from-table-name]` -> `[to-db, to-schema, to-table-name]`.
+  "Return all remappings for a given database as a map of `from-spec` to `to-spec`,
+   each a `::table-spec` (`{:db :schema :table}`).
 
-   Each tuple is 3-wide so QP middleware can handle drivers across all cardinalities
-   uniformly. Empty-string sentinels in `from-db`/`to-db`/`from-schema`/`to-schema`
-   indicate \"this driver does not emit this level\" and should be dropped before being
-   handed to SQLGlot — see [[metabase-enterprise.workspaces.query-processor.middleware]]."
+   Empty-string sentinels in `:db` / `:schema` indicate \"this driver does not emit
+   this level\" and should be dropped before being handed to SQLGlot — see
+   [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
   (ws.remapping/remappings-for-db database-id))
 
@@ -299,7 +322,7 @@
   :feature :none
   [tuples db-id]
   (let [to-pairs (into #{}
-                       (map (fn [[_to-db to-schema to-name]] [to-schema to-name]))
+                       (map (fn [to-spec] [(:schema to-spec) (:table to-spec)]))
                        (vals (all-mappings-for-db db-id)))]
     (if (empty? to-pairs)
       tuples
@@ -315,9 +338,8 @@
   (if (empty? schema-names)
     schema-names
     (let [from->to (into {}
-                         (map (fn [[[_from-db from-schema _from-name]
-                                    [_to-db to-schema _to-name]]]
-                                [from-schema to-schema]))
+                         (map (fn [[from-spec to-spec]]
+                                [(:schema from-spec) (:schema to-spec)]))
                          (all-mappings-for-db db-id))
           extras   (into #{} (keep from->to) schema-names)]
       (vec (distinct (concat schema-names extras))))))
@@ -340,8 +362,8 @@
     (if (empty? mappings)
       tuples
       (let [synthetic (into #{}
-                            (map (fn [[[_from-db from-schema from-name] _]]
-                                   {:schema from-schema :name from-name}))
+                            (map (fn [[from-spec _]]
+                                   {:schema (:schema from-spec) :name (:table from-spec)}))
                             mappings)]
         (into tuples synthetic)))))
 
@@ -355,9 +377,9 @@
   :feature :none
   [rows db-id]
   (let [to->from (into {}
-                       (map (fn [[[_from-db from-schema from-name]
-                                  [_to-db to-schema to-name]]]
-                              [[to-schema to-name] [from-schema from-name]]))
+                       (map (fn [[from-spec to-spec]]
+                              [[(:schema to-spec) (:table to-spec)]
+                               [(:schema from-spec) (:table from-spec)]]))
                        (all-mappings-for-db db-id))]
     (if (empty? to->from)
       rows
@@ -381,26 +403,18 @@
    for write-side callers that already have the rewritten target on hand and
    need the canonical slot before touching `:model/Table` rows.
 
-   `:db` slot in the input is allowed but unused today: the index is keyed by
-   `(to_schema, to_name)` only — H7 second half (cross-DB workspaces) will widen
-   it to `(to_db, to_schema, to_name)`. The output `:db` slot is filled when
-   the driver populates that AST position, and nil otherwise (so consumers don't
-   have to denormalize the empty-string sentinel themselves)."
+   Driver-aware: matches against the slots the driver actually emits, so an
+   engine like MySQL (whose canonical and isolated tables differ at `:db` rather
+   than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
+   when the driver doesn't populate them, so callers don't need to denormalize
+   the empty-string sentinel themselves."
   :feature :none
   [db-id to-spec]
-  (let [{:keys [db schema name]} to-spec
-        ;; Normalize input slots to the storage `""` sentinel so the lookup
-        ;; matches rows the AppDB stores with empty-string for slots the
-        ;; driver doesn't emit. Today the index is `(to_schema, to_name)` so
-        ;; only `:schema` is consulted; widening to a 3-tuple match (the H7
-        ;; follow-up) is where the `db-key` below would join the lookup.
-        _db-key  (normalize-level db)
-        sch-key  (normalize-level schema)
-        to->from (into {}
-                       (map (fn [[from-tuple [_to-db to-schema to-name]]]
-                              [[to-schema to-name] from-tuple]))
-                       (all-mappings-for-db db-id))]
-    (some-> (to->from [sch-key name]) store-tuple->table-spec)))
+  (when-let [driver (driver-for-db db-id)]
+    (some-> (isolated->canonical driver
+                                 (all-mappings-for-db db-id)
+                                 (consumer-shape->spec to-spec))
+            spec->consumer-shape)))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
@@ -415,20 +429,20 @@
 ;;; -------------------------------------------- Write API --------------------------------------------
 ;;;
 ;;; The convenience layer over [[metabase-enterprise.workspaces.remapping.core]]. Accepts
-;;; `::table-spec` maps, normalizes `nil`/missing slots to the `""` sentinel, hands
-;;; pre-normalized 3-tuples to the active store. The store handles persistence
-;;; (Toucan2 against `:model/TableRemapping` in production, atom in tests).
+;;; `::table-spec` maps, normalizes `nil`/missing slots to the `""` sentinel, hands them
+;;; to the active store. The store handles persistence (Toucan2 against
+;;; `:model/TableRemapping` in production, atom in tests).
 ;;;
 ;;; Public callers should reach for these wrappers, NOT the raw store -- the wrappers
 ;;; enforce the `::table-spec` contract and the sentinel normalization at the boundary.
 
-(defn- spec->tuple
-  "Normalize a `::table-spec` map to a `[db schema table]` 3-tuple with `\"\"` sentinels.
-   The boundary between user-facing maps and the store's tuple shape."
+(defn- normalize-spec
+  "Coerce nil `:db` / `:schema` slots to the empty-string sentinel so storage rows
+   carry the canonical shape the unique constraint expects."
   [spec]
-  [(normalize-level (:db spec))
-   (normalize-level (:schema spec))
-   (:table spec)])
+  (-> spec
+      (update :db     normalize-level)
+      (update :schema normalize-level)))
 
 (mu/defn add-mapping!
   "Idempotently ensure a remapping row exists, via the active store.
@@ -452,13 +466,13 @@
   [database-id :- :int
    from-spec   :- ::table-spec
    to-spec     :- ::table-spec]
-  (ws.remapping/insert-mapping! database-id (spec->tuple from-spec) (spec->tuple to-spec)))
+  (ws.remapping/insert-mapping! database-id (normalize-spec from-spec) (normalize-spec to-spec)))
 
 (mu/defn remove-mapping!
   "Remove a remapping row by source `from-spec`. Returns the number of rows removed (0 or 1)."
   [database-id :- :int
    from-spec   :- ::table-spec]
-  (ws.remapping/remove-mapping! database-id (spec->tuple from-spec)))
+  (ws.remapping/remove-mapping! database-id (normalize-spec from-spec)))
 
 (defn clear-mappings-for-db!
   "Remove all remappings for a given database. Returns the number of rows removed."
@@ -495,7 +509,7 @@
    denormalization shim.
 
    Throws when the database is not workspaced -- a caller getting here in that case is a
-   programming error; the transform-hook path should gate on [[ws/db-workspace-schema]] first."
+   programming error; the transform-hook path should gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
     (when-not workspace-ns
@@ -523,4 +537,4 @@
       ;; Hand callers the denormalized shape so storage's `""` sentinel stays
       ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
       ;; `canonical-schema+name`) which also denormalize at the boundary.
-      (spec->table-spec to-spec))))
+      (spec->consumer-shape to-spec))))

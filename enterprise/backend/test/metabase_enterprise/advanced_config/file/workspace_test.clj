@@ -98,21 +98,21 @@
            (advanced-config.file.workspace/apply-workspace-section!
             (workspace-section "nonexistent-db")))))))
 
-(deftest db-workspace-schema-resolves-after-loading-test
-  (testing "after loading, db-workspace-schema returns the configured output schema"
+(deftest db-workspace-namespace-resolves-after-loading-test
+  (testing "after loading, db-workspace-namespace returns the configured output namespace"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db"}]
         (advanced-config.file.workspace/apply-workspace-section!
          (workspace-section "ws-test-db"))
-        (is (= "mb__isolation_44490_1933" (ws/db-workspace-schema db-id)))))))
+        (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))
 
-(deftest db-workspace-schema-returns-nil-when-no-load-test
-  (testing "without a config.yml load, db-workspace-schema returns nil — manager-side rows are not consulted"
+(deftest db-workspace-namespace-returns-nil-when-no-load-test
+  (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
     ;; The atom is cleared in the use-fixtures :each tear-down, so this confirms
     ;; the read truly comes from the atom and not from any leftover rows.
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db"}]
-        (is (nil? (ws/db-workspace-schema db-id)))))))
+        (is (nil? (ws/db-workspace-namespace db-id)))))))
 
 (deftest oss-readable-no-premium-token-test
   (testing "the :workspace section loads on instances without the :config-text-file premium feature"
@@ -125,7 +125,7 @@
             (is (= :ok (advanced-config.file/initialize!)))
             (is (some? (ws/instance-workspace))
                 "atom is populated even without :config-text-file token")
-            (is (= "mb__isolation_44490_1933" (ws/db-workspace-schema db-id)))))))))
+            (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))))
 
 (deftest oss-rejects-config-without-workspace-section-test
   (testing "OSS instance still gets the premium-token error when :workspace is absent"
@@ -259,9 +259,7 @@
            {:name "ws"
             :databases {:mysql-prod {:input  [{:schema "prod"}]
                                      :output {:schema "ws_alice"}}}})
-          (is (= {:schema "ws_alice"} (ws/db-workspace-namespace db-id)))
-          (is (= "ws_alice" (ws/db-workspace-schema db-id))
-              "shim returns the :schema slot for callers that haven't migrated"))))))
+          (is (= {:schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 (deftest snowflake-3-slot-section-test
   (testing "Snowflake workspace: both :db and :schema populated on both sides (cross-DB workspace expressible end-to-end)"
@@ -277,9 +275,7 @@
             :databases {:snowflake-prod {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
                                          :output {:db "WS_DB" :schema "WS_ALICE"}}}})
           (is (= {:db "WS_DB" :schema "WS_ALICE"} (ws/db-workspace-namespace db-id))
-              "reader returns the full {:db, :schema} namespace, not just :schema")
-          (is (= "WS_ALICE" (ws/db-workspace-schema db-id))
-              "shim still works - returns just the :schema slot"))))))
+              "reader returns the full {:db, :schema} namespace"))))))
 
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project + dataset both populated"

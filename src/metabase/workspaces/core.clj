@@ -9,7 +9,7 @@
 
    2. **Workspace-managed database** — a *database-scoped state*. True iff this
       instance is in workspace mode AND the workspace's `:databases` map includes
-      this database. The `(ws/db-workspace-schema db-id)` predicate (EE only).
+      this database. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
 
    3. **Table remapping engaged** — a *query-time data state*. True iff
       `:model/TableRemapping` rows exist for the database. The
@@ -30,7 +30,7 @@
 
    If a future use case requires running a feature against a non-workspace-
    managed database on a child, refine the call sites to per-database checks
-   using the EE `db-workspace-schema` predicate.
+   using the EE `db-workspace-namespace` predicate.
 
    ## OSS vs EE
 
@@ -45,8 +45,8 @@
    was loaded from `config.yml` at boot. Instance-level state set once at boot.
 
    For the per-database check, use the EE function
-   `metabase-enterprise.workspaces.core/db-workspace-schema` (returns the
-   workspace-isolated output schema name iff this instance is in workspace mode
+   `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
+   workspace-isolated output namespace map iff this instance is in workspace mode
    AND the workspace's `:databases` map includes this database).
 
    The OSS fallback returns false."
