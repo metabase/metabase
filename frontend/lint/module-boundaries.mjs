@@ -53,6 +53,7 @@ const elements = [
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api", enforceOutgoing: true }),
   // shared
+  createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
@@ -127,6 +128,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
+  createElement({ type: "feature", name: "public", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
@@ -202,6 +204,11 @@ const rules = [
     from: ["feature/enterprise"],
     allow: ["feature/*"],
     message: "Enterprise module can import from all feature modules",
+  },
+  {
+    from: ["feature/public"],
+    allow: ["feature/*"],
+    message: "Public module can import from all feature modules",
   },
   {
     from: ["app/*"],

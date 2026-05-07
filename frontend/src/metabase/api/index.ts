@@ -23,6 +23,7 @@ export * from "./glossary";
 export * from "./google";
 export * from "./group-table-access-policy";
 export * from "./ldap";
+export * from "./llm";
 export * from "./login-history";
 export * from "./measure";
 export * from "./metabot";

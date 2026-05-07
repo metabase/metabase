@@ -1,8 +1,5 @@
-import _ from "underscore";
-
-import { useGetTimelineEventQuery } from "metabase/api";
+import { useGetTimelineEventQuery, useListTimelinesQuery } from "metabase/api";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
 import type { State } from "metabase/redux/store";
 import MoveEventModal, {
   type MoveEventModalProps,
@@ -16,10 +13,6 @@ interface OwnProps {
   onClose?: () => void;
 }
 
-const timelinesProps = {
-  query: { include: "events" },
-};
-
 const collectionProps = {
   id: (state: State, props: OwnProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
@@ -28,7 +21,7 @@ const collectionProps = {
 
 type ContainerProps = Omit<
   MoveEventModalProps,
-  "event" | "onSubmit" | "onSubmitSuccess"
+  "event" | "timelines" | "onSubmit" | "onSubmitSuccess"
 > & {
   eventId: number;
   onClose?: () => void;
@@ -37,6 +30,7 @@ type ContainerProps = Omit<
 function MoveEventModalContainer({ eventId, ...props }: ContainerProps) {
   const setTimeline = useSetTimeline();
   const { data: event } = useGetTimelineEventQuery(eventId);
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
   const handleSubmit = async (event: TimelineEvent, newTimeline?: Timeline) => {
     if (newTimeline) {
       await setTimeline(event, newTimeline);
@@ -51,6 +45,7 @@ function MoveEventModalContainer({ eventId, ...props }: ContainerProps) {
     <MoveEventModal
       {...props}
       event={event}
+      timelines={timelines}
       onSubmit={handleSubmit}
       onSubmitSuccess={props.onClose}
     />
@@ -58,7 +53,4 @@ function MoveEventModalContainer({ eventId, ...props }: ContainerProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelinesProps),
-  Collections.load(collectionProps),
-)(MoveEventModalContainer);
+export default Collections.load(collectionProps)(MoveEventModalContainer);

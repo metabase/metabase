@@ -67,6 +67,7 @@
     :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
+    :model/MetabotSourceFeedback
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

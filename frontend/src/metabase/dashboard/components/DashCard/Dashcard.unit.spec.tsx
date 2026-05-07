@@ -11,12 +11,12 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
+import * as dashboardSelectors from "metabase/dashboard/selectors";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   createMockDashboardState,
   createMockState,

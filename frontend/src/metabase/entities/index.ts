@@ -74,8 +74,6 @@ export { SnippetCollections as snippetCollections } from "./snippet-collections"
 export { Dashboards as dashboards } from "./dashboards";
 export { Questions as questions } from "./questions";
 
-export { Timelines as timelines } from "./timelines";
-
 export { Bookmarks as bookmarks } from "./bookmarks";
 export { Databases as databases } from "./databases";
 export { Schemas as schemas } from "./schemas";
@@ -88,7 +86,6 @@ export { Metrics as metrics } from "./metrics";
 export { Groups as groups } from "./groups";
 
 export { Search as search } from "./search";
-export { PersistedModels as persistedModels } from "./persisted-models";
 export { Snippets as snippets } from "./snippets";
 
 export { entityCompatibleQuery, combineEntities } from "./utils";
