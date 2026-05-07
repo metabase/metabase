@@ -3,4 +3,4 @@
 (defonce ^{:doc     "The system"
            :dynamic true}
   *system*
-  (atom nil))
+  (atom {}))

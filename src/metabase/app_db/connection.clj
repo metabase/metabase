@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.root.mutable-component :as mc]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -64,10 +65,10 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[with-application-db]]:
+  with [[application-db-handle]]:
 
-    (mdb.connection/with-application-db (mdb.connection/application-db :h2 my-data-source)
-      ...)
+    (let [handle (mdb.connection/application-db-handle)]
+      (mc/do-with-value handle (mdb.connection/application-db :h2 my-data-source) (fn [] ...)))
 
   Options:
 
@@ -89,45 +90,36 @@
     :lock        (ReentrantReadWriteLock.)}))
 
 (def ^:private ^:dynamic ^ApplicationDB *application-db*
-  "The current Metabase application database."
+  "The current Metabase application database. Access only via [[application-db-handle]]."
   (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
 
-(defn the-application-db
-  "Returns the current application DB."
-  ^ApplicationDB []
-  *application-db*)
+(defrecord ^:private ApplicationDbHandle []
+  mc/MutableComponentHandle
+  (current [_] *application-db*)
+  (root [_] (.getRawRoot ^clojure.lang.Var #'*application-db*))
+  (do-with-value [_ new-value thunk]
+    (binding [*application-db* new-value]
+      (thunk)))
+  (reset-value! [_ new-value]
+    (alter-var-root #'*application-db* (constantly new-value)))
+  (swap-value! [_ f]
+    (alter-var-root #'*application-db* f))
+  (swap-value! [_ f args]
+    (apply alter-var-root #'*application-db* f args)))
 
-(defn application-db-root
-  "Returns the root binding of the application DB, ignoring any thread-local rebinding."
-  ^ApplicationDB []
-  (.getRawRoot ^clojure.lang.Var #'*application-db*))
+(alter-meta! #'->ApplicationDbHandle assoc :private true)
+(alter-meta! #'map->ApplicationDbHandle assoc :private true)
 
-(defn do-with-application-db
-  "Impl for [[with-application-db]] macro."
-  [application-db thunk]
-  (binding [*application-db* application-db]
-    (thunk)))
-
-(defmacro with-application-db
-  "Bind the application DB to `application-db` for the dynamic extent of `body`."
-  {:style/indent [:defn]}
-  [application-db & body]
-  `(do-with-application-db ~application-db (fn [] ~@body)))
-
-(defn reset-application-db!
-  "Set the root binding of the application DB to `new-application-db`."
-  [new-application-db]
-  (alter-var-root #'*application-db* (constantly new-application-db)))
-
-(defn swap-application-db!
-  "Update the root binding of the application DB by applying `f` to its current value, plus any `args`."
-  [f & args]
-  (apply alter-var-root #'*application-db* f args))
+(let [handle (->ApplicationDbHandle)]
+  (defn application-db-handle
+    "Returns the [[mc/MutableComponentHandle]] for the application DB."
+    []
+    handle))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type (the-application-db)))
+  (.db-type *application-db*))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -143,7 +135,7 @@
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source (the-application-db)))
+  (.data-source *application-db*))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -156,11 +148,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id (the-application-db)))
+  (.id *application-db*))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection (the-application-db) f))
+  (t2.conn/do-with-connection *application-db* f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 

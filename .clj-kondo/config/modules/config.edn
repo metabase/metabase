@@ -327,6 +327,7 @@
            classloader
            config
            connection-pool
+           root
            task
            util}
    :model-imports #{:model/Database
@@ -546,6 +547,7 @@
            config
            models
            query-processor
+           root
            search
            settings
            util}
@@ -1854,7 +1856,8 @@
 
   root
   {:team "Graphy"
-   :api #{metabase.root.system}
+   :api #{metabase.root.mutable-component
+          metabase.root.system}
    :uses #{}}
 
   sample-data

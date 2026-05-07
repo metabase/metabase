@@ -30,6 +30,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.root.mutable-component :as mc]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.settings.models.setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -1846,8 +1847,9 @@
             (migrate!)
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
             ;; see the same app DB as this test, then restore the prior root on exit
-            (let [prior-root (mdb.connection/application-db-root)]
-              (mdb.connection/reset-application-db! (mdb.connection/the-application-db))
+            (let [handle     (mdb.connection/application-db-handle)
+                  prior-root (mc/root handle)]
+              (mc/reset-value! handle (mc/current handle))
               (try
                 ;; simulate starting MB after migrate up, which will trigger this function
                 (task/init! ::task.send-pulses/SendPulses)
@@ -1861,7 +1863,7 @@
                            "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                          (scheduler-job-keys))))
                 (finally
-                  (mdb.connection/reset-application-db! prior-root))))))))))
+                  (mc/reset-value! handle prior-root))))))))))
 
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"

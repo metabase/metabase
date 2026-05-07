@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
+   [metabase.root.mutable-component :as mc]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -236,16 +237,18 @@
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
     (mt/discard-setting-changes [:test-setting-custom-init]
       (clear-setting-if-leak!)
-      (mdb.connection/with-application-db {:status (atom @#'mdb.connection/initial-db-status)}
-        (is (= false (mdb/db-is-set-up?)))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Cannot initialize setting before the db is set up"
-             (test-setting-custom-init)))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Cannot initialize setting before the db is set up"
-             (setting/get :test-setting-custom-init)))))))
+      (mc/do-with-value (mdb.connection/application-db-handle)
+                        {:status (atom @#'mdb.connection/initial-db-status)}
+                        (fn []
+                          (is (= false (mdb/db-is-set-up?)))
+                          (is (thrown-with-msg?
+                               clojure.lang.ExceptionInfo
+                               #"Cannot initialize setting before the db is set up"
+                               (test-setting-custom-init)))
+                          (is (thrown-with-msg?
+                               clojure.lang.ExceptionInfo
+                               #"Cannot initialize setting before the db is set up"
+                               (setting/get :test-setting-custom-init))))))))
 
 (deftest discard-setting-changes-with-init-test
   (testing "discard-setting-changes correctly handles settings with :init"

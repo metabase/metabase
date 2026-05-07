@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.root.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
@@ -136,7 +137,7 @@
 
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
-    (with-open [conn (.getConnection (mdb.connection/the-application-db))]
+    (with-open [conn (.getConnection ^javax.sql.DataSource (mc/current (mdb.connection/application-db-handle)))]
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 

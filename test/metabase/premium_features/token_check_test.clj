@@ -11,6 +11,7 @@
    [metabase.premium-features.task.clear-token-cache]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.root.mutable-component :as mc]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -234,8 +235,9 @@
            (premium-features/active-users-count))))
 
   (testing "Default to 0 if db is not setup yet"
-    (mdb.connection/with-application-db {:status (atom nil)}
-      (is (zero? (premium-features/active-users-count))))))
+    (mc/do-with-value (mdb.connection/application-db-handle)
+                      {:status (atom nil)}
+                      (fn [] (is (zero? (premium-features/active-users-count)))))))
 
 (deftest RemoteCheckedToken-regexp
   (testing "valid tokens"

@@ -18,6 +18,7 @@
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.config.core :as config]
+   [metabase.root.mutable-component :as mc]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
@@ -212,7 +213,8 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (mdb.encryption/encrypt-db (:db-type (mdb.connection/the-application-db)) (:data-source (mdb.connection/the-application-db)) nil)
+            (let [app-db (mc/current (mdb.connection/application-db-handle))]
+              (mdb.encryption/encrypt-db (:db-type app-db) (:data-source app-db) nil))
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
 
@@ -261,13 +263,15 @@
   (u/profile (trs "Database setup")
     (u/with-us-locale
 
-      (mdb.connection/with-application-db (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-        (binding [config/*disable-setting-cache*            true
-                  custom-migrations/*create-sample-content* create-sample-content?]
-          (verify-db-connection db-type data-source)
-          (error-if-downgrade-required! data-source)
-          (run-schema-migrations! data-source auto-migrate?)
-          (check-encryption)))))
+      (mc/do-with-value (mdb.connection/application-db-handle)
+                        (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                        (fn []
+                          (binding [config/*disable-setting-cache*            true
+                                    custom-migrations/*create-sample-content* create-sample-content?]
+                            (verify-db-connection db-type data-source)
+                            (error-if-downgrade-required! data-source)
+                            (run-schema-migrations! data-source auto-migrate?)
+                            (check-encryption))))))
   :done)
 
 (defn release-migration-locks!
