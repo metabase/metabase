@@ -2266,12 +2266,22 @@
 
 (def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5})
 
+(defn- mbql5-experiment-report
+  [driver experimental-driver query]
+  (fn [{:keys [match? candidate-outcome control-outcome] :as result}]
+    (when-let [report-fn @experiment/default-report-fn]
+      (report-fn result))
+    (when-not match?
+      (log/warnf "MBQL5 experiment mismatch:\nControl driver: %s, candidate driver: %s\nQuery: %s\nControl result: %s\nCandidate result: %s"
+                 driver experimental-driver query control-outcome candidate-outcome))))
+
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- :map]
   (if-let [experimental-driver (experimental-mbql5-drivers driver)]
-    (experiment/experiment {:name :experimental-mbql5-driver}
+    (experiment/experiment {:name :experimental-mbql5-driver
+                            :report-fn (mbql5-experiment-report driver experimental-driver query)}
                            (mbql->honeysql* driver query)
                            (mbql->honeysql* experimental-driver query))
     (mbql->honeysql* driver query)))
