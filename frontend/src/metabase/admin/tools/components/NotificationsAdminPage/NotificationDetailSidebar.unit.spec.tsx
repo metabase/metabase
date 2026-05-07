@@ -90,7 +90,6 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
 
   const onClose = jest.fn();
   const onDelete = jest.fn();
-  const onUndelete = jest.fn();
   const onChangeOwner = jest.fn();
 
   const utils = renderWithProviders(
@@ -100,7 +99,6 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
       mockDetail={detail}
       onClose={onClose}
       onDelete={onDelete}
-      onUndelete={onUndelete}
       onChangeOwner={onChangeOwner}
     />,
     { withRouter: true },
@@ -110,7 +108,6 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
     ...utils,
     onClose,
     onDelete,
-    onUndelete,
     onChangeOwner,
   };
 };
@@ -165,13 +162,6 @@ describe("NotificationDetailSidebar", () => {
       screen.getByRole("menuitem", { name: "Change owner" }),
     );
     expect(onChangeOwner).toHaveBeenCalled();
-  });
-
-  it("shows undelete when the alert is deleted", async () => {
-    const { onUndelete } = setup({ detail: mockDetail({ active: false }) });
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Undelete" }));
-    expect(onUndelete).toHaveBeenCalled();
   });
 
   it("renders a row in the runs table for each task run", async () => {
