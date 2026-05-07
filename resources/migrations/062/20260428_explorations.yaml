@@ -37,6 +37,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: collection_id
+                  type: int
+                  remarks: Collection this exploration is published to. NULL means unpublished, or — when is_published is true — the root collection.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_published
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: When true, the exploration is shared via collection permissions. When false, only the creator (or admins) can read/write it.
+                  constraints:
+                    nullable: false
+              - column:
                   name: archived
                   type: ${boolean.type}
                   defaultValueBoolean: false
@@ -89,6 +102,31 @@ databaseChangeLog:
             columns:
               - column:
                   name: creator_id
+
+  - changeSet:
+      id: v62.expcollfk
+      author: jdswanson
+      comment: FK exploration.collection_id -> collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_exploration_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.expcollidx
+      author: jdswanson
+      comment: Index on exploration.collection_id
+      changes:
+        - createIndex:
+            tableName: exploration
+            indexName: idx_exploration_collection_id
+            columns:
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v62.bnweradf

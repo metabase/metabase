@@ -975,6 +975,7 @@
            metabase.explorations.init}
    :uses #{api
            app-db
+           collections
            contextual-interestingness
            documents
            interestingness
@@ -984,7 +985,9 @@
            metabot
            metrics
            models
+           permissions
            queries
+           query-permissions
            query-processor
            startup
            timeline

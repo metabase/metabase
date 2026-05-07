@@ -4,6 +4,8 @@
    [metabase.explorations.groups :as explorations.groups]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.test :as mt]
@@ -925,3 +927,101 @@
             (is (= 1 (count scores)))
             (is (= (:id tl) (-> scores first :timeline_id)))
             (is (= 0.4 (-> scores first :interestingness_score)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       PUT /api/exploration/:id (publish/move)                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest exploration-put-updates-metadata-test
+  (testing "PUT /:id updates name/description/archived for the creator"
+    (mt/with-temp [:model/Exploration e {:name "old" :creator_id (mt/user->id :rasta)}]
+      (let [resp (mt/user-http-request :rasta :put 200 (format "exploration/%d" (:id e))
+                                       {:name "new" :description "yo"})]
+        (is (= "new" (:name resp)))
+        (is (= "yo"  (:description resp)))
+        (is (false? (:is_published resp)))))))
+
+(deftest exploration-put-publish-to-collection-test
+  (testing "PUT /:id can publish an unpublished exploration to a collection the caller can write"
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "to-publish" :creator_id (mt/user->id :rasta)}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
+        (let [resp (mt/user-http-request :rasta :put 200 (format "exploration/%d" (:id e))
+                                         {:collection_id (:id c) :is_published true})]
+          (is (true? (:is_published resp)))
+          (is (= (:id c) (:collection_id resp))))))))
+
+(deftest exploration-put-publish-requires-write-on-destination-test
+  (testing "PUT /:id publish refuses when caller lacks write on the destination collection"
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name "no-dest" :creator_id (mt/user->id :rasta)}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
+                              {:collection_id (:id c) :is_published true})))))
+
+(deftest exploration-put-move-requires-write-on-source-collection-test
+  (testing "Moving a published exploration requires the caller to write the source collection."
+    (mt/with-temp [:model/Collection src  {}
+                   :model/Collection dest {}
+                   :model/Exploration e   {:name          "needs-src"
+                                           :creator_id    (mt/user->id :rasta)
+                                           :collection_id (:id src)
+                                           :is_published  true}]
+      (mt/with-non-admin-groups-no-collection-perms (:id src)
+        (mt/with-non-admin-groups-no-collection-perms (:id dest)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest)
+          ;; user has dest write but no src perms — write-check on the published exploration
+          ;; (which goes through src collection perms) fails first.
+          (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
+                                {:collection_id (:id dest)}))))))
+
+(deftest exploration-put-unpublish-test
+  (testing "PUT /:id with is_published=false reverts the exploration to creator-only access."
+    ;; Use crowberto (admin) as the unpublisher so the test is decoupled from the
+    ;; "published-exploration writes go through collection perms" behavior.
+    (mt/with-temp [:model/Collection c   {}
+                   :model/Exploration e  {:name          "unpub"
+                                          :creator_id    (mt/user->id :crowberto)
+                                          :collection_id (:id c)
+                                          :is_published  true}]
+      (mt/with-non-admin-groups-no-collection-perms (:id c)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) c)
+        (testing "before unpublish, rasta (collection-read) can see the exploration"
+          (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id e))))
+        (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                              {:is_published false})
+        (testing "after unpublish, rasta (non-creator) gets 403"
+          (mt/user-http-request :rasta :get 403 (format "exploration/%d" (:id e))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Routed-database creation block                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest exploration-create-rejects-routed-database-metric-test
+  (testing "POST / refuses when any selected metric lives in a router database"
+    (mt/with-temp [:model/User u {:email "routed@example.com"}
+                   :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
+                   :model/DatabaseRouter _ {:database_id    (mt/id)
+                                            :user_attribute "team"}]
+      (let [resp (mt/user-http-request u :post 400 "exploration"
+                                       {:name    "routed"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1"
+                                                                         :table_id (mt/id :venues)
+                                                                         :target ["field" {} (mt/id :venues :price)]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})]
+        (is (re-find #"routed database" (:message resp)))))))
+
+(deftest dimensions-excludes-routed-database-metrics-test
+  (testing "GET /api/exploration/dimensions hides metrics whose database is a router"
+    (with-sample-metrics-archived
+      (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
+                                           :type          :metric
+                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/DatabaseRouter _ {:database_id    (mt/id)
+                                              :user_attribute "team"}]
+        (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
+              names (set (map :name (:metrics resp)))]
+          (is (not (contains? names "Routed Hidden"))
+              "metric on a router database is filtered out of /dimensions"))))))

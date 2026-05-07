@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -40,6 +42,85 @@
       (is (true? (mi/can-read? :model/ExplorationThread (:id t)))))
     (binding [api/*current-user-id* (:id other) api/*is-superuser?* false]
       (is (false? (mi/can-read? :model/ExplorationThread (:id t)))))))
+
+(deftest published-exploration-uses-collection-perms-test
+  (testing "When is_published is true, can-read?/can-write? defer to the parent collection's perms."
+    (mt/with-temp [:model/User       owner    {}
+                   :model/Card       card     {:type          :metric
+                                               :creator_id    (:id owner)
+                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Collection coll     {}
+                   :model/Exploration e       {:name          "shared"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)
+                                               :is_published  true}
+                   :model/ExplorationThread t {:exploration_id (:id e)}
+                   :model/ExplorationQuery  q {:exploration_thread_id (:id t)
+                                               :card_id      (:id card)
+                                               :dimension_id "d1"
+                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/with-non-admin-groups-no-collection-perms (:id coll)
+        (testing "user with no collection perms cannot read"
+          (mt/with-test-user :rasta
+            (is (false? (mi/can-read?  :model/Exploration (:id e))))
+            (is (false? (mi/can-write? :model/Exploration (:id e))))
+            (is (false? (mi/can-read?  :model/ExplorationThread (:id t))))
+            (is (false? (mi/can-read?  :model/ExplorationQuery (:id q))))))
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (testing "user with collection-read can read but not write"
+          (mt/with-test-user :rasta
+            (is (true?  (mi/can-read?  :model/Exploration (:id e))))
+            (is (false? (mi/can-write? :model/Exploration (:id e))))
+            (is (true?  (mi/can-read?  :model/ExplorationThread (:id t))))
+            (is (true?  (mi/can-read?  :model/ExplorationQuery (:id q))))))
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+        (testing "user with collection-write can read and write"
+          (mt/with-test-user :rasta
+            (is (true? (mi/can-read?  :model/Exploration (:id e))))
+            (is (true? (mi/can-write? :model/Exploration (:id e))))
+            (is (true? (mi/can-write? :model/ExplorationThread (:id t))))
+            (is (true? (mi/can-write? :model/ExplorationQuery (:id q))))))))))
+
+(deftest unpublished-exploration-stays-creator-only-test
+  (testing "is_published=false ignores collection_id and stays creator/admin only."
+    (mt/with-temp [:model/User       owner {}
+                   :model/Collection coll  {}
+                   :model/Exploration e   {:name          "private"
+                                           :creator_id    (:id owner)
+                                           :collection_id (:id coll)
+                                           :is_published  false}]
+      (mt/with-non-admin-groups-no-collection-perms (:id coll)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+        (binding [api/*current-user-id* (:id owner) api/*is-superuser?* false]
+          (is (true? (mi/can-read?  :model/Exploration (:id e))))
+          (is (true? (mi/can-write? :model/Exploration (:id e)))))
+        (testing "rasta has full collection perms but still cannot read — exploration is unpublished"
+          (mt/with-test-user :rasta
+            (is (false? (mi/can-read?  :model/Exploration (:id e))))
+            (is (false? (mi/can-write? :model/Exploration (:id e))))))))))
+
+(deftest published-exploration-in-root-collection-uses-root-perms-test
+  (testing "is_published=true + collection_id=NULL → root collection perms apply."
+    (mt/with-temp [:model/User       owner {}
+                   :model/Exploration e   {:name          "root-shared"
+                                           :creator_id    (:id owner)
+                                           :collection_id nil
+                                           :is_published  true}]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (testing "no root perms → cannot read"
+          (mt/with-test-user :rasta
+            (is (false? (mi/can-read?  :model/Exploration (:id e))))))
+        (mt/with-temp [:model/PermissionsGroup       g {}
+                       :model/PermissionsGroupMembership _ {:group_id (:id g) :user_id (mt/user->id :rasta)}]
+          (perms/grant-permissions! (:id g) "/collection/root/read/")
+          (testing "root-read granted → can read but not write"
+            (mt/with-test-user :rasta
+              (is (true?  (mi/can-read?  :model/Exploration (:id e))))
+              (is (false? (mi/can-write? :model/Exploration (:id e))))))
+          (perms/grant-permissions! (:id g) "/collection/root/")
+          (testing "root-write granted → can write"
+            (mt/with-test-user :rasta
+              (is (true? (mi/can-write? :model/Exploration (:id e)))))))))))
 
 (deftest exploration-thread-json-transforms-test
   (mt/with-temp [:model/User u {}

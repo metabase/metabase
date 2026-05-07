@@ -6,4 +6,5 @@
 (p/import-vars
  [impl
   exploration-data
-  min-interestingness])
+  min-interestingness
+  routed-database-ids])

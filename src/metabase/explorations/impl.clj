@@ -14,6 +14,20 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn routed-database-ids
+  "Subset of `db-ids` whose databases are routers (i.e., have a row in the `db_router` table).
+   Cards/metrics only ever target the router DB directly — destinations are swapped in at QP
+   time — so checking the router side is sufficient. We filter routed metrics out of
+   explorations entirely: a worker-cached result blob would be unsafe to share, since
+   different viewers would normally route to different destination DBs."
+  [db-ids]
+  (if (empty? db-ids)
+    #{}
+    (into #{} (map :database_id)
+          (t2/query {:select [:database_id]
+                     :from   [:db_router]
+                     :where  [:in :database_id (vec (set db-ids))]}))))
+
 (set! *warn-on-reflection* true)
 
 (def min-interestingness
@@ -165,27 +179,32 @@
      ids the user can read. When nil, returns all visible metric Cards.
    - `:q` (optional) — case-insensitive search across metric name and dimension display-name.
 
+   Metrics whose underlying database has database routing configured are filtered out
+   entirely — see [[routed-database-ids]] for the rationale.
+
    The returned shape is `{:metrics [...] :dimension_groups [...]}` exactly matching the
    `::DimensionsResponse` schema in `metabase.explorations.api`."
   [{:keys [metric-ids q]}]
-  (let [card-ids (accessible-metric-ids metric-ids)
-        cards    (load-metric-cards card-ids)
-        hydrated (->> cards
-                      (mapv (fn [m]
-                              (-> m
-                                  metrics/filter-dimensions-for-user
-                                  with-result-column-name
-                                  ;; dataset_query was only needed to compute result_column_name.
-                                  (dissoc :dataset_query))))
-                      (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
-        filtered (if (str/blank? q)
-                   hydrated
-                   (let [q-lower (u/lower-case-en q)]
-                     (filterv #(metric-matches-search? % q-lower) hydrated)))
-        slimmed  (mapv (fn [m]
-                         (-> m
-                             (assoc :dimension_ids (mapv :id (:dimensions m)))
-                             (dissoc :dimensions)))
-                       filtered)]
+  (let [card-ids   (accessible-metric-ids metric-ids)
+        cards      (load-metric-cards card-ids)
+        routed-dbs (routed-database-ids (into #{} (keep :database_id) cards))
+        cards      (remove (comp routed-dbs :database_id) cards)
+        hydrated   (->> cards
+                        (mapv (fn [m]
+                                (-> m
+                                    metrics/filter-dimensions-for-user
+                                    with-result-column-name
+                                    ;; dataset_query was only needed to compute result_column_name.
+                                    (dissoc :dataset_query))))
+                        (metrics/annotate-dimensions-with-field-data [:dimension_interestingness]))
+        filtered   (if (str/blank? q)
+                     hydrated
+                     (let [q-lower (u/lower-case-en q)]
+                       (filterv #(metric-matches-search? % q-lower) hydrated)))
+        slimmed    (mapv (fn [m]
+                           (-> m
+                               (assoc :dimension_ids (mapv :id (:dimensions m)))
+                               (dissoc :dimensions)))
+                         filtered)]
     {:metrics          slimmed
      :dimension_groups (group-dimensions filtered)}))

@@ -1,13 +1,16 @@
 (ns metabase.explorations.api
   "`/api/exploration` routes."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.result-access :as result-access]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.queries.core :as queries]
@@ -27,6 +30,26 @@
 
 (defn- get-exploration-or-404 [id]
   (api/check-404 (t2/select-one :model/Exploration :id id)))
+
+(defn- check-publish-perms!
+  "When `updates` publishes the exploration or moves it to a different collection, verify the
+  current user has write perms on the destination (collection or root). Source-side perms are
+  already enforced by the parent `api/write-check` against the exploration itself, which —
+  via `:perms/use-parent-collection-perms` — requires write on the source collection when the
+  exploration is currently published."
+  [{old-published :is_published old-coll :collection_id} updates]
+  (let [coll-changing? (contains? updates :collection_id)
+        new-coll       (if coll-changing? (:collection_id updates) old-coll)
+        new-published  (if (contains? updates :is_published)
+                         (:is_published updates)
+                         old-published)
+        publishing?    (and new-published (or (not old-published) coll-changing?))]
+    (when publishing?
+      (when new-coll
+        (api/check-400 (t2/exists? :model/Collection :id new-coll :archived false)))
+      (if new-coll
+        (api/write-check :model/Collection new-coll)
+        (api/write-check collection/root-collection)))))
 
 (defn- attach-thread-groups [thread]
   (assoc thread :groups (explorations.groups/auto-groups (:queries thread))))
@@ -111,6 +134,23 @@
         ref-clause (lib/normalize :metabase.lib.schema.ref/ref target)]
     (lib/breakout base-query (apply-default-bucket base-query ref-clause dim))))
 
+(defn- check-no-routed-databases!
+  "Throw a 400 if any metric Card lives in a router database. The worker-cached result blob
+  reflects whichever destination the creator routed to, so different viewers — who would
+  normally route to different destinations — can't safely share it."
+  [cards]
+  (when-let [routed (seq (explorations/routed-database-ids
+                          (into #{} (keep :database_id) (vals cards))))]
+    (let [routed-set (set routed)
+          offenders  (->> (vals cards)
+                          (filter (comp routed-set :database_id))
+                          (map :name))]
+      (throw (ex-info (tru "Cannot create an exploration for metrics on a routed database: {0}"
+                           (str/join ", " offenders))
+                      {:status-code      400
+                       :metric-names     offenders
+                       :routed-databases routed})))))
+
 (defn- generate-queries!
   "Materialize `exploration_query` rows for each (metric, dimension) pair where the dimension is
   applicable to the metric — i.e., the metric's snapshotted `dimension_mappings` resolves a
@@ -124,6 +164,9 @@
   (when (and (seq metrics) (seq dimensions))
     (let [cards    (t2/select-pk->fn identity [:model/Card :id :name :database_id :dataset_query :card_schema]
                                      :id [:in (distinct (map :card_id metrics))])
+          ;; TODO: we should probably check this earlier - i.e. you shouldn't be able to pick dimensions/metrics from
+          ;; routed DBs.
+          _        (check-no-routed-databases! cards)
           card-ctx (into {} (for [[id card] cards
                                   :let [mp (lib-be/application-database-metadata-provider (:database_id card))]]
                               [id {:mp       mp
@@ -261,14 +304,17 @@
 (mr/def ::HydratedExploration
   "Schema for an Exploration with hydrated creator and threads."
   [:map
-   [:id          ms/PositiveInt]
-   [:name        :string]
-   [:description {:optional true} [:maybe :string]]
-   [:creator_id  ms/PositiveInt]
-   [:creator     {:optional true} [:maybe :map]]
-   [:threads     {:optional true} [:maybe [:sequential ::HydratedThread]]]
-   [:created_at  {:optional true} [:maybe :any]]
-   [:updated_at  {:optional true} [:maybe :any]]])
+   [:id            ms/PositiveInt]
+   [:name          :string]
+   [:description   {:optional true} [:maybe :string]]
+   [:creator_id    ms/PositiveInt]
+   [:creator       {:optional true} [:maybe :map]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:is_published  :boolean]
+   [:archived      {:optional true} :boolean]
+   [:threads       {:optional true} [:maybe [:sequential ::HydratedThread]]]
+   [:created_at    {:optional true} [:maybe :any]]
+   [:updated_at    {:optional true} [:maybe :any]]])
 
 (def ^:private CreateExploration
   [:map
@@ -278,6 +324,18 @@
    [:metrics      {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions   {:optional true} [:maybe [:sequential DimensionSelection]]]
    [:timeline_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
+(def ^:private UpdateExploration
+  "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
+  actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
+  to publish to the root collection. Setting `is_published` to false reverts the exploration to
+  creator-only access."
+  [:map
+   [:name          {:optional true} ms/NonBlankString]
+   [:description   {:optional true} [:maybe :string]]
+   [:archived      {:optional true} :boolean]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:is_published  {:optional true} :boolean]])
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
 
@@ -376,6 +434,27 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
     (hydrate-exploration expl)))
+
+(api.macros/defendpoint :put "/:id" :- ::HydratedExploration
+  "Update an exploration's metadata, archive state, or publish/move it to a collection.
+
+  Publish semantics:
+    - `is_published=true` + `collection_id=N`     → published in collection N
+    - `is_published=true` + `collection_id=null`  → published in the root collection
+    - `is_published=false`                        → unpublished (creator-only)
+
+  When publishing or moving, the caller must have write perms on the destination collection
+  (or the root collection). Source perms are enforced by `api/write-check` against the
+  exploration itself."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   updates :- UpdateExploration]
+  (let [existing (get-exploration-or-404 id)]
+    (api/write-check existing)
+    (check-publish-perms! existing updates)
+    (when (seq updates)
+      (t2/update! :model/Exploration id updates))
+    (hydrate-exploration (t2/select-one :model/Exploration :id id))))
 
 (def ^:private query-summary-columns
   "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the
@@ -535,6 +614,14 @@
   [query-id]
   (api/read-check (api/check-404 (t2/select-one :model/ExplorationQuery :id query-id))))
 
+(defn- exploration-query->creator-id
+  "Resolve the creator of the parent exploration for a given exploration-query."
+  [exploration-query]
+  (t2/select-one-fn :creator_id :model/Exploration
+                    {:join  [:exploration_thread
+                             [:= :exploration_thread.exploration_id :exploration.id]]
+                     :where [:= :exploration_thread.id (:exploration_thread_id exploration-query)]}))
+
 (defn- stream-stored-result
   "Replay a worker-serialized QP result (gzipped+nippy bytes from
   `:model/ExplorationQueryResult.result_data`) through the streaming pipeline so the response
@@ -560,6 +647,11 @@
                         [:format {:default :api}
                          [:enum {:decode/api keyword} :api :csv :json :xlsx]]]]
   (let [q (get-exploration-query-or-404 id)]
+    ;; The cached `result_data` was produced by the creator, so non-creator viewers might
+    ;; otherwise see data the QP would have filtered out for them. Block when the viewer is
+    ;; sandboxed/impersonated for the query's DB or lacks data perms on the underlying tables.
+    (when-not (= api/*current-user-id* (exploration-query->creator-id q))
+      (result-access/assert-can-view-cached-result! q))
     (case (:status q)
       "done"
       (let [{:keys [result_data]} (api/check-404

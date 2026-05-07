@@ -9,6 +9,10 @@
 
 (doto :model/Exploration
   (derive :metabase/model)
+  ;; When `is_published` is true, read/write are granted via the parent collection's perms (with
+  ;; `collection_id = NULL` meaning the root collection). When false, the exploration is private
+  ;; to its creator and `mi/can-read?` / `mi/can-write?` short-circuit to `mine?` below.
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -18,12 +22,22 @@
       (= creator_id api/*current-user-id*)))
 
 (defmethod mi/can-read? :model/Exploration
-  ([instance]      (mine? instance))
-  ([_model pk]     (mine? (t2/select-one [:model/Exploration :creator_id] :id pk))))
+  ([{:keys [is_published] :as instance}]
+   (if is_published
+     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))
+     (mine? instance)))
+  ([_model pk]
+   (when-let [expl (t2/select-one [:model/Exploration :creator_id :collection_id :is_published] :id pk)]
+     (mi/can-read? expl))))
 
 (defmethod mi/can-write? :model/Exploration
-  ([instance]      (mine? instance))
-  ([_model pk]     (mine? (t2/select-one [:model/Exploration :creator_id] :id pk))))
+  ([{:keys [is_published] :as instance}]
+   (if is_published
+     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
+     (mine? instance)))
+  ([_model pk]
+   (when-let [expl (t2/select-one [:model/Exploration :creator_id :collection_id :is_published] :id pk)]
+     (mi/can-write? expl))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
