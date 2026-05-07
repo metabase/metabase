@@ -203,14 +203,14 @@
         (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
               active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
           (testing "Deactivates all jobs"
-            (is (=? {:updated pos?
-                     :failed  zero?}
-                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))
+            (let [pending (t2/count :model/TransformJob :active true)]
+              (is (=? {:updated pending :failed zero?}
+                      (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false}))))
             (is (every? false? (vals (active-by-id)))))
           (testing "Reactivates all jobs"
-            (is (=? {:updated pos?
-                     :failed  zero?}
-                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})))
+            (let [pending (t2/count :model/TransformJob :active false)]
+              (is (=? {:updated pending :failed zero?}
+                      (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true}))))
             (is (every? true? (vals (active-by-id))))))))))
 
 (deftest update-all-jobs-active-counts-test
