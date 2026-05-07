@@ -77,7 +77,7 @@ const defaultConfig = {
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    config.expose.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -148,9 +148,9 @@ const defaultConfig = {
 
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../";
-    config.env.grepFilterSpecs = true;
-    config.env.grepOmitFiltered = true;
+    config.expose.grepIntegrationFolder = "../../";
+    config.expose.grepFilterSpecs = true;
+    config.expose.grepOmitFiltered = true;
 
     cypressGrepPlugin(config);
 
