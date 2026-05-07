@@ -534,16 +534,21 @@
   "Merge `metabase_field_import` into `metabase_field` atomically, in two SQL
   statements wrapped in a single `t2/with-transaction`:
 
-    1. **INSERT** rows whose natural key isn't already present in
-       `metabase_field` (active OR inactive — stubs participate so the
-       NOT EXISTS catches them and the second statement clobbers them).
-       Sets `active=true`, `is_defective_duplicate=false`,
-       `fk_target_field_id=NULL` (phase 4 fills it).
-    2. **UPDATE** matched rows by clobbering the seven payload columns
+    1. **UPDATE** matched rows by clobbering the seven payload columns
        (`base_type`, `database_type`, `description`, `effective_type`,
        `semantic_type`, `coercion_strategy`, `nfc_path`), setting
        `active=true` (flips stubs to live), bumping `updated_at`. Each
        SET column uses a correlated subquery on staging.
+    2. **INSERT** rows whose natural key isn't already present in
+       `metabase_field` (active OR inactive — stubs participate so the
+       NOT EXISTS catches them and the first statement clobbers them).
+       Sets `active=true`, `is_defective_duplicate=false`,
+       `fk_target_field_id=NULL` (phase 4 fills it).
+
+  UPDATE runs before INSERT so that on a clean-schema import the UPDATE
+  matches nothing (fast no-op) and the INSERT then writes each row exactly
+  once. The reverse order would INSERT every row and then UPDATE-clobber
+  every just-inserted row with the same payload — pure write amplification.
 
   Match key is `(table_id, name, unique_field_helper)` where
   `unique_field_helper = COALESCE(parent_id, 0)` — stable across re-imports
@@ -554,7 +559,27 @@
   outer txn's all-or-nothing semantics."
   []
   (t2/with-transaction [_]
-    ;; INSERT rows that don't already exist
+    ;; UPDATE matched rows first (clobber payload, flip stubs active=true, bump updated_at)
+    (t2/query
+     {:update :metabase_field
+      :set    (-> (into {} (map (fn [c] [c (staging-clobber-subquery c)])) fields-clobber-cols)
+                  (assoc :active     [:inline true]
+                         :updated_at :%now))
+      :where  [:and
+               [:= :metabase_field.is_defective_duplicate [:inline false]]
+               [:exists {:select [[[:inline 1]]]
+                         :from [[:metabase_field_import :fi]]
+                         :join [[:metabase_database :d] [:= :d.name :fi.db_name]
+                                [:metabase_table :t]    [:and
+                                                         [:= :t.db_id :d.id]
+                                                         [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
+                                                         [:= :t.name :fi.table_name]
+                                                         [:= :t.is_defective_duplicate [:inline false]]]]
+                         :where [:and
+                                 [:= :metabase_field.table_id :t.id]
+                                 [:= :metabase_field.name :fi.field_name]
+                                 [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]]}]]})
+    ;; INSERT rows that don't already exist (after the UPDATE above, just-clobbered rows do exist)
     (t2/query
      {:insert-into
       [[:metabase_field [:table_id :name :base_type :database_type :description
@@ -578,27 +603,7 @@
                                        [:= :f.table_id :t.id]
                                        [:= :f.name :fi.field_name]
                                        [:= :f.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]
-                                       [:= :f.is_defective_duplicate [:inline false]]]}]]}]})
-    ;; UPDATE matched rows (clobber payload, flip active=true, bump updated_at)
-    (t2/query
-     {:update :metabase_field
-      :set    (-> (into {} (map (fn [c] [c (staging-clobber-subquery c)])) fields-clobber-cols)
-                  (assoc :active     [:inline true]
-                         :updated_at :%now))
-      :where  [:and
-               [:= :metabase_field.is_defective_duplicate [:inline false]]
-               [:exists {:select [[[:inline 1]]]
-                         :from [[:metabase_field_import :fi]]
-                         :join [[:metabase_database :d] [:= :d.name :fi.db_name]
-                                [:metabase_table :t]    [:and
-                                                         [:= :t.db_id :d.id]
-                                                         [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
-                                                         [:= :t.name :fi.table_name]
-                                                         [:= :t.is_defective_duplicate [:inline false]]]]
-                         :where [:and
-                                 [:= :metabase_field.table_id :t.id]
-                                 [:= :metabase_field.name :fi.field_name]
-                                 [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]]}]]})))
+                                       [:= :f.is_defective_duplicate [:inline false]]]}]]}]})))
 
 (defn assert-no-unresolved-parent-refs!
   "Defensive guard: every staging row with a non-NULL `parent_db_name` should
