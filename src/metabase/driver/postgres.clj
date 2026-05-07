@@ -25,6 +25,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -55,7 +56,11 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent :sql-jdbc)
+;; Inherit from `::like-escape-char-built-in/like-escape-char-built-in` because Postgres's
+;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
+;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
+;; `standard_conforming_strings = off` (#73721).
+(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
