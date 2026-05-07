@@ -115,6 +115,25 @@
           (is (contains? ids (:id notif-a)))
           (is (not (contains? ids (:id notif-b)))))))))
 
+(deftest owner-includes-is-active-test
+  (testing "the hydrated :owner map carries :is_active so FE can render the deactivated-owner state"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User             {active :id}      {:is_active true}
+                     :model/User             {deactivated :id} {:is_active false}
+                     :model/Card             {card-id :id}     {}
+                     :model/NotificationCard {nc1 :id}         {:card_id card-id}
+                     :model/NotificationCard {nc2 :id}         {:card_id card-id}
+                     :model/Notification     {active-n :id}    {:payload_type :notification/card
+                                                                :payload_id   nc1
+                                                                :creator_id   active}
+                     :model/Notification     {deact-n :id}     {:payload_type :notification/card
+                                                                :payload_id   nc2
+                                                                :creator_id   deactivated}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
+              by-id          (into {} (map (juxt :id identity) data))]
+          (is (=? {:owner {:id active        :is_active true}}  (by-id active-n)))
+          (is (=? {:owner {:id deactivated   :is_active false}} (by-id deact-n))))))))
+
 (deftest filter-by-owner-active-test
   (testing "?owner_active=true|false filters on the owner user's is_active flag"
     (mt/with-premium-features #{:audit-app}

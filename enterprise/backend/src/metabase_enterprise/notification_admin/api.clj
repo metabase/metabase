@@ -199,6 +199,7 @@
                     [:lc.started_at                                    :lc_started_at]
                     [:ls.ended_at                                      :ls_ended_at]
                     [:c.name                                           :card_name]
+                    [:cu.is_active                                     :owner_is_active]
                     [[:coalesce :cu.last_name :cu.first_name :cu.email] :owner_name]]
            :from   [:notification]
            :where  [:= :notification.payload_type "notification/card"]}
@@ -325,12 +326,16 @@
           rows)))
 
 (defn- ->owner-keys
-  "Surface the `creator_id` / `creator` slots as `owner_id` / `owner` on the response. The DB
-  column and the hydrate key stay as `creator_*` everywhere internally — this is a
-  response-boundary rename only."
-  [row]
-  (set/rename-keys row {:creator_id :owner_id
-                        :creator    :owner}))
+  "Surface the `creator_id` / `creator` slots as `owner_id` / `owner` on the response. Splices
+  `:is_active` (joined from `core_user`) onto the owner map — `t2/hydrate :creator` strips it
+  because `default-user-columns` omits it. Response-boundary rename: the DB column and internal
+  hydrate key stay as `creator_*`."
+  [{:keys [creator owner_is_active] :as row}]
+  (-> row
+      (cond-> creator (assoc :creator (assoc creator :is_active owner_is_active)))
+      (dissoc :owner_is_active)
+      (set/rename-keys {:creator_id :owner_id
+                        :creator    :owner})))
 
 (defn- list-notifications
   "Single SQL query for the page; one extra query for failed-run error messages on that page."
