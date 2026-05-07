@@ -124,12 +124,12 @@
 
 (api.macros/defendpoint :put "/active" :- [:map {:closed true}
                                            [:updated :int]
-                                           [:cannot-write :int]
+                                           [:cannot_write :int]
                                            [:failed :int]]
   "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs
   via `POST /api/transform-job/:job-id/run` ignore this flag.
 
-  Reports per-job outcome counts: `:updated` (successfully flipped), `:cannot-write` (skipped
+  Reports per-job outcome counts: `:updated` (successfully flipped), `:cannot_write` (skipped
   because the caller lacks write permission on the job), `:failed` (raised an error during the
   flip — the row update or Quartz write failed and was logged)."
   [_route-params
@@ -150,7 +150,7 @@
                          :failed)))
         outcomes   (frequencies (map try-op writable))]
     {:updated      (get outcomes :ok 0)
-     :cannot-write (count unwritable)
+     :cannot_write (count unwritable)
      :failed       (get outcomes :failed 0)}))
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse

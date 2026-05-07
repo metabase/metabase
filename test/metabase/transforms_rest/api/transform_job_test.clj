@@ -204,13 +204,13 @@
               active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
           (testing "Deactivates all jobs"
             (is (=? {:updated      pos?
-                     :cannot-write zero?
+                     :cannot_write zero?
                      :failed       zero?}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))
             (is (every? false? (vals (active-by-id)))))
           (testing "Reactivates all jobs"
             (is (=? {:updated      pos?
-                     :cannot-write zero?
+                     :cannot_write zero?
                      :failed       zero?}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})))
             (is (every? true? (vals (active-by-id))))))))))
@@ -228,7 +228,7 @@
                                           (orig job-id)))]
             (is (=? {:updated      #(<= 1 %)
                      :failed       #(<= 1 %)
-                     :cannot-write zero?}
+                     :cannot_write zero?}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))))))))
 
 (deftest update-all-jobs-active-permissions-test
