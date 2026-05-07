@@ -109,12 +109,6 @@ export const Search = createEntity({
 
   schema: ObjectUnionSchema,
 
-  // delegate to the actual object's entity wrapEntity
-  wrapEntity(object, dispatch = null) {
-    const entity = entityForObject(object);
-    return entity ? entity.wrapEntity(object, dispatch) : object;
-  },
-
   objectActions: {
     delete: (object) => {
       return (dispatch) => {
