@@ -123,27 +123,35 @@
     (t2/hydrate job :tag_ids)))
 
 (api.macros/defendpoint :put "/active" :- [:map {:closed true}
-                                           [:updated :int]]
+                                           [:updated :int]
+                                           [:cannot-write :int]
+                                           [:failed :int]]
   "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs
-  via `POST /api/transform-job/:job-id/run` ignore this flag."
+  via `POST /api/transform-job/:job-id/run` ignore this flag.
+
+  Reports per-job outcome counts: `:updated` (successfully flipped), `:cannot-write` (skipped
+  because the caller lacks write permission on the job), `:failed` (raised an error during the
+  flip — the row update or Quartz write failed and was logged)."
   [_route-params
    _query-params
    {:keys [active]} :- [:map [:active :boolean]]]
   (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
-  (let [op     (if active transforms.core/activate-job! transforms.core/deactivate-job!)
-        verb   (if active "activate" "deactivate")
-        ids    (->> (t2/select :model/TransformJob :active (not active))
-                    (filter mi/can-write?)
-                    (mapv :id))
-        try-op (fn [id]
-                 (try
-                   (op id)
-                   true
-                   (catch Throwable t
-                     (log/errorf t "Failed to %s transform job %d" verb id)
-                     false)))]
-    {:updated (count (filter try-op ids))}))
+  (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
+        verb       (if active "activate" "deactivate")
+        candidates (t2/select :model/TransformJob :active (not active))
+        {writable true unwritable false} (group-by (comp boolean mi/can-write?) candidates)
+        try-op     (fn [job]
+                     (try
+                       (op (:id job))
+                       :ok
+                       (catch Throwable t
+                         (log/errorf t "Failed to %s transform job %d" verb (:id job))
+                         :failed)))
+        outcomes   (frequencies (map try-op writable))]
+    {:updated      (get outcomes :ok 0)
+     :cannot-write (count unwritable)
+     :failed       (get outcomes :failed 0)}))
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."

@@ -203,13 +203,33 @@
         (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
               active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
           (testing "Deactivates all jobs"
-            (let [response (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})]
-              (is (pos? (:updated response))))
+            (is (=? {:updated      pos?
+                     :cannot-write zero?
+                     :failed       zero?}
+                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))
             (is (every? false? (vals (active-by-id)))))
           (testing "Reactivates all jobs"
-            (let [response (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})]
-              (is (pos? (:updated response))))
+            (is (=? {:updated      pos?
+                     :cannot-write zero?
+                     :failed       zero?}
+                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})))
             (is (every? true? (vals (active-by-id))))))))))
+
+(deftest update-all-jobs-active-counts-test
+  (testing "PUT /api/transform-job/active reports :failed for jobs whose flip raises"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob _       {:name "OK" :schedule "0 0 0 * * ?"}
+                     :model/TransformJob job-bad {:name "Boom" :schedule "0 0 0 * * ?"}]
+        (let [orig (mt/original-fn #'transforms.schedule/delete-trigger!)]
+          (mt/with-dynamic-fn-redefs [transforms.schedule/delete-trigger!
+                                      (fn [job-id]
+                                        (if (= job-id (:id job-bad))
+                                          (throw (ex-info "boom" {}))
+                                          (orig job-id)))]
+            (is (=? {:updated      #(<= 1 %)
+                     :failed       #(<= 1 %)
+                     :cannot-write zero?}
+                    (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))))))))
 
 (deftest update-all-jobs-active-permissions-test
   (testing "PUT /api/transform-job/active requires superuser"

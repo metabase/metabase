@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transforms.models.job-run :as transforms.job-run]
@@ -80,29 +81,36 @@
       (for [job jobs]
         (assoc job :last_run (get last-executions (:id job)))))))
 
+(defn- active-flip-lock-name
+  "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
+  cluster. Concurrent flips of *different* jobs run in parallel."
+  [job-id]
+  (keyword "metabase.transforms.transform-job-active" (str job-id)))
+
 (defn activate-job!
   "Activate a transform job: set `:active` to true and (re)create its Quartz trigger from the
   job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
   job is a no-op.
 
-  Not safe under concurrent activate/deactivate of the same job: Quartz writes are not part of
-  the app-DB transaction, so a concurrent flip between the conditional UPDATE and the trigger op
-  here can leave the DB and the scheduler out of sync. Acceptable for the admin-action callers
-  (per-job and bulk PUT endpoints); callers that need atomicity must coordinate externally."
+  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock so
+  the app-DB row and the Quartz trigger cannot diverge. The lock is held across the trigger
+  write."
   [job-id]
-  (when (pos? (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
-    (transforms.schedule/initialize-job! (t2/select-one :model/TransformJob :id job-id))))
+  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
+    (when (pos? (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
+      (transforms.schedule/initialize-job! (t2/select-one :model/TransformJob :id job-id)))))
 
 (defn deactivate-job!
   "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
   firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
   job is a no-op.
 
-  Not safe under concurrent activate/deactivate of the same job — see [[activate-job!]] for
-  the concurrency caveat."
+  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock — see
+  [[activate-job!]]."
   [job-id]
-  (when (pos? (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
-    (transforms.schedule/delete-trigger! job-id)))
+  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
+    (when (pos? (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
+      (transforms.schedule/delete-trigger! job-id))))
 
 (defn update-job-tags!
   "Update the tags associated with a job using smart diff logic.
