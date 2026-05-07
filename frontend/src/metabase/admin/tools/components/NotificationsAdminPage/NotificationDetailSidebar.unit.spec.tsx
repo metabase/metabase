@@ -7,10 +7,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type {
-  AdminNotification,
-  AdminNotificationDetail,
-} from "metabase-types/api";
+import type { AdminNotificationDetail } from "metabase-types/api";
 import {
   createMockAdminNotificationListItem,
   createMockCard,
@@ -70,13 +67,9 @@ const mockDetail = (
 
 type SetupOpts = {
   detail?: AdminNotificationDetail;
-  notifications?: AdminNotification[];
 };
 
-const setup = ({
-  detail = mockDetail(),
-  notifications = [detail],
-}: SetupOpts = {}) => {
+const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
   fetchMock.get("path:/api/user", { data: [], total: 0 });
   setupTaskRunsEndpoints({
     data: [
@@ -96,7 +89,6 @@ const setup = ({
   });
 
   const onClose = jest.fn();
-  const onNavigate = jest.fn();
   const onArchive = jest.fn();
   const onUnarchive = jest.fn();
   const onChangeOwner = jest.fn();
@@ -104,11 +96,9 @@ const setup = ({
   const utils = renderWithProviders(
     <NotificationDetailSidebar
       notificationId={detail.id}
-      notifications={notifications}
       isBulkLoading={false}
       mockDetail={detail}
       onClose={onClose}
-      onNavigate={onNavigate}
       onArchive={onArchive}
       onUnarchive={onUnarchive}
       onChangeOwner={onChangeOwner}
@@ -119,7 +109,6 @@ const setup = ({
   return {
     ...utils,
     onClose,
-    onNavigate,
     onArchive,
     onUnarchive,
     onChangeOwner,
@@ -163,25 +152,6 @@ describe("NotificationDetailSidebar", () => {
     const { onClose } = setup();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it("disables prev/next when there is only one notification", async () => {
-    setup();
-    expect(
-      screen.getByRole("button", { name: "Previous alert" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next alert" })).toBeDisabled();
-  });
-
-  it("navigates to the next notification when chevron-down is clicked", async () => {
-    const detail = mockDetail();
-    const next = mockDetail({ id: 12 });
-    const { onNavigate } = setup({
-      detail,
-      notifications: [detail, next],
-    });
-    await userEvent.click(screen.getByRole("button", { name: "Next alert" }));
-    expect(onNavigate).toHaveBeenCalledWith(12);
   });
 
   it("offers archive and change-owner actions in the more menu", async () => {

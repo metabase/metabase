@@ -151,10 +151,6 @@ export const NotificationsAdminPage = ({
     dispatch(push(Urls.adminToolsNotificationDetail(id)));
   };
 
-  const handleSidebarNavigate = (id: NotificationId) => {
-    dispatch(push(Urls.adminToolsNotificationDetail(id)));
-  };
-
   const handleSidebarClose = () => {
     dispatch(push(Urls.adminToolsNotifications()));
   };
@@ -389,13 +385,11 @@ export const NotificationsAdminPage = ({
         </BulkActionButton>
       </BulkActionBar>
 
-      {parsedDetailId != null && (
+      {parsedDetailId !== null && (
         <NotificationDetailSidebar
           notificationId={parsedDetailId}
-          notifications={notifications}
           isBulkLoading={isBulkLoading}
           onClose={handleSidebarClose}
-          onNavigate={handleSidebarNavigate}
           onArchive={(notification) => handleSidebarArchive(notification.id)}
           onUnarchive={(notification) =>
             handleSidebarUnarchive(notification.id)

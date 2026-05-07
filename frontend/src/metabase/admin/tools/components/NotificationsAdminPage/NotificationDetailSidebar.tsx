@@ -1,4 +1,4 @@
-import { Children, Fragment, useMemo } from "react";
+import { Children, Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -25,7 +25,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  AdminNotification,
   AdminNotificationDetail,
   NotificationHandler,
   NotificationHandlerEmail,
@@ -44,10 +43,8 @@ const RECENT_RUNS_LIMIT = 5;
 
 type Props = {
   notificationId: NotificationId;
-  notifications: AdminNotification[];
   isBulkLoading: boolean;
   onClose: () => void;
-  onNavigate: (id: NotificationId) => void;
   onArchive: (notification: AdminNotificationDetail) => void;
   onUnarchive: (notification: AdminNotificationDetail) => void;
   onChangeOwner: (notification: AdminNotificationDetail) => void;
@@ -55,10 +52,8 @@ type Props = {
 
 export const NotificationDetailSidebar = ({
   notificationId,
-  notifications,
   isBulkLoading,
   onClose,
-  onNavigate,
   onArchive,
   onUnarchive,
   onChangeOwner,
@@ -68,18 +63,6 @@ export const NotificationDetailSidebar = ({
     error,
     isLoading,
   } = useAdminNotificationDetailQuery(notificationId);
-
-  const { previousId, nextId } = useMemo(() => {
-    const index = notifications.findIndex((n) => n.id === notificationId);
-    if (index < 0) {
-      return { previousId: null, nextId: null };
-    }
-    return {
-      previousId: index > 0 ? notifications[index - 1].id : null,
-      nextId:
-        index < notifications.length - 1 ? notifications[index + 1].id : null,
-    };
-  }, [notifications, notificationId]);
 
   return (
     <Drawer
@@ -95,12 +78,9 @@ export const NotificationDetailSidebar = ({
     >
       <Stack gap={0} h="100%">
         <SidebarHeader
-          previousId={previousId}
-          nextId={nextId}
           isBulkLoading={isBulkLoading}
           notification={notification}
           onClose={onClose}
-          onNavigate={onNavigate}
           onArchive={onArchive}
           onUnarchive={onUnarchive}
           onChangeOwner={onChangeOwner}
@@ -118,24 +98,18 @@ export const NotificationDetailSidebar = ({
 };
 
 type SidebarHeaderProps = {
-  previousId: NotificationId | null;
-  nextId: NotificationId | null;
   isBulkLoading: boolean;
   notification: AdminNotificationDetail | undefined;
   onClose: () => void;
-  onNavigate: (id: NotificationId) => void;
   onArchive: (notification: AdminNotificationDetail) => void;
   onUnarchive: (notification: AdminNotificationDetail) => void;
   onChangeOwner: (notification: AdminNotificationDetail) => void;
 };
 
 const SidebarHeader = ({
-  previousId,
-  nextId,
   isBulkLoading,
   notification,
   onClose,
-  onNavigate,
   onArchive,
   onUnarchive,
   onChangeOwner,
@@ -145,27 +119,7 @@ const SidebarHeader = ({
 
   return (
     <Box px="xl" pt="lg" pb="md">
-      <Flex justify="space-between" align="center" mb="md">
-        <Group gap="xs">
-          <ActionIcon
-            aria-label={t`Previous alert`}
-            variant="default"
-            size="lg"
-            disabled={previousId == null}
-            onClick={() => previousId != null && onNavigate(previousId)}
-          >
-            <Icon name="chevronup" />
-          </ActionIcon>
-          <ActionIcon
-            aria-label={t`Next alert`}
-            variant="default"
-            size="lg"
-            disabled={nextId == null}
-            onClick={() => nextId != null && onNavigate(nextId)}
-          >
-            <Icon name="chevrondown" />
-          </ActionIcon>
-        </Group>
+      <Flex justify="flex-end" align="center" mb="md">
         <Group gap={4}>
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
