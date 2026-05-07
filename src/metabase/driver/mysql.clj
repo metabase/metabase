@@ -1299,7 +1299,14 @@
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
-     :database_details {:user user, :password password :db db-name}}))
+     ;; Intentionally omit `:db` from `:database_details`: when the workspace
+     ;; loader merges these over the canonical Database's `:details`, we must
+     ;; not overwrite the connection's bound database. MySQL workspace users
+     ;; need to read from the canonical input DB (granted via `GRANT SELECT
+     ;; ON <input-db>.*`) while output writes go to `db-name` via fully
+     ;; qualified `INSERT INTO <db-name>.<table>`. The output DB lives in
+     ;; the WSD row's `:output_schema`, not in connection details.
+     :database_details {:user user, :password password}}))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]

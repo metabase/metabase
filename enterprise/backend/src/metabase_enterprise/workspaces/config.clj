@@ -3,18 +3,38 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.driver :as driver]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
+
+(defn- schema-filter-entries
+  "Build `:schema-filters-*` keys for the workspace's input scope, or `{}`
+   for engines that don't have schemas at all (MySQL, ClickHouse-as-1-DB).
+
+   On schema-having drivers (Postgres, Redshift, SQL Server, Snowflake), the
+   filter is what scopes sync to the workspace's input schemas. On no-schema
+   drivers, JDBC reports `TABLE_SCHEM` as null for every row — and
+   `metabase.driver.sync/schema-patterns->filter-fn*` documents that
+   inclusion patterns NEVER match a `nil` schema. Emitting an inclusion
+   filter on those drivers makes sync silently produce zero Tables.
+
+   Scoping on no-schema drivers is already enforced by the connection's
+   bound database (`:details.db`), which itself maps 1-to-1 with the
+   workspace's input. Nothing more to filter."
+  [{:keys [engine] :as db} wsd]
+  (if (driver/database-supports? engine :schemas db)
+    {:schema-filters-type     "inclusion"
+     :schema-filters-patterns (str/join "," (:input_schemas wsd))}
+    {}))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
    :details (merge (:details db)
                    (:database_details wsd)
-                   {:schema-filters-type     "inclusion"
-                    :schema-filters-patterns (str/join "," (:input_schemas wsd))})})
+                   (schema-filter-entries db wsd))})
 
 (defn- db-position-value
   "Connection-side value for the `:db` AST slot of `database`, or nil for engines
