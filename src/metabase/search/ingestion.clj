@@ -221,7 +221,11 @@
                ([result m]
                 (if-let [doc (try
                                (->document m)
-                               (catch Throwable t
+                               (catch InterruptedException ie
+                                 (.interrupt (Thread/currentThread))
+                                 (throw ie))
+                               (catch Exception t
+                                 (analytics/inc! :metabase-search/index-documents-skipped {:model (:model m)})
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
