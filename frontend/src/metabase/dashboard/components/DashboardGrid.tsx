@@ -18,7 +18,8 @@ import {
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, type FlexProps } from "metabase/ui";
@@ -30,7 +31,6 @@ import {
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
-import { connect } from "metabase/utils/redux";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
@@ -356,8 +356,8 @@ class DashboardGridInner extends Component<
   getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
     return Boolean(
       dc.card.dashboard_id !== null &&
-        dc.card_id &&
-        this.state.dashcardCountByCardId[dc.card_id] <= 1,
+      dc.card_id &&
+      this.state.dashcardCountByCardId[dc.card_id] <= 1,
     );
   };
 
@@ -398,7 +398,6 @@ class DashboardGridInner extends Component<
 
       addUndo({
         message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
-        undo: true,
         action: () =>
           setDashCardAttributes({
             id: replaceCardModalDashCard.id,

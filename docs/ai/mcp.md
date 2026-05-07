@@ -9,17 +9,21 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server (using Streamable HTTP transport) that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-Before connecting, make sure AI features are enabled in your Metabase. See [AI settings](./settings.md).
-
 ## Connect an MCP client
 
-Point your MCP client at Metabase's MCP endpoint at `/api/mcp`:
+If your admin has turned on [your Metabase's MCP server](./settings.md#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
 
 ```
 https://{your-metabase.example.com}/api/mcp
 ```
 
-In Claude Code, for example, you can run `/mcp add metabase https://{your-metabase.example.com}/api/mcp --transport streamable-http` and Claude will handle the OAuth flow for you.
+In the terminal, for example, you can run the following command.
+
+```
+claude mcp add --transport http metabase https://{your-metabase-url}/api/mcp
+```
+
+Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
 
 For Claude Desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
 

@@ -1,10 +1,11 @@
 import type React from "react";
 import { useMemo } from "react";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
@@ -15,7 +16,6 @@ import {
   type NavLinkProps,
   Tooltip,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";

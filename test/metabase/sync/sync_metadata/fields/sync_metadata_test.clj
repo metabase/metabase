@@ -181,6 +181,37 @@
             (merge default-metadata {:database-partitioned false})
             (merge default-metadata {:database-partitioned true :id 1}))))))
 
+(deftest update-nfc-path-test
+  (testing "nil -> vector"
+    (is (= [["Field" 1 {:nfc_path ["payload" "user"]}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "user"]})
+            (merge default-metadata {:id 1})))))
+
+  (testing "vector -> nil"
+    (is (= [["Field" 1 {:nfc_path nil}]]
+           (updates-that-will-be-performed!
+            default-metadata
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "vector -> different vector"
+    (is (= [["Field" 1 {:nfc_path ["payload" "account"]}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "account"]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "no change when path is identical"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path ["payload" "user"]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+
+  (testing "no change when driver emits keywords and DB has equivalent strings"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:nfc-path [:payload :user]})
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 1}))))))
+
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "
                 "to set a `nil` value in the DB -- this is against the rules -- we should set `NULL` instead. See "

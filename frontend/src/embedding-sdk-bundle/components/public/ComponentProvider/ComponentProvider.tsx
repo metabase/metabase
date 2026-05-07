@@ -19,12 +19,12 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { MetabaseReduxProvider, useSelector } from "metabase/utils/redux";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
@@ -111,9 +111,7 @@ export const ComponentProviderInternal = (
   }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
-    if (fontFamily) {
-      reduxStore.dispatch(setOptions({ font: fontFamily }));
-    }
+    reduxStore.dispatch(setOptions({ font: fontFamily }));
   }, [reduxStore, fontFamily]);
 
   useEffect(() => {

@@ -19,12 +19,14 @@ export * from "./dataset";
 export * from "./dependencies";
 export * from "./document";
 export * from "./email";
+export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./field";
 export * from "./metric";
 export * from "./geojson";
 export * from "./group";
 export * from "./insight";
+export * from "./llm";
 export * from "./logger";
 export * from "./measure";
 export * from "./metabot";
@@ -65,7 +67,6 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
-export * from "./workspace";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

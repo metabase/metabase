@@ -8,6 +8,7 @@ export interface AvatarProps {
   height?: string[];
   width?: string[];
   bg?: string;
+  className?: string;
 }
 
 export const Avatar = styled.div<AvatarProps>`

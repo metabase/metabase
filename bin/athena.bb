@@ -2,12 +2,12 @@
 
 (ns athena
   (:require
-    [babashka.cli :as cli]
-    [babashka.process :as p]
-    [clojure.data.xml :as x]
-    [clojure.java.io :as io]
-    [clojure.string :as str]
-    [clojure.zip :as z]))
+   [babashka.cli :as cli]
+   [babashka.process :as p]
+   [clojure.data.xml :as x]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.zip :as z]))
 
 ;; Since amazon is still not putting their athena jdbc on to maven, the easiest thing for us to do is setup a maven-y s3 repo and copy their jar into it.
 ;;

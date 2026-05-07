@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
@@ -168,7 +170,7 @@
       (is (= 200 (:status post-response))))))
 
 (deftest tools-list-test
-  (testing "tools/list returns the 8 agent tools"
+  (testing "tools/list returns the 10 agent tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
@@ -176,12 +178,33 @@
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
       (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query" "query"}
+               "get_metric_field_values" "construct_query" "execute_query" "query"
+               "create_question" "create_dashboard"}
              (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
-          (is (map? (:inputSchema tool))))))))
+          (is (map? (:inputSchema tool)))))
+      (testing "search description guides clients toward the expected array shape"
+        (let [tools-by-name   (into {} (map (juxt :name identity)) tools)
+              search-tool     (get tools-by-name "search")
+              property-schema (fn [tool-name property-name]
+                                (or (get-in tools-by-name [tool-name :inputSchema :properties property-name])
+                                    (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name)])))
+              collect-leaves  (fn collect-leaves [schema]
+                                (cond
+                                  (nil? schema)         []
+                                  (:oneOf schema)       (mapcat collect-leaves (:oneOf schema))
+                                  (:anyOf schema)       (mapcat collect-leaves (:anyOf schema))
+                                  :else                 [schema]))
+              leaf-types      (fn [schema] (set (keep :type (collect-leaves schema))))
+              array-branch    (fn [schema]
+                                (some #(when (= "array" (:type %)) %) (collect-leaves schema)))]
+          (is (str/includes? (:description search-tool) "arrays of strings"))
+          (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
+          (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
+          (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -234,6 +257,33 @@
         (is (= 200 (:status response)))
         (is (nil? (:isError result)))
         (is (= "text" (:type (first (:content result)))))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))
+          (is (contains? search-data :total_count))))))
+
+  (testing "search accepts a singleton string as a one-element query list"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "orders"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (nil? (:isError result)))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))))))
+
+  (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "[\"orders\"]"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (nil? (:isError result)))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
           (is (contains? search-data :total_count)))))))
@@ -366,6 +416,25 @@
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
+(deftest tools-call-string-body-error-surfaces-actionable-message-test
+  (testing (str "Claude's connector review explicitly rejects bare-status error messages — "
+                "when the agent-api returns a string body (e.g. 404 \"Not found.\"), the MCP "
+                "error content surfaces the body verbatim rather than collapsing to "
+                "\"Agent API error: <status>\".")
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "tools/call"
+                                                 {:name      "get_table"
+                                                  :arguments {:id 999999}})
+                                {"mcp-session-id" session-id})
+          result   (get-in response [:body :result])
+          message  (:text (first (:content result)))]
+      (is (= 200 (:status response)))
+      (is (true? (:isError result)))
+      (is (= "Not found." message)
+          "string body should be surfaced verbatim")
+      (is (not (str/includes? message "Agent API error"))
+          "must not fall through to the bare-status fallback"))))
+
 (deftest tools-list-no-refs-test
   (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
@@ -395,6 +464,71 @@
       (let [table-data (json/decode+kw (:text (first (:content result))))]
         (is (empty? (:fields table-data))
             "with-fields=false should return no fields")))))
+
+(defn- orders-count-query
+  "Simple count query on the orders table — used as the dataset_query for smoke-test metrics."
+  []
+  (-> (lib/query (mt/metadata-provider)
+                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+      (lib/aggregate (lib/count))))
+
+(def ^:private smoke-tested-tools
+  "Tools exercised by `tools-call-smoke-test`. New tools must be added here (and
+   below) — the test compares this set against `mcp.tools/list-tools` and fails
+   when they diverge, ensuring no tool ships without a basic invocation check."
+  #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
+    "search" "construct_query" "query" "execute_query"
+    "create_question" "create_dashboard"})
+
+(deftest tools-call-smoke-test
+  (testing "every registered tool is exercised by the smoke test"
+    (is (= (set (map :name (mcp.tools/list-tools nil)))
+           smoke-tested-tools)
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+  (testing "every tool returns a successful response with valid parameters"
+    (search.tu/with-legacy-search
+      (mt/with-temp [:model/Card metric {:name          "Smoke Metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (let [[session-id _] (initialize!)
+              orders-id      (mt/id :orders)
+              ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
+              ;; assertion in `call-tool` fails partway through the sequence.
+              question-id    (atom nil)
+              dash-id        (atom nil)]
+          (try
+            (let [;; Read tools — call-tool helper asserts (not :isError) internally.
+                  table-data     (call-tool session-id "get_table" {:id orders-id})
+                  table-fid      (-> table-data :fields first :field_id)
+                  _              (call-tool session-id "get_table_field_values"
+                                            {:id orders-id :field-id (str table-fid)})
+                  metric-data    (call-tool session-id "get_metric" {:id (:id metric)})
+                  metric-fid     (-> metric-data :queryable_dimensions first :field_id)
+                  _              (call-tool session-id "get_metric_field_values"
+                                            {:id (:id metric) :field-id (str metric-fid)})
+                  _              (call-tool session-id "search" {:term_queries ["orders"]})
+                  ;; Query construction + execution
+                  construct-data (call-tool session-id "construct_query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "execute_query"
+                                            {:query (:query construct-data)})
+                  ;; Write tools — record IDs as soon as they're known so the `finally` block
+                  ;; can clean up even if a later step throws.
+                  question-data  (call-tool session-id "create_question"
+                                            {:name  "Smoke Question"
+                                             :query (:query construct-data)})
+                  _              (reset! question-id (:id question-data))
+                  dash-data      (call-tool session-id "create_dashboard"
+                                            {:name "Smoke Dashboard"})]
+              (reset! dash-id (:id dash-data)))
+            (finally
+              (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did)))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"
@@ -446,7 +580,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -459,11 +593,11 @@
 
   (testing "tools/list with wildcard scope matches all agent tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 8 (count tools)))))
+      (is (= 10 (count tools)))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]

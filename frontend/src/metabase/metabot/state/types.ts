@@ -1,10 +1,20 @@
+import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
+import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
+  MetabotCodeEditorBufferContext,
   MetabotHistory,
   MetabotSuggestedTransform,
-  MetabotTodoItem,
   MetabotTransformInfo,
 } from "metabase-types/api";
+
+export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+
+export type MetabotDataPartMetadata = {
+  codeEditBuffer?: MetabotCodeEditorBufferContext;
+  editorTransform?: MetabotTransformInfo;
+  suggestionId?: string;
+};
 
 export type MetabotUserTextChatMessage = {
   id: string;
@@ -26,24 +36,16 @@ export type MetabotAgentTextChatMessage = {
   role: "agent";
   type: "text";
   message: string;
+  externalId?: string;
 };
 
-export type MetabotAgentTodoListChatMessage = {
+export type MetabotAgentDataPartMessage = {
   id: string;
   role: "agent";
-  type: "todo_list";
-  payload: MetabotTodoItem[];
-};
-
-export type MetabotAgentEditSuggestionChatMessage = {
-  id: string;
-  role: "agent";
-  type: "edit_suggestion";
-  model: "transform";
-  payload: {
-    editorTransform: MetabotTransformInfo | undefined;
-    suggestedTransform: MetabotSuggestedTransform;
-  };
+  type: "data_part";
+  part: MetabotDataPart;
+  metadata?: MetabotDataPartMetadata;
+  externalId?: string;
 };
 
 export type MetabotDebugToolCallMessage = {
@@ -59,8 +61,7 @@ export type MetabotDebugToolCallMessage = {
 
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
-  | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage
+  | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage;
 
 export type MetabotUserChatMessage =
@@ -74,10 +75,15 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
-export type MetabotErrorMessage = {
-  type: "message" | "alert";
-  message: string;
-};
+export type MetabotErrorMessage =
+  | {
+      type: "message" | "alert";
+      message: string;
+    }
+  | {
+      type: "locked";
+      message: string;
+    };
 
 export type MetabotToolCall = {
   id: string;
@@ -103,7 +109,8 @@ export interface MetabotConverstationState {
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];
-  profileOverride: string | undefined;
+  profileOverride: MetabotProfileId | undefined;
+  pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;

@@ -57,9 +57,11 @@
     (into []
           (comp (filter #(scope-matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       {:name        (:name tool)
-                        :description (:description tool)
-                        :inputSchema (:inputSchema tool)})))
+                       (cond-> {:name        (:name tool)
+                                :title       (:title tool)
+                                :description (:description tool)
+                                :inputSchema (:inputSchema tool)}
+                         (:annotations tool) (assoc :annotations (:annotations tool))))))
           tools)))
 
 (defn- build-tool-index
@@ -76,6 +78,43 @@
   (if config/is-dev?
     (build-tool-index (:tools (manifest)))
     @tool-index-delay))
+
+(defn- format-validation-detail
+  "Flatten a defendpoint schema-error map — humanized by `malli.error`, whose leaves
+   are vectors of message strings and whose intermediate nodes may be nested maps —
+   into a compact `field: msg, msg; field: msg` rendering for MCP error text."
+  [errors-map]
+  (->> errors-map
+       (map (fn [[k v]]
+              (str (name k) ": "
+                   (cond
+                     (map? v)        (format-validation-detail v)
+                     (sequential? v) (str/join ", " v)
+                     :else           (str v)))))
+       (str/join "; ")))
+
+(defn- extract-error-message
+  "Pull the best human-readable string out of an agent-api error response. Agent-api
+   returns `:specific-errors`/`:errors` for schema-validation 400s (see
+   [[metabase.api.macros/decode-and-validate-params]]) and `:message`/`:error` for
+   other failures — surfacing the validation detail turns \"Invalid body\" into an
+   actionable message for MCP clients. String bodies (e.g. 404 \"Not found.\") are
+   surfaced as the message rather than collapsed to a bare \"Agent API error: <status>\"."
+  [response]
+  (let [body                                              (:body response)
+        body-map                                          (when (map? body) body)
+        body-str                                          (when (and (string? body) (not (str/blank? body))) body)
+        {msg :message :keys [specific-errors errors error]} body-map
+        detail (cond
+                 (seq specific-errors) (format-validation-detail specific-errors)
+                 (seq errors)          (format-validation-detail errors))]
+    (cond
+      (and msg detail) (str msg " (" detail ")")
+      detail           detail
+      msg              msg
+      error            error
+      body-str         body-str
+      :else            (str "Agent API error: " (:status response)))))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -121,7 +160,11 @@
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
                        response)))
-   (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
+   (fn [error]
+     (let [{:keys [status-code] :as data} (ex-data error)]
+       (deliver result {:status (or status-code 500)
+                        :body   (merge (select-keys data [:errors :specific-errors])
+                                       {:message (or (ex-message error) "Internal error")})})))))
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
@@ -143,9 +186,7 @@
         (text-content (:body response))
 
         :else
-        (error-content (or (some-> response :body :message)
-                           (some-> response :body :error)
-                           (str "Agent API error: " (:status response))))))))
+        (error-content (extract-error-message response))))))
 
 (defn- interpolate-path
   "Replace `{param}` placeholders in `path` with values from `arguments`.

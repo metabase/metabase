@@ -25,3 +25,12 @@
   :audit      :never
   :doc        (str "Setting this environment variable to false can also come in handy when migrating environments, as"
                    " it can simplify the migration process."))
+
+(defsetting last-analytics-views-checksum
+  "Checksum of the instance_analytics_views SQL files. When this changes, the audit DB schema
+  is re-synced to pick up new or modified views from migrations."
+  :type       :integer
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)

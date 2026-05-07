@@ -1,10 +1,9 @@
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -33,7 +32,7 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { SmartScalarComparison } from "./visualization-settings";
+import type { PieRow, SmartScalarComparison } from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -41,8 +40,9 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;
@@ -452,7 +452,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;

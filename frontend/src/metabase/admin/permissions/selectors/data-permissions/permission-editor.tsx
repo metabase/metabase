@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
-import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
   PLUGIN_AUDIT,
@@ -42,7 +41,7 @@ import {
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
 import { buildFieldsPermissions } from "./fields";
-import { getOrderedGroups } from "./groups";
+import { getOrderedGroups, selectGroupById, selectGroupList } from "./groups";
 import { buildSchemasPermissions } from "./schemas";
 import { buildTablesPermissions } from "./tables";
 
@@ -150,9 +149,7 @@ const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
     return null;
   }
 
-  return Groups.selectors.getObject(state, {
-    entityId: parseInt(groupId),
-  });
+  return selectGroupById(state, parseInt(groupId));
 };
 
 const hasViewDataOptions = (entities: any[]) => {
@@ -205,7 +202,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getDataPermissions,
   getOriginalDataPermissions,
   getGroup,
-  Groups.selectors.getList,
+  selectGroupList,
   getIsLoadingDatabaseTables,
   getShouldShowTransformPermissions,
   (
@@ -213,7 +210,7 @@ export const getDatabasesPermissionEditor = createSelector(
     params,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
-    group: Group,
+    group: Group | null | undefined,
     groups: Group[],
     isLoading,
     showTransformPermissions,

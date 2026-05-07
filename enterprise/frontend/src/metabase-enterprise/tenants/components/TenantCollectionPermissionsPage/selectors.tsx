@@ -11,16 +11,17 @@ import type {
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  DataPermissionValue,
-  PermissionEditorType,
+import { selectGroupList } from "metabase/admin/permissions/selectors/data-permissions/groups";
+import {
+  DataPermission,
+  DataPermissionType,
+  type PermissionEditorType,
 } from "metabase/admin/permissions/types";
 import {
   Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import {
@@ -28,10 +29,12 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
 
@@ -162,7 +165,7 @@ const getTenantCollectionPermission = (
 export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
   getTenantCollectionEntity,
-  Groups.selectors.getList,
+  selectGroupList,
   (permissions, collection, groups): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
@@ -181,13 +184,15 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
-        const defaultGroupPermission = defaultGroup
-          ? getTenantCollectionPermission(
-              permissions,
-              defaultGroup.id,
-              collection.id,
-            )
-          : "none";
+        if (!defaultGroup) {
+          return null;
+        }
+
+        const defaultGroupPermission = getTenantCollectionPermission(
+          permissions,
+          defaultGroup.id,
+          collection.id,
+        );
 
         const confirmations = (newValue: DataPermissionValue) => [
           getPermissionWarningModal(
@@ -221,6 +226,8 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           ) : undefined,
           permissions: [
             {
+              permission: DataPermission.COLLECTIONS,
+              type: DataPermissionType.COLLECTIONS,
               toggleLabel,
               hasChildren,
               isDisabled: disabled,
@@ -241,7 +248,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           ],
         };
       })
-      .filter(Boolean);
+      .filter(isNotNull);
 
     return {
       title: t`Permissions for ${collection.name}`,

@@ -6,11 +6,11 @@ import _ from "underscore";
 import { bookmarkApi, useListBookmarksQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
-import { Documents } from "metabase/entities/documents";
 import { Questions } from "metabase/entities/questions";
 import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
@@ -22,9 +22,9 @@ export const Bookmarks = createEntity({
   nameOne: "bookmark",
   path: "/api/bookmark",
   schema: BookmarkSchema,
-  rtk: {
+  rtk: () => ({
     useListQuery: useListBookmarksQuery,
-  },
+  }),
   api: {
     list: (_, dispatch) => {
       return entityCompatibleQuery(
@@ -124,20 +124,6 @@ export const Bookmarks = createEntity({
           authority_level,
           name,
         }));
-      }
-    }
-
-    if (type === Documents.actionTypes.UPDATE && payload?.object) {
-      const { id, archived, name } = payload.object;
-      const key = `document-${id}`;
-
-      if (!getIn(state, [key])) {
-        return state;
-      }
-      if (archived) {
-        return dissoc(state, key);
-      } else {
-        return updateIn(state, [key], (item) => ({ ...item, name }));
       }
     }
 

@@ -785,9 +785,10 @@ describe("UXW-2696", () => {
 
     H.getDocumentSidebar().within(() => {
       cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-      cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-        "not.have.attr",
+      cy.findByLabelText("Auto y-axis range").should(
+        "have.attr",
         "data-checked",
+        "false",
       );
 
       cy.findByLabelText("Min").clear().type("70");
@@ -828,9 +829,10 @@ describe("UXW-2696", () => {
 
       H.modal().within(() => {
         cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-        cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-          "not.have.attr",
+        cy.findByLabelText("Auto y-axis range").should(
+          "have.attr",
           "data-checked",
+          "false",
         );
 
         assertNoPoints(false);

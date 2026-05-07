@@ -1,8 +1,9 @@
+import type { Location } from "history";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -39,7 +40,11 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 
 const MAX_POLL_COUNT = 30;
 
-export function SecurityCenterPage() {
+type SecurityCenterPageProps = {
+  location?: Location<{ open?: string }>;
+};
+
+export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: advisories,
@@ -51,7 +56,9 @@ export function SecurityCenterPage() {
   const [syncAdvisories, { isLoading: isSyncing }] =
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => location?.query?.open === "notifications",
+  );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
   const [sendToast] = useToast();

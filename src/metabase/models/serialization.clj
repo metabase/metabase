@@ -56,7 +56,6 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -338,7 +337,9 @@
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity :name))
+  (maybe-labeled model-name entity #(if (string? (:name %))
+                                      (:name %)
+                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
@@ -1352,30 +1353,37 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (match entity
-    [:field     (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    ["field"    (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    [:metric    (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    ["metric"   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    [:segment   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    ["segment"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    [:measure   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
-    ["measure"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+  (lib.util.match/match-lite entity
+    [#{:field "field"} (opts :guard map?) (id :guard vector?)]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
+     (opts :guard map?)
+     (field :guard portable-id?)]
+    (into #{[{:model (case tag
+                       (:metric "metric") "Card"
+                       (:segment "segment") "Segment"
+                       (:measure "measure") "Measure")
+              :id field}]}
+          (mbql-deps-map opts))
+
     ;; legacy (MBQL 4) refs
-    [:field     (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    ["field"    (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    [:metric    (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    ["metric"   (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    [:segment   (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    ["segment"  (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    [:measure   (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    ["measure"  (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    :else (reduce #(cond
-                     (map? %2)    (into %1 (mbql-deps-map %2))
-                     (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else %1)
-                  #{}
-                  entity)))
+    [#{:field "field" :field-id "field-id"} (id :guard vector?) opts]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
+    #{[{:model (case tag
+                 (:metric "metric") "Card"
+                 (:segment "segment") "Segment"
+                 (:measure "measure") "Measure")
+        :id field}]}
+
+    _ (reduce #(cond
+                 (map? %2)    (into %1 (mbql-deps-map %2))
+                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 :else %1)
+              #{}
+              entity)))
 
 (defn- mbql-deps-map [m]
   (into #{}
@@ -1673,13 +1681,7 @@
     [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations opts)]
 
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]
-
-    (_ :guard map?)
-    (m/map-vals import-visualizations &match)
-
-    (_ :guard vector?)
-    (mapv import-visualizations &match)))
+    [:field-id (*import-field-fk* fully-qualified-name)]))
 
 (defn- import-column-settings [settings]
   (when settings

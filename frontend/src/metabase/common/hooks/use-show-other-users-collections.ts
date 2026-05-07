@@ -1,5 +1,5 @@
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 
 import { useSetting } from "./use-setting";
 

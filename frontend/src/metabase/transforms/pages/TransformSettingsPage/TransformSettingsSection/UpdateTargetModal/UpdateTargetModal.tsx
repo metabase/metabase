@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useDeleteTransformTargetMutation,
@@ -11,6 +10,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { hasFeature } from "metabase/common/utils/database";
 import {
   Form,
   FormErrorMessage,
@@ -164,12 +164,12 @@ function UpdateTargetForm({
                 <Stack gap="sm">
                   <Radio
                     value="false"
-                    label={jt`Keep ${(<strong key="table">{target.name}</strong>)}`}
+                    label={jt`Keep ${<strong key="table">{target.name}</strong>}`}
                     data-testid="keep-target-radio"
                   />
                   <Radio
                     value="true"
-                    label={jt`Delete ${(<strong key="table">{target.name}</strong>)}`}
+                    label={jt`Delete ${<strong key="table">{target.name}</strong>}`}
                     data-testid="delete-target-radio"
                   />
                 </Stack>

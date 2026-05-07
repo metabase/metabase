@@ -996,7 +996,7 @@
             :let [is-pg-specical-case? (= [db-type table column]
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
-        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+        (t2/query ["DROP VIEW IF EXISTS v_users;"]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
@@ -2174,13 +2174,7 @@
                   (upsert-table! db-id schema table-name)))))
           (t2/reducible-query {:select [:target :target_db_id]
                                :from   [:transform]
-                               :where  [:not= :target_db_id nil]})))
-  ;; Invalidate workspace caches so the app re-analyzes and backfills workspace_ table FKs lazily
-  (t2/query {:update :workspace_transform
-             :set    {:analysis_version [:+ :analysis_version 1]
-                      :definition_changed true}})
-  (t2/query {:update :workspace
-             :set    {:graph_version [:+ :graph_version 1]}}))
+                               :where  [:not= :target_db_id nil]}))))
 
 (define-migration BackfillTransformTargetTableId
   ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
@@ -2199,10 +2193,23 @@
                              :from   [:transform]
                              :where  [:and
                                       [:not= :target_db_id nil]
-                                      [:= :target_table_id nil]]}))
-  ;; Invalidate workspace caches so they recalculate with target_table_id
-  (t2/query {:update :workspace_transform
-             :set    {:analysis_version [:+ :analysis_version 1]
-                      :definition_changed true}})
-  (t2/query {:update :workspace
-             :set    {:graph_version [:+ :graph_version 1]}}))
+                                      [:= :target_table_id nil]]})))
+
+(define-migration BackfillMetabotConversationEmbeddingHostname
+  ;; Carry over the hostname portion of metabot_conversation.embed_url into the
+  ;; new embedding_hostname column. Only the hostname is migrated — the path
+  ;; portion of pre-flag embed_url values has no consent basis under
+  ;; analytics-pii-retention-enabled and is intentionally discarded.
+  (run! (fn [{:keys [id embed_url]}]
+          (let [^java.net.URI parsed (try (java.net.URI. ^String embed_url) (catch Exception _ nil))
+                host                 (some-> parsed .getHost not-empty)
+                host*                (when host (subs host 0 (min (count host) 512)))]
+            (when host*
+              (t2/query {:update :metabot_conversation
+                         :set    {:embedding_hostname host*}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :embed_url]
+                             :from   [:metabot_conversation]
+                             :where  [:and
+                                      [:not= :embed_url nil]
+                                      [:= :embedding_hostname nil]]})))

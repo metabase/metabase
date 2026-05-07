@@ -11,17 +11,20 @@ import _ from "underscore";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PDF_EXPORT_ROOT_ID,
+} from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/setup/selectors";
+import * as Urls from "metabase/urls";
 import api, { GET, POST } from "metabase/utils/api";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
-import { createAsyncThunk } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import { isUuid } from "metabase/utils/uuid";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -201,6 +204,7 @@ export const downloadDashboardToPdf = createAsyncThunk(
     await saveDashboardPdf({
       fileName,
       selector: cardNodeSelector,
+      parametersNodeSelector: `#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`,
       dashboardName: dashboard.name,
       includeBranding,
     });
@@ -320,40 +324,42 @@ const getEmbedDashcardParams = (
   }),
 });
 
+const convertSearchParamsToObject = (params: URLSearchParams) => {
+  const object: Record<string, string | string[]> = {};
+  for (const [key, value] of params.entries()) {
+    if (object[key]) {
+      object[key] = ([] as string[]).concat(
+        object[key] as string | string[],
+        value,
+      );
+    } else {
+      object[key] = value;
+    }
+  }
+
+  return object;
+};
+
 const getEmbedQuestionParams = (
   token: EntityToken,
   type: string,
+  params: Record<string, unknown>,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
-  const params = isEmbeddingSdk()
-    ? // For SDK/EmbedJS we must not read params from location search as in both cases
-      // additional params are not supported by a public endpoint
-      null
-    : new URLSearchParams(window.location.search);
-
-  const convertSearchParamsToObject = (params: URLSearchParams) => {
-    const object: Record<string, string | string[]> = {};
-    for (const [key, value] of params.entries()) {
-      if (object[key]) {
-        object[key] = ([] as string[]).concat(
-          object[key] as string | string[],
-          value,
-        );
-      } else {
-        object[key] = value;
-      }
-    }
-
-    return object;
-  };
+  // Guest Embed / Modular embedding SDK embeds receive parameter values via postMessage
+  // from the host page, so window.location.search does not reflect the active
+  // editable filter state. Fall back to the params provided by the caller.
+  // Static embed iframes encode filter values in the iframe URL, so read them
+  // from window.location.search.
+  const downloadParameters = isEmbeddingSdk()
+    ? params
+    : convertSearchParamsToObject(new URLSearchParams(window.location.search));
 
   return {
     method: "GET",
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
-      ...(params && {
-        parameters: JSON.stringify(convertSearchParamsToObject(params)),
-      }),
+      parameters: JSON.stringify(downloadParameters),
       ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
@@ -419,7 +425,7 @@ const getAdHocQuestionParams = (
   },
 });
 
-const getDatasetParams = ({
+export const getDatasetParams = ({
   type,
   question,
   dashboardId,
@@ -490,7 +496,7 @@ const getDatasetParams = ({
       );
     }
     if (resourceType === "question" && token) {
-      return getEmbedQuestionParams(token, type, exportParams);
+      return getEmbedQuestionParams(token, type, params, exportParams);
     }
   }
 

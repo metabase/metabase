@@ -9,19 +9,17 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { entityForObject } from "metabase/entities/utils";
 import { ObjectUnionSchema } from "metabase/schema";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";
 import { Collections } from "./collections";
 import { Dashboards } from "./dashboards";
-import { Pulses } from "./pulses";
 import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
 import { Snippets } from "./snippets";
+import { createEntity, entityCompatibleQuery, entityForObject } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -30,9 +28,9 @@ export const Search = createEntity({
   name: "search",
   path: "/api/search",
 
-  rtk: {
+  rtk: () => ({
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (query = {}, dispatch) => {
@@ -114,58 +112,18 @@ export const Search = createEntity({
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
     const entity = entityForObject(object);
-    if (entity) {
-      return entity.wrapEntity(object, dispatch);
-    } else {
-      console.warn("Couldn't find entity for object", object);
-      return object;
-    }
+    return entity ? entity.wrapEntity(object, dispatch) : object;
   },
 
   objectActions: {
-    setArchived: (object, archived) => {
-      return (dispatch) => {
-        const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.setArchived(object, archived))
-          : warnEntityAndReturnObject(object);
-      };
-    },
-
     delete: (object) => {
       return (dispatch) => {
         const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.delete(object))
-          : warnEntityAndReturnObject(object);
+        return entity ? dispatch(entity.actions.delete(object)) : object;
       };
     },
   },
 
-  objectSelectors: {
-    getCollection: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getCollection?.(object) ??
-            object?.collection ??
-            null)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getName: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getColor: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getColor?.(object) ?? null)
-        : warnEntityAndReturnObject(object);
-    },
-  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (
@@ -173,7 +131,6 @@ export const Search = createEntity({
       Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
-      Pulses.actionShouldInvalidateLists(action) ||
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||
       Snippets.actionShouldInvalidateLists(action) ||
@@ -182,11 +139,6 @@ export const Search = createEntity({
     );
   },
 });
-
-function warnEntityAndReturnObject(object) {
-  console.warn("Couldn't find entity for object", object);
-  return object;
-}
 
 function useListQuery(query = {}, options) {
   const collectionItemsQuery = useListCollectionItemsQuery(

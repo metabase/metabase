@@ -15,7 +15,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -198,7 +198,7 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+      (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
                                (some-> body json/decode+kw (assoc :canonical? true)))
       (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
                               {:valid         false
@@ -206,7 +206,7 @@
                                :status        "Unable to validate token"
                                :error-details "Token validation provided no response"})
       ;; exceptions are not cached.
-      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+      :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                     :body body}))))))
 
@@ -392,6 +392,23 @@
   []
   (t2/delete! :model/PremiumFeaturesCache))
 
+(defn- extract-locks
+  "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
+   Meters without an `:is-locked` field are dropped."
+  [meters]
+  (into {} (keep (fn [[k v]] (when-some [locked (:is-locked v)] [k locked]))) meters))
+
+(defn- update-locked-meters!
+  "Mirror the `:is-locked` flag for each meter in `result` to the local `:locked-meters`
+   setting, when `:meters` is present in a successful token-check response. Best-effort:
+   failures are logged but never propagated to the refresh path."
+  [result]
+  (when (contains? result :meters)
+    (try
+      (premium-features.settings/locked-meters! (extract-locks (:meters result)))
+      (catch Throwable t
+        (log/warn t "Failed to mirror :locked-meters from token-check response")))))
+
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
    For testing only — do not use in production."
@@ -416,6 +433,7 @@
                     result-hash (hash-token-status result)
                     now         (t/instant)]
                 (write-cache-to-db! token-hash result-hash)
+                (update-locked-meters! result)
                 (swap! local-cache assoc token-hash {:result      result
                                                      :result-hash result-hash
                                                      :updated-at  now})
@@ -487,7 +505,7 @@
            (catch Exception e
              (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
                (log/infof "Error checking token: %s" (ex-message e))
-               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
+               (analytics/inc! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :canonical?    false
               :status        (tru "Unable to validate token")
