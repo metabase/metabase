@@ -147,6 +147,37 @@
                                 (.getSimpleName (class ev)))
                         {:kind :bad_shape}))))))
 
+(defn- consume-sequence-as-batches!
+  "After SequenceStartEvent has been consumed, walk sequence items into batches
+  of `[line-num row]` tuples (up to `batch-size`), calling `process-batch!` per
+  batch. Returns when SequenceEndEvent is consumed."
+  [^Iterator iter array-key batch-size process-batch!]
+  (loop [batch    (transient [])
+         line-num 0]
+    (let [ev (.next iter)]
+      (cond
+        (instance? SequenceEndEvent ev)
+        (when (pos? (count batch))
+          (process-batch! (persistent! batch)))
+
+        (instance? MappingStartEvent ev)
+        (let [item       (read-mapping iter)
+              ln         (inc line-num)
+              next-batch (conj! batch [ln item])]
+          (if (>= (count next-batch) batch-size)
+            (do (process-batch! (persistent! next-batch))
+                (recur (transient []) ln))
+            (recur next-batch ln)))
+
+        (instance? AliasEvent ev)
+        (throw (ex-info "YAML aliases (*name) are not supported"
+                        {:kind :unsupported_alias, :key array-key}))
+
+        :else
+        (throw (ex-info (format "Unexpected event %s in array %s"
+                                (.getSimpleName (class ev)) (pr-str array-key))
+                        {:kind :bad_shape, :key array-key}))))))
+
 (defn stream-array-batches!
   "Walk `reader` to the sequence at top-level `array-key` (string or keyword),
   then invoke `(process-batch! batch)` for each successive batch of `[line-num
@@ -156,28 +187,54 @@
   [^Reader reader array-key batch-size process-batch!]
   (let [iter (.iterator (.parse (Yaml.) reader))]
     (advance-to-array! iter (name array-key))
-    (loop [batch    (transient [])
-           line-num 0]
+    (consume-sequence-as-batches! iter array-key batch-size process-batch!)))
+
+(defn stream-keyed-arrays!
+  "Walk `reader` once over a top-level YAML mapping. For each top-level key
+  matching a keyword in `handlers` (a map of keyword → fn-of-batch), invoke
+  the handler for each successive batch of `[line-num row]` tuples (up to
+  `batch-size`). Other top-level keys are skipped. `line-num` is 1-indexed
+  per sequence and continues across batch boundaries within a sequence.
+
+  Mirrors the JSON parser's `stream-keyed-arrays!`: collapses N separate file
+  passes (one per known key) into a single walk. Throws `:bad_shape` if the
+  document doesn't begin with a mapping or if a known key's value isn't a
+  sequence. Missing keys are silently OK."
+  [^Reader reader batch-size handlers]
+  (let [iter (.iterator (.parse (Yaml.) reader))]
+    ;; consume StreamStart, DocumentStart, top-level MappingStart
+    (let [e1 (.next iter)]
+      (when-not (instance? StreamStartEvent e1)
+        (throw (ex-info "Malformed YAML: expected StreamStartEvent"
+                        {:kind :bad_shape}))))
+    (let [e2 (.next iter)]
+      (when-not (instance? DocumentStartEvent e2)
+        (throw (ex-info "Malformed YAML: expected DocumentStartEvent"
+                        {:kind :bad_shape}))))
+    (let [e3 (.next iter)]
+      (when-not (instance? MappingStartEvent e3)
+        (throw (ex-info "Expected YAML document to begin with a mapping"
+                        {:kind :bad_shape}))))
+    (loop []
       (let [ev (.next iter)]
         (cond
-          (instance? SequenceEndEvent ev)
-          (when (pos? (count batch))
-            (process-batch! (persistent! batch)))
+          (instance? MappingEndEvent ev)
+          nil
 
-          (instance? MappingStartEvent ev)
-          (let [item       (read-mapping iter)
-                ln         (inc line-num)
-                next-batch (conj! batch [ln item])]
-            (if (>= (count next-batch) batch-size)
-              (do (process-batch! (persistent! next-batch))
-                  (recur (transient []) ln))
-              (recur next-batch ln)))
-
-          (instance? AliasEvent ev)
-          (throw (ex-info "YAML aliases (*name) are not supported"
-                          {:kind :unsupported_alias, :key array-key}))
+          (instance? ScalarEvent ev)
+          (let [k          (.getValue ^ScalarEvent ev)
+                handler-fn (get handlers (keyword k))
+                vt         (.next iter)]
+            (if handler-fn
+              (do (when-not (instance? SequenceStartEvent vt)
+                    (throw (ex-info (format "Value of %s must be a sequence" (pr-str k))
+                                    {:kind :bad_shape, :key k})))
+                  (consume-sequence-as-batches! iter k batch-size handler-fn)
+                  (recur))
+              (do (skip-value! iter vt)
+                  (recur))))
 
           :else
-          (throw (ex-info (format "Unexpected event %s in array %s"
-                                  (.getSimpleName (class ev)) (pr-str array-key))
-                          {:kind :bad_shape, :key array-key})))))))
+          (throw (ex-info (format "Unexpected event %s in top-level mapping"
+                                  (.getSimpleName (class ev)))
+                          {:kind :bad_shape})))))))

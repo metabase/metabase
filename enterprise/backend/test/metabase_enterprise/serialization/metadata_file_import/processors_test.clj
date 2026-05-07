@@ -122,6 +122,96 @@
       (is (= :invalid_input (:kind (ex-data @thrown)))
           "the throw carries the standard validation :kind"))))
 
+;;; ============================== resolve-target-table-ids-in-staging! ==============================
+
+(deftest resolve-target-table-ids-populates-when-match-exists-test
+  (testing "for a staging row whose match key (db, schema, name) corresponds to an
+            active non-defective metabase_table row, resolve sets staging.target_table_id
+            to that row's int id"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "rtt-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id db-id :schema "public" :name "users"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-db"
+                                            :table_schema "public"
+                                            :table_name   "users"
+                                            :display_name "Users"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (= tbl-id (:target_table_id row))
+              "target_table_id resolved to the existing metabase_table row's id"))))))
+
+(deftest resolve-target-table-ids-leaves-null-when-no-match-test
+  (testing "a staging row whose natural key matches no metabase_table row keeps
+            target_table_id NULL"
+    (mt/with-temp [:model/Database {_ :id} {:name "rtt-miss-db" :engine :postgres}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-miss-db"
+                                            :table_schema "public"
+                                            :table_name   "no_such_table"
+                                            :display_name "No Such Table"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (nil? (:target_table_id row))
+              "target_table_id stays NULL — no metabase_table row to match"))))))
+
+(deftest resolve-target-table-ids-handles-nil-schema-test
+  (testing "NULL table_schema works through COALESCE on both sides of the JOIN"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rtt-nil-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema nil :name "no_schema_tbl"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-nil-db"
+                                            :table_schema nil
+                                            :table_name   "no_schema_tbl"
+                                            :display_name "No Schema Tbl"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (= tbl-id (:target_table_id row))))))))
+
+(deftest resolve-target-table-ids-skips-inactive-test
+  (testing "inactive metabase_table rows are not matched — preserves the existing
+            behavior that a re-import after a deactivation creates a fresh active row"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rtt-inact-db" :engine :postgres}
+                   :model/Table   {_t :id}     {:db_id db-id :schema "public" :name "old_t"
+                                                :active false}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-inact-db"
+                                            :table_schema "public"
+                                            :table_name   "old_t"
+                                            :display_name "Old"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (nil? (:target_table_id row))
+              "inactive table excluded from match"))))))
+
+(deftest resolve-target-table-ids-skips-defective-test
+  (testing "is_defective_duplicate metabase_table rows are not matched"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rtt-def-db" :engine :postgres}
+                   :model/Table   {_t :id}     {:db_id db-id :schema "public" :name "dup_t"
+                                                :is_defective_duplicate true}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-def-db"
+                                            :table_schema "public"
+                                            :table_name   "dup_t"
+                                            :display_name "Dup"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (nil? (:target_table_id row))
+              "defective duplicate excluded from match"))))))
+
+(deftest resolve-target-table-ids-idempotent-test
+  (testing "running resolve twice yields the same target_table_id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rtt-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name      "rtt-idem-db"
+                                            :table_schema "public"
+                                            :table_name   "t"
+                                            :display_name "T"})
+        (processors/resolve-target-table-ids-in-staging!)
+        (processors/resolve-target-table-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_table_import]}))]
+          (is (= tbl-id (:target_table_id row))))))))
+
 ;;; ============================== merge-tables! ==============================
 
 (deftest merge-tables-empty-staging-is-noop-test
@@ -144,6 +234,7 @@
                                             :table_name   "fresh_table"
                                             :description  "owl sightings"
                                             :display_name "Fresh Table"})
+        (processors/resolve-target-table-ids-in-staging!)
         (processors/merge-tables!))
       (let [row (t2/select-one :model/Table :db_id db-id :name "fresh_table")
             ;; :model/Table strips :is_defective_duplicate from the read map; query directly.
@@ -172,6 +263,7 @@
                                             :table_name   "users"
                                             :description  "fresh description from import"
                                             :display_name "Users"})
+        (processors/resolve-target-table-ids-in-staging!)
         (processors/merge-tables!))
       (let [row (t2/select-one :model/Table :id tbl-id)]
         (is (= "fresh description from import" (:description row))
@@ -185,6 +277,7 @@
                                           :table_schema "public"
                                           :table_name   "orphan_no_db"
                                           :display_name "Orphan No Db"})
+      (processors/resolve-target-table-ids-in-staging!)
       (processors/merge-tables!))
     (is (nil? (t2/select-one :model/Table :name "orphan_no_db"))
         "no live row inserted when staging row's db_name has no matching target")))
@@ -200,21 +293,26 @@
                                             :table_schema nil
                                             :table_name   "no_schema_tbl"
                                             :description  "patched"})
+        (processors/resolve-target-table-ids-in-staging!)
         (processors/merge-tables!))
       (let [row (t2/select-one :model/Table :id tbl-id)]
         (is (= "patched" (:description row))
             "NULL-schema match works through COALESCE")))))
 
 (deftest merge-tables-is-idempotent-test
-  (testing "running merge-tables! twice with the same staging contents leaves the appdb
-            in the same shape — NOT EXISTS catches the second pass and skips"
+  (testing "running resolve+merge-tables! twice with the same staging contents leaves
+            the appdb in the same shape — the second resolve picks up the row inserted
+            by the first merge so target_table_id is set, the UPDATE is a same-payload
+            replay, and the INSERT skips because no row has target_table_id NULL"
     (mt/with-temp [:model/Database {db-id :id} {:name "merge-idem-db" :engine :postgres}]
       (processors/with-staging-tables
         (t2/insert! :metabase_table_import {:db_name      "merge-idem-db"
                                             :table_schema "public"
                                             :table_name   "idem_tbl"
                                             :display_name "Idem Tbl"})
+        (processors/resolve-target-table-ids-in-staging!)
         (processors/merge-tables!)
+        (processors/resolve-target-table-ids-in-staging!)
         (processors/merge-tables!))
       (is (= 1 (count (t2/select :model/Table :db_id db-id :name "idem_tbl")))
           "exactly one row inserted; second merge call was a no-op"))))
@@ -238,6 +336,7 @@
                                                 :table_schema "public"
                                                 :table_name   "would_have_inserted"
                                                 :display_name "Would Have Inserted"})
+            (processors/resolve-target-table-ids-in-staging!)
             (t2/with-transaction [_]
               (processors/merge-tables!)
               (throw (ex-info "force rollback" {:kind :test_force_rollback}))))

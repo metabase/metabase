@@ -71,29 +71,41 @@
                       {:kind :file_not_readable, :path path})))
     f))
 
-;;; ============================== databases ==============================
+;;; ============================== drain + database matching ==============================
 
-(defn- load-databases!
-  "Stream the `databases` array, run [[processors/process-databases!]] per
-  batch. Returns a set of `target-db-id`s (the appdb integer ids of every
-  source database that matched). Unmatched source databases are logged WARN;
-  non-fatal."
+(defn- process-databases-batch!
+  "Per-batch handler for `:databases`: run [[processors/process-databases!]],
+  conj matched target-db-ids onto `matched-ids` (a volatile), log WARN for
+  unmatched source databases (non-fatal)."
+  [matched-ids batch]
+  (reduce (fn [_ result]
+            (case (:status result)
+              :matched
+              (vswap! matched-ids conj (:target-id result))
+
+              :no-match
+              (log/warnf "metadata-file-import: skipped source database %s (no matching target): %s"
+                         (pr-str (:source-id result)) (:detail result)))
+            nil)
+          nil
+          (processors/process-databases! batch)))
+
+(defn- drain-and-match-databases!
+  "Single-pass walk of the metadata file: matches `:databases` against the live
+  appdb, drains `:tables` and `:fields` into staging. Returns the set of
+  matched target-db-ids.
+
+  Replaces three separate file passes (one per top-level array) with one walk
+  of the document via [[parsers/stream-keyed-arrays!]]. The wire format's
+  top-level key order doesn't matter — handlers fire per array, and the
+  matched-ids result reflects whatever subset of the file appears."
   [^File file]
   (let [matched-ids (volatile! #{})]
-    (parsers/stream-array-batches!
-     file :databases processors/import-batch-size
-     (fn [batch]
-       (reduce (fn [_ result]
-                 (case (:status result)
-                   :matched
-                   (vswap! matched-ids conj (:target-id result))
-
-                   :no-match
-                   (log/warnf "metadata-file-import: skipped source database %s (no matching target): %s"
-                              (pr-str (:source-id result)) (:detail result)))
-                 nil)
-               nil
-               (processors/process-databases! batch))))
+    (parsers/stream-keyed-arrays!
+     file processors/import-batch-size
+     {:databases (partial process-databases-batch! matched-ids)
+      :tables    processors/drain-tables-batch!
+      :fields    processors/drain-fields-batch!})
     @matched-ids))
 
 ;;; ============================== Unfilled-stubs scan ==============================
@@ -143,33 +155,32 @@
 
   Returns `:ok` on success; throws on hard-fail conditions."
   [metadata-file]
-  (let [^File m-file              (if (instance? File metadata-file)
-                                    metadata-file
-                                    (File. ^String metadata-file))
-        matched-target-db-ids     (load-databases! m-file)]
+  (let [^File m-file (if (instance? File metadata-file)
+                       metadata-file
+                       (File. ^String metadata-file))]
     (processors/with-staging-tables
-      ;; --- drain (writes only to staging) ---
-      (processors/drain-tables-into-staging! m-file)
-      (processors/drain-fields-into-staging! m-file)
-      ;; --- compute (read-only against live; writes only to staging) ---
-      (processors/resolve-existing-parents-in-staging!)
-      (let [stub-specs (processors/compute-stubs!)]
-        ;; --- merge (one txn — every live-data write all-or-nothing) ---
-        (t2/with-transaction [_]
-          (processors/merge-tables!)
-          (processors/insert-stubs-where-not-exists! stub-specs)
-          (processors/resolve-existing-parents-in-staging!)        ; round 2 — picks up just-inserted stubs
-          (processors/assert-no-unresolved-parent-refs!)
-          (processors/resolve-target-field-ids-in-staging!)        ; staging now knows which rows are matches vs inserts
-          (processors/merge-fields!)
-          (processors/resolve-fk-target-ids-in-staging!)
-          (processors/assert-no-unresolved-fk-targets!)
-          (processors/merge-fk-targets!)
-          (processors/warn-on-orphan-staging-rows! matched-target-db-ids)
-          (warn-on-unfilled-stubs! matched-target-db-ids)
-          (mark-databases-sync-complete! matched-target-db-ids))))
-    (log/infof "metadata-file-import: complete (matched-databases=%d)"
-               (count matched-target-db-ids))
+      ;; --- drain + database matching (single pass over the file) ---
+      (let [matched-target-db-ids (drain-and-match-databases! m-file)]
+        ;; --- compute (read-only against live; writes only to staging) ---
+        (processors/resolve-existing-parents-in-staging!)
+        (let [stub-specs (processors/compute-stubs!)]
+          ;; --- merge (one txn — every live-data write all-or-nothing) ---
+          (t2/with-transaction [_]
+            (processors/resolve-target-table-ids-in-staging!)        ; keys merge-tables! UPDATE on a single column
+            (processors/merge-tables!)
+            (processors/insert-stubs-where-not-exists! stub-specs)
+            (processors/resolve-existing-parents-in-staging!)        ; round 2 — picks up just-inserted stubs
+            (processors/assert-no-unresolved-parent-refs!)
+            (processors/resolve-target-field-ids-in-staging!)        ; staging now knows which rows are matches vs inserts
+            (processors/merge-fields!)
+            (processors/resolve-fk-target-ids-in-staging!)
+            (processors/assert-no-unresolved-fk-targets!)
+            (processors/merge-fk-targets!)
+            (processors/warn-on-orphan-staging-rows! matched-target-db-ids)
+            (warn-on-unfilled-stubs! matched-target-db-ids)
+            (mark-databases-sync-complete! matched-target-db-ids)))
+        (log/infof "metadata-file-import: complete (matched-databases=%d)"
+                   (count matched-target-db-ids))))
     :ok))
 
 (defn initialize-from-env!

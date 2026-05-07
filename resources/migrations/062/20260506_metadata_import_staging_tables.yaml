@@ -212,3 +212,24 @@ databaseChangeLog:
             columns:
               - column:
                   name: target_field_id
+
+  - changeSet:
+      id: v62.2026-05-07T00:00:01
+      author: galdre
+      comment: Add metabase_table_import.target_table_id and index for set-based merge UPDATE
+      changes:
+        - addColumn:
+            tableName: metabase_table_import
+            columns:
+              - column:
+                  name: target_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved by resolve-target-table-ids-in-staging!. NULL means no live row matches; row is an insert candidate. Indexed below so merge-tables!'s UPDATE keys on it via a single-column lookup.
+        - createIndex:
+            tableName: metabase_table_import
+            indexName: idx_mti_target_table_id
+            columns:
+              - column:
+                  name: target_table_id

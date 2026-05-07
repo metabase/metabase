@@ -151,6 +151,23 @@
   [{:keys [db_id schema name]}]
   [db_id schema name])
 
+(defn drain-tables-batch!
+  "Per-batch handler for `:tables`: validate each row, then bulk-insert into
+  `metabase_table_import`. Pure side-effecting; suitable as a callback for
+  `parsers/stream-array-batches!` or `parsers/stream-keyed-arrays!`."
+  [batch]
+  (doseq [[ln line] batch]
+    (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
+  (when (seq batch)
+    (let [rows (mapv (fn [[_ {:keys [db_id schema name description]}]]
+                       {:db_name      db_id
+                        :table_schema schema
+                        :table_name   name
+                        :description  description
+                        :display_name (humanization/name->human-readable-name name)})
+                     batch)]
+      (t2/insert! :metabase_table_import rows))))
+
 (defn drain-tables-into-staging!
   "Stream `:tables` from `metadata-file` into `metabase_table_import`.
 
@@ -161,35 +178,63 @@
   writes."
   [^File metadata-file]
   (parsers/stream-array-batches!
-   metadata-file :tables import-batch-size
-   (fn [batch]
-     (doseq [[ln line] batch]
-       (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
-     (when (seq batch)
-       (let [rows (mapv (fn [[_ {:keys [db_id schema name description]}]]
-                          {:db_name      db_id
-                           :table_schema schema
-                           :table_name   name
-                           :description  description
-                           :display_name (humanization/name->human-readable-name name)})
-                        batch)]
-         (t2/insert! :metabase_table_import rows))))))
+   metadata-file :tables import-batch-size drain-tables-batch!))
+
+(defn resolve-target-table-ids-in-staging!
+  "Set `metabase_table_import.target_table_id` to the int id of the matching
+  `metabase_table` row for every staging row whose match key resolves. The
+  match key is `(db_name, table_schema, table_name)` against `(d.name,
+  t.schema, t.name)`, restricted to active, non-defective live rows.
+
+  Lets `merge-tables!`'s UPDATE key on a single column instead of repeating
+  the 2-table-join match in each correlated subquery. Rows that do not
+  match keep `target_table_id` NULL — `merge-tables!`'s INSERT picks up
+  exactly those rows. Inactive matches are deliberately not resolved so a
+  re-import after a deactivation creates a fresh active row (existing
+  behavior preserved from the pre-target_table_id implementation).
+
+  Idempotent — running again with the same staging contents produces the
+  same assignments. Uses a correlated subquery in SET so it serializes
+  portably across PG / H2 / MySQL via `t2/query`."
+  []
+  (t2/query
+   {:update :metabase_table_import
+    :set    {:target_table_id
+             {:select [:t.id]
+              :from   [[:metabase_table :t]]
+              :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
+              :where  [:and
+                       [:= :metabase_table_import.db_name :d.name]
+                       [:= [:coalesce :t.schema [:inline ""]]
+                        [:coalesce :metabase_table_import.table_schema [:inline ""]]]
+                       [:= :t.name :metabase_table_import.table_name]
+                       [:= :t.is_defective_duplicate [:inline false]]
+                       [:= :t.active [:inline true]]]}}}))
 
 (defn merge-tables!
   "Merge `metabase_table_import` into `metabase_table` atomically.
 
   Two SQL statements wrapped in a single `t2/with-transaction`:
 
-    1. **INSERT** rows whose natural key isn't already present in
-       `metabase_table` (active, non-defective). Sets `active=true` and
-       `data_layer='internal'`; lets column defaults handle `field_order`,
-       `initial_sync_status`, `view_count`, etc.
-    2. **UPDATE** matched rows by clobbering `description` from staging
-       (`updated_at` bumped to `NOW()`).
+    1. **UPDATE** rows whose `target_table_id` resolved (i.e., a matching
+       active live row exists). Clobbers `description` from staging, bumps
+       `updated_at`. Each SET column is a single-key lookup on
+       `staging.target_table_id`.
+    2. **INSERT** rows whose `target_table_id` is NULL — no active live row
+       matched. Sets `active=true` and `data_layer='internal'`; lets column
+       defaults handle `field_order`, `initial_sync_status`, etc.
 
-  Both statements JOIN `metabase_database` on `db_name`, so staging rows whose
-  source DB has no target are silently dropped — the orphan-warn pass (commit
-  4) emits the operator-facing log line.
+  Order matters: UPDATE first so on a clean-schema import the UPDATE matches
+  nothing (fast no-op) and the INSERT writes each row exactly once.
+
+  Pre-condition: `resolve-target-table-ids-in-staging!` must have run (the
+  orchestrator does this just before calling this fn). Without that, every
+  staging row's `target_table_id` is NULL — you'd get correct INSERTs but
+  no clobber.
+
+  The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
+  source DB has no target are silently dropped — the orphan-warn pass emits
+  the operator-facing log line.
 
   The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
   not fire here because the INSERT goes through the raw table keyword
@@ -198,11 +243,24 @@
 
   Composes safely inside a larger transaction: Toucan2's `t2/with-transaction`
   joins an outer txn rather than creating a savepoint, so when an outer caller
-  (e.g., the commit-4 orchestrator) wraps several merge steps in one txn, this
-  function's inner txn participates in the outer's all-or-nothing semantics."
+  wraps several merge steps in one txn, this function's inner txn participates
+  in the outer's all-or-nothing semantics."
   []
   (t2/with-transaction [_]
-    ;; INSERT rows that don't already exist
+    ;; UPDATE matched rows first (clobber description, bump updated_at)
+    (t2/query
+     {:update :metabase_table
+      :set    {:description {:select [:it.description]
+                             :from   [[:metabase_table_import :it]]
+                             :where  [:= :it.target_table_id :metabase_table.id]}
+               :updated_at :%now}
+      :where  [:and
+               [:= :metabase_table.is_defective_duplicate [:inline false]]
+               [:= :metabase_table.active [:inline true]]
+               [:exists {:select [[[:inline 1]]]
+                         :from   [[:metabase_table_import :it]]
+                         :where  [:= :it.target_table_id :metabase_table.id]}]]})
+    ;; INSERT rows with no matching live row (target_table_id IS NULL)
     (t2/query
      {:insert-into
       [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
@@ -214,37 +272,7 @@
                  :%now :%now]
         :from [[:metabase_table_import :it]]
         :join [[:metabase_database :d] [:= :d.name :it.db_name]]
-        :where [:not [:exists {:select [[[:inline 1]]]
-                               :from [[:metabase_table :t]]
-                               :where [:and
-                                       [:= :t.db_id :d.id]
-                                       [:= [:coalesce :t.schema [:inline ""]]
-                                        [:coalesce :it.table_schema [:inline ""]]]
-                                       [:= :t.name :it.table_name]
-                                       [:= :t.is_defective_duplicate [:inline false]]
-                                       [:= :t.active [:inline true]]]}]]}]})
-    ;; UPDATE matched rows (clobber description, bump updated_at)
-    (t2/query
-     {:update :metabase_table
-      :set    {:description {:select [:it.description]
-                             :from [[:metabase_table_import :it]]
-                             :join [[:metabase_database :d] [:= :d.name :it.db_name]]
-                             :where [:and
-                                     [:= :metabase_table.db_id :d.id]
-                                     [:= [:coalesce :metabase_table.schema [:inline ""]]
-                                      [:coalesce :it.table_schema [:inline ""]]]
-                                     [:= :metabase_table.name :it.table_name]]}
-               :updated_at :%now}
-      :where  [:exists {:select [[[:inline 1]]]
-                        :from [[:metabase_table_import :it]]
-                        :join [[:metabase_database :d] [:= :d.name :it.db_name]]
-                        :where [:and
-                                [:= :metabase_table.db_id :d.id]
-                                [:= [:coalesce :metabase_table.schema [:inline ""]]
-                                 [:coalesce :it.table_schema [:inline ""]]]
-                                [:= :metabase_table.name :it.table_name]
-                                [:= :metabase_table.is_defective_duplicate [:inline false]]
-                                [:= :metabase_table.active [:inline true]]]}]})))
+        :where [:= :it.target_table_id nil]}]})))
 
 ;;; ============================== fields — drain + merge ==============================
 
@@ -274,50 +302,56 @@
      :path         (encode-path-or-nil (subvec v 3 (dec (count v))))
      :name         (peek v)}))
 
+(defn drain-fields-batch!
+  "Per-batch handler for `:fields`: validate each row, decompose wire keys
+  (`:table_id`, `:parent_id`, `:fk_target_field_id`) into staging columns,
+  bulk-insert into `metabase_field_import`. Suitable as a callback for
+  `parsers/stream-array-batches!` or `parsers/stream-keyed-arrays!`."
+  [batch]
+  (doseq [[ln line] batch]
+    (validate-line! ::schemas/field-info ln line {:source-id (vec (:id line))}))
+  (when (seq batch)
+    (let [rows (mapv (fn [[_ {:keys [table_id name nfc_path parent_id fk_target_field_id
+                                     base_type database_type description effective_type
+                                     semantic_type coercion_strategy]}]]
+                       (let [tid (vec table_id)
+                             p   (some-> parent_id decompose-portable-field-id)
+                             fk  (some-> fk_target_field_id decompose-portable-field-id)]
+                         (cond-> {:db_name           (get tid 0)
+                                  :table_schema      (get tid 1)
+                                  :table_name        (get tid 2)
+                                  :field_name        name
+                                  :nfc_path          (encode-path-or-nil nfc_path)
+                                  :base_type         base_type
+                                  :database_type     database_type
+                                  :description       description
+                                  :effective_type    effective_type
+                                  :semantic_type     semantic_type
+                                  :coercion_strategy coercion_strategy}
+                           p  (assoc :parent_db_name      (:db_name p)
+                                     :parent_table_schema (:table_schema p)
+                                     :parent_table_name   (:table_name p)
+                                     :parent_path         (:path p)
+                                     :parent_name         (:name p))
+                           fk (assoc :fk_target_db_name      (:db_name fk)
+                                     :fk_target_table_schema (:table_schema fk)
+                                     :fk_target_table_name   (:table_name fk)
+                                     :fk_target_path         (:path fk)
+                                     :fk_target_name         (:name fk)))))
+                     batch)]
+      (t2/insert! :metabase_field_import rows))))
+
 (defn drain-fields-into-staging!
   "Stream `:fields` from `metadata-file` into `metabase_field_import`.
 
   Validates each row up front. Decomposes wire `:table_id`, `:parent_id`, and
   `:fk_target_field_id` into staging columns. Encodes wire `:nfc_path` to match
-  `metabase_field.nfc_path`. Resolved-id columns (`parent_id`, `fk_target_id`)
-  start NULL — they're filled by `resolve-existing-parents-in-staging!` and
-  (commit 4) `resolve-fk-target-ids-in-staging!`. Writes only to staging."
+  `metabase_field.nfc_path`. Resolved-id columns (`parent_id`, `fk_target_id`,
+  `target_field_id`) start NULL — they're filled by the resolve functions in
+  the merge phase. Writes only to staging."
   [^File metadata-file]
   (parsers/stream-array-batches!
-   metadata-file :fields import-batch-size
-   (fn [batch]
-     (doseq [[ln line] batch]
-       (validate-line! ::schemas/field-info ln line {:source-id (vec (:id line))}))
-     (when (seq batch)
-       (let [rows (mapv (fn [[_ {:keys [table_id name nfc_path parent_id fk_target_field_id
-                                        base_type database_type description effective_type
-                                        semantic_type coercion_strategy]}]]
-                          (let [tid (vec table_id)
-                                p   (some-> parent_id decompose-portable-field-id)
-                                fk  (some-> fk_target_field_id decompose-portable-field-id)]
-                            (cond-> {:db_name           (get tid 0)
-                                     :table_schema      (get tid 1)
-                                     :table_name        (get tid 2)
-                                     :field_name        name
-                                     :nfc_path          (encode-path-or-nil nfc_path)
-                                     :base_type         base_type
-                                     :database_type     database_type
-                                     :description       description
-                                     :effective_type    effective_type
-                                     :semantic_type     semantic_type
-                                     :coercion_strategy coercion_strategy}
-                              p  (assoc :parent_db_name      (:db_name p)
-                                        :parent_table_schema (:table_schema p)
-                                        :parent_table_name   (:table_name p)
-                                        :parent_path         (:path p)
-                                        :parent_name         (:name p))
-                              fk (assoc :fk_target_db_name      (:db_name fk)
-                                        :fk_target_table_schema (:table_schema fk)
-                                        :fk_target_table_name   (:table_name fk)
-                                        :fk_target_path         (:path fk)
-                                        :fk_target_name         (:name fk)))))
-                        batch)]
-         (t2/insert! :metabase_field_import rows))))))
+   metadata-file :fields import-batch-size drain-fields-batch!))
 
 (defn- collect-missing-parent-portable-ids
   "Return a vector of distinct portable id vectors for staging rows whose

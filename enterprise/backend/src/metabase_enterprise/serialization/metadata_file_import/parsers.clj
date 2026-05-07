@@ -39,3 +39,18 @@
     (with-open [is     (FileInputStream. file)
                 reader (InputStreamReader. is StandardCharsets/UTF_8)]
       (parser-fn reader array-key batch-size process-batch!))))
+
+(defn stream-keyed-arrays!
+  "Single-pass walk of `file`'s top-level object/mapping, dispatching arrays to
+  per-key handlers. `handlers` is a map of keyword → fn-of-batch (each batch
+  is a vector of `[line-num row]` tuples, up to `batch-size`). Format is
+  auto-detected from the extension; arrays for keys not in `handlers` are
+  skipped without materialization. Replaces the N-file-passes pattern of
+  calling `stream-array-batches!` once per known key."
+  [^File file batch-size handlers]
+  (let [parser-fn (case (detect-format file)
+                    :json json/stream-keyed-arrays!
+                    :yaml yaml/stream-keyed-arrays!)]
+    (with-open [is     (FileInputStream. file)
+                reader (InputStreamReader. is StandardCharsets/UTF_8)]
+      (parser-fn reader batch-size handlers))))
