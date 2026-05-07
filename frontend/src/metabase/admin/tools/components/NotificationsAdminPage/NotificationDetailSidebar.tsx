@@ -156,12 +156,13 @@ const SidebarHeader = ({
   return (
     <Box px="xl" pt="lg" pb="md">
       <Flex justify="flex-end" align="center" mb="md">
-        <Group gap={4}>
+        <Group gap="sm">
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
               <ActionIcon
                 aria-label={t`More actions`}
                 size="lg"
+                c="icon-primary"
                 disabled={isBulkLoading}
               >
                 <Icon name="ellipsis" />
@@ -188,12 +189,18 @@ const SidebarHeader = ({
           <ActionIcon
             aria-label={t`Edit`}
             size="lg"
+            c="icon-primary"
             disabled={isBulkLoading}
             onClick={onEdit}
           >
             <Icon name="pencil" />
           </ActionIcon>
-          <ActionIcon aria-label={t`Close`} size="lg" onClick={onClose}>
+          <ActionIcon
+            aria-label={t`Close`}
+            size="lg"
+            c="icon-primary"
+            onClick={onClose}
+          >
             <Icon name="close" />
           </ActionIcon>
         </Group>
