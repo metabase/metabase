@@ -173,6 +173,7 @@ export const NotificationsTable = ({
         header: t`Question`,
         width: 280,
         enableSorting: true,
+        accessorFn: (notification) => notification.payload?.card?.name ?? "",
         cell: ({ row }) => {
           const card = row.original.payload?.card;
           const cardId = row.original.payload.card_id;
@@ -185,6 +186,8 @@ export const NotificationsTable = ({
         header: t`Owner`,
         width: 200,
         enableSorting: true,
+        accessorFn: (notification) =>
+          notification.owner?.common_name ?? notification.owner?.email ?? "",
         cell: ({ row }) => {
           const owner = row.original.owner;
           const name = owner?.common_name ?? owner?.email ?? t`Unknown`;
@@ -244,6 +247,7 @@ export const NotificationsTable = ({
         width: 200,
         enableSorting: true,
         sortDescFirst: true,
+        accessorFn: (notification) => notification.last_sent?.at ?? "",
         cell: ({ row }) => <TimestampCell run={row.original.last_sent} />,
       },
     ],
