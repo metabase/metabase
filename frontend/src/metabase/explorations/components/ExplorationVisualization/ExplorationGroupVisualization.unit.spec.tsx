@@ -45,19 +45,31 @@ jest.mock("metabase/api/dataset", () => ({
 }));
 
 // `Lib.fromJsQueryAndMetadata` + `Lib.defaultDisplay` need a working
-// metadata graph; bypass them by stubbing to a deterministic default.
+// metadata graph; bypass them by stubbing to a deterministic default
+// that individual tests can swap out via `mockDefaultDisplay.value`.
+const mockDefaultDisplay = {
+  value: {
+    display: "line",
+    settings: { "graph.x_axis.scale": "timeseries" } as Record<string, unknown>,
+  },
+};
 jest.mock("metabase-lib", () => ({
   __esModule: true,
   fromJsQueryAndMetadata: () => ({}) as any,
-  defaultDisplay: () => ({
-    display: "line",
-    settings: { "graph.x_axis.scale": "timeseries" },
-  }),
+  defaultDisplay: () => mockDefaultDisplay.value,
 }));
 
 jest.mock("metabase-lib/v1/types/utils/isa", () => ({
   __esModule: true,
   isDate: () => true,
+}));
+
+jest.mock("metabase/visualizations", () => ({
+  __esModule: true,
+  isCartesianChart: (display: string) =>
+    ["line", "bar", "area", "combo", "row", "scatter", "waterfall"].includes(
+      display,
+    ),
 }));
 
 function makeQuery(
@@ -149,6 +161,10 @@ function setup({ queries, datasets }: SetupOpts) {
 describe("ExplorationGroupVisualization", () => {
   afterEach(() => {
     mockDatasetsByQueryId.clear();
+    mockDefaultDisplay.value = {
+      display: "line",
+      settings: { "graph.x_axis.scale": "timeseries" },
+    };
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
@@ -251,5 +267,98 @@ describe("ExplorationGroupVisualization", () => {
     expect(
       within(header.parentElement!).queryByText("Revenue (US)"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("non-cartesian displays (e.g. map)", () => {
+    beforeEach(() => {
+      mockDefaultDisplay.value = {
+        display: "map",
+        settings: {} as Record<string, unknown>,
+      };
+    });
+
+    it("renders one Visualization per query (no combined chart) without graph.split_panels", () => {
+      const queries = [
+        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
+        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
+      ];
+      const datasets = new Map([
+        [201, makeDataset()],
+        [202, makeDataset()],
+      ]);
+      setup({ queries, datasets });
+
+      // N separate Visualization stubs, one per query.
+      const stubs = screen.getAllByTestId("visualization-stub");
+      expect(stubs).toHaveLength(2);
+
+      for (const stub of stubs) {
+        const rawSeries = JSON.parse(
+          stub.getAttribute("data-raw-series") ?? "[]",
+        );
+        expect(rawSeries).toHaveLength(1);
+        // Cartesian-only settings must NOT leak into a map card.
+        expect(
+          rawSeries[0].card.visualization_settings["graph.split_panels"],
+        ).toBeUndefined();
+        expect(
+          rawSeries[0].card.visualization_settings["graph.dimensions"],
+        ).toBeUndefined();
+        expect(rawSeries[0].card.display).toBe("map");
+      }
+
+      // Each stub's series belongs to a different query (preserving order).
+      const seriesByStub = stubs.map(
+        (s) => JSON.parse(s.getAttribute("data-raw-series") ?? "[]")[0].card.id,
+      );
+      expect(seriesByStub).toEqual([201, 202]);
+    });
+
+    it("bakes a distinct map.colors ramp into each map card so they don't share a color", () => {
+      const queries = [
+        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
+        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
+      ];
+      const datasets = new Map([
+        [201, makeDataset()],
+        [202, makeDataset()],
+      ]);
+      setup({ queries, datasets });
+
+      const stubs = screen.getAllByTestId("visualization-stub");
+      const ramps = stubs.map(
+        (s) =>
+          JSON.parse(s.getAttribute("data-raw-series") ?? "[]")[0].card
+            .visualization_settings["map.colors"],
+      );
+
+      // Every card has a non-empty color ramp.
+      for (const ramp of ramps) {
+        expect(Array.isArray(ramp)).toBe(true);
+        expect(ramp.length).toBeGreaterThan(0);
+      }
+      // The two ramps differ — at minimum their first color is not the
+      // same hue, since `getColorsForValues` assigned distinct colors
+      // to the two query ids.
+      expect(ramps[0][0]).not.toEqual(ramps[1][0]);
+    });
+
+    it("renders a per-chart legend header showing the query name above each map", () => {
+      const queries = [
+        makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
+        makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
+      ];
+      const datasets = new Map([
+        [201, makeDataset()],
+        [202, makeDataset()],
+      ]);
+      setup({ queries, datasets });
+
+      // Each chart gets its own header text (the query name) — the
+      // viz-stub itself doesn't render the name on a single-series
+      // map, so this is the user-visible "legend" replacement.
+      expect(screen.getByText("Sessions (US)")).toBeInTheDocument();
+      expect(screen.getByText("Sessions (EU)")).toBeInTheDocument();
+    });
   });
 });

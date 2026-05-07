@@ -6,7 +6,10 @@ import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { createSeriesCard } from "metabase/metrics/utils/series";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon, Stack, Text } from "metabase/ui";
+import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+import { getColorsForValues } from "metabase/ui/colors/charts";
+import { isCartesianChart } from "metabase/visualizations";
+import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -17,6 +20,7 @@ import type {
   Timeline,
   TimelineEvent,
   TimelineId,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   isCardDisplayType,
@@ -162,6 +166,11 @@ function ExplorationGroupVisualizationChart({
   // value that changes whenever any dataset reference changes.
   const datasetRefs = datasets.map((d) => d.currentData);
 
+  const queryColors = useMemo(
+    () => getColorsForValues(queries.map((q) => String(q.id))),
+    [queries],
+  );
+
   const series = useMemo(() => {
     if (datasetRefs.some((d) => !d) || isMetadataLoading) {
       return undefined;
@@ -172,16 +181,21 @@ function ExplorationGroupVisualizationChart({
     );
     const { display, settings } = Lib.defaultDisplay(baseLibQuery);
     const baseDisplay = display === "table" ? "bar" : display;
+    const cartesian = isCartesianChart(baseDisplay);
     return queries.map((q, i) => {
       const dataset = datasetRefs[i]!;
+      const cardSettings: VisualizationSettings = { ...settings };
+      if (cartesian) {
+        cardSettings["graph.dimensions"] = getDimensions(dataset);
+        cardSettings["graph.split_panels"] = true; // Render every series in its own vertical pane along a shared x-axis
+      } else if (baseDisplay === "map") {
+        const color = queryColors[String(q.id)];
+        if (color) {
+          cardSettings["map.colors"] = getColorplethColorScale(color);
+        }
+      }
       return {
-        card: createSeriesCard(q.id, q.name, baseDisplay, {
-          ...settings,
-          "graph.dimensions": getDimensions(dataset),
-          // Render every series in its own vertical pane along a shared
-          // x-axis (one chart, N panels).
-          "graph.split_panels": true,
-        }),
+        card: createSeriesCard(q.id, q.name, baseDisplay, cardSettings),
         data: dataset.data,
       };
     });
@@ -189,9 +203,14 @@ function ExplorationGroupVisualizationChart({
     // entries make this safe; including the array directly would cause
     // an unstable dep warning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queries, isMetadataLoading, metadata, ...datasetRefs]);
+  }, [queries, isMetadataLoading, metadata, queryColors, ...datasetRefs]);
 
   const display = useMemo(() => series?.[0]?.card?.display, [series]);
+
+  const isCartesian = useMemo(
+    () => (display ? isCartesianChart(display) : false),
+    [display],
+  );
 
   const showTimelineDropdown = useMemo(() => {
     const firstSeries = series?.[0];
@@ -222,11 +241,42 @@ function ExplorationGroupVisualizationChart({
         display={isCardDisplayType(display) ? display : undefined}
         interestingTimelineIds={interestingTimelineIds}
       />
-      <Visualization
-        rawSeries={series}
-        timelineEvents={timelineEvents}
-        className={S.chart}
-      />
+      {isCartesian ? (
+        <Visualization
+          rawSeries={series}
+          timelineEvents={timelineEvents}
+          className={S.chart}
+        />
+      ) : (
+        <Stack gap="lg" flex={1} mih={0} style={{ overflowY: "auto" }}>
+          {series.map((s) => {
+            const color = queryColors[String(s.card.id)];
+            return (
+              <Stack
+                key={s.card.id}
+                gap="xs"
+                h="24rem"
+                mih="24rem"
+                style={{ flexShrink: 0 }}
+              >
+                <Group gap="sm" align="center">
+                  <Box
+                    aria-hidden
+                    w="0.625rem"
+                    h="0.625rem"
+                    bdrs="50%"
+                    style={{ background: color }}
+                  />
+                  <Text fw="bold">{s.card.name}</Text>
+                </Group>
+                <Box flex={1} mih={0}>
+                  <Visualization rawSeries={[s]} className={S.chart} />
+                </Box>
+              </Stack>
+            );
+          })}
+        </Stack>
+      )}
     </>
   );
 }
