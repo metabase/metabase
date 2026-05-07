@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 
@@ -19,7 +20,6 @@ import type {
   ExplorationQueryId,
   ExplorationQueryWithName,
   ExplorationThread,
-  ExplorationThreadId,
   ThreadsWithSortedQueries,
   Timeline,
   TimelineEvent,
@@ -40,12 +40,20 @@ import {
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
+const NO_TIMELINE_PARAM = "none";
+const TIMELINE_QUERY_PARAM = "timeline";
+
+interface ExplorationPageQuery {
+  [TIMELINE_QUERY_PARAM]?: string;
+}
+
 interface ExplorationPageProps {
   params: {
     id: string;
     entityType?: "query" | "document" | "group";
     entityId?: string;
   };
+  location: Location<ExplorationPageQuery>;
   children?: React.ReactNode;
 }
 
@@ -124,7 +132,11 @@ export type SelectedEntityId =
   | SelectedDocumentId
   | SelectedGroupId;
 
-export function ExplorationPage({ params, children }: ExplorationPageProps) {
+export function ExplorationPage({
+  params,
+  location,
+  children,
+}: ExplorationPageProps) {
   const dispatch = useDispatch();
 
   const setSelectedEntityId = useCallback(
@@ -133,19 +145,20 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
         entityId.type === "group"
           ? encodeURIComponent(entityId.id)
           : entityId.id;
+      const search = location.search ?? "";
       dispatch(
-        push(`/explorations/${params.id}/${entityId.type}/${idSegment}`),
+        push(
+          `/explorations/${params.id}/${entityId.type}/${idSegment}${search}`,
+        ),
       );
     },
-    [dispatch, params.id],
+    [dispatch, params.id, location.search],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
-  const [selectedTimelineIdByThreadId, setSelectedTimelineIdByThreadId] =
-    useState<Record<ExplorationThreadId, TimelineId | null>>({});
 
   const {
     data: exploration,
@@ -349,21 +362,20 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
     if (!effectiveSelectedThread) {
       return null;
     }
-    // User-set override sticks for the whole thread (preserves prior
-    // behavior). `hasOwnProperty` distinguishes "user explicitly cleared
-    // → null" from "no entry yet → fall back to auto-default".
-    if (
-      Object.prototype.hasOwnProperty.call(
-        selectedTimelineIdByThreadId,
-        effectiveSelectedThread.id,
-      )
-    ) {
-      return selectedTimelineIdByThreadId[effectiveSelectedThread.id] ?? null;
+    const param = location.query?.[TIMELINE_QUERY_PARAM];
+    if (param === NO_TIMELINE_PARAM) {
+      return null;
+    }
+    if (typeof param === "string" && param !== "") {
+      const num = Number(param);
+      if (Number.isFinite(num) && availableTimelineIds.has(num)) {
+        return num;
+      }
     }
     return getMostInterestingTimelineId(entityQueries, availableTimelineIds);
   }, [
     effectiveSelectedThread,
-    selectedTimelineIdByThreadId,
+    location.query,
     entityQueries,
     availableTimelineIds,
   ]);
@@ -380,15 +392,21 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
 
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
-      if (!effectiveSelectedThread) {
-        return;
-      }
-      setSelectedTimelineIdByThreadId((prev) => ({
-        ...prev,
-        [effectiveSelectedThread.id]: timelineId,
-      }));
+      // Update the `timeline` URL query param while preserving the
+      // path and any other params already on the URL. `null` becomes
+      // the `NO_TIMELINE_PARAM` sentinel so we can tell an explicit
+      // user-clear apart from "no choice yet" (auto-default).
+      const search = new URLSearchParams(location.search ?? "");
+      search.set(
+        TIMELINE_QUERY_PARAM,
+        timelineId == null ? NO_TIMELINE_PARAM : String(timelineId),
+      );
+      const searchString = search.toString();
+      dispatch(
+        push(`${location.pathname}${searchString ? `?${searchString}` : ""}`),
+      );
     },
-    [effectiveSelectedThread, setSelectedTimelineIdByThreadId],
+    [dispatch, location.pathname, location.search],
   );
 
   if (isLoading || error) {
