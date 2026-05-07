@@ -122,23 +122,24 @@ const useObserveAppliedParameters = (
   onParametersChange: ((payload: ParameterChangePayload) => void) | undefined,
   lastParametersPushRef: MutableRefObject<ParameterValues | null>,
 ) => {
-  const callbackRef = useLatest(onParametersChange);
+  const onParametersChangeRef = useLatest(onParametersChange);
 
   const handleInitialStateAction = useCallback<
     Parameters<typeof startSdkListening>[0] extends { effect: infer E }
       ? E & ((...args: any[]) => void)
       : never
   >(
-    (_action, store) => {
+    (_action, listenerApi) => {
       const payload = buildDashboardChangePayload(
-        store.getState(),
+        listenerApi.getState(),
         "initial-state",
       );
+
       if (payload) {
-        callbackRef.current?.(payload);
+        onParametersChangeRef.current?.(payload);
       }
     },
-    [callbackRef],
+    [onParametersChangeRef],
   );
 
   const isParameterValueChangeAction = useCallback<
@@ -167,8 +168,8 @@ const useObserveAppliedParameters = (
       ? E & ((...args: any[]) => void)
       : never
   >(
-    (_action, store) => {
-      const state = store.getState();
+    (_action, listenerApi) => {
+      const state = listenerApi.getState();
       const lastParametersPush = lastParametersPushRef.current;
       lastParametersPushRef.current = null;
 
@@ -176,19 +177,19 @@ const useObserveAppliedParameters = (
         const payload = buildDashboardChangePayload(state, "auto-change");
 
         if (payload && !isEqual(payload.parameters, lastParametersPush)) {
-          callbackRef.current?.(payload);
+          onParametersChangeRef.current?.(payload);
         }
 
         return;
-      }
+      } else {
+        const payload = buildDashboardChangePayload(state, "manual-change");
 
-      const payload = buildDashboardChangePayload(state, "manual-change");
-
-      if (payload) {
-        callbackRef.current?.(payload);
+        if (payload) {
+          onParametersChangeRef.current?.(payload);
+        }
       }
     },
-    [callbackRef, lastParametersPushRef],
+    [onParametersChangeRef, lastParametersPushRef],
   );
 
   useEffect(() => {

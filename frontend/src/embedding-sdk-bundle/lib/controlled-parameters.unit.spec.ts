@@ -44,6 +44,22 @@ describe("mapExplicitNullToEmpty", () => {
   it("returns an empty object for an empty input", () => {
     expect(mapExplicitNullToEmpty({})).toEqual({});
   });
+
+  it('maps `null` to `""` and preserves non-null values when both appear in the same object', () => {
+    expect(
+      mapExplicitNullToEmpty({
+        state: null,
+        category: "Foo",
+        count: 3,
+        flags: ["a", "b"],
+      }),
+    ).toEqual({
+      state: "",
+      category: "Foo",
+      count: 3,
+      flags: ["a", "b"],
+    });
+  });
 });
 
 describe("buildControlledParameters", () => {
@@ -53,7 +69,10 @@ describe("buildControlledParameters", () => {
       DEFAULT_DEFINITIONS,
     );
 
-    expect(result[STATE_PARAM.id]).toEqual(["NY"]);
+    expect(result).toEqual({
+      [STATE_PARAM.id]: ["NY"],
+      [CATEGORY_PARAM.id]: null,
+    });
   });
 
   it("falls back to `parameter.default` for missing slugs", () => {
@@ -62,9 +81,10 @@ describe("buildControlledParameters", () => {
       DEFAULT_DEFINITIONS,
     );
 
-    expect(result[CATEGORY_PARAM.id]).toEqual(null);
-    // Sanity: the slug we did pass.
-    expect(result[STATE_PARAM.id]).toEqual(["NY"]);
+    expect(result).toEqual({
+      [STATE_PARAM.id]: ["NY"],
+      [CATEGORY_PARAM.id]: null,
+    });
   });
 
   it("treats explicit `null` as a strict clear and ignores `parameter.default`", () => {
@@ -73,7 +93,19 @@ describe("buildControlledParameters", () => {
       DEFAULT_DEFINITIONS,
     );
 
-    expect(result[STATE_PARAM.id]).toEqual(null);
+    expect(result).toEqual({
+      [STATE_PARAM.id]: null,
+      [CATEGORY_PARAM.id]: null,
+    });
+  });
+
+  it("returns `parameter.default ?? null` for every slug when given an empty object", () => {
+    const result = buildControlledParameters({}, DEFAULT_DEFINITIONS);
+
+    expect(result).toEqual({
+      [STATE_PARAM.id]: "AR",
+      [CATEGORY_PARAM.id]: null,
+    });
   });
 
   describe("controlled-parameters value normalization round-trip", () => {
@@ -84,7 +116,10 @@ describe("buildControlledParameters", () => {
         DEFAULT_DEFINITIONS,
       );
 
-      expect(pushed[STATE_PARAM.id]).toEqual(["Gizmo"]);
+      expect(pushed).toEqual({
+        [STATE_PARAM.id]: ["Gizmo"],
+        [CATEGORY_PARAM.id]: null,
+      });
     });
 
     it("preserves an array push unchanged (no double-wrap)", () => {
@@ -92,7 +127,11 @@ describe("buildControlledParameters", () => {
         { state: ["Gizmo", "Widget"] },
         DEFAULT_DEFINITIONS,
       );
-      expect(pushed[STATE_PARAM.id]).toEqual(["Gizmo", "Widget"]);
+
+      expect(pushed).toEqual({
+        [STATE_PARAM.id]: ["Gizmo", "Widget"],
+        [CATEGORY_PARAM.id]: null,
+      });
     });
 
     it("emits the normalized array shape back to the host", () => {
@@ -113,9 +152,15 @@ describe("buildControlledParameters", () => {
 });
 
 describe("getEffectiveParameterValues", () => {
-  it("returns `mapExplicitNullToEmpty(controlled)` when the controlled prop is set", () => {
+  it('translates explicit `null` to `""` for the controlled prop (strict clear)', () => {
     expect(
       getEffectiveParameterValues({ state: null, category: "Foo" }, undefined),
+    ).toEqual({ state: "", category: "Foo" });
+  });
+
+  it('translates explicit `null` to `""` for `initialParameters` too (consistent strict-clear semantic across both props)', () => {
+    expect(
+      getEffectiveParameterValues(undefined, { state: null, category: "Foo" }),
     ).toEqual({ state: "", category: "Foo" });
   });
 

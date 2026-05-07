@@ -3,9 +3,16 @@ import { useEffect } from "react";
 type Options = {
   initialParameters: unknown;
   parameters: unknown;
-  initialParameterPropName: string;
-  parameterPropName: string;
-};
+} & (
+  | {
+      initialParameterPropName: "initialParameters";
+      parameterPropName: "parameters";
+    }
+  | {
+      initialParameterPropName: "initialSqlParameters";
+      parameterPropName: "sqlParameters";
+    }
+);
 
 export const useWarnConflictingParameterProps = ({
   initialParameters,

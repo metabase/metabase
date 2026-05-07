@@ -383,7 +383,7 @@ describe("scenarios > embedding-sdk > sdk-dashboard > controlled parameters", ()
     findDateFilterValue().should("not.contain.text", "Previous 30 days");
   });
 
-  it("does not fire `onParametersChange` when host clears a parameter to null", () => {
+  it("does not call `onParametersChange` when host clears the dashboard's only parameter to null", () => {
     const onParametersChange = cy.spy().as("onParametersChange");
 
     const ClearableDashboard = ({ dashboardId }: { dashboardId: string }) => {

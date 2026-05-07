@@ -57,7 +57,7 @@ export const useSdkControlledSqlParameters = ({
 
   const lastSqlParametersPushRef = useRef<SqlParameterValues | null>(null);
 
-  usePushControlled({
+  usePushControlledSqlParameters({
     sqlParameters,
     parameterDefinitions,
     appliedParameterValues: parameterValues,
@@ -78,7 +78,7 @@ export const useSdkControlledSqlParameters = ({
  * applied values whenever it changes. Skips the dispatch when the resolved
  * values already match what's applied.
  */
-const usePushControlled = ({
+const usePushControlledSqlParameters = ({
   sqlParameters,
   parameterDefinitions,
   appliedParameterValues,

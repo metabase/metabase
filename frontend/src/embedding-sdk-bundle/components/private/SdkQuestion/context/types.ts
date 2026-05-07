@@ -41,7 +41,22 @@ type SdkQuestionConfig = {
   isSaveEnabled?: boolean;
 
   /**
-   * Initial values for SQL parameters — uncontrolled. Read once on load and ignored on every subsequent render; user widget edits are not reflected back to the host. For controlled (push + observe) behavior use `sqlParameters` + `onSqlParametersChange`.
+   * Initial values for SQL parameters, slug-keyed. Applied once on mount; user widget edits afterwards are not reflected back to the host.
+   * <br/>
+   * For each parameter:
+   * <br/>
+   * - set to a value: that value is applied.
+   * <br/>
+   * - set to `null`: strictly cleared, ignoring the parameter's default.
+   * <br/>
+   * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if there is no default).
+   * <br/>
+   * <br/>
+   * Examples:
+   * <br/>
+   * - Passing an empty object `{}` resets every parameter to its default.
+   * <br/>
+   * - Passing an object with every slug set to `null` clears all parameter values.
    **/
   initialSqlParameters?: SqlParameterValues;
 
@@ -52,7 +67,7 @@ type SdkQuestionConfig = {
    * <br/>
    * - a parameter set to `null` is cleared, even if it has a default.
    * <br/>
-   * - a parameter omitted from the object uses its default (or `null` if it has no default).
+   * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
    * <br/>
    * <br/>
    * Examples:

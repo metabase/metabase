@@ -8,7 +8,7 @@ export function getStore(
   reducers,
   history,
   initialState,
-  extraMiddleware = [],
+  extraMiddlewares = [],
 ) {
   const reducer = combineReducers({
     ...reducers,
@@ -27,7 +27,7 @@ export function getStore(
         Api.middleware,
         ...(history ? [routerMiddleware(history)] : []),
         ...PLUGIN_REDUX_MIDDLEWARES,
-        ...extraMiddleware,
+        ...extraMiddlewares,
       ]),
   });
 }

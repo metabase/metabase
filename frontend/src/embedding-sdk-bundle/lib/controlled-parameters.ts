@@ -26,7 +26,8 @@ export const mapExplicitNullToEmpty = (
 
 /**
  * Builds the id-keyed parameter values dispatched by the controlled push from
- * the host's slug-keyed `parameters`/`sqlParameters` prop.
+ * the host's slug-keyed `parameters`/`sqlParameters` prop. Missing slugs fall
+ * back to `parameter.default ?? null`.
  */
 export const buildControlledParameters = (
   parameters: ParameterValues,
@@ -41,17 +42,14 @@ export const buildControlledParameters = (
  * Picks which set of seed values to use on mount when both the
  * controlled (`parameters`) and uncontrolled (`initialParameters`) props are
  * available. Controlled wins when set; otherwise falls back to initial.
+ * Routes both through `mapExplicitNullToEmpty` so explicit `null` consistently
+ * means "strictly clear this slug" (ignore the parameter's default and last-used).
  */
 export const getEffectiveParameterValues = (
   controlledParameters: ParameterValues | null | undefined,
   initialParameters: ParameterValues | undefined,
-): ParameterValues => {
-  if (controlledParameters === null || controlledParameters === undefined) {
-    return initialParameters ?? {};
-  }
-
-  return mapExplicitNullToEmpty(controlledParameters);
-};
+): ParameterValues =>
+  mapExplicitNullToEmpty(controlledParameters ?? initialParameters ?? {});
 
 /**
  * Builds the slug-keyed payload delivered to `onParametersChange` /

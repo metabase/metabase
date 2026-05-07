@@ -228,21 +228,26 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       });
   });
 
-  it("fires `onSqlParametersChange` with `source: 'auto-change'` when a scalar push is wrapped into an array by the pipeline", () => {
+  it("fires `onSqlParametersChange` with `source: 'auto-change'` when normalization reshapes the host's push (carries `null` for cleared slugs)", () => {
+    // The push triggers `auto-change` because scalar values for the
+    // multi-select widget are wrapped into arrays by the pipeline (here:
+    // `state: "WA"` => `["WA"]`). The cleared `city` slug rides along —
+    // cleared slugs come through the payload as `null`, not omitted.
     const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
 
     const PushButton = ({ questionId }: { questionId: number | string }) => {
       const [sqlParameters, setSqlParameters] = useState<SqlParameterValues>({
         state: "AR",
+        city: "El Paso",
       });
 
       return (
         <>
           <button
             type="button"
-            onClick={() => setSqlParameters({ state: "WA" })}
+            onClick={() => setSqlParameters({ state: "WA", city: null })}
           >
-            push WA
+            push WA + clear city
           </button>
           <InteractiveQuestion
             questionId={questionId}
@@ -269,7 +274,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       .its("firstCall.args.0")
       .should("include", { source: "initial-state" });
 
-    cy.contains("button", "push WA").click();
+    cy.contains("button", "push WA + clear city").click();
 
     cy.wait("@cardQuery");
 
@@ -277,7 +282,10 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       .its("lastCall.args.0")
       .should((payload) => {
         expect(payload.source).to.equal("auto-change");
-        expect(payload.parameters).to.deep.include({ state: ["WA"] });
+        expect(payload.parameters).to.deep.include({
+          state: ["WA"],
+          city: null,
+        });
       });
   });
 
@@ -295,61 +303,6 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.wait(500);
 
     cy.get("@onSqlParametersChange").should("have.been.calledOnce");
-  });
-
-  it("emits `auto-change` with `null` value when host pushes an explicit null", () => {
-    const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
-
-    const ClearableQuestion = ({
-      questionId,
-    }: {
-      questionId: number | string;
-    }) => {
-      const [sqlParameters, setSqlParameters] = useState<SqlParameterValues>({
-        state: "AR",
-        city: "El Paso",
-      });
-
-      return (
-        <>
-          <button
-            type="button"
-            onClick={() =>
-              setSqlParameters((prev) => ({ ...prev, city: null }))
-            }
-          >
-            clear city
-          </button>
-          <InteractiveQuestion
-            questionId={questionId}
-            sqlParameters={sqlParameters}
-            onSqlParametersChange={onSqlParametersChange}
-          >
-            {childrenLayout}
-          </InteractiveQuestion>
-        </>
-      );
-    };
-
-    cy.intercept("GET", "/api/card/*").as("getCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    cy.get<number>("@questionId").then((questionId) => {
-      mountSdkContent(<ClearableQuestion questionId={questionId} />);
-    });
-
-    cy.wait("@getCard");
-    cy.wait("@cardQuery");
-
-    cy.contains("button", "clear city").click();
-    cy.wait("@cardQuery");
-
-    cy.get("@onSqlParametersChange")
-      .its("lastCall.args.0")
-      .should((payload) => {
-        expect(payload.source).to.equal("auto-change");
-        expect(payload.parameters.city).to.equal(null);
-      });
   });
 
   it("clears a single parameter when its value is set to null", () => {

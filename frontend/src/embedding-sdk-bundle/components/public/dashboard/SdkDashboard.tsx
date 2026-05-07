@@ -133,7 +133,23 @@ export type SdkDashboardProps = PropsWithChildren<
     autoRefreshInterval?: number;
 
     /**
-     * Initial values for query parameters — uncontrolled. Read once on load and ignored on every subsequent render; user widget edits are not reflected back to the host. For a single option, use a `string` value, and use a list of strings for multiple options. For controlled (push + observe) behavior use {@link SdkDashboardProps.parameters | parameters} + {@link SdkDashboardProps.onParametersChange | onParametersChange}.
+     * Initial values for query parameters, slug-keyed. Applied once on mount; user widget edits afterwards are not reflected back to the host.
+     * <br/>
+     * For each parameter:
+     * <br/>
+     * - set to a value (string for a single option, array of strings for multiple): that value is applied.
+     * <br/>
+     * - set to `null`: strictly cleared, ignoring the parameter's default.
+     * <br/>
+     * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
+     * <br/>
+     * <br/>
+     * Examples:
+     * <br/>
+     * - Passing an empty object `{}` resets every parameter to its default.
+     * <br/>
+     * - Passing an object with every slug set to `null` clears all parameter values.
+     * <br/>
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
@@ -148,7 +164,7 @@ export type SdkDashboardProps = PropsWithChildren<
      * <br/>
      * - a parameter set to `null` is cleared, even if it has a default.
      * <br/>
-     * - a parameter omitted from the object uses its default (or `null` if it has no default).
+     * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
      * <br/>
      * <br/>
      * Examples:
