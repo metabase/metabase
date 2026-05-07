@@ -94,7 +94,7 @@
 (defn application-db-handle
   "Return a mutable component handle to the application db"
   []
-  (mc/current (system/mutable-component-handle ::application-db)))
+  (system/mutable-component-handle ::application-db))
 
 #_{:clj-kondo/ignore [:metabase/check-def-no-underscores]}
 (defonce ^:private _init
