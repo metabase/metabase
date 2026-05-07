@@ -46,6 +46,7 @@
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -575,6 +576,72 @@
               (testing "after the underlying TEXT column becomes a native number, the previously
                        user-set coercion strategy should be cleared and effective_type should
                        match the new base_type"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field)))))
+          ;; ----- repro v4: set coercion the way the PUT /api/field/:id endpoint does:
+          ;; via upsert-user-settings, which writes to metabase_field_user_settings. That
+          ;; row is overlaid back onto the field on every t2/update! via the
+          ;; sync-user-settings before-update hook (merge non-nil user-settings over
+          ;; field changes). v3 wrote only to metabase_field and so bypassed this
+          ;; overlay; v4 exercises the real UI cast-toggle path.
+          (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+          (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+            (t2/delete! :model/Field :table_id (:id stale-table))
+            (t2/delete! :model/Table :id (:id stale-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
+            (field-user-settings/upsert-user-settings v4-field
+                                                      {:coercion_strategy :Coercion/String->Integer
+                                                       :effective_type    :type/Integer})
+            (t2/update! :model/Field (:id v4-field)
+                        {:coercion_strategy :Coercion/String->Integer
+                         :effective_type    :type/Integer})
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-database! (mt/db))
+            (let [after-field         (t2/select-one :model/Field :id (:id v4-field))
+                  after-user-settings (t2/select-one :model/FieldUserSettings :field_id (:id v4-field))]
+              (testing "after CREATE OR REPLACE to numeric, the user-set coercion stored in
+                       metabase_field_user_settings (via upsert-user-settings) should be
+                       cleared so it doesn't overlay back on top of the synced field"
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-field))
+                (is (=? {:effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        after-user-settings)))))
+          ;; ----- repro v5: same as v1 (in-place CREATE OR REPLACE TEXT -> NUMBER) but trigger
+          ;; sync via sync/sync-table! — the function the per-table "Sync table now" UI button
+          ;; calls. Goes through sync-table-metadata! -> sync-fields-for-table! instead of
+          ;; sync-db-metadata! -> sync-fields!. Both reach the same sync-and-update! core, but
+          ;; the OP's repro instructions said "Now sync the table" (singular), so this rules
+          ;; out a code-path-specific bug at the entry point.
+          (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+          (when-let [stale-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+            (t2/delete! :model/Field :table_id (:id stale-table))
+            (t2/delete! :model/Table :id (:id stale-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (let [v5-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                v5-field (t2/select-one :model/Field :table_id (:id v5-table) :name "text_column")]
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            (sync/sync-table! v5-table)
+            (let [after-field (t2/select-one :model/Field :id (:id v5-field))]
+              (testing "sync-table! (the per-table UI button) should also reset effective_type
+                       when the underlying column type changes"
                 (is (=? {:base_type         :type/BigInteger
                          :effective_type    :type/BigInteger
                          :coercion_strategy nil

@@ -447,3 +447,53 @@
                       new-field)))))
         (finally
           (t2/delete! :model/Database (mt/id)))))))
+
+(deftest sync-self-heals-effective-type-drift-test
+  (testing "GHY-3388: when a field is in the broken state (effective_type ≠ base_type with no
+           coercion_strategy) AND base_type does not change at this sync, sync should still
+           heal effective_type to match base_type. This catches drifted state from older
+           Metabase versions that the customer's instance carries forward."
+    (testing "broken row gets healed even when base_type does not change"
+      (is (= [["FieldUserSettings" 1 {:effective_type :type/Number}]
+              ["Field" 1 {:effective_type :type/Number}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Number})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Number
+                      :effective-type    :type/Text
+                      :coercion-strategy nil})))))
+    (testing "row with a real coercion_strategy is left alone — effective_type ≠ base_type is legitimate"
+      (is (= []
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Text})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Text
+                      :effective-type    :type/Number
+                      :coercion-strategy :Coercion/String->Number})))))
+    (testing "row that is already consistent is not updated"
+      (is (= []
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type :type/Number})
+              (merge default-metadata
+                     {:id                1
+                      :base-type         :type/Number
+                      :effective-type    :type/Number
+                      :coercion-strategy nil})))))
+    (testing "when base_type also changes, the existing reset path runs (not the heal path) —
+             both produce the same effective_type but the base_type-change path also clears
+             fingerprint and semantic_type for re-analysis"
+      (let [updates (updates-that-will-be-performed!
+                     (merge default-metadata
+                            {:base-type :type/Number})
+                     (merge default-metadata
+                            {:id                1
+                             :base-type         :type/Text
+                             :effective-type    :type/Text
+                             :coercion-strategy nil}))]
+        (is (some #(contains? (last %) :fingerprint_version) updates)
+            "base_type-change reset still includes fingerprint reset")))))

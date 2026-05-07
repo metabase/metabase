@@ -125,10 +125,37 @@
   [field]
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
+(defn- enforce-effective-type-invariant
+  "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
+   When effective_type is set but diverges from base_type without a coercion to justify it, this
+   normalizes effective_type to match base_type (and logs a warning so the silent fix is visible).
+   Does not touch rows where coercion_strategy is set (legitimate divergence), where effective_type
+   is nil (separate concern, GHY-3367 territory), or where either type is not a valid descendant of
+   :type/* (so the transform's invalid-type validation still fires)."
+  [field]
+  (let [coercion      (:coercion_strategy field)
+        effective-raw (:effective_type field)
+        base-raw      (:base_type field)
+        effective     (some-> effective-raw keyword)
+        base          (some-> base-raw keyword)]
+    (if (and (nil? coercion)
+             effective
+             base
+             (isa? effective :type/*)
+             (isa? base :type/*)
+             (not= effective base))
+      (do (log/warnf "Field %s: effective_type %s ≠ base_type %s with no coercion_strategy. Normalizing effective_type to match base_type."
+                     (or (:id field) (:name field) "<new>")
+                     effective
+                     base)
+          (assoc field :effective_type base-raw))
+      field)))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (merge defaults field)))
+    (-> (merge defaults field)
+        enforce-effective-type-invariant)))
 
 (def field-user-settings
   "Set of user-settable values for a Field"
@@ -150,7 +177,10 @@
 (defn- sync-user-settings [field]
   ;; we transparently prevent updates that would override user-set values
   (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
-        updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
+        updated-field (-> (merge field (u/select-keys-when user-settings :non-nil field-user-settings))
+                          ;; GHY-3388 invariant: enforce coercion_strategy=nil ⇒ effective_type=base_type
+                          ;; AFTER the user-settings merge, since the overlay can introduce stale effective_type
+                          enforce-effective-type-invariant)]
     (t2.protocols/with-current field updated-field)))
 
 (t2/define-before-update :model/Field
