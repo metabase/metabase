@@ -27,13 +27,11 @@
 
 (mr/def ::external-database
   [:map
-   [:id ::external-database-id]
    [:name :string]
    [:engine :string]])
 
 (mr/def ::external-table
   [:map
-   [:id ::external-table-id]
    [:db_id ::external-database-id]
    [:name :string]
    [:schema {:optional true} :string]
@@ -41,7 +39,6 @@
 
 (mr/def ::external-field
   [:map
-   [:id ::external-field-id]
    [:table_id ::external-table-id]
    [:name :string]
    [:parent_id {:optional true} ::external-field-id]

@@ -458,19 +458,19 @@
                                                                       :with-databases true
                                                                       :with-tables    true
                                                                       :with-fields    true)
-              test-db    (m/find-first (comp #{db-name}                              :id) databases)
-              test-table (m/find-first (comp #{[db-name "PUBLIC" t-name]}            :id) tables)
-              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name f-name]}     :id) fields)]
-          (is (=? {:id db-name :name db-name :engine "h2"}
+              test-db    (m/find-first (comp #{db-name} :name) databases)
+              test-table (m/find-first #(and (= (:db_id %) db-name) (= (:name %) t-name)) tables)
+              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
+                                             (= (:name %) f-name))
+                                       fields)]
+          (is (=? {:name db-name :engine "h2"}
                   test-db))
-          (is (=? {:id          [db-name "PUBLIC" t-name]
-                   :db_id       db-name
+          (is (=? {:db_id       db-name
                    :name        t-name
                    :schema      "PUBLIC"
                    :description "A test table"}
                   test-table))
-          (is (=? {:id            [db-name "PUBLIC" t-name f-name]
-                   :table_id      [db-name "PUBLIC" t-name]
+          (is (=? {:table_id      [db-name "PUBLIC" t-name]
                    :name          f-name
                    :base_type     "type/Integer"
                    :database_type "BIGINT"
@@ -491,9 +491,10 @@
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name f-name]} :id) fields)]
-          (is (=? {:id                [db-name "PUBLIC" t-name f-name]
-                   :name              f-name
+              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
+                                             (= (:name %) f-name))
+                                       fields)]
+          (is (=? {:name              f-name
                    :base_type         "type/Text"
                    :effective_type    "type/DateTime"
                    :coercion_strategy "Coercion/ISO8601->DateTime"
@@ -501,23 +502,30 @@
                   test-field)))))))
 
 (deftest metadata-export-parent-field-test
-  (testing "GET /api/ee/serialization/export/json — parent_id is nfc_path with the last element dropped, omitted for root fields"
+  (testing "GET /api/ee/serialization/export/json — parent_id is emitted only when raw field.parent_id is set"
     (mt/with-premium-features #{:serialization}
       (mt/with-temp [:model/Database {db-id :id  db-name :name}   {:engine :h2}
                      :model/Table    {t-id  :id t-name  :name}    {:db_id db-id :schema "PUBLIC"}
                      :model/Field    {root-name :name}            {:table_id t-id
                                                                    :base_type :type/Text}
-                     :model/Field    _                             {:table_id t-id
+                     :model/Field    {parent-id :id}              {:table_id t-id
+                                                                   :name      "data"
+                                                                   :base_type :type/Dictionary}
+                     :model/Field    _                             {:table_id  t-id
+                                                                    :name      "city"
                                                                     :base_type :type/Text
+                                                                    :parent_id parent-id
                                                                     :nfc_path  ["data" "city"]}]
-        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+        (let [table-id     [db-name "PUBLIC" t-name]
+              {:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field-1 (m/find-first (comp #{[db-name "PUBLIC" t-name root-name]} :id) fields)
-              test-field-2 (m/find-first (comp #{[db-name "PUBLIC" t-name "data" "city"]} :id) fields)]
-          (is (=? {:id [db-name "PUBLIC" t-name root-name]} test-field-1))
+              test-field-1 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) root-name)) fields)
+              test-field-2 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) "city")) fields)]
+          (is (=? {:name root-name :table_id table-id} test-field-1))
           (is (not (contains? test-field-1 :parent_id)))
-          (is (=? {:id        [db-name "PUBLIC" t-name "data" "city"]
+          (is (=? {:name      "city"
+                   :table_id  table-id
                    :parent_id [db-name "PUBLIC" t-name "data"]}
                   test-field-2)))))))
 
@@ -533,17 +541,18 @@
                                                                  :base_type :type/Integer
                                                                  :semantic_type :type/FK
                                                                  :fk_target_field_id pk-id}]
-        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+        (let [table-id     [db-name "PUBLIC" t-name]
+              {:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field-1 (m/find-first (comp #{[db-name "PUBLIC" t-name pk-name]} :id) fields)
-              test-field-2 (m/find-first (comp #{[db-name "PUBLIC" t-name fk-name]} :id) fields)]
-          (is (=? {:id [db-name "PUBLIC" t-name pk-name] :semantic_type "type/PK"}
+              test-field-1 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) pk-name)) fields)
+              test-field-2 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) fk-name)) fields)]
+          (is (=? {:name pk-name :table_id table-id :semantic_type "type/PK"}
                   test-field-1))
-          (is (=? {:id                 [db-name "PUBLIC" t-name fk-name]
-                   :table_id           [db-name "PUBLIC" t-name]
+          (is (=? {:name               fk-name
+                   :table_id           table-id
                    :semantic_type      "type/FK"
-                   :fk_target_field_id (:id test-field-1)}
+                   :fk_target_field_id [db-name "PUBLIC" t-name pk-name]}
                   test-field-2)))))))
 
 (deftest metadata-export-hidden-table-test
@@ -582,7 +591,9 @@
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field (m/find-first (comp #{[db-name "PUBLIC" v-name fk-name]} :id) fields)]
+              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" v-name])
+                                             (= (:name %) fk-name))
+                                       fields)]
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
 
@@ -633,7 +644,9 @@
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field (m/find-first (comp #{[db-name "PUBLIC" t-name fk-name]} :id) fields)]
+              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
+                                             (= (:name %) fk-name))
+                                       fields)]
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
 
@@ -715,7 +728,9 @@
         (let [{:keys [fields]} (mt/user-http-request :rasta :get 202
                                                      "ee/serialization/export/json"
                                                      :with-fields true)
-              test-field (m/find-first (comp #{[db-name "PUBLIC" accessible-name fk-name]} :id) fields)]
+              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" accessible-name])
+                                             (= (:name %) fk-name))
+                                       fields)]
           (is (some? test-field))
           (is (not (contains? test-field :fk_target_field_id))))))))
 

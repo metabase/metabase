@@ -21,6 +21,18 @@
     (sequential? nfc-path) (seq nfc-path)
     (string? nfc-path)     (seq (json/decode nfc-path))))
 
+(defn- parent-field-path
+  "The nfc_path-form path of a field's parent (names from the outer-most
+  ancestor down to the parent's leaf), or nil when `parent-id` is not set. For
+  BigQuery the field's own `nfc_path` does not include the leaf field name and
+  therefore already represents the parent path; for Mongo `nfc_path` includes
+  the leaf, so the parent path is `(butlast nfc-path)`."
+  [parent-id nfc-path engine]
+  (when parent-id
+    (seq (if (= engine "bigquery-cloud-sdk")
+           nfc-path
+           (butlast nfc-path)))))
+
 (defn- format-database-id
   "Portable id for a database — its name."
   [db-name]
@@ -32,13 +44,11 @@
   [db-name schema table-name])
 
 (defn- format-field-id
-  "Portable id for a field. When `nfc-path` is set (JSON-nested column), the path replaces
-  the field's display name; the field's own name is the leaf of `nfc-path` joined with
-  arrows, so the path is the canonical structural representation."
-  [db-name schema table-name field-name nfc-path]
-  (if (seq nfc-path)
-    (into [db-name schema table-name] nfc-path)
-    [db-name schema table-name field-name]))
+  "Portable id for a field — `[db schema table ...parent-path field-name]`.
+  `parent-path` may be nil (or empty) for root fields, in which case the id
+  collapses to `[db schema table field-name]`."
+  [db-name schema table-name field-name parent-path]
+  (-> [db-name schema table-name] (into parent-path) (conj field-name)))
 
 (defmulti format-entity
   "Reshapes a raw query row for `model` into the JSON shape emitted by the
@@ -48,29 +58,29 @@
 
 (defmethod format-entity :model/Database
   [_model {:keys [name engine]}]
-  {:id (format-database-id name) :name name :engine engine})
+  {:name name :engine engine})
 
 (defmethod format-entity :model/Table
   [_model {:keys [db_name schema table_name description]}]
-  (m/assoc-some {:id    (format-table-id db_name schema table_name)
-                 :db_id (format-database-id db_name)
+  (m/assoc-some {:db_id (format-database-id db_name)
                  :name  table_name}
                 :schema schema
                 :description description))
 
 (defmethod format-entity :model/Field
-  [_model {:keys [db_name table_schema table_name field_name description base_type database_type
-                  effective_type semantic_type coercion_strategy nfc_path
-                  fk_db_name fk_table_schema fk_table_name fk_field_name fk_field_nfc_path]}]
-  (let [nfc-path     (decode-nfc-path nfc_path)
-        parent-id    (when-some [parent-nfc (seq (butlast nfc-path))]
-                       (format-field-id db_name table_schema table_name nil parent-nfc))
-        fk-field-nfc (decode-nfc-path fk_field_nfc_path)
-        fk-target-id (when (and fk_db_name fk_table_name fk_field_name)
-                       (format-field-id fk_db_name fk_table_schema fk_table_name
-                                        fk_field_name fk-field-nfc))]
-    (m/assoc-some {:id       (format-field-id db_name table_schema table_name field_name nfc-path)
-                   :table_id (format-table-id db_name table_schema table_name)
+  [_model {:keys [db_name engine table_schema table_name field_name parent_id description
+                  base_type database_type effective_type semantic_type coercion_strategy nfc_path
+                  fk_db_name fk_db_engine fk_table_schema fk_table_name fk_field_name fk_parent_id
+                  fk_field_nfc_path]}]
+  (let [nfc-path       (decode-nfc-path nfc_path)
+        parent-path    (parent-field-path parent_id nfc-path engine)
+        parent-id      (when parent-path
+                         (into [db_name table_schema table_name] parent-path))
+        fk-parent-path (parent-field-path fk_parent_id (decode-nfc-path fk_field_nfc_path) fk_db_engine)
+        fk-target-id   (when (and fk_db_name fk_table_name fk_field_name)
+                         (format-field-id fk_db_name fk_table_schema fk_table_name
+                                          fk_field_name fk-parent-path))]
+    (m/assoc-some {:table_id (format-table-id db_name table_schema table_name)
                    :name     field_name}
                   :description description
                   :base_type base_type
