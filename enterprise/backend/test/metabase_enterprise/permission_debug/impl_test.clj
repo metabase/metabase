@@ -5,8 +5,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.warehouse-schema.models.table :as table]))
+   [metabase.util.i18n :refer [tru]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -209,8 +208,6 @@
                                      :dataset_query (mt/native-query {:query "SELECT * FROM checkins WHERE date > '2014-01-01'"})}]
       (let [regular-user-id (mt/user->id :rasta)]
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
-        ;; GC leaked provisional table rows so they don't appear in blocked-tables
-        (table/gc-transform-target-tables!)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))

@@ -306,18 +306,18 @@ describe("admin > custom visualizations", () => {
               "Replace bundle is reachable only via the row's Plugin actions menu — clicking the row itself does not navigate",
             );
             H.main().findByText("demo-viz").click();
-            cy.findByRole("heading", { name: "Replace bundle" }).should(
-              "not.exist",
-            );
+            cy.findByRole("heading", {
+              name: /Replace bundle for/,
+            }).should("not.exist");
 
             // Actions menu is only visible on row hover
             H.main().findByText("demo-viz").realHover();
             cy.findByRole("button", { name: "Plugin actions" }).click();
             H.popover().findByText("Replace bundle").click();
 
-            cy.findByRole("heading", { name: "Replace bundle" }).should(
-              "be.visible",
-            );
+            cy.findByRole("heading", {
+              name: "Replace bundle for demo-viz",
+            }).should("be.visible");
 
             H.dropCustomVizBundle(H.CUSTOM_VIZ_FIXTURE_TGZ);
 

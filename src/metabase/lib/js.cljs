@@ -2598,6 +2598,21 @@
   [a-query card-id card-type]
   (clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type))))
 
+(defn ^:export all-source-table-ids
+  "Return a JS array of all source table IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-table-ids a-query) #{}))))
+
+(defn ^:export all-source-card-ids
+  "Return a JS array of all source card IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export all-field-ids
+  "Return a JS array of all field IDs referenced anywhere in `a-query`."
+  [a-query]
+  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
+
 (defn ^:export can-run
   "Returns true if the query is runnable.
   `card-type` is optional and defaults to \"question\".

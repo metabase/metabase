@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type {
   BaseEntityId,
   CardDisplayType,

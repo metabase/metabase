@@ -2,6 +2,7 @@ import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
+  MetabotCodeEditorBufferContext,
   MetabotHistory,
   MetabotSuggestedTransform,
   MetabotTransformInfo,
@@ -10,6 +11,7 @@ import type {
 export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
 
 export type MetabotDataPartMetadata = {
+  codeEditBuffer?: MetabotCodeEditorBufferContext;
   editorTransform?: MetabotTransformInfo;
   suggestionId?: string;
 };
@@ -43,6 +45,7 @@ export type MetabotAgentDataPartMessage = {
   type: "data_part";
   part: MetabotDataPart;
   metadata?: MetabotDataPartMetadata;
+  externalId?: string;
 };
 
 export type MetabotDebugToolCallMessage = {

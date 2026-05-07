@@ -69,10 +69,8 @@ export const ForeignKeySchema = new schema.Entity("foreignKeys");
 export const SegmentSchema = new schema.Entity("segments");
 export const MeasureSchema = new schema.Entity("measures");
 export const MetricSchema = new schema.Entity("metrics");
-export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
-export const TimelineSchema = new schema.Entity("timelines");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -114,10 +112,6 @@ SegmentSchema.define({
 
 MeasureSchema.define({
   table: TableSchema,
-});
-
-TimelineSchema.define({
-  collection: CollectionSchema,
 });
 
 CacheConfigSchema.define({});

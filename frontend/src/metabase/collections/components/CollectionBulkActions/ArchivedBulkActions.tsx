@@ -8,7 +8,12 @@ import {
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { canMoveItem, useSetArchive } from "metabase/common/hooks";
+import {
+  canDelete,
+  canMoveItem,
+  useDeleteItem,
+  useSetArchive,
+} from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -34,6 +39,7 @@ export const ArchivedBulkActions = ({
 }: ArchivedBulkActionsProps) => {
   const dispatch = useDispatch();
   const archive = useSetArchive();
+  const deleteItem = useDeleteItem();
 
   const hasSelectedItems = useMemo(
     () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -66,8 +72,8 @@ export const ArchivedBulkActions = ({
   };
 
   // delete
-  const canDelete = useMemo(() => {
-    return selected.every((item) => item.can_delete);
+  const canDeleteAll = useMemo(() => {
+    return selected.every((item) => canDelete(item));
   }, [selected]);
 
   const handleBulkDeletePermanentlyStart = async () => {
@@ -76,7 +82,7 @@ export const ArchivedBulkActions = ({
   };
 
   const handleBulkDeletePermanently = async () => {
-    const actions = selected.map((item) => item.delete());
+    const actions = selected.filter(canDelete).map((item) => deleteItem(item));
     Promise.all(actions).finally(unselect);
     dispatch(
       addUndo({
@@ -112,7 +118,7 @@ export const ArchivedBulkActions = ({
       </BulkActionButton>
       <BulkActionDangerButton
         onClick={handleBulkDeletePermanentlyStart}
-        disabled={!canDelete}
+        disabled={!canDeleteAll}
       >
         {t`Delete permanently`}
       </BulkActionDangerButton>
