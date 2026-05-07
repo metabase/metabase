@@ -132,18 +132,12 @@ export const globalShortcuts = {
     get name() {
       return t`Open trash`;
     },
-    get keywords() {
-      return t`go to trash, view trash`;
-    },
     shortcut: ["g t"],
     shortcutGroup: "global" as const,
   },
   "navigate-personal-collection": {
     get name() {
       return t`Open personal collection`;
-    },
-    get keywords() {
-      return t`go to personal collection, view personal collection`;
     },
     shortcut: ["g p"],
     shortcutGroup: "global" as const,
@@ -159,9 +153,6 @@ export const globalShortcuts = {
   "navigate-admin-settings": {
     get name() {
       return t`Go to admin`;
-    },
-    get keywords() {
-      return t`open admin, view admin, admin settings`;
     },
     shortcut: ["g a"],
     shortcutGroup: "global" as const,

@@ -248,6 +248,8 @@ export const useCommandPaletteBasicActions = ({
     actions.push(
       {
         id: "navigate-user-settings",
+        section: "basic",
+        icon: "person",
         perform: () => dispatch(push("/account/profile")),
       },
       {
@@ -256,6 +258,8 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate-home",
+        section: "basic",
+        icon: "home",
         perform: () => dispatch(push("/")),
       },
     );
@@ -263,6 +267,8 @@ export const useCommandPaletteBasicActions = ({
     if (hasDataStudioAccess) {
       actions.push({
         id: "navigate-data-studio",
+        section: "basic",
+        icon: "table",
         perform: () => dispatch(push("/data-studio")),
       });
     }
