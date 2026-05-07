@@ -31,11 +31,13 @@
   [^OutputStream os
    opts :- ::schema/export-options]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-    (->> sections
-         (filter (fn [{:keys [enabled?]}] (enabled? opts)))
-         (map (fn [{:keys [name model]}]
-                [name (eduction
-                       (map #(export.format/format-entity model %))
-                       (export.query/export-query model opts))]))
-         (export.json/write-json-object! writer))
+    (export.json/write-json-object!
+     writer
+     (eduction
+      (filter (fn [{:keys [enabled?]}] (enabled? opts)))
+      (map (fn [{:keys [name model]}]
+             [name (eduction
+                    (map #(export.format/format-entity model %))
+                    (export.query/export-query model opts))]))
+      sections))
     (.flush writer)))
