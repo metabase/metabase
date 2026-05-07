@@ -47,16 +47,14 @@ For each metric, you'll see the same set of charts:
 - **Users with most ...**, **Groups with most ...**, **IP addresses with most ...**: top-N rankings.
 - **Tenants with most ...**: only shown when tenants are enabled.
 
-Clicking a bar in the **By day**, **Groups with most ...**, **Users with most ...**, or **Tenants with most ...** charts deep-links into the [Conversations list](#conversations) with the corresponding filter applied. The **By source**, **By profile**, and **IP addresses with most ...** charts are display-only.
+You can drill through in the **By day**, **Groups with most ...**, **Users with most ...**, or **Tenants with most ...** charts to see the [Conversations list](#conversations) with the corresponding filter applied. The **By source**, **By profile**, and **IP addresses with most ...** charts are display-only.
 
 ## Sources and profiles
-
-Source and profile both describe a conversation, but they answer different questions:
 
 - **Source** is _where_ the request came from in Metabase.
 - **Profile** is _which agent persona_ answered it.
 
-They often line up (a conversation that started in Slack is handled by the Slackbot profile), but they don't have to. A conversation started from the Metabot chat sidebar might be handled by the **Internal**, **NLQ**, or **SQL** profile depending on what the user asked.
+They often line up (a conversation that started in Slack is handled by the Slackbot profile), but they don't have to. A conversation started from the Metabot chat sidebar might be handled by the **Internal**, **NLQ**, or **SQL** profile depending on what the person asked.
 
 The Conversations admin page only shows **Profile**. Source is visible in the **Stats** charts and in the [Usage Analytics models](#building-custom-reports) used to build custom reports.
 
@@ -116,7 +114,7 @@ You can sort by Date, Messages, or Tokens. Click any row to open the [conversati
 
 The detail view is a full audit of a single conversation. It includes:
 
-- **Header**: start date, the person who chatted with Metabot, their profile, their groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the person's name you can jump to all of their conversations, or to their account details.
+- **Header**: start date, the person who chatted with Metabot, the profile Metabot used, the person's groups (including whether they're an admin), and tenant if applicable. From the **...** menu next to the person's name you can jump to all of their conversations, or to their account details.
 - **Stat tiles**: Messages, Total tokens, Queries run, Searches.
 - **Feedback** (if any): thumbs-up or thumbs-down and comments. The agent response that triggered the feedback is shown alongside.
 - **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are inlined. You can click "View" to open a modal with the info.
