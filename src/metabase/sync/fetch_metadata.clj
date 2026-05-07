@@ -21,6 +21,7 @@
   call sites that destructure positionally; the underlying remap hook works in
   the `{:db :schema :name}` map shape."
   [database-id schema table-name]
+  ; TODO make this fn table-spec aware and driver aware (and adjust callers to match)
   (let [from-spec {:schema schema :name table-name}]
     (if-let [{:keys [schema name]} (ws.table-remapping/workspace-remap-schema+name
                                     database-id from-spec)]
