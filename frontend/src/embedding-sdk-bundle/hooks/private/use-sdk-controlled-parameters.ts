@@ -7,7 +7,11 @@ import {
   buildParametersPayload,
 } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { startSdkListening } from "embedding-sdk-bundle/store/listener-middleware";
+import {
+  type SdkListenerEffect,
+  type SdkListenerPredicate,
+  startSdkListening,
+} from "embedding-sdk-bundle/store/listener-middleware";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import {
@@ -124,11 +128,7 @@ const useObserveAppliedParameters = (
 ) => {
   const onParametersChangeRef = useLatest(onParametersChange);
 
-  const handleInitialStateAction = useCallback<
-    Parameters<typeof startSdkListening>[0] extends { effect: infer E }
-      ? E & ((...args: any[]) => void)
-      : never
-  >(
+  const handleInitialStateAction = useCallback<SdkListenerEffect>(
     (_action, listenerApi) => {
       const payload = buildDashboardChangePayload(
         listenerApi.getState(),
@@ -142,32 +142,25 @@ const useObserveAppliedParameters = (
     [onParametersChangeRef],
   );
 
-  const isParameterValueChangeAction = useCallback<
-    NonNullable<
-      Parameters<typeof startSdkListening>[0] extends { predicate?: infer P }
-        ? P
-        : never
-    >
-  >((action, currentState, previousState) => {
-    const isParameterChangeAction =
-      PARAMETER_CHANGE_ACTION_TYPES.has(action.type) ||
-      isParameterSetAction(action);
+  const isParameterValueChangeAction = useCallback<SdkListenerPredicate>(
+    (action, currentState, previousState) => {
+      const isParameterChangeAction =
+        PARAMETER_CHANGE_ACTION_TYPES.has(action.type) ||
+        isParameterSetAction(action);
 
-    if (!isParameterChangeAction) {
-      return false;
-    }
+      if (!isParameterChangeAction) {
+        return false;
+      }
 
-    return !isEqual(
-      getParameterValues(currentState),
-      getParameterValues(previousState),
-    );
-  }, []);
+      return !isEqual(
+        getParameterValues(currentState),
+        getParameterValues(previousState),
+      );
+    },
+    [],
+  );
 
-  const handleManualChangeAction = useCallback<
-    Parameters<typeof startSdkListening>[0] extends { effect: infer E }
-      ? E & ((...args: any[]) => void)
-      : never
-  >(
+  const handleManualChangeAction = useCallback<SdkListenerEffect>(
     (_action, listenerApi) => {
       const state = listenerApi.getState();
       const lastParametersPush = lastParametersPushRef.current;
