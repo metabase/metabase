@@ -247,6 +247,700 @@
         (is (nil? (t2/select-one :model/Table :db_id db-id :name "would_have_inserted"))
             "the staging row's would-be live INSERT did not commit")))))
 
+;;; ============================== drain-fields-into-staging! ==============================
+
+(deftest drain-fields-into-staging-flat-root-field-test
+  (testing "a flat root field (no :parent_id, no :nfc_path) drains into staging with
+            field_name from :name; nfc_path NULL; parent_* and fk_target_* NULL; the
+            clobber-payload columns (base_type, database_type, description, etc.)
+            stored verbatim from the wire row."
+    (processors/with-staging-tables
+      (processors/drain-fields-into-staging!
+       (json-tmp-file
+        {:fields [{:id ["fdrn-db" "public" "users" "id"]
+                   :table_id ["fdrn-db" "public" "users"]
+                   :name "id"
+                   :base_type "type/Integer"
+                   :database_type "integer"
+                   :description "primary key"
+                   :semantic_type "type/PK"
+                   :effective_type "type/Integer"
+                   :coercion_strategy "Coercion/UNIXSeconds->DateTime"}]}))
+      (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+        (is (= "fdrn-db"      (:db_name row)))
+        (is (= "public"       (:table_schema row)))
+        (is (= "users"        (:table_name row)))
+        (is (= "id"           (:field_name row)))
+        (is (nil?             (:nfc_path row)))
+        (is (nil?             (:parent_db_name row)))
+        (is (nil?             (:parent_table_schema row)))
+        (is (nil?             (:parent_table_name row)))
+        (is (nil?             (:parent_path row)))
+        (is (nil?             (:parent_name row)))
+        (is (nil?             (:parent_id row)))
+        (is (nil?             (:fk_target_db_name row)))
+        (is (nil?             (:fk_target_id row)))
+        (is (= "type/Integer" (:base_type row)))
+        (is (= "integer"      (:database_type row)))
+        (is (= "primary key"  (:description row)))
+        (is (= "type/PK"      (:semantic_type row)))
+        (is (= "type/Integer" (:effective_type row)))
+        (is (= "Coercion/UNIXSeconds->DateTime" (:coercion_strategy row)))))))
+
+(deftest drain-fields-into-staging-decomposes-parent-id-test
+  (testing "a field with :parent_id has its parent's portable id decomposed into
+            (parent_db_name, parent_table_schema, parent_table_name, parent_path,
+            parent_name) using the (last, middle) split. parent_path is encoded
+            same as metabase_field.nfc_path (NULL for empty/length-4 portable ids,
+            JSON-encoded array string otherwise). parent_id stays NULL — filled by
+            resolve-existing-parents-in-staging!."
+    (processors/with-staging-tables
+      (processors/drain-fields-into-staging!
+       (json-tmp-file
+        {:fields [;; parent at depth 1: parent's :id is length 4, parent_path is NULL.
+                  {:id ["fdrn-db" "public" "users" "address" "zip"]
+                   :table_id ["fdrn-db" "public" "users"]
+                   :name "zip"
+                   :nfc_path ["address"]
+                   :parent_id ["fdrn-db" "public" "users" "address"]
+                   :base_type "type/Text"}
+                  ;; parent at depth 2: parent_path is encoded(["outer"]).
+                  {:id ["fdrn-db" "public" "users" "outer" "middle" "leaf"]
+                   :table_id ["fdrn-db" "public" "users"]
+                   :name "leaf"
+                   :nfc_path ["outer" "middle"]
+                   :parent_id ["fdrn-db" "public" "users" "outer" "middle"]
+                   :base_type "type/Text"}]}))
+      (let [rows     (t2/query {:select [:*] :from [:metabase_field_import]})
+            zip-row  (some #(when (= "zip"  (:field_name %)) %) rows)
+            leaf-row (some #(when (= "leaf" (:field_name %)) %) rows)]
+        (testing "shallow parent (parent's portable id length 4 → parent_path NULL)"
+          (is (= "fdrn-db"      (:parent_db_name zip-row)))
+          (is (= "public"       (:parent_table_schema zip-row)))
+          (is (= "users"        (:parent_table_name zip-row)))
+          (is (= "address"      (:parent_name zip-row)))
+          (is (nil?             (:parent_path zip-row))
+              "parent has no own path — length-4 portable id has empty middle")
+          (is (= (json/encode ["address"]) (:nfc_path zip-row))))
+        (testing "deep parent (parent's portable id length 5 → parent_path encoded)"
+          (is (= "middle"       (:parent_name leaf-row)))
+          (is (= (json/encode ["outer"])           (:parent_path leaf-row))
+              "parent's own nfc_path encoded as JSON")
+          (is (= (json/encode ["outer" "middle"]) (:nfc_path leaf-row))))))))
+
+(deftest drain-fields-into-staging-decomposes-fk-target-test
+  (testing "a field with :fk_target_field_id has the target's portable id
+            decomposed into (fk_target_db_name, fk_target_table_schema,
+            fk_target_table_name, fk_target_path, fk_target_name) using the same
+            (last, middle) split as :parent_id. fk_target_id stays NULL — commit 4
+            populates it."
+    (processors/with-staging-tables
+      (processors/drain-fields-into-staging!
+       (json-tmp-file
+        {:fields [{:id ["fkdrn-db" "public" "orders" "uid"]
+                   :table_id ["fkdrn-db" "public" "orders"]
+                   :name "uid"
+                   :fk_target_field_id ["fkdrn-db" "public" "users" "id"]
+                   :base_type "type/Integer"}]}))
+      (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+        (is (= "fkdrn-db" (:fk_target_db_name row)))
+        (is (= "public"   (:fk_target_table_schema row)))
+        (is (= "users"    (:fk_target_table_name row)))
+        (is (= "id"       (:fk_target_name row)))
+        (is (nil?         (:fk_target_path row)))
+        (is (nil?         (:fk_target_id row)))))))
+
+(deftest drain-fields-into-staging-carries-name-verbatim-test
+  (testing "wire :name is stored verbatim — drain doesn't interpret it. Even when
+            the storage row's name is a synthesized display string (e.g., a
+            JSON-unfolded leaf), the wire :name carries that string and drain
+            stores it as-is. Convention awareness lives entirely on the export side."
+    (processors/with-staging-tables
+      (processors/drain-fields-into-staging!
+       (json-tmp-file
+        {:fields [{:id ["jdrn-db" "public" "ev" "p" "addr" "zip"]
+                   :table_id ["jdrn-db" "public" "ev"]
+                   :name "p → addr → zip"
+                   :nfc_path ["p" "addr" "zip"]
+                   :base_type "type/Text"}]}))
+      (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+        (is (= "p → addr → zip" (:field_name row)))
+        (is (= (json/encode ["p" "addr" "zip"]) (:nfc_path row)))
+        (is (nil? (:parent_db_name row)))))))
+
+(deftest drain-fields-into-staging-empty-fields-array-test
+  (testing "an empty :fields array yields zero staging rows"
+    (processors/with-staging-tables
+      (processors/drain-fields-into-staging! (json-tmp-file {:fields []}))
+      (is (zero? (t2/count :metabase_field_import))))))
+
+(deftest drain-fields-into-staging-validation-failure-throws-test
+  (testing "a malformed field row throws ex-info with :kind :invalid_input"
+    (let [thrown (atom nil)]
+      (try
+        (processors/with-staging-tables
+          (processors/drain-fields-into-staging!
+           (json-tmp-file {:fields [{:id ["d" "s" "t" "x"]
+                                     :table_id ["d" "s" "t"]
+                                     :name "x"}]})))   ;; missing :base_type (required)
+        (catch clojure.lang.ExceptionInfo e
+          (reset! thrown e)))
+      (is (some? @thrown))
+      (is (= :invalid_input (:kind (ex-data @thrown)))))))
+
+;;; ============================== resolve-existing-parents-in-staging! ==============================
+
+(deftest resolve-existing-parents-populates-parent-id-test
+  (testing "for a staging row whose decomposed parent matches an existing
+            metabase_field row, resolve sets staging.parent_id to that row's int id"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rep-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "users"}
+                   :model/Field   {parent-id :id} {:table_id tbl-id :name "address"
+                                                   :base_type "type/Structured"
+                                                   :database_type "json"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "rep-db"
+                                            :table_schema        "public"
+                                            :table_name          "users"
+                                            :field_name          "zip"
+                                            :nfc_path            (json/encode ["address"])
+                                            :parent_db_name      "rep-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "users"
+                                            :parent_path         nil
+                                            :parent_name         "address"
+                                            :base_type           "type/Text"})
+        (processors/resolve-existing-parents-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= parent-id (:parent_id row))
+              "parent_id resolved to the existing metabase_field row's int id"))))))
+
+(deftest resolve-existing-parents-idempotent-test
+  (testing "running resolve twice yields the same result — UPDATE on already-set
+            parent_id is a no-op"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rep-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {parent-id :id} {:table_id tbl-id :name "p"
+                                                   :base_type "type/Structured"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "rep-idem-db"
+                                            :table_schema        "public"
+                                            :table_name          "u"
+                                            :field_name          "c"
+                                            :parent_db_name      "rep-idem-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "u"
+                                            :parent_name         "p"
+                                            :base_type           "type/Text"})
+        (processors/resolve-existing-parents-in-staging!)
+        (processors/resolve-existing-parents-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= parent-id (:parent_id row))))))))
+
+(deftest resolve-existing-parents-leaves-unresolved-when-parent-missing-test
+  (testing "a staging row whose parent doesn't exist in metabase_field gets
+            parent_id NULL — the resolve UPDATE's correlated subquery returns
+            no row → SET parent_id = NULL (the default; no-op effectively)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rep-miss-db" :engine :postgres}
+                   :model/Table   {_tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "rep-miss-db"
+                                            :table_schema        "public"
+                                            :table_name          "t"
+                                            :field_name          "c"
+                                            :parent_db_name      "rep-miss-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "t"
+                                            :parent_name         "missing-parent"
+                                            :base_type           "type/Text"})
+        (processors/resolve-existing-parents-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (nil? (:parent_id row))
+              "parent_id stays NULL when no metabase_field row matches"))))))
+
+(deftest resolve-existing-parents-skips-rows-with-null-parent-ref-test
+  (testing "a staging row with NULL parent_db_name (root field, no parent) is not
+            updated — skipped via the outer WHERE clause"
+    (processors/with-staging-tables
+      (t2/insert! :metabase_field_import {:db_name      "rep-noparent-db"
+                                          :table_schema "public"
+                                          :table_name   "t"
+                                          :field_name   "id"
+                                          :base_type    "type/Integer"})
+      (processors/resolve-existing-parents-in-staging!)
+      (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+        (is (nil? (:parent_id row))
+            "parent_id stays NULL — no parent ref, no UPDATE")))))
+
+(deftest resolve-existing-parents-handles-nil-table-schema-test
+  (testing "NULL table_schema works through COALESCE on both sides of the resolve
+            JOIN — a staging row whose parent's table has NULL schema resolves OK"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rep-nil-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema nil :name "t"}
+                   :model/Field   {parent-id :id} {:table_id tbl-id :name "p"
+                                                   :base_type "type/Structured"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "rep-nil-db"
+                                            :table_schema        nil
+                                            :table_name          "t"
+                                            :field_name          "c"
+                                            :parent_db_name      "rep-nil-db"
+                                            :parent_table_schema nil
+                                            :parent_table_name   "t"
+                                            :parent_name         "p"
+                                            :base_type           "type/Text"})
+        (processors/resolve-existing-parents-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= parent-id (:parent_id row))))))))
+
+(deftest resolve-existing-parents-skips-defective-parent-test
+  (testing "is_defective_duplicate parents are not matched — a staging row whose
+            only candidate parent is defective gets parent_id NULL"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rep-defective-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {_dup :id}   {:table_id tbl-id :name "p"
+                                                :base_type "type/Structured"
+                                                :is_defective_duplicate true}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "rep-defective-db"
+                                            :table_schema        "public"
+                                            :table_name          "u"
+                                            :field_name          "c"
+                                            :parent_db_name      "rep-defective-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "u"
+                                            :parent_name         "p"
+                                            :base_type           "type/Text"})
+        (processors/resolve-existing-parents-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (nil? (:parent_id row))
+              "defective parent is excluded from the resolve JOIN"))))))
+
+;;; ============================== compute-stubs! ==============================
+
+(deftest compute-stubs-empty-when-no-missing-parents-test
+  (testing "empty staging or all parents resolved → empty spec list"
+    (processors/with-staging-tables
+      (is (= [] (processors/compute-stubs!))))))
+
+(deftest compute-stubs-generates-spec-for-missing-parent-test
+  (testing "a staging row whose parent doesn't exist generates one stub spec
+            for the missing parent's portable id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cs-db" :engine :postgres}
+                   :model/Table   {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "cs-db"
+                                            :table_schema        "public"
+                                            :table_name          "t"
+                                            :field_name          "child"
+                                            :nfc_path            (json/encode ["missing-parent"])
+                                            :parent_db_name      "cs-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "t"
+                                            :parent_name         "missing-parent"
+                                            :base_type           "type/Text"})
+        (let [specs (processors/compute-stubs!)]
+          (is (= 1 (count specs)))
+          (let [spec (first specs)]
+            (is (= ["cs-db" "public" "t" "missing-parent"] (:portable-id spec)))
+            (is (nil? (:parent-portable-id spec))
+                "missing parent is at depth 1 → has no own parent (root)")))))))
+
+(deftest compute-stubs-walks-ancestor-chain-depth-first-test
+  (testing "for a missing parent at depth 2 with both ancestors absent, two stub
+            specs are emitted in dependency order (root before descendant)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cs-deep-db" :engine :postgres}
+                   :model/Table   {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "cs-deep-db"
+                                            :table_schema        "public"
+                                            :table_name          "t"
+                                            :field_name          "leaf"
+                                            :nfc_path            (json/encode ["outer" "middle"])
+                                            :parent_db_name      "cs-deep-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "t"
+                                            :parent_path         (json/encode ["outer"])
+                                            :parent_name         "middle"
+                                            :base_type           "type/Text"})
+        (let [specs        (processors/compute-stubs!)
+              portable-ids (mapv :portable-id specs)]
+          (is (= 2 (count specs)))
+          (is (= [["cs-deep-db" "public" "t" "outer"]
+                  ["cs-deep-db" "public" "t" "outer" "middle"]]
+                 portable-ids)
+              "depth-first walk emits root (outer) before descendant (outer.middle)")
+          (is (= [nil ["cs-deep-db" "public" "t" "outer"]]
+                 (mapv :parent-portable-id specs))
+              "the depth-2 spec references the depth-1 spec as its parent"))))))
+
+(deftest compute-stubs-dedupes-shared-ancestors-test
+  (testing "two staging rows sharing the same missing ancestor produce one spec"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cs-dedupe-db" :engine :postgres}
+                   :model/Table   {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import [{:db_name             "cs-dedupe-db"
+                                             :table_schema        "public"
+                                             :table_name          "t"
+                                             :field_name          "c1"
+                                             :nfc_path            (json/encode ["p"])
+                                             :parent_db_name      "cs-dedupe-db"
+                                             :parent_table_schema "public"
+                                             :parent_table_name   "t"
+                                             :parent_name         "p"
+                                             :base_type           "type/Text"}
+                                            {:db_name             "cs-dedupe-db"
+                                             :table_schema        "public"
+                                             :table_name          "t"
+                                             :field_name          "c2"
+                                             :nfc_path            (json/encode ["p"])
+                                             :parent_db_name      "cs-dedupe-db"
+                                             :parent_table_schema "public"
+                                             :parent_table_name   "t"
+                                             :parent_name         "p"
+                                             :base_type           "type/Text"}])
+        (is (= 1 (count (processors/compute-stubs!))))))))
+
+(deftest compute-stubs-skips-existing-parents-test
+  (testing "if the parent already exists in metabase_field, no stub is generated
+            (compute-stubs! probes metabase_field; the existing parent caches as
+            :exists and the walk terminates without producing a spec)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cs-exists-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {_ :id}      {:table_id tbl-id :name "p"
+                                                :base_type "type/Structured"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "cs-exists-db"
+                                            :table_schema        "public"
+                                            :table_name          "t"
+                                            :field_name          "c"
+                                            :parent_db_name      "cs-exists-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "t"
+                                            :parent_name         "p"
+                                            :base_type           "type/Text"})
+        (is (= [] (processors/compute-stubs!)))))))
+
+(deftest compute-stubs-stops-walking-when-mid-chain-ancestor-exists-test
+  (testing "for a depth-2 missing chain where the depth-1 ancestor EXISTS, only
+            the depth-2 spec is generated"
+    (mt/with-temp [:model/Database {db-id :id} {:name "cs-mid-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {_ :id}      {:table_id tbl-id :name "outer"
+                                                :base_type "type/Structured"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name             "cs-mid-db"
+                                            :table_schema        "public"
+                                            :table_name          "t"
+                                            :field_name          "leaf"
+                                            :nfc_path            (json/encode ["outer" "middle"])
+                                            :parent_db_name      "cs-mid-db"
+                                            :parent_table_schema "public"
+                                            :parent_table_name   "t"
+                                            :parent_path         (json/encode ["outer"])
+                                            :parent_name         "middle"
+                                            :base_type           "type/Text"})
+        (let [specs (processors/compute-stubs!)]
+          (is (= 1 (count specs)))
+          (is (= ["cs-mid-db" "public" "t" "outer" "middle"]
+                 (:portable-id (first specs))))
+          (is (= ["cs-mid-db" "public" "t" "outer"]
+                 (:parent-portable-id (first specs)))
+              "missing depth-2 spec references the existing 'outer' as its parent"))))))
+
+;;; ============================== insert-stubs-where-not-exists! ==============================
+
+(deftest insert-stubs-inserts-root-stub-test
+  (testing "a root stub spec (parent-portable-id nil) inserts a metabase_field row
+            with parent_id=NULL, nfc_path=NULL, base_type='type/*',
+            database_type='__stub__', active=false"
+    (mt/with-temp [:model/Database {_db-id :id} {:name "is-root-db" :engine :postgres}
+                   :model/Table    {tbl-id :id} {:db_id _db-id :schema "public" :name "t"}]
+      (processors/insert-stubs-where-not-exists!
+       [{:portable-id ["is-root-db" "public" "t" "stubname"]
+         :parent-portable-id nil}])
+      (let [row (t2/select-one :model/Field :table_id tbl-id :name "stubname")]
+        (is (some? row))
+        (is (nil?         (:parent_id row)))
+        (is (nil?         (:nfc_path row)))
+        (is (= :type/*    (:base_type row)))
+        (is (= "__stub__" (:database_type row)))
+        (is (false?       (:active row)))))))
+
+(deftest insert-stubs-inserts-nested-stub-test
+  (testing "spec with parent-portable-id pointing at an existing field gets its
+            parent_id resolved via INNER JOIN to that parent row"
+    (mt/with-temp [:model/Database {_db-id :id}   {:name "is-nest-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id _db-id :schema "public" :name "t"}
+                   :model/Field   {parent-id :id} {:table_id tbl-id :name "outer"
+                                                   :base_type "type/Structured"}]
+      (processors/insert-stubs-where-not-exists!
+       [{:portable-id        ["is-nest-db" "public" "t" "outer" "leaf"]
+         :parent-portable-id ["is-nest-db" "public" "t" "outer"]}])
+      (let [row (t2/select-one :model/Field :table_id tbl-id :name "leaf")]
+        (is (some? row))
+        (is (= parent-id (:parent_id row)))
+        (is (= '("outer") (:nfc_path row))
+            "nfc_path stored encoded; the model decodes on read")))))
+
+(deftest insert-stubs-inserts-depth-2-chain-test
+  (testing "specs in root-first dependency order: inserting root first lets the
+            child stub JOIN to the just-inserted root for parent_id resolution"
+    (mt/with-temp [:model/Database {_db-id :id} {:name "is-chain-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id _db-id :schema "public" :name "t"}]
+      (processors/insert-stubs-where-not-exists!
+       [{:portable-id ["is-chain-db" "public" "t" "outer"]
+         :parent-portable-id nil}
+        {:portable-id        ["is-chain-db" "public" "t" "outer" "leaf"]
+         :parent-portable-id ["is-chain-db" "public" "t" "outer"]}])
+      (let [outer (t2/select-one :model/Field :table_id tbl-id :name "outer")
+            leaf  (t2/select-one :model/Field :table_id tbl-id :name "leaf")]
+        (is (some? outer))
+        (is (some? leaf))
+        (is (nil? (:parent_id outer)))
+        (is (= (:id outer) (:parent_id leaf))
+            "child's parent_id resolves to the just-inserted root's int id")))))
+
+(deftest insert-stubs-idempotent-test
+  (testing "running insert-stubs! twice with the same specs leaves only one row
+            per stub — NOT EXISTS catches the second pass via unique_field_helper"
+    (mt/with-temp [:model/Database {_db-id :id} {:name "is-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id _db-id :schema "public" :name "t"}]
+      (let [specs [{:portable-id ["is-idem-db" "public" "t" "stubname"]
+                    :parent-portable-id nil}]]
+        (processors/insert-stubs-where-not-exists! specs)
+        (processors/insert-stubs-where-not-exists! specs))
+      (is (= 1 (count (t2/select :model/Field :table_id tbl-id :name "stubname")))
+          "exactly one stub row; second insert was a no-op"))))
+
+(deftest insert-stubs-empty-specs-is-noop-test
+  (testing "empty stub-specs collection makes no live writes"
+    (mt/with-temp [:model/Database {_db-id :id} {:name "is-empty-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id _db-id :schema "public" :name "t"}]
+      (let [count-before (t2/count :model/Field :table_id tbl-id)]
+        (processors/insert-stubs-where-not-exists! [])
+        (is (= count-before (t2/count :model/Field :table_id tbl-id)))))))
+
+;;; ============================== assert-no-unresolved-parent-refs! ==============================
+
+(deftest assert-no-unresolved-parent-refs-passes-when-all-resolved-test
+  (testing "with empty staging or all parent refs resolved, the assert is silent"
+    (processors/with-staging-tables
+      (is (nil? (processors/assert-no-unresolved-parent-refs!))
+          "no exception when staging has no rows")
+      (t2/insert! :metabase_field_import {:db_name      "anr-db"
+                                          :table_schema "public"
+                                          :table_name   "t"
+                                          :field_name   "root"
+                                          :base_type    "type/Text"})  ;; no parent ref
+      (is (nil? (processors/assert-no-unresolved-parent-refs!))
+          "no exception when staging rows have no parent refs"))))
+
+(deftest assert-no-unresolved-parent-refs-throws-on-unresolved-test
+  (testing "if a staging row has parent_db_name set but parent_id NULL, the assert
+            throws ex-info with :kind :stub_resolution_invalidated. This guards
+            against the (impossible-under-the-precondition) case of the parent
+            disappearing between compute-stubs! and the merge txn."
+    (processors/with-staging-tables
+      (t2/insert! :metabase_field_import {:db_name             "anr-db"
+                                          :table_schema        "public"
+                                          :table_name          "t"
+                                          :field_name          "child"
+                                          :parent_db_name      "anr-db"
+                                          :parent_table_schema "public"
+                                          :parent_table_name   "t"
+                                          :parent_name         "still-missing"
+                                          :base_type           "type/Text"})
+      (let [thrown (atom nil)]
+        (try
+          (processors/assert-no-unresolved-parent-refs!)
+          (catch clojure.lang.ExceptionInfo e
+            (reset! thrown e)))
+        (is (some? @thrown))
+        (is (= :stub_resolution_invalidated (:kind (ex-data @thrown))))
+        (is (pos? (:n-unresolved (ex-data @thrown)))
+            "ex-data carries the count for diagnosis")))))
+
+;;; ============================== merge-fields! ==============================
+
+(deftest merge-fields-empty-staging-is-noop-test
+  (testing "with empty staging, merge-fields! makes no live writes"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "mf-noop-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id db-id :schema "public" :name "t"}]
+      (let [count-before (t2/count :model/Field :table_id tbl-id)]
+        (processors/with-staging-tables
+          (processors/merge-fields!))
+        (is (= count-before (t2/count :model/Field :table_id tbl-id))
+            "no rows written when staging is empty")))))
+
+(deftest merge-fields-inserts-unmatched-test
+  (testing "a staging row whose (table_id, name, parent_id) doesn't exist is INSERTed
+            with the full clobber payload, active=true, is_defective_duplicate=false"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-ins-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "users"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name           "mf-ins-db"
+                                            :table_schema      "public"
+                                            :table_name        "users"
+                                            :field_name        "id"
+                                            :base_type         "type/Integer"
+                                            :database_type     "integer"
+                                            :description       "primary key"
+                                            :semantic_type     "type/PK"
+                                            :effective_type    "type/Integer"})
+        (processors/merge-fields!))
+      (let [row (t2/select-one :model/Field :table_id tbl-id :name "id")]
+        (is (some? row))
+        (is (= :type/Integer (:base_type row)))
+        (is (= "integer"     (:database_type row)))
+        (is (= "primary key" (:description row)))
+        (is (= :type/PK      (:semantic_type row)))
+        (is (true?           (:active row)))
+        (is (nil?            (:fk_target_field_id row))
+            "fk_target_field_id starts NULL — phase 4 (commit 4) sets it")))))
+
+(deftest merge-fields-updates-matched-clobbers-payload-test
+  (testing "an existing matched field gets every clobber-payload column overwritten
+            from staging — including nfc_path. (Today's per-batch clobber preserved
+            nfc_path; the new merge clobbers everything per the import-is-alternate-sync
+            philosophy.)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-upd-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"
+                                                :description "old"
+                                                :semantic_type "type/PK"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name        "mf-upd-db"
+                                            :table_schema   "public"
+                                            :table_name     "u"
+                                            :field_name     "x"
+                                            :base_type      "type/Text"
+                                            :database_type  "varchar"
+                                            :description    "new"
+                                            :semantic_type  "type/Description"})
+        (processors/merge-fields!))
+      (let [row (t2/select-one :model/Field :id f-id)]
+        (is (= :type/Text         (:base_type row)))
+        (is (= "varchar"          (:database_type row)))
+        (is (= "new"              (:description row)))
+        (is (= :type/Description  (:semantic_type row)))))))
+
+(deftest merge-fields-flips-stub-to-active-test
+  (testing "an existing stub (active=false, base_type=type/*, database_type=__stub__)
+            matched by a real-row staging entry gets flipped to active=true with the
+            real row's payload — the headline stub-fill behavior"
+    (mt/with-temp [:model/Database {db-id :id}  {:name "mf-stub-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}  {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {stub-id :id} {:table_id tbl-id :name "p"
+                                                 :base_type "type/*"
+                                                 :database_type "__stub__"
+                                                 :active false
+                                                 :is_defective_duplicate false}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name        "mf-stub-db"
+                                            :table_schema   "public"
+                                            :table_name     "t"
+                                            :field_name     "p"
+                                            :base_type      "type/Structured"
+                                            :database_type  "json"
+                                            :description    "real row"})
+        (processors/merge-fields!))
+      (let [row (t2/select-one :model/Field :id stub-id)]
+        (is (true?              (:active row)) "stub flipped to active")
+        (is (= :type/Structured (:base_type row)))
+        (is (= "json"           (:database_type row)))
+        (is (= "real row"       (:description row)))))))
+
+(deftest merge-fields-uses-parent-id-in-match-test
+  (testing "matching uses unique_field_helper (= COALESCE(parent_id, 0)) so two
+            fields with same (table, name) but different parent_id are
+            distinguished. Staging row with resolved parent_id matches only the
+            corresponding nested field."
+    (mt/with-temp [:model/Database {db-id :id}     {:name "mf-uniq-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}     {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {parent-id :id}  {:table_id tbl-id :name "outer"
+                                                    :base_type "type/Structured"}
+                   :model/Field   {flat-id :id}    {:table_id tbl-id :name "x"
+                                                    :base_type "type/Integer"
+                                                    :description "flat-old"}
+                   :model/Field   {nested-id :id}  {:table_id tbl-id :name "x"
+                                                    :parent_id parent-id
+                                                    :nfc_path (json/encode ["outer"])
+                                                    :base_type "type/Integer"
+                                                    :description "nested-old"}]
+      (processors/with-staging-tables
+        ;; staging row matches the NESTED "x" (parent_id=parent-id), not the flat one.
+        (t2/insert! :metabase_field_import {:db_name        "mf-uniq-db"
+                                            :table_schema   "public"
+                                            :table_name     "t"
+                                            :field_name     "x"
+                                            :nfc_path       (json/encode ["outer"])
+                                            :parent_id      parent-id
+                                            :base_type      "type/Text"
+                                            :database_type  "varchar"
+                                            :description    "nested-new"})
+        (processors/merge-fields!))
+      (is (= "nested-new" (:description (t2/select-one :model/Field :id nested-id))))
+      (is (= "flat-old"   (:description (t2/select-one :model/Field :id flat-id)))
+          "flat 'x' (parent_id=NULL) is unaffected — different unique_field_helper"))))
+
+(deftest merge-fields-handles-nil-schema-test
+  (testing "NULL table_schema works through the COALESCE on both sides of the JOIN"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-nil-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema nil :name "t"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :description "old"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "mf-nil-db"
+                                            :table_schema  nil
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Text"
+                                            :database_type "varchar"
+                                            :description   "patched"})
+        (processors/merge-fields!))
+      (is (= "patched" (:description (t2/select-one :model/Field :id f-id)))))))
+
+(deftest merge-fields-idempotent-test
+  (testing "running merge-fields! twice with the same staging contents is a no-op
+            on the second pass (NOT EXISTS catches insert; UPDATE re-applies same payload)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "mf-idem-db"
+                                            :table_schema  "public"
+                                            :table_name    "t"
+                                            :field_name    "x"
+                                            :base_type     "type/Text"
+                                            :database_type "varchar"})
+        (processors/merge-fields!)
+        (processors/merge-fields!))
+      (is (= 1 (count (t2/select :model/Field :table_id tbl-id :name "x")))))))
+
+(deftest merge-fields-rolls-back-when-outer-txn-aborts-test
+  (testing "merge-fields! composes with an outer t2/with-transaction: outer abort
+            rolls back the merge-fields writes too"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-atom-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
+      (let [count-before (t2/count :model/Field :table_id tbl-id)]
+        (try
+          (processors/with-staging-tables
+            (t2/insert! :metabase_field_import {:db_name       "mf-atom-db"
+                                                :table_schema  "public"
+                                                :table_name    "t"
+                                                :field_name    "would-be-inserted"
+                                                :base_type     "type/Text"
+                                                :database_type "varchar"})
+            (t2/with-transaction [_]
+              (processors/merge-fields!)
+              (throw (ex-info "force rollback" {:kind :test_force_rollback}))))
+          (catch clojure.lang.ExceptionInfo _e))
+        (is (= count-before (t2/count :model/Field :table_id tbl-id)))
+        (is (nil? (t2/select-one :model/Field :table_id tbl-id :name "would-be-inserted")))))))
+
 ;;; ============================== process-databases ==============================
 
 (deftest process-databases-matches-by-name-and-engine-test
@@ -321,359 +1015,6 @@
             via-seq    (vec (seq result))]
         (is (= {"stream-probe" target-id} via-reduce))
         (is (= 1 (count via-seq)))))))
-
-;;; ======================== process-fields! ========================
-
-(deftest process-fields-inserts-root-field-test
-  (testing "a root field (no :parent_id) is inserted with parent_id=NULL,
-            is_defective_duplicate=FALSE, fk_target_field_id=NULL"
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-root-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "users"}]
-      (let [batch  [[1 {:id ["fld-root-db" "public" "users" "zip"]
-                        :table_id ["fld-root-db" "public" "users"]
-                        :name "zip"
-                        :base_type "type/Text"
-                        :database_type "text"}]]
-            [r]    (into [] (processors/process-fields! batch))
-            row    (t2/select-one :model/Field :id (:target-id r))]
-        (is (= ["fld-root-db" "public" "users" "zip"] (:source-id r)))
-        (is (= :inserted (:status r)))
-        (is (= tbl-id (:table_id row)))
-        (is (= "zip" (:name row)))
-        (is (nil? (:parent_id row)))
-        (is (nil? (:fk_target_field_id row))
-            "fk_target_field_id starts NULL — set later by process-fields-fk-resolve!")
-        (is (= false
-               (:is_defective_duplicate
-                (first (t2/query ["SELECT is_defective_duplicate FROM metabase_field WHERE id = ?"
-                                  (:target-id r)]))))
-            "is_defective_duplicate=FALSE on insert")))))
-
-(deftest process-fields-inserts-nested-field-test
-  (testing "a nested field with :parent_id pointing at an existing parent inserts
-            with parent_id = the resolved target id; nfc_path stores the parent
-            ancestry"
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-nested-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}
-                   :model/Field {parent-id :id} {:table_id tbl-id :name "address"
-                                                 :base_type "type/Structured"}]
-      (let [batch [[1 {:id ["fld-nested-db" "public" "events" "address" "zip"]
-                       :table_id ["fld-nested-db" "public" "events"]
-                       :name "zip"
-                       :parent_id ["fld-nested-db" "public" "events" "address"]
-                       :nfc_path ["address"]
-                       :base_type "type/Text"
-                       :database_type "text"}]]
-            [r]   (into [] (processors/process-fields! batch))
-            row   (t2/select-one :model/Field :id (:target-id r))]
-        (is (= :inserted (:status r)))
-        (is (= parent-id (:parent_id row))
-            "parent_id resolves to the existing parent's int id via natural-key SELECT")
-        (is (= ["address"] (json/decode (:nfc_path
-                                         (first (t2/query ["SELECT nfc_path FROM metabase_field WHERE id = ?"
-                                                           (:target-id r)])))))
-            "nfc_path stores the parent ancestry chain (just [\"address\"] for a depth-1 nesting)")))))
-
-(deftest process-fields-matches-existing-root-test
-  (testing "a source root field whose (target-table-id, name, parent_id=NULL) triple
-            already exists produces :matched with the existing id; no insert"
-    (mt/with-temp [:model/Database {db-id :id}       {:name "fld-mr-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}      {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {existing-id :id} {:table_id tbl-id :name "zip"
-                                                      :base_type "type/Text"}]
-      (let [batch [[1 {:id ["fld-mr-db" "public" "t" "zip"]
-                       :table_id ["fld-mr-db" "public" "t"]
-                       :name "zip"
-                       :base_type "type/Text"}]]
-            [r]   (into [] (processors/process-fields! batch))]
-        (is (= :matched (:status r)))
-        (is (= existing-id (:target-id r)))))))
-
-(deftest process-fields-matches-existing-nested-test
-  (testing "a source nested field whose (target-table-id, name, target-parent-id)
-            triple already exists produces :matched with the existing id"
-    (mt/with-temp [:model/Database {db-id :id}       {:name "fld-mn-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}      {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {parent-id :id}   {:table_id tbl-id :name "address"
-                                                      :base_type "type/Structured"}
-                   :model/Field    {existing-id :id} {:table_id tbl-id :name "zip"
-                                                      :parent_id parent-id
-                                                      :nfc_path (json/encode ["address"])
-                                                      :base_type "type/Text"}]
-      (let [batch [[1 {:id ["fld-mn-db" "public" "t" "address" "zip"]
-                       :table_id ["fld-mn-db" "public" "t"]
-                       :name "zip"
-                       :parent_id ["fld-mn-db" "public" "t" "address"]
-                       :nfc_path ["address"]
-                       :base_type "type/Text"}]]
-            [r]   (into [] (processors/process-fields! batch))]
-        (is (= :matched (:status r)))
-        (is (= existing-id (:target-id r)))))))
-
-(deftest process-fields-clobbers-metadata-on-match-test
-  (testing "matched rows: full payload overwritten; parent_id and fk_target_field_id untouched"
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-clobber-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {fld-id :id} {:table_id tbl-id :name "zip"
-                                                 :base_type "type/Text"
-                                                 :description "old"
-                                                 :semantic_type "type/Quantity"}]
-      (is (not-empty (into [] (processors/process-fields!
-                               [[1 {:id ["fld-clobber-db" "public" "t" "zip"]
-                                    :table_id ["fld-clobber-db" "public" "t"]
-                                    :name "zip"
-                                    :base_type "type/Text"
-                                    :description "new desc"
-                                    :semantic_type "type/ZipCode"
-                                    :effective_type "type/Text"
-                                    :coercion_strategy "Coercion/String->Float"}]]))))
-      (let [row (t2/select-one :model/Field :id fld-id)]
-        (is (= "new desc"              (:description row)))
-        (is (= :type/ZipCode           (:semantic_type row)))
-        (is (= :type/Text              (:effective_type row)))
-        (is (= :Coercion/String->Float (:coercion_strategy row)))
-        (is (true?                     (:active row)))))))
-
-(deftest process-fields-clobber-skips-cols-source-omits-test
-  (testing "when the source row omits an optional metadata key, that column on the
-            matched target is preserved (clobber writes only what the source supplies,
-            never NULL-blasts existing values)"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-no-patch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {fld-id :id} {:table_id tbl-id :name "zip"
-                                                 :base_type "type/Text"
-                                                 :description "preserved"
-                                                 :semantic_type "type/ZipCode"}]
-      (is (not-empty (into [] (processors/process-fields!
-                               [[1 {:id ["fld-no-patch-db" "public" "t" "zip"]
-                                    :table_id ["fld-no-patch-db" "public" "t"]
-                                    :name "zip"
-                                    :base_type "type/Text"}]]))))
-      (let [row (t2/select-one :model/Field :id fld-id)]
-        (is (= "preserved"   (:description row)))
-        (is (= :type/ZipCode (:semantic_type row)))))))
-
-(deftest process-fields-emits-no-target-table-when-table-id-doesnt-resolve-test
-  (testing "if the source row's :table_id portable triple doesn't match any target,
-            the row is reported as :no-target-table and no SQL runs for it"
-    (let [[r] (into [] (processors/process-fields!
-                        [[5 {:id ["no-such-db-zzz" "public" "orders" "zip"]
-                             :table_id ["no-such-db-zzz" "public" "orders"]
-                             :name "zip"
-                             :base_type "type/Text"}]]))]
-      (is (= ["no-such-db-zzz" "public" "orders" "zip"] (:source-id r)))
-      (is (= :no-target-table (:status r)))
-      (is (= 5 (:line r)))
-      (is (string? (:detail r)))
-      (is (not (contains? r :target-id))))))
-
-(deftest process-fields-validation-failure-throws-with-attribution-test
-  (testing "a malformed field row (missing required :base_type) throws ex-info
-            with :kind :invalid_input, the line number, and the row's portable id"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-validate-db" :engine :postgres}
-                   :model/Table    {_ :id}      {:db_id db-id :schema "public" :name "t"}]
-      (let [e    (is (thrown? clojure.lang.ExceptionInfo
-                              (into [] (processors/process-fields!
-                                        [[42 {:id ["fld-validate-db" "public" "t" "zip"]
-                                              :table_id ["fld-validate-db" "public" "t"]
-                                              :name "zip"}]]))))   ;; missing :base_type
-            data (ex-data e)]
-        (is (= :invalid_input (:kind data)))
-        (is (= 42 (:line data)))
-        (is (= ["fld-validate-db" "public" "t" "zip"] (:source-id data)))))))
-
-(deftest process-fields-preserves-input-order-test
-  (testing "results are in input order regardless of which rows match, insert, or miss"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fld-order-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {existing :id} {:table_id tbl-id :name "existing"
-                                                   :base_type "type/Text"}]
-      (let [results (into [] (processors/process-fields!
-                              [[1 {:id ["fld-order-db" "public" "t" "existing"]
-                                   :table_id ["fld-order-db" "public" "t"]
-                                   :name "existing"
-                                   :base_type "type/Text" :database_type "text"}]
-                               [2 {:id ["no-such-db-zzz" "public" "t" "no-tbl"]
-                                   :table_id ["no-such-db-zzz" "public" "t"]
-                                   :name "no-tbl"
-                                   :base_type "type/Text" :database_type "text"}]
-                               [3 {:id ["fld-order-db" "public" "t" "fresh-1"]
-                                   :table_id ["fld-order-db" "public" "t"]
-                                   :name "fresh-1"
-                                   :base_type "type/Text" :database_type "text"}]]))]
-        (is (= [["fld-order-db" "public" "t" "existing"]
-                ["no-such-db-zzz" "public" "t" "no-tbl"]
-                ["fld-order-db" "public" "t" "fresh-1"]]      (mapv :source-id results)))
-        (is (= [:matched :no-target-table :inserted]          (mapv :status results)))
-        (is (= existing                                       (:target-id (nth results 0))))))))
-
-(deftest process-fields-empty-batch-test
-  (testing "empty input → empty output"
-    (is (= [] (into [] (processors/process-fields! []))))))
-
-;;; ---------- stub-path tests ----------
-
-(deftest process-fields-stub-row?-predicate-test
-  (testing "stub-row? identifies rows by the :database_type sentinel \"__stub__\""
-    (is (true?  (processors/stub-row? {:database_type "__stub__"})))
-    (is (false? (processors/stub-row? {:database_type "text"})))
-    (is (false? (processors/stub-row? {})))
-    (is (true?  (processors/stub-row? {:database_type "__stub__" :base_type :type/*}))
-        ":base_type is keywordized by :model/Field's reader; stub-row? doesn't depend on it")))
-
-(deftest process-fields-stubs-orphan-parent-test
-  (testing "a child whose :parent_id points at a parent NOT in the file (and not yet
-            in target appdb) results in a placeholder stub row for the parent —
-            active=false, base_type=type/*, database_type=__stub__, nfc_path=NULL"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-orph-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
-      (let [batch [[1 {:id ["fld-orph-db" "public" "t" "orphan-parent" "zip"]
-                       :table_id ["fld-orph-db" "public" "t"]
-                       :name "zip"
-                       :parent_id ["fld-orph-db" "public" "t" "orphan-parent"]
-                       :nfc_path ["orphan-parent"]
-                       :base_type "type/Text"
-                       :database_type "text"}]]
-            [r]   (into [] (processors/process-fields! batch))
-            child-row  (t2/select-one :model/Field :id (:target-id r))
-            parent-row (t2/select-one :model/Field :table_id tbl-id :name "orphan-parent")]
-        (is (= :inserted (:status r)))
-        (is (some? parent-row) "parent stub was created")
-        (is (processors/stub-row? parent-row) "parent row is identified as a stub")
-        (is (= false (:active parent-row)) "stub is inactive")
-        (is (nil? (:parent_id parent-row)) "stub for depth-1 missing parent has parent_id=NULL")
-        (is (= (:id parent-row) (:parent_id child-row))
-            "child's parent_id points at the freshly-inserted stub")))))
-
-(deftest process-fields-stubs-then-real-row-clobbers-stub-in-same-batch-test
-  (testing "a batch containing a child BEFORE its parent — child stubs the parent,
-            then when the parent's real row is processed in the same batch, the
-            stub is matched and clobbered to active=true with the real metadata.
-            Same int id throughout — the child's :parent_id stays valid."
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-stub-fill-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
-      ;; child row first, parent second — child stubs the parent on its way through
-      (let [batch [[1 {:id ["fld-stub-fill-db" "public" "t" "address" "zip"]
-                       :table_id ["fld-stub-fill-db" "public" "t"]
-                       :name "zip"
-                       :parent_id ["fld-stub-fill-db" "public" "t" "address"]
-                       :nfc_path ["address"]
-                       :base_type "type/Text"
-                       :database_type "text"}]
-                   [2 {:id ["fld-stub-fill-db" "public" "t" "address"]
-                       :table_id ["fld-stub-fill-db" "public" "t"]
-                       :name "address"
-                       :base_type "type/Structured"
-                       :database_type "json"
-                       :description "real description"}]]
-            results (into [] (processors/process-fields! batch))
-            parent-row (t2/select-one :model/Field :table_id tbl-id :name "address")]
-        (is (= [:inserted :matched] (mapv :status results))
-            "child got inserted; parent's real row matched the stub child created")
-        (is (false? (processors/stub-row? parent-row))
-            "after clobber, the parent is no longer marked as a stub")
-        (is (true? (:active parent-row))      "clobber flipped active=false to true")
-        (is (= :type/Structured (:base_type parent-row)) "base_type clobbered from type/* to real")
-        (is (= "json"          (:database_type parent-row)) "database_type clobbered from __stub__ to real")
-        (is (= "real description" (:description parent-row)))))))
-
-(deftest process-fields-stubs-three-deep-when-grandparent-missing-test
-  (testing "a child references a depth-3 parent path; both grandparent and parent
-            are missing in target → both get stubbed, grandparent first then parent"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-3deep-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}]
-      (let [batch [[1 {:id ["fld-3deep-db" "public" "t" "outer" "inner" "zip"]
-                       :table_id ["fld-3deep-db" "public" "t"]
-                       :name "zip"
-                       :parent_id ["fld-3deep-db" "public" "t" "outer" "inner"]
-                       :nfc_path ["outer" "inner"]
-                       :base_type "type/Text"
-                       :database_type "text"}]]
-            [r]   (into [] (processors/process-fields! batch))
-            grandparent (t2/select-one :model/Field :table_id tbl-id :name "outer")
-            parent      (t2/select-one :model/Field :table_id tbl-id :name "inner")
-            child       (t2/select-one :model/Field :id (:target-id r))]
-        (is (= :inserted (:status r)))
-        (is (some? grandparent) "depth-1 stub for grandparent was created")
-        (is (some? parent)      "depth-2 stub for parent was created")
-        (is (processors/stub-row? grandparent))
-        (is (processors/stub-row? parent))
-        (is (nil? (:parent_id grandparent)) "grandparent stub has parent_id=NULL (root)")
-        (is (= (:id grandparent) (:parent_id parent))
-            "parent stub's parent_id points at the grandparent stub")
-        (is (= (:id parent) (:parent_id child))
-            "child's parent_id points at the parent stub")))))
-
-(deftest process-fields-clobbers-pre-existing-stub-on-real-row-arrival-test
-  (testing "real row finds and overwrites the pre-existing stub"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fld-prior-stub-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {stub-id :id} {:table_id tbl-id :name "address"
-                                                  :base_type "type/*"
-                                                  :database_type "__stub__"
-                                                  :active false}]
-      (let [batch [[1 {:id ["fld-prior-stub-db" "public" "t" "address"]
-                       :table_id ["fld-prior-stub-db" "public" "t"]
-                       :name "address"
-                       :base_type "type/Structured"
-                       :database_type "json"}]]
-            [r]   (into [] (processors/process-fields! batch))
-            row   (t2/select-one :model/Field :id stub-id)]
-        (is (= :matched (:status r))           "match found the inactive stub")
-        (is (= stub-id (:target-id r))         "same int id — no insert, just clobber")
-        (is (true? (:active row))              "stub flipped to active=true")
-        (is (= :type/Structured (:base_type row)) "base_type clobbered to real")
-        (is (= "json" (:database_type row))    "database_type clobbered from __stub__ to real")))))
-
-;;; ---------- JSON-unfolded leaves ----------
-
-(deftest process-fields-inserts-json-unfolded-leaf-with-nfc-path-test
-  (testing "wire row with :nfc_path but no :parent_id: stores nfc_path verbatim, no stubs"
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-json-leaf-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:id ["fld-json-leaf-db" "public" "events" "payload" "address" "zip"]
-                       :table_id ["fld-json-leaf-db" "public" "events"]
-                       :name "payload → address → zip"
-                       :nfc_path ["payload" "address" "zip"]
-                       :base_type "type/Text"
-                       :database_type "text"}]]
-            [r]   (into [] (processors/process-fields! batch))
-            row   (t2/select-one :model/Field :id (:target-id r))]
-        (is (= :inserted (:status r)))
-        (is (= "payload → address → zip" (:name row)))
-        (is (nil? (:parent_id row))
-            "parent_id stays NULL — no parent row exists")
-        (is (= ["payload" "address" "zip"]
-               (json/decode (:nfc_path
-                             (first (t2/query
-                                     ["SELECT nfc_path FROM metabase_field WHERE id = ?"
-                                      (:target-id r)])))))
-            "nfc_path is stored verbatim from the wire — preserves QP's JSON-path navigation")
-        (is (zero? (count (t2/query
-                           [(str "SELECT id FROM metabase_field WHERE database_type = '__stub__' "
-                                 "AND table_id = ?")
-                            tbl-id])))
-            "no stubs were created — :nfc_path alone doesn't trigger ensure-ancestors!")))))
-
-(deftest process-fields-json-unfolded-leaf-idempotent-test
-  (testing "re-importing matches the existing row, no duplicate, no new stubs"
-    (mt/with-temp [:model/Database {db-id :id} {:name "fld-json-leaf-idem-db" :engine :postgres}
-                   :model/Table {tbl-id :id} {:db_id db-id :schema "public" :name "events"}]
-      (let [batch [[1 {:id ["fld-json-leaf-idem-db" "public" "events" "payload" "address" "zip"]
-                       :table_id ["fld-json-leaf-idem-db" "public" "events"]
-                       :name "payload → address → zip"
-                       :nfc_path ["payload" "address" "zip"]
-                       :base_type "type/Text"
-                       :database_type "text"}]]
-            [r1] (into [] (processors/process-fields! batch))
-            [r2] (into [] (processors/process-fields! batch))]
-        (is (= :inserted (:status r1)))
-        (is (= :matched (:status r2))
-            "second pass matches the existing row")
-        (is (= (:target-id r1) (:target-id r2))
-            "same int id — no duplicate row inserted")
-        (is (= 1 (t2/count :model/Field :table_id tbl-id))
-            "exactly one Field row exists, no stubs")))))
 
 ;;; ======================== process-fields-fk-resolve! ========================
 

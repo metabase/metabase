@@ -17,7 +17,6 @@
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
    [metabase.models.humanization :as humanization]
-   [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -273,6 +272,411 @@
                                 [:= :metabase_table.is_defective_duplicate [:inline false]]
                                 [:= :metabase_table.active [:inline true]]]}]})))
 
+;;; ============================== fields — drain + merge ==============================
+
+(defn- encode-path-or-nil
+  "Encode a path coll (e.g., a wire `:nfc_path` or the middle of a portable id)
+  as a JSON string, matching `metabase_field.nfc_path` storage convention. NULL
+  for empty/nil; JSON-encoded array string otherwise."
+  [coll]
+  (when (seq coll) (json/encode (vec coll))))
+
+(defn- decompose-portable-field-id
+  "Split a portable field id vector into its natural-key components.
+
+  For any portable id of length ≥ 4 — `[db, schema, tbl, ...middle, last]` —
+  returns `{:db_name :table_schema :table_name :path :name}`, where `:name`
+  is the last element and `:path` is the middle (encoded same as
+  `metabase_field.nfc_path`). Length-4 portable ids have an empty middle, so
+  `:path` is NULL.
+
+  Convention-blind: trusts the export to emit portable ids that uniquely
+  identify storage rows. The import treats them as opaque match keys."
+  [pid]
+  (let [v (vec pid)]
+    {:db_name      (get v 0)
+     :table_schema (get v 1)
+     :table_name   (get v 2)
+     :path         (encode-path-or-nil (subvec v 3 (dec (count v))))
+     :name         (peek v)}))
+
+(defn drain-fields-into-staging!
+  "Stream `:fields` from `metadata-file` into `metabase_field_import`.
+
+  Validates each row up front. Decomposes wire `:table_id`, `:parent_id`, and
+  `:fk_target_field_id` into staging columns. Encodes wire `:nfc_path` to match
+  `metabase_field.nfc_path`. Resolved-id columns (`parent_id`, `fk_target_id`)
+  start NULL — they're filled by `resolve-existing-parents-in-staging!` and
+  (commit 4) `resolve-fk-target-ids-in-staging!`. Writes only to staging."
+  [^File metadata-file]
+  (parsers/stream-array-batches!
+   metadata-file :fields import-batch-size
+   (fn [batch]
+     (doseq [[ln line] batch]
+       (validate-line! ::schemas/field-info ln line {:source-id (vec (:id line))}))
+     (when (seq batch)
+       (let [rows (mapv (fn [[_ {:keys [table_id name nfc_path parent_id fk_target_field_id
+                                        base_type database_type description effective_type
+                                        semantic_type coercion_strategy]}]]
+                          (let [tid (vec table_id)
+                                p   (some-> parent_id decompose-portable-field-id)
+                                fk  (some-> fk_target_field_id decompose-portable-field-id)]
+                            (cond-> {:db_name           (get tid 0)
+                                     :table_schema      (get tid 1)
+                                     :table_name        (get tid 2)
+                                     :field_name        name
+                                     :nfc_path          (encode-path-or-nil nfc_path)
+                                     :base_type         base_type
+                                     :database_type     database_type
+                                     :description       description
+                                     :effective_type    effective_type
+                                     :semantic_type     semantic_type
+                                     :coercion_strategy coercion_strategy}
+                              p  (assoc :parent_db_name      (:db_name p)
+                                        :parent_table_schema (:table_schema p)
+                                        :parent_table_name   (:table_name p)
+                                        :parent_path         (:path p)
+                                        :parent_name         (:name p))
+                              fk (assoc :fk_target_db_name      (:db_name fk)
+                                        :fk_target_table_schema (:table_schema fk)
+                                        :fk_target_table_name   (:table_name fk)
+                                        :fk_target_path         (:path fk)
+                                        :fk_target_name         (:name fk)))))
+                        batch)]
+         (t2/insert! :metabase_field_import rows))))))
+
+(defn- collect-missing-parent-portable-ids
+  "Return a vector of distinct portable id vectors for staging rows whose
+  parent didn't resolve (`parent_db_name` set, `parent_id` still NULL).
+  Reconstructs the portable id from the staging parent_* columns."
+  []
+  (let [rows (t2/query {:select-distinct [:parent_db_name
+                                          :parent_table_schema
+                                          :parent_table_name
+                                          :parent_path
+                                          :parent_name]
+                        :from   [:metabase_field_import]
+                        :where  [:and
+                                 [:!= :parent_db_name nil]
+                                 [:= :parent_id nil]]})]
+    (mapv (fn [{:keys [parent_db_name parent_table_schema parent_table_name parent_path parent_name]}]
+            (let [middle (when parent_path (vec (json/decode parent_path)))]
+              (-> [parent_db_name parent_table_schema parent_table_name]
+                  (into (or middle []))
+                  (conj parent_name))))
+          rows)))
+
+(defn- parent-exists-in-metabase-field?
+  "Probe `metabase_field` for a non-defective row whose natural-key matches the
+  portable id `pid`. Match key: `(d.name, t.schema, t.name, f.name,
+  f.nfc_path)`. Same `(name = last, path = middle)` decomposition that
+  `resolve-existing-parents-in-staging!` uses."
+  [pid]
+  (let [v        (vec pid)
+        db-name  (get v 0)
+        schema   (get v 1)
+        tbl-name (get v 2)
+        leaf     (peek v)
+        path     (encode-path-or-nil (subvec v 3 (dec (count v))))]
+    (boolean
+     (seq
+      (t2/query {:select [[[:inline 1] :present]]
+                 :from   [[:metabase_field :f]]
+                 :join   [[:metabase_table :t]    [:= :t.id :f.table_id]
+                          [:metabase_database :d] [:= :d.id :t.db_id]]
+                 :where  [:and
+                          [:= :d.name db-name]
+                          [:= [:coalesce :t.schema [:inline ""]] [:coalesce schema [:inline ""]]]
+                          [:= :t.name tbl-name]
+                          [:= :f.name leaf]
+                          [:= [:coalesce :f.nfc_path [:inline ""]] [:coalesce path [:inline ""]]]
+                          [:= :f.is_defective_duplicate [:inline false]]]
+                 :limit  1})))))
+
+(defn- walk-ancestor-chain!
+  "Walk up the parent chain from portable id `pid`, depth-first. For each
+  ancestor not already in `cache!`:
+    - if it exists in `metabase_field`, cache `:exists` and stop;
+    - else recurse on its own parent (one element shorter), then conj a stub
+      spec for `pid` to `stub-specs!` (root-first dependency order).
+
+  `cache!` is a `volatile!` keyed by portable-id vector, valued either
+  `:exists` (already in live) or `:stub` (will be inserted as part of this
+  run)."
+  [pid cache! stub-specs!]
+  (when-not (contains? @cache! pid)
+    (if (parent-exists-in-metabase-field? pid)
+      (vswap! cache! assoc pid :exists)
+      (let [parent-pid (when (> (count pid) 4) (subvec pid 0 (dec (count pid))))]
+        (when parent-pid
+          (walk-ancestor-chain! parent-pid cache! stub-specs!))
+        (vswap! stub-specs! conj {:portable-id        pid
+                                  :parent-portable-id parent-pid})
+        (vswap! cache! assoc pid :stub)))))
+
+(defn compute-stubs!
+  "Walk every distinct unresolved-parent portable id in staging and return a
+  vector of stub specs `{:portable-id ... :parent-portable-id ...}` for the
+  ancestors missing from `metabase_field`. Specs are returned in dependency
+  order (root before descendant) so a sequential insert can JOIN to its
+  parent.
+
+  Read-only against `metabase_field`; produces Clojure data only. Idempotent."
+  []
+  (let [missing-keys (collect-missing-parent-portable-ids)
+        cache        (volatile! {})
+        stub-specs   (volatile! [])]
+    (doseq [k missing-keys]
+      (walk-ancestor-chain! k cache stub-specs))
+    @stub-specs))
+
+(def ^:private stub-insert-cols
+  "Column list for stub INSERT-SELECT statements. Identical for root and nested
+  stub variants — only the parent_id source differs."
+  [:table_id :name :nfc_path :parent_id
+   :base_type :database_type :active
+   :is_defective_duplicate :created_at :updated_at])
+
+(defn- insert-root-stub!
+  "Insert one root stub (no parent). `parent_id` is NULL inline; the
+  unique-field NOT EXISTS check uses `unique_field_helper = 0` to detect a
+  pre-existing row at the same `(table_id, name, parent_id=NULL)` natural
+  key."
+  [db-name schema tbl-name leaf path]
+  (t2/query
+   {:insert-into
+    [[:metabase_field stub-insert-cols]
+     {:select [:t.id leaf path [[:inline nil]]
+               [[:inline "type/*"]] [[:inline "__stub__"]] [[:inline false]] [[:inline false]]
+               :%now :%now]
+      :from   [[:metabase_database :d]]
+      :join   [[:metabase_table :t]
+               [:and [:= :t.db_id :d.id]
+                [:= [:coalesce :t.schema [:inline ""]] [:coalesce schema [:inline ""]]]
+                [:= :t.name tbl-name]
+                [:= :t.is_defective_duplicate [:inline false]]]]
+      :where  [:and
+               [:= :d.name db-name]
+               [:not [:exists {:select [[[:inline 1]]]
+                               :from [[:metabase_field :f]]
+                               :where [:and
+                                       [:= :f.table_id :t.id]
+                                       [:= :f.name leaf]
+                                       [:= :f.unique_field_helper [:inline 0]]
+                                       [:= :f.is_defective_duplicate [:inline false]]]}]]]}]}))
+
+(defn- insert-nested-stub!
+  "Insert one nested stub (with parent). INNER JOINs `metabase_field` to find
+  the parent's int id (parent must already exist in `metabase_field` by the
+  time this fires — `compute-stubs!` returns specs in root-first order so
+  ancestors land first). Unique-field NOT EXISTS uses the parent's int id."
+  [db-name schema tbl-name leaf path parent-leaf parent-path]
+  (t2/query
+   {:insert-into
+    [[:metabase_field stub-insert-cols]
+     {:select [:t.id leaf path :parent.id
+               [[:inline "type/*"]] [[:inline "__stub__"]] [[:inline false]] [[:inline false]]
+               :%now :%now]
+      :from   [[:metabase_database :d]]
+      :join   [[:metabase_table :t]
+               [:and [:= :t.db_id :d.id]
+                [:= [:coalesce :t.schema [:inline ""]] [:coalesce schema [:inline ""]]]
+                [:= :t.name tbl-name]
+                [:= :t.is_defective_duplicate [:inline false]]]
+               [:metabase_field :parent]
+               [:and [:= :parent.table_id :t.id]
+                [:= :parent.name parent-leaf]
+                [:= [:coalesce :parent.nfc_path [:inline ""]] [:coalesce parent-path [:inline ""]]]
+                [:= :parent.is_defective_duplicate [:inline false]]]]
+      :where  [:and
+               [:= :d.name db-name]
+               [:not [:exists {:select [[[:inline 1]]]
+                               :from [[:metabase_field :f]]
+                               :where [:and
+                                       [:= :f.table_id :t.id]
+                                       [:= :f.name leaf]
+                                       [:= :f.unique_field_helper :parent.id]
+                                       [:= :f.is_defective_duplicate [:inline false]]]}]]]}]}))
+
+(defn- insert-one-stub!
+  "Dispatch on `:parent-portable-id` to pick the root or nested INSERT shape."
+  [{:keys [portable-id parent-portable-id]}]
+  (let [pid      (vec portable-id)
+        db-name  (get pid 0)
+        schema   (get pid 1)
+        tbl-name (get pid 2)
+        leaf     (peek pid)
+        path     (encode-path-or-nil (subvec pid 3 (dec (count pid))))]
+    (if-let [parent-pid (some-> parent-portable-id vec)]
+      (let [parent-leaf (peek parent-pid)
+            parent-path (encode-path-or-nil (subvec parent-pid 3 (dec (count parent-pid))))]
+        (insert-nested-stub! db-name schema tbl-name leaf path parent-leaf parent-path))
+      (insert-root-stub! db-name schema tbl-name leaf path))))
+
+(defn insert-stubs-where-not-exists!
+  "Insert stub rows for every spec in `stub-specs`, in order. `compute-stubs!`
+  returns specs in root-first dependency order so each spec's parent is
+  guaranteed to exist by the time the insert runs.
+
+  Each insert is a single SQL `INSERT … SELECT … WHERE NOT EXISTS`, so a
+  concurrent insert of the same natural key is a silent no-op rather than a
+  unique-violation throw.
+
+  Wraps the loop in `t2/with-transaction` for atomicity. Composes with an
+  outer transaction (Toucan2 joins outer)."
+  [stub-specs]
+  (t2/with-transaction [_]
+    (doseq [spec stub-specs]
+      (insert-one-stub! spec))))
+
+(def ^:private fields-clobber-cols
+  "Columns clobbered on UPDATE-EXISTS in [[merge-fields!]]. The matched-row
+  payload is overwritten regardless of whether values changed (the import is
+  an alternate sync). `parent_id` and `fk_target_field_id` are not clobbered:
+  parent_id is part of the match key (already correct on a matched row),
+  and fk_target_field_id is set later by phase 4."
+  [:base_type :database_type :description
+   :effective_type :semantic_type :coercion_strategy :nfc_path])
+
+(defn- staging-clobber-subquery
+  "Build the correlated subquery `metabase_field`'s `merge-fields!` UPDATE uses
+  to fetch a column value from the matched staging row. Same JOIN+match shape
+  for every column — only the SELECT differs."
+  [col]
+  {:select [(keyword (str "fi." (name col)))]
+   :from   [[:metabase_field_import :fi]]
+   :join   [[:metabase_database :d] [:= :d.name :fi.db_name]
+            [:metabase_table :t]    [:and
+                                     [:= :t.db_id :d.id]
+                                     [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
+                                     [:= :t.name :fi.table_name]
+                                     [:= :t.is_defective_duplicate [:inline false]]]]
+   :where  [:and
+            [:= :metabase_field.table_id :t.id]
+            [:= :metabase_field.name :fi.field_name]
+            [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]]})
+
+(defn merge-fields!
+  "Merge `metabase_field_import` into `metabase_field` atomically, in two SQL
+  statements wrapped in a single `t2/with-transaction`:
+
+    1. **INSERT** rows whose natural key isn't already present in
+       `metabase_field` (active OR inactive — stubs participate so the
+       NOT EXISTS catches them and the second statement clobbers them).
+       Sets `active=true`, `is_defective_duplicate=false`,
+       `fk_target_field_id=NULL` (phase 4 fills it).
+    2. **UPDATE** matched rows by clobbering the seven payload columns
+       (`base_type`, `database_type`, `description`, `effective_type`,
+       `semantic_type`, `coercion_strategy`, `nfc_path`), setting
+       `active=true` (flips stubs to live), bumping `updated_at`. Each
+       SET column uses a correlated subquery on staging.
+
+  Match key is `(table_id, name, unique_field_helper)` where
+  `unique_field_helper = COALESCE(parent_id, 0)` — stable across re-imports
+  and lookup-friendly via the existing unique index.
+
+  Composes with an outer `t2/with-transaction`: when commit-3's orchestrator
+  wraps tables-merge + stub-insert + this together, all participate in the
+  outer txn's all-or-nothing semantics."
+  []
+  (t2/with-transaction [_]
+    ;; INSERT rows that don't already exist
+    (t2/query
+     {:insert-into
+      [[:metabase_field [:table_id :name :base_type :database_type :description
+                         :effective_type :semantic_type :coercion_strategy
+                         :nfc_path :parent_id :fk_target_field_id
+                         :is_defective_duplicate :active :created_at :updated_at]]
+       {:select [:t.id :fi.field_name :fi.base_type :fi.database_type :fi.description
+                 :fi.effective_type :fi.semantic_type :fi.coercion_strategy
+                 :fi.nfc_path :fi.parent_id [[:inline nil]]
+                 [[:inline false]] [[:inline true]] :%now :%now]
+        :from [[:metabase_field_import :fi]]
+        :join [[:metabase_database :d] [:= :d.name :fi.db_name]
+               [:metabase_table :t]    [:and
+                                        [:= :t.db_id :d.id]
+                                        [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
+                                        [:= :t.name :fi.table_name]
+                                        [:= :t.is_defective_duplicate [:inline false]]]]
+        :where [:not [:exists {:select [[[:inline 1]]]
+                               :from [[:metabase_field :f]]
+                               :where [:and
+                                       [:= :f.table_id :t.id]
+                                       [:= :f.name :fi.field_name]
+                                       [:= :f.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]
+                                       [:= :f.is_defective_duplicate [:inline false]]]}]]}]})
+    ;; UPDATE matched rows (clobber payload, flip active=true, bump updated_at)
+    (t2/query
+     {:update :metabase_field
+      :set    (-> (into {} (map (fn [c] [c (staging-clobber-subquery c)])) fields-clobber-cols)
+                  (assoc :active     [:inline true]
+                         :updated_at :%now))
+      :where  [:and
+               [:= :metabase_field.is_defective_duplicate [:inline false]]
+               [:exists {:select [[[:inline 1]]]
+                         :from [[:metabase_field_import :fi]]
+                         :join [[:metabase_database :d] [:= :d.name :fi.db_name]
+                                [:metabase_table :t]    [:and
+                                                         [:= :t.db_id :d.id]
+                                                         [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
+                                                         [:= :t.name :fi.table_name]
+                                                         [:= :t.is_defective_duplicate [:inline false]]]]
+                         :where [:and
+                                 [:= :metabase_field.table_id :t.id]
+                                 [:= :metabase_field.name :fi.field_name]
+                                 [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]]}]]})))
+
+(defn assert-no-unresolved-parent-refs!
+  "Defensive guard: every staging row with a non-NULL `parent_db_name` should
+  have a non-NULL `parent_id` by the time this fires (after both
+  `resolve-existing-parents-in-staging!` calls and `insert-stubs-where-not-exists!`).
+  If any remain unresolved, something invalidated `compute-stubs!`'s decisions
+  between compute and merge — e.g., a concurrent delete (impossible under the
+  preconditions, but cheap to verify). Throws `ex-info` with
+  `:kind :stub_resolution_invalidated`; intended to fire inside the merge txn
+  so the throw rolls everything back."
+  []
+  (let [n (-> (t2/query {:select [[[:count :*] :n]]
+                         :from   [:metabase_field_import]
+                         :where  [:and
+                                  [:!= :parent_db_name nil]
+                                  [:= :parent_id nil]]})
+              first :n)]
+    (when (pos? n)
+      (throw (ex-info "Stub resolution invalidated between compute and merge"
+                      {:kind :stub_resolution_invalidated, :n-unresolved n})))))
+
+(defn resolve-existing-parents-in-staging!
+  "Set `metabase_field_import.parent_id` to the int id of the matching
+  `metabase_field` row, for every staging row whose `parent_db_name` is
+  non-NULL. The match key is the decomposed parent natural key:
+  `(parent_db_name, parent_table_schema, parent_table_name, parent_path,
+  parent_name)` against `(d.name, t.schema, t.name, parent.nfc_path,
+  parent.name)`. Defective parents (`is_defective_duplicate = true`) are
+  excluded.
+
+  Idempotent — running again with the same staging contents produces the
+  same parent_id assignments. Uses a correlated subquery in SET so it
+  serializes portably across PG / H2 / MySQL via `t2/query`."
+  []
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:parent_id
+             {:select [:parent.id]
+              :from   [[:metabase_field :parent]]
+              :join   [[:metabase_table :pt]    [:= :pt.id :parent.table_id]
+                       [:metabase_database :pd] [:= :pd.id :pt.db_id]]
+              :where  [:and
+                       [:= :metabase_field_import.parent_db_name :pd.name]
+                       [:= [:coalesce :pt.schema [:inline ""]]
+                        [:coalesce :metabase_field_import.parent_table_schema [:inline ""]]]
+                       [:= :pt.name :metabase_field_import.parent_table_name]
+                       [:= :parent.name :metabase_field_import.parent_name]
+                       [:= [:coalesce :parent.nfc_path [:inline ""]]
+                        [:coalesce :metabase_field_import.parent_path [:inline ""]]]
+                       [:= :parent.is_defective_duplicate [:inline false]]]}}
+    :where  [:!= :metabase_field_import.parent_db_name nil]}))
+
 ;;; ==================== fields (batch) ====================
 
 (def ^:private stub-base-type
@@ -298,44 +702,11 @@
   [{:keys [id]}]
   (vec id))
 
-(defn- resolve-table-ids-batch
-  "Resolve each distinct portable `:table_id` triple in `lines` to a target
-  integer table id. Returns `{[db-name schema-or-nil table-name] → target-id}`
-  with vector keys."
-  [lines]
-  (let [triples   (into #{} (keep (fn [{:keys [table_id]}] (some-> table_id vec))) lines)
-        db-names  (into #{} (map #(get % 0)) triples)
-        tbl-names (into #{} (map #(get % 2)) triples)]
-    (if (empty? triples)
-      {}
-      (let [rows (t2/query {:select [[:t.id :id] [:t.schema :schema]
-                                     [:t.name :tbl-name] [:d.name :db-name]]
-                            :from   [[:metabase_table :t]]
-                            :join   [[:metabase_database :d] [:= :t.db_id :d.id]]
-                            :where  [:and
-                                     [:= :t.active true]
-                                     [:= :t.is_defective_duplicate false]
-                                     [:in :d.name db-names]
-                                     [:in :t.name tbl-names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id schema tbl-name db-name]}]
-                           [[db-name schema tbl-name] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
-
 (defn- decode-nfc-path
   "Decode `metabase_field.nfc_path` (JSON-encoded string or NULL) to a Clojure
   vector or nil."
   [s]
   (some-> s json/decode vec))
-
-(defn- encode-nfc-path
-  "Encode a parent-ancestry path vector for storage in `metabase_field.nfc_path`.
-  Returns the JSON-encoded string for non-empty paths, nil for empty/nil — root
-  fields and depth-1 stubs have NULL `nfc_path`."
-  [anc-path]
-  (when (seq anc-path)
-    (json/encode anc-path)))
 
 (defn- resolve-parent-ids-batch
   "Resolve each portable field id in `parent-vecs` to a target integer field id.
@@ -389,216 +760,6 @@
                         (when (contains? parents pv)
                           [pv id]))))
               rows)))))
-
-(defn- new-stub-field-row
-  "Row map for inserting a placeholder stub field — marker fields
-  `database_type=\"__stub__\"` + `base_type=\"type/*\"` + `active=false`."
-  [target-table-id parent-vec resolved-parent-id]
-  (let [pv         (vec parent-vec)
-        leaf-name  (peek pv)
-        ;; `nfc-path` for the parent storage row = the parent's `:id` minus the
-        ;; `[db schema table]` prefix and the leaf name. Empty for flat-root
-        ;; parents (length-4 :id), non-empty for middle parents.
-        anc-path   (not-empty (subvec pv 3 (dec (count pv))))
-        now        (mi/now)]
-    {:table_id               target-table-id
-     :name                   leaf-name
-     :nfc_path               (encode-nfc-path anc-path)
-     :parent_id              resolved-parent-id
-     :base_type              stub-base-type
-     :database_type          stub-database-type
-     :active                 false
-     :is_defective_duplicate false
-     :fk_target_field_id     nil
-     :created_at             now
-     :updated_at             now}))
-
-(defn- ensure-ancestors!
-  "Walk up the parent chain from `parent-vec` until hitting an existing ancestor
-  (in `cache!` or via natural-key SELECT) or reaching the table root. Insert
-  placeholder stub rows depth-first for every missing ancestor on the way back
-  down. Returns the int id of the immediate parent (real or just-inserted stub).
-  `cache!` is a `volatile!` `{portable-vec → int}` updated in place.
-
-  Future optimization: bulk-insert per depth level."
-  [parent-vec target-table-id cache!]
-  (letfn [(reduce-down [parent-int-id missing]
-            ;; missing was built leaf-side-first; reverse for root-first inserts
-            (reduce (fn [pid stub-pid]
-                      (let [stub-row (new-stub-field-row target-table-id stub-pid pid)
-                            stub-id  (first (t2/insert-returning-pks! :model/Field [stub-row]))]
-                        (vswap! cache! assoc stub-pid stub-id)
-                        stub-id))
-                    parent-int-id
-                    (rseq missing)))]
-    (loop [pid (vec parent-vec), missing []]
-      (if-let [hit (get @cache! pid)]
-        (reduce-down hit missing)
-        (let [resolved (resolve-parent-ids-batch [pid])]
-          (if-let [hit (get resolved pid)]
-            (do (vswap! cache! assoc pid hit)
-                (reduce-down hit missing))
-            (if (= 4 (count pid))
-              ;; root-level stub — no further ancestor exists
-              (let [stub-row (new-stub-field-row target-table-id pid nil)
-                    stub-id  (first (t2/insert-returning-pks! :model/Field [stub-row]))]
-                (vswap! cache! assoc pid stub-id)
-                (reduce-down stub-id missing))
-              ;; recurse on the parent of pid
-              (recur (vec (butlast pid)) (conj missing pid)))))))))
-
-(defn- match-fields-batch
-  "Look up every existing target Field matching any (target-table-id, name,
-  target-parent-id) triple in `lines`. Returns
-  `{[table-id name parent-id] → existing-id}`.
-
-  Scoped to `is_defective_duplicate=false`; `active` is not filtered (stubs
-  included)."
-  [lines]
-  (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
-        tbl-ids (into #{} (keep :table_id) lines)
-        names   (into #{} (keep :name) lines)]
-    (if (or (empty? tbl-ids) (empty? names))
-      {}
-      (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
-                            {:where [:and
-                                     [:= :is_defective_duplicate false]
-                                     [:in :table_id tbl-ids]
-                                     [:in :name names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id table_id name parent_id]}]
-                           [[table_id name parent_id] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
-
-(defn- field-clobber
-  "Payload that overwrites a matched field row. Excludes `parent_id` — the
-  natural-key match already fixes it on the matched row. `fk_target_field_id`
-  is set by [[process-fields-fk-resolve!]]. Sets `active=true` to flip stubs
-  to live."
-  [{:keys [base_type database_type description semantic_type effective_type coercion_strategy]}]
-  (cond-> {:active true}
-    (some? base_type)         (assoc :base_type base_type)
-    (some? database_type)     (assoc :database_type database_type)
-    (some? description)       (assoc :description description)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
-
-(defn- new-field-row
-  "Insert payload for a real field. Caller has already resolved
-  `resolved-parent-id` and `store-nfc-path`. `fk_target_field_id` starts
-  NULL — set by [[process-fields-fk-resolve!]]."
-  [{:keys [name base_type database_type description effective_type
-           semantic_type coercion_strategy]}
-   target-table-id
-   resolved-parent-id
-   store-nfc-path]
-  (cond-> {:table_id               target-table-id
-           :name                   name
-           :base_type              base_type
-           :nfc_path               (encode-nfc-path store-nfc-path)
-           :parent_id              resolved-parent-id
-           :fk_target_field_id     nil
-           :is_defective_duplicate false
-           :active                 true}
-    (some? database_type)     (assoc :database_type database_type)
-    (some? description)       (assoc :description description)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
-
-(defn- field-match-key
-  [{:keys [target-table-id resolved-parent row]}]
-  [target-table-id (:name row) resolved-parent])
-
-(defn- classify-fields-batch
-  "Resolve `:target-table-id`, `:resolved-parent`, and `:store-nfc-path` for
-  each row. Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
-  preserving input order. Drops rows whose `:table_id` doesn't resolve."
-  [batch table-id-map parent-cache!]
-  (into []
-        (keep (fn [[ln line]]
-                (when-let [tgt-tbl (get table-id-map (vec (:table_id line)))]
-                  (let [parent-vec      (some-> (:parent_id line) vec)
-                        resolved-parent (when parent-vec
-                                          (or (get @parent-cache! parent-vec)
-                                              (ensure-ancestors! parent-vec tgt-tbl parent-cache!)))
-                        store-nfc-path  (some-> (:nfc_path line) vec)]
-                    {:line             ln
-                     :row              line
-                     :target-table-id  tgt-tbl
-                     :resolved-parent  resolved-parent
-                     :store-nfc-path   store-nfc-path}))))
-        batch))
-
-(defn- clobber-matched-fields!
-  "Overwrites each matched target field with the [[field-clobber]] payload.
-  Stubs and real-row re-imports go through the same path."
-  [in-rows match-idx]
-  (doseq [{:as in-row :keys [row]} in-rows
-          :let [match-key (field-match-key in-row)
-                payload   (field-clobber row)]
-          :when (contains? match-idx match-key)]
-    (t2/update! :model/Field (get match-idx match-key) payload)))
-
-(defn- bulk-insert-unmatched-fields!
-  "Bulk-INSERT every classified row that doesn't match an existing target field.
-  Returns `{[target-table-id name resolved-parent] → new-id}`."
-  [in-rows match-idx]
-  (let [unmatched   (filterv (fn [in-row] (not (contains? match-idx (field-match-key in-row))))
-                             in-rows)
-        insert-rows (mapv (fn [{:keys [target-table-id resolved-parent store-nfc-path row]}]
-                            (new-field-row row target-table-id resolved-parent store-nfc-path))
-                          unmatched)
-        new-ids     (when (seq insert-rows)
-                      (t2/insert-returning-pks! :model/Field insert-rows))]
-    (zipmap (map field-match-key unmatched) new-ids)))
-
-(defn process-fields!
-  "Process a batch of `[line-num row]` field tuples. Match-or-insert against
-  the target appdb (overwrites matched rows; stubs absent parents). Returns
-  an eduction of result maps:
-
-    `{:source-id <portable-field-id> :target-id M :status :matched}`
-    `{:source-id <portable-field-id> :target-id M :status :inserted}`
-    `{:source-id <portable-field-id> :status :no-target-table :line L :detail S}`
-
-  `:source-id` is the row's portable field id (a vector ending with the
-  field's leaf name)."
-  [batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/field-info ln line {:source-id (portable-field-id-vec line)}))
-  (let [lines         (mapv second batch)
-        table-id-map  (resolve-table-ids-batch lines)
-        parent-vecs   (into #{}
-                            (keep (fn [line] (some-> (:parent_id line) vec)))
-                            lines)
-        parent-cache! (volatile! (resolve-parent-ids-batch parent-vecs))
-        in-rows       (classify-fields-batch batch table-id-map parent-cache!)
-        match-idx     (match-fields-batch
-                       (mapv (fn [{:keys [target-table-id resolved-parent row]}]
-                               {:table_id  target-table-id
-                                :name      (:name row)
-                                :parent_id resolved-parent})
-                             in-rows))]
-    (clobber-matched-fields! in-rows match-idx)
-    (let [id-by-key (bulk-insert-unmatched-fields! in-rows match-idx)
-          ;; line-number → classified record (some lines may have been filtered out).
-          by-line   (into {} (map (juxt :line identity)) in-rows)]
-      (eduction
-       (map (fn [[ln line]]
-              (let [src-id (portable-field-id-vec line)]
-                (if-let [classified (get by-line ln)]
-                  (let [match-key (field-match-key classified)]
-                    (if-let [existing (get match-idx match-key)]
-                      {:source-id src-id :target-id existing :status :matched}
-                      {:source-id src-id :target-id (get id-by-key match-key)
-                       :status :inserted}))
-                  {:source-id src-id :status :no-target-table :line ln
-                   :detail   (format "No target table with portable id=%s"
-                                     (pr-str (vec (:table_id line))))}))))
-       batch))))
 
 ;;; ==================== fields (batch) — fk resolve ====================
 

@@ -92,26 +92,6 @@
                (processors/process-databases! batch))))
     @matched-ids))
 
-;;; ============================== fields ==============================
-
-(defn- load-fields!
-  "Stream the fields array; missing parents are stubbed on the fly so the file
-  order doesn't matter."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :fields processors/import-batch-size
-   (fn [batch]
-     (reduce (fn [_ result]
-               (case (:status result)
-                 (:matched :inserted) nil
-
-                 :no-target-table
-                 (log/warnf "metadata-file-import: skipped field %s (no matching table): %s"
-                            (pr-str (:source-id result)) (:detail result)))
-               nil)
-             nil
-             (processors/process-fields! batch)))))
-
 ;;; ============================== fk-resolve ==============================
 
 (defn- resolve-field-fks!
@@ -174,10 +154,20 @@
                                     (File. ^String metadata-file))
         matched-target-db-ids     (load-databases! m-file)]
     (processors/with-staging-tables
-      ;; phase 2: drain :tables into staging, then atomic merge into metabase_table
+      ;; --- drain (writes only to staging) ---
       (processors/drain-tables-into-staging! m-file)
-      (processors/merge-tables!)
-      (load-fields! m-file)
+      (processors/drain-fields-into-staging! m-file)
+      ;; --- compute (read-only against live; writes only to staging) ---
+      (processors/resolve-existing-parents-in-staging!)
+      (let [stub-specs (processors/compute-stubs!)]
+        ;; --- merge (atomic across phase 2 + 3) ---
+        (t2/with-transaction [_]
+          (processors/merge-tables!)
+          (processors/insert-stubs-where-not-exists! stub-specs)
+          (processors/resolve-existing-parents-in-staging!)
+          (processors/assert-no-unresolved-parent-refs!)
+          (processors/merge-fields!)))
+      ;; phase 4 (commit 4 will fold this into the merge txn too)
       (resolve-field-fks! m-file)
       (warn-on-unfilled-stubs! matched-target-db-ids))
     (mark-databases-sync-complete! matched-target-db-ids)
