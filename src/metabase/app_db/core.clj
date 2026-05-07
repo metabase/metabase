@@ -33,7 +33,7 @@
 
 (p/import-vars
  [mdb.connection
-  ->ApplicationDbHandle
+  application-db-handle
   application-db
   data-source
   db-type

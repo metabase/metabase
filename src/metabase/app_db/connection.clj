@@ -68,7 +68,7 @@
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
   with [[ApplicationDbHandle]]:
 
-    (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
+    (mc/do-with-value (mdb.connection/application-db-handle)
                       (mdb.connection/application-db :h2 my-data-source)
                       (fn [] ...))
 

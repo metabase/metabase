@@ -39,7 +39,7 @@
                              (let [details (tx/dbdef->connection-details driver/*driver* :db {:database-name db-name})]
                                (mdb/spec driver/*driver* details))))]
           (binding [config/*disable-setting-cache* true]
-            (mc/do-with-value (mdb/->ApplicationDbHandle)
+            (mc/do-with-value (mdb/application-db-handle)
                               (mdb.connection/application-db driver/*driver* data-source)
                               (fn []
                                 (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]

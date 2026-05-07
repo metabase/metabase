@@ -42,7 +42,7 @@
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy! (mdb/db-type) (mdb/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (mc/do-with-value (mdb/->ApplicationDbHandle)
+       (mc/do-with-value (mdb/application-db-handle)
                          (mdb/application-db :h2 h2-data-source)
                          (fn [] (rotate-encryption/rotate-encryption-key! nil))))
      ;; Flush h2 to disk
