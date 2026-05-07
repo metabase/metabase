@@ -159,6 +159,7 @@ describe("CreateMenu", () => {
     expect(store.getState().modal).toEqual({
       id: "collection",
       props: {
+        inDataStudio: true,
         initialCollectionId: 42,
         pickerOptions: {
           hasLibrary: true,

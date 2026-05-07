@@ -1,6 +1,17 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
 import { canPlaceEntityInCollection } from "./utils";
 
 describe("canPlaceEntityInCollection", () => {
+  beforeEach(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+    setupEnterpriseOnlyPlugin("library");
+  });
+
   it("should reject every entity type for the root Library collection", () => {
     expect(canPlaceEntityInCollection("table", "library")).toBe(false);
     expect(canPlaceEntityInCollection("metric", "library")).toBe(false);
