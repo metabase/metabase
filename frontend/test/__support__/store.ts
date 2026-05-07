@@ -9,7 +9,6 @@ import {
   DashboardSchema,
   DatabaseSchema,
   FieldSchema,
-  GroupSchema,
   MeasureSchema,
   MetricSchema,
   QuestionSchema,
@@ -62,7 +61,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   metrics: [MetricSchema],
   snippets: [SnippetSchema],
   questions: [QuestionSchema],
-  groups: [GroupSchema],
 };
 
 export const createMockEntitiesState = (

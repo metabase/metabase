@@ -4,7 +4,6 @@ import type {
   NormalizedDashboard,
   NormalizedDatabase,
   NormalizedField,
-  NormalizedGroup,
   NormalizedMeasure,
   NormalizedMetric,
   NormalizedNativeQuerySnippet,
@@ -27,7 +26,6 @@ export interface EntitiesState {
   metrics: Record<string, NormalizedMetric>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
-  groups: Record<string, NormalizedGroup>;
 
   [key: `${string}_list`]: unknown;
 }
