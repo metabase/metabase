@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Search } from "metabase/entities/search";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -26,6 +25,7 @@ import {
 import type {
   CollectionItem,
   SearchModel,
+  SearchResult as SearchResultType,
   SearchResponse as SearchResultsType,
 } from "metabase-types/api";
 
@@ -118,7 +118,7 @@ export const SearchResults = ({
 
     if (item && typeof item !== "function") {
       if (onEntitySelect) {
-        onEntitySelect(Search.wrapEntity(item, dispatch));
+        onEntitySelect(item);
       } else if (item && modelToUrl(item)) {
         dispatch(push(modelToUrl(item)));
       }
@@ -152,12 +152,11 @@ export const SearchResults = ({
               ? onEntitySelect
               : undefined;
           const ref = getRef(item);
-          const wrappedResult = Search.wrapEntity(item, dispatch);
 
           return (
             <li key={`${item.model}:${item.id}`} ref={ref}>
               <SearchResult
-                result={wrappedResult}
+                result={item as unknown as SearchResultType}
                 compact={true}
                 showDescription={true}
                 isSelected={cursorIndex === index}
