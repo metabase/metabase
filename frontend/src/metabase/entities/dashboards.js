@@ -6,12 +6,8 @@ import {
   useListDashboardsQuery,
 } from "metabase/api/dashboard";
 import { getCollectionType } from "metabase/entities/collections/utils";
-import { compose, withAction } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
 
-import { createEntity, entityCompatibleQuery, withRequestState } from "./utils";
-
-const COPY_ACTION = `metabase/entities/dashboards/COPY`;
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -70,46 +66,6 @@ export const Dashboards = createEntity({
         dispatch,
         dashboardApi.endpoints.saveDashboard,
       ),
-    copy: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        dashboardApi.endpoints.copyDashboard,
-      ),
-  },
-
-  objectActions: {
-    // TODO move into more common area as copy is implemented for more entities
-    copy: compose(
-      withAction(COPY_ACTION),
-      // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
-      withRequestState((dashboard) => [
-        "entities",
-        "dashboard",
-        dashboard.id,
-        "copy",
-      ]),
-    )(
-      (entityObject, overrides, { notify } = {}) =>
-        async (dispatch, getState) => {
-          const result = Dashboards.normalize(
-            await entityCompatibleQuery(
-              {
-                id: entityObject.id,
-                ...overrides,
-                is_deep_copy: !overrides.is_shallow_copy,
-              },
-              dispatch,
-              dashboardApi.endpoints.copyDashboard,
-            ),
-          );
-          if (notify) {
-            dispatch(addUndo(notify));
-          }
-          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-          return result;
-        },
-    ),
   },
 
   actions: {
@@ -125,13 +81,6 @@ export const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
-  },
-
-  reducer: (state = {}, { type, payload, error }) => {
-    if (type === COPY_ACTION && !error && state[""]) {
-      return { ...state, "": state[""].concat([payload.result]) };
-    }
-    return state;
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

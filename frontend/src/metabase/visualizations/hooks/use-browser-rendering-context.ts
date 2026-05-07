@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { getFontFamilyValue } from "metabase/ui/fonts";
 import {
   measureTextHeight,
   measureTextWidth,
@@ -34,7 +35,7 @@ export const useBrowserRenderingContext = (
       getColor: (name) => color(name, palette),
       measureText: measureTextWidth,
       measureTextHeight,
-      fontFamily: `${fontFamily}, Arial, sans-serif`,
+      fontFamily: getFontFamilyValue(fontFamily),
       theme: style,
     };
   }, [fontFamily, palette, theme, isDashboard]);

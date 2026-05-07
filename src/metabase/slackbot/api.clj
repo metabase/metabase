@@ -7,8 +7,6 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
-   [metabase.config.core :as config]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -540,38 +538,9 @@
          :label    {:type "plain_text" :text "What kind of issue are you reporting?"}}
         freeform-block]))})
 
-(defn- get-conversation-messages
-  "Retrieve all messages for a conversation from the database."
-  [conversation-id]
-  (when conversation-id
-    (t2/select :model/MetabotMessage
-               :conversation_id conversation-id
-               :deleted_at nil
-               {:order-by [[:created_at :asc]]})))
-
-(defn- build-base-feedback
-  "Build the common feedback payload fields.
-   `:feedback.message_id` is the rated assistant message's `external_id` — the
-   same identifier the web feedback endpoint uses — so Harbormaster can
-   correlate Slack and web submissions on a single stable key. `:is_admin` and
-   `:submitter_user_id` describe the user who submitted the feedback, not the
-   conversation originator."
-  [user-id conversation-id message-external-id positive]
-  {:metabot_id        (metabot.config/normalize-metabot-id "slackbotmetabotmetabo")
-   :feedback          {:positive          positive
-                       :message_id        message-external-id
-                       :freeform_feedback ""}
-   :conversation_data {:messages (get-conversation-messages conversation-id)}
-   :version           config/mb-version-info
-   :submission_time   (str (java.time.OffsetDateTime/now))
-   :submitter_user_id user-id
-   :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))
-   :source            "slack"})
-
 (defn- handle-feedback-action
   "Handle a metabot feedback button click from Slack.
-   Opens the detail modal immediately (trigger_id expires in 3s). Feedback is
-   submitted to Harbormaster only when the user submits the modal.
+   Opens the detail modal immediately (trigger_id expires in 3s).
    `:message_external_id` in the button payload is the hardened identifier for
    the rated assistant message; `:channel_id` / `:message_ts` are kept in
    private_metadata as a fallback for buttons emitted before that plumbing
@@ -628,10 +597,7 @@
   "Handle submission of the feedback details modal.
    Persists the feedback locally under the Slack submitter's user binding (so
    the `can-read?` participation check in `metabot.feedback/persist-feedback!`
-   runs against the real submitter), then — only on success — forwards to
-   Harbormaster. If the local write throws (authorization rejection, missing
-   message, DB error), the Harbormaster submission is skipped so lurkers and
-   stale payloads cannot bypass the local authorization gate."
+   runs against the real submitter)."
   [payload]
   (let [private-metadata (json/decode (get-in payload [:view :private_metadata]) true)
         {:keys [conversation_id positive user_id]} private-metadata
@@ -651,12 +617,8 @@
                :positive          positive
                :issue_type        issue-type
                :freeform_feedback freeform}))
-           (metabot.feedback/submit-to-harbormaster!
-            (cond-> (build-base-feedback user_id conversation_id external-id positive)
-              true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
-              issue-type (assoc-in [:feedback :issue_type] issue-type)))
            (catch Exception e
-             (log/warnf e "[slackbot] Feedback submission failed (external_id=%s user_id=%s); skipping Harbormaster"
+             (log/warnf e "[slackbot] Feedback submission failed (external_id=%s user_id=%s)"
                         external-id user_id))))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}

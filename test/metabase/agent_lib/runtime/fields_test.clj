@@ -143,3 +143,68 @@
                           (with-redefs [mbql/current-query-field-candidates
                                         (constantly [previous-stage])]
                             (runtime.fields/resolve-field-in-query {} ::query raw-field))))))
+
+(deftest unavailable-field-error-enumerates-available-fields-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidate1 {:id 100 :table-id 10 :name "first_name" :base-type :type/Text}
+        candidate2 {:id 101 :table-id 10 :name "last_name" :base-type :type/Text}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates
+                    (constantly [candidate1 candidate2])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          (is (re-find #"first_name" msg))
+          (is (re-find #"id=100" msg))
+          (is (re-find #"last_name" msg))
+          (is (= [{:id 100 :name "first_name" :table-id 10}
+                  {:id 101 :name "last_name" :table-id 10}]
+                 (:available-fields data))))))))
+
+(deftest unavailable-field-error-includes-join-alias-in-summary-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidate  {:id 200 :table-id 20 :name "customer_id" :base-type :type/Integer
+                    :lib/join-alias "Customers"}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly [candidate])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg     (ex-message e)
+              data    (ex-data e)
+              summary (first (:available-fields data))]
+          (is (= "Customers" (:join-alias summary)))
+          (is (re-find #"join-alias=\"Customers\"" msg)))))))
+
+(deftest unavailable-field-error-suppresses-listing-when-no-candidates-test
+  (let [raw-field {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly [])]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          (is (re-find #"No fields are visible in this stage" msg))
+          (is (not (re-find #"Fields available in this stage" msg)))
+          (is (= [] (:available-fields data))))))))
+
+(deftest unavailable-field-error-caps-listed-candidates-test
+  (let [raw-field  {:id 999 :table-id 88 :name "not_there" :base-type :type/Text}
+        candidates (mapv (fn [i]
+                           {:id (+ 1000 i) :table-id 10
+                            :name (str "field_" i) :base-type :type/Text})
+                         (range 25))]
+    (try
+      (with-redefs [mbql/current-query-field-candidates (constantly candidates)]
+        (runtime.fields/resolve-field-in-query {} ::query raw-field))
+      (is false "expected ex-info to be thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (let [msg  (ex-message e)
+              data (ex-data e)]
+          ;; all candidates captured in ex-data
+          (is (= 25 (count (:available-fields data))))
+          ;; message truncates with an "and N more" line
+          (is (re-find #"and 5 more" msg)))))))

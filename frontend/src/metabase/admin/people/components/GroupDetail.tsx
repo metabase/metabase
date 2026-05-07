@@ -1,13 +1,13 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";

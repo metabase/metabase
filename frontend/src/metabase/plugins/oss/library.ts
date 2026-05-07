@@ -76,7 +76,7 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 
 type LibraryPlugin = {
   isEnabled: boolean;
-  getDataStudioLibraryRoutes: () => ReactNode;
+  getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;

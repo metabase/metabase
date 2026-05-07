@@ -877,7 +877,7 @@ class Visualization extends PureComponent<
           )}
           {replacementContent ? (
             replacementContent
-          ) : isDashboard && noResults ? (
+          ) : (isDashboard || isMetricsViewer) && noResults ? (
             <NoResultsView isSmall={small} />
           ) : error && !isRunning ? (
             <ErrorView

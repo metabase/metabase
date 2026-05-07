@@ -156,6 +156,8 @@ embedding_sdk_host_sample_apps:
 snowplow: &snowplow
   - ".github/workflows/snowplow.yml"
   - "snowplow/**"
+  - "bin/lint-snowplow-schemas.bb"
+  - "bin/lint-snowplow-schemas-test.bb"
 
 e2e_all:
   - *default
