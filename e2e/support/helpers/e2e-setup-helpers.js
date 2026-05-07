@@ -1,7 +1,11 @@
 import { resetWritableDb } from "./e2e-qa-databases-helpers";
 
 export function snapshot(name) {
-  cy.request({ method: "POST", url: `/api/testing/snapshot/${name}`, timeout: 90000 });
+  cy.request({
+    method: "POST",
+    url: `/api/testing/snapshot/${name}`,
+    timeout: 90000,
+  });
 }
 
 /**
@@ -21,7 +25,11 @@ export function snapshotCrossVersionDev(name) {
     );
     return;
   }
-  cy.request({ method: "POST", url: `/api/testing/snapshot/${name}`, timeout: 90000 });
+  cy.request({
+    method: "POST",
+    url: `/api/testing/snapshot/${name}`,
+    timeout: 90000,
+  });
 }
 
 /**
@@ -49,7 +57,11 @@ export function restore(name = "default") {
   }
 
   // Use 90s timeout — restore can be slow under CI load (default 30s is too short)
-  return cy.request({ method: "POST", url: `/api/testing/restore/${name}`, timeout: 90000 });
+  return cy.request({
+    method: "POST",
+    url: `/api/testing/restore/${name}`,
+    timeout: 90000,
+  });
 }
 
 /**
@@ -70,5 +82,9 @@ export function restoreCrossVersionDev(name = "blank") {
     return;
   }
 
-  return cy.request({ method: "POST", url: `/api/testing/restore/${name}`, timeout: 90000 });
+  return cy.request({
+    method: "POST",
+    url: `/api/testing/restore/${name}`,
+    timeout: 90000,
+  });
 }
