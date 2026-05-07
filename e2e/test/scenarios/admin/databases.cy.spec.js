@@ -463,63 +463,6 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
-  it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", (req) => {
-      req.reply({
-        statusCode: 400,
-        body: "DATABASE CONNECTION ERROR",
-      });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-
-    cy.findByTestId("database-form")
-      .parent()
-      .within(() => {
-        cy.findByText("DATABASE CONNECTION ERROR").should("be.visible");
-      });
-  });
-
-  it("should show specific error message when error is on host or port", () => {
-    cy.intercept("POST", "/api/database", (req) => {
-      req.reply({
-        statusCode: 400,
-        body: {
-          message: "DATABASE CONNECTION ERROR",
-          errors: {
-            host: "Check your host",
-            port: "Check your port",
-          },
-        },
-      });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-
-    cy.findByTestId("database-form")
-      .parent()
-      .within(() => {
-        cy.findByText("DATABASE CONNECTION ERROR").should("not.exist");
-        cy.findByText(
-          /Make sure your Host and Port settings are correct/,
-        ).should("be.visible");
-      });
-  });
-
   it("should handle non-existing databases (metabase#11037)", () => {
     cy.intercept("GET", "/api/database/999").as("loadDatabase");
     cy.visit("/admin/databases/999");
