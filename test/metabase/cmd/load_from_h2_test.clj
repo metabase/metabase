@@ -37,7 +37,7 @@
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
       (tx/destroy-db! target-db-type db-def)
       (tx/create-db! target-db-type db-def)
-      (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
+      (mc/do-with-value (mdb.connection/application-db-handle)
                         (mdb.connection/application-db target-db-type target-data-source)
                         (fn []
                           (load-from-h2/load-from-h2! h2-filename)
@@ -106,7 +106,7 @@
   (let [db-type driver/*driver*
         current-version @current-major-version
         data-source (get-data-source db-type db-def)]
-    (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
+    (mc/do-with-value (mdb.connection/application-db-handle)
                       (mdb.connection/application-db db-type data-source)
                       (fn []
                         (mt/dataset bird-flocks
@@ -137,7 +137,7 @@
         db-def {:database-name db-name}
         data-source (get-data-source db-type db-def)]
     (create-current-database! db-type db-def data-source)
-    (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
+    (mc/do-with-value (mdb.connection/application-db-handle)
                       (mdb.connection/application-db db-type data-source)
                       (fn []
                         (mt/dataset sad-toucan-incidents

@@ -12,10 +12,10 @@
   "Make a component handle with state stored under a key in the global *system* map."
   [k]
   (reify mc/MutableComponentHandle
-    (current [_] (get *system* k))
-    (root [_] (get (.getRawRoot ^Var #'*system*) k))
+    (current [_] (get @*system* k *system*))
+    (root [_] (get @(.getRawRoot ^Var #'*system*) k))
     (do-with-value [_ new-value thunk]
-      (binding [*system* (assoc *system* k new-value)]
+      (binding [*system* (atom (assoc @*system* k new-value))]
         (thunk)))
     (reset-value! [_ new-value]
       (swap! *system* assoc k new-value))

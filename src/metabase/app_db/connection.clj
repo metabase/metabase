@@ -91,20 +91,21 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
-(defn ->ApplicationDbHandle
+(defn application-db-handle
   "Return a mutable component handle to the application db"
   []
-  (system/mutable-component-handle ::application-db))
+  (mc/current (system/mutable-component-handle ::application-db)))
 
+#_{:clj-kondo/ignore [:metabase/check-def-no-underscores]}
 (defonce ^:private _init
   ; Initialize the current Metabase application database.
-  (do (mc/reset-value! (->ApplicationDbHandle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+  (do (mc/reset-value! (application-db-handle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
       ::done))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type ^ApplicationDB (mc/current (->ApplicationDbHandle))))
+  (.db-type ^ApplicationDB (mc/current (application-db-handle))))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -120,7 +121,7 @@
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source ^ApplicationDB (mc/current (->ApplicationDbHandle))))
+  (.data-source ^ApplicationDB (mc/current (application-db-handle))))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -133,11 +134,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id ^ApplicationDB (mc/current (->ApplicationDbHandle))))
+  (.id ^ApplicationDB (mc/current (application-db-handle))))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection (mc/current (->ApplicationDbHandle)) f))
+  (t2.conn/do-with-connection (mc/current (application-db-handle)) f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 
