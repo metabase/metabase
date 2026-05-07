@@ -142,7 +142,23 @@ export type SdkDashboardProps = PropsWithChildren<
     initialParameters?: ParameterValues;
 
     /**
-     * Controlled parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Setting the prop itself to `undefined` switches back to uncontrolled mode and leaves the dashboard's last applied values in place — to clear all filters, pass an empty object `{}`. Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with manual edits.
+     * Controlled parameter values, slug-keyed. On every render, this object replaces the dashboard's parameter values:
+     * <br/>
+     * - a parameter set to a value uses that value.
+     * <br/>
+     * - a parameter set to `null` is cleared, even if it has a default.
+     * <br/>
+     * - a parameter omitted from the object uses its default (or `null` if it has no default).
+     * <br/>
+     * <br/>
+     * Examples:
+     * <br/>
+     * - Passing an empty object `{}` resets every parameter to its default.
+     * <br/>
+     * - Passing an object with every slug set to `null` clears all parameter values.
+     * <br/>
+     * <br/>
+     * Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with user edits.
      * <br/>
      * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
