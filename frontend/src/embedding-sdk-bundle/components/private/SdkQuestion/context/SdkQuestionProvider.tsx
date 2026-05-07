@@ -182,6 +182,7 @@ export const SdkQuestionProvider = ({
     loadAndQueryQuestion,
     updateQuestion,
     updateParameterValues,
+    restoreQuestionState,
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
@@ -252,17 +253,24 @@ export const SdkQuestionProvider = ({
   // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
   const navigateToNewCardWithSdkInternalNavigation = useCallback(
     async (params: NavigateToNewCardParams) => {
+      const previousQuestionState = question
+        ? {
+            question,
+            originalQuestion,
+            queryResults,
+            parameterValues,
+          }
+        : null;
+
       // This actually changes what gets rendered
       await navigateToNewCardWithDrillThrough(params);
 
-      // Push virtual entry if last entry is NOT already a question drill
-      const currentEntry = navigation?.stack.at(-1);
-      if (currentEntry?.type !== "question-drill") {
+      if (previousQuestionState) {
         navigation?.push({
           type: "question-drill",
           virtual: true,
           name: question?.displayName() ?? t`Question`,
-          onPop: () => loadAndQueryQuestion(),
+          onPop: () => restoreQuestionState(previousQuestionState),
         });
       }
     },
@@ -270,7 +278,10 @@ export const SdkQuestionProvider = ({
       navigateToNewCardWithDrillThrough,
       navigation,
       question,
-      loadAndQueryQuestion,
+      originalQuestion,
+      queryResults,
+      parameterValues,
+      restoreQuestionState,
     ],
   );
 

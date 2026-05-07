@@ -16,9 +16,11 @@ import { useSdkInternalNavigationOptional } from "./context";
 const SdkInternalNavigationBackButtonInner = ({
   style,
   className,
+  label: labelProp,
 }: {
   style?: React.CSSProperties;
   className?: string;
+  label?: string;
 }) => {
   const navigation = useSdkInternalNavigationOptional();
   const tc = useTranslateContent();
@@ -34,7 +36,8 @@ const SdkInternalNavigationBackButtonInner = ({
       ? tc(previousEntry.name)
       : undefined;
 
-  const label = previousName ? t`Back to ${previousName}` : t`Back`;
+  const label =
+    labelProp ?? (previousName ? t`Back to ${previousName}` : t`Back`);
 
   return (
     <Button

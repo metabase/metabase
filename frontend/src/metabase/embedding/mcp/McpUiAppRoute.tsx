@@ -120,7 +120,8 @@ export function McpUiAppRoute() {
         >
           <Box px="lg" style={{ flexShrink: 0 }}>
             <Stack align="flex-start" gap="xs">
-              <SdkInternalNavigationBackButton />
+              <SdkInternalNavigationBackButton label="Back" />
+
               <McpQuestionTitle />
             </Stack>
           </Box>

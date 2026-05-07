@@ -52,11 +52,17 @@ export interface LoadQuestionHookResult {
    * Unlike updateQuestion, this does not turn the question into an ad-hoc question.
    */
   replaceQuestion(question: Question): void;
+  restoreQuestionState(state: SdkQuestionNavigationState): void;
 
   navigateToNewCard:
     | ((params: NavigateToNewCardParams) => Promise<void>)
     | null;
 }
+
+export type SdkQuestionNavigationState = Pick<
+  SdkQuestionState,
+  "question" | "originalQuestion" | "queryResults" | "parameterValues"
+>;
 
 type UseLoadQuestionParams = LoadSdkQuestionParams & {
   isGuestEmbed: boolean;
@@ -320,6 +326,9 @@ export function useLoadQuestion({
   const replaceQuestion = (question: Question) =>
     mergeQuestionState({ question, originalQuestion: question });
 
+  const restoreQuestionState = (state: SdkQuestionNavigationState) =>
+    mergeQuestionState(state);
+
   return {
     question,
     originalQuestion,
@@ -335,6 +344,7 @@ export function useLoadQuestion({
     loadAndQueryQuestion,
     updateQuestion,
     updateParameterValues,
+    restoreQuestionState,
     navigateToNewCard,
   };
 }
