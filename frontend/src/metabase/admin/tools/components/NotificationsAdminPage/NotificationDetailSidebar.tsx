@@ -1,5 +1,6 @@
 import { Children, Fragment } from "react";
 import { Link } from "react-router";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -27,6 +28,7 @@ import {
 import * as Urls from "metabase/urls";
 import type {
   AdminNotificationDetail,
+  NotificationChannelType,
   NotificationHandler,
   NotificationHandlerEmail,
   NotificationHandlerHttp,
@@ -122,7 +124,6 @@ const SidebarHeader = ({
   onChangeOwner,
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
-  const primaryChannel = getPrimaryChannel(notification?.handlers);
 
   return (
     <Box px="xl" pt="lg" pb="md">
@@ -172,8 +173,8 @@ const SidebarHeader = ({
       </Flex>
 
       {notification && (
-        <Flex align="center" gap="md">
-          <ChannelAvatar channel={primaryChannel} />
+        <Flex align="center" gap="sm">
+          <ChannelAvatarStack handlers={notification.handlers} />
           <Stack gap={2}>
             <Text size="xs" c="text-secondary">
               {t`Alert ${notification.id}`}
@@ -188,36 +189,79 @@ const SidebarHeader = ({
   );
 };
 
-const ChannelAvatar = ({
-  channel,
+const ChannelAvatarStack = ({
+  handlers,
 }: {
-  channel: NotificationHandler["channel_type"] | null;
+  handlers: NotificationHandler[] | undefined;
 }) => {
+  const channels = getUniqueChannelTypes(handlers);
+
+  return (
+    <Flex align="center" style={{ flexShrink: 0 }}>
+      {channels.map((channel, index) => (
+        <Box
+          key={channel}
+          ml={index === 0 ? 0 : -18}
+          style={{ zIndex: channels.length - index }}
+        >
+          <ChannelAvatar channel={channel} bordered={channels.length > 1} />
+        </Box>
+      ))}
+    </Flex>
+  );
+};
+
+type ChannelAvatarProps = {
+  channel: NotificationChannelType;
+  bordered: boolean;
+};
+
+const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
+  const { backgroundColor, iconColor } = match(channel)
+    .with("channel/slack", () => ({
+      backgroundColor:
+        "color-mix(in srgb, var(--mb-color-saturated-purple) 10%, white)",
+      iconColor: "saturated-purple" as const,
+    }))
+    .otherwise(() => ({
+      backgroundColor: "var(--mb-color-background-brand)",
+      iconColor: "brand" as const,
+    }));
+
   return (
     <Flex
       align="center"
       justify="center"
       w={36}
       h={36}
-      bg="background-info"
-      style={{ borderRadius: "50%", flexShrink: 0 }}
+      bd={bordered ? "2px solid var(--mb-color-background-primary)" : undefined}
+      bdrs="50%"
+      style={{ flexShrink: 0, backgroundColor }}
     >
       <Icon
         name={channel ? getChannelIconName(channel) : "bell"}
-        c="brand"
+        c={iconColor}
         size={16}
       />
     </Flex>
   );
 };
 
-const getPrimaryChannel = (
+const getUniqueChannelTypes = (
   handlers: NotificationHandler[] | undefined,
-): NotificationHandler["channel_type"] | null => {
-  if (!handlers || handlers.length === 0) {
-    return null;
+): NotificationChannelType[] => {
+  if (!handlers) {
+    return [];
   }
-  return handlers[0].channel_type;
+  const seen = new Set<NotificationChannelType>();
+  const result: NotificationChannelType[] = [];
+  for (const handler of handlers) {
+    if (!seen.has(handler.channel_type)) {
+      seen.add(handler.channel_type);
+      result.push(handler.channel_type);
+    }
+  }
+  return result;
 };
 
 const SidebarBody = ({
@@ -310,6 +354,7 @@ const DetailsSection = ({
   const lastCheckDate = formatRelativeDate(lastCheck?.at);
   const lastSentDate = formatRelativeDate(lastSent?.at);
   const checkError = lastCheck?.status === "failing" ? lastCheck.error : null;
+  const sentError = lastSent?.status === "failing" ? lastSent.error : null;
   const channelSummary = formatChannelSummary({
     emailRecipientCount,
     slackChannelCount,
@@ -375,7 +420,24 @@ const DetailsSection = ({
             </Stack>
           }
         />
-        <DetailsRow label={t`Last sent`} value={lastSentDate} />
+        <DetailsRow
+          label={t`Last sent`}
+          value={
+            <Stack gap={4}>
+              <Text size="md" c="text-primary">
+                {lastSentDate}
+              </Text>
+              {sentError && (
+                <Flex align="center" gap="xs">
+                  <Text size="sm" c="error">
+                    {sentError}
+                  </Text>
+                  <Icon name="warning_round" c="error" size={14} />
+                </Flex>
+              )}
+            </Stack>
+          }
+        />
       </DetailsTable>
     </SidebarSection>
   );
