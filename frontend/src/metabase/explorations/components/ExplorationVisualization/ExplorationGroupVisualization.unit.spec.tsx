@@ -343,7 +343,7 @@ describe("ExplorationGroupVisualization", () => {
       expect(ramps[0][0]).not.toEqual(ramps[1][0]);
     });
 
-    it("renders a per-chart legend header showing the query name above each map", () => {
+    it("renders a single shared legend at the top with one item per chart", () => {
       const queries = [
         makeQuery({ id: 201, name: "Sessions (US)", status: "done" }),
         makeQuery({ id: 202, name: "Sessions (EU)", status: "done" }),
@@ -354,11 +354,16 @@ describe("ExplorationGroupVisualization", () => {
       ]);
       setup({ queries, datasets });
 
-      // Each chart gets its own header text (the query name) — the
-      // viz-stub itself doesn't render the name on a single-series
-      // map, so this is the user-visible "legend" replacement.
-      expect(screen.getByText("Sessions (US)")).toBeInTheDocument();
-      expect(screen.getByText("Sessions (EU)")).toBeInTheDocument();
+      // One legend role, two listitem children — mirrors the
+      // auto-generated legend a cartesian `graph.split_panels` chart
+      // shows. Both query names are visible inside the legend, and
+      // they each appear exactly once (no duplicate per-chart headers).
+      const legend = screen.getByRole("list", { name: "Legend" });
+      expect(within(legend).getByText("Sessions (US)")).toBeInTheDocument();
+      expect(within(legend).getByText("Sessions (EU)")).toBeInTheDocument();
+      expect(within(legend).getAllByRole("listitem")).toHaveLength(2);
+      expect(screen.getAllByText("Sessions (US)")).toHaveLength(1);
+      expect(screen.getAllByText("Sessions (EU)")).toHaveLength(1);
     });
   });
 });

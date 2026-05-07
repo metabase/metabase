@@ -177,6 +177,19 @@ class ChoroplethMapInner extends Component {
 
   constructor(props, context) {
     super(props, context);
+    const details = this._getDetails(props);
+    if (details) {
+      const geoJsonPath = getMapUrl(details, props);
+      if (geoJsonCache.has(geoJsonPath)) {
+        const geoJson = geoJsonCache.get(geoJsonPath);
+        this.state = {
+          geoJson,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(geoJson?.features ?? []),
+        };
+        return;
+      }
+    }
     this.state = {
       geoJson: null,
       geoJsonPath: null,

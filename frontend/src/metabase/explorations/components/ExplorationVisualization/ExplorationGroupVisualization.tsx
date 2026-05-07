@@ -248,18 +248,18 @@ function ExplorationGroupVisualizationChart({
           className={S.chart}
         />
       ) : (
-        <Stack gap="lg" flex={1} mih={0} style={{ overflowY: "auto" }}>
-          {series.map((s) => {
-            const color = queryColors[String(s.card.id)];
-            return (
-              <Stack
-                key={s.card.id}
-                gap="xs"
-                h="24rem"
-                mih="24rem"
-                style={{ flexShrink: 0 }}
-              >
-                <Group gap="sm" align="center">
+        <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
+          <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
+            {series.map((s) => {
+              const color = queryColors[s.card.id];
+              return (
+                <Group
+                  key={s.card.id}
+                  gap="xs"
+                  align="center"
+                  wrap="nowrap"
+                  role="listitem"
+                >
                   <Box
                     aria-hidden
                     w="0.625rem"
@@ -267,14 +267,18 @@ function ExplorationGroupVisualizationChart({
                     bdrs="50%"
                     style={{ background: color }}
                   />
-                  <Text fw="bold">{s.card.name}</Text>
+                  <Text fw="bold" size="sm">
+                    {s.card.name}
+                  </Text>
                 </Group>
-                <Box flex={1} mih={0}>
-                  <Visualization rawSeries={[s]} className={S.chart} />
-                </Box>
-              </Stack>
-            );
-          })}
+              );
+            })}
+          </Group>
+          {series.map((s) => (
+            <Box key={s.card.id} flex={1} mih="10rem" style={{ flexShrink: 0 }}>
+              <Visualization rawSeries={[s]} className={S.chart} />
+            </Box>
+          ))}
         </Stack>
       )}
     </>

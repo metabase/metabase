@@ -75,7 +75,7 @@ export function TimelineDropdown({
         const id = Number(option.value);
         const isInteresting = interestingTimelineIds?.has(id) ?? false;
         return (
-          <Group gap="xs" wrap="nowrap" w="100%">
+          <Group gap="xs" py="xs" px="sm" wrap="nowrap" w="100%">
             <Text flex={1}>{option.label}</Text>
             {isInteresting && <PotentiallyInterestingMarker />}
           </Group>
