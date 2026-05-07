@@ -77,18 +77,49 @@
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 
+(defn- table-spec->sqlglot-key
+  "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
+   where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
+   `metabase.sql-parsing/replace-names` (SQLGlot) expects.
+
+   SQLGlot's `replace-names` matcher uses `:schema` for the db-position qualifier
+   (the leftmost in `db.tbl`) and `:catalog` for the catalog-position (the leftmost
+   in `catalog.db.tbl`). Empirically:
+
+     {:db \"x\"         :table \"t\"} -> doesn't match `x.t` on MySQL
+     {:schema \"x\"     :table \"t\"} -> matches `x.t` (and `db.x.t`)
+     {:catalog \"x\" :db \"y\" :table \"t\"} -> matches `x.y.t`
+
+   The translation:
+     - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
+     - Our `:db`     -> SQLGlot's `:catalog` *if* `:schema` is also populated
+                        (i.e. 3-part Snowflake/SQL Server/BigQuery shape),
+                        otherwise SQLGlot's `:schema` (the 2-part MySQL case
+                        where our `:db` IS the leftmost qualifier in the SQL).
+
+   `\"\"` sentinels are pruned (`prune-no-level`) so SQLGlot treats absent slots
+   as wildcards rather than matching the literal empty string."
+  [{:keys [db schema table] :as spec}]
+  (let [pruned (ws.table-remapping/prune-no-level spec)
+        ;; pruned still has our keys; rebuild with SQLGlot keys.
+        db?    (contains? pruned :db)
+        sch?   (contains? pruned :schema)]
+    (cond-> {:table table}
+      (and db? sch?) (assoc :catalog db :schema schema)
+      (and db? (not sch?)) (assoc :schema db)
+      (and (not db?) sch?) (assoc :schema schema))))
+
 (defn- build-table-replacements
   "Convert remappings map into the format expected by `sql-tools/replace-names`.
    SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
 
-   Remappings are `{from-spec to-spec}` `::table-spec` maps. Sentinel `\"\"` levels are
-   pruned so SQLGlot treats them as wildcards rather than matching the literal empty
-   string."
+   Remappings are `{from-spec to-spec}` `::table-spec` maps. Translates each
+   spec's slot vocabulary to SQLGlot's via [[table-spec->sqlglot-key]]."
   [remappings]
   (into {}
         (map (fn [[from-spec to-spec]]
-               [(ws.table-remapping/prune-no-level from-spec)
-                (ws.table-remapping/prune-no-level to-spec)]))
+               [(table-spec->sqlglot-key from-spec)
+                (table-spec->sqlglot-key to-spec)]))
         remappings))
 
 (defn- rewrite-sql
@@ -106,22 +137,24 @@
                       e)))))
 
 (defn- remap-mbql-table-metadata!
-  "Override `:schema` and `:name` on table metadata in the CachedMetadataProvider for each
-   remapping. Downstream HoneySQL compilation will read the overridden values.
+  "Override `:db`, `:schema`, and `:name` on table metadata in the CachedMetadataProvider
+   for each remapping. Downstream HoneySQL compilation will read the overridden values.
 
-   Match key is `(:schema, :name)`. The `db` level isn't tracked on `:metadata/table`
-   (it's a property of the database connection, not the table), so a remapping that
-   only differs by `db` is invisible to Phase 1; Phase 2 catches it.
+   Match key is `(:schema, :name)` — sync doesn't populate `:db` on `:metadata/table`,
+   so the canonical from-side never carries it. The `to-spec`'s `:db` IS written when
+   populated; the `[:sql :metadata/table]` ->honeysql handler reads it and emits a
+   `db.schema.table` (or `db.table`) qualifier. That makes cross-DB workspaces
+   (currently MySQL — iso namespace lives in `:db`) routable through Phase 1 without
+   needing Phase 2's SQLGlot rewriter to insert a missing qualifier.
 
    `denormalize-level` collapses storage's `\"\"` sentinel to `nil` on both sides of
    the schema comparison, so a remapping row with `from_schema = \"\"` matches a
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [metadata-provider remappings]
-  ; TODO check if we need :db here, or generalize to table-specs
   (doseq [[from-spec to-spec] remappings
           :let [{from-schema :schema from-name :table} from-spec
-                {to-schema :schema to-name :table}     to-spec
+                {to-db :db to-schema :schema to-name :table} to-spec
                 from-schema-match (ws.table-remapping/denormalize-level from-schema)
                 candidates        (lib.metadata.protocols/metadatas
                                    metadata-provider
@@ -134,6 +167,7 @@
     (lib.metadata.protocols/store-metadata!
      metadata-provider
      (assoc table
+            :db     (ws.table-remapping/denormalize-level to-db)
             :schema (ws.table-remapping/denormalize-level to-schema)
             :name to-name))))
 

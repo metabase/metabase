@@ -36,17 +36,15 @@
   (if (some? (ws/db-workspace-namespace db-id))
     (let [{to-db :db to-schema :schema to-name :name}
           (ws.table-remapping/add-transform-target-mapping! db-id target)]
-      ;; **Replace** `:db` and `:schema` on the target with the to-spec's
-      ;; values — not just merge in the populated ones. The canonical target
-      ;; carries the input namespace (e.g. `:schema \"test-data\"` for a MySQL
-      ;; workspace where the input DB is `test-data`); after rewriting, the
-      ;; target points at the iso namespace which on MySQL lives at `:db`,
-      ;; not `:schema`. Failing to clear the canonical `:schema` leaves the
-      ;; SQL compiler with two competing qualifiers and the output lands in
-      ;; the wrong place.
+      ;; **Replace** `:db` and `:schema` on the target with the to-spec's values
+      ;; — not just merge in the populated ones. The canonical target carries the
+      ;; input namespace; after rewriting, the target points at the iso namespace
+      ;; which on MySQL lives at `:db`, not `:schema`. Failing to clear the
+      ;; canonical `:schema` leaves the SQL compiler with two competing
+      ;; qualifiers and the output lands in the wrong place.
       ;;
-      ;; `add-transform-target-mapping!` returns the to-side denormalized
-      ;; (`""` sentinels already converted to `nil`), so we can `assoc` the
-      ;; values directly without a per-call shim.
+      ;; `add-transform-target-mapping!` returns the to-side denormalized (`""`
+      ;; sentinels already converted to nil), so we can `assoc` directly without
+      ;; a per-call shim.
       (assoc target :db to-db :schema to-schema :name to-name))
     target))

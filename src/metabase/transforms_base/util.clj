@@ -387,12 +387,10 @@
    engines that don't emit a slot, string otherwise) — directly usable as a
    Table-row predicate without further translation."
   [db-id target]
-  ; TODO can we eliminate this or move it to a remapping namespace and/or merge it with an existing remap function?
-  (if-let [{:keys [schema name]} (ws.table-remapping/canonical-schema+name
-                                  db-id
-                                  {:schema (:schema target) :name (:name target)})]
-    (assoc target :schema schema :name name)
-    target))
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
+    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
+      (assoc target :db db :schema schema :name name)
+      target)))
 
 (defn- sync-table!
   ([database target] (sync-table! database target nil))

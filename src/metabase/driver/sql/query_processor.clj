@@ -1948,8 +1948,13 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; query at a database different from the connection's bound one. The
+  ;; identifier helper drops nil components, so absent `:db` produces the same
+  ;; `schema.table` shape as before.
+  (let [{table-name :name, schema :schema, db :db} table]
+    (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
