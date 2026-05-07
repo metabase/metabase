@@ -39,6 +39,9 @@
 (driver/register! :redshift, :parent #{:postgres
                                        ::like-escape-char-built-in/like-escape-char-built-in})
 
+(driver/register! :redshift-mbql5, :parent #{:postgres-mbql5
+                                             ::like-escape-char-built-in/like-escape-char-built-in})
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
@@ -362,7 +365,7 @@
      (quote-literal-for-connection conn s))))
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
-  [driver [_ _opts arg pattern]]
+  [driver [_ arg pattern]]
   [:regexp_substr
    (sql.qp/->honeysql driver arg)
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
@@ -370,15 +373,23 @@
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
    [:raw (quote-literal-for-database driver (driver-api/database (driver-api/metadata-provider)) pattern)]])
 
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :regex-match-first]
+  [_ [_ _opts arg pattern]]
+  (sql.qp/->honeysql :redshift [:regex-match-first arg pattern]))
+
 (defmethod sql.qp/->honeysql [:redshift :replace]
-  [driver [_ _opts arg pattern replacement]]
+  [driver [_ arg pattern replacement]]
   [:replace
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver pattern)
    (sql.qp/->honeysql driver replacement)])
 
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :replace]
+  [_ [_ _opts arg pattern replacement]]
+  (sql.qp/->honeysql :redshift [:replace arg pattern replacement]))
+
 (defmethod sql.qp/->honeysql [:redshift :concat]
-  [driver [_ _opts & args]]
+  [driver [_ & args]]
   ;; concat() only takes 2 args, so generate multiple concats if we have more,
   ;; e.g. [:concat :x :y :z] => [:concat [:concat :x :y] :z] => concat(concat(x, y), z)
   (->> args
@@ -389,7 +400,15 @@
                    y))
                nil)))
 
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :concat]
+  [_ [_ _opts & args]]
+  (sql.qp/->honeysql :redshift (cons :concat args)))
+
 (defmethod sql.qp/->honeysql [:redshift :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :avg]
   [driver [_ _opts field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
@@ -404,7 +423,7 @@
   [:datediff [:raw (name unit)] x y])
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
-  [driver [_ _opts x y unit]]
+  [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
@@ -415,9 +434,17 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :datetime-diff]
+  [_ [_ _opts x y unit]]
+  (sql.qp/->honeysql :redshift [:datetime-diff x y unit]))
+
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
-  [driver [_ _opts amount unit]]
+  [driver [_ amount unit]]
   (driver-api/maybe-cacheable-relative-datetime-honeysql driver unit amount))
+
+(defmethod sql.qp/->honeysql [:redshift-mbql5 :relative-datetime]
+  [_ [_ _opts amount unit]]
+  (sql.qp/->honeysql :redshift-mbql5 [:relative-datetime amount unit]))
 
 (defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
   [_driver t]
@@ -497,9 +524,13 @@
   (h2x/- (extract :epoch y) (extract :epoch x)))
 
 (defmethod sql.qp/->honeysql [:redshift ::sql.qp/expression-literal-text-value]
-  [driver [_ _opts value]]
+  [driver [_ value]]
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
+
+(defmethod sql.qp/->honeysql [:redshift-mbql5 ::sql.qp/expression-literal-text-value]
+  [_ [_ _opts value]]
+  (sql.qp/->honeysql :redshift-mbql5 [::sql.qp/expression-literal-text-value value]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
