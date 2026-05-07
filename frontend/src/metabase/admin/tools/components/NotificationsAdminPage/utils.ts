@@ -31,6 +31,7 @@ export type NotificationsUrlState = {
   channel: NotificationChannelType | null;
   last_sent_status: NotificationRunStatus | null;
   owner_active: boolean | null;
+  recipient_email: string;
   tab: NotificationsTab;
   sort_column: AdminNotificationSortColumn;
   sort_direction: SortDirection;
@@ -70,6 +71,11 @@ const parseActive = (param: QueryParam): boolean | null => {
 };
 
 const parseQuery = (param: QueryParam): string => {
+  const value = getFirstParamValue(param);
+  return typeof value === "string" ? value.trim() : "";
+};
+
+const parseRecipientEmail = (param: QueryParam): string => {
   const value = getFirstParamValue(param);
   return typeof value === "string" ? value.trim() : "";
 };
@@ -186,6 +192,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     channel: parseChannelEnum(query.channel),
     last_sent_status: parseLastSentStatusEnum(query.last_sent_status),
     owner_active: parseOwnerActive(query.owner_active),
+    recipient_email: parseRecipientEmail(query.recipient_email),
     tab: parseTabEnum(query.tab),
     sort_column: parseSortColumnEnum(query.sort_column),
     sort_direction: parseSortDirectionEnum(query.sort_direction),
@@ -199,6 +206,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     last_sent_status: state.last_sent_status ?? undefined,
     owner_active:
       state.owner_active == null ? undefined : String(state.owner_active),
+    recipient_email: state.recipient_email || undefined,
     tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
@@ -234,6 +242,7 @@ export const buildListParams = (
     last_sent_status:
       tabFilters.last_sent_status ?? state.last_sent_status ?? undefined,
     owner_active: tabFilters.owner_active ?? state.owner_active ?? undefined,
+    recipient_email: state.recipient_email || undefined,
     sort_column: state.sort_column,
     sort_direction: state.sort_direction,
   };

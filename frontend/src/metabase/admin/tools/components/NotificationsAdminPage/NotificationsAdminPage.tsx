@@ -92,6 +92,7 @@ export const NotificationsAdminPage = ({
     urlState.owner_active,
     urlState.query,
     urlState.channel,
+    urlState.recipient_email,
     urlState.sort_column,
     urlState.sort_direction,
   ]);

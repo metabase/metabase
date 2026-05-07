@@ -12,6 +12,7 @@ import {
   Popover,
   Stack,
   Text,
+  TextInput,
   UnstyledButton,
 } from "metabase/ui";
 import type {
@@ -40,12 +41,14 @@ type FilterDraft = {
   channel: NotificationChannelType | null;
   owner_active: boolean | null;
   last_sent_status: NotificationRunStatus | null;
+  recipient_email: string;
 };
 
 const stateToDraft = (state: NotificationsUrlState): FilterDraft => ({
   channel: state.channel,
   owner_active: state.owner_active,
   last_sent_status: state.last_sent_status,
+  recipient_email: state.recipient_email,
 });
 
 const hasActiveFilters = (state: NotificationsUrlState): boolean => {
@@ -53,6 +56,9 @@ const hasActiveFilters = (state: NotificationsUrlState): boolean => {
     return true;
   }
   if (state.tab !== "failing" && state.last_sent_status !== null) {
+    return true;
+  }
+  if (state.recipient_email !== "") {
     return true;
   }
   return state.tab !== "ownerless" && state.owner_active !== null;
@@ -76,6 +82,7 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
       channel: draft.channel,
       owner_active: draft.owner_active,
       last_sent_status: draft.last_sent_status,
+      recipient_email: draft.recipient_email.trim(),
       page: 0,
     });
     setOpened(false);
@@ -86,6 +93,7 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
       channel: null,
       owner_active: null,
       last_sent_status: null,
+      recipient_email: "",
       page: 0,
     });
     setOpened(false);
@@ -179,6 +187,20 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
               />
             </FilterSection>
           )}
+
+          <FilterSection label={t`Email recipient`}>
+            <TextInput
+              w="100%"
+              placeholder={t`recipient@metabase.com`}
+              value={draft.recipient_email}
+              onChange={(event) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  recipient_email: event.currentTarget.value,
+                }))
+              }
+            />
+          </FilterSection>
 
           <Group gap="sm" grow>
             <Button variant="default" onClick={handleClear}>
