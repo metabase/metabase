@@ -207,7 +207,7 @@ export const MoveModal = ({
 
 export function canMoveCollectionToLibraryDestination(
   movingItem: OmniPickerCollectionItem,
-  destination: OmniPickerItem,
+  destination: OmniPickerCollectionItem,
 ) {
   if (movingItem.model !== "collection") {
     return true;
