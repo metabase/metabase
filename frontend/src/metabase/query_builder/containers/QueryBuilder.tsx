@@ -8,7 +8,7 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListTimelinesQuery } from "metabase/api";
+import { useListMeasuresQuery, useListTimelinesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
@@ -367,6 +367,7 @@ type QueryBuilderInnerProps = ReduxProps &
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useFavicon({ favicon: props.pageFavicon ?? null });
   useListTimelinesQuery({ include: "events" });
+  useListMeasuresQuery();
 
   const {
     question,
