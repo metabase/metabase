@@ -1,4 +1,7 @@
-import { IS_WATERFALL_TOTAL_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  IS_WATERFALL_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { ChartDataset } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { createMockVisualizationSettings } from "metabase-types/api/mocks";
@@ -15,7 +18,10 @@ const settings = (
 
 describe("extendOriginalDatasetWithTotalDatum", () => {
   const seriesKey = "count";
-  const dataset: ChartDataset = [{ [seriesKey]: 100 }, { [seriesKey]: 200 }];
+  const dataset: ChartDataset = [
+    { [X_AXIS_DATA_KEY]: "a", [seriesKey]: 100 },
+    { [X_AXIS_DATA_KEY]: "b", [seriesKey]: 200 },
+  ];
 
   it("appends a total datum with the raw value it was given", () => {
     const result = extendOriginalDatasetWithTotalDatum(
