@@ -377,12 +377,19 @@
    have to denormalize the empty-string sentinel themselves)."
   :feature :none
   [db-id to-spec]
-  (let [{:keys [schema name]} to-spec
+  (let [{:keys [db schema name]} to-spec
+        ;; Normalize input slots to the storage `""` sentinel so the lookup
+        ;; matches rows the AppDB stores with empty-string for slots the
+        ;; driver doesn't emit. Today the index is `(to_schema, to_name)` so
+        ;; only `:schema` is consulted; widening to a 3-tuple match (the H7
+        ;; follow-up) is where the `db-key` below would join the lookup.
+        _db-key  (normalize-level db)
+        sch-key  (normalize-level schema)
         to->from (into {}
                        (map (fn [[from-tuple [_to-db to-schema to-name]]]
                               [[to-schema to-name] from-tuple]))
                        (all-mappings-for-db db-id))]
-    (some-> (to->from [schema name]) store-tuple->table-spec)))
+    (some-> (to->from [sch-key name]) store-tuple->table-spec)))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1

@@ -750,8 +750,18 @@
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
-  [& args]
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  [driver ^java.sql.Connection conn schema-inclusion-filters schema-exclusion-filters]
+  ;; Scope describe-database to the connection's current catalog (= bound DB).
+  ;; By default `post-filtered-active-tables` passes `nil` for the catalog filter,
+  ;; which makes JDBC enumerate every DB the user has privileges on. That's wrong
+  ;; for workspace MySQL users — they own the iso DB and have GRANT SELECT on the
+  ;; canonical DB, so the iso DB's tables would leak into sync. Constraining to
+  ;; `conn.getCatalog()` means only the canonical (bound) DB's tables show up,
+  ;; regardless of what else the user can read. Also strictly more correct for
+  ;; plain MySQL: a user with GRANT on multiple DBs only configured one as the
+  ;; Metabase Database; sync should never have surfaced the others.
+  (sql-jdbc.sync/post-filtered-active-tables
+   driver conn (.getCatalog conn) schema-inclusion-filters schema-exclusion-filters))
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
