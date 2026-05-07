@@ -1385,6 +1385,15 @@
               (sql.qp/coerce-integer :sql
                                      (h2x/with-database-type-info value type))))))))
 
+(deftest ^:parallel uuid-value-honeysql-test
+  (testing "->honeysql for [:value <UUID> {:base_type :type/UUID}] handles UUID instances without throwing (#73758)"
+    (doseq [driver (mt/normal-drivers-with-feature :uuid-type)]
+      (testing driver
+        (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+          (is (= uuid
+                 (sql.qp/->honeysql driver
+                                    [:value uuid {:base_type :type/UUID :effective_type :type/UUID}]))))))))
+
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"
     (let [query (lib.tu.macros/mbql-query checkins
