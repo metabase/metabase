@@ -9,28 +9,30 @@
 (def ^:private private-uri "test://mcp/resources-test/private")
 (def ^:private public-uri  "test://mcp/resources-test/public")
 
-(defn- with-test-resources [thunk]
-  (let [registry @#'mcp.resources/registry
-        snapshot @registry]
-    (try
-      (mcp.resources/register-resource!
-       {:uri         public-uri
-        :name        "Public Doc"
-        :description "Anyone authenticated can read this."
-        :mimeType    "text/plain"
-        :render-fn   (constantly "public body")})
-      (mcp.resources/register-resource!
-       {:uri         private-uri
-        :name        "Private Doc"
-        :description "Requires the agent:search scope."
-        :scope       "agent:search"
-        :mimeType    "text/plain"
-        :render-fn   (constantly "private body")})
-      (thunk)
-      (finally
-        (reset! registry snapshot)))))
-
-(use-fixtures :each (fn [t] (with-test-resources t)))
+;; The registry is process-wide state; the fixture snapshots and restores it around each test.
+;; Safe because none of the tests below are marked ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each
+  (fn [thunk]
+    (let [registry @#'mcp.resources/registry
+          snapshot @registry]
+      (try
+        (mcp.resources/register-resource!
+         {:uri         public-uri
+          :name        "Public Doc"
+          :description "Anyone authenticated can read this."
+          :mimeType    "text/plain"
+          :render-fn   (constantly "public body")})
+        (mcp.resources/register-resource!
+         {:uri         private-uri
+          :name        "Private Doc"
+          :description "Requires the agent:search scope."
+          :scope       "agent:search"
+          :mimeType    "text/plain"
+          :render-fn   (constantly "private body")})
+        (thunk)
+        (finally
+          (reset! registry snapshot))))))
 
 (deftest list-resources-public-and-scoped-test
   (testing "scopeless resources are listed for any caller, including empty scopes"
