@@ -14,7 +14,7 @@ concurrency:
 jobs:
   be-tests-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: '' #'${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
