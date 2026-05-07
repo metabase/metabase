@@ -3,8 +3,8 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import {
   EmptyStateContainer,
@@ -94,15 +94,18 @@ export const SearchResults = ({
     query.context = SearchContextTypes.SEARCH_BAR;
   }
 
-  const {
-    data: list = [],
-    metadata,
-    isLoading,
-  } = useSearchListQuery({
-    query,
-    reload: true,
-    enabled: !!debouncedSearchText,
-  });
+  const { data: response, isLoading } = useSearchQuery(
+    debouncedSearchText ? query : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+  const list = useMemo(() => response?.data ?? [], [response?.data]);
+  const metadata = useMemo<Omit<SearchResultsType, "data"> | undefined>(() => {
+    if (!response) {
+      return undefined;
+    }
+    const { data: _data, ...rest } = response;
+    return rest;
+  }, [response]);
 
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
