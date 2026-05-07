@@ -1,14 +1,30 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { Widget } from "metabase/visualizations/types";
 
 import type { BaseChartSettingsProps } from "./types";
 
-// section names are localized
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const DEFAULT_TAB_PRIORITY = [t`Data`];
+const SECTION_SORT_PRIORITY = [
+  "data",
+  "columns",
+  "display",
+  "axes",
+  "ranges",
+  "formatting",
+];
+
+const sortSectionNames = (names: string[]): string[] => {
+  // unknown sections fall through to insertion order at the end
+  const sortOrder = [
+    ...SECTION_SORT_PRIORITY,
+    ...names.map((x) => x.toLowerCase()),
+  ];
+  return [...names].sort((a, b) => {
+    const [aIdx, bIdx] = [a, b].map((x) => sortOrder.indexOf(x.toLowerCase()));
+    return aIdx - bIdx;
+  });
+};
 
 export const useChartSettingsSections = ({
   initial,
@@ -18,85 +34,60 @@ export const useChartSettingsSections = ({
     initial?.section ?? null,
   );
 
-  const sections: Record<string, Widget[]> = useMemo(() => {
+  const { sections, sortedSectionNames } = useMemo(() => {
+    // group visible widgets by section name
     const sectionObj: Record<string, Widget[]> = {};
     for (const widget of widgets) {
       if (widget.widget && !widget.hidden) {
-        const section = String(widget.section);
-        sectionObj[section] = sectionObj[section] || [];
-        sectionObj[section].push(widget);
+        const key = String(widget.section);
+        (sectionObj[key] ??= []).push(widget);
       }
     }
 
-    // Move settings from the "undefined" section in the first tab
-    if (sectionObj["undefined"] && Object.values(sectionObj).length > 1) {
-      const extra = sectionObj["undefined"];
+    // pull out unsectioned widgets if there is somewhere else to put them
+    let extra: Widget[] | undefined;
+    if (sectionObj["undefined"] && Object.keys(sectionObj).length > 1) {
+      extra = sectionObj["undefined"];
       delete sectionObj["undefined"];
-      Object.values(sectionObj)[0].unshift(...extra);
     }
-    return sectionObj;
+
+    const sortedSectionNames = sortSectionNames(Object.keys(sectionObj));
+
+    // prepend the extras to the first sorted section (not first inserted)
+    if (extra) {
+      sectionObj[sortedSectionNames[0]].unshift(...extra);
+    }
+
+    return { sections: sectionObj, sortedSectionNames };
   }, [widgets]);
 
-  // This sorts the section radio buttons.
-  const sectionNames = useMemo(() => {
-    const names = Object.keys(sections);
-
-    const sectionSortOrder = [
-      "data",
-      "columns",
-      "display",
-      "axes",
-      "ranges",
-      "formatting",
-      // include all section names so any forgotten sections are sorted to the end
-      ...names.map((x) => x.toLowerCase()),
-    ];
-    names.sort((a, b) => {
-      const [aIdx, bIdx] = [a, b].map((x) =>
-        sectionSortOrder.indexOf(x.toLowerCase()),
-      );
-      return aIdx - bIdx;
-    });
-
-    return names;
-  }, [sections]);
-
-  const chartSettingCurrentSection = useMemo(
-    () =>
-      currentSection && sections[currentSection]
-        ? currentSection
-        : _.find(DEFAULT_TAB_PRIORITY, (name) => name in sections) ||
-          sectionNames[0],
-    [currentSection, sectionNames, sections],
-  );
+  const chartSettingCurrentSection = useMemo(() => {
+    if (currentSection && sections[currentSection]) {
+      return currentSection;
+    }
+    const defaultSection = t`Data`;
+    return defaultSection in sections ? defaultSection : sortedSectionNames[0];
+  }, [currentSection, sortedSectionNames, sections]);
 
   const visibleWidgets = useMemo(
     () => sections[chartSettingCurrentSection] || [],
     [chartSettingCurrentSection, sections],
   );
 
-  const currentSectionHasColumnSettings = useMemo(
-    () =>
-      visibleWidgets.some((widget: Widget) => widget.id === "column_settings"),
-    [visibleWidgets],
+  const currentSectionHasColumnSettings = visibleWidgets.some(
+    (widget: Widget) => widget.id === "column_settings",
   );
 
-  const showSectionPicker = useMemo(
-    () =>
-      // don't show section tabs for a single section
-      sectionNames.length > 1 &&
-      // hide the section picker if the only widget is column_settings
-      !(
-        visibleWidgets.length === 1 &&
-        visibleWidgets[0].id === "column_settings" &&
-        // and this section doesn't have that as a direct child
-        !currentSectionHasColumnSettings
-      ),
-    [currentSectionHasColumnSettings, sectionNames.length, visibleWidgets],
-  );
+  const showSectionPicker =
+    sortedSectionNames.length > 1 &&
+    !(
+      visibleWidgets.length === 1 &&
+      visibleWidgets[0].id === "column_settings" &&
+      !currentSectionHasColumnSettings
+    );
 
   return {
-    sectionNames,
+    sortedSectionNames,
     setCurrentSection,
     currentSectionHasColumnSettings,
     chartSettingCurrentSection,

@@ -131,4 +131,28 @@ describe("ChartSettings", () => {
 
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
+
+  it("should put unsectioned widgets into the first section by sort priority, not insertion order", () => {
+    // matches the scalar shape: a non-priority section is registered before a
+    // priority section. The unsectioned widget should land in Formatting, not
+    // in the first-inserted "Conditional colors".
+    setup({
+      widgets: [
+        widget({ title: "Unsectioned", section: undefined }),
+        widget({ title: "InColors", section: "Conditional colors" }),
+        widget({ title: "InFormatting", section: "Formatting" }),
+      ],
+      initial: { section: "Formatting" },
+    });
+
+    expect(
+      screen.getByText("Unsectioned", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("InFormatting", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("InColors", { exact: false }),
+    ).not.toBeInTheDocument();
+  });
 });
