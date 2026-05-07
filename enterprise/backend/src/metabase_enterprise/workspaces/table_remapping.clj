@@ -269,6 +269,7 @@
 
 (defn- driver-for-db
   ; TODO think about whether we can keep track of the db driver in a more efficient way
+  ; Probably just convert the callers to pass the whole `database` instead of just the ID
   "Fetch the engine keyword for `db-id`. Used by translators that take a consumer-shape
    spec (no driver in scope) and need driver-aware key projection. The app-DB cache
    keeps repeat lookups cheap."
