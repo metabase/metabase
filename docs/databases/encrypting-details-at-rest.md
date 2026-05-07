@@ -21,13 +21,20 @@ Metabase stores connection information for the various databases you add in the 
    openssl rand -base64 32
    ```
 2. Copy the key to your clipboard. It should look something like this:
-   ```
-   IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=
-   ```
+   <pre><code id="example-encryption-key" class="do-not-display-copy-button">euFnQmie3XIfCvhkZKRPF44sK9/erEmyAmmAfeCTrlU=</code></pre>
+   <script>
+     (function() {
+       var a = new Uint8Array(32);
+       crypto.getRandomValues(a);
+       var key = btoa(String.fromCharCode.apply(null, a));
+       document.getElementById("example-encryption-key").textContent = key;
+       document.querySelectorAll("[data-encryption-key-example]").forEach(function(el) {
+         el.textContent = el.textContent.replace("euFnQmie3XIfCvhkZKRPF44sK9/erEmyAmmAfeCTrlU=", key);
+       });
+     })();
+   </script>
 3. Set the key as an environment variable and start Metabase as usual.
-   ```
-   MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
-   ```
+   <pre data-encryption-key-example><code class="do-not-display-copy-button">MB_ENCRYPTION_SECRET_KEY="euFnQmie3XIfCvhkZKRPF44sK9/erEmyAmmAfeCTrlU=" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar</code></pre>
 
 Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. To encrypt existing connections, see the next section.
 
