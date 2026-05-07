@@ -216,6 +216,80 @@
         (println "Set this env var with your " (name token) " token, or use --token none")
         (u/exit 1)))))
 
+(defn- discover-config-files
+  "Find candidate Metabase config.yml files under ~/.config/metabase and
+   <repo>/local/configs. Returns a vector of canonical paths; missing dirs are
+   silently skipped."
+  []
+  (let [home  (System/getProperty "user.home")
+        dirs  [(str home "/.config/metabase")
+               (str target-project-directory "/local/configs")]
+        scan  (fn [^String dir]
+                (let [d (java.io.File. dir)]
+                  (when (.isDirectory d)
+                    (->> (.listFiles d)
+                         (filter (fn [^java.io.File f]
+                                   (let [n (.getName f)]
+                                     (and (.isFile f)
+                                          (or (str/ends-with? n ".yml")
+                                              (str/ends-with? n ".yaml"))))))
+                         (mapv #(.getCanonicalPath ^java.io.File %))))))]
+    (vec (mapcat scan dirs))))
+
+(defn- validate-config-file!
+  "Ensure the given path points to an existing file. Exits 1 with a red error
+   if not; otherwise returns the canonical path."
+  [path]
+  (let [trimmed (some-> path str/trim)
+        f       (when (seq trimmed) (java.io.File. ^String trimmed))]
+    (cond
+      (str/blank? trimmed)
+      (do (println (c/red "Empty config file path."))
+          (u/exit 1))
+
+      (not (.exists f))
+      (do (println (c/red "Config file not found: ") (c/yellow trimmed))
+          (u/exit 1))
+
+      (not (.isFile f))
+      (do (println (c/red "Config file is not a regular file: ") (c/yellow trimmed))
+          (u/exit 1))
+
+      :else
+      (.getCanonicalPath f))))
+
+(defn- prompt-custom-config-path!
+  "Prompt the user to type a config-file path. Validates the result."
+  []
+  (print "Enter config file path: ")
+  (flush)
+  (validate-config-file! (read-line)))
+
+(defn- select-config-file
+  "Resolve the config-file selection. Precedence:
+   1. CLI --config-file (validated, exits on miss)
+   2. Non-interactive: nil (config file is optional)
+   3. Interactive fzf picker over discovered candidates, with `(none)` and
+      `(custom path...)` entries; the latter prompts for a free-form path."
+  [opts]
+  (cond
+    (:config-file opts)
+    (validate-config-file! (:config-file opts))
+
+    (:non-interactive opts)
+    nil
+
+    :else
+    (let [discovered (discover-config-files)
+          choices    (vec (concat ["(none)" "(custom path...)"] discovered))
+          result     (u/fzf-select! choices
+                                    (str fzf-opts " --prompt='Config file: '"))]
+      (cond
+        (str/blank? result)         nil
+        (= result "(none)")         nil
+        (= result "(custom path...)") (prompt-custom-config-path!)
+        :else                       (validate-config-file! result)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Core infra
 
@@ -317,7 +391,7 @@
 
 (defn- generate-mise-local!
   "Generate mise.local.toml at the project root."
-  [slot {:keys [app-db with edition token h2-file]}]
+  [slot {:keys [app-db with edition token h2-file config-file]}]
   (let [wt-name     (worktree-name)
         ;; Track which CLI env var families the app-db already claimed
         pg-claimed?    (= app-db :postgres)
@@ -349,6 +423,10 @@
                   ;; H2 file location
                   h2-file
                   (conj (str "MB_DB_FILE = \"" h2-file "\""))
+
+                  ;; Metabase config.yml (EE feature; preseeds users/dbs/settings)
+                  config-file
+                  (conj (str "MB_CONFIG_FILE_PATH = \"" config-file "\""))
 
                   ;; App DB connection + CLI env vars
                   (= app-db :postgres)
@@ -546,7 +624,7 @@
 
 (defn- build-env
   "Assemble the env map for spawning backend/frontend processes."
-  [slot {:keys [app-db edition token h2-file]}]
+  [slot {:keys [app-db edition token h2-file config-file]}]
   (cond-> {"MB_JETTY_PORT"        (str (port-for :jetty slot))
            "MB_FRONTEND_DEV_PORT" (str (port-for :frontend-dev slot))
            "NREPL_PORT"           (str (port-for :nrepl slot))
@@ -563,6 +641,9 @@
 
     h2-file
     (assoc "MB_DB_FILE" h2-file)
+
+    config-file
+    (assoc "MB_CONFIG_FILE_PATH" config-file)
 
     (= app-db :postgres)
     (assoc "MB_DB_TYPE" "postgres"
@@ -620,7 +701,8 @@
   "If a saved config exists and no CLI flags override it, ask the user whether to reuse."
   [opts]
   (let [state (read-state-file)
-        has-cli-overrides? (or (:edition opts) (:token opts) (:app-db opts) (seq (:with opts)))]
+        has-cli-overrides? (or (:edition opts) (:token opts) (:app-db opts)
+                               (seq (:with opts)) (:config-file opts))]
     (when (and (:config state) (not has-cli-overrides?))
       (if (:non-interactive opts)
         ;; Non-interactive: silently reuse the saved config rather than prompting.
@@ -628,7 +710,9 @@
         (let [cfg (:config state)
               summary (str (name (:edition cfg)) " / " (name (:app-db cfg))
                            (when (seq (:with cfg))
-                             (str " + " (str/join ", " (map name (:with cfg))))))]
+                             (str " + " (str/join ", " (map name (:with cfg)))))
+                           (when (:config-file cfg)
+                             (str " | config: " (last (str/split (:config-file cfg) #"/")))))]
           (= "yes"
              (u/fzf-select! ["yes" "no"]
                             (str fzf-opts " --prompt='Reuse saved config (" summary ")? '"))))))))
@@ -673,6 +757,7 @@
         (println "  --token TOKEN    Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none")
         (println "  --app-db DB      App database: h2, postgres, mysql, mariadb (default: prompt)")
         (println "  --with SERVICE   Warehouse service (repeatable)")
+        (println "  --config-file PATH  Metabase config.yml to load (MB_CONFIG_FILE_PATH)")
         (println "  --slot SLOT      Override port slot (0-99)"))
 
     "add"
@@ -898,6 +983,8 @@
         ;; Header
         (println)
         (println (c/bold (c/green "Dev environment: ") (c/cyan wt-name) (c/green " (slot " slot ")")))
+        (when-let [cf (:config-file config)]
+          (println (c/green "  config file: ") cf))
         ;; Unified table
         (println)
         (t/table rows :style :unicode)
@@ -1048,11 +1135,16 @@
                             t)))
           app-db      (or (:app-db saved) (select-app-db opts))
           with        (or (:with saved) (select-with opts))
+          config-file (if saved
+                        (:config-file saved)
+                        (select-config-file opts))
           slot        (compute-slot (:slot opts))
           config      (validate-services! {:app-db app-db :with with})
           full-config (cond-> (assoc config :edition edition :token token)
                         (= app-db :h2)
-                        (assoc :h2-file (str target-project-directory "/local/mb-db")))
+                        (assoc :h2-file (str target-project-directory "/local/mb-db"))
+                        config-file
+                        (assoc :config-file config-file))
           fresh?      (:fresh opts)]
       ;; Ensure docker containers are running
       (when (or (not= (:app-db config) :h2) (seq (:with config)))
