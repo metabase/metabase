@@ -142,7 +142,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
         className: !isOpen
           ? S.CollapsedMoveParameterMenuInputWrapper
           : undefined,
-        "data-placeholder": t`Move filter`,
+        "data-label": t`Move filter`,
       }}
       placeholder={t`Move filter`}
       data={options}

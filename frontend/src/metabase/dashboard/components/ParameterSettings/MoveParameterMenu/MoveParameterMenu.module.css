@@ -17,7 +17,7 @@
   position: relative;
 
   &::after {
-    content: attr(data-placeholder);
+    content: attr(data-label);
     color: var(--mb-color-text-primary);
     font-weight: 700;
     position: absolute;
