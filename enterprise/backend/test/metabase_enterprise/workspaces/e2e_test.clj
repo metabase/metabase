@@ -324,26 +324,47 @@
                                       "no app-db Table row points at the isolation schema"))))
                             (testing "A table remapping record exists"
                             ;; `:from_db` is the empty-string sentinel for 2-slot drivers (Postgres,
-                            ;; MySQL, Redshift, ClickHouse) and the connection's db for 3-slot
+                            ;; Redshift, ClickHouse) and the connection's db for 3-slot
                             ;; drivers (Snowflake, SQL Server). `:to_db` mirrors `:from_db` here
                             ;; because the workspace's isolation schema lives in the same db.
-                              (is (= [{:to_schema       isolation-schema
-                                       :from_schema     main-schema
-                                       :from_table_name tgt-name
-                                       :from_db         (or input-ns-db "")
-                                       :to_db           (or input-ns-db "")
-                                       :database_id     (:id ws-db)}]
-                                     (for [r (t2/select :model/TableRemapping)]
-                                       (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id])))))
+                            ;; On MySQL `qualified-name-components` is `[]` (zero-slot), so BOTH
+                            ;; `:from_schema` and `:from_db` are stored as `""` — `spec-for-table`
+                            ;; only fills slots the driver emits as qualifiers.
+                              (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)]
+                                (is (= [{:to_schema       isolation-schema
+                                         :from_schema     from-schema-stored
+                                         :from_table_name tgt-name
+                                         :from_db         (or input-ns-db "")
+                                         :to_db           (or input-ns-db "")
+                                         :database_id     (:id ws-db)}]
+                                       (for [r (t2/select :model/TableRemapping)]
+                                         (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id]))))))
                           ;; --- Assertion: describe-database stays in main ------
+                          ;; describe-database reads JDBC's TABLE_SCHEM into `:schema`. For MySQL
+                          ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
+                          ;; (the per-driver translation we already do for synced rows).
                             (testing "describe-database returns only input-schema tables"
-                              (let [{described :tables} (driver/describe-database admin-driver ws-db)]
-                                (is (some #(and (= main-schema (:schema %))
+                              (let [{described :tables} (driver/describe-database admin-driver ws-db)
+                                    iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
+                                (is (some #(and (= tbl-schema (:schema %))
                                                 (= src-name (:name %)))
                                           described)
                                     "the input-schema source table is described")
-                                (is (not-any? #(= isolation-schema (:schema %)) described)
-                                    "no isolation-schema table is described")))
+                                (if (= :mysql admin-driver)
+                                  ;; On MySQL describe-database only enumerates the connection's
+                                  ;; bound DB (`test-data`), so iso-DB tables can't appear here
+                                  ;; at all. The assertion is trivially true; we still want SOMETHING
+                                  ;; to confirm describe-database isn't returning iso-DB rows
+                                  ;; (e.g., via a cross-DB enumeration bug).
+                                  (let [iso-warehouse-tables (->> (jdbc/query admin-spec
+                                                                              ["SELECT table_name FROM information_schema.tables WHERE table_schema = ?"
+                                                                               isolation-schema])
+                                                                  (map :table_name)
+                                                                  set)]
+                                    (is (not-any? #(contains? iso-warehouse-tables (:name %)) described)
+                                        "no described table should physically live in the isolation DB"))
+                                  (is (not-any? #(= iso-tbl-schema (:schema %)) described)
+                                      "no isolation-schema table is described"))))
                           ;; --- Assertion: a Card querying the canonical output table ----
                           ;; reads the remapped (isolation-schema) data, not the canonical
                           ;; main-schema table.
@@ -354,6 +375,15 @@
                                   {:keys [to_table_name]} (t2/select-one :model/TableRemapping)]
                               (is (some? out-table)
                                   "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
+                              ;; Diagnostic: the Card MBQL query downstream needs Fields on
+                              ;; out-table. If sync-table! after the transform run didn't
+                              ;; populate them, the QP throws "Table X has no Fields"
+                              ;; 100 lines into preprocess. Flag it here instead.
+                              (let [field-count (t2/count :model/Field :table_id (:id out-table) :active true)]
+                                (is (pos? field-count)
+                                    (str "out-table Table id=" (:id out-table)
+                                         " (schema=" (pr-str (:schema out-table)) " name=" (pr-str (:name out-table)) ")"
+                                         " has no Field rows; transform-time sync did not populate columns")))
                               (mt/with-temp [:model/Card card
                                              {:name          (str "ws-e2e-card-" run-id)
                                               :database_id   (:id ws-db)
