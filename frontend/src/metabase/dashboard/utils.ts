@@ -259,7 +259,6 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-/** True if any dataset failed because of permissions (403 or `missing-required-permissions`). */
 export function isDashcardAccessRestricted(
   datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
