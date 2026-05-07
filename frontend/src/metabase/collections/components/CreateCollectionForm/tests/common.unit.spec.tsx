@@ -43,4 +43,19 @@ describe("CreateCollectionForm", () => {
     setup();
     expect(screen.queryByLabelText("Collection type")).not.toBeInTheDocument();
   });
+
+  it("submits the namespace from the initial parent collection", async () => {
+    const { onSubmit } = setup({
+      initialCollectionId: 2,
+      parentCollectionNamespace: "snippets",
+      namespaces: ["snippets"],
+    });
+
+    await userEvent.type(screen.getByLabelText("Name"), "My snippets folder");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ namespace: "snippets" }),
+    );
+  });
 });

@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { getCollectionPathAsArray } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
@@ -15,7 +14,7 @@ import {
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
 
@@ -31,8 +30,10 @@ export const CreateMenu = ({
   canWriteToDataCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
-  const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
-  const closeModal = () => setModal(undefined);
+  const [
+    showPublishTableModal,
+    { close: closePublishTableModal, open: openPublishTableModal },
+  ] = useDisclosure(false);
 
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
@@ -47,37 +48,35 @@ export const CreateMenu = ({
 
   const canCreateCollection =
     (dataCollectionId && canWriteToDataCollection) ||
-    (metricCollectionId && canWriteToMetricCollection);
+    (metricCollectionId && canWriteToMetricCollection) ||
+    (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled);
+
+  const collectionNamespaces: CollectionNamespace[] = [];
+
+  if (
+    (dataCollectionId && canWriteToDataCollection) ||
+    (metricCollectionId && canWriteToMetricCollection)
+  ) {
+    collectionNamespaces.push(null);
+  }
+
+  if (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled) {
+    collectionNamespaces.push("snippets");
+  }
+
+  const initialCollectionId =
+    (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
+    (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
+    null;
 
   const menuItems = [
     <Menu.Item
       key="publish-table"
       leftSection={<FixedSizeIcon name="publish" />}
-      onClick={() => setModal("publish-table")}
+      onClick={openPublishTableModal}
     >
       {t`Published table`}
     </Menu.Item>,
-    canCreateCollection && (
-      <Menu.Item
-        key="collection"
-        leftSection={<FixedSizeIcon name="folder" />}
-        onClick={() =>
-          dispatch(
-            setOpenModalWithProps({
-              id: "collection",
-              props: {
-                initialCollectionId: dataCollectionId,
-                pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
-                showAuthorityLevelPicker: false,
-                inDataStudio: true,
-              },
-            }),
-          )
-        }
-      >
-        {t`Collection`}
-      </Menu.Item>
-    ),
     canCreateMetric && (
       <Menu.Item
         key="metric"
@@ -102,13 +101,26 @@ export const CreateMenu = ({
         {t`Snippet`}
       </Menu.Item>
     ),
-    hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled && (
+    canCreateCollection && (
       <Menu.Item
-        key="snippet-folder"
+        key="collection"
         leftSection={<FixedSizeIcon name="folder" />}
-        onClick={() => setModal("snippet-folder")}
+        onClick={() =>
+          dispatch(
+            setOpenModalWithProps({
+              id: "collection",
+              props: {
+                initialCollectionId,
+                namespaces: collectionNamespaces,
+                pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
+                showAuthorityLevelPicker: false,
+                inDataStudio: true,
+              },
+            }),
+          )
+        }
       >
-        {t`Snippet folder`}
+        {t`Collection`}
       </Menu.Item>
     ),
   ].filter(Boolean);
@@ -116,17 +128,6 @@ export const CreateMenu = ({
   if (!menuItems.length) {
     return null;
   }
-
-  const onSnippetFolderSaved = (collection: Collection) => {
-    closeModal();
-    dispatch(
-      push(
-        Urls.dataStudioLibrary({
-          expandedIds: getCollectionPathAsArray(collection),
-        }),
-      ),
-    );
-  };
 
   return (
     <>
@@ -136,18 +137,9 @@ export const CreateMenu = ({
         </Menu.Target>
         <Menu.Dropdown>{menuItems}</Menu.Dropdown>
       </Menu>
-      <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
-        opened={modal === "snippet-folder"}
-        collection={{
-          name: "",
-          description: null,
-        }}
-        onClose={closeModal}
-        onSaved={onSnippetFolderSaved}
-      />
       <PublishTableModal
-        opened={modal === "publish-table"}
-        onClose={closeModal}
+        opened={showPublishTableModal}
+        onClose={closePublishTableModal}
         onPublished={(table) => dispatch(push(Urls.dataStudioTable(table.id)))}
       />
     </>

@@ -35,6 +35,8 @@ export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   parentCollectionNamespace?: CollectionNamespace | null;
   initialCollectionId?: CollectionId;
+  namespaces?: CollectionNamespace[];
+  onSubmit?: jest.Mock;
 }
 
 export const setup = ({
@@ -44,6 +46,8 @@ export const setup = ({
   enterprisePlugins,
   parentCollectionNamespace,
   initialCollectionId,
+  namespaces,
+  onSubmit = jest.fn(),
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
@@ -68,6 +72,7 @@ export const setup = ({
         id: initialCollectionId,
         name: "Data",
         can_write: true,
+        namespace: parentCollectionNamespace,
       })
     : null;
   const endpointCollections = initialCollection
@@ -91,9 +96,11 @@ export const setup = ({
   renderWithProviders(
     <CreateCollectionForm
       onCancel={onCancel}
+      onSubmit={onSubmit}
       showAuthorityLevelPicker={showAuthorityLevelPicker}
       collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
       initialCollectionId={initialCollectionId}
+      namespaces={namespaces}
     />,
     {
       storeInitialState: createMockState({
@@ -106,5 +113,5 @@ export const setup = ({
     },
   );
 
-  return { onCancel };
+  return { onCancel, onSubmit };
 };

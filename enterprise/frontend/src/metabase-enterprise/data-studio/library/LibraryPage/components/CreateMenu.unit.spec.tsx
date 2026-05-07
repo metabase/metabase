@@ -71,13 +71,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual([
-      "Published table",
-      "Collection",
-      "Metric",
-      "Snippet",
-      "Snippet folder",
-    ]);
+    ).toEqual(["Published table", "Metric", "Snippet", "Collection"]);
   });
 
   it("renders publish and collection options for data analysts", async () => {
@@ -97,7 +91,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Collection", "Metric"]);
+    ).toEqual(["Published table", "Metric", "Collection"]);
   });
 
   it("does not render Metric option when canWriteToMetricCollection is false", async () => {
@@ -116,7 +110,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Collection", "Snippet", "Snippet folder"]);
+    ).toEqual(["Published table", "Snippet", "Collection"]);
   });
 
   it("renders Collection option when only Data collection is writable", async () => {
@@ -133,9 +127,9 @@ describe("CreateMenu", () => {
     ).toEqual(["Published table", "Collection"]);
   });
 
-  it("does not render Collection option without writable Library collections", async () => {
+  it("does not render Collection option without writable Library collections or native write", async () => {
     setup({
-      user: { is_data_analyst: true },
+      user: {},
       canWriteToDataCollection: false,
       canWriteToMetricCollection: false,
     });
@@ -147,7 +141,7 @@ describe("CreateMenu", () => {
     ).toEqual(["Published table"]);
   });
 
-  it("opens the collection modal with Library-only picker options", async () => {
+  it("opens the collection modal with Library and snippets picker options", async () => {
     const { store } = setup({
       user: fullPermissionsUser,
       dataCollectionId: 42,
@@ -161,6 +155,7 @@ describe("CreateMenu", () => {
       props: {
         inDataStudio: true,
         initialCollectionId: 42,
+        namespaces: [null, "snippets"],
         pickerOptions: {
           hasLibrary: true,
           hasRootCollection: false,
@@ -172,6 +167,22 @@ describe("CreateMenu", () => {
         },
         showAuthorityLevelPicker: false,
       },
+    });
+  });
+
+  it("opens the collection modal scoped to snippets when only native write is available", async () => {
+    const { store } = setup({
+      user: { permissions: { can_create_native_queries: true } },
+      canWriteToDataCollection: false,
+      canWriteToMetricCollection: false,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
+
+    expect(store.getState().modal.props).toMatchObject({
+      initialCollectionId: null,
+      namespaces: ["snippets"],
     });
   });
 

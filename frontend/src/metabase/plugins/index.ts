@@ -46,7 +46,6 @@ export {
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
   PLUGIN_REDUCERS,
@@ -118,7 +117,6 @@ export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
-  type SnippetFormModalProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
 } from "./oss/snippets";

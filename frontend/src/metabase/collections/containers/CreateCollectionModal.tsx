@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
@@ -22,7 +23,7 @@ export interface CreateCollectionModalOwnProps extends Omit<
 > {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
-  inDataStudio?: boolean;
+  shouldNavigateOnCreate?: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -44,7 +45,7 @@ function CreateCollectionModal({
   onChangeLocation,
   onClose,
   handleCreateCollection,
-  inDataStudio,
+  shouldNavigateOnCreate = true,
   ...props
 }: Props) {
   const handleCreate = useCallback(
@@ -54,11 +55,17 @@ function CreateCollectionModal({
 
       if (typeof onCreate === "function") {
         onCreate(collection);
+        onClose();
       } else {
         onClose();
+
+        if (!shouldNavigateOnCreate) {
+          return;
+        }
+
         let visitUrl = Urls.collection(collection);
 
-        if (inDataStudio) {
+        if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
           visitUrl = Urls.dataStudioLibrary({
             expandedIds: getCollectionPathAsArray(collection),
           });
@@ -67,7 +74,13 @@ function CreateCollectionModal({
         onChangeLocation(visitUrl);
       }
     },
-    [handleCreateCollection, onCreate, onClose, inDataStudio, onChangeLocation],
+    [
+      handleCreateCollection,
+      onCreate,
+      onClose,
+      onChangeLocation,
+      shouldNavigateOnCreate,
+    ],
   );
 
   useEscapeToCloseModal(onClose);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { t } from "ttag";
@@ -25,7 +25,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
@@ -44,6 +44,7 @@ export interface CreateCollectionProperties {
   name: string;
   description: string | null;
   parent_id: Collection["id"] | null;
+  namespace?: CollectionNamespace;
 }
 
 export interface CreateCollectionFormOwnProps {
@@ -54,6 +55,7 @@ export interface CreateCollectionFormOwnProps {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   showCollectionPicker?: boolean;
   pickerOptions?: EntityPickerOptions;
+  namespaces?: CollectionNamespace[];
   showAuthorityLevelPicker?: boolean;
 }
 
@@ -81,6 +83,7 @@ function CreateCollectionForm({
   filterPersonalCollections,
   showCollectionPicker = true,
   pickerOptions,
+  namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
   const defaultInitialCollectionId = useInitialCollectionId({
@@ -105,11 +108,27 @@ function CreateCollectionForm({
   const [selectedParentCollection, setSelectedParentCollection] =
     useState<OmniPickerItem | null>(null);
 
+  const handleSubmit = useCallback(
+    (values: CreateCollectionProperties) => {
+      const parentCollection = selectedParentCollection ?? initialCollection;
+      const namespace =
+        parentCollection && "namespace" in parentCollection
+          ? parentCollection.namespace
+          : namespaces?.[0];
+
+      onSubmit({
+        ...values,
+        namespace: namespace ?? undefined,
+      });
+    },
+    [initialCollection, namespaces, onSubmit, selectedParentCollection],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={COLLECTION_SCHEMA}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ dirty }) => {
         const parentCollection = selectedParentCollection ?? initialCollection;
@@ -137,7 +156,10 @@ function CreateCollectionForm({
             />
             {showCollectionPicker && (
               <FormCollectionPicker
-                collectionPickerModalProps={{ options: pickerOptions }}
+                collectionPickerModalProps={{
+                  options: pickerOptions,
+                  namespaces,
+                }}
                 entityType="collection"
                 filterPersonalCollections={filterPersonalCollections}
                 mb="1rem"
