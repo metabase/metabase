@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { ExplorationMetric } from "metabase/explorations/types";
 import { COORDINATE, LOCATION } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
@@ -10,7 +11,7 @@ import {
   isString,
   isStringLike,
 } from "metabase-lib/v1/types/utils/isa";
-import type { MetricDimension } from "metabase-types/api";
+import type { DimensionId, MetricDimension } from "metabase-types/api";
 
 export type DimensionGroupKey =
   | "date"
@@ -177,4 +178,36 @@ export function groupDimensionsBySource(dimensions: MetricDimension[]) {
       dimensions,
     };
   });
+}
+
+export function removeMetricFromSelection(
+  metrics: ExplorationMetric[],
+  dimensions: MetricDimension[],
+  metricId: ExplorationMetric["id"],
+): { metrics: ExplorationMetric[]; dimensions: MetricDimension[] } {
+  const removed = metrics.find((m) => m.id === metricId);
+  const nextMetrics = metrics.filter((m) => m.id !== metricId);
+
+  if (!removed) {
+    return { metrics: nextMetrics, dimensions };
+  }
+
+  const stillUsedDimIds = new Set<DimensionId>();
+  for (const m of nextMetrics) {
+    for (const id of m.dimension_ids) {
+      stillUsedDimIds.add(id);
+    }
+  }
+  const removedDimIds = new Set(removed.dimension_ids);
+  const nextDimensions = dimensions.filter(
+    (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
+  );
+
+  // Return the original reference when no dimensions were dropped so
+  // callers can cheaply skip a redundant `setDimensions` write.
+  return {
+    metrics: nextMetrics,
+    dimensions:
+      nextDimensions.length === dimensions.length ? dimensions : nextDimensions,
+  };
 }

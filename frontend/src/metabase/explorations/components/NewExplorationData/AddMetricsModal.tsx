@@ -26,6 +26,7 @@ import type {
 import S from "./AddMetricsModal.module.css";
 import { DimensionList } from "./DimensionList";
 import { MetricList } from "./MetricList";
+import { removeMetricFromSelection } from "./utils";
 
 export interface AddMetricsModalProps {
   opened: boolean;
@@ -143,18 +144,13 @@ export function AddMetricsModal({
   const toggleMetric = useCallback(
     (metric: ExplorationMetric) => {
       if (selectedMetricIds.has(metric.id)) {
-        const nextMetrics = selectedMetrics.filter((m) => m.id !== metric.id);
+        const { metrics: nextMetrics, dimensions: nextDimensions } =
+          removeMetricFromSelection(
+            selectedMetrics,
+            selectedDimensions,
+            metric.id,
+          );
         setSelectedMetrics(nextMetrics);
-        const stillUsedDimIds = new Set<DimensionId>();
-        for (const m of nextMetrics) {
-          for (const id of m.dimension_ids) {
-            stillUsedDimIds.add(id);
-          }
-        }
-        const removedDimIds = new Set(metric.dimension_ids);
-        const nextDimensions = selectedDimensions.filter(
-          (d) => !removedDimIds.has(d.id) || stillUsedDimIds.has(d.id),
-        );
         setSelectedDimensions(nextDimensions);
       } else {
         setSelectedMetrics([...selectedMetrics, metric]);

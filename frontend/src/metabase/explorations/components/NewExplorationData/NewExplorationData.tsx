@@ -28,7 +28,7 @@ import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat"
 import { AddMetricsModal } from "./AddMetricsModal";
 import { AddTimelinesModal } from "./AddTimelinesModal";
 import S from "./NewExplorationData.module.css";
-import { groupDimensionsBySource } from "./utils";
+import { groupDimensionsBySource, removeMetricFromSelection } from "./utils";
 
 export interface NewExplorationDataProps {
   metrics: ExplorationMetric[];
@@ -136,9 +136,18 @@ export function NewExplorationData({
                 <Text>{t`Metrics`}</Text>
                 <PillList
                   items={metrics}
-                  onRemove={(id) =>
-                    setMetrics(metrics.filter((metric) => metric.id !== id))
-                  }
+                  onRemove={(id) => {
+                    const { metrics: nextMetrics, dimensions: nextDimensions } =
+                      removeMetricFromSelection(
+                        metrics,
+                        dimensions,
+                        id as ExplorationMetric["id"],
+                      );
+                    setMetrics(nextMetrics);
+                    if (nextDimensions !== dimensions) {
+                      setDimensions(nextDimensions);
+                    }
+                  }}
                 />
                 <Text>{t`Dimensions`}</Text>
                 <PillList
