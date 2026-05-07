@@ -1,0 +1,23 @@
+.Root {
+  margin: 0 var(--mantine-spacing-md) var(--mantine-spacing-md);
+}
+
+.IconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--mb-color-brand);
+}
+
+.DismissIconButtonWrapper {
+  color: var(--mb-color-text-tertiary);
+}
+
+.DismissIconButtonWrapper:hover {
+  color: var(--mb-color-text-secondary);
+}
+
+.Body {
+  color: var(--mb-color-text-secondary);
+}

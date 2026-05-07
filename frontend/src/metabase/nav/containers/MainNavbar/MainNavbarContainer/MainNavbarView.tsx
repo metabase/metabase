@@ -21,7 +21,6 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -328,9 +327,6 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-          <div>
-            <WhatsNewNotification />
-          </div>
         </div>
       </SidebarContentRoot>
 

@@ -5,12 +5,14 @@ import { SecurityCenterBanner } from "./components/SecurityCenterBanner/Security
 import { SecurityCenterMobileNavItem } from "./components/SecurityCenterNavItem/SecurityCenterMobileNavItem";
 import { SecurityCenterNavItem } from "./components/SecurityCenterNavItem/SecurityCenterNavItem";
 import { SecurityCenterPage } from "./components/SecurityCenterPage/SecurityCenterPage";
+import { SecurityCenterPromoCard } from "./components/SecurityCenterPromoCard/SecurityCenterPromoCard";
 
 export function initializePlugin() {
   if (hasPremiumFeature("admin_security_center")) {
     PLUGIN_SECURITY_CENTER.isEnabled = true;
     PLUGIN_SECURITY_CENTER.SecurityCenterPage = SecurityCenterPage;
     PLUGIN_SECURITY_CENTER.SecurityCenterBanner = SecurityCenterBanner;
+    PLUGIN_SECURITY_CENTER.SecurityCenterPromoCard = SecurityCenterPromoCard;
     PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityCenterNavItem;
     PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem =
       SecurityCenterMobileNavItem;

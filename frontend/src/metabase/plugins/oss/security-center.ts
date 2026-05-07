@@ -10,6 +10,7 @@ type SecurityCenterPlugin = {
   isEnabled: boolean;
   SecurityCenterPage: ComponentType;
   SecurityCenterBanner: ComponentType;
+  SecurityCenterPromoCard: ComponentType;
   SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
   SecurityCenterMobileNavItem: ComponentType<SecurityCenterNavItemProps>;
 };
@@ -18,6 +19,7 @@ const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
   SecurityCenterPage: PluginPlaceholder,
   SecurityCenterBanner: PluginPlaceholder,
+  SecurityCenterPromoCard: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,
   SecurityCenterMobileNavItem: PluginPlaceholder,
 });

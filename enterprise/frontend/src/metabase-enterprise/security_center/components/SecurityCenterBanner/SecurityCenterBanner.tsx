@@ -1,4 +1,3 @@
-import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
@@ -13,21 +12,6 @@ import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";
 
-const DISMISSED_KEY = "security-center-banner-dismissed";
-
-function useDismissed() {
-  const [dismissed, setDismissedState] = useState(
-    () => localStorage.getItem(DISMISSED_KEY) === "true",
-  );
-
-  const dismiss = useCallback(() => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-    setDismissedState(true);
-  }, []);
-
-  return { dismissed, dismiss };
-}
-
 export function SecurityCenterBanner() {
   const tokenFeatures = useSetting("token-features");
   const plan = getPlan(tokenFeatures);
@@ -35,7 +19,6 @@ export function SecurityCenterBanner() {
     useGetChannelInfoQuery();
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
     useListSecurityAdvisoriesQuery();
-  const { dismissed, dismiss } = useDismissed();
 
   if (plan !== "pro-self-hosted") {
     return null;
@@ -55,7 +38,7 @@ export function SecurityCenterBanner() {
   const advisories = advisoriesResponse?.advisories ?? [];
   const hasActiveAdvisory = advisories.some(isAffected);
 
-  if (dismissed && !hasActiveAdvisory) {
+  if (!hasActiveAdvisory) {
     return null;
   }
 
@@ -75,30 +58,12 @@ export function SecurityCenterBanner() {
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins on self-hosted instances
   const body = jt`Please configure notification channels in the ${securityCenterLink} so that you get notified about security vulnerabilities in your Metabase instance`;
 
-  if (hasActiveAdvisory) {
-    return (
-      <Banner
-        contentGroupProps={{ wrap: "nowrap" }}
-        icon="warning_round_filled"
-        bg="error"
-        body={<Text lh="inherit">{body}</Text>}
-        py="md"
-      />
-    );
-  }
-
   return (
     <Banner
       contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
-      bg="warning"
-      body={
-        <Text lh="inherit" c="text-primary">
-          {body}
-        </Text>
-      }
-      closable
-      onClose={dismiss}
+      bg="error"
+      body={<Text lh="inherit">{body}</Text>}
       py="md"
     />
   );

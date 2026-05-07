@@ -3,7 +3,7 @@ import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import {
@@ -12,7 +12,9 @@ import {
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
-import { SecurityCenterBanner } from "./SecurityCenterBanner";
+import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
+
+const DISMISSED_KEY = "security-center-promo-dismissed";
 
 interface SetupOpts {
   isProSelfHosted?: boolean;
@@ -50,70 +52,90 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterBanner} />, {
+  renderWithProviders(<Route path="*" component={SecurityCenterPromoCard} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,
   });
 }
 
-describe("SecurityCenterBanner", () => {
-  it("does not render when there is no active advisory", async () => {
+describe("SecurityCenterPromoCard", () => {
+  afterEach(() => {
+    localStorage.removeItem(DISMISSED_KEY);
+  });
+
+  it("renders the promo when no channels are configured and no active advisory", async () => {
     setup();
 
-    await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/Stay on top of Metabase security/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Set up notifications/i }),
+    ).toHaveAttribute("href", "/admin/security-center?open=notifications");
   });
 
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
     await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Stay on top of Metabase security/),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
     setup({ slackConfigured: true });
 
     await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Stay on top of Metabase security/),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
     setup({ isProSelfHosted: false });
 
     await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("renders error banner with active advisories", async () => {
-    setup({
-      advisories: [createAdvisory({ match_status: "active" })],
-    });
-
     expect(
-      await screen.findByText(/Please configure notification channels/),
-    ).toBeInTheDocument();
+      screen.queryByText(/Stay on top of Metabase security/),
+    ).not.toBeInTheDocument();
   });
 
-  it("is not dismissible", async () => {
+  it("does not render when there is an active advisory (red banner takes over)", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    await screen.findByText(/Please configure notification channels/);
-    expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
+    await screen.findByText(() => false).catch(() => {});
+    expect(
+      screen.queryByText(/Stay on top of Metabase security/),
+    ).not.toBeInTheDocument();
   });
 
-  it("includes a link to security center notification settings", async () => {
-    setup({
-      advisories: [createAdvisory({ match_status: "active" })],
-    });
+  it("is dismissible", async () => {
+    setup();
 
-    const link = await screen.findByText("Security center");
-    expect(link).toHaveAttribute(
-      "href",
-      "/admin/security-center?open=notifications",
-    );
+    await screen.findByText(/Stay on top of Metabase security/);
+    const close = screen.getByRole("button", { name: /close/i });
+    close.click();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Stay on top of Metabase security/),
+      ).not.toBeInTheDocument();
+    });
+    expect(localStorage.getItem(DISMISSED_KEY)).toBe("true");
+  });
+
+  it("stays hidden after dismissal", async () => {
+    localStorage.setItem(DISMISSED_KEY, "true");
+
+    setup();
+
+    await screen.findByText(() => false).catch(() => {});
+    expect(
+      screen.queryByText(/Stay on top of Metabase security/),
+    ).not.toBeInTheDocument();
   });
 });
