@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -43,6 +44,7 @@ import {
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdminNotification,
   CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
@@ -93,6 +95,9 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
 
 type CreateOrEditQuestionAlertModalWithQuestionProps = {
   onClose: () => void;
+  skipUrlUpdate?: boolean;
+  extraSection?: ReactNode;
+  additionalSubmit?: () => Promise<boolean>;
 } & (
   | {
       editingNotification?: undefined;
@@ -100,7 +105,7 @@ type CreateOrEditQuestionAlertModalWithQuestionProps = {
       onAlertUpdated?: () => void;
     }
   | {
-      editingNotification: Notification;
+      editingNotification: Notification | AdminNotification;
       onAlertUpdated: () => void;
       onAlertCreated?: () => void;
     }
@@ -116,6 +121,9 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
   onAlertCreated,
   onAlertUpdated,
   onClose,
+  skipUrlUpdate,
+  extraSection,
+  additionalSubmit,
 }: CreateOrEditQuestionAlertModalWithQuestionProps) => {
   const question = useSelector(getQuestion);
 
@@ -126,6 +134,9 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdated}
         onClose={onClose}
+        skipUrlUpdate={skipUrlUpdate}
+        extraSection={extraSection}
+        additionalSubmit={additionalSubmit}
       />
     );
   } else {
@@ -134,6 +145,9 @@ export const CreateOrEditQuestionAlertModalWithQuestion = ({
         question={question}
         onAlertCreated={onAlertCreated}
         onClose={onClose}
+        skipUrlUpdate={skipUrlUpdate}
+        extraSection={extraSection}
+        additionalSubmit={additionalSubmit}
       />
     );
   }
@@ -145,6 +159,9 @@ export const CreateOrEditQuestionAlertModal = ({
   onAlertUpdated,
   onClose,
   question,
+  skipUrlUpdate,
+  extraSection,
+  additionalSubmit,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
   const visualizationSettings = useSelector(getVisualizationSettings);
@@ -238,6 +255,13 @@ export const CreateOrEditQuestionAlertModal = ({
         return;
       }
 
+      if (additionalSubmit) {
+        const ok = await additionalSubmit();
+        if (!ok) {
+          return;
+        }
+      }
+
       dispatch(
         addUndo({
           message: isEditMode
@@ -252,7 +276,9 @@ export const CreateOrEditQuestionAlertModal = ({
         onAlertCreated();
       }
 
-      await dispatch(updateUrl(question, { dirty: false }));
+      if (!skipUrlUpdate) {
+        await dispatch(updateUrl(question, { dirty: false }));
+      }
     }
   };
 
@@ -402,6 +428,8 @@ export const CreateOrEditQuestionAlertModal = ({
             />
           </AlertModalSettingsBlock>
         )}
+
+        {extraSection}
 
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch

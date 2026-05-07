@@ -1,15 +1,27 @@
-import { Children, Fragment } from "react";
+import { Children, Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useAdminNotificationDetailQuery,
+  useBulkNotificationActionMutation,
+  useGetCardQuery,
   useListTaskRunsQuery,
+  useListUsersQuery,
 } from "metabase/api";
 import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ADMIN_NAVBAR_HEIGHT } from "metabase/nav/constants";
+import {
+  AlertModalSettingsBlock,
+  CreateOrEditQuestionAlertModal,
+} from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { useDispatch, useSelector } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   ActionIcon,
   Anchor,
@@ -20,12 +32,13 @@ import {
   Flex,
   Group,
   Icon,
-  Menu,
+  Select,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import Question from "metabase-lib/v1/Question";
 import type {
   AdminNotificationDetail,
   NotificationChannelType,
@@ -37,6 +50,7 @@ import type {
   NotificationRecipient,
   TaskRun,
   TaskRunStatus,
+  UserId,
 } from "metabase-types/api";
 
 import { formatRelativeDate, getChannelIconName } from "./utils";
@@ -48,18 +62,12 @@ type Props = {
   notificationId: NotificationId;
   isBulkLoading: boolean;
   onClose: () => void;
-  onArchive: (notification: AdminNotificationDetail) => void;
-  onUnarchive: (notification: AdminNotificationDetail) => void;
-  onChangeOwner: (notification: AdminNotificationDetail) => void;
 };
 
 export const NotificationDetailSidebar = ({
   notificationId,
   isBulkLoading,
   onClose,
-  onArchive,
-  onUnarchive,
-  onChangeOwner,
 }: Props) => {
   const {
     data: notification,
@@ -67,42 +75,51 @@ export const NotificationDetailSidebar = ({
     isLoading,
   } = useAdminNotificationDetailQuery(notificationId);
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   return (
-    <Drawer
-      opened
-      onClose={onClose}
-      position="right"
-      size={SIDEBAR_WIDTH}
-      withCloseButton={false}
-      padding={0}
-      withOverlay={false}
-      lockScroll={false}
-      shadow="lg"
-      styles={{
-        inner: {
-          top: ADMIN_NAVBAR_HEIGHT,
-          height: `calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`,
-        },
-      }}
-    >
-      <Stack gap={0} h="100%">
-        <SidebarHeader
-          isBulkLoading={isBulkLoading}
+    <>
+      <Drawer
+        opened
+        onClose={onClose}
+        position="right"
+        size={SIDEBAR_WIDTH}
+        withCloseButton={false}
+        padding={0}
+        withOverlay={false}
+        lockScroll={false}
+        shadow="lg"
+        styles={{
+          inner: {
+            top: ADMIN_NAVBAR_HEIGHT,
+            height: `calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`,
+          },
+        }}
+      >
+        <Stack gap={0} h="100%">
+          <SidebarHeader
+            isBulkLoading={isBulkLoading}
+            notification={notification}
+            onClose={onClose}
+            onEdit={() => setIsEditModalOpen(true)}
+          />
+          <Box px="xl" pb="xl" style={{ overflowY: "auto" }} flex={1}>
+            {isLoading || error || !notification ? (
+              <LoadingAndErrorWrapper loading={isLoading} error={error} />
+            ) : (
+              <SidebarBody notification={notification} />
+            )}
+          </Box>
+        </Stack>
+      </Drawer>
+      {isEditModalOpen && notification && (
+        <NotificationEditModalLoader
           notification={notification}
-          onClose={onClose}
-          onArchive={onArchive}
-          onUnarchive={onUnarchive}
-          onChangeOwner={onChangeOwner}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdated={() => setIsEditModalOpen(false)}
         />
-        <Box px="xl" pb="xl" style={{ overflowY: "auto" }} flex={1}>
-          {isLoading || error || !notification ? (
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
-          ) : (
-            <SidebarBody notification={notification} />
-          )}
-        </Box>
-      </Stack>
-    </Drawer>
+      )}
+    </>
   );
 };
 
@@ -110,18 +127,14 @@ type SidebarHeaderProps = {
   isBulkLoading: boolean;
   notification: AdminNotificationDetail | undefined;
   onClose: () => void;
-  onArchive: (notification: AdminNotificationDetail) => void;
-  onUnarchive: (notification: AdminNotificationDetail) => void;
-  onChangeOwner: (notification: AdminNotificationDetail) => void;
+  onEdit: () => void;
 };
 
 const SidebarHeader = ({
   isBulkLoading,
   notification,
   onClose,
-  onArchive,
-  onUnarchive,
-  onChangeOwner,
+  onEdit,
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
 
@@ -129,41 +142,12 @@ const SidebarHeader = ({
     <Box px="xl" pt="lg" pb="md">
       <Flex justify="flex-end" align="center" mb="md">
         <Group gap={4}>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon
-                aria-label={t`More actions`}
-                size="lg"
-                disabled={notification == null || isBulkLoading}
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {notification?.active ? (
-                <Menu.Item
-                  leftSection={<Icon name="archive" />}
-                  onClick={() => notification && onArchive(notification)}
-                >
-                  {t`Archive`}
-                </Menu.Item>
-              ) : (
-                <Menu.Item
-                  leftSection={<Icon name="unarchive" />}
-                  onClick={() => notification && onUnarchive(notification)}
-                >
-                  {t`Unarchive`}
-                </Menu.Item>
-              )}
-              <Menu.Item
-                leftSection={<Icon name="person" />}
-                onClick={() => notification && onChangeOwner(notification)}
-              >
-                {t`Change owner`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-          <ActionIcon aria-label={t`Edit`} size="lg" disabled={true}>
+          <ActionIcon
+            aria-label={t`Edit`}
+            size="lg"
+            disabled={notification == null || isBulkLoading}
+            onClick={onEdit}
+          >
             <Icon name="pencil" />
           </ActionIcon>
           <ActionIcon aria-label={t`Close`} size="lg" onClick={onClose}>
@@ -761,5 +745,148 @@ const DetailsRow = ({ label, value, bold, spanLabel }: DetailsRowProps) => {
         )}
       </Flex>
     </Flex>
+  );
+};
+
+type NotificationEditModalLoaderProps = {
+  notification: AdminNotificationDetail;
+  onClose: () => void;
+  onUpdated: () => void;
+};
+
+const NotificationEditModalLoader = ({
+  notification,
+  onClose,
+  onUpdated,
+}: NotificationEditModalLoaderProps) => {
+  const cardId = notification.payload?.card_id;
+  const dispatch = useDispatch();
+  const metadata = useSelector(getMetadata);
+
+  const { data: card, isFetching } = useGetCardQuery(
+    cardId != null ? { id: cardId } : skipToken,
+  );
+
+  useEffect(() => {
+    if (card) {
+      dispatch(loadMetadataForCard(card));
+    }
+  }, [card, dispatch]);
+
+  const question = useMemo(() => {
+    if (!card || isFetching) {
+      return undefined;
+    }
+    return new Question(card, metadata);
+  }, [card, isFetching, metadata]);
+
+  const initialOwnerId = notification.owner_id ?? notification.owner.id;
+  const [selectedOwnerId, setSelectedOwnerId] =
+    useState<UserId>(initialOwnerId);
+  const [bulkAction] = useBulkNotificationActionMutation();
+
+  const handleOwnerSubmit = async () => {
+    if (selectedOwnerId === initialOwnerId) {
+      return true;
+    }
+    const result = await bulkAction({
+      notification_ids: [notification.id],
+      action: "change-owner",
+      owner_id: selectedOwnerId,
+    });
+    if (result.error) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Could not change owner.`,
+        }),
+      );
+      return false;
+    }
+    return true;
+  };
+
+  if (cardId == null || !question) {
+    return null;
+  }
+
+  return (
+    <CreateOrEditQuestionAlertModal
+      question={question}
+      editingNotification={notification}
+      skipUrlUpdate
+      extraSection={
+        <OwnerSection
+          notification={notification}
+          selectedOwnerId={selectedOwnerId}
+          onChange={setSelectedOwnerId}
+        />
+      }
+      additionalSubmit={handleOwnerSubmit}
+      onAlertUpdated={onUpdated}
+      onClose={onClose}
+    />
+  );
+};
+
+type OwnerSectionProps = {
+  notification: AdminNotificationDetail;
+  selectedOwnerId: UserId;
+  onChange: (ownerId: UserId) => void;
+};
+
+const OwnerSection = ({
+  notification,
+  selectedOwnerId,
+  onChange,
+}: OwnerSectionProps) => {
+  const currentOwner = notification.owner;
+  const { data, isLoading } = useListUsersQuery({ limit: 500 });
+
+  const options = useMemo(() => {
+    const users = data?.data ?? [];
+    const activeOptions = users
+      .filter((user) => user.is_active)
+      .map((user) => ({
+        value: String(user.id),
+        label: user.common_name || user.email,
+      }));
+    const hasCurrent = activeOptions.some(
+      (option) => option.value === String(currentOwner.id),
+    );
+    if (!hasCurrent) {
+      const label =
+        currentOwner.common_name || currentOwner.email || t`Unknown`;
+      activeOptions.unshift({
+        value: String(currentOwner.id),
+        label:
+          currentOwner.is_active === false ? t`${label} (deactivated)` : label,
+      });
+    }
+    return activeOptions;
+  }, [data, currentOwner]);
+
+  return (
+    <AlertModalSettingsBlock title={t`Who owns this alert?`}>
+      <Flex align="center" gap="md">
+        <Text fw="bold" size="md" c="text-primary" w={56}>
+          {t`Owner`}
+        </Text>
+        <Select
+          flex={1}
+          data={options}
+          value={String(selectedOwnerId)}
+          placeholder={isLoading ? t`Loading…` : t`Select a user`}
+          onChange={(value) => {
+            if (value != null) {
+              onChange(Number(value));
+            }
+          }}
+          searchable
+          nothingFoundMessage={t`No users found`}
+        />
+      </Flex>
+    </AlertModalSettingsBlock>
   );
 };

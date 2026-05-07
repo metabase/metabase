@@ -229,31 +229,6 @@ export const NotificationsAdminPage = ({
     });
   }, [unarchiveIds, selectedIds, showConfirm]);
 
-  const handleSidebarArchive = useCallback(
-    (id: NotificationId) => {
-      showConfirm({
-        title: t`Archive this alert?`,
-        message: t`Recipients will stop receiving this alert.`,
-        confirmButtonText: t`Archive`,
-        confirmButtonProps: { color: "danger" },
-        onConfirm: () => archiveIds([id], false),
-      });
-    },
-    [archiveIds, showConfirm],
-  );
-
-  const handleSidebarUnarchive = useCallback(
-    (id: NotificationId) => {
-      showConfirm({
-        title: t`Unarchive this alert?`,
-        message: t`Recipients will begin receiving this alert again on the next scheduled run.`,
-        confirmButtonText: t`Unarchive`,
-        onConfirm: () => unarchiveIds([id], false),
-      });
-    },
-    [unarchiveIds, showConfirm],
-  );
-
   const handleChangeOwnerConfirm = useCallback(
     async (ownerId: UserId) => {
       if (!changeOwnerTarget) {
@@ -352,13 +327,6 @@ export const NotificationsAdminPage = ({
           notificationId={notificationId}
           isBulkLoading={isBulkLoading}
           onClose={handleSidebarClose}
-          onArchive={(notification) => handleSidebarArchive(notification.id)}
-          onUnarchive={(notification) =>
-            handleSidebarUnarchive(notification.id)
-          }
-          onChangeOwner={(notification) =>
-            setChangeOwnerTarget({ ids: [notification.id], isBulk: false })
-          }
         />
       )}
 
