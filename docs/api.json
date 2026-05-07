@@ -8304,6 +8304,8 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema..stage.valid-refs"
         }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive"
+        }, {
           "allOf" : [ ]
         } ]
       },
@@ -8355,6 +8357,9 @@
         }, {
           "allOf" : [ ]
         } ]
+      },
+      "metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive" : {
+        "description" : "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
       },
       "metabase.lib.schema..stage.type" : {
         "type" : "string",
