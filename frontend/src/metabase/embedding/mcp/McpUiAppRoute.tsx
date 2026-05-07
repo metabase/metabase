@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useMemo } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
@@ -26,6 +27,61 @@ const SimpleLoader = () => (
     <span className="mcp-spinner" />
   </div>
 );
+
+function McpQuestionLayout({
+  app,
+  instanceUrl,
+  visualizationHeight,
+}: {
+  app: ReturnType<typeof useMcpApp>["app"];
+  instanceUrl: string;
+  visualizationHeight: string;
+}) {
+  const navigation = useSdkInternalNavigationOptional();
+
+  const isDrillThroughActive =
+    navigation?.currentEntry?.type === "question-drill";
+
+  const titleStyle: CSSProperties = {
+    flexShrink: 0,
+    marginLeft: isDrillThroughActive ? 12 : undefined,
+  };
+
+  const bodyStyle: CSSProperties = {
+    overflow: "hidden",
+    marginLeft: isDrillThroughActive ? 12 : undefined,
+    marginRight: isDrillThroughActive ? 24 : undefined,
+  };
+
+  return (
+    <Flex
+      direction="column"
+      justify="space-between"
+      h="100%"
+      py="lg"
+      gap="sm"
+      data-drill-through-active={isDrillThroughActive || undefined}
+    >
+      <Box px={isDrillThroughActive ? 0 : "lg"} style={titleStyle}>
+        <Stack align="flex-start" gap="xs">
+          <SdkInternalNavigationBackButton label="Back" />
+
+          <Box px={isDrillThroughActive ? "26px" : "md"} py="sm">
+            <McpQuestionTitle />
+          </Box>
+        </Stack>
+      </Box>
+
+      <Flex px={isDrillThroughActive ? "md" : "xs"} flex={1} style={bodyStyle}>
+        <SdkQuestion.QuestionVisualization height={visualizationHeight} />
+      </Flex>
+
+      <Flex px="lg">
+        <McpQueryBar app={app} instanceUrl={instanceUrl} />
+      </Flex>
+    </Flex>
+  );
+}
 
 export function McpUiAppRoute() {
   const { query, hostContext, app, isClaude } = useMcpApp();
@@ -111,29 +167,11 @@ export function McpUiAppRoute() {
         withChartTypeSelector={false}
         onDrillThrough={handleDrillThrough}
       >
-        <Flex
-          direction="column"
-          justify="space-between"
-          h="100%"
-          py="lg"
-          gap="sm"
-        >
-          <Box px="lg" style={{ flexShrink: 0 }}>
-            <Stack align="flex-start" gap="xs">
-              <SdkInternalNavigationBackButton label="Back" />
-
-              <McpQuestionTitle />
-            </Stack>
-          </Box>
-
-          <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
-            <SdkQuestion.QuestionVisualization height={visualizationHeight} />
-          </Flex>
-
-          <Flex px="lg">
-            <McpQueryBar app={app} instanceUrl={instanceUrl} />
-          </Flex>
-        </Flex>
+        <McpQuestionLayout
+          app={app}
+          instanceUrl={instanceUrl}
+          visualizationHeight={visualizationHeight}
+        />
       </SdkQuestion>
     );
   };

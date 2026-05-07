@@ -45,7 +45,7 @@ export function McpQuestionTitle() {
   }
 
   return (
-    <Text fw={700} fz="h3" px="md" py="sm" truncate>
+    <Text fw={700} fz="h3" truncate>
       {title}
     </Text>
   );
