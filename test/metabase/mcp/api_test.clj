@@ -610,7 +610,23 @@
                                                  {:uri "metabase://does/not/exist"})
                                 {"mcp-session-id" session-id})]
       (is (= 200 (:status response)))
-      (is (= -32602 (get-in response [:body :error :code]))))))
+      (is (= -32602 (get-in response [:body :error :code])))))
+  (testing "resources/read with missing :uri reports the missing parameter"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read" {})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (=? {:error {:code    -32602
+                       :message #(str/starts-with? % "Missing required parameter")}}
+              (:body response)))))
+  (testing "resources/read with a blank :uri reports the missing parameter (not 'Resource not found')"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read" {:uri ""})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (=? {:error {:code    -32602
+                       :message #(str/starts-with? % "Missing required parameter")}}
+              (:body response))))))
 
 (def ^:private scoped-test-uri "test://mcp/api-test/scoped")
 

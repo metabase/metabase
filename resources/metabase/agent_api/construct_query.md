@@ -12,9 +12,9 @@ IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `
 
 ## Workflow
 
-1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.
+1. Use `search` and the entity-detail tools (`get_table`, `get_metric`) to find the table/metric/model and its fields.
 2. Call `construct_query` with the program. You get back `{"query": "<base64>"}`.
-3. Pass that string to `execute_query` or `visualize_query`.
+3. Pass that string to `execute_query`.
 
 Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.
 

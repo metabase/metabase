@@ -48,27 +48,26 @@
       (is (contains? uris public-uri))
       (is (contains? uris private-uri)))))
 
-(deftest check-resource-access-test
-  (testing "scopeless resources are accessible to any caller"
-    (is (= :ok (mcp.resources/check-resource-access public-uri #{}))))
-  (testing "scoped resources require the matching scope"
-    (is (= :scope-denied (mcp.resources/check-resource-access private-uri #{"agent:other"})))
-    (is (= :ok           (mcp.resources/check-resource-access private-uri #{"agent:search"})))
-    (is (= :ok           (mcp.resources/check-resource-access private-uri #{"agent:*"}))))
-  (testing "unknown URIs return :not-found"
-    (is (= :not-found (mcp.resources/check-resource-access "test://nope" #{::scope/unrestricted})))))
-
 (deftest read-resource-test
-  (testing "read-resource returns the rendered text under the contents key"
-    (is (=? {:contents [{:uri      public-uri
+  (testing "scopeless resources render :ok with the contents payload for any caller"
+    (is (=? {:status   :ok
+             :contents [{:uri      public-uri
                          :mimeType "text/plain"
                          :text     "public body"}]}
-            (mcp.resources/read-resource public-uri {}))))
-  (testing "read-resource returns nil for unknown URIs"
-    (is (nil? (mcp.resources/read-resource "test://nope" {}))))
-  (testing "read-resource does not enforce scope — callers must gate via check-resource-access"
-    (is (some? (mcp.resources/read-resource private-uri {}))
-        "scope-protected resource is rendered when called directly; gating is the caller's job")))
+            (mcp.resources/read-resource public-uri #{} {}))))
+  (testing "scoped resources require a matching token-scope"
+    (is (=? {:status :scope-denied}
+            (mcp.resources/read-resource private-uri #{"agent:other"} {})))
+    (is (=? {:status :ok :contents [{:text "private body"}]}
+            (mcp.resources/read-resource private-uri #{"agent:search"} {})))
+    (is (=? {:status :ok}
+            (mcp.resources/read-resource private-uri #{"agent:*"} {}))))
+  (testing "::scope/unrestricted token-scopes match scoped resources"
+    (is (=? {:status :ok}
+            (mcp.resources/read-resource private-uri #{::scope/unrestricted} {}))))
+  (testing "unknown URIs return :not-found regardless of scope"
+    (is (=? {:status :not-found}
+            (mcp.resources/read-resource "test://nope" #{::scope/unrestricted} {})))))
 
 (deftest builtin-construct-query-resource-test
   (testing "the construct-query reference is registered as a public markdown resource"

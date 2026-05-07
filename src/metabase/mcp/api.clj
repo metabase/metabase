@@ -91,10 +91,14 @@
 
 (defn- handle-resources-read [id params token-scopes]
   (let [uri (:uri params)]
-    (case (mcp.resources/check-resource-access uri token-scopes)
-      (:not-found
-       :scope-denied) (jsonrpc-error id -32602 "Resource not found")
-      :ok             (jsonrpc-response id (mcp.resources/read-resource uri {})))))
+    (if (or (not (string? uri)) (str/blank? uri))
+      (jsonrpc-error id -32602 "Missing required parameter: uri")
+      (let [{:keys [status contents]} (mcp.resources/read-resource uri token-scopes {})]
+        ;; :not-found and :scope-denied collapse to the same generic error so we
+        ;; don't leak resource existence to callers without scope.
+        (case status
+          (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
+          :ok                        (jsonrpc-response id {:contents contents}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))

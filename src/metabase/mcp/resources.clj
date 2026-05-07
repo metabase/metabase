@@ -38,25 +38,20 @@
                           (map #(select-keys % [:uri :name :description :mimeType])))
                     (vals @registry))})
 
-(defn check-resource-access
-  "Return `:ok`, `:not-found`, or `:scope-denied` for `uri` under `token-scopes`.
-   Callers should use this to distinguish missing from forbidden — `read-resource`
-   collapses both to nil."
-  [uri token-scopes]
-  (if-let [{:keys [scope]} (get @registry uri)]
-    (if (mcp.scope/public-or-matches? token-scopes scope)
-      :ok
-      :scope-denied)
-    :not-found))
-
 (defn read-resource
-  "Render a registered resource by URI. Returns nil for unknown URIs; does NOT
-   enforce scope. Callers must gate access via [[check-resource-access]] first —
-   this is the contract `handle-resources-read` relies on."
-  [uri opts]
-  (when-let [{:keys [render-fn] :as resource} (get @registry uri)]
-    {:contents [(-> (select-keys resource [:uri :mimeType])
-                    (assoc :text (render-fn opts)))]}))
+  "Read a registered resource by URI, gated by `token-scopes`. Returns one of
+   `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or
+   `{:status :not-found}`. Single registry lookup keeps the gate atomic with the
+   render — no race window where the registry could change between an access
+   check and the read, and no way for direct callers to bypass the scope check."
+  [uri token-scopes opts]
+  (if-let [{:keys [render-fn scope] :as resource} (get @registry uri)]
+    (if (mcp.scope/public-or-matches? token-scopes scope)
+      {:status   :ok
+       :contents [(-> (select-keys resource [:uri :mimeType])
+                      (assoc :text (render-fn opts)))]}
+      {:status :scope-denied})
+    {:status :not-found}))
 
 ;;; -------------------------------------------------- Helpers ----------------------------------------------------
 
@@ -68,7 +63,7 @@
   (let [url (io/resource path)]
     (when-not url
       (throw (ex-info (str "Missing classpath resource: " path) {:path path})))
-    (let [content (delay (slurp url))]
+    (let [content (delay (slurp url :encoding "UTF-8"))]
       (fn [_opts] @content))))
 
 ;;; ------------------------------------------------ Registrations ------------------------------------------------
