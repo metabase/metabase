@@ -124,14 +124,12 @@
 
 (api.macros/defendpoint :put "/active" :- [:map {:closed true}
                                            [:updated :int]
-                                           [:cannot_write :int]
                                            [:failed :int]]
   "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs
   via `POST /api/transform-job/:job-id/run` ignore this flag.
 
-  Reports per-job outcome counts: `:updated` (successfully flipped), `:cannot_write` (skipped
-  because the caller lacks write permission on the job), `:failed` (raised an error during the
-  flip — the row update or Quartz write failed and was logged)."
+  Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an
+  error during the flip — the row update or Quartz write failed and was logged)."
   [_route-params
    _query-params
    {:keys [active]} :- [:map [:active :boolean]]]
@@ -140,7 +138,6 @@
   (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb       (if active "activate" "deactivate")
         candidates (t2/select :model/TransformJob :active (not active))
-        {writable true unwritable false} (group-by (comp boolean mi/can-write?) candidates)
         try-op     (fn [job]
                      (try
                        (op (:id job))
@@ -148,10 +145,9 @@
                        (catch Throwable t
                          (log/errorf t "Failed to %s transform job %d" verb (:id job))
                          :failed)))
-        outcomes   (frequencies (map try-op writable))]
-    {:updated      (get outcomes :ok 0)
-     :cannot_write (count unwritable)
-     :failed       (get outcomes :failed 0)}))
+        outcomes   (frequencies (map try-op candidates))]
+    {:updated (get outcomes :ok 0)
+     :failed  (get outcomes :failed 0)}))
 
 (api.macros/defendpoint :put "/:job-id" :- TransformJobResponse
   "Update a transform job."

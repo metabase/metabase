@@ -203,15 +203,13 @@
         (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
               active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob :id [:in job-ids]))]
           (testing "Deactivates all jobs"
-            (is (=? {:updated      pos?
-                     :cannot_write zero?
-                     :failed       zero?}
+            (is (=? {:updated pos?
+                     :failed  zero?}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))
             (is (every? false? (vals (active-by-id)))))
           (testing "Reactivates all jobs"
-            (is (=? {:updated      pos?
-                     :cannot_write zero?
-                     :failed       zero?}
+            (is (=? {:updated pos?
+                     :failed  zero?}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active true})))
             (is (every? true? (vals (active-by-id))))))))))
 
@@ -226,9 +224,8 @@
                                         (if (= job-id (:id job-bad))
                                           (throw (ex-info "boom" {}))
                                           (orig job-id)))]
-            (is (=? {:updated      #(<= 1 %)
-                     :failed       #(<= 1 %)
-                     :cannot_write zero?}
+            (is (=? {:updated #(<= 1 %)
+                     :failed  #(<= 1 %)}
                     (mt/user-http-request :crowberto :put 200 "transform-job/active" {:active false})))))))))
 
 (deftest update-all-jobs-active-permissions-test
