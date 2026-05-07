@@ -21,6 +21,7 @@ import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -305,7 +306,7 @@ describe("DashCard", () => {
 
   const permissionDeniedDataset = createMockDataset({
     error: { status: 403 },
-    error_type: "missing-required-permissions",
+    error_type: SERVER_ERROR_TYPES.missingPermissions,
   });
 
   it("should show the permission-denied message on a visualizer dashcard the user cannot read", () => {
@@ -363,7 +364,6 @@ describe("DashCard", () => {
         name: "Public Source",
         display: "table",
       }),
-      // Second underlying source — the user CAN see this one
       series: [
         createMockCard({
           id: deniedSourceCardId,

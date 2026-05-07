@@ -51,8 +51,7 @@ export function mergeVisualizerData({
   const insights: Insight[] = [];
   referencedColumns.forEach((ref) => {
     const dataset = datasets[ref.sourceId];
-    // Skip datasets that aren't loaded or that errored out (e.g. permission
-    // denied). An errored dataset may not carry a usable `data` payload.
+    // Errored datasets (e.g. permission denied) may not carry `data`.
     if (!dataset || dataset.error != null) {
       return;
     }

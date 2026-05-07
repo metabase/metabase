@@ -259,15 +259,7 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-/**
- * True when any dataset in the list represents a permission failure
- * (`missing-required-permissions` error_type or HTTP 403). The "Sorry, you
- * don't have permission to see this card." UX is gated on this signal.
- *
- * Takes the structural minimum so it accepts both `Dataset[]` (used internally
- * by `getDashcardResultsError`) and `Series` (where each item carries the
- * dataset fields spread alongside the card).
- */
+/** True if any dataset failed because of permissions (403 or `missing-required-permissions`). */
 export function isDashcardAccessRestricted(
   datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {

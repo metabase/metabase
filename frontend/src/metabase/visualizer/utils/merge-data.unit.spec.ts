@@ -1,4 +1,5 @@
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 
 import { mergeVisualizerData } from "./merge-data";
@@ -126,7 +127,7 @@ describe("mergeVisualizerData", () => {
       label: "errored (e.g. permission denied)",
       dataset: createMockDataset({
         error: { status: 403 },
-        error_type: "missing-required-permissions",
+        error_type: SERVER_ERROR_TYPES.missingPermissions,
       }),
     },
   ])(

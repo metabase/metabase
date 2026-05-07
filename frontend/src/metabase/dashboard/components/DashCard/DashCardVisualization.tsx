@@ -290,11 +290,8 @@ export function DashCardVisualization({
     ) {
       return;
     }
-    // If the user can't view the underlying card (permission denied), skip the
-    // missing-columns check. Every column would look "missing" when there is
-    // no data, and that would mask the real "no permission" message. Other
-    // errors (e.g. SQL failures in one of several sources) still get the
-    // missing-columns hint, since the visualizer can partially render.
+    // Skip when access is denied; the permission message would otherwise be
+    // masked by "Some columns are missing".
     if (isDashcardAccessRestricted(rawSeries)) {
       return;
     }
@@ -363,11 +360,7 @@ export function DashCardVisualization({
     );
 
     if (!everyDatasetLoaded) {
-      // Return a series without a `data` payload so the parent <Visualization>
-      // renders its `error` prop (e.g. permission-denied) or its loading view.
-      // Don't substitute an empty `{ cols: [], rows: [] }` here — that would
-      // flip `isLoading` to false and render <NoResultsView> for the
-      // genuinely-loading case where no error is set yet.
+      // No `data` so the parent <Visualization> picks its error or loading view.
       return [{ card }] as RawSeries;
     }
 
