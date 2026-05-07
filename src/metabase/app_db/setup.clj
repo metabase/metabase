@@ -213,7 +213,7 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (let [app-db (mc/current (mdb.connection/application-db-handle))]
+            (let [app-db (mc/current (mdb.connection/->ApplicationDbHandle))]
               (mdb.encryption/encrypt-db (:db-type app-db) (:data-source app-db) nil))
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
@@ -263,7 +263,7 @@
   (u/profile (trs "Database setup")
     (u/with-us-locale
 
-      (mc/do-with-value (mdb.connection/application-db-handle)
+      (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
                         (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                         (fn []
                           (binding [config/*disable-setting-cache*            true

@@ -68,7 +68,7 @@
         (mt/test-drivers #{:h2 :postgres :mysql}
           (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true]
-              (mc/do-with-value (mdb/application-db-handle)
+              (mc/do-with-value (mdb/->ApplicationDbHandle)
                                 (mdb.connection/application-db
                                  driver/*driver*
                                  (persistent-data-source driver/*driver* db-name))
@@ -118,7 +118,7 @@
         (mt/test-drivers #{:h2 :postgres :mysql}
           (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true]
-              (mc/do-with-value (mdb/application-db-handle)
+              (mc/do-with-value (mdb/->ApplicationDbHandle)
                                 (mdb.connection/application-db
                                  driver/*driver*
                                  (persistent-data-source driver/*driver* db-name))

@@ -33,8 +33,8 @@
 
 (p/import-vars
  [mdb.connection
+  ->ApplicationDbHandle
   application-db
-  application-db-handle
   data-source
   db-type
   in-transaction?
@@ -93,18 +93,18 @@
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
-  (= @(:status (mc/current (mdb.connection/application-db-handle))) ::setup-finished))
+  (= @(:status (mc/current (mdb.connection/->ApplicationDbHandle))) ::setup-finished))
 
 (defn finish-db-setup!
   "Mark the bound Metabase DB as set up and ready."
   []
-  (reset! (:status (mc/current (mdb.connection/application-db-handle))) ::setup-finished))
+  (reset! (:status (mc/current (mdb.connection/->ApplicationDbHandle))) ::setup-finished))
 
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
   ^metabase.app_db.connection.ApplicationDB []
-  (mc/current (mdb.connection/application-db-handle)))
+  (mc/current (mdb.connection/->ApplicationDbHandle)))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
@@ -119,7 +119,7 @@
     ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
     ;; use the application DB object itself to lock on since that will be a different object for different application
     ;; DBs.
-    (locking (mc/current (mdb.connection/application-db-handle))
+    (locking (mc/current (mdb.connection/->ApplicationDbHandle))
       (when-not (db-is-set-up?)
         (let [db-type       (db-type)
               data-source   (data-source)
@@ -153,4 +153,4 @@
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
-  (mc/swap-value! (mdb.connection/application-db-handle) assoc [:id (swap! mdb.connection/application-db-counter inc)]))
+  (mc/swap-value! (mdb.connection/->ApplicationDbHandle) assoc [:id (swap! mdb.connection/application-db-counter inc)]))

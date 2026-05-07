@@ -61,7 +61,7 @@
           (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
                                                      :out #'mi/encrypted-json-out}]
             (mc/do-with-value
-             (mdb.connection/application-db-handle)
+             (mdb.connection/->ApplicationDbHandle)
              (mdb.connection/application-db driver/*driver* data-source)
              (fn []
                (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY

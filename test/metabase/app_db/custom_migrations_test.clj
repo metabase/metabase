@@ -1847,7 +1847,7 @@
             (migrate!)
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
             ;; see the same app DB as this test, then restore the prior root on exit
-            (let [handle     (mdb.connection/application-db-handle)
+            (let [handle     (mdb.connection/->ApplicationDbHandle)
                   prior-root (mc/root handle)]
               (mc/reset-value! handle (mc/current handle))
               (try

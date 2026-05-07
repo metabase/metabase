@@ -64,7 +64,7 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(let [handle# (mdb.connection/application-db-handle)]
+  `(let [handle# (mdb.connection/->ApplicationDbHandle)]
      (mc/do-with-value handle#
                        (mdb.connection/application-db :h2 ~data-source)
                        (fn []

@@ -65,10 +65,11 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[application-db-handle]]:
+  with [[ApplicationDbHandle]]:
 
-    (let [handle (mdb.connection/application-db-handle)]
-      (mc/do-with-value handle (mdb.connection/application-db :h2 my-data-source) (fn [] ...)))
+    (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
+                      (mdb.connection/application-db :h2 my-data-source)
+                      (fn [] ...))
 
   Options:
 
@@ -90,10 +91,11 @@
     :lock        (ReentrantReadWriteLock.)}))
 
 (def ^:private ^:dynamic ^ApplicationDB *application-db*
-  "The current Metabase application database. Access only via [[application-db-handle]]."
+  "The current Metabase application database. Only [[ApplicationDbHandle]] may reference this var directly; everyone
+  else accesses it through `(->ApplicationDbHandle)`."
   (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
 
-(defrecord ^:private ApplicationDbHandle []
+(defrecord ApplicationDbHandle []
   mc/MutableComponentHandle
   (current [_] *application-db*)
   (root [_] (.getRawRoot ^clojure.lang.Var #'*application-db*))
@@ -107,19 +109,10 @@
   (swap-value! [_ f args]
     (apply alter-var-root #'*application-db* f args)))
 
-(alter-meta! #'->ApplicationDbHandle assoc :private true)
-(alter-meta! #'map->ApplicationDbHandle assoc :private true)
-
-(let [handle (->ApplicationDbHandle)]
-  (defn application-db-handle
-    "Returns the [[mc/MutableComponentHandle]] for the application DB."
-    []
-    handle))
-
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type *application-db*))
+  (.db-type ^ApplicationDB (mc/current (->ApplicationDbHandle))))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -135,7 +128,7 @@
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source *application-db*))
+  (.data-source ^ApplicationDB (mc/current (->ApplicationDbHandle))))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -148,11 +141,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id *application-db*))
+  (.id ^ApplicationDB (mc/current (->ApplicationDbHandle))))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection *application-db* f))
+  (t2.conn/do-with-connection (mc/current (->ApplicationDbHandle)) f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 

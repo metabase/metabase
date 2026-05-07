@@ -237,7 +237,7 @@
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
     (mt/discard-setting-changes [:test-setting-custom-init]
       (clear-setting-if-leak!)
-      (mc/do-with-value (mdb.connection/application-db-handle)
+      (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
                         {:status (atom @#'mdb.connection/initial-db-status)}
                         (fn []
                           (is (= false (mdb/db-is-set-up?)))

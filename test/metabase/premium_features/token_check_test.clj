@@ -235,7 +235,7 @@
            (premium-features/active-users-count))))
 
   (testing "Default to 0 if db is not setup yet"
-    (mc/do-with-value (mdb.connection/application-db-handle)
+    (mc/do-with-value (mdb.connection/->ApplicationDbHandle)
                       {:status (atom nil)}
                       (fn [] (is (zero? (premium-features/active-users-count)))))))
 

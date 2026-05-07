@@ -77,7 +77,7 @@
       ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
       ;; open
      (with-open [conn (.getConnection data-source)]
-       (mc/do-with-value (mdb/application-db-handle)
+       (mc/do-with-value (mdb/->ApplicationDbHandle)
                          (mdb.connection/application-db driver data-source)
                          (fn []
                            (binding [custom-migrations.util/*allow-temp-scheduling* false]
