@@ -204,12 +204,23 @@
 ;;; canonical 3-tuple shapes; the helpers below project them into the various per-call shapes
 ;;; production callers want.
 
-(defn- denormalize-level
+(defn denormalize-level
   "Inverse of `normalize-level`: `\"\"` (the storage sentinel meaning \"this driver
    doesn't emit this level\") becomes `nil` (what `:model/Table` rows actually carry
-   for the same level). Anything else passes through unchanged."
+   for the same level). Anything else passes through unchanged.
+
+   Public so consumers outside the storage layer (the QP middleware) can apply the
+   same `\"\"`/`nil` equivalence without redefining it."
   [v]
   (when-not (or (nil? v) (= no-level v)) v))
+
+(defn prune-no-level
+  "Remove map keys whose values are the storage `\"\"` sentinel. Used by callers
+   that need to drop absent slots before passing the map to a downstream tool
+   (e.g. SQLGlot's `replace-names` matcher, which treats absent keys as wildcards
+   but would match an empty string literally)."
+  [m]
+  (into {} (remove (fn [[_ v]] (= no-level v))) m))
 
 (defn- store-tuple->table-spec
   "Project a 3-tuple `[db-slot schema-slot table-name]` from the store into the

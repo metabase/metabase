@@ -63,6 +63,7 @@
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -76,29 +77,18 @@
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 
-(def ^:private no-level
-  "Empty-string sentinel for `from_db`/`from_schema` etc. when a driver doesn't emit
-   that level — see [[metabase-enterprise.workspaces.table-remapping]] namespace docstring."
-  "")
-
-(defn- prune-no-level
-  "Remove keys whose value is the no-level sentinel so they aren't passed to SQLGlot.
-   SQLGlot's matcher only treats absent keys as wildcards; an empty-string would be
-   matched literally and never hit anything in the AST."
-  [m]
-  (into {} (remove (fn [[_ v]] (= no-level v))) m))
-
 (defn- build-table-replacements
   "Convert remappings map into the format expected by `sql-tools/replace-names`.
    SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
 
-   Remapping tuples are 3-wide: `[db schema table]`. Sentinel `\"\"` levels are pruned
-   so SQLGlot treats them as wildcards rather than matching the literal empty string."
+   Remapping tuples are 3-wide: `[db schema table]`. Storage `\"\"` sentinels are
+   pruned via `ws.table-remapping/prune-no-level` so SQLGlot treats them as
+   wildcards rather than matching the literal empty string."
   [remappings]
   (into {}
         (map (fn [[[from-db from-schema from-table] [to-db to-schema to-table]]]
-               [(prune-no-level {:db from-db :schema from-schema :table from-table})
-                (prune-no-level {:db to-db   :schema to-schema   :table to-table})]))
+               [(ws.table-remapping/prune-no-level {:db from-db :schema from-schema :table from-table})
+                (ws.table-remapping/prune-no-level {:db to-db   :schema to-schema   :table to-table})]))
         remappings))
 
 (defn- rewrite-sql
@@ -123,21 +113,25 @@
    (it's a property of the database connection, not the table), so a remapping that
    only differs by `db` is invisible to Phase 1; Phase 2 catches it.
 
-   Schema-less drivers store nil in `:metadata/table.:schema`, while remapping rows use
-   the `\"\"` sentinel — they're treated as equal here so the match succeeds."
+   `denormalize-level` collapses storage's `\"\"` sentinel to `nil` on both sides of
+   the schema comparison, so a remapping row with `from_schema = \"\"` matches a
+   schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
+   row with `from_schema = \"public\"` matches the literal value)."
   [metadata-provider remappings]
   (doseq [[[_from-db from-schema from-name] [_to-db to-schema to-name]] remappings
-          :let [norm              #(if (or (nil? %) (= no-level %)) ::absent %)
-                from-schema-match (norm from-schema)
+          :let [from-schema-match (ws.table-remapping/denormalize-level from-schema)
                 candidates        (lib.metadata.protocols/metadatas
                                    metadata-provider
                                    {:lib/type :metadata/table, :name #{from-name}})
-                table             (some #(when (= (norm (:schema %)) from-schema-match) %) candidates)]
+                table             (some #(when (= (ws.table-remapping/denormalize-level (:schema %))
+                                                  from-schema-match)
+                                           %)
+                                        candidates)]
           :when table]
     (lib.metadata.protocols/store-metadata!
      metadata-provider
      (assoc table
-            :schema (when-not (= no-level to-schema) to-schema)
+            :schema (ws.table-remapping/denormalize-level to-schema)
             :name to-name))))
 
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
