@@ -162,7 +162,7 @@
     (seq nfc-path)
     nfc-path
 
-    ;; fall back to walking parent_id for fields synced before nfc-path was populated for Mongo subdocuments
+    ;; fall back to walking `:parent-id` for fields synced before `:nfc-path` was populated
     parent-id
     (concat (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id))
             [field-name])
