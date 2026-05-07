@@ -1520,6 +1520,21 @@ function(bin) {
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
+(defn- field-id->path
+  "Return the full document-path components for `field-id` as a vector of strings. Uses [[col->name-components]],
+  which prefers `:nfc-path` and falls back to walking `:parent-id` for fields synced before `:nfc-path` was populated."
+  [field-id]
+  (vec (col->name-components (driver-api/field (driver-api/metadata-provider) field-id))))
+
+(defn- field-clauses->id->path
+  "Build a map of `field-id -> path-vector` for all `:field` clauses in `fields` that reference an integer ID."
+  [fields]
+  (into {}
+        (keep (fn [[agg-type field-id & _]]
+                (when (and (= agg-type :field) (integer? field-id))
+                  [field-id (field-id->path field-id)])))
+        fields))
+
 (defn- remove-parent-fields
   "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
   of MongoDB 4.4, including both will result in an error (see:
@@ -1527,18 +1542,15 @@ function(bin) {
 
   Removing parents is useful when sorting, because leaf fields sort."
   [fields]
-  (let [parent->child-id (reduce (fn [acc [agg-type field-id & _]]
-                                   (if (and (= agg-type :field)
-                                            (integer? field-id))
-                                     (let [{:keys [parent-id], :as field} (driver-api/field (driver-api/metadata-provider) field-id)]
-                                       (if parent-id
-                                         (update acc parent-id conj (u/the-id field))
-                                         acc))
-                                     acc))
-                                 {}
-                                 fields)]
+  (let [id->path     (field-clauses->id->path fields)
+        parent-paths (into #{}
+                           (keep (fn [path]
+                                   (when (> (count path) 1)
+                                     (vec (butlast path)))))
+                           (vals id->path))]
     (remove (fn [[_ field-id & _]]
-              (and (integer? field-id) (contains? parent->child-id field-id)))
+              (and (integer? field-id)
+                   (contains? parent-paths (id->path field-id))))
             fields)))
 
 (defn- remove-child-fields
@@ -1549,17 +1561,13 @@ function(bin) {
   Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
   includes all of its children."
   [fields]
-  (let [field-ids (into #{}
-                        (map (fn [[agg-type field-id]]
-                               (when (and (= agg-type :field)
-                                          (integer? field-id))
-                                 field-id)))
-                        fields)]
+  (let [id->path  (field-clauses->id->path fields)
+        all-paths (set (vals id->path))]
     (remove (fn [[agg-type field-id]]
-              (when (and (= agg-type :field)
-                         (integer? field-id))
-                (let [{:keys [parent-id]} (driver-api/field (driver-api/metadata-provider) field-id)]
-                  (and parent-id (contains? field-ids parent-id)))))
+              (when (and (= agg-type :field) (integer? field-id))
+                (let [path (id->path field-id)]
+                  (and (> (count path) 1)
+                       (contains? all-paths (vec (butlast path)))))))
             fields)))
 
 (defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
