@@ -46,16 +46,25 @@ function SystemPromptPage(props: SystemPromptPageProps) {
   );
 }
 
-const getPlaceholder = () =>
-  t`# Here's a section
-1. Do this
-2. And this
-3. And lastly, this
-
-# Here's another section
-1. Do this
-2. And this
-3. And lastly, this`;
+const getPlaceholder = () => {
+  return (
+    t`# Here's a section` +
+    "\n" +
+    t`1. Do this` +
+    "\n" +
+    t`2. And this` +
+    "\n" +
+    t`3. And lastly, this` +
+    "\n\n" +
+    t`# Here's another section` +
+    "\n" +
+    t`1. Do this` +
+    "\n" +
+    t`2. And this` +
+    "\n" +
+    t`3. And lastly, this`
+  );
+};
 
 export function MetabotChatPromptPage() {
   const applicationName = useSelector(getApplicationName);
