@@ -12,8 +12,8 @@ import { Api } from "metabase/api";
 // Side-effect import: provides the `#popover-event-target { position: fixed }`
 // rule that ChartTooltip relies on to anchor near the hovered cell.
 import "metabase/common/components/Popover/Popover.module.css";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
