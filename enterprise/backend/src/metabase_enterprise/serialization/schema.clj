@@ -1,8 +1,20 @@
 (ns metabase-enterprise.serialization.schema
   "Malli schemas for the serdes-portable shapes produced by
-  [[metabase-enterprise.serialization.metadata]]."
+  [[metabase-enterprise.serialization.export.format]]."
   (:require
    [metabase.util.malli.registry :as mr]))
+
+(mr/def ::user-info
+  [:map
+   [:user-id pos-int?]
+   [:is-superuser? :boolean]])
+
+(mr/def ::export-options
+  [:map
+   [:user-info ::user-info]
+   [:with-databases {:optional true} [:maybe :boolean]]
+   [:with-tables    {:optional true} [:maybe :boolean]]
+   [:with-fields    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::external-database-id
   :string)
@@ -13,13 +25,13 @@
 (mr/def ::external-field-id
   [:cat :string [:maybe :string] :string [:+ :string]])
 
-(mr/def ::database-info
+(mr/def ::external-database
   [:map
    [:id ::external-database-id]
    [:name :string]
    [:engine :string]])
 
-(mr/def ::table-info
+(mr/def ::external-table
   [:map
    [:id ::external-table-id]
    [:db_id ::external-database-id]
@@ -27,7 +39,7 @@
    [:schema {:optional true} :string]
    [:description {:optional true} :string]])
 
-(mr/def ::field-info
+(mr/def ::external-field
   [:map
    [:id ::external-field-id]
    [:table_id ::external-table-id]
@@ -42,8 +54,8 @@
    [:coercion_strategy {:optional true} :string]
    [:nfc_path {:optional true} [:sequential :string]]])
 
-(mr/def ::metadata-export-response
+(mr/def ::export-response
   [:map
-   [:databases {:optional true} [:sequential ::database-info]]
-   [:tables    {:optional true} [:sequential ::table-info]]
-   [:fields    {:optional true} [:sequential ::field-info]]])
+   [:databases {:optional true} [:sequential ::external-database]]
+   [:tables    {:optional true} [:sequential ::external-table]]
+   [:fields    {:optional true} [:sequential ::external-field]]])
