@@ -3,7 +3,6 @@ import fetch from "node-fetch";
 import { getMilestoneIssues } from "./github";
 import type {
   Issue,
-  ReleaseChannel,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
@@ -25,7 +24,7 @@ const generateVersionInfo = ({
     version,
     released: new Date().toISOString().slice(0, 10),
     patch: ["patch", "minor"].includes(getVersionType(version)),
-    highlights: milestoneIssues.map?.(issue => issue.title) ?? [],
+    highlights: milestoneIssues.map?.((issue) => issue.title) ?? [],
   };
 };
 
@@ -75,7 +74,9 @@ export const updateVersionInfoLatestJson = ({
   }
 
   if (existingVersionInfo.latest.version === newLatestVersion) {
-    console.warn(`Version ${newLatestVersion} already latest, updating rollout % only`);
+    console.warn(
+      `Version ${newLatestVersion} already latest, updating rollout % only`,
+    );
     return {
       ...existingVersionInfo,
       latest: {
@@ -85,8 +86,9 @@ export const updateVersionInfoLatestJson = ({
     };
   }
 
-  const newLatestVersionInfo = existingVersionInfo.older
-    .find((info: VersionInfo) => info.version === newLatestVersion);
+  const newLatestVersionInfo = existingVersionInfo.older.find(
+    (info: VersionInfo) => info.version === newLatestVersion,
+  );
 
   if (!newLatestVersionInfo) {
     throw new Error(`${newLatestVersion} not found version-info.json`);
@@ -124,7 +126,7 @@ export async function getVersionInfo({
   repo,
 }: ReleaseProps) {
   const url = getVersionInfoUrl(version);
-  const existingFile = (await fetch(url).then(r =>
+  const existingFile = (await fetch(url).then((r) =>
     r.json(),
   )) as VersionInfoFile;
 
@@ -142,61 +144,4 @@ export async function getVersionInfo({
   });
 
   return newVersionJson;
-}
-
-// for updating the version in version info for a specific channel
-export const updateVersionInfoChannel = async ({
-  channel,
-  newVersion,
-  rollout = 100,
-}: {
-  channel: ReleaseChannel;
-  newVersion: string;
-  rollout?: number;
-}) => {
-  const url = getVersionInfoUrl(newVersion);
-  const existingFile = (await fetch(url).then(r =>
-    r.json(),
-  )) as VersionInfoFile;
-
-  const newVersionJson = updateVersionInfoChannelJson({
-    channel,
-    version: newVersion,
-    existingVersionInfo: existingFile,
-    rollout,
-  });
-
-  return newVersionJson;
-};
-
-export function updateVersionInfoChannelJson({
-  existingVersionInfo,
-  channel,
-  version,
-  rollout = 100,
-}: {
-  existingVersionInfo: VersionInfoFile;
-  channel: ReleaseChannel;
-  version: string;
-  rollout?: number;
-}): VersionInfoFile {
-  if (channel === "latest") {
-    // tagging latest requires moving the current latest to the "older" array
-    return updateVersionInfoLatestJson({
-      newLatestVersion: version,
-      existingVersionInfo,
-      rollout,
-    });
-  }
-
-  // everything else is just setting the correct key in the version info
-  return {
-    ...existingVersionInfo,
-    [channel]: {
-      version,
-      released: new Date().toISOString().slice(0, 10),
-      rollout,
-      highlights: [],
-    },
-  };
 }
