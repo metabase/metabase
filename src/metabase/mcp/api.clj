@@ -94,7 +94,7 @@
     (case (mcp.resources/check-resource-access uri token-scopes)
       (:not-found
        :scope-denied) (jsonrpc-error id -32602 "Resource not found")
-      :ok             (jsonrpc-response id (mcp.resources/read-resource uri token-scopes {})))))
+      :ok             (jsonrpc-response id (mcp.resources/read-resource uri {})))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))

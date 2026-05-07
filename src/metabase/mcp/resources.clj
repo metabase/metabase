@@ -50,16 +50,13 @@
     :not-found))
 
 (defn read-resource
-  "Read a registered resource by URI, enforcing scope access against `token-scopes`.
-   Returns nil for unknown URIs and for resources whose scope `token-scopes` does
-   not satisfy. Callers that need to distinguish those two cases should call
-   [[check-resource-access]] for the error reason and then `read-resource` to
-   render — the scope check is repeated here so direct callers can't bypass it."
-  [uri token-scopes opts]
-  (when-let [{:keys [render-fn scope] :as resource} (get @registry uri)]
-    (when (mcp.scope/public-or-matches? token-scopes scope)
-      {:contents [(-> (select-keys resource [:uri :mimeType])
-                      (assoc :text (render-fn opts)))]})))
+  "Render a registered resource by URI. Returns nil for unknown URIs; does NOT
+   enforce scope. Callers must gate access via [[check-resource-access]] first —
+   this is the contract `handle-resources-read` relies on."
+  [uri opts]
+  (when-let [{:keys [render-fn] :as resource} (get @registry uri)]
+    {:contents [(-> (select-keys resource [:uri :mimeType])
+                    (assoc :text (render-fn opts)))]}))
 
 ;;; -------------------------------------------------- Helpers ----------------------------------------------------
 
