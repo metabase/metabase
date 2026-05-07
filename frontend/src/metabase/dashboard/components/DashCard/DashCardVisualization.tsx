@@ -279,6 +279,12 @@ export function DashCardVisualization({
   );
 
   const visualizerErrMsg = useMemo(() => {
+    // If the dashcard couldn't be loaded (e.g. permission denied), skip the
+    // missing-columns check. Every column would look "missing" when there is
+    // no data, and that would mask the real error message.
+    if (error != null) {
+      return;
+    }
     if (
       !dashcard ||
       !rawSeries ||
@@ -296,7 +302,7 @@ export function DashCardVisualization({
     if (missingCols.flat().length > 0) {
       return t`Some columns are missing, this card might not render correctly.`;
     }
-  }, [dashcard, rawSeries]);
+  }, [dashcard, rawSeries, error]);
 
   const untranslatedSeries = useMemo(() => {
     if (
@@ -330,9 +336,10 @@ export function DashCardVisualization({
       ]),
     );
 
-    const didEveryDatasetLoad = dataSources.every(
-      (dataSource) => dataSourceDatasets[dataSource.id] != null,
-    );
+    const everyDatasetLoaded = dataSources.every((dataSource) => {
+      const dataset = dataSourceDatasets[dataSource.id];
+      return dataset != null && dataset.error == null;
+    });
 
     const columns = getVisualizationColumns(
       visualizerEntity,
@@ -350,7 +357,12 @@ export function DashCardVisualization({
       _.omit(dashcard.visualization_settings, "visualization"),
     );
 
-    if (!didEveryDatasetLoad) {
+    if (!everyDatasetLoaded) {
+      // Return a series without a `data` payload so the parent <Visualization>
+      // renders its `error` prop (e.g. permission-denied) or its loading view.
+      // Don't substitute an empty `{ cols: [], rows: [] }` here — that would
+      // flip `isLoading` to false and render <NoResultsView> for the
+      // genuinely-loading case where no error is set yet.
       return [{ card }] as RawSeries;
     }
 
