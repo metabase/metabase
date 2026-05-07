@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Children, Fragment, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -13,6 +13,7 @@ import {
   Anchor,
   Badge,
   Box,
+  Divider,
   Drawer,
   Flex,
   Group,
@@ -343,17 +344,19 @@ const DetailsSection = ({
 }: DetailsSectionProps) => {
   const cardId = notification.payload?.card_id;
   const cardName = notification.payload?.card?.name;
-  const isFailing = notification.status === "failing";
-  const lastDate = formatRelativeDate(notification.last_sent_at);
+  const lastCheck = notification.last_check;
+  const lastSent = notification.last_sent;
+  const lastCheckDate = formatRelativeDate(lastCheck?.at);
+  const lastSentDate = formatRelativeDate(lastSent?.at);
+  const checkError = lastCheck?.status === "failing" ? lastCheck.error : null;
   const channelSummary = formatChannelSummary({
     emailRecipientCount,
     slackChannelCount,
     httpHandler,
   });
-  const ownerName =
-    notification.creator?.common_name ??
-    notification.creator?.email ??
-    t`Unknown`;
+  const owner = notification.owner;
+  const ownerName = owner?.common_name ?? owner?.email ?? t`Unknown`;
+  const isOwnerDeactivated = owner?.is_active === false;
 
   return (
     <SidebarSection title={t`Details`}>
@@ -374,24 +377,36 @@ const DetailsSection = ({
           }
           bold
         />
-        <DetailsRow label={t`Owner`} value={ownerName} />
+        <DetailsRow
+          label={t`Owner`}
+          value={
+            <Flex align="center" gap="xs">
+              <Text size="md" c="text-primary">
+                {ownerName}
+              </Text>
+              {isOwnerDeactivated && (
+                <Text size="md" c="text-secondary">
+                  {t`(deactivated)`}
+                </Text>
+              )}
+            </Flex>
+          }
+        />
         <DetailsRow
           label={t`Channel`}
           value={channelSummary || t`No channels`}
         />
-        <DetailsRow label={t`Last checked`} value={lastDate} />
         <DetailsRow
-          label={t`Last send attempt`}
-          tall
+          label={t`Last checked`}
           value={
             <Stack gap={4}>
               <Text size="md" c="text-primary">
-                {lastDate}
+                {lastCheckDate}
               </Text>
-              {isFailing && (
+              {checkError && (
                 <Flex align="center" gap="xs">
                   <Text size="sm" c="error">
-                    {t`Error with the SMTP server`}
+                    {checkError}
                   </Text>
                   <Icon name="warning_round" c="error" size={14} />
                 </Flex>
@@ -399,6 +414,7 @@ const DetailsSection = ({
             </Stack>
           }
         />
+        <DetailsRow label={t`Last sent`} value={lastSentDate} />
       </DetailsTable>
     </SidebarSection>
   );
@@ -495,26 +511,14 @@ const RunsSection = ({
 };
 
 const RunsHeaderRow = () => (
-  <Flex bg="background-secondary" h={48}>
-    <Flex
-      align="center"
-      px="md"
-      flex={1}
-      style={{
-        borderRight: "1px solid var(--mb-color-border)",
-        borderBottom: "1px solid var(--mb-color-border)",
-      }}
-    >
+  <Flex bg="background-secondary">
+    <Flex align="center" px="md" py="sm" flex={1}>
       <Text size="md" c="text-secondary">
         {t`Question checks`}
       </Text>
     </Flex>
-    <Flex
-      align="center"
-      px="md"
-      flex={1}
-      style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-    >
+    <Divider orientation="vertical" />
+    <Flex align="center" px="md" py="sm" flex={1}>
       <Text size="md" c="text-secondary">
         {t`Alert send attempts`}
       </Text>
@@ -525,27 +529,20 @@ const RunsHeaderRow = () => (
 const RunsRow = ({ taskRun }: { taskRun: TaskRun }) => {
   const formatted = formatRelativeDate(taskRun.started_at);
   return (
-    <Flex h={48}>
-      <Flex
-        align="center"
-        px="md"
-        flex={1}
-        style={{
-          borderRight: "1px solid var(--mb-color-border)",
-          borderBottom: "1px solid var(--mb-color-border)",
-        }}
-      >
+    <Flex>
+      <Flex align="center" px="md" py="sm" flex={1}>
         <Text size="md" c="text-primary">
           {formatted}
         </Text>
       </Flex>
+      <Divider orientation="vertical" />
       <Flex
         align="center"
         justify="space-between"
         px="md"
+        py="sm"
         flex={1}
         gap="sm"
-        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Text size="md" c="text-primary">
           {formatted}
@@ -590,36 +587,17 @@ const EmailRecipientsSection = ({
     <SidebarSection title={title}>
       <DetailsTable>
         {handler.recipients.map((recipient, index) => (
-          <EmailRow
-            key={recipient.id ?? index}
-            recipient={recipient}
-            isLast={index === handler.recipients.length - 1}
-          />
+          <EmailRow key={recipient.id ?? index} recipient={recipient} />
         ))}
       </DetailsTable>
     </SidebarSection>
   );
 };
 
-const EmailRow = ({
-  recipient,
-  isLast,
-}: {
-  recipient: NotificationRecipient;
-  isLast: boolean;
-}) => {
+const EmailRow = ({ recipient }: { recipient: NotificationRecipient }) => {
   const { name, email } = getEmailRowText(recipient);
   return (
-    <Flex
-      h={48}
-      align="center"
-      justify="space-between"
-      px="md"
-      gap="sm"
-      style={{
-        borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
-      }}
-    >
+    <Flex align="center" justify="space-between" px="md" py="sm" gap="sm">
       <Text size="md" c="text-primary">
         {name}
       </Text>
@@ -670,7 +648,6 @@ const SlackChannelsSection = ({
           <SlackRow
             key={recipient.id ?? index}
             value={recipient.details?.value ?? ""}
-            isLast={index === handler.recipients.length - 1}
           />
         ))}
       </DetailsTable>
@@ -678,15 +655,8 @@ const SlackChannelsSection = ({
   );
 };
 
-const SlackRow = ({ value, isLast }: { value: string; isLast: boolean }) => (
-  <Flex
-    h={48}
-    align="center"
-    px="md"
-    style={{
-      borderBottom: isLast ? undefined : "1px solid var(--mb-color-border)",
-    }}
-  >
+const SlackRow = ({ value }: { value: string }) => (
+  <Flex align="center" px="md" py="sm">
     <Text size="md" c="text-primary">
       {value}
     </Text>
@@ -715,36 +685,35 @@ const SidebarSection = ({
   </Stack>
 );
 
-const DetailsTable = ({ children }: { children: React.ReactNode }) => (
-  <Box
-    style={{
-      border: "1px solid var(--mb-color-border)",
-      borderRadius: "1rem",
-      overflow: "hidden",
-    }}
-  >
-    {children}
-  </Box>
-);
+const DetailsTable = ({ children }: { children: React.ReactNode }) => {
+  const items = Children.toArray(children).filter(Boolean);
+  return (
+    <Box
+      bd="1px solid var(--mb-color-border)"
+      bdrs="lg"
+      style={{ overflow: "hidden" }}
+    >
+      {items.map((item, i) => (
+        <Fragment key={i}>
+          {i > 0 && <Divider />}
+          {item}
+        </Fragment>
+      ))}
+    </Box>
+  );
+};
 
 type DetailsRowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
   bold?: boolean;
-  tall?: boolean;
   spanLabel?: boolean;
 };
 
-const DetailsRow = ({
-  label,
-  value,
-  bold,
-  tall,
-  spanLabel,
-}: DetailsRowProps) => {
+const DetailsRow = ({ label, value, bold, spanLabel }: DetailsRowProps) => {
   if (spanLabel) {
     return (
-      <Flex h={48} align="center" px="md" bg="background-primary">
+      <Flex align="center" px="md" py="sm" bg="background-primary">
         <Text size="md" c="text-secondary">
           {label}
         </Text>
@@ -752,30 +721,14 @@ const DetailsRow = ({
     );
   }
   return (
-    <Flex mih={tall ? 124 : 48}>
-      <Flex
-        w={160}
-        align={tall ? "flex-start" : "center"}
-        px="md"
-        py={tall ? "md" : 0}
-        bg="background-secondary"
-        style={{
-          borderRight: "1px solid var(--mb-color-border)",
-          borderBottom: "1px solid var(--mb-color-border)",
-        }}
-      >
+    <Flex>
+      <Flex w={160} px="md" py="sm" bg="background-secondary">
         <Text size="md" c="text-secondary">
           {label}
         </Text>
       </Flex>
-      <Flex
-        flex={1}
-        align={tall ? "flex-start" : "center"}
-        px="md"
-        py={tall ? "md" : 0}
-        miw={0}
-        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-      >
+      <Divider orientation="vertical" />
+      <Flex flex={1} align="center" px="md" py="sm" miw={0}>
         {typeof value === "string" ? (
           <Text size="md" fw={bold ? "bold" : "normal"} c="text-primary">
             {value}

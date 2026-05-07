@@ -171,33 +171,37 @@ export type Notification = NotificationPayload & {
 };
 
 //#region Admin API types
-export type NotificationStatus =
-  | "healthy"
-  | "orphaned_card"
-  | "orphaned_creator"
-  | "failing"
-  | "abandoned";
+export type NotificationRunStatus = "failing" | "successful";
+
+export type NotificationRunSummary = {
+  at: string;
+  error: string | null;
+  status: NotificationRunStatus;
+};
 
 export type AdminNotificationSortColumn =
-  | "last_sent_at"
+  | "last_sent"
   | "card_name"
-  | "creator_name"
+  | "owner_name"
   | "updated_at";
 
-export type AdminNotification = Notification & {
-  status: NotificationStatus;
-  last_sent_at: string | null;
+export type AdminNotification = Omit<Notification, "creator_id" | "creator"> & {
+  owner_id: UserId | null;
+  owner: UserInfo;
+  last_check: NotificationRunSummary | null;
+  last_sent: NotificationRunSummary | null;
 };
 
 export type AdminNotificationListParams = {
   limit?: number;
   offset?: number;
   active?: boolean;
-  status?: NotificationStatus;
-  creator_id?: UserId;
+  owner_id?: UserId;
+  owner_active?: boolean;
   card_id?: CardId;
   recipient_email?: string;
   channel?: NotificationChannelType;
+  last_sent_status?: NotificationRunStatus;
   query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: SortDirection;

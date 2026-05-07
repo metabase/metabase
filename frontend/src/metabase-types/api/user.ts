@@ -104,6 +104,7 @@ export type UserInfo = Pick<
   | "last_login"
   | "is_superuser"
   | "is_qbnewb"
+  | "is_active"
 >;
 
 export type UserListQuery = {

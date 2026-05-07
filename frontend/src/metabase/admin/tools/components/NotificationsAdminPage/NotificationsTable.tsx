@@ -22,14 +22,10 @@ import type {
   AdminNotification,
   NotificationChannelType,
   NotificationId,
+  NotificationRunSummary,
 } from "metabase-types/api";
 
-import {
-  getChannelIconName,
-  getChannelLabel,
-  getStatusIcon,
-  getStatusLabel,
-} from "./utils";
+import { getChannelIconName, getChannelLabel } from "./utils";
 
 type Props = {
   notifications: AdminNotification[];
@@ -66,21 +62,14 @@ const summarizeChannels = (
 };
 
 type TimestampCellProps = {
-  value: string | null;
-  notification: AdminNotification;
+  run: NotificationRunSummary | null;
 };
 
-const TimestampCell = ({ value, notification }: TimestampCellProps) => {
-  const icon = getStatusIcon(notification.status);
-  if (!value) {
-    return (
-      <Flex gap="sm" align="center">
-        <span>{t`Never`}</span>
-        <Icon name={icon.name} c={icon.color} size={14} />
-      </Flex>
-    );
+const TimestampCell = ({ run }: TimestampCellProps) => {
+  if (!run) {
+    return <span>{t`Never`}</span>;
   }
-  const date = dayjs(value);
+  const date = dayjs(run.at);
   const isToday = date.isSame(dayjs(), "day");
   return (
     <Flex gap="sm" align="center">
@@ -88,10 +77,14 @@ const TimestampCell = ({ value, notification }: TimestampCellProps) => {
         {isToday ? (
           <span>{t`Today, ${date.format("LT")}`}</span>
         ) : (
-          <DateTime value={value} unit="minute" />
+          <DateTime value={run.at} unit="minute" />
         )}
       </Tooltip>
-      <Icon name={icon.name} c={icon.color} size={14} />
+      {run.status === "failing" && (
+        <Tooltip label={run.error} disabled={!run.error}>
+          <Icon name="warning_round" c="error" size={14} />
+        </Tooltip>
+      )}
     </Flex>
   );
 };
@@ -185,19 +178,19 @@ export const NotificationsTable = ({
         },
       },
       {
-        id: "creator_name",
+        id: "owner_name",
         header: t`Owner`,
         width: 200,
         enableSorting: true,
         cell: ({ row }) => {
-          const creator = row.original.creator;
-          const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
-          const isDeactivated = row.original.status === "orphaned_creator";
+          const owner = row.original.owner;
+          const name = owner?.common_name ?? owner?.email ?? t`Unknown`;
+          const isDeactivated = owner?.is_active === false;
           return (
             <Flex gap="xs" align="center" miw={0}>
               <Ellipsified tooltip={name}>{name}</Ellipsified>
               {isDeactivated && (
-                <Tooltip label={getStatusLabel("orphaned_creator")}>
+                <Tooltip label={t`Deactivated owner`}>
                   <Icon name="ghost" size={16} c="text-secondary" />
                 </Tooltip>
               )}
@@ -236,29 +229,19 @@ export const NotificationsTable = ({
         },
       },
       {
-        id: "last_checked_at",
+        id: "last_check",
         header: t`Last checked`,
         width: 170,
         enableSorting: false,
-        cell: ({ row }) => (
-          <TimestampCell
-            value={row.original.last_sent_at}
-            notification={row.original}
-          />
-        ),
+        cell: ({ row }) => <TimestampCell run={row.original.last_check} />,
       },
       {
-        id: "last_sent_at",
-        header: t`Last send attempt`,
-        width: 170,
+        id: "last_sent",
+        header: t`Last sent`,
+        width: 200,
         enableSorting: true,
         sortDescFirst: true,
-        cell: ({ row }) => (
-          <TimestampCell
-            value={row.original.last_sent_at}
-            notification={row.original}
-          />
-        ),
+        cell: ({ row }) => <TimestampCell run={row.original.last_sent} />,
       },
     ],
     [

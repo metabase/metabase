@@ -83,8 +83,9 @@ export const NotificationsAdminPage = ({
   }, [
     urlState.page,
     urlState.active,
-    urlState.status,
-    urlState.creator_id,
+    urlState.last_sent_status,
+    urlState.owner_active,
+    urlState.owner_id,
     urlState.card_id,
     urlState.recipient_email,
     urlState.channel,
@@ -304,8 +305,9 @@ export const NotificationsAdminPage = ({
       </Flex>
 
       <NotificationsTabs
-        selectedStatus={urlState.status}
-        onChange={(status) => patchUrlState({ status, page: 0 })}
+        lastSentStatus={urlState.last_sent_status}
+        ownerActive={urlState.owner_active}
+        onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
       />
 
       <NotificationsFilters state={urlState} onChange={patchUrlState} />
