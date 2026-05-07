@@ -34,16 +34,23 @@
 
 (defn- defn-arity?
   "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)
-   and return truthy iff kondo recorded arity info for it. clj-kondo only emits arities
-   for `defn`-style fns — `defmulti` and plain `def` have neither `:fixed-arities` nor
-   `:varargs-min-arity`. That makes the presence of either field a clean, dynamic signal
-   that the var is a regular function we can safely nudge users to convert."
+   and return true iff kondo recorded a non-empty arity for it. clj-kondo only emits
+   arities for `defn`-style fns — `defmulti` and plain `def` have neither `:fixed-arities`
+   nor `:varargs-min-arity`, so the presence of either is a clean, dynamic signal that
+   the var is a regular function we can safely nudge.
+
+   We coerce to boolean and `seq`-check `:fixed-arities` so a hypothetical empty set
+   doesn't leak through as truthy. The smoke test in `with-redefs-test` empirically
+   verifies the \"arities iff `defn`\" invariant against a real `clj-kondo` run — if a
+   future kondo release starts emitting arities for `defmulti` it will fail there
+   rather than silently producing wrong nudges."
   [analysis var-sym]
-  (some (fn [lang-vars]
-          (when-let [v (get lang-vars var-sym)]
-            (or (:fixed-arities v)
-                (:varargs-min-arity v))))
-        (vals analysis)))
+  (boolean
+   (some (fn [lang-vars]
+           (when-let [v (get lang-vars var-sym)]
+             (or (seq (:fixed-arities v))
+                 (:varargs-min-arity v))))
+         (vals analysis))))
 
 (defn- safely-nudgeable-lhs?
   "Is this LHS a regular function (defn) according to kondo's analysis?

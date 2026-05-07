@@ -1,7 +1,9 @@
 (ns hooks.clojure.core.with-redefs-test
   (:require
+   [clj-kondo.core :as kondo]
    [clj-kondo.hooks-api :as hooks]
    [clj-kondo.impl.utils]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [hooks.clojure.core.with-redefs]))
 
@@ -36,17 +38,20 @@
 (defn- lint
   "Run the hook on the given source. Pass a string to preserve reader-macro literals like
    `#(...)` (whose `:fn` node tag is distinct from a regular list); pass a quoted form
-   for the common case where exact node shape doesn't matter."
-  [src]
-  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :warning}}}
-                                        :ignores    (atom nil)
-                                        :findings   (atom [])
-                                        :namespaces (atom {})}]
-    (with-redefs [hooks/resolve     stub-resolve
-                  hooks/ns-analysis stub-ns-analysis]
-      (hooks.clojure.core.with-redefs/lint-with-redefs
-       {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
-    @(:findings clj-kondo.impl.utils/*ctx*)))
+   for the common case where exact node shape doesn't matter. The optional
+   `analysis-fn` stub overrides `hooks/ns-analysis` for tests that want to simulate a
+   cache miss or other non-default cache state."
+  ([src] (lint src stub-ns-analysis))
+  ([src analysis-fn]
+   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :warning}}}
+                                         :ignores    (atom nil)
+                                         :findings   (atom [])
+                                         :namespaces (atom {})}]
+     (with-redefs [hooks/resolve     stub-resolve
+                   hooks/ns-analysis analysis-fn]
+       (hooks.clojure.core.with-redefs/lint-with-redefs
+        {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
+     @(:findings clj-kondo.impl.utils/*ctx*))))
 
 (deftest ^:synchronized flags-fn-shaped-rhs-test
   (testing "fn literal redefining a known defn"
@@ -80,13 +85,65 @@
     (is (= [] (lint '(with-redefs [a-value (fn [] 1)] :body)))))
   (testing "any unresolved symbol skips the nudge — we never know what it is"
     (is (= [] (lint '(with-redefs [unknown.ns/something (fn [& _] nil)] :body)))))
-  (testing "a *qualified* alias still resolves on the unqualified name"
-    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
-            (lint '(with-redefs [some.alias/plain-fn (constantly 1)] :body)))))
+  (testing "empty analysis (cache miss for the resolved ns) → skip the nudge"
+    (is (= [] (lint '(with-redefs [plain-fn (fn [x] x)] :body)
+                    (constantly {})))))
   (testing "mixed bindings — even one non-defn LHS suppresses the nudge"
     (is (= [] (lint '(with-redefs [plain-fn      (fn [x] x)
                                    a-multimethod (fn [& _] nil)]
                        :body))))))
+
+(defn- spit-fixture! [^java.io.File f content]
+  (.mkdirs (.getParentFile f))
+  (spit f content))
+
+(defn- delete-tree! [^java.io.File f]
+  (when (.isDirectory f)
+    (run! delete-tree! (.listFiles f)))
+  (.delete f))
+
+(defn- run-kondo-twice
+  "Lint `src` first to populate `cache-dir` (mirroring the real `kondo --lint src test`
+   pipeline), then lint `test-file` against that cache and return its findings. The
+   two-pass shape is required because the hook reads its decisions from the cache, which
+   is only written *after* a file is analysed."
+  [cache-dir src-file test-file]
+  (kondo/run! {:lint [(.getPath src-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})
+  (:findings (kondo/run! {:lint [(.getPath test-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})))
+
+(deftest ^:synchronized integration-arities-iff-defn-smoke-test
+  (testing "real kondo run validates the load-bearing invariant: only `defn`-style vars
+            get arities recorded — `defmulti` and plain `def` do not. If a future kondo
+            release breaks this, the smoke test fails here rather than the hook silently
+            producing wrong nudges."
+    (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
+                              "with-redefs-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
+          cache-dir (str tmp-dir "/cache")
+          src       (io/file tmp-dir "smoke_fixture.clj")
+          tst       (io/file tmp-dir "smoke_fixture_test.clj")]
+      (try
+        (spit-fixture! src "(ns smoke-fixture)
+(defmulti the-multi {:arglists '([x])} (fn [x] x))
+(defn the-defn [x] x)
+(def the-value 42)
+")
+        (spit-fixture! tst "(ns smoke-fixture-test
+  (:require [smoke-fixture :as f]))
+(with-redefs [f/the-multi (constantly nil)] :a)
+(with-redefs [f/the-defn  (constantly nil)] :b)
+(with-redefs [f/the-value (constantly nil)] :c)
+")
+        (let [findings   (run-kondo-twice cache-dir src tst)
+              nudges     (filter #(= :metabase/prefer-with-dynamic-fn-redefs (:type %)) findings)
+              nudge-rows (set (map :row nudges))]
+          ;; Row 3 = the-multi, row 4 = the-defn, row 5 = the-value (matches the
+          ;; with-redefs lines in the test fixture above).
+          (testing "the defn binding gets nudged"
+            (is (contains? nudge-rows 4)))
+          (testing "the defmulti and def bindings do not get nudged"
+            (is (not (contains? nudge-rows 3)))
+            (is (not (contains? nudge-rows 5)))))
+        (finally (delete-tree! tmp-dir))))))
 
 (deftest ^:synchronized ignores-non-fn-rhs-test
   (testing "literal value"
