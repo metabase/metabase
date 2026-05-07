@@ -32,6 +32,7 @@ import {
   Flex,
   Group,
   Icon,
+  Menu,
   Select,
   Stack,
   Text,
@@ -62,12 +63,14 @@ type Props = {
   notificationId: NotificationId;
   isBulkLoading: boolean;
   onClose: () => void;
+  onDelete: (notification: AdminNotificationDetail) => void;
 };
 
 export const NotificationDetailSidebar = ({
   notificationId,
   isBulkLoading,
   onClose,
+  onDelete,
 }: Props) => {
   const {
     data: notification,
@@ -97,12 +100,15 @@ export const NotificationDetailSidebar = ({
         }}
       >
         <Stack gap={0} h="100%">
-          <SidebarHeader
-            isBulkLoading={isBulkLoading}
-            notification={notification}
-            onClose={onClose}
-            onEdit={() => setIsEditModalOpen(true)}
-          />
+          {notification && (
+            <SidebarHeader
+              isBulkLoading={isBulkLoading}
+              notification={notification}
+              onClose={onClose}
+              onDelete={onDelete}
+              onEdit={() => setIsEditModalOpen(true)}
+            />
+          )}
           <Box px="xl" pb="xl" style={{ overflowY: "auto" }} flex={1}>
             {isLoading || error || !notification ? (
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -125,8 +131,9 @@ export const NotificationDetailSidebar = ({
 
 type SidebarHeaderProps = {
   isBulkLoading: boolean;
-  notification: AdminNotificationDetail | undefined;
+  notification: AdminNotificationDetail;
   onClose: () => void;
+  onDelete: (notification: AdminNotificationDetail) => void;
   onEdit: () => void;
 };
 
@@ -134,6 +141,7 @@ const SidebarHeader = ({
   isBulkLoading,
   notification,
   onClose,
+  onDelete,
   onEdit,
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
@@ -142,10 +150,38 @@ const SidebarHeader = ({
     <Box px="xl" pt="lg" pb="md">
       <Flex justify="flex-end" align="center" mb="md">
         <Group gap={4}>
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon
+                aria-label={t`More actions`}
+                size="lg"
+                disabled={isBulkLoading}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="link" />}
+                onClick={() => onDelete(notification)}
+              >
+                {t`Copy link to clipboard`}
+              </Menu.Item>
+              {notification.active && (
+                <Menu.Item
+                  c="danger"
+                  leftSection={<Icon name="trash" />}
+                  onClick={() => onDelete(notification)}
+                >
+                  {t`Delete alert`}
+                </Menu.Item>
+              )}
+            </Menu.Dropdown>
+          </Menu>
           <ActionIcon
             aria-label={t`Edit`}
             size="lg"
-            disabled={notification == null || isBulkLoading}
+            disabled={isBulkLoading}
             onClick={onEdit}
           >
             <Icon name="pencil" />

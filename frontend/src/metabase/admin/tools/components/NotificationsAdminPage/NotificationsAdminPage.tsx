@@ -150,7 +150,7 @@ export const NotificationsAdminPage = ({
     dispatch(push(Urls.adminToolsNotifications()));
   };
 
-  const archiveIds = useCallback(
+  const deleteIds = useCallback(
     async (ids: NotificationId[], isBulk: boolean) => {
       const count = ids.length;
       try {
@@ -214,9 +214,9 @@ export const NotificationsAdminPage = ({
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Archive`,
       confirmButtonProps: { color: "danger" },
-      onConfirm: () => archiveIds(selectedIds, true),
+      onConfirm: () => deleteIds(selectedIds, true),
     });
-  }, [archiveIds, selectedIds, showConfirm]);
+  }, [deleteIds, selectedIds, showConfirm]);
 
   const handleUnarchiveBulk = useCallback(() => {
     const count = selectedIds.length;
@@ -228,6 +228,19 @@ export const NotificationsAdminPage = ({
       onConfirm: () => unarchiveIds(selectedIds, true),
     });
   }, [unarchiveIds, selectedIds, showConfirm]);
+
+  const handleSidebarDelete = useCallback(
+    (id: NotificationId) => {
+      showConfirm({
+        title: t`Delete this alert?`,
+        message: t`Recipients will stop receiving this alert.`,
+        confirmButtonText: t`Delete`,
+        confirmButtonProps: { color: "danger" },
+        onConfirm: () => deleteIds([id], false),
+      });
+    },
+    [deleteIds, showConfirm],
+  );
 
   const handleChangeOwnerConfirm = useCallback(
     async (ownerId: UserId) => {
@@ -327,6 +340,7 @@ export const NotificationsAdminPage = ({
           notificationId={notificationId}
           isBulkLoading={isBulkLoading}
           onClose={handleSidebarClose}
+          onDelete={(notification) => handleSidebarDelete(notification.id)}
         />
       )}
 
