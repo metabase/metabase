@@ -262,13 +262,11 @@ describe("scenarios > data studio > snippets", () => {
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Test Folder");
-        cy.findByLabelText("Add a description").type(
-          "Folder for test snippets",
-        );
+        cy.findByLabelText("Description").type("Folder for test snippets");
         cy.findByTestId("collection-picker-button").click();
       });
       H.entityPickerModal().within(() => {
-        cy.findByText("SQL snippets").click();
+        cy.findByText("SQL Snippets").click();
         cy.button("Select").click();
       });
       H.modal().within(() => {
@@ -276,6 +274,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@createCollection");
       });
 
+      H.DataStudio.Library.visit();
       H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("be.visible");
