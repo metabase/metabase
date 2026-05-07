@@ -145,4 +145,4 @@
                                     (testing "preserves details when is_attached_dwh is not set"
                                       (is (= "{}"
                                              (:details (first (jdbc/query {:connection target-conn}
-                                                                          "select details from metabase_database where name='attached-dwh';")))))))))))))))
+                                                                          "select details from metabase_database where name='attached-dwh';"))))))))))))))))
