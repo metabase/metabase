@@ -6,13 +6,9 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import * as Lib from "metabase-lib";
-import type {
-  DependencyEntry,
-  DependencyNode,
-  Field,
-} from "metabase-types/api";
-
+import { GraphBreadcrumbs } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphBreadcrumbs";
+import { GraphExternalLink } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphExternalLink";
+import { GraphLink } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphLink";
 import {
   canNodeHaveOwner,
   getNodeCreatedAt,
@@ -23,10 +19,13 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
   getNodeOwner,
-} from "../../../../utils";
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
-import { GraphLink } from "../../GraphLink";
+} from "metabase-enterprise/dependencies/utils";
+import * as Lib from "metabase-lib";
+import type {
+  DependencyEntry,
+  DependencyNode,
+  Field,
+} from "metabase-types/api";
 
 import S from "./PanelBody.module.css";
 import { getNodeTableInfo } from "./utils";
@@ -35,17 +34,18 @@ type PanelBodyProps = {
   node: DependencyNode;
   getGraphUrl: (entry: DependencyEntry) => string;
   /**
-   * Optional hook to render extra content next to a field in the Fields
-   * section. Used by the SchemaViewer to append a clickable FK target
-   * (e.g. the related table's name) beside foreign-key fields.
+   * Override how a single field row in the Fields section is rendered.
+   * Defaults to `renderDefaultField` which shows a column-icon and the
+   * field's display name. Consumers (e.g. SchemaViewer) can replace the
+   * rendering entirely to add things like clickable FK target links.
    */
-  renderFieldExtras?: (field: Field) => ReactNode;
+  renderField?: (field: Field) => ReactNode;
 };
 
 export function PanelBody({
   node,
   getGraphUrl,
-  renderFieldExtras,
+  renderField = renderDefaultField,
 }: PanelBodyProps) {
   return (
     <Stack className={S.body} p="lg" gap="lg">
@@ -53,8 +53,19 @@ export function PanelBody({
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
-      <FieldsSection node={node} renderFieldExtras={renderFieldExtras} />
+      <FieldsSection node={node} renderField={renderField} />
     </Stack>
+  );
+}
+
+function renderDefaultField(field: Field) {
+  const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
+  const fieldIcon = getColumnIcon(fieldTypeInfo);
+  return (
+    <Group className={CS.textWrap} gap="sm" wrap="nowrap">
+      <FixedSizeIcon name={fieldIcon} c="text-secondary" />
+      <Box flex="0 1 auto">{field.display_name}</Box>
+    </Group>
   );
 }
 
@@ -150,10 +161,10 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
 }
 
 type FieldsSectionProps = SectionProps & {
-  renderFieldExtras?: (field: Field) => ReactNode;
+  renderField: (field: Field) => ReactNode;
 };
 
-function FieldsSection({ node, renderFieldExtras }: FieldsSectionProps) {
+function FieldsSection({ node, renderField }: FieldsSectionProps) {
   const fields = getNodeFields(node);
   if (fields == null) {
     return null;
@@ -164,28 +175,9 @@ function FieldsSection({ node, renderFieldExtras }: FieldsSectionProps) {
       <Title className={CS.textWrap} order={6}>
         {getNodeFieldsLabelWithCount(fields.length)}
       </Title>
-      {fields.map((field, fieldIndex) => {
-        const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
-        const fieldIcon = getColumnIcon(fieldTypeInfo);
-        const extras = renderFieldExtras?.(field);
-
-        return (
-          <Group
-            className={CS.textWrap}
-            key={fieldIndex}
-            gap="sm"
-            wrap="nowrap"
-          >
-            <FixedSizeIcon name={fieldIcon} c="text-secondary" />
-            <Box flex="0 1 auto">{field.display_name}</Box>
-            {extras != null && (
-              <Box flex="1 1 auto" miw={0}>
-                {extras}
-              </Box>
-            )}
-          </Group>
-        );
-      })}
+      {fields.map((field, fieldIndex) => (
+        <Box key={fieldIndex}>{renderField(field)}</Box>
+      ))}
     </Stack>
   );
 }

@@ -38,20 +38,23 @@ export const ZOOM_DURATION_MS = 500;
  *    table name visible whenever you zoom to it, no matter how tall the
  *    table is.
  */
-export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
+export function zoomToNodes(
+  instance: ZoomTarget,
+  nodeIds: readonly string[],
+): boolean {
   if (nodeIds.length === 0) {
-    return;
+    return false;
   }
   const idSet = new Set(nodeIds);
   const targets = instance.getNodes().filter((n) => idSet.has(n.id));
   if (targets.length === 0) {
-    return;
+    return false;
   }
 
   const viewportEl = document.querySelector(".react-flow");
   const rect = viewportEl?.getBoundingClientRect();
   if (rect == null || rect.width === 0 || rect.height === 0) {
-    return;
+    return false;
   }
 
   // Bounding box of the target nodes in world coordinates.
@@ -85,4 +88,5 @@ export function zoomToNodes(instance: ZoomTarget, nodeIds: readonly string[]) {
   const centerY = minY + (rect.height / 2 - TOP_MARGIN_PX) / zoom;
 
   instance.setCenter(centerX, centerY, { zoom, duration: ZOOM_DURATION_MS });
+  return true;
 }

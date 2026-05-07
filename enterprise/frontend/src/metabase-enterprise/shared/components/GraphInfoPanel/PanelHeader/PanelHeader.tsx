@@ -13,17 +13,16 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { DependencyNode } from "metabase-types/api";
-
+import { GraphBreadcrumbs } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphBreadcrumbs";
+import { GraphExternalLink } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphExternalLink";
 import {
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
   getNodeSourceReplacementEntry,
-} from "../../../../utils";
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
+} from "metabase-enterprise/dependencies/utils";
+import type { DependencyNode } from "metabase-types/api";
 
 import S from "./PanelHeader.module.css";
 
@@ -31,12 +30,12 @@ type PanelHeaderProps = {
   node: DependencyNode;
   onClose: () => void;
   /**
-   * Hide the "Find and replace" action button even when the node type would
-   * normally expose a source replacement entry. Consumers embedding this
-   * panel in read-only contexts (e.g. the SchemaViewer) opt out of the
-   * mutation affordance.
+   * Whether to expose the "Find and replace" action button when the node
+   * type would normally support a source replacement entry. Defaults to
+   * `true`; consumers embedding this panel in read-only contexts (e.g. the
+   * SchemaViewer) opt out by passing `false`.
    */
-  hideReplaceButton?: boolean;
+  withSourceReplacement?: boolean;
   /**
    * When provided, the node title becomes a clickable element that invokes
    * this callback. Used by the SchemaViewer to re-zoom onto the node that's
@@ -48,7 +47,7 @@ type PanelHeaderProps = {
 export function PanelHeader({
   node,
   onClose,
-  hideReplaceButton = false,
+  withSourceReplacement = true,
   onTitleClick,
 }: PanelHeaderProps) {
   const link = getNodeLink(node);
@@ -85,7 +84,7 @@ export function PanelHeader({
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {!hideReplaceButton && sourceEntry != null && (
+          {withSourceReplacement && sourceEntry != null && (
             <PLUGIN_REPLACEMENT.SourceReplacementButton>
               {({ tooltip, isDisabled }) => (
                 <Tooltip label={tooltip ?? t`Find and replace`}>
@@ -105,7 +104,7 @@ export function PanelHeader({
           </ActionIcon>
         </Group>
       </Group>
-      {!hideReplaceButton && sourceEntry != null && (
+      {withSourceReplacement && sourceEntry != null && (
         <PLUGIN_REPLACEMENT.SourceReplacementModal
           opened={isReplaceModalOpened}
           initialSource={sourceEntry}

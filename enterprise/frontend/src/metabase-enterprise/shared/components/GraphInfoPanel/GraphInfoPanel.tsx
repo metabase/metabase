@@ -15,31 +15,33 @@ type GraphInfoPanelProps = {
   node: DependencyNode;
   getGraphUrl: (entry: DependencyEntry) => string;
   onClose: () => void;
-  hideReplaceButton?: boolean;
+  /** Defaults to `true`. See PanelHeader for details. */
+  withSourceReplacement?: boolean;
   onTitleClick?: () => void;
-  renderFieldExtras?: (field: Field) => ReactNode;
+  /** Defaults to the standard icon + display-name row. See PanelBody. */
+  renderField?: (field: Field) => ReactNode;
 };
 
 export function GraphInfoPanel({
   node,
   getGraphUrl,
   onClose,
-  hideReplaceButton,
+  withSourceReplacement,
   onTitleClick,
-  renderFieldExtras,
+  renderField,
 }: GraphInfoPanelProps) {
   return (
     <Card className={S.root} withBorder data-testid="graph-info-panel">
       <PanelHeader
         node={node}
         onClose={onClose}
-        hideReplaceButton={hideReplaceButton}
+        withSourceReplacement={withSourceReplacement}
         onTitleClick={onTitleClick}
       />
       <PanelBody
         node={node}
         getGraphUrl={getGraphUrl}
-        renderFieldExtras={renderFieldExtras}
+        renderField={renderField}
       />
     </Card>
   );

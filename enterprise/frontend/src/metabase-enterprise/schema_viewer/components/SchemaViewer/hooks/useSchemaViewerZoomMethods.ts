@@ -4,7 +4,16 @@ import { useCallback, useEffect, useRef } from "react";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { ZOOM_DURATION_MS, zoomToNodes } from "../utils/zoom";
 
-type PendingFit = { kind: "all" } | { kind: "node"; nodeId: string };
+type PendingFit =
+  | { kind: "all" }
+  | { kind: "node"; nodeId: string; retriesLeft: number };
+
+// When `setNodes` and `zoomToNode` fire in the same useEffect, the ReactFlow
+// store may not yet have the new node by the time the first rAF fires —
+// `instance.getNodes()` returns the previous set, the zoom is a no-op, and
+// the camera stays put. Retry across a few frames so the zoom lands once
+// the store has caught up.
+const NODE_ZOOM_MAX_RETRIES = 8;
 
 type SchemaViewerInstance = ReactFlowInstance<
   SchemaViewerFlowNode,
@@ -39,19 +48,38 @@ export function useSchemaViewerZoomMethods(
   const pendingRef = useRef<PendingFit | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // `schedule` and `drain` reference each other — declare `schedule` via ref
+  // so `drain` can re-arm the rAF after a missed-target retry without a
+  // dependency cycle.
+  const scheduleRef = useRef<() => void>(() => {});
+
   const drain = useCallback(() => {
     rafRef.current = null;
     const pending = pendingRef.current;
-    pendingRef.current = null;
     const inst = instanceRef.current;
     if (pending == null || inst == null) {
+      pendingRef.current = null;
       return;
     }
     if (pending.kind === "all") {
+      pendingRef.current = null;
       inst.fitView({ duration: ZOOM_DURATION_MS });
-    } else {
-      zoomToNodes(inst, [pending.nodeId]);
+      return;
     }
+    const succeeded = zoomToNodes(inst, [pending.nodeId]);
+    if (succeeded) {
+      pendingRef.current = null;
+      return;
+    }
+    // Target node not yet in the ReactFlow store — try again next frame
+    // (up to NODE_ZOOM_MAX_RETRIES) so the camera still lands on it once
+    // the store sync catches up.
+    if (pending.retriesLeft > 0) {
+      pendingRef.current = { ...pending, retriesLeft: pending.retriesLeft - 1 };
+      scheduleRef.current();
+      return;
+    }
+    pendingRef.current = null;
   }, []);
 
   const schedule = useCallback(() => {
@@ -60,6 +88,8 @@ export function useSchemaViewerZoomMethods(
     }
     rafRef.current = requestAnimationFrame(drain);
   }, [drain]);
+
+  scheduleRef.current = schedule;
 
   // If a request lands before the instance is captured, the rAF will see no
   // instance and bail. Re-drain when the instance arrives.
@@ -71,7 +101,11 @@ export function useSchemaViewerZoomMethods(
 
   const zoomToNode = useCallback(
     (nodeId: string) => {
-      pendingRef.current = { kind: "node", nodeId };
+      pendingRef.current = {
+        kind: "node",
+        nodeId,
+        retriesLeft: NODE_ZOOM_MAX_RETRIES,
+      };
       schedule();
     },
     [schedule],

@@ -336,7 +336,7 @@ export function SchemaViewer({
           onClose={handleClearSelection}
         />
 
-        {isFetching && (
+        {isFetching && expandingTableIds.size === 0 && (
           <Box className={S.centerLoader} data-testid="schema-viewer-loader">
             <Loader />
           </Box>

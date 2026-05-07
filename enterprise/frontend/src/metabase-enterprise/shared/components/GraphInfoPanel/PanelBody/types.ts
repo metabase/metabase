@@ -1,4 +1,4 @@
-import type { NodeLink } from "../../../../types";
+import type { NodeLink } from "metabase-enterprise/dependencies/types";
 
 export type NodeTableInfo = {
   label: string;

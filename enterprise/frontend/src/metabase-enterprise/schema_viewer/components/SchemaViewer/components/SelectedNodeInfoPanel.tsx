@@ -1,12 +1,25 @@
 import { Panel } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { FixedSizeIcon, Group, Text, UnstyledButton } from "metabase/ui";
-import { GraphInfoPanel } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphInfoPanel";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  Box,
+  FixedSizeIcon,
+  Group,
+  Loader,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
+import { GraphInfoPanel } from "metabase-enterprise/shared/components/GraphInfoPanel";
+import * as Lib from "metabase-lib";
 import type {
+  ConcreteTableId,
   Database,
   DependencyId,
+  ErdField,
   Field,
   TableDependencyNode,
   TableDependencyNodeData,
@@ -15,6 +28,7 @@ import type {
 import S from "../SchemaViewer.module.css";
 import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
+import { getEdgeId } from "../utils";
 
 type SelectedNodeInfoPanelProps = {
   nodes: SchemaViewerFlowNode[];
@@ -27,16 +41,17 @@ type SelectedNodeInfoPanelProps = {
  * our ErdNode data into the DependencyNode shape that GraphInfoPanel expects.
  * Also handles:
  *  - onTitleClick: re-zoom onto the selected node
- *  - renderFieldExtras: append a clickable target-table name next to FK
- *    fields; clicking it pans to the linked table without dropping the
- *    current selection
+ *  - renderField: render each field with the standard column icon + name and
+ *    append a clickable target-table link for FK fields; clicking pans the
+ *    camera to the linked table without dropping the current selection
  */
 export function SelectedNodeInfoPanel({
   nodes,
   selectedNodeId,
   onClose,
 }: SelectedNodeInfoPanelProps) {
-  const { zoomToNode } = useSchemaViewerContext();
+  const { zoomToNode, onExpandToTable, expandingTableIds } =
+    useSchemaViewerContext();
 
   const { data: databasesResponse } = useListDatabasesQuery({
     include: "schemas",
@@ -74,39 +89,107 @@ export function SelectedNodeInfoPanel({
     }
   }, [selectedNode, zoomToNode]);
 
-  const renderFieldExtras = useCallback(
+  const renderField = useCallback(
     (field: Field) => {
-      if (selectedNode == null) {
-        return null;
-      }
-      const erdField = selectedNode.data.fields.find((f) => f.id === field.id);
-      if (erdField?.fk_target_table_id == null) {
-        return null;
-      }
-      const targetNode = nodesByTableId.get(
-        Number(erdField.fk_target_table_id),
-      );
-      if (targetNode == null) {
-        return null;
-      }
-      const targetName = targetNode.data.name;
+      const fieldIcon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
+      const erdField =
+        selectedNode != null ? lookupErdField(selectedNode, field.id) : null;
+      const targetNode =
+        erdField?.fk_target_table_id != null
+          ? (nodesByTableId.get(Number(erdField.fk_target_table_id)) ?? null)
+          : null;
+
+      // Off-canvas FK target: clicking the field name fires the same FK
+      // expansion that a click on the matching field row in the table card
+      // does, then highlights the new connecting edge once the response
+      // merges.
+      const handleFetchExternal = () => {
+        if (erdField?.fk_target_table_id == null) {
+          return;
+        }
+        const candidateEdgeIds =
+          erdField.fk_target_field_id != null
+            ? [
+                getEdgeId(erdField.id, erdField.fk_target_field_id),
+                getEdgeId(erdField.fk_target_field_id, erdField.id),
+              ]
+            : undefined;
+        onExpandToTable(
+          erdField.fk_target_table_id as ConcreteTableId,
+          candidateEdgeIds,
+        );
+      };
+
+      const isExternalFk =
+        erdField?.fk_target_table_id != null && targetNode == null;
+      const isFetchingExternal =
+        isExternalFk &&
+        erdField?.fk_target_table_id != null &&
+        expandingTableIds.has(erdField.fk_target_table_id as ConcreteTableId);
+
+      const fieldName = <Box className={S.fieldName}>{field.display_name}</Box>;
+
       return (
-        <Group gap="xs" wrap="nowrap">
-          <Text c="text-tertiary">→</Text>
-          <UnstyledButton
-            className={S.fkLink}
-            c="brand"
-            onClick={() => zoomToNode(targetNode.id)}
-          >
-            <Group gap={4} wrap="nowrap" display="inline-flex">
-              <FixedSizeIcon name="table2" />
-              <span>{targetName}</span>
+        <Group className={S.fieldRow} gap="sm" wrap="nowrap">
+          <FixedSizeIcon name={fieldIcon} c="text-secondary" />
+          {isExternalFk ? (
+            <Tooltip
+              label={t`Fetch external table`}
+              disabled={isFetchingExternal}
+            >
+              <UnstyledButton
+                className={S.fkLink}
+                c="brand"
+                disabled={isFetchingExternal}
+                onClick={handleFetchExternal}
+              >
+                {fieldName}
+              </UnstyledButton>
+            </Tooltip>
+          ) : (
+            fieldName
+          )}
+          {isFetchingExternal && (
+            <Loader
+              size="xs"
+              data-testid="schema-viewer-info-panel-fetch-loader"
+            />
+          )}
+          {targetNode != null && (
+            <Group gap="xs" wrap="nowrap" flex="1 1 auto" miw={0}>
+              <Text c="text-tertiary" lh={1}>
+                →
+              </Text>
+              <UnstyledButton
+                className={S.fkLink}
+                c="brand"
+                onClick={() => zoomToNode(targetNode.id)}
+              >
+                <Group
+                  gap={4}
+                  wrap="nowrap"
+                  display="inline-flex"
+                  style={{ alignItems: "center" }}
+                  w="100%"
+                >
+                  <FixedSizeIcon name="table2" />
+                  <span className={S.targetName}>
+                    {formatTargetTableName(selectedNode, targetNode)}
+                  </span>
+                </Group>
+              </UnstyledButton>
             </Group>
-          </UnstyledButton>
+          )}
         </Group>
       );
     },
-    [selectedNode, nodesByTableId, zoomToNode],
+    [
+      selectedNode,
+      nodesByTableId,
+      zoomToNode,
+      onExpandToTable,
+      expandingTableIds,
+    ],
   );
 
   if (dependencyNode == null) {
@@ -119,16 +202,48 @@ export function SelectedNodeInfoPanel({
         node={dependencyNode}
         getGraphUrl={emptyGraphUrl}
         onClose={onClose}
-        hideReplaceButton
+        withSourceReplacement={false}
         onTitleClick={handleTitleClick}
-        renderFieldExtras={renderFieldExtras}
+        renderField={renderField}
       />
     </Panel>
   );
 }
 
+function lookupErdField(
+  selectedNode: SchemaViewerFlowNode,
+  fieldId: Field["id"],
+): ErdField | null {
+  // Narrow to the numeric id form; ErdField only carries number ids, so a
+  // LocalFieldReference (array form) can never match.
+  if (typeof fieldId !== "number") {
+    return null;
+  }
+  return selectedNode.data.fields.find((f) => f.id === fieldId) ?? null;
+}
+
 function emptyGraphUrl(): string {
   return "";
+}
+
+/**
+ * Render the FK target table's display name. If the target sits in a
+ * different schema than the selected (source) table — i.e. it was expanded
+ * into via cross-schema FK — prefix the name with `schema.` so the user can
+ * see at a glance that it's external.
+ */
+function formatTargetTableName(
+  selectedNode: SchemaViewerFlowNode | null,
+  targetNode: SchemaViewerFlowNode,
+): string {
+  const targetName = targetNode.data.name;
+  const targetSchema = targetNode.data.schema;
+  const sourceSchema = selectedNode?.data.schema ?? null;
+  const isExternalSchema =
+    targetSchema != null &&
+    targetSchema !== "" &&
+    targetSchema !== sourceSchema;
+  return isExternalSchema ? `${targetSchema}.${targetName}` : targetName;
 }
 
 /**
@@ -156,6 +271,8 @@ function toTableDependencyNode(
           name: f.name,
           display_name: f.display_name,
           database_type: f.database_type,
+          base_type: f.base_type ?? undefined,
+          effective_type: f.effective_type ?? undefined,
           semantic_type: f.semantic_type ?? null,
           fk_target_field_id: f.fk_target_field_id ?? null,
         }) as Field,

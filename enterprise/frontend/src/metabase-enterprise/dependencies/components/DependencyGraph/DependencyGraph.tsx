@@ -18,6 +18,7 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
+import { GraphInfoPanel } from "metabase-enterprise/shared/components/GraphInfoPanel";
 import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
@@ -25,7 +26,6 @@ import { GraphContext } from "./GraphContext";
 import { GraphDependencyPanel } from "./GraphDependencyPanel";
 import { GraphEdge } from "./GraphEdge";
 import { GraphEntryInput } from "./GraphEntryInput";
-import { GraphInfoPanel } from "./GraphInfoPanel";
 import { GraphNode } from "./GraphNode";
 import { GraphNodeLayout } from "./GraphNodeLayout";
 import { GraphSelectInput } from "./GraphSelectionInput";

@@ -22,17 +22,35 @@
 }
 
 .infoPanel {
-  /* Push the info panel down past the top-right AppSwitcher so it
-     doesn't overlap. */
-  top: 3.5rem;
   bottom: 1rem;
   max-height: calc(100% - 4.5rem);
   z-index: var(--canvas-element-z-index);
 
+  .fieldName {
+    flex: 0 1 auto;
+    white-space: nowrap;
+  }
+
   .fkLink {
+    line-height: 1;
+    overflow: hidden;
+
     &:hover span {
       text-decoration: underline;
     }
+
+    .targetName {
+      display: inline-block;
+      width: 100%;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+  }
+
+  /* Fixed-height field rows so FK rows (with target-table link) and plain
+     rows occupy the same vertical space. */
+  .fieldRow {
+    height: 1rem;
   }
 }
 
