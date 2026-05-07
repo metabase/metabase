@@ -158,9 +158,7 @@ export function useGraphSync({
       if (prev.size === 0) {
         return prev;
       }
-      const visibleIds = new Set(
-        nextNodes.map((n) => n.data.table_id),
-      );
+      const visibleIds = new Set(nextNodes.map((n) => n.data.table_id));
       let changed = false;
       const next = new Set<ConcreteTableId>();
       for (const id of prev) {

@@ -90,10 +90,7 @@ export function SchemaViewerFieldRow({
               getEdgeId(field.fk_target_field_id, field.id),
             ]
           : undefined;
-      onExpandToTable(
-        field.fk_target_table_id,
-        candidateEdgeIds,
-      );
+      onExpandToTable(field.fk_target_table_id, candidateEdgeIds);
     } else if (canZoomTo && field.fk_target_table_id != null) {
       const targetNodeId = getNodeId({
         table_id: field.fk_target_table_id,
