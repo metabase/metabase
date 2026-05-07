@@ -26,7 +26,8 @@ import { SettingsPageWrapper } from "../../../components/SettingsSection";
 
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
 import { NotificationDetailSidebar } from "./NotificationDetailSidebar";
-import { NotificationsFilters } from "./NotificationsFilters";
+import { NotificationsFiltersDropdown } from "./NotificationsFiltersDropdown";
+import { NotificationsSearchInput } from "./NotificationsSearchInput";
 import { NotificationsTable } from "./NotificationsTable";
 import { NotificationsTabs } from "./NotificationsTabs";
 import {
@@ -83,6 +84,7 @@ export const NotificationsAdminPage = ({
   }, [
     urlState.page,
     urlState.active,
+    urlState.tab,
     urlState.last_sent_status,
     urlState.owner_active,
     urlState.owner_id,
@@ -305,16 +307,21 @@ export const NotificationsAdminPage = ({
       </Flex>
 
       <NotificationsTabs
-        lastSentStatus={urlState.last_sent_status}
-        ownerActive={urlState.owner_active}
+        tab={urlState.tab}
         onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
       />
 
-      <NotificationsFilters
-        state={urlState}
-        isFetching={isFetching}
-        onChange={patchUrlState}
-      />
+      <Flex gap="md" align="center">
+        <NotificationsSearchInput
+          value={urlState.query}
+          isLoading={isFetching}
+          onChange={(query) => patchUrlState({ query, page: 0 })}
+        />
+        <NotificationsFiltersDropdown
+          state={urlState}
+          onChange={patchUrlState}
+        />
+      </Flex>
 
       <NotificationsTable
         notifications={notifications}

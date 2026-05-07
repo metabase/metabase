@@ -14,6 +14,7 @@ import {
   type AdminNotificationSortColumn,
   type CardId,
   type NotificationChannelType,
+  type NotificationRunStatus,
   type NotificationStatus,
   type SortDirection,
   type UserId,
@@ -21,6 +22,8 @@ import {
 } from "metabase-types/api";
 
 type StatusBadgeColor = NonNullable<BadgeProps["color"]>;
+
+export type NotificationsTab = "all" | "failing" | "ownerless";
 
 export type NotificationsUrlState = {
   page: number;
@@ -30,9 +33,14 @@ export type NotificationsUrlState = {
   card_id: CardId | null;
   query: string;
   channel: NotificationChannelType | null;
+  last_sent_status: NotificationRunStatus | null;
+  owner_active: boolean | null;
+  tab: NotificationsTab;
   sort_column: AdminNotificationSortColumn;
   sort_direction: SortDirection;
 };
+
+export const DEFAULT_TAB: NotificationsTab = "all";
 
 export const DEFAULT_ACTIVE: boolean | null = true;
 export const DEFAULT_SORT_COLUMN: AdminNotificationSortColumn = "updated_at";
@@ -130,6 +138,35 @@ const parseChannelEnum = (
 ): NotificationsUrlState["channel"] =>
   parseGuardedEnum(getFirstParamValue(param), guardChannel, null);
 
+const guardLastSentStatus = (value: string): value is NotificationRunStatus =>
+  (["failing", "successful"] satisfies NotificationRunStatus[]).includes(
+    value as NotificationRunStatus,
+  );
+
+const parseLastSentStatusEnum = (
+  param: QueryParam,
+): NotificationsUrlState["last_sent_status"] =>
+  parseGuardedEnum(getFirstParamValue(param), guardLastSentStatus, null);
+
+const parseOwnerActive = (param: QueryParam): boolean | null => {
+  const value = getFirstParamValue(param);
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return null;
+};
+
+const guardTab = (value: string): value is NotificationsTab =>
+  (["all", "failing", "ownerless"] satisfies NotificationsTab[]).includes(
+    value as NotificationsTab,
+  );
+
+const parseTabEnum = (param: QueryParam): NotificationsTab =>
+  parseGuardedEnum(getFirstParamValue(param), guardTab, DEFAULT_TAB);
+
 const guardSortColumn = (value: string): value is AdminNotificationSortColumn =>
   (SORT_COLUMN_VALUES satisfies AdminNotificationSortColumn[]).includes(
     value as AdminNotificationSortColumn,
@@ -162,6 +199,9 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     card_id: parseId(query.card_id),
     query: parseQuery(query.query),
     channel: parseChannelEnum(query.channel),
+    last_sent_status: parseLastSentStatusEnum(query.last_sent_status),
+    owner_active: parseOwnerActive(query.owner_active),
+    tab: parseTabEnum(query.tab),
     sort_column: parseSortColumnEnum(query.sort_column),
     sort_direction: parseSortDirectionEnum(query.sort_direction),
   }),
@@ -173,6 +213,10 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     card_id: state.card_id == null ? undefined : String(state.card_id),
     query: state.query || undefined,
     channel: state.channel ?? undefined,
+    last_sent_status: state.last_sent_status ?? undefined,
+    owner_active:
+      state.owner_active == null ? undefined : String(state.owner_active),
+    tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
     sort_direction:
@@ -182,21 +226,38 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
   }),
 };
 
+type TabFilters = {
+  last_sent_status: NotificationRunStatus | null;
+  owner_active: boolean | null;
+};
+
+const TAB_FILTERS: Record<NotificationsTab, TabFilters> = {
+  all: { last_sent_status: null, owner_active: null },
+  failing: { last_sent_status: "failing", owner_active: null },
+  ownerless: { last_sent_status: null, owner_active: false },
+};
+
 export const buildListParams = (
   state: NotificationsUrlState,
   pageSize: number,
-): AdminNotificationListParams => ({
-  limit: pageSize,
-  offset: state.page * pageSize,
-  active: state.active ?? undefined,
-  status: state.status ?? undefined,
-  creator_id: state.creator_id ?? undefined,
-  card_id: state.card_id ?? undefined,
-  query: state.query || undefined,
-  channel: state.channel ?? undefined,
-  sort_column: state.sort_column,
-  sort_direction: state.sort_direction,
-});
+): AdminNotificationListParams => {
+  const tabFilters = TAB_FILTERS[state.tab];
+  return {
+    limit: pageSize,
+    offset: state.page * pageSize,
+    active: state.active ?? undefined,
+    status: state.status ?? undefined,
+    creator_id: state.creator_id ?? undefined,
+    card_id: state.card_id ?? undefined,
+    query: state.query || undefined,
+    channel: state.channel ?? undefined,
+    last_sent_status:
+      tabFilters.last_sent_status ?? state.last_sent_status ?? undefined,
+    owner_active: tabFilters.owner_active ?? state.owner_active ?? undefined,
+    sort_column: state.sort_column,
+    sort_direction: state.sort_direction,
+  };
+};
 
 export const getStatusLabel = (status: NotificationStatus): string =>
   match(status)
@@ -254,25 +315,6 @@ export const getStatusIcon = (status: NotificationStatus): StatusIcon =>
       color: "error",
     }))
     .exhaustive();
-
-export type NotificationStatusTab = "all" | "failing" | "orphaned_creator";
-
-export const getStatusFromTab = (
-  tab: NotificationStatusTab,
-): NotificationStatus | null =>
-  match(tab)
-    .with("all", () => null)
-    .with("failing", () => "failing" as const)
-    .with("orphaned_creator", () => "orphaned_creator" as const)
-    .exhaustive();
-
-export const getTabFromStatus = (
-  status: NotificationStatus | null,
-): NotificationStatusTab =>
-  match(status)
-    .with("failing", () => "failing" as const)
-    .with("orphaned_creator", () => "orphaned_creator" as const)
-    .otherwise(() => "all" as const);
 
 export const formatRelativeDate = (
   value: string | null | undefined,
