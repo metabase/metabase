@@ -720,7 +720,7 @@ index 0d3b4e7..0571622 100644
      includeScore: true,
      includeMatches: true,
 -    threshold: 0.2,
-+    threshold: 0.35,
++    threshold: 0.3,
      minMatchCharLength: 1,
  };
  function order(a, b) {
