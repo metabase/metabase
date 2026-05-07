@@ -135,7 +135,6 @@ export const NotificationsTable = ({
             aria-label={t`Select notification ${row.original.id}`}
             checked={selectedSet.has(row.original.id)}
             onChange={() => onToggleRow(row.original.id)}
-            onClick={(event) => event.stopPropagation()}
           />
         ),
       },
