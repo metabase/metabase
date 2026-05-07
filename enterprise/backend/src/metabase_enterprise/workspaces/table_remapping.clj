@@ -222,6 +222,20 @@
    :schema (denormalize-level schema-slot)
    :name   table-name})
 
+(defn- spec->table-spec
+  "Project a storage-shaped `::table-spec` map (`{:db :schema :table}` with `\"\"`
+   sentinels) into the consumer-shaped `{:db :schema :name}` map (with `nil` for
+   absent slots). Symmetric with [[store-tuple->table-spec]] — every value that
+   crosses the storage boundary outward gets denormalized once, here.
+
+   Storage layer concerns (the `\"\"` sentinel keeping the unique constraint
+   enforceable) stay below this line; consumers (`:model/Table` predicates,
+   transform targets, sync's describe-fields lookups) work with `nil`."
+  [{:keys [db schema table]}]
+  {:db     (denormalize-level db)
+   :schema (denormalize-level schema)
+   :name   table})
+
 (defn remap-table
   "Returns `{:db :schema :name}` for the workspace destination of canonical
    `from-spec`, or nil if no remapping exists.
@@ -455,9 +469,12 @@
      `to_schema` columns - so cross-DB Snowflake / SQL Server / BigQuery
      workspaces are now expressible end-to-end.
 
-   Returns the to-side `::table-spec` so callers (notably
-   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]) can route the
-   transform executor to the same warehouse identifier this function recorded.
+   Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
+   shape: `nil` for slots the driver doesn't fill, string otherwise). The
+   storage layer's `\"\"` sentinel never leaks above this boundary, so callers
+   like [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]
+   can `assoc` the values onto the transform target without a per-call
+   denormalization shim.
 
    Throws when the database is not workspaced -- a caller getting here in that case is a
    programming error; the transform-hook path should gate on [[ws/db-workspace-schema]] first."
@@ -485,4 +502,7 @@
                            (assoc :db     (normalize-level (:db workspace-ns))
                                   :schema (normalize-level (:schema workspace-ns))))]
       (add-mapping! db-id from-spec to-spec)
-      to-spec)))
+      ;; Hand callers the denormalized shape so storage's `""` sentinel stays
+      ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
+      ;; `canonical-schema+name`) which also denormalize at the boundary.
+      (spec->table-spec to-spec))))

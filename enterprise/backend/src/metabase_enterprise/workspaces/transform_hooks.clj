@@ -34,12 +34,8 @@
   :feature :none
   [db-id target]
   (if (some? (ws/db-workspace-namespace db-id))
-    (let [{to-db :db to-schema :schema to-table :table}
-          (ws.table-remapping/add-transform-target-mapping! db-id target)
-          ;; The TableRemapping store uses `\"\"` as an empty-slot sentinel; the
-          ;; transform target uses nil. Normalize as we read out so downstream
-          ;; consumers see clean slot semantics.
-          denorm   (fn [v] (when-not (or (nil? v) (= "" v)) v))]
+    (let [{to-db :db to-schema :schema to-name :name}
+          (ws.table-remapping/add-transform-target-mapping! db-id target)]
       ;; **Replace** `:db` and `:schema` on the target with the to-spec's
       ;; values — not just merge in the populated ones. The canonical target
       ;; carries the input namespace (e.g. `:schema \"test-data\"` for a MySQL
@@ -48,8 +44,9 @@
       ;; not `:schema`. Failing to clear the canonical `:schema` leaves the
       ;; SQL compiler with two competing qualifiers and the output lands in
       ;; the wrong place.
-      (assoc target
-             :db     (denorm to-db)
-             :schema (denorm to-schema)
-             :name   to-table))
+      ;;
+      ;; `add-transform-target-mapping!` returns the to-side denormalized
+      ;; (`""` sentinels already converted to `nil`), so we can `assoc` the
+      ;; values directly without a per-call shim.
+      (assoc target :db to-db :schema to-schema :name to-name))
     target))
