@@ -63,9 +63,13 @@
     (is (=? {:contents [{:uri      public-uri
                          :mimeType "text/plain"
                          :text     "public body"}]}
-            (mcp.resources/read-resource public-uri {}))))
+            (mcp.resources/read-resource public-uri #{} {}))))
   (testing "read-resource returns nil for unknown URIs"
-    (is (nil? (mcp.resources/read-resource "test://nope" {})))))
+    (is (nil? (mcp.resources/read-resource "test://nope" #{::scope/unrestricted} {}))))
+  (testing "read-resource returns nil for resources whose scope token-scopes does not satisfy"
+    (is (nil? (mcp.resources/read-resource private-uri #{"agent:other"} {})))
+    (is (=? {:contents [{:uri private-uri :text "private body"}]}
+            (mcp.resources/read-resource private-uri #{"agent:search"} {})))))
 
 (deftest builtin-construct-query-resource-test
   (testing "the construct-query reference is registered as a public markdown resource"
