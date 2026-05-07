@@ -467,6 +467,7 @@
     "build-watch:cljs": "bun install && shadow-cljs watch app",
     "build-watch:js": "bun install && NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch",
     "build:cljs": "bun install && bun run build-pure:cljs",
+    "build:custom-viz-fixtures": "node enterprise/frontend/src/custom-viz/fixtures/build-all.mjs",
     "build:js": "bun install && rspack build",
     "chromatic": "bun run build:cljs && NODE_OPTIONS=--max-old-space-size=8192 chromatic",
     "ci": "bun run ci-frontend && bun run ci-backend",
