@@ -114,7 +114,12 @@ export const SearchResults = ({
     return showFooter ? [...list, footerComponent] : list;
   }, [footerComponent, list, showFooter]);
 
-  const onEnterSelect = (item?: CollectionItem | SearchResultsFooter) => {
+  type ItemType =
+    | CollectionItem
+    | SearchResultsProps["footerComponent"]
+    | SearchResultType;
+
+  const onEnterSelect = (item?: ItemType) => {
     if (showFooter && cursorIndex === dropdownItemList.length - 1) {
       onFooterSelect?.();
     }
@@ -129,7 +134,7 @@ export const SearchResults = ({
   };
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
-    CollectionItem | SearchResultsProps["footerComponent"],
+    ItemType,
     HTMLLIElement
   >({
     list: dropdownItemList,
