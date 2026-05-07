@@ -89,8 +89,8 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
   });
 
   const onClose = jest.fn();
-  const onArchive = jest.fn();
-  const onUnarchive = jest.fn();
+  const onDelete = jest.fn();
+  const onUndelete = jest.fn();
   const onChangeOwner = jest.fn();
 
   const utils = renderWithProviders(
@@ -99,8 +99,8 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
       isBulkLoading={false}
       mockDetail={detail}
       onClose={onClose}
-      onArchive={onArchive}
-      onUnarchive={onUnarchive}
+      onDelete={onDelete}
+      onUndelete={onUndelete}
       onChangeOwner={onChangeOwner}
     />,
     { withRouter: true },
@@ -109,8 +109,8 @@ const setup = ({ detail = mockDetail() }: SetupOpts = {}) => {
   return {
     ...utils,
     onClose,
-    onArchive,
-    onUnarchive,
+    onDelete,
+    onUndelete,
     onChangeOwner,
   };
 };
@@ -154,11 +154,11 @@ describe("NotificationDetailSidebar", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("offers archive and change-owner actions in the more menu", async () => {
-    const { onArchive, onChangeOwner } = setup();
+  it("offers delete and change-owner actions in the more menu", async () => {
+    const { onDelete, onChangeOwner } = setup();
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Archive" }));
-    expect(onArchive).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    expect(onDelete).toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
     await userEvent.click(
@@ -167,11 +167,11 @@ describe("NotificationDetailSidebar", () => {
     expect(onChangeOwner).toHaveBeenCalled();
   });
 
-  it("shows unarchive when the alert is archived", async () => {
-    const { onUnarchive } = setup({ detail: mockDetail({ active: false }) });
+  it("shows undelete when the alert is deleted", async () => {
+    const { onUndelete } = setup({ detail: mockDetail({ active: false }) });
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Unarchive" }));
-    expect(onUnarchive).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Undelete" }));
+    expect(onUndelete).toHaveBeenCalled();
   });
 
   it("renders a row in the runs table for each task run", async () => {

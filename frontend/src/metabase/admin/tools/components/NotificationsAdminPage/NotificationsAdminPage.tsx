@@ -158,7 +158,7 @@ export const NotificationsAdminPage = ({
         dispatch(
           addUndo({
             message:
-              count === 1 ? t`Archived 1 alert` : t`Archived ${count} alerts`,
+              count === 1 ? t`Deleted 1 alert` : t`Deleted ${count} alerts`,
           }),
         );
         if (isBulk) {
@@ -168,7 +168,7 @@ export const NotificationsAdminPage = ({
         dispatch(
           addUndo({
             icon: "warning",
-            message: t`Could not archive alerts.`,
+            message: t`Could not delete alerts.`,
           }),
         );
       }
@@ -176,58 +176,16 @@ export const NotificationsAdminPage = ({
     [bulkAction, dispatch],
   );
 
-  const unarchiveIds = useCallback(
-    async (ids: NotificationId[], isBulk: boolean) => {
-      const count = ids.length;
-      try {
-        await bulkAction({
-          notification_ids: ids,
-          action: "unarchive",
-        }).unwrap();
-        dispatch(
-          addUndo({
-            message:
-              count === 1
-                ? t`Unarchived 1 alert`
-                : t`Unarchived ${count} alerts`,
-          }),
-        );
-        if (isBulk) {
-          setSelectedIds([]);
-        }
-      } catch {
-        dispatch(
-          addUndo({
-            icon: "warning",
-            message: t`Could not unarchive alerts.`,
-          }),
-        );
-      }
-    },
-    [bulkAction, dispatch],
-  );
-
-  const handleArchiveBulk = useCallback(() => {
+  const handleDeleteBulk = useCallback(() => {
     const count = selectedIds.length;
     showConfirm({
-      title: count === 1 ? t`Archive 1 alert?` : t`Archive ${count} alerts?`,
+      title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
-      confirmButtonText: t`Archive`,
+      confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
       onConfirm: () => deleteIds(selectedIds, true),
     });
   }, [deleteIds, selectedIds, showConfirm]);
-
-  const handleUnarchiveBulk = useCallback(() => {
-    const count = selectedIds.length;
-    showConfirm({
-      title:
-        count === 1 ? t`Unarchive 1 alert?` : t`Unarchive ${count} alerts?`,
-      message: t`Recipients will begin receiving these alerts again on the next scheduled run.`,
-      confirmButtonText: t`Unarchive`,
-      onConfirm: () => unarchiveIds(selectedIds, true),
-    });
-  }, [unarchiveIds, selectedIds, showConfirm]);
 
   const handleSidebarDelete = useCallback(
     (id: NotificationId) => {
@@ -352,21 +310,12 @@ export const NotificationsAdminPage = ({
             : t`${selectedCount} alerts selected`
         }
       >
-        {urlState.active === false ? (
-          <BulkActionButton
-            onClick={handleUnarchiveBulk}
-            disabled={isBulkLoading}
-          >
-            {t`Unarchive`}
-          </BulkActionButton>
-        ) : (
-          <BulkActionDangerButton
-            onClick={handleArchiveBulk}
-            disabled={isBulkLoading}
-          >
-            {t`Archive`}
-          </BulkActionDangerButton>
-        )}
+        <BulkActionDangerButton
+          onClick={handleDeleteBulk}
+          disabled={isBulkLoading}
+        >
+          {t`Delete`}
+        </BulkActionDangerButton>
         <BulkActionButton
           onClick={() =>
             setChangeOwnerTarget({ ids: selectedIds, isBulk: true })
