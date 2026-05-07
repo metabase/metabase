@@ -87,8 +87,6 @@ export const NotificationsAdminPage = ({
     urlState.tab,
     urlState.last_sent_status,
     urlState.owner_active,
-    urlState.owner_id,
-    urlState.card_id,
     urlState.query,
     urlState.channel,
     urlState.sort_column,

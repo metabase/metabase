@@ -12,12 +12,10 @@ import type { BadgeProps, IconName } from "metabase/ui";
 import {
   type AdminNotificationListParams,
   type AdminNotificationSortColumn,
-  type CardId,
   type NotificationChannelType,
   type NotificationRunStatus,
   type NotificationStatus,
   type SortDirection,
-  type UserId,
   guardSortDirection,
 } from "metabase-types/api";
 
@@ -29,8 +27,6 @@ export type NotificationsUrlState = {
   page: number;
   active: boolean | null;
   status: NotificationStatus | null;
-  creator_id: UserId | null;
-  card_id: CardId | null;
   query: string;
   channel: NotificationChannelType | null;
   last_sent_status: NotificationRunStatus | null;
@@ -71,15 +67,6 @@ const parseActive = (param: QueryParam): boolean | null => {
     return null;
   }
   return DEFAULT_ACTIVE;
-};
-
-const parseId = (param: QueryParam): number | null => {
-  const value = getFirstParamValue(param);
-  if (!value) {
-    return null;
-  }
-  const parsed = parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 const parseQuery = (param: QueryParam): string => {
@@ -195,8 +182,6 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     page: parsePage(query.page),
     active: parseActive(query.active),
     status: parseStatusEnum(query.status),
-    creator_id: parseId(query.creator_id),
-    card_id: parseId(query.card_id),
     query: parseQuery(query.query),
     channel: parseChannelEnum(query.channel),
     last_sent_status: parseLastSentStatusEnum(query.last_sent_status),
@@ -209,8 +194,6 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     page: state.page === 0 ? undefined : String(state.page),
     active: serializeActive(state.active),
     status: state.status ?? undefined,
-    creator_id: state.creator_id == null ? undefined : String(state.creator_id),
-    card_id: state.card_id == null ? undefined : String(state.card_id),
     query: state.query || undefined,
     channel: state.channel ?? undefined,
     last_sent_status: state.last_sent_status ?? undefined,
@@ -246,9 +229,6 @@ export const buildListParams = (
     limit: pageSize,
     offset: state.page * pageSize,
     active: state.active ?? undefined,
-    status: state.status ?? undefined,
-    creator_id: state.creator_id ?? undefined,
-    card_id: state.card_id ?? undefined,
     query: state.query || undefined,
     channel: state.channel ?? undefined,
     last_sent_status:
