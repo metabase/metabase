@@ -32,7 +32,7 @@ type Props = {
   error: unknown;
   isLoading: boolean;
   selectedIds: NotificationId[];
-  selectedDetailId: NotificationId | null;
+  selectedDetailId: NotificationId | undefined;
   sorting: SortingState;
   onSortingChange: (sorting: SortingState) => void;
   onToggleRow: (id: NotificationId) => void;

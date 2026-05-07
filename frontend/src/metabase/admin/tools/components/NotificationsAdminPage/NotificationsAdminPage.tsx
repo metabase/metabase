@@ -56,6 +56,7 @@ export const NotificationsAdminPage = ({
   location,
   params,
 }: WithRouterProps<RouteParams>) => {
+  const notificationId = Urls.extractEntityId(params.notificationId);
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [selectedIds, setSelectedIds] = useState<NotificationId[]>([]);
@@ -70,14 +71,6 @@ export const NotificationsAdminPage = ({
   const notifications = data?.data ?? [];
   const total = data?.total ?? 0;
   const selectedCount = selectedIds.length;
-
-  const parsedDetailId = useMemo(() => {
-    if (params?.notificationId == null) {
-      return null;
-    }
-    const parsed = Number(params.notificationId);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-  }, [params?.notificationId]);
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
@@ -298,7 +291,7 @@ export const NotificationsAdminPage = ({
     [bulkAction, changeOwnerTarget, dispatch],
   );
 
-  const isSidebarOpen = parsedDetailId !== null;
+  const isSidebarOpen = notificationId !== undefined;
 
   return (
     <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
@@ -328,7 +321,7 @@ export const NotificationsAdminPage = ({
         error={error}
         isLoading={isLoading}
         selectedIds={selectedIds}
-        selectedDetailId={parsedDetailId}
+        selectedDetailId={notificationId}
         sorting={sorting}
         onSortingChange={handleSortingChange}
         onToggleRow={handleToggleRow}
@@ -356,7 +349,7 @@ export const NotificationsAdminPage = ({
 
       {isSidebarOpen && (
         <NotificationDetailSidebar
-          notificationId={parsedDetailId}
+          notificationId={notificationId}
           isBulkLoading={isBulkLoading}
           onClose={handleSidebarClose}
           onArchive={(notification) => handleSidebarArchive(notification.id)}
