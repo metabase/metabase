@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ADMIN_NAVBAR_HEIGHT } from "metabase/nav/constants";
 import {
   ActionIcon,
   Anchor,
@@ -38,7 +39,7 @@ import type {
 
 import { formatRelativeDate, getChannelIconName } from "./utils";
 
-const SIDEBAR_WIDTH = 560;
+export const SIDEBAR_WIDTH = 560;
 const RECENT_RUNS_LIMIT = 5;
 
 type Props = {
@@ -75,6 +76,12 @@ export const NotificationDetailSidebar = ({
       withOverlay={false}
       lockScroll={false}
       shadow="lg"
+      styles={{
+        inner: {
+          top: ADMIN_NAVBAR_HEIGHT,
+          height: `calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`,
+        },
+      }}
     >
       <Stack gap={0} h="100%">
         <SidebarHeader

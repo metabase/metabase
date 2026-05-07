@@ -1,6 +1,6 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import dayjs from "dayjs";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -32,6 +32,7 @@ type Props = {
   error: unknown;
   isLoading: boolean;
   selectedIds: NotificationId[];
+  selectedDetailId: NotificationId | null;
   sorting: SortingState;
   onSortingChange: (sorting: SortingState) => void;
   onToggleRow: (id: NotificationId) => void;
@@ -94,12 +95,15 @@ export const NotificationsTable = ({
   error,
   isLoading,
   selectedIds,
+  selectedDetailId,
   sorting,
   onSortingChange,
   onToggleRow,
   onToggleAll,
   onRowClick,
 }: Props) => {
+  const selectedRowId =
+    selectedDetailId != null ? String(selectedDetailId) : null;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected =
     notifications.length > 0 &&
@@ -260,7 +264,13 @@ export const NotificationsTable = ({
     sorting,
     manualSorting: true,
     onSortingChange: handleSortingChange,
+    selectedRowId,
   });
+
+  const { setActiveRowId } = instance;
+  useEffect(() => {
+    setActiveRowId(selectedRowId);
+  }, [selectedRowId, setActiveRowId]);
 
   const handleRowClick = useCallback(
     (row: Row<AdminNotification>) => {

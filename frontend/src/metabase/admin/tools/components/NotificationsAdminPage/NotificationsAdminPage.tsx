@@ -25,7 +25,10 @@ import type { NotificationId, UserId } from "metabase-types/api";
 import { SettingsPageWrapper } from "../../../components/SettingsSection";
 
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
-import { NotificationDetailSidebar } from "./NotificationDetailSidebar";
+import {
+  NotificationDetailSidebar,
+  SIDEBAR_WIDTH,
+} from "./NotificationDetailSidebar";
 import { NotificationsFiltersDropdown } from "./NotificationsFiltersDropdown";
 import { NotificationsSearchInput } from "./NotificationsSearchInput";
 import { NotificationsTable } from "./NotificationsTable";
@@ -294,8 +297,10 @@ export const NotificationsAdminPage = ({
     [bulkAction, changeOwnerTarget, dispatch],
   );
 
+  const isSidebarOpen = parsedDetailId !== null;
+
   return (
-    <SettingsPageWrapper>
+    <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
       <Flex align="center" gap="sm">
         <Title order={1}>{t`Alerts management`}</Title>
       </Flex>
@@ -322,6 +327,7 @@ export const NotificationsAdminPage = ({
         error={error}
         isLoading={isLoading}
         selectedIds={selectedIds}
+        selectedDetailId={parsedDetailId}
         sorting={sorting}
         onSortingChange={handleSortingChange}
         onToggleRow={handleToggleRow}
@@ -346,6 +352,21 @@ export const NotificationsAdminPage = ({
           onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
         />
       </Flex>
+
+      {isSidebarOpen && (
+        <NotificationDetailSidebar
+          notificationId={parsedDetailId}
+          isBulkLoading={isBulkLoading}
+          onClose={handleSidebarClose}
+          onArchive={(notification) => handleSidebarArchive(notification.id)}
+          onUnarchive={(notification) =>
+            handleSidebarUnarchive(notification.id)
+          }
+          onChangeOwner={(notification) =>
+            setChangeOwnerTarget({ ids: [notification.id], isBulk: false })
+          }
+        />
+      )}
 
       <BulkActionBar
         opened={selectedCount > 0}
@@ -382,21 +403,6 @@ export const NotificationsAdminPage = ({
           {t`Clear`}
         </BulkActionButton>
       </BulkActionBar>
-
-      {parsedDetailId !== null && (
-        <NotificationDetailSidebar
-          notificationId={parsedDetailId}
-          isBulkLoading={isBulkLoading}
-          onClose={handleSidebarClose}
-          onArchive={(notification) => handleSidebarArchive(notification.id)}
-          onUnarchive={(notification) =>
-            handleSidebarUnarchive(notification.id)
-          }
-          onChangeOwner={(notification) =>
-            setChangeOwnerTarget({ ids: [notification.id], isBulk: false })
-          }
-        />
-      )}
 
       <ChangeOwnerModal
         opened={changeOwnerTarget != null}
