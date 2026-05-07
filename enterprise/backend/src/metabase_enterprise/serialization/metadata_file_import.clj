@@ -14,18 +14,22 @@
     - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines the
       per-row Malli schemas, shared with the parsers' callers.
 
-  The loader runs four passes:
+  The loader's flow:
 
     1. databases — match by `(name, engine)`, never create. Unmatched source
        databases produce WARN logs (non-fatal).
-    2. tables — match-or-insert by `(target-db-id, schema, name)`.
-    3. fields — match-or-insert with on-the-fly stubs for missing parents.
-    4. fk-resolve — walk fields again to set `fk_target_field_id`.
+    2. drain — stream `:tables` and `:fields` from the file into staging
+       (`metabase_table_import` / `metabase_field_import`). No live writes.
+    3. compute — resolve existing parents on staging (single UPDATE), then walk
+       missing-ancestor chains to produce stub specs (Clojure data only).
+    4. merge — single `t2/with-transaction` wrapping the live-data writes:
+       stubs inserted, parents re-resolved, parent-ref assert, table merge,
+       field merge, FK target resolution, FK assert, FK merge, orphan-warn,
+       unfilled-stubs warn, and `initial_sync_status` flip — all atomic.
 
-  After all four passes complete: a `warn-on-unfilled-stubs!` self-check scans
-  the matched databases for stubs that never got filled; operator gets a
-  structured WARN line. Then `initial_sync_status` is flipped to `\"complete\"`
-  on every matched target Database so the UI surfaces tables immediately."
+  Either every live-data write commits or none do. A failure mid-merge rolls
+  the entire transaction back; `with-staging-tables` clears the staging tables
+  on exit so a crashed attempt cannot leak rows into the next run."
   (:require
    [clojure.string :as str]
    [environ.core :as env]
@@ -92,16 +96,6 @@
                (processors/process-databases! batch))))
     @matched-ids))
 
-;;; ============================== fk-resolve ==============================
-
-(defn- resolve-field-fks!
-  "Walk the fields array again to set `fk_target_field_id` on rows that have one."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :fields processors/import-batch-size
-   (fn [batch]
-     (run! identity (processors/process-fields-fk-resolve! batch)))))
-
 ;;; ============================== Unfilled-stubs scan ==============================
 
 (def ^:private ^:const unfilled-stubs-sample-cap
@@ -160,17 +154,19 @@
       ;; --- compute (read-only against live; writes only to staging) ---
       (processors/resolve-existing-parents-in-staging!)
       (let [stub-specs (processors/compute-stubs!)]
-        ;; --- merge (atomic across phase 2 + 3) ---
+        ;; --- merge (one txn — every live-data write all-or-nothing) ---
         (t2/with-transaction [_]
           (processors/merge-tables!)
           (processors/insert-stubs-where-not-exists! stub-specs)
-          (processors/resolve-existing-parents-in-staging!)
+          (processors/resolve-existing-parents-in-staging!)        ; round 2 — picks up just-inserted stubs
           (processors/assert-no-unresolved-parent-refs!)
-          (processors/merge-fields!)))
-      ;; phase 4 (commit 4 will fold this into the merge txn too)
-      (resolve-field-fks! m-file)
-      (warn-on-unfilled-stubs! matched-target-db-ids))
-    (mark-databases-sync-complete! matched-target-db-ids)
+          (processors/merge-fields!)
+          (processors/resolve-fk-target-ids-in-staging!)
+          (processors/assert-no-unresolved-fk-targets!)
+          (processors/merge-fk-targets!)
+          (processors/warn-on-orphan-staging-rows! matched-target-db-ids)
+          (warn-on-unfilled-stubs! matched-target-db-ids)
+          (mark-databases-sync-complete! matched-target-db-ids))))
     (log/infof "metadata-file-import: complete (matched-databases=%d)"
                (count matched-target-db-ids))
     :ok))

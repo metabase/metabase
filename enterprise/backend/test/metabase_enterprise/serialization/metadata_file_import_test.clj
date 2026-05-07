@@ -228,6 +228,57 @@
                                                                       :db_id tgt-db))])))
               "no duplicate fields"))))))
 
+;;; ============================== Atomicity ==============================
+
+(deftest atomic-import-fk-corruption-rolls-back-everything-test
+  (testing "the headline atomicity guarantee: when the merge txn aborts mid-flight
+            (here via a corrupt :fk_target_field_id pointing at a nonexistent target),
+            NO live-data writes persist — no new tables, no new fields, no stubs,
+            no sync_status flip. Either the whole import lands or none of it does."
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "atom-fk-db"
+                                                 :engine :postgres
+                                                 :initial_sync_status "incomplete"}]
+      (let [tables-before (set (map :id (t2/select [:model/Table :id] :db_id tgt-db)))
+            fields-before (set (map :id (t2/select :model/Field
+                                                   :table_id [:in {:select [:id]
+                                                                   :from [:metabase_table]
+                                                                   :where [:= :db_id tgt-db]}])))
+            meta-file     (json-file
+                           {:databases [{:name "atom-fk-db" :engine "postgres"}]
+                            :tables    [{:db_id "atom-fk-db" :schema "public" :name "orders"}]
+                            :fields    [{:id ["atom-fk-db" "public" "orders" "id"]
+                                         :table_id ["atom-fk-db" "public" "orders"]
+                                         :name "id"
+                                         :base_type "type/Integer"
+                                         :database_type "integer"}
+                                        ;; This field's :fk_target_field_id points at a row
+                                        ;; that doesn't exist anywhere → corrupt-file signal,
+                                        ;; should hard-fail :fk_target_unresolved and roll back.
+                                        {:id ["atom-fk-db" "public" "orders" "uid"]
+                                         :table_id ["atom-fk-db" "public" "orders"]
+                                         :name "uid"
+                                         :fk_target_field_id ["atom-fk-db" "public" "no-such-table" "no-such-field"]
+                                         :base_type "type/Integer"
+                                         :database_type "integer"}]})
+            thrown        (atom nil)]
+        (try
+          (loader/import-metadata-file! meta-file)
+          (catch clojure.lang.ExceptionInfo e
+            (reset! thrown e)))
+        (testing "import threw :fk_target_unresolved"
+          (is (some? @thrown))
+          (is (= :fk_target_unresolved (:kind (ex-data @thrown)))))
+        (testing "appdb is unchanged after the rollback"
+          (is (= tables-before (set (map :id (t2/select [:model/Table :id] :db_id tgt-db))))
+              "no new tables in metabase_table")
+          (is (= fields-before (set (map :id (t2/select :model/Field
+                                                        :table_id [:in {:select [:id]
+                                                                        :from [:metabase_table]
+                                                                        :where [:= :db_id tgt-db]}]))))
+              "no new fields in metabase_field")
+          (is (= "incomplete" (:initial_sync_status (t2/select-one :model/Database :id tgt-db)))
+              "initial_sync_status NOT flipped to complete"))))))
+
 ;;; ============================== initialize-from-env! ==============================
 
 (deftest initialize-from-env-no-vars-set-is-noop-test

@@ -941,6 +941,272 @@
         (is (= count-before (t2/count :model/Field :table_id tbl-id)))
         (is (nil? (t2/select-one :model/Field :table_id tbl-id :name "would-be-inserted")))))))
 
+;;; ============================== warn-on-orphan-staging-rows! ==============================
+
+(deftest warn-on-orphan-staging-rows-no-orphans-test
+  (testing "with no orphans (every staging row JOINs cleanly), no WARN logged"
+    (mt/with-temp [:model/Database {db-id :id} {:name "ws-noorph-db" :engine :postgres}
+                   :model/Table   {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name "ws-noorph-db" :table_schema "public" :table_name "t"})
+        (mt/with-log-messages-for-level
+          [messages [metabase-enterprise.serialization.metadata-file-import.processors :warn]]
+          (processors/warn-on-orphan-staging-rows! #{db-id})
+          (is (empty? (filter #(re-find #"orphan staging" (:message %)) (messages)))
+              "no orphan WARN when all staging rows match"))))))
+
+(deftest warn-on-orphan-staging-rows-warns-on-orphan-table-test
+  (testing "staging table row whose db_name isn't in the matched-target-db set
+            triggers a WARN summarizing the orphans"
+    (mt/with-temp [:model/Database {db-id :id} {:name "ws-tbl-db" :engine :postgres}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_table_import {:db_name "no-such-db" :table_name "orphan"})
+        (mt/with-log-messages-for-level
+          [messages [metabase-enterprise.serialization.metadata-file-import.processors :warn]]
+          (processors/warn-on-orphan-staging-rows! #{db-id})
+          (is (some #(re-find #"orphan staging table" (:message %)) (messages))
+              "WARN line emitted for the orphan table"))))))
+
+(deftest warn-on-orphan-staging-rows-warns-on-orphan-field-test
+  (testing "staging field whose (db, schema, table) doesn't JOIN to any metabase_table
+            triggers a WARN — no matching table means the field has nowhere to attach"
+    (mt/with-temp [:model/Database {db-id :id} {:name "ws-fld-db" :engine :postgres}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "ws-fld-db"
+                                            :table_schema  "public"
+                                            :table_name    "no-such-table"
+                                            :field_name    "x"
+                                            :base_type     "type/Text"
+                                            :database_type "varchar"})
+        (mt/with-log-messages-for-level
+          [messages [metabase-enterprise.serialization.metadata-file-import.processors :warn]]
+          (processors/warn-on-orphan-staging-rows! #{db-id})
+          (is (some #(re-find #"orphan staging field" (:message %)) (messages))))))))
+
+;;; ============================== merge-fk-targets! ==============================
+
+(deftest merge-fk-targets-empty-staging-is-noop-test
+  (testing "with empty staging, merge-fk-targets! makes no live writes"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mft-noop-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
+                   :model/Field   {f-id :id}   {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"}]
+      (processors/with-staging-tables
+        (processors/merge-fk-targets!))
+      (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id f-id)))))))
+
+(deftest merge-fk-targets-writes-fk-on-matched-rows-test
+  (testing "for a staging row with a resolved fk_target_id, the merge UPDATEs
+            the corresponding metabase_field row's fk_target_field_id"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "mft-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}
+                   :model/Field   {ref-id :id}    {:table_id tbl-id :name "uid"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        ;; staging row matches the "uid" field; resolved fk_target_id = id field's int id.
+        (t2/insert! :metabase_field_import {:db_name        "mft-db"
+                                            :table_schema   "public"
+                                            :table_name     "u"
+                                            :field_name     "uid"
+                                            :base_type      "type/Integer"
+                                            :database_type  "integer"
+                                            :fk_target_id   target-id})
+        (processors/merge-fk-targets!))
+      (is (= target-id (:fk_target_field_id (t2/select-one :model/Field :id ref-id))))
+      (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id target-id)))
+          "target field is NOT updated — only the source field gets an FK"))))
+
+(deftest merge-fk-targets-skips-unresolved-staging-rows-test
+  (testing "staging rows with NULL fk_target_id (i.e., no resolved target) are
+            skipped — those rows correspond to fields without FKs in the wire"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mft-skip-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {ref-id :id} {:table_id tbl-id :name "x"
+                                                :base_type "type/Integer"
+                                                :database_type "integer"
+                                                :fk_target_field_id nil}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name       "mft-skip-db"
+                                            :table_schema  "public"
+                                            :table_name    "u"
+                                            :field_name    "x"
+                                            :base_type     "type/Integer"
+                                            :database_type "integer"})
+        (processors/merge-fk-targets!))
+      (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))))))
+
+(deftest merge-fk-targets-idempotent-test
+  (testing "running merge-fk-targets! twice is a no-op on the second pass"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "mft-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}
+                   :model/Field   {ref-id :id}    {:table_id tbl-id :name "uid"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name        "mft-idem-db"
+                                            :table_schema   "public"
+                                            :table_name     "u"
+                                            :field_name     "uid"
+                                            :base_type      "type/Integer"
+                                            :database_type  "integer"
+                                            :fk_target_id   target-id})
+        (processors/merge-fk-targets!)
+        (processors/merge-fk-targets!))
+      (is (= target-id (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))))))
+
+;;; ============================== assert-no-unresolved-fk-targets! ==============================
+
+(deftest assert-no-unresolved-fk-targets-passes-when-all-resolved-test
+  (testing "with empty staging or all FK targets resolved, the assert is silent"
+    (processors/with-staging-tables
+      (is (nil? (processors/assert-no-unresolved-fk-targets!))
+          "no exception when staging has no rows")
+      (t2/insert! :metabase_field_import {:db_name       "anf-db"
+                                          :table_schema  "public"
+                                          :table_name    "t"
+                                          :field_name    "id"
+                                          :base_type     "type/Integer"
+                                          :database_type "integer"})  ;; no FK
+      (is (nil? (processors/assert-no-unresolved-fk-targets!))
+          "no exception when staging rows have no FK refs"))))
+
+(deftest assert-no-unresolved-fk-targets-throws-on-unresolved-test
+  (testing "if a staging row has fk_target_db_name set but fk_target_id NULL, the
+            assert throws ex-info with :kind :fk_target_unresolved. Preserves
+            today's hard-fail-on-corrupt-file behavior — a file referencing an FK
+            target that exists nowhere is a corrupt-file signal."
+    (processors/with-staging-tables
+      (t2/insert! :metabase_field_import {:db_name                "anf-db"
+                                          :table_schema           "public"
+                                          :table_name             "t"
+                                          :field_name             "x"
+                                          :base_type              "type/Integer"
+                                          :database_type          "integer"
+                                          :fk_target_db_name      "anf-db"
+                                          :fk_target_table_schema "public"
+                                          :fk_target_table_name   "t"
+                                          :fk_target_name         "still-missing"})
+      (let [thrown (atom nil)]
+        (try
+          (processors/assert-no-unresolved-fk-targets!)
+          (catch clojure.lang.ExceptionInfo e
+            (reset! thrown e)))
+        (is (some? @thrown))
+        (is (= :fk_target_unresolved (:kind (ex-data @thrown))))
+        (is (pos? (:n-unresolved (ex-data @thrown))))))))
+
+;;; ============================== resolve-fk-target-ids-in-staging! ==============================
+
+(deftest resolve-fk-target-ids-populates-fk-target-id-test
+  (testing "for a staging row whose decomposed fk_target matches an existing
+            metabase_field row, resolve sets staging.fk_target_id to that row's int id"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rfk-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "users"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name                "rfk-db"
+                                            :table_schema           "public"
+                                            :table_name             "users"
+                                            :field_name             "uid"
+                                            :base_type              "type/Integer"
+                                            :database_type          "integer"
+                                            :fk_target_db_name      "rfk-db"
+                                            :fk_target_table_schema "public"
+                                            :fk_target_table_name   "users"
+                                            :fk_target_path         nil
+                                            :fk_target_name         "id"})
+        (processors/resolve-fk-target-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= target-id (:fk_target_id row))))))))
+
+(deftest resolve-fk-target-ids-idempotent-test
+  (testing "running resolve-fk-target twice produces the same result"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rfk-idem-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name                "rfk-idem-db"
+                                            :table_schema           "public"
+                                            :table_name             "u"
+                                            :field_name             "uid"
+                                            :base_type              "type/Integer"
+                                            :database_type          "integer"
+                                            :fk_target_db_name      "rfk-idem-db"
+                                            :fk_target_table_schema "public"
+                                            :fk_target_table_name   "u"
+                                            :fk_target_name         "id"})
+        (processors/resolve-fk-target-ids-in-staging!)
+        (processors/resolve-fk-target-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= target-id (:fk_target_id row))))))))
+
+(deftest resolve-fk-target-ids-leaves-unresolved-when-target-missing-test
+  (testing "a staging row whose fk_target doesn't exist in metabase_field gets
+            fk_target_id NULL — assert-no-unresolved-fk-targets! will catch it"
+    (mt/with-temp [:model/Database {db-id :id} {:name "rfk-miss-db" :engine :postgres}
+                   :model/Table   {_ :id}      {:db_id db-id :schema "public" :name "t"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name                "rfk-miss-db"
+                                            :table_schema           "public"
+                                            :table_name             "t"
+                                            :field_name             "x"
+                                            :base_type              "type/Integer"
+                                            :database_type          "integer"
+                                            :fk_target_db_name      "rfk-miss-db"
+                                            :fk_target_table_schema "public"
+                                            :fk_target_table_name   "t"
+                                            :fk_target_name         "missing-target"})
+        (processors/resolve-fk-target-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (nil? (:fk_target_id row))))))))
+
+(deftest resolve-fk-target-ids-skips-rows-without-fk-target-ref-test
+  (testing "a staging row with NULL fk_target_db_name (no FK) is skipped"
+    (processors/with-staging-tables
+      (t2/insert! :metabase_field_import {:db_name       "rfk-nofk-db"
+                                          :table_schema  "public"
+                                          :table_name    "t"
+                                          :field_name    "id"
+                                          :base_type     "type/Integer"
+                                          :database_type "integer"})
+      (processors/resolve-fk-target-ids-in-staging!)
+      (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+        (is (nil? (:fk_target_id row)))))))
+
+(deftest resolve-fk-target-ids-handles-nil-schema-test
+  (testing "NULL fk_target_table_schema works through COALESCE"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "rfk-nil-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema nil :name "t"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        (t2/insert! :metabase_field_import {:db_name                "rfk-nil-db"
+                                            :table_schema           nil
+                                            :table_name             "t"
+                                            :field_name             "x"
+                                            :base_type              "type/Integer"
+                                            :database_type          "integer"
+                                            :fk_target_db_name      "rfk-nil-db"
+                                            :fk_target_table_schema nil
+                                            :fk_target_table_name   "t"
+                                            :fk_target_name         "id"})
+        (processors/resolve-fk-target-ids-in-staging!)
+        (let [row (first (t2/query {:select [:*] :from [:metabase_field_import]}))]
+          (is (= target-id (:fk_target_id row))))))))
+
 ;;; ============================== process-databases ==============================
 
 (deftest process-databases-matches-by-name-and-engine-test
@@ -1016,212 +1282,3 @@
         (is (= {"stream-probe" target-id} via-reduce))
         (is (= 1 (count via-seq)))))))
 
-;;; ======================== process-fields-fk-resolve! ========================
-
-(deftest process-fields-fk-resolve-writes-fk-target-field-id-test
-  (testing "happy path: the target row's fk_target_field_id is updated to the
-            resolved fk-target id (looked up by portable field id)"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fkfin-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {tgt-fk :id} {:table_id tbl-id :name "fk-target"
-                                                 :base_type "type/Integer"
-                                                 :database_type "integer"}
-                   :model/Field    {fld-id :id} {:table_id tbl-id :name "ref-field"
-                                                 :base_type "type/Integer"
-                                                 :database_type "integer"}]
-      (let [batch [[1 {:id ["fkfin-db" "public" "t" "ref-field"]
-                       :table_id ["fkfin-db" "public" "t"]
-                       :name "ref-field"
-                       :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id ["fkfin-db" "public" "t" "fk-target"]}]]
-            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= {:source-id ["fkfin-db" "public" "t" "ref-field"]
-                :target-id fld-id :status :updated}
-               r))
-        (is (= tgt-fk
-               (:fk_target_field_id (t2/select-one :model/Field :id fld-id))))))))
-
-(deftest process-fields-fk-resolve-only-touches-fk-target-field-id-column-test
-  (testing "process-fields-fk-resolve! writes ONLY fk_target_field_id — not parent_id, not metadata.
-            process-fields! sets those once and they're trusted from then on."
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-touch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {parent-id :id} {:table_id tbl-id :name "parent"
-                                                    :base_type "type/Structured"
-                                                    :database_type "json"}
-                   :model/Field    {tgt-fk :id}   {:table_id tbl-id :name "fk-target"
-                                                   :base_type "type/Integer"
-                                                   :database_type "integer"}
-                   :model/Field    {fld-id :id}   {:table_id tbl-id :name "child"
-                                                   :parent_id parent-id
-                                                   :nfc_path (json/encode ["parent"])
-                                                   :base_type "type/Text"
-                                                   :database_type "text"
-                                                   :description "untouched"
-                                                   :semantic_type "type/ZipCode"}]
-      (let [batch [[1 {:id ["fkfin-touch-db" "public" "t" "parent" "child"]
-                       :table_id ["fkfin-touch-db" "public" "t"]
-                       :name "child"
-                       :parent_id ["fkfin-touch-db" "public" "t" "parent"]
-                       :nfc_path ["parent"]
-                       :base_type "type/Text" :database_type "text"
-                       :fk_target_field_id ["fkfin-touch-db" "public" "t" "fk-target"]}]]]
-        (is (not-empty (into [] (processors/process-fields-fk-resolve! batch))))
-        (let [row (t2/select-one :model/Field :id fld-id)]
-          (is (= tgt-fk            (:fk_target_field_id row)) "fk_target_field_id is set")
-          (is (= parent-id         (:parent_id row))          "parent_id is preserved")
-          (is (= "untouched"       (:description row))        "description is preserved")
-          (is (= :type/ZipCode     (:semantic_type row))      "semantic_type is preserved")
-          (is (= "text"            (:database_type row))      "database_type is preserved"))))))
-
-(deftest process-fields-fk-resolve-batched-update-affects-all-rows-test
-  (testing "a multi-row batch results in every row's fk_target_field_id being set
-            in a single batched UPDATE via the VALUES-table pattern"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-batch-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {tgt-a :id}    {:table_id tbl-id :name "tgt-a"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {tgt-b :id}    {:table_id tbl-id :name "tgt-b"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {fld-1 :id}    {:table_id tbl-id :name "ref-1"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {fld-2 :id}    {:table_id tbl-id :name "ref-2"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {fld-3 :id}    {:table_id tbl-id :name "ref-3"
-                                                   :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[1 {:id ["fkfin-batch-db" "public" "t" "ref-1"]
-                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-1"
-                       :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]
-                   [2 {:id ["fkfin-batch-db" "public" "t" "ref-2"]
-                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-2"
-                       :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-b"]}]
-                   [3 {:id ["fkfin-batch-db" "public" "t" "ref-3"]
-                       :table_id ["fkfin-batch-db" "public" "t"] :name "ref-3"
-                       :base_type "type/Integer" :database_type "integer"
-                       :fk_target_field_id ["fkfin-batch-db" "public" "t" "tgt-a"]}]]]
-        (is (not-empty (into [] (processors/process-fields-fk-resolve! batch))))
-        (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-1))))
-        (is (= tgt-b (:fk_target_field_id (t2/select-one :model/Field :id fld-2))))
-        (is (= tgt-a (:fk_target_field_id (t2/select-one :model/Field :id fld-3))))))))
-
-(deftest process-fields-fk-resolve-validation-failure-throws-with-attribution-test
-  (testing "a malformed row (missing required key) throws ex-info with :kind :invalid_input
-            and the row's portable field id"
-    (let [e    (is (thrown? clojure.lang.ExceptionInfo
-                            (into [] (processors/process-fields-fk-resolve!
-                                      [[42 {:id ["fkfin-db" "public" "t" "x"]
-                                            :table_id ["fkfin-db" "public" "t"]
-                                            :name "x"      ;; missing :base_type
-                                            :fk_target_field_id ["fkfin-db" "public" "t" "y"]}]]))))
-          data (ex-data e)]
-      (is (= :invalid_input (:kind data)))
-      (is (= 42 (:line data)))
-      (is (= ["fkfin-db" "public" "t" "x"] (:source-id data))))))
-
-(deftest process-fields-fk-resolve-empty-batch-test
-  (testing "empty input → empty output, no SQL"
-    (is (= [] (into [] (processors/process-fields-fk-resolve! []))))))
-
-(deftest process-fields-fk-resolve-passes-through-rows-without-fk-target-test
-  (testing "rows without :fk_target_field_id pass through with :status :no-fk; the processor handles unfiltered batches defensively"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "fkfin-no-fk-db" :engine :postgres}
-                   :model/Table    {tbl-id :id} {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {fld-id :id} {:table_id tbl-id :name "no-fk-here"
-                                                 :base_type "type/Text" :database_type "text"}]
-      (let [results (into [] (processors/process-fields-fk-resolve!
-                              [[1 {:id ["fkfin-no-fk-db" "public" "t" "no-fk-here"]
-                                   :table_id ["fkfin-no-fk-db" "public" "t"]
-                                   :name "no-fk-here"
-                                   :base_type "type/Text" :database_type "text"}]]))]
-        (is (= [{:source-id ["fkfin-no-fk-db" "public" "t" "no-fk-here"]
-                 :status :no-fk}]
-               results))
-        (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id fld-id)))
-            "no UPDATE was issued — column stays NULL")))))
-
-(deftest process-fields-fk-resolve-preserves-input-order-test
-  (testing "results are in input order"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-order-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "t"}
-                   :model/Field    {_tgt :id}     {:table_id tbl-id :name "tgt"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {a :id}        {:table_id tbl-id :name "a"
-                                                   :base_type "type/Integer" :database_type "integer"}
-                   :model/Field    {b :id}        {:table_id tbl-id :name "b"
-                                                   :base_type "type/Integer" :database_type "integer"}]
-      (let [batch [[10 {:id ["fkfin-order-db" "public" "t" "b"]
-                        :table_id ["fkfin-order-db" "public" "t"] :name "b"
-                        :base_type "type/Integer" :database_type "integer"
-                        :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]
-                   [11 {:id ["fkfin-order-db" "public" "t" "a"]
-                        :table_id ["fkfin-order-db" "public" "t"] :name "a"
-                        :base_type "type/Integer" :database_type "integer"
-                        :fk_target_field_id ["fkfin-order-db" "public" "t" "tgt"]}]]
-            results (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= [["fkfin-order-db" "public" "t" "b"]
-                ["fkfin-order-db" "public" "t" "a"]]   (mapv :source-id results)))
-        (is (= [b a]                                   (mapv :target-id results)))))))
-
-(deftest process-fields-fk-resolve-fk-target-is-json-unfolded-leaf-test
-  (testing "fk-resolve locates a JSON-unfolded leaf as the FK target"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-leaf-tgt-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
-                   ;; JSON-unfolded leaf storage row: full path in nfc_path, name is the
-                   ;; synthesized arrow-joined display label, parent_id is NULL.
-                   :model/Field    {leaf :id}     {:table_id tbl-id
-                                                   :name "payload → address → zip"
-                                                   :nfc_path (json/encode ["payload" "address" "zip"])
-                                                   :parent_id nil
-                                                   :base_type "type/Text"
-                                                   :database_type "text"}
-                   ;; Plain flat field that points at the leaf as its FK target.
-                   :model/Field    {ref-id :id}   {:table_id tbl-id :name "ref-zip"
-                                                   :base_type "type/Text"
-                                                   :database_type "text"}]
-      (let [batch [[1 {:id ["fkfin-leaf-tgt-db" "public" "events" "ref-zip"]
-                       :table_id ["fkfin-leaf-tgt-db" "public" "events"]
-                       :name "ref-zip"
-                       :base_type "type/Text" :database_type "text"
-                       ;; leaf wire id: no leaf appended past the nfc-path.
-                       :fk_target_field_id ["fkfin-leaf-tgt-db" "public" "events"
-                                            "payload" "address" "zip"]}]]
-            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= {:source-id ["fkfin-leaf-tgt-db" "public" "events" "ref-zip"]
-                :target-id ref-id :status :updated}
-               r))
-        (is (= leaf
-               (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))
-            "fk_target_field_id resolves to the leaf's int id")))))
-
-(deftest process-fields-fk-resolve-fk-source-is-json-unfolded-leaf-test
-  (testing "fk-resolve UPDATEs a JSON-unfolded leaf that itself carries an FK"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "fkfin-leaf-src-db" :engine :postgres}
-                   :model/Table    {tbl-id :id}   {:db_id db-id :schema "public" :name "events"}
-                   ;; JSON-unfolded leaf storage row that itself has an FK.
-                   :model/Field    {leaf :id}     {:table_id tbl-id
-                                                   :name "payload → user → zip"
-                                                   :nfc_path (json/encode ["payload" "user" "zip"])
-                                                   :parent_id nil
-                                                   :base_type "type/Text"
-                                                   :database_type "text"}
-                   ;; Flat field this leaf will FK-reference.
-                   :model/Field    {flat-tgt :id} {:table_id tbl-id :name "zip-codes"
-                                                   :base_type "type/Text"
-                                                   :database_type "text"}]
-      (let [batch [[1 {:id ["fkfin-leaf-src-db" "public" "events"
-                            "payload" "user" "zip"]
-                       :table_id ["fkfin-leaf-src-db" "public" "events"]
-                       :name "payload → user → zip"
-                       :nfc_path ["payload" "user" "zip"]
-                       :base_type "type/Text" :database_type "text"
-                       :fk_target_field_id ["fkfin-leaf-src-db" "public" "events" "zip-codes"]}]]
-            [r]   (into [] (processors/process-fields-fk-resolve! batch))]
-        (is (= {:source-id ["fkfin-leaf-src-db" "public" "events"
-                            "payload" "user" "zip"]
-                :target-id leaf :status :updated}
-               r))
-        (is (= flat-tgt
-               (:fk_target_field_id (t2/select-one :model/Field :id leaf)))
-            "leaf's fk_target_field_id is set to the flat target's int id")))))
