@@ -1,11 +1,16 @@
+import { useField } from "formik";
+import type { HTMLAttributes } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import * as Yup from "yup";
 
+import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
+import { useListPermissionsGroupsQuery } from "metabase/api";
+import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
-  FormGroupsWidget,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -16,7 +21,8 @@ import {
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { User, UserId } from "metabase-types/api";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
+import type { GroupId, Member, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -27,6 +33,109 @@ const localUserSchema = Yup.object({
 const externalUserSchema = localUserSchema.shape({
   tenant_id: Yup.number().required(Errors.required),
 });
+
+interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
+  name: string;
+  external?: boolean;
+}
+
+const FormGroupsWidget = ({
+  name,
+  className,
+  style,
+  title = t`Groups`,
+  external,
+}: FormGroupsWidgetProps) => {
+  const [{ value: formValue }, , { setValue }] =
+    useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
+
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
+    tenancy: external ? "external" : "internal",
+  });
+
+  if (isLoading || !groups) {
+    return null;
+  }
+
+  const adminGroup = _.find(groups, isAdminGroup);
+  const defaultGroup = _.find(
+    groups,
+    external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
+  );
+
+  const value = formValue ?? [
+    { id: defaultGroup?.id, is_group_manager: false },
+  ];
+
+  const memberships = value.reduce((acc, { id, ...membershipData }) => {
+    if (id != null) {
+      acc.set(id, membershipData);
+    }
+    return acc;
+  }, new Map());
+
+  const isUserAdmin = memberships.has(adminGroup?.id);
+
+  const handleAdd = (groupId: GroupId, membershipData: Partial<Member>) => {
+    const updatedValue = Array.from(memberships.entries()).map(
+      ([id, membershipData]) => {
+        return {
+          id,
+          ...membershipData,
+        };
+      },
+    );
+
+    updatedValue.push({ id: groupId, ...membershipData });
+    setValue(updatedValue);
+  };
+
+  const handleRemove = (groupId: GroupId) => {
+    const updatedValue = Array.from(memberships.entries())
+      .map(([id, membershipData]) => {
+        if (id === groupId) {
+          return null;
+        }
+
+        return {
+          id,
+          ...membershipData,
+        };
+      })
+      .filter(Boolean);
+
+    setValue(updatedValue);
+  };
+  const handleChange = (
+    groupId: GroupId,
+    newMembershipData: Partial<Member>,
+  ) => {
+    const updatedValue = Array.from(memberships.entries()).map(
+      ([id, membershipData]) => {
+        const data = groupId === id ? newMembershipData : membershipData;
+        return {
+          id,
+          ...data,
+        };
+      },
+    );
+
+    setValue(updatedValue);
+  };
+
+  return (
+    <FormField className={className} style={style} title={title}>
+      <MembershipSelect
+        groups={groups}
+        memberships={memberships}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        onChange={handleChange}
+        isUserAdmin={isUserAdmin}
+      />
+    </FormField>
+  );
+};
 
 interface UserFormProps {
   initialValues?: Partial<User>;

@@ -1,5 +1,5 @@
 import { Box } from "metabase/ui";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { PieRow } from "metabase-types/api";
 
 import { SliceNameInput } from "./SliceNameWidget.styled";
 

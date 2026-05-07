@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
+import { getPreviewParamsBySlug } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { convertParameterValuesBySlugToById } from "metabase/embedding/embedding-iframe-sdk-setup/utils/convert-parameter-values-by-slug-to-by-id";
-import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { EmbeddingParameters } from "metabase/embedding/types";
 import type { Parameter } from "metabase-types/api";
 
 interface UseParametersValuesProps {

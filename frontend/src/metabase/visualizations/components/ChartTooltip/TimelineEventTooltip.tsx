@@ -22,7 +22,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
               <Icon name={event.icon as unknown as IconName} />
             </Flex>
             <Stack gap={0}>
-              <Text component="span" fz="md" fw="bold">
+              <Text component="span" c="inherit" fz="md" fw="bold">
                 {event.name}
               </Text>
               <DateTime

@@ -267,6 +267,69 @@
                           :entity-types ["card"]
                           :search-native-query nil}))))))
 
+(deftest tool-default-entity-types-test
+  (testing "tool variants restrict default entity types to their allowed set"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["x"]}))
+            (is (= #{"table" "dataset" "metric" "card"} @captured))
+            (is (not (contains? @captured "dashboard")))
+            (is (not (contains? @captured "transform")))
+            (is (not (contains? @captured "database")))))
+
+        (testing "sql-search-tool with no entity_types searches only table/model"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
+            (is (= #{"table" "dataset"} @captured))))
+
+        (testing "agent-supplied entity_types narrow the default allowed set"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
+            (is (= #{"metric"} @captured))))))))
+
+(deftest tool-limit-test
+  (testing "tool variants apply the :limit arg with default 10 and cap 50"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "default limit is 10 when not provided"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"]}))
+            (is (= 10 @captured))))
+
+        (testing "explicit limit is honored"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:limit-int context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"] :limit 25}))
+            (is (= 25 @captured))))
+
+        (testing "limit above 50 is rejected by schema validation"
+          (is (thrown? Exception
+                       (search/search-tool {:keyword_queries ["x"] :limit 75}))))
+
+        (testing "limit below 1 is rejected by schema validation"
+          (is (thrown? Exception
+                       (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto

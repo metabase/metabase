@@ -1,0 +1,74 @@
+/*
+ * Shared embed theme classes.
+ *
+ * Components inside the embed frame apply these class names to themselves
+ * so that theme transitions, background colors, and transparent-theme
+ * overrides work correctly.
+ *
+ * This module lives in embed/ (shared tier) so that dashboard,
+ * visualizations, and public/ can all import without violations.
+ *
+ * EmbedFrame.tsx also imports this module — all styles referencing these
+ * class names live here to ensure hash consistency.
+ */
+
+/* ---- Base theme colors ---- */
+
+.EmbedFrame {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bg-dashboard);
+  border-color: var(--mb-color-border);
+}
+
+.EmbedFrameHeader,
+.EmbedFrameFooter {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bg-dashboard);
+}
+
+/* Used by EmbedFrame's ContentContainer and by image/PDF export code */
+.WithThemeBackground {
+  background-color: var(--mb-color-bg-dashboard);
+  border-color: var(--mb-color-border);
+}
+
+/* ---- Theme transition rules ---- */
+
+.EmbedFrame,
+.EmbedFrame .DashCard .Card,
+.EmbedFrame .ContentContainer,
+.EmbedFrame .EmbedFrameHeader,
+.EmbedFrame .Separator,
+.EmbedFrame .ParameterFieldSet,
+.EmbedFrame .ParametersWidgetContainer,
+.EmbedFrame .EmbedFrameFooter,
+.EmbedFrame .LogoBadge {
+  transition: var(--transition-theme-change);
+}
+
+/* ---- NoBackground override ---- */
+
+.NoBackground {
+  --mb-color-bg-dashboard: transparent;
+}
+
+/* ---- Transparent theme overrides ---- */
+
+[data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
+  .EmbedFrame {
+    background-color: transparent;
+
+    .DashCard .Card {
+      background-color: transparent;
+    }
+  }
+
+  .WithThemeBackground {
+    background-color: transparent;
+  }
+
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
+    background-color: transparent;
+  }
+}

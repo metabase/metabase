@@ -78,6 +78,29 @@
       (is (=? {:target {:id (mt/id :categories :id)}}
               (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))
 
+(deftest ^:parallel get-field-table-ids-test
+  (testing "POST /api/field/table-ids"
+    (is (= {:table_ids (sort [(mt/id :categories) (mt/id :venues)])}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids [(mt/id :venues :name)
+                                              (mt/id :venues :category_id)
+                                              (mt/id :categories :name)]})))))
+
+(deftest ^:parallel get-field-table-ids-empty-and-missing-test
+  (testing "POST /api/field/table-ids accepts empty and missing field IDs"
+    (is (= {:table_ids []}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids []})))
+    (is (= {:table_ids []}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids [2147483647]})))))
+
+(deftest ^:parallel get-field-table-ids-too-many-test
+  (testing "POST /api/field/table-ids rejects oversized field ID requests"
+    (is (= "field_ids may contain at most 1000 IDs."
+           (mt/user-http-request :rasta :post 400 "field/table-ids"
+                                 {:field_ids (vec (range 1 1002))})))))
+
 (deftest ^:parallel get-field-summary-test
   (testing "GET /api/field/:id/summary"
     ;; TODO -- why doesn't this come back as a dictionary ?

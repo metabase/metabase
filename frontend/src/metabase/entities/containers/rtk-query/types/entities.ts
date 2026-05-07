@@ -43,8 +43,6 @@ export type EntityType =
   | "databases"
   | "documents"
   | "fields"
-  | "groups"
-  | "persistedModels"
   | "pulses"
   | "questions"
   | "revisions"
@@ -54,7 +52,6 @@ export type EntityType =
   | "snippetCollections"
   | "snippets"
   | "tables"
-  | "timelineEvents"
   | "timelines"
   | "users";
 
