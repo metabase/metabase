@@ -367,29 +367,22 @@
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
    to-side of an active TableRemapping for `db-id`), return `target` with
-   `:schema` swapped back to canonical. Else return `target` unchanged. The
-   transform pipeline mutates `:target.schema` to the workspace output schema
-   in `metabase.transforms.execute/resolve-target` so writes land in isolation;
-   `:model/Table` rows must stay at the canonical schema, so we invert here.
+   `:schema` and `:name` swapped back to canonical. Else return `target`
+   unchanged. The transform pipeline mutates `:target.schema` to the workspace
+   output schema in `metabase.transforms.execute/resolve-target` so writes
+   land in isolation; `:model/Table` rows must stay at the canonical schema,
+   so we invert here.
 
-   `canonical-schema+name` returns the storage row's `from_schema` value, which
-   uses `\"\"` as an empty-slot sentinel (so `TableRemapping`'s unique constraint
-   stays enforceable). `:model/Table.schema` instead uses `nil` for engines that
-   don't have schemas (MySQL, ClickHouse-as-1-DB) — that's what JDBC's
-   `TABLE_SCHEM` reports and what sync writes. If we don't translate `\"\"` back
-   to `nil` here, the downstream `target-table` lookup misses the synced row
-   (selecting on `:schema \"\"` doesn't match a row stored as `:schema nil`)
-   and `sync/create-table!` then attempts an INSERT that collides with the
-   synced row on the `unique_table_helper = COALESCE(schema, '')` index."
+   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
+   values already normalized to `:model/Table` row vocabulary (nil for
+   engines that don't emit a slot, string otherwise) — directly usable as a
+   Table-row predicate without further translation."
   [db-id target]
-  (let [database     (t2/select-one :model/Database :id db-id)
-        schemas?     (driver/database-supports? (:engine database) :schemas database)
-        canonical    (ws.table-remapping/canonical-schema+name
-                      db-id (:schema target) (:name target))
-        [c-schema c-name] canonical
-        c-schema     (if (and (not schemas?) (= "" c-schema)) nil c-schema)]
-    (cond-> target
-      canonical (assoc :schema c-schema :name c-name))))
+  (if-let [{:keys [schema name]} (ws.table-remapping/canonical-schema+name
+                                  db-id
+                                  {:schema (:schema target) :name (:name target)})]
+    (assoc target :schema schema :name name)
+    target))
 
 (defn- sync-table!
   ([database target] (sync-table! database target nil))

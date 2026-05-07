@@ -17,10 +17,15 @@
 (defn- effective-schema+name
   "Pair used when querying the driver for a Table's fields. Lets workspace mode
   redirect to the isolated warehouse table while the app-db row keeps its
-  logical identity."
+  logical identity. Returns a `[schema name]` 2-tuple for backward-compat with
+  call sites that destructure positionally; the underlying remap hook works in
+  the `{:db :schema :name}` map shape."
   [database-id schema table-name]
-  (or (ws.table-remapping/workspace-remap-schema+name database-id schema table-name)
-      [schema table-name]))
+  (let [from-spec {:schema schema :name table-name}]
+    (if-let [{:keys [schema name]} (ws.table-remapping/workspace-remap-schema+name
+                                    database-id from-spec)]
+      [schema name]
+      [schema table-name])))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."

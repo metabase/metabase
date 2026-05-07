@@ -204,9 +204,27 @@
 ;;; canonical 3-tuple shapes; the helpers below project them into the various per-call shapes
 ;;; production callers want.
 
+(defn- denormalize-level
+  "Inverse of `normalize-level`: `\"\"` (the storage sentinel meaning \"this driver
+   doesn't emit this level\") becomes `nil` (what `:model/Table` rows actually carry
+   for the same level). Anything else passes through unchanged."
+  [v]
+  (when-not (or (nil? v) (= no-level v)) v))
+
+(defn- store-tuple->table-spec
+  "Project a 3-tuple `[db-slot schema-slot table-name]` from the store into the
+   `{:db :schema :name}` shape `:model/Table`-row callers want. Empty-string
+   sentinels become `nil` so a select on `:schema nil` matches Table rows JDBC
+   filled in as null (MySQL et al.) and a select on `:schema \"public\"` matches
+   Postgres rows verbatim."
+  [[db-slot schema-slot table-name]]
+  {:db     (denormalize-level db-slot)
+   :schema (denormalize-level schema-slot)
+   :name   table-name})
+
 (defn remap-table
-  "Returns `[to-schema to-table-name]` for the canonical `[from-schema from-table-name]`
-   pair on `database-id`, or nil if no remapping exists.
+  "Returns `{:db :schema :name}` for the workspace destination of canonical
+   `from-spec`, or nil if no remapping exists.
 
    **Hot path** -- called per-table during sync via the `workspace-remap-schema+name`
    defenterprise hook. Routes through the store's targeted [[ws.remapping/get-mapping]]
@@ -214,26 +232,26 @@
    `(database_id, from_db, from_schema, from_table_name)`) and the MapStore impl is a
    hash-map get. O(1) per call.
 
-   Matches by `(from_schema, from_table_name)` only -- `from_db` is hardcoded to the
-   `\"\"` sentinel. Correct for current production callers: Postgres-family drivers
-   (where `from_db = \"\"` always) and ClickHouse (where `from_db = \"\"` too -- its
-   db-name lives in `from_schema`). **Not yet correct for BigQuery**: when BigQuery
-   workspaces land, callers will need a 4-arg form that filters by `from_db` so two
-   projects with same-named datasets don't collide."
-  [database-id from-schema from-table-name]
-  (when-let [[_to-db to-schema to-table]
-             (ws.remapping/get-mapping database-id [no-level (normalize-level from-schema) from-table-name])]
-    [to-schema to-table]))
+   `from-spec` is `{:db :schema :name}`. `:db` is allowed but unused today: the
+   store key is built from `[\"\" from_schema from_name]` because the H7 second
+   half (cross-DB workspaces) hasn't widened the lookup index. Output uses
+   nil-instead-of-empty-string for slots the driver doesn't emit."
+  [database-id from-spec]
+  (let [{:keys [schema name]} from-spec]
+    (when-let [tuple (ws.remapping/get-mapping
+                      database-id
+                      [no-level (normalize-level schema) name])]
+      (store-tuple->table-spec tuple))))
 
 (defenterprise workspace-remap-schema+name
-  "Enterprise impl of the sync hook. Returns `[to-schema to-name]` for the
+  "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
    isolated warehouse table when a `TableRemapping` row exists — sync asks the
    driver there, while app-db rows keep their logical identity. Deliberately
    ungated on premium features: if rows exist they must be respected, regardless
    of current token state."
   :feature :none
-  [db-id schema table-name]
-  (remap-table db-id schema table-name))
+  [db-id from-spec]
+  (remap-table db-id from-spec))
 
 (defn all-mappings-for-db
   "Return all remappings for a given database as a map of
@@ -331,25 +349,26 @@
             rows))))
 
 (defenterprise canonical-schema+name
-  "Enterprise impl: invert an active workspace remapping. Given a
-   workspace-side `(to-schema, to-name)` pair, return `[from-schema from-name]`
-   when a TableRemapping row records that pair as the destination of a canonical
-   table; nil otherwise. Mirror of `workspace-remap-schema+name` for write-side
-   callers that already have the rewritten target on hand and need the canonical
-   slot before touching `:model/Table` rows.
+  "Enterprise impl: invert an active workspace remapping. Given a workspace-side
+   `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
+   canonical table if a TableRemapping row records that pair as the destination
+   of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
+   for write-side callers that already have the rewritten target on hand and
+   need the canonical slot before touching `:model/Table` rows.
 
-   `:db` slot is intentionally ignored on both sides today (matches the
-   Postgres-shaped to-side `add-transform-target-mapping!` writes — H7
-   second half pending). When that lands, both this lookup and the
-   `to->from` index must widen to 3-tuples."
+   `:db` slot in the input is allowed but unused today: the index is keyed by
+   `(to_schema, to_name)` only — H7 second half (cross-DB workspaces) will widen
+   it to `(to_db, to_schema, to_name)`. The output `:db` slot is filled when
+   the driver populates that AST position, and nil otherwise (so consumers don't
+   have to denormalize the empty-string sentinel themselves)."
   :feature :none
-  [db-id schema table-name]
-  (let [to->from (into {}
-                       (map (fn [[[_from-db from-schema from-name]
-                                  [_to-db to-schema to-name]]]
-                              [[to-schema to-name] [from-schema from-name]]))
+  [db-id to-spec]
+  (let [{:keys [schema name]} to-spec
+        to->from (into {}
+                       (map (fn [[from-tuple [_to-db to-schema to-name]]]
+                              [[to-schema to-name] from-tuple]))
                        (all-mappings-for-db db-id))]
-    (to->from [schema table-name])))
+    (some-> (to->from [schema name]) store-tuple->table-spec)))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1

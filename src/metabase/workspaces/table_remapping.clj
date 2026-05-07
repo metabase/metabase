@@ -4,13 +4,20 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise workspace-remap-schema+name
-  "In workspace mode, a Table row at `(from-schema, from-name)` may be backed by a
-  physically-different warehouse table at `(to-schema, to-name)` recorded in
-  `table_remapping`. This hook returns `[to-schema to-name]` when a remapping
+  "In workspace mode, a Table at the canonical identity `from-spec` may be backed
+  by a physically-different warehouse table recorded in `table_remapping`. Returns
+  a `{:db :schema :name}` map for the workspace destination when a remapping
   exists so sync asks the driver about the isolated warehouse location; returns
-  nil otherwise (OSS fallback) so the driver is queried at the logical identity."
+  nil otherwise (OSS fallback) so the driver is queried at the logical identity.
+
+  Both input and output are the same `{:db :schema :name}` shape — symmetric so
+  call sites don't have to translate between vector tuples and maps. Slot values
+  are normalized to the form `:model/Table` rows actually carry: a string for
+  engines that emit that AST position; `nil` for engines that don't. For MySQL,
+  both `:db` and `:schema` are `nil` on a Table row (the connection's bound DB
+  serves as the implicit catalog; MySQL has no schemas)."
   metabase-enterprise.workspaces.table-remapping
-  [_db-id _schema _name]
+  [_db-id _from-spec]
   nil)
 
 (defenterprise filter-workspace-side-tables
@@ -76,24 +83,33 @@
   `(call-with-display-context (fn [] ~@body)))
 
 (defenterprise canonical-schema+name
-  "Inverse of `workspace-remap-schema+name`. Given an isolation-schema
-  `(to-schema, to-name)` pair, return `[from-schema from-name]` if a
-  `TableRemapping` row records that pair as the workspace destination of a
-  canonical table; return nil otherwise.
+  "Inverse of `workspace-remap-schema+name`. Given an isolation-side
+  `to-spec` (`{:db :schema :name}` for the workspace destination), return a
+  `{:db :schema :name}` map for the canonical table if a `TableRemapping` row
+  records that pair as the workspace destination of a canonical table; return
+  nil otherwise.
 
   Use at write-side `:model/Table` lookups where the transform pipeline has
   already mutated `:target.schema` to the workspace output schema, but the
   app-db Table row lives at the canonical schema. OSS fallback is nil so
   callers fall through to the unchanged identity.
 
+  Both input and output are the same `{:db :schema :name}` shape — symmetric
+  with `workspace-remap-schema+name` and matches `:model/Table` row vocabulary.
+  Slot values are driver-normalized: a string for engines that emit that AST
+  position; `nil` for engines that don't. For MySQL, both `:db` and `:schema`
+  are `nil` because that's what `:model/Table` rows on MySQL store, and a
+  Table-row predicate on `:schema \"\"` will not match a row stored as
+  `:schema nil`.
+
   Caveats (tracked separately):
   - Trusts the active `TableRemapping` row set. If a `WorkspaceDatabase`
     deprovision leaves stale rows behind, this hook will still translate
     against them. See the deprovision-clears-remappings cleanup in
     `workspaces-v2.md` worklog.
-  - Keys on `(schema, name)` only. The H7 second half (cross-DB workspaces
-    on Snowflake / BigQuery) will require widening to `(db, schema, name)`
-    once the YAML transmission shape carries `output_db`."
+  - The H7 second half (cross-DB workspaces on Snowflake / BigQuery) needs
+    callers to thread `:db` through the spec end-to-end. Both this hook and
+    `add-transform-target-mapping!` now carry the slot."
   metabase-enterprise.workspaces.table-remapping
-  [_db-id _schema _name]
+  [_db-id _to-spec]
   nil)
