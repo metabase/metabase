@@ -145,6 +145,13 @@ const SidebarHeader = ({
   onEdit,
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
+  const dispatch = useDispatch();
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}${Urls.adminToolsNotificationDetail(notification.id)}`;
+    await navigator.clipboard.writeText(url);
+    dispatch(addUndo({ message: t`Link copied to clipboard` }));
+  };
 
   return (
     <Box px="xl" pt="lg" pb="md">
@@ -163,7 +170,7 @@ const SidebarHeader = ({
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<Icon name="link" />}
-                onClick={() => onDelete(notification)}
+                onClick={handleCopyLink}
               >
                 {t`Copy link to clipboard`}
               </Menu.Item>
