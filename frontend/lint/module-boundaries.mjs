@@ -53,6 +53,7 @@ const elements = [
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api", enforceOutgoing: true }),
   // shared
+  createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
@@ -64,7 +65,9 @@ const elements = [
   createElement({ type: "shared", name: "collections", enforceOutgoing: true }),
   createElement({ type: "shared", name: "comments", enforceOutgoing: true }),
   createElement({ type: "shared", name: "data-grid", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
@@ -118,13 +121,14 @@ const elements = [
     enforceOutgoing: true,
   }),
   // feature
-  createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "dashboard", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "query_builder",
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
+  createElement({ type: "feature", name: "public", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
@@ -146,6 +150,7 @@ const elements = [
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
@@ -199,6 +204,11 @@ const rules = [
     from: ["feature/enterprise"],
     allow: ["feature/*"],
     message: "Enterprise module can import from all feature modules",
+  },
+  {
+    from: ["feature/public"],
+    allow: ["feature/*"],
+    message: "Public module can import from all feature modules",
   },
   {
     from: ["app/*"],

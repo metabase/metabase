@@ -8,8 +8,8 @@ import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import {
   createMockDashboardState,
   createMockState,

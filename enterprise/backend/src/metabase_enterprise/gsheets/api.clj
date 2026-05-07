@@ -278,15 +278,24 @@
       (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
         (cond
+          (and (= "active" status)
+               last-sync-started-at
+               last-sync-at
+               (t/< (t/instant last-sync-at) (t/instant last-sync-started-at)))
+          (assoc (setting->response saved-setting)
+                 :status "syncing"
+                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                 :sync_started_at (.getEpochSecond ^Instant (t/instant last-sync-started-at)))
+
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
                  :last_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)))
                  :next_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15)))))
 
-          (or (= "syncing" status) (= "initializing" status))
+          (= "initializing" status)
           (assoc (setting->response saved-setting)
-                 :status "syncing"
+                 :status "initializing"
                  :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 

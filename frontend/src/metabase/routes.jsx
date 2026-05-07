@@ -411,6 +411,7 @@ export const getRoutes = (store) => {
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
+            IsAdmin,
           )}
         </Route>
       </Route>

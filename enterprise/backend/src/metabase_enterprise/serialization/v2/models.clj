@@ -94,6 +94,7 @@
    "MetabotInstanceLimit"
    "MetabotMessage"
    "MetabotPermissions"
+   "MetabotSourceFeedback"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
@@ -414,6 +416,25 @@
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
+(deftest tools-call-string-body-error-surfaces-actionable-message-test
+  (testing (str "Claude's connector review explicitly rejects bare-status error messages — "
+                "when the agent-api returns a string body (e.g. 404 \"Not found.\"), the MCP "
+                "error content surfaces the body verbatim rather than collapsing to "
+                "\"Agent API error: <status>\".")
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "tools/call"
+                                                 {:name      "get_table"
+                                                  :arguments {:id 999999}})
+                                {"mcp-session-id" session-id})
+          result   (get-in response [:body :result])
+          message  (:text (first (:content result)))]
+      (is (= 200 (:status response)))
+      (is (true? (:isError result)))
+      (is (= "Not found." message)
+          "string body should be surfaced verbatim")
+      (is (not (str/includes? message "Agent API error"))
+          "must not fall through to the bare-status fallback"))))
+
 (deftest tools-list-no-refs-test
   (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
@@ -443,6 +464,71 @@
       (let [table-data (json/decode+kw (:text (first (:content result))))]
         (is (empty? (:fields table-data))
             "with-fields=false should return no fields")))))
+
+(defn- orders-count-query
+  "Simple count query on the orders table — used as the dataset_query for smoke-test metrics."
+  []
+  (-> (lib/query (mt/metadata-provider)
+                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+      (lib/aggregate (lib/count))))
+
+(def ^:private smoke-tested-tools
+  "Tools exercised by `tools-call-smoke-test`. New tools must be added here (and
+   below) — the test compares this set against `mcp.tools/list-tools` and fails
+   when they diverge, ensuring no tool ships without a basic invocation check."
+  #{"get_table" "get_table_field_values" "get_metric" "get_metric_field_values"
+    "search" "construct_query" "query" "execute_query"
+    "create_question" "create_dashboard"})
+
+(deftest tools-call-smoke-test
+  (testing "every registered tool is exercised by the smoke test"
+    (is (= (set (map :name (mcp.tools/list-tools nil)))
+           smoke-tested-tools)
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+  (testing "every tool returns a successful response with valid parameters"
+    (search.tu/with-legacy-search
+      (mt/with-temp [:model/Card metric {:name          "Smoke Metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (let [[session-id _] (initialize!)
+              orders-id      (mt/id :orders)
+              ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
+              ;; assertion in `call-tool` fails partway through the sequence.
+              question-id    (atom nil)
+              dash-id        (atom nil)]
+          (try
+            (let [;; Read tools — call-tool helper asserts (not :isError) internally.
+                  table-data     (call-tool session-id "get_table" {:id orders-id})
+                  table-fid      (-> table-data :fields first :field_id)
+                  _              (call-tool session-id "get_table_field_values"
+                                            {:id orders-id :field-id (str table-fid)})
+                  metric-data    (call-tool session-id "get_metric" {:id (:id metric)})
+                  metric-fid     (-> metric-data :queryable_dimensions first :field_id)
+                  _              (call-tool session-id "get_metric_field_values"
+                                            {:id (:id metric) :field-id (str metric-fid)})
+                  _              (call-tool session-id "search" {:term_queries ["orders"]})
+                  ;; Query construction + execution
+                  construct-data (call-tool session-id "construct_query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "query"
+                                            {:source     {:type "table" :id orders-id}
+                                             :operations [["limit" 5]]})
+                  _              (call-tool session-id "execute_query"
+                                            {:query (:query construct-data)})
+                  ;; Write tools — record IDs as soon as they're known so the `finally` block
+                  ;; can clean up even if a later step throws.
+                  question-data  (call-tool session-id "create_question"
+                                            {:name  "Smoke Question"
+                                             :query (:query construct-data)})
+                  _              (reset! question-id (:id question-data))
+                  dash-data      (call-tool session-id "create_dashboard"
+                                            {:name "Smoke Dashboard"})]
+              (reset! dash-id (:id dash-data)))
+            (finally
+              (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did)))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"

@@ -272,6 +272,16 @@
       ;; reliable way to differentiate them since it gets populated by the QP.
       (merge (select-keys stage [:qp/stage-is-from-source-card :qp/stage-had-source-card]))))
 
+(mr/def ::stage.page-and-limit-are-mutually-exclusive
+  "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
+  [:fn
+   {:error/message    "A query stage should not specify both :page and :limit since they conflict"
+    ;; if both are specified, ignore `:limit` and prefer `:page`
+    :decode/normalize (fn [stage]
+                        (cond-> stage
+                          ((every-pred :page :limit) stage) (dissoc :limit)))}
+   (complement (every-pred :page :limit))])
+
 (mr/def ::stage.mbql
   [:and
    [:merge
@@ -295,6 +305,7 @@
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
+   [:ref ::stage.page-and-limit-are-mutually-exclusive]
    (common/disallowed-keys
     {:native             ":native is not allowed in an MBQL stage."
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"

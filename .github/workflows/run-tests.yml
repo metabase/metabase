@@ -93,7 +93,19 @@ jobs:
 
   e2e-tests:
     needs: [files-changed, uberjar]
-    if: always() && !cancelled() && needs.files-changed.result == 'success'
+    # Skip e2e tests when the uberjar build failed or was cancelled — the
+    # downstream tests can't fetch a missing artifact, and we don't want to
+    # mask the uberjar failure with a wave of misleading e2e errors. We still
+    # enter the workflow when uberjar is `skipped` (docs-only PRs), because
+    # the inner `skip` input handles that path and reports the required
+    # `e2e-tests-result` check as success. When the uberjar genuinely failed,
+    # this whole job is skipped, the inner required checks never report, and
+    # branch protection blocks the merge as pending.
+    if: |
+      always() && !cancelled() &&
+      needs.files-changed.result == 'success' &&
+      needs.uberjar.result != 'failure' &&
+      needs.uberjar.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:

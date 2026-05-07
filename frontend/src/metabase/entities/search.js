@@ -15,7 +15,6 @@ import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";
 import { Collections } from "./collections";
 import { Dashboards } from "./dashboards";
-import { Pulses } from "./pulses";
 import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
@@ -113,21 +112,14 @@ export const Search = createEntity({
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
     const entity = entityForObject(object);
-    if (entity) {
-      return entity.wrapEntity(object, dispatch);
-    } else {
-      console.warn("Couldn't find entity for object", object);
-      return object;
-    }
+    return entity ? entity.wrapEntity(object, dispatch) : object;
   },
 
   objectActions: {
     delete: (object) => {
       return (dispatch) => {
         const entity = entityForObject(object);
-        return entity
-          ? dispatch(entity.actions.delete(object))
-          : warnEntityAndReturnObject(object);
+        return entity ? dispatch(entity.actions.delete(object)) : object;
       };
     },
   },
@@ -139,7 +131,6 @@ export const Search = createEntity({
       Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
-      Pulses.actionShouldInvalidateLists(action) ||
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||
       Snippets.actionShouldInvalidateLists(action) ||
@@ -148,11 +139,6 @@ export const Search = createEntity({
     );
   },
 });
-
-function warnEntityAndReturnObject(object) {
-  console.warn("Couldn't find entity for object", object);
-  return object;
-}
 
 function useListQuery(query = {}, options) {
   const collectionItemsQuery = useListCollectionItemsQuery(

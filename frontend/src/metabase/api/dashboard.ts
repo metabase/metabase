@@ -280,6 +280,7 @@ export const {
     deleteDashboardPublicLink,
     createDashboard,
     createDashboardPublicLink,
+    updateDashboard,
     updateDashboardEnableEmbedding,
     updateDashboardEmbeddingParams,
   },
