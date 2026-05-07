@@ -318,6 +318,7 @@ export const useCommandPaletteBasicActions = ({
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
+      keywords: t`add action, create action`,
       section: "basic",
       icon: "bolt",
       perform: () => {
