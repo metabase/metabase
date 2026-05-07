@@ -20,7 +20,6 @@ import {
 import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -42,7 +41,6 @@ function TenantSpecificCollectionPermissionsPageView({
   params,
   route,
 }: TenantSpecificCollectionPermissionsPageProps) {
-  useListPermissionsGroupsQuery({});
   const dispatch = useDispatch();
 
   const props = useMemo(() => ({ params }), [params]);

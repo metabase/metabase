@@ -27,7 +27,6 @@ import type {
   PermissionEditorType,
 } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -90,8 +89,6 @@ function TenantCollectionPermissionsPageView({
   initialize,
   route,
 }: TenantCollectionPermissionsPageProps) {
-  useListPermissionsGroupsQuery({});
-
   useEffect(() => {
     initialize();
   }, [initialize]);

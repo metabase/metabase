@@ -2,7 +2,6 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
@@ -96,8 +95,6 @@ const CollectionPermissionsModal = ({
   updateCollectionPermission,
   saveCollectionPermissions,
 }: CollectionPermissionsModalProps) => {
-  useListPermissionsGroupsQuery({});
-
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );

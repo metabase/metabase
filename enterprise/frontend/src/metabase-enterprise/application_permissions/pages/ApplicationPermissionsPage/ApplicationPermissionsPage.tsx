@@ -4,7 +4,6 @@ import type { Route } from "react-router";
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { connect } from "metabase/redux";
 import {
   initializeApplicationPermissions,
@@ -50,8 +49,6 @@ const ApplicationPermissionsPage = ({
   updatePermission,
   route,
 }: ApplicationPermissionsPageProps) => {
-  useListPermissionsGroupsQuery({});
-
   useEffect(() => {
     initialize();
   }, [initialize]);
