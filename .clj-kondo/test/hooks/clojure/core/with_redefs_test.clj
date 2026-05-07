@@ -65,11 +65,16 @@
   (testing "(constantly …)"
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint '(with-redefs [plain-fn (constantly 42)] (plain-fn))))))
-  (testing "(partial …), (comp …), (complement …), (identity)"
-    (is (=? [{}] (lint '(with-redefs [plain-fn (partial + 1)] (plain-fn)))))
-    (is (=? [{}] (lint '(with-redefs [plain-fn (comp inc dec)] (plain-fn)))))
-    (is (=? [{}] (lint '(with-redefs [plain-fn (complement odd?)] (plain-fn)))))
-    (is (=? [{}] (lint '(with-redefs [plain-fn (identity inc)] (plain-fn))))))
+  (testing "(partial …), (comp …), (complement …), (identity …) are *not* fn-shaped —
+            they only return a function when their args are functions, so the heuristic
+            stays out of their way to avoid false positives like `(identity 42)`"
+    (is (= [] (lint '(with-redefs [plain-fn (partial + 1)] (plain-fn)))))
+    (is (= [] (lint '(with-redefs [plain-fn (comp inc dec)] (plain-fn)))))
+    (is (= [] (lint '(with-redefs [plain-fn (complement odd?)] (plain-fn)))))
+    (is (= [] (lint '(with-redefs [plain-fn (identity inc)] (plain-fn))))))
+  (testing "namespaced lookalikes like `foo/constantly` don't qualify — only unqualified
+            heads from `fn-building-heads` trigger the nudge"
+    (is (= [] (lint '(with-redefs [plain-fn (foo/constantly 42)] (plain-fn))))))
   (testing "multiple bindings, all fn-shaped and all defns"
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint '(with-redefs [plain-fn   (constantly 1)

@@ -4973,7 +4973,7 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+  (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
                          {:tables     [{} {}]

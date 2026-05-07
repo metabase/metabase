@@ -3,12 +3,17 @@
    [clj-kondo.hooks-api :as hooks]))
 
 (def ^:private fn-building-heads
-  "Head symbols that reliably produce a function value. We only use this on the *RHS* —
-   if every binding's RHS is fn-shaped, the user is mocking functions and would be better
-   served by `metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs` (thread-safe). The
-   set is deliberately small to minimise false positives — unrecognised shapes are left
-   alone."
-  '#{fn fn* constantly partial comp complement identity})
+  "Head symbols that *unconditionally* produce a function value. We only use this on the
+   RHS — if every binding's RHS is fn-shaped, the user is mocking functions and would be
+   better served by `metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs`
+   (thread-safe). The set covers `fn`, `fn*`, and `constantly`, which are unambiguous.
+
+   Names like `partial`, `comp`, `complement`, and `identity` were deliberately *omitted*:
+   they only return a function when their arguments are functions (`(identity 42)` is
+   `42`, `(partial 1 2)` throws), so including them would let the linter fire on
+   non-function RHSes. In practice mocks use `fn`/`#(...)`/`constantly`, so the loss is
+   negligible."
+  '#{fn fn* constantly})
 
 (defn- fn-shaped?
   "Heuristic: does this rewrite-clj node look like it evaluates to a function?
@@ -18,19 +23,21 @@
    tell without full resolution whether it's a function or a value.
 
    Two shapes match: `#(...)` reader literals (parsed by rewrite-clj as a distinct node
-   with tag `:fn`, *not* a list node) and explicit list calls whose head is a known
-   fn-building symbol (`fn`, `constantly`, `partial`, …)."
+   with tag `:fn`, *not* a list node) and explicit list calls whose head is one of the
+   `fn-building-heads`. We require the head be an unqualified symbol so a user-defined
+   `foo/constantly` doesn't get conflated with `clojure.core/constantly`."
   [node]
   (or
    ;; `#(...)` reader literal — always a function by construction.
    (= :fn (hooks/tag node))
-   ;; `(fn …)`, `(constantly …)`, `(partial …)`, etc.
+   ;; `(fn …)`, `(fn* …)`, `(constantly …)`.
    (and (hooks/list-node? node)
         (let [[head] (:children node)]
           (and (hooks/token-node? head)
-               (symbol? (hooks/sexpr head))
-               ;; Match unqualified name — `(clojure.core/fn ...)` also qualifies.
-               (contains? fn-building-heads (symbol (name (hooks/sexpr head)))))))))
+               (let [s (hooks/sexpr head)]
+                 (and (symbol? s)
+                      (nil? (namespace s))
+                      (contains? fn-building-heads s))))))))
 
 (defn- defn-arity?
   "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)

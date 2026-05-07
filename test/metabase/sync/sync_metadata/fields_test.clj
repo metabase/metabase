@@ -413,7 +413,7 @@
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
-                        original-set-initial-table-sync-complete-for-db! sync-util/set-initial-table-sync-complete-for-db!]
+                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync-util/set-initial-table-sync-complete-for-db!)]
                     (mt/with-dynamic-fn-redefs [sync-util/set-initial-table-sync-complete-for-db!
                                                 (fn [& args]
                                                   (let [r (apply original-set-initial-table-sync-complete-for-db! args)]

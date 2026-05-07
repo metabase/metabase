@@ -102,7 +102,7 @@
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
   Oracle and Redshift will keep open cursors indefinitely."
   [driver db]
-  (let [orig-result-set-seq jdbc/result-set-seq
+  (let [orig-result-set-seq (mt/original-fn #'jdbc/result-set-seq)
         resultsets          (atom [])]
     ;; swap out `jdbc/result-set-seq` which is what ultimately gets called on result sets with a function that will
     ;; stash the ResultSet object in an atom so we can check whether its closed later

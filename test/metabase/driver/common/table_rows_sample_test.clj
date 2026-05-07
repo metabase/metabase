@@ -141,7 +141,7 @@
                                          :fingerprint_version 0}))
       (let [fingerprints                 (atom [])
             fingerprint-query            (atom nil)
-            orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
+            orig-table-rows-sample-query (mt/original-fn #'table-rows-sample/table-rows-sample-query)]
         (mt/with-dynamic-fn-redefs [fingerprint/save-fingerprint!             (fn [_field fingerprint]
                                                                                 (swap! fingerprints conj fingerprint))
                                     table-rows-sample/table-rows-sample-query (fn [& args]

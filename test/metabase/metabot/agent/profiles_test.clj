@@ -180,7 +180,7 @@
         (is (contains? tools "navigate_user"))))))
 
 (deftest transform-feature-capabilities-test
-  (let [orig-has-feature premium-features/has-feature?
+  (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
         transform-tools #{#'tools.transforms/write-transform-sql-tool
                           #'tools.transforms/write-transform-python-tool}]
     (testing "Available with features present"

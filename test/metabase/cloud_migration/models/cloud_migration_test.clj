@@ -46,7 +46,11 @@
                                  :dump   []
                                  :upload []
                                  :done   []})
-        orig-set-progress @#'cloud-migration/set-progress]
+        orig-set-progress (mt/original-fn #'cloud-migration/set-progress)]
+    ;; The redefs below are read on the test thread before the scheduler stops/starts;
+    ;; if a future change dispatches `cluster?` or `set-progress` through a quartz worker
+    ;; (which doesn't inherit `*local-redefs*`), revert that site to `with-redefs` per
+    ;; the docstring of `with-dynamic-fn-redefs`.
     (mt/with-dynamic-fn-redefs [cloud-migration/cluster?     (constantly false)
                                 cloud-migration/set-progress (fn [id state n]
                                                                (swap! progress-calls update state conj n)
