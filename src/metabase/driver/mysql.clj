@@ -102,9 +102,13 @@
 
 (defmethod driver/qualified-name-components :mysql
   [_driver]
-  ;; MySQL emits bare table identifiers in compiled queries (the connection has a default DB).
-  ;; "Schema" doesn't exist; "database" exists but is not emitted as a qualifier in normal SELECTs.
-  [])
+  ;; MySQL's "schema" doesn't exist; its "database" is what other engines call a schema and
+  ;; what JDBC calls a catalog. We populate the `:db` AST slot (= SQLGlot `Table.catalog`)
+  ;; with the connection's bound DB so workspace remap can record both canonical and iso
+  ;; DB names on `TableRemapping` rows and the QP can rewrite identifiers across DBs.
+  ;; Production SELECTs continue to emit unqualified `t` because the SQL compiler reads
+  ;; the per-driver `quote-name` rules, not this multimethod.
+  [:db])
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.

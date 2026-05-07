@@ -33,8 +33,23 @@
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  (if (ws/db-workspace-schema db-id)
-    (let [{to-schema :schema to-table :table}
-          (ws.table-remapping/add-transform-target-mapping! db-id target)]
-      (assoc target :schema to-schema :name to-table))
+  (if (some? (ws/db-workspace-namespace db-id))
+    (let [{to-db :db to-schema :schema to-table :table}
+          (ws.table-remapping/add-transform-target-mapping! db-id target)
+          ;; The TableRemapping store uses `\"\"` as an empty-slot sentinel; the
+          ;; transform target uses nil. Normalize as we read out so downstream
+          ;; consumers see clean slot semantics.
+          denorm   (fn [v] (when-not (or (nil? v) (= "" v)) v))]
+      ;; **Replace** `:db` and `:schema` on the target with the to-spec's
+      ;; values — not just merge in the populated ones. The canonical target
+      ;; carries the input namespace (e.g. `:schema \"test-data\"` for a MySQL
+      ;; workspace where the input DB is `test-data`); after rewriting, the
+      ;; target points at the iso namespace which on MySQL lives at `:db`,
+      ;; not `:schema`. Failing to clear the canonical `:schema` leaves the
+      ;; SQL compiler with two competing qualifiers and the output lands in
+      ;; the wrong place.
+      (assoc target
+             :db     (denorm to-db)
+             :schema (denorm to-schema)
+             :name   to-table))
     target))

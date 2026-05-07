@@ -124,11 +124,20 @@
       default-schema)))
 
 (defn qualified-table-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
+  "Return the transform target as a `:schema/name` (or bare `:name`) HoneySQL
+   identifier. Consumers downstream rely on `name`/`namespace` to extract the
+   parts (e.g. `metabase.driver.sql/run-transform! [:sql :table]`), so this stays
+   2-segment.
+
+   The `:db` slot — populated for engines whose `qualified-name-components`
+   includes `:db` (Snowflake / SQL Server / BigQuery / MySQL) — is **not** encoded
+   here. It travels separately on `transform-details` as `:output-db` and is
+   prepended at the SQL emission site. See
+   [[metabase.driver.sql.query-processor/compile-transform :sql]]."
   [_driver {:keys [schema name]}]
-  (if schema
-    (keyword schema name)
-    (keyword name)))
+  (if (str/blank? schema)
+    (keyword name)
+    (keyword schema name)))
 
 (defn temp-table-name
   "Generate a temporary table name with current timestamp in milliseconds.

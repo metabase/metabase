@@ -39,25 +39,48 @@
 (defn- db-position-value
   "Connection-side value for the `:db` AST slot of `database`, or nil for engines
    whose [[metabase.driver/qualified-name-components]] does not include `:db`
-   (Postgres, MySQL, ClickHouse, Redshift, H2). Mirrors the per-engine logic in
+   (Postgres, ClickHouse, Redshift, H2). Mirrors the per-engine logic in
    [[metabase-enterprise.workspaces.table-remapping/db-position-value]] until the
    planned driver multimethod subsumes both."
   [database]
   (case (:engine database)
-    (:snowflake :sqlserver) (:db (:details database))
-    :bigquery-cloud-sdk     (:project-id (:details database))
+    (:mysql :snowflake :sqlserver) (:db (:details database))
+    :bigquery-cloud-sdk            (:project-id (:details database))
     nil))
 
 (defn- table-namespace
   "Build a wire `::table-namespace` map (`{:db ?, :schema ?}`) for `database`
-   with `:schema` slot `schema-name`. A slot is present iff its value is a
-   non-blank string; storage `\"\"` becomes a missing key, since the wire format
-   reserves `\"\"` for storage rows only."
-  [database schema-name]
-  (let [db-slot (db-position-value database)]
+   given `ns-name` — the warehouse-side namespace string above the table
+   (e.g. `\"public\"` on Postgres, the database name on MySQL).
+
+   The slot the value lands in is dictated by the driver's
+   `qualified-name-components`:
+
+   - schema-having drivers (Postgres, Redshift, Snowflake, SQL Server,
+     ClickHouse) put `ns-name` in `:schema`.
+   - schema-less drivers that emit the database name as the qualifier
+     (MySQL has `qualified-name-components` `[:db]`) put `ns-name` in
+     `:db`.
+
+   For 3-slot drivers (Snowflake, SQL Server, BigQuery) the canonical
+   connection's `:db` slot is also populated alongside `:schema`. For
+   MySQL only `:db` is populated.
+
+   A slot is present iff its value is a non-blank string; storage `\"\"`
+   becomes a missing key, since the wire format reserves `\"\"` for storage
+   rows only."
+  [database ns-name]
+  (let [components   (set (driver/qualified-name-components (:engine database)))
+        db-slot      (when (:db components) (db-position-value database))
+        ;; If the driver has a schema slot, ns-name lives there. If it doesn't
+        ;; but does have a db slot, ns-name IS the db name (= what JDBC
+        ;; reports as TABLE_CAT). MySQL is the latter case.
+        ns-in-schema (boolean (:schema components))
+        ns-in-db     (and (not ns-in-schema) (:db components))]
     (cond-> {}
-      (not (str/blank? schema-name)) (assoc :schema schema-name)
-      (not (str/blank? db-slot))     (assoc :db db-slot))))
+      (and ns-in-schema (not (str/blank? ns-name)))   (assoc :schema ns-name)
+      (and ns-in-db     (not (str/blank? ns-name)))   (assoc :db ns-name)
+      (and ns-in-schema (not (str/blank? db-slot)))   (assoc :db db-slot))))
 
 (defn- workspace-database-entry [wsd db]
   [(:name db) {:input  (mapv #(table-namespace db %) (:input_schemas wsd))

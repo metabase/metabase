@@ -101,6 +101,13 @@
                              :conn-spec (driver/connection-spec driver database)
                              :query (transforms-base.u/compile-source transform source-range-params)
                              :output-schema (:schema target)
+                             ;; Cross-DB write target qualifier. Populated when the driver's
+                             ;; `qualified-name-components` includes `:db` (MySQL/Snowflake/
+                             ;; SQL Server/BigQuery) AND the workspace remap put a different
+                             ;; DB into the target's `:db` slot. Compilation prepends this to
+                             ;; the CTAS table name. See
+                             ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
+                             :output-db (:db target)
                              :output-table (transforms-base.u/qualified-table-name driver target)}
           opts (transform-opts transform-details)
           features (transforms-base.u/required-database-features transform)]

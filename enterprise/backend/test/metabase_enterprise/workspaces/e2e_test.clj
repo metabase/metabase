@@ -324,18 +324,27 @@
                                       "no app-db Table row points at the isolation schema"))))
                             (testing "A table remapping record exists"
                             ;; `:from_db` is the empty-string sentinel for 2-slot drivers (Postgres,
-                            ;; Redshift, ClickHouse) and the connection's db for 3-slot
-                            ;; drivers (Snowflake, SQL Server). `:to_db` mirrors `:from_db` here
-                            ;; because the workspace's isolation schema lives in the same db.
-                            ;; On MySQL `qualified-name-components` is `[]` (zero-slot), so BOTH
-                            ;; `:from_schema` and `:from_db` are stored as `""` — `spec-for-table`
-                            ;; only fills slots the driver emits as qualifiers.
-                              (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)]
-                                (is (= [{:to_schema       isolation-schema
+                            ;; Redshift, ClickHouse) and the connection's bound DB for drivers whose
+                            ;; `qualified-name-components` populates `:db` (Snowflake, SQL Server,
+                            ;; BigQuery, MySQL).
+                            ;;
+                            ;; `:to_db` equals `:from_db` for drivers whose iso namespace lives in
+                            ;; the SAME DB as canonical (Postgres-family schema-based, Snowflake/SQL
+                            ;; Server schema-based). On MySQL the iso namespace is a different
+                            ;; DATABASE, so `:to_db` is the iso DB name (= isolation-schema).
+                            ;;
+                            ;; `:from_schema` is the canonical schema name on schema-having drivers,
+                            ;; and the empty-string sentinel on MySQL (no schema layer).
+                              (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)
+                                    to-db-stored      (if (= :mysql admin-driver)
+                                                        isolation-schema
+                                                        (or input-ns-db ""))
+                                    to-schema-stored  (if (= :mysql admin-driver) "" isolation-schema)]
+                                (is (= [{:to_schema       to-schema-stored
                                          :from_schema     from-schema-stored
                                          :from_table_name tgt-name
                                          :from_db         (or input-ns-db "")
-                                         :to_db           (or input-ns-db "")
+                                         :to_db           to-db-stored
                                          :database_id     (:id ws-db)}]
                                        (for [r (t2/select :model/TableRemapping)]
                                          (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id]))))))

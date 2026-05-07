@@ -95,9 +95,9 @@
 (defn- db-position-value
   "Value to put in the `:db` slot of a `::table-spec` for a Table row in `database`.
    Only called for drivers whose `qualified-name-components` includes `:db` —
-   currently Snowflake, SQL Server, and BigQuery.
+   currently MySQL, Snowflake, SQL Server, and BigQuery.
 
-   Snowflake and SQL Server both store the warehouse database name in
+   MySQL, Snowflake, and SQL Server all store the warehouse database name in
    `details.:db`. BigQuery puts the project ID in `details.:project-id`.
 
    Returns nil when the connection doesn't carry the expected key. For BigQuery
@@ -107,8 +107,8 @@
    multimethod when BigQuery workspace remapping lands."
   [database]
   (case (:engine database)
-    (:snowflake :sqlserver) (:db (:details database))
-    :bigquery-cloud-sdk     (:project-id (:details database))
+    (:mysql :snowflake :sqlserver) (:db (:details database))
+    :bigquery-cloud-sdk            (:project-id (:details database))
     nil))
 
 (mu/defn spec-for-table :- ::table-spec

@@ -2170,10 +2170,26 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
-  (let [{sql-query :query sql-params :params} query]
+  [driver {:keys [query output-db output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; AST `:db` position and the canonical `output-table` is bare.
+        ;;
+        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
+        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
+        ;; Server / BigQuery cross-DB) aren't expressible through this single-
+        ;; keyword shape; when those workspaces land they'll either need
+        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        target-id (cond
+                    (and (not (str/blank? output-db))
+                         (str/blank? (namespace (keyword output-table))))
+                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    :else
+                    (keyword output-table))]
     [(first (format-honeysql driver
-                             {:create-table-as [(keyword output-table)]
+                             {:create-table-as [target-id]
                               :raw sql-query}))
      sql-params]))
 

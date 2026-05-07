@@ -379,8 +379,12 @@
   the AST position holding the level above the table.
 
   Concrete mapping:
-  - 1-level (`SELECT * FROM t`):           `[]`           — MySQL, Mongo
-  - 2-level (`SELECT * FROM s.t`):         `[:schema]`    — Postgres, Snowflake, ClickHouse, H2
+  - 1-level (`SELECT * FROM t`):           `[]`            — Mongo
+  - 1-level over a catalog (`SELECT * FROM t`, but workspace remap and other
+    consumers need a catalog name to route across DBs): `[:db]` — MySQL.
+    The compiled SQL is still bare; this slot tells consumers MySQL has a
+    meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
+  - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Snowflake, ClickHouse, H2
   - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — BigQuery (project.dataset.table)
 
   Used by workspace table remapping to decide:
