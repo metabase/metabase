@@ -58,6 +58,52 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
+/**
+ * Pick the first entity the sidebar would render so the auto-selection
+ * always lands on a row that's actually visible. The sidebar lays out
+ * by group `position` (not by raw query interestingness), and a `page`
+ * group exposes only the group itself — its constituent queries don't
+ * appear as standalone rows. Auto-selecting the first query overall by
+ * interestingness can therefore land on a query that has no sidebar
+ * row, leaving the highlight + scroll anchor with nothing to follow.
+ *
+ * Walk threads in order; for each thread walk its position-sorted
+ * groups. Return the group itself for `page` groups, or its first
+ * `query_ids` entry otherwise. Fall back to the first ungrouped query
+ * (defensive — every BE-emitted query is grouped today).
+ */
+function pickInitialSidebarEntity(
+  threads: ExplorationThread[] | undefined,
+): SelectedEntityId | null {
+  if (!threads) {
+    return null;
+  }
+  for (const thread of threads) {
+    const groups = (thread.groups ?? [])
+      .slice()
+      .sort((a, b) => a.position - b.position);
+    for (const group of groups) {
+      if (group.display_type === "page") {
+        return { type: "group", id: group.id };
+      }
+      const queryId = group.query_ids[0];
+      if (queryId != null) {
+        return { type: "query", id: queryId };
+      }
+    }
+    const groupedIds = new Set(
+      (thread.groups ?? []).flatMap((g) => g.query_ids),
+    );
+    const firstUngrouped = (thread.queries ?? []).find(
+      (q) => !groupedIds.has(q.id),
+    );
+    if (firstUngrouped) {
+      return { type: "query", id: firstUngrouped.id };
+    }
+  }
+  return null;
+}
+
 interface SelectedQueryId {
   type: "query";
   id: ExplorationQueryId;
@@ -79,18 +125,6 @@ export type SelectedEntityId =
   | SelectedGroupId;
 
 export function ExplorationPage({ params, children }: ExplorationPageProps) {
-  const selectedEntityId: SelectedEntityId | null = useMemo(() => {
-    if (!params.entityType || !params.entityId) {
-      return null;
-    }
-    // Group ids are opaque strings (e.g. "auto:42:dim-foo") with colons —
-    // we URL-encode them on push and decode them here.
-    if (params.entityType === "group") {
-      return { type: "group", id: decodeURIComponent(params.entityId) };
-    }
-    return { type: params.entityType, id: Number(params.entityId) };
-  }, [params.entityType, params.entityId]);
-
   const dispatch = useDispatch();
 
   const setSelectedEntityId = useCallback(
@@ -164,17 +198,42 @@ export function ExplorationPage({ params, children }: ExplorationPageProps) {
     });
   }, [exploration]);
 
-  useEffect(() => {
-    if (selectedEntityId !== null) {
-      return;
+  // Selection comes from the URL. When the URL has no entity yet
+  // (e.g. user landed on `/explorations/:id` directly), fall back to
+  // the first query so the sidebar highlight, the scroll anchor, and
+  // the right-pane chart all agree on the very first paint — without
+  // waiting for the URL-sync effect below to dispatch a `push()`.
+  //
+  // Once the URL update lands the fallback drops out (params take
+  // precedence) and the URL becomes authoritative again.
+  // Selection model:
+  //
+  //   - The URL is the "pinned by the user" indicator. Only user
+  //     clicks call `setSelectedEntityId`, which pushes the entity
+  //     into the URL. Once the URL carries an entity, that's
+  //     authoritative — no more auto-tracking.
+  //
+  //   - Until then, every render (including ones triggered by polling
+  //     bringing in fresh interestingness scores) re-derives the
+  //     selection from the current top of the sidebar via
+  //     `pickInitialSidebarEntity`. This is what makes the right pane
+  //     and the sidebar follow the "first, most interesting chart"
+  //     as new data lands.
+  //
+  // We deliberately do NOT push the auto-derived selection into the
+  // URL: doing so would freeze the selection at the first auto-pick
+  // and prevent it from following subsequent data updates.
+  const selectedEntityId: SelectedEntityId | null = useMemo(() => {
+    if (params.entityType && params.entityId) {
+      // Group ids are opaque strings (e.g. "auto:42:dim-foo") with
+      // colons — we URL-encode them on push and decode them here.
+      if (params.entityType === "group") {
+        return { type: "group", id: decodeURIComponent(params.entityId) };
+      }
+      return { type: params.entityType, id: Number(params.entityId) };
     }
-    if (threadsWithSortedQueries[0]?.queries[0]?.id) {
-      setSelectedEntityId({
-        type: "query",
-        id: threadsWithSortedQueries[0].queries[0].id,
-      });
-    }
-  }, [threadsWithSortedQueries, selectedEntityId, setSelectedEntityId]);
+    return pickInitialSidebarEntity(exploration?.threads);
+  }, [params.entityType, params.entityId, exploration]);
 
   const queryIdToQueryAndThread: Map<
     ExplorationQueryId,

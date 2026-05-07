@@ -3,6 +3,7 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -102,17 +103,66 @@ export function ExplorationSidebar({
     ReadonlySet<ExplorationQueryGroupId>
   >(() => new Set());
 
-  useEffect(() => {
-    if (
-      selectedEntityId?.type !== "query" &&
-      selectedEntityId?.type !== "group"
-    ) {
+  // Anchor the selected row's scroll position so it stays put when the
+  // list shifts under it (e.g. as polling brings in interestingness
+  // scores and the sort order changes mid-flight). Also subsumes the
+  // "scroll new selection into view" behavior on selection change.
+  //
+  // Uses `useLayoutEffect` so the adjustment runs synchronously after
+  // the DOM update and BEFORE the browser paints — no flicker.
+  const lastAnchorIdRef = useRef<string | null>(null);
+  const lastAnchorTopRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const row = selectedRowRef.current;
+    const currentId =
+      selectedEntityId?.type === "query" || selectedEntityId?.type === "group"
+        ? `${selectedEntityId.type}-${String(selectedEntityId.id)}`
+        : null;
+
+    if (!row || !currentId) {
+      lastAnchorIdRef.current = null;
+      lastAnchorTopRef.current = null;
       return;
     }
-    selectedRowRef.current?.scrollIntoView({
-      block: "nearest",
-    });
-  }, [selectedEntityId]);
+
+    const scrollParent = findScrollableAncestor(row);
+    if (!scrollParent) {
+      lastAnchorIdRef.current = currentId;
+      lastAnchorTopRef.current = null;
+      return;
+    }
+
+    const measureTop = () =>
+      row.getBoundingClientRect().top -
+      scrollParent.getBoundingClientRect().top;
+
+    const isSameSelection = lastAnchorIdRef.current === currentId;
+
+    if (!isSameSelection) {
+      // New selection (initial mount or user picked a different row).
+      // Bring it into view, then capture the post-scroll anchor for
+      // the next render's delta calculation.
+      row.scrollIntoView({ block: "nearest" });
+      lastAnchorTopRef.current = measureTop();
+      lastAnchorIdRef.current = currentId;
+      return;
+    }
+
+    // Same selection — list reordered under it. If the row's relative
+    // top within the scroll container changed, compensate by adjusting
+    // scrollTop so the row stays at the same visual position.
+    const currentTop = measureTop();
+    if (
+      lastAnchorTopRef.current !== null &&
+      currentTop !== lastAnchorTopRef.current
+    ) {
+      scrollParent.scrollTop += currentTop - lastAnchorTopRef.current;
+      // After the adjustment, the row's relative top equals the
+      // previous anchor; ref stays valid for subsequent updates.
+    } else {
+      lastAnchorTopRef.current = currentTop;
+    }
+  });
 
   // Visual-order list of *navigable entities* — the rows arrow-keys walk
   // through. A row is either a single query (singleton group's query, a
@@ -724,4 +774,23 @@ function getExplorationThreadName(thread: ExplorationThread, index: number) {
     return t`Initial investigation`;
   }
   return t`New exploration`;
+}
+
+/**
+ * Walk up the DOM looking for the nearest ancestor that scrolls
+ * vertically (`overflow-y` is `auto` or `scroll`). Returns `null` when
+ * none is found. Used by the sidebar to identify the per-thread
+ * `.threadList` element so we can adjust its `scrollTop` to keep the
+ * selected row stable across re-sorts.
+ */
+function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
+  let cur: HTMLElement | null = el?.parentElement ?? null;
+  while (cur) {
+    const overflowY = getComputedStyle(cur).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return cur;
+    }
+    cur = cur.parentElement;
+  }
+  return null;
 }
