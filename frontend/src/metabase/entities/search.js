@@ -19,7 +19,7 @@ import { Questions } from "./questions";
 import { Segments } from "./segments";
 import { SnippetCollections } from "./snippet-collections";
 import { Snippets } from "./snippets";
-import { createEntity, entityCompatibleQuery, entityForObject } from "./utils";
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -108,15 +108,6 @@ export const Search = createEntity({
   },
 
   schema: ObjectUnionSchema,
-
-  objectActions: {
-    delete: (object) => {
-      return (dispatch) => {
-        const entity = entityForObject(object);
-        return entity ? dispatch(entity.actions.delete(object)) : object;
-      };
-    },
-  },
 
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
