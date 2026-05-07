@@ -181,30 +181,27 @@
                        (deferred-tru "Some tag IDs do not exist"))))
     (let [was-active     (:active existing-job)
           will-be-active (if (some? active) active was-active)]
+      ;; DB writes that can fail commit before any Quartz side effect, so a tag FK race or
+      ;; non-toggle-update failure can't roll back state already written to the scheduler.
       (t2/with-transaction [_conn]
-        ;; Apply non-toggle field updates first so any subsequent activation reads the new state.
         (when-let [updates (m/assoc-some nil
                                          :name name
                                          :description description
                                          :schedule schedule
                                          :ui_display_type ui_display_type)]
           (t2/update! :model/TransformJob job-id updates))
-        ;; Apply :active toggle through the model helpers, which keep the Quartz trigger in sync.
-        (when (some? active)
-          (if active
-            (transforms.core/activate-job! job-id)
-            (transforms.core/deactivate-job! job-id)))
-        ;; Reschedule the trigger when the schedule changed on a job that was AND remains active.
-        ;; (When activation toggled false→true above, activate-job! already built a fresh trigger
-        ;; from the new schedule.)
-        (when (and schedule was-active will-be-active)
-          (transforms.core/update-job! job-id schedule))
-        ;; Update tag associations if provided
         (when (some? tag-ids)
-          (transforms.core/update-job-tags! job-id tag-ids))
-        ;; Return updated job with hydration
-        (-> (t2/select-one :model/TransformJob :id job-id)
-            (t2/hydrate :tag_ids :last_run))))))
+          (transforms.core/update-job-tags! job-id tag-ids)))
+      (when (some? active)
+        (if active
+          (transforms.core/activate-job! job-id)
+          (transforms.core/deactivate-job! job-id)))
+      ;; A schedule edit on a job that stays active needs a separate trigger rebuild;
+      ;; activate-job! only runs when :active toggled false→true.
+      (when (and schedule was-active will-be-active)
+        (transforms.core/update-job! job-id schedule))
+      (-> (t2/select-one :model/TransformJob :id job-id)
+          (t2/hydrate :tag_ids :last_run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
