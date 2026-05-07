@@ -36,7 +36,7 @@
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
       (tx/destroy-db! target-db-type db-def)
       (tx/create-db! target-db-type db-def)
-      (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
+      (mdb.connection/with-application-db (mdb.connection/application-db target-db-type target-data-source)
         (load-from-h2/load-from-h2! h2-filename)
         (is (= 4
                (t2/count :model/Table)))
@@ -103,7 +103,7 @@
   (let [db-type driver/*driver*
         current-version @current-major-version
         data-source (get-data-source db-type db-def)]
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
+    (mdb.connection/with-application-db (mdb.connection/application-db db-type data-source)
       (mt/dataset bird-flocks
         ;; make sure the data is there
         (is (= 18
@@ -132,7 +132,7 @@
         db-def {:database-name db-name}
         data-source (get-data-source db-type db-def)]
     (create-current-database! db-type db-def data-source)
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
+    (mdb.connection/with-application-db (mdb.connection/application-db db-type data-source)
       (mt/dataset sad-toucan-incidents
         (is (= 200
                (ffirst (mt/formatted-rows

@@ -64,9 +64,9 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[*application-db*]]:
+  with [[with-application-db]]:
 
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 my-data-source)]
+    (mdb.connection/with-application-db (mdb.connection/application-db :h2 my-data-source)
       ...)
 
   Options:
@@ -88,15 +88,49 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
-(def ^:dynamic ^ApplicationDB *application-db*
-  "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
-  with [[application-db]]."
+(def ^:private ^:dynamic ^ApplicationDB *application-db*
+  "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Don't read or rebind this
+  directly; instead use [[the-application-db]], [[application-db-root]], [[with-application-db]],
+  [[reset-application-db!]], or [[swap-application-db!]]."
   (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
 
 (defn the-application-db
-  "Returns the application db"
+  "Returns the current application DB. Prefer this over reading the underlying var directly so we can change where
+  the value is stored later."
   ^ApplicationDB []
   *application-db*)
+
+(defn application-db-root
+  "Returns the root binding of the application DB, ignoring any thread-local rebinding established
+  by [[with-application-db]]. Use this when capturing the prior root for cross-thread promotion patterns where you
+  need to restore it later."
+  ^ApplicationDB []
+  (.getRawRoot ^clojure.lang.Var #'*application-db*))
+
+(defn do-with-application-db
+  "Impl for [[with-application-db]] macro."
+  [application-db thunk]
+  (binding [*application-db* application-db]
+    (thunk)))
+
+(defmacro with-application-db
+  "Bind the current application database for the dynamic extent of `body`. Use this instead of binding
+  [[*application-db*]] directly."
+  {:style/indent [:defn]}
+  [application-db & body]
+  `(do-with-application-db ~application-db (fn [] ~@body)))
+
+(defn reset-application-db!
+  "Set the root binding of the application DB to `new-application-db`. Mirrors [[clojure.core/reset!]]. Use this
+  instead of `alter-var-root` on [[*application-db*]]."
+  [new-application-db]
+  (alter-var-root #'*application-db* (constantly new-application-db)))
+
+(defn swap-application-db!
+  "Update the root binding of the application DB by applying `f` (and any extra `args`) to its current value. Mirrors
+  [[clojure.core/swap!]]. Use this instead of `alter-var-root` on [[*application-db*]]."
+  [f & args]
+  (apply alter-var-root #'*application-db* f args))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."

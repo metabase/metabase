@@ -234,7 +234,7 @@
            (premium-features/active-users-count))))
 
   (testing "Default to 0 if db is not setup yet"
-    (binding [mdb.connection/*application-db* {:status (atom nil)}]
+    (mdb.connection/with-application-db {:status (atom nil)}
       (is (zero? (premium-features/active-users-count))))))
 
 (deftest RemoteCheckedToken-regexp

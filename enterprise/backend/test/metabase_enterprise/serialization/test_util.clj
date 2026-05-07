@@ -63,8 +63,8 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+  `(mdb.connection/with-application-db (mdb.connection/application-db :h2 ~data-source)
+     (with-open [conn# (.getConnection (mdb.connection/the-application-db))]
        (binding [t2.conn/*current-connectable* conn#]
          ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism

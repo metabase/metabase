@@ -261,13 +261,13 @@
   (u/profile (trs "Database setup")
     (u/with-us-locale
 
-      (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                config/*disable-setting-cache*            true
-                custom-migrations/*create-sample-content* create-sample-content?]
-        (verify-db-connection db-type data-source)
-        (error-if-downgrade-required! data-source)
-        (run-schema-migrations! data-source auto-migrate?)
-        (check-encryption))))
+      (mdb.connection/with-application-db (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+        (binding [config/*disable-setting-cache*            true
+                  custom-migrations/*create-sample-content* create-sample-content?]
+          (verify-db-connection db-type data-source)
+          (error-if-downgrade-required! data-source)
+          (run-schema-migrations! data-source auto-migrate?)
+          (check-encryption)))))
   :done)
 
 (defn release-migration-locks!
@@ -289,7 +289,7 @@
 ;;; Done at namespace load time these days.
 
 ;;; create a custom HoneySQL quoting style called `::application-db` that uses the appropriate quote function based on
-;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
+;;; the current application DB; register this as the default quoting style for Toucan. Then
 (defn quote-for-application-db
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]

@@ -33,11 +33,17 @@
 (p/import-vars
  [mdb.connection
   application-db
+  application-db-root
   data-source
   db-type
+  do-with-application-db
   in-transaction?
   quoting-style
-  unique-identifier]
+  reset-application-db!
+  swap-application-db!
+  the-application-db
+  unique-identifier
+  with-application-db]
 
  [mdb.connection-pool-setup
   recent-activity?]
@@ -87,7 +93,7 @@
   changelog-by-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
-;; [[mdb.connection/*application-db*]] (or its data source)
+;; the application DB (or its data source)
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
@@ -101,7 +107,7 @@
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
   implements [[javax.sql.DataSource]] directly, so you can call [[.getConnection]] on it directly."
-  []
+  ^metabase.app_db.connection.ApplicationDB []
   (mdb.connection/the-application-db))
 
 (defn setup-db!
@@ -151,16 +157,4 @@
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
-
-(defn do-with-application-db
-  "Impl for [[with-application-db]] macro."
-  [application-db thunk]
-  (binding [mdb.connection/*application-db* application-db]
-    (thunk)))
-
-(defmacro with-application-db
-  "Bind the current application database and execute body."
-  {:style/indent [:defn]}
-  [application-db & body]
-  `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
+  (mdb.connection/swap-application-db! assoc :id (swap! mdb.connection/application-db-counter inc)))
