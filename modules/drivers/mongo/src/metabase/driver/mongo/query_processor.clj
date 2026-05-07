@@ -156,12 +156,23 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
-  (concat
-   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
-   (when parent-id
-     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
-   [field-name]))
+(defn- col->name-components [{:keys [parent-id nfc-path], field-name :name, :as _col}]
+  (cond
+    ;; Mongo sync stores `:nfc-path` with the field's own name as the last element (matching the SQL-JDBC nested
+    ;; JSON path convention). When `:parent-id` is set, the column has gone through lib, which rewrites
+    ;; `:nfc-path` to ancestors-only (see `metabase.lib.field.resolution/add-parent-column-metadata`), so we
+    ;; append the field's own name to reconstruct the full path.
+    (seq nfc-path)
+    (cond-> (vec nfc-path)
+      parent-id (conj field-name))
+
+    ;; fall back to walking parent_id for fields synced before nfc-path was populated for Mongo subdocuments
+    parent-id
+    (concat (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id))
+            [field-name])
+
+    :else
+    [field-name]))
 
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."

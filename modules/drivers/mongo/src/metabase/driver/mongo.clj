@@ -373,8 +373,8 @@
   "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
   is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details.
 
-  Each nested field is annotated with `:nfc-path` — the chain of ancestor names from the root document, including
-  the field's own name."
+  Each nested field is annotated with `:nfc-path` — the chain of names from the root document down to and
+  including the field's own name (matching the convention used by the sql-jdbc nested json paths)."
   [ftree]
   (letfn [(walk
             [field ancestor-path]
