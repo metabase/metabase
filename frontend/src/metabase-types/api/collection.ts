@@ -113,14 +113,14 @@ export interface CollectionItem {
   model: CollectionItemModel;
   name: string;
   description: string | null;
-  archived: boolean;
+  archived?: boolean;
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parameterized?: boolean | null;
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
-  collection_id: CollectionId | null; // parent collection id
+  collection_id?: CollectionId | null; // parent collection id
   namespace?: CollectionNamespace; // namespace of the item itself
   collection_namespace?: CollectionNamespace; // namespace of the parent collection
   display?: VisualizationDisplay;

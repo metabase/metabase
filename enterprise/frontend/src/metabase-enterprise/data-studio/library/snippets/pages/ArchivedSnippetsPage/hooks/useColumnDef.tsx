@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
-  isCollection,
+  isCollectionData,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
@@ -19,7 +19,7 @@ import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selecto
 import type { CollectionItem } from "metabase-types/api";
 
 type ColumnDefProps = {
-  handleUnarchiveClick: (item: CollectionItem) => void;
+  handleUnarchiveClick: (item: Pick<CollectionItem, "id" | "name">) => void;
 };
 
 export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
@@ -51,7 +51,7 @@ export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
             return null;
           }
 
-          if (isCollection(data)) {
+          if (isCollectionData(data)) {
             return <CollectionRowMenu collection={data} />;
           }
 
@@ -63,7 +63,10 @@ export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
                 onClick={async (event) => {
                   event.stopPropagation();
                   event.preventDefault();
-                  handleUnarchiveClick(data);
+                  handleUnarchiveClick({
+                    id: Number(data.id),
+                    name: data.name,
+                  });
                 }}
               >
                 <FixedSizeIcon name={"unarchive"} c="text-primary" />

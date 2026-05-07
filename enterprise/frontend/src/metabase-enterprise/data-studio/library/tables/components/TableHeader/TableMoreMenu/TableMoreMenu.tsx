@@ -14,7 +14,9 @@ import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
 type TableModalType = "unpublish" | "move";
 
 export type TableMoreMenuProps = {
-  table: Table | CollectionItem;
+  table:
+    | Pick<CollectionItem, "id" | "database_id" | "collection_id">
+    | Pick<Table, "id" | "db_id" | "collection_id">;
   onMoved?: (collectionIds: CollectionId[]) => void;
 };
 

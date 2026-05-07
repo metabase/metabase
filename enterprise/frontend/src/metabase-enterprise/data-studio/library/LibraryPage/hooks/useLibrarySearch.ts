@@ -5,7 +5,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/common/utils/icon";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -44,22 +44,27 @@ export function useLibrarySearch(
       const metricItems: TreeItem[] = [];
 
       for (const result of searchResponse.data) {
+        if (result.model !== "table" && result.model !== "metric") {
+          continue;
+        }
+
         const item: TreeItem = {
           id: `${result.model}:${result.id}`,
           name: result.name,
           icon: getIcon({ model: result.model }).name,
           updatedAt: result.last_edited_at ?? result.updated_at,
-          model: result.model as TreeItem["model"],
+          model: result.model,
           parentCollectionName: result.collection?.name,
           data: {
-            id: result.id,
+            id: Number(result.id),
             model: result.model,
             name: result.name,
             description: result.description,
+            collection_id: result.collection_id ?? null,
             archived: result.archived ?? false,
             collection_position: result.collection_position,
             "last-edit-info": result["last-edit-info"],
-          } as CollectionItem,
+          },
         };
 
         if (result.model === "table") {
@@ -75,7 +80,10 @@ export function useLibrarySearch(
           name: t`Data`,
           icon: "table",
           model: "collection",
-          data: { model: "collection" } as CollectionItem,
+          data: {
+            model: "collection",
+            name: t`Data`,
+          },
           children: dataItems,
         });
       }
@@ -86,7 +94,10 @@ export function useLibrarySearch(
           name: t`Metrics`,
           icon: "metric",
           model: "collection",
-          data: { model: "collection" } as CollectionItem,
+          data: {
+            model: "collection",
+            name: t`Metrics`,
+          },
           children: metricItems,
         });
       }

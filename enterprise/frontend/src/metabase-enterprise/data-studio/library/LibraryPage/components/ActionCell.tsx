@@ -1,8 +1,9 @@
 import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
-  isCollection,
+  isCollectionData,
   isEmptyStateData,
+  isTableData,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
@@ -25,11 +26,11 @@ export function ActionCell(props: ActionCellProps) {
     return null;
   }
 
-  if (data.model === "table" && "collection_id" in data) {
+  if (isTableData(data)) {
     return <TableMoreMenu table={data} onMoved={refreshTableCollections} />;
   }
 
-  if (!isCollection(data) || data.model !== "collection") {
+  if (!isCollectionData(data) || data.model !== "collection") {
     return null;
   }
 
