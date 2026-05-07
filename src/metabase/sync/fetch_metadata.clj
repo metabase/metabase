@@ -47,6 +47,7 @@
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
   [fields database table]
+  ; TODO adapt this to use table-specs and be driver aware
   (let [driver                (driver.u/database->driver database)
         [eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
         effective-table       (assoc table :schema eff-schema :name eff-name)]
