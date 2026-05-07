@@ -97,7 +97,7 @@
       (empty? normalized-query)
       {:status :skip, :reason :normalize-error}
 
-      (nil? (usage-metadata.extract/select-root-owner normalized-query))
+      (nil? (usage-metadata.extract/query-source-table-or-card normalized-query))
       {:status :skip, :reason :unsupported-query}
 
       :else

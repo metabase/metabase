@@ -11,21 +11,21 @@
   [s]
   (json/decode+kw s))
 
-(deftest ^:parallel select-root-owner-test
+(deftest ^:parallel query-source-table-or-card-test
   (testing "table roots are attributed to the table"
     (is (= {:source-type :table, :source-id (meta/id :venues)}
-           (extract/select-root-owner (lib.tu/venues-query)))))
+           (extract/query-source-table-or-card (lib.tu/venues-query)))))
 
   (testing "card roots are attributed to the card"
     (is (= {:source-type :card, :source-id 1}
-           (extract/select-root-owner (lib.tu/query-with-source-card)))))
+           (extract/query-source-table-or-card (lib.tu/query-with-source-card)))))
 
   (testing "model roots are still attributed as cards"
     (is (= {:source-type :card, :source-id 1}
-           (extract/select-root-owner (lib.tu/query-with-source-model)))))
+           (extract/query-source-table-or-card (lib.tu/query-with-source-model)))))
 
   (testing "native queries are skipped"
-    (is (nil? (extract/select-root-owner (lib.tu/native-query))))))
+    (is (nil? (extract/query-source-table-or-card (lib.tu/native-query))))))
 
 (deftest ^:parallel segment-extraction-test
   (let [query (-> (lib.tu/venues-query)
