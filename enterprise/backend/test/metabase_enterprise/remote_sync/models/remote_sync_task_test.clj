@@ -456,12 +456,15 @@
 
 (deftest supersede-stale-tasks!-leaves-terminated-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT touch tasks that already have ended_at set"
-    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))
+    (let [old-time   (t/minus (t/offset-date-time) (t/hours 1))
           ended-task (insert-task! {:started_at old-time
-                                    :ended_at old-time
-                                    :progress 1.0})]
+                                    :ended_at  old-time
+                                    :progress  1.0})
+          ;; Capture the post-insert ended_at so the comparison is done at the DB's precision
+          ;; (Postgres/MySQL truncate nanoseconds to microseconds; H2 keeps full nanos).
+          before     (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
       (rst/supersede-stale-tasks!)
       (let [after (t2/select-one :model/RemoteSyncTask :id (:id ended-task))]
         (is (false? (:cancelled after)))
-        (is (= old-time (:ended_at after))
+        (is (= (:ended_at before) (:ended_at after))
             "ended_at must not be overwritten")))))
