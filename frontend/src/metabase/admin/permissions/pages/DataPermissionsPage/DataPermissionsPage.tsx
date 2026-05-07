@@ -13,7 +13,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group } from "metabase-types/api";
+import type { DatabaseId, GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -33,7 +33,7 @@ type DataPermissionsPageProps = {
   databases: Database[];
 };
 
-const EMPTY_GROUP_LIST: Group[] = [];
+const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
 function DataPermissionsPage({
   children,
@@ -44,7 +44,7 @@ function DataPermissionsPage({
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
   );
-  const groups = (data ?? EMPTY_GROUP_LIST) as Group[];
+  const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
   const showSplitPermsModal = useSelector((state) =>

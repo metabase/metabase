@@ -8,12 +8,12 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
-import type { Group, GroupId } from "metabase-types/api";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 import type { Settings } from "metabase-types/api/settings";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
-const EMPTY_GROUP_LIST: Group[] = [];
+const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
 type GroupMappingsWidgetProps = {
   mappingSetting: string;
@@ -23,7 +23,7 @@ type GroupMappingsWidgetProps = {
 export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   const dispatch = useDispatch();
   const { data } = useListPermissionsGroupsQuery({});
-  const allGroups = (data ?? EMPTY_GROUP_LIST) as Group[];
+  const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
     (state) =>
       (getSetting(state, props.mappingSetting as keyof Settings) as
