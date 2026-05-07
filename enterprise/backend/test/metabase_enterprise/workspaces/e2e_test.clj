@@ -21,6 +21,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
@@ -38,6 +39,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- ordered->plain
+  "snakeyaml's parsed maps are ordered/lazy; re-walk into plain Clojure maps so
+   `(is (= …))` failure output prints readably."
+  [x]
+  (walk/postwalk (fn [form] (if (map? form) (into {} form) form)) x))
 
 (defn- random-suffix
   "Eight hex chars from a random UUID — uniquifies the per-run schema/table/user
