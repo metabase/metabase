@@ -51,7 +51,8 @@ function CreateCollectionModal({
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
       const action = await handleCreateCollection(values);
-      const collection = Collections.HACK_getObjectFromAction(action);
+      const collection: Collection =
+        Collections.HACK_getObjectFromAction(action);
 
       if (typeof onCreate === "function") {
         onCreate(collection);
@@ -65,7 +66,10 @@ function CreateCollectionModal({
 
         let visitUrl = Urls.collection(collection);
 
-        if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
+        if (
+          PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
+          collection.namespace === "snippets"
+        ) {
           visitUrl = Urls.dataStudioLibrary({
             expandedIds: getCollectionPathAsArray(collection),
           });
