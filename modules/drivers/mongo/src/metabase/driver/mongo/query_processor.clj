@@ -158,13 +158,9 @@
 
 (defn- col->name-components [{:keys [parent-id nfc-path], field-name :name, :as _col}]
   (cond
-    ;; Mongo sync stores `:nfc-path` with the field's own name as the last element (matching the SQL-JDBC nested
-    ;; JSON path convention). When `:parent-id` is set, the column has gone through lib, which rewrites
-    ;; `:nfc-path` to ancestors-only (see `metabase.lib.field.resolution/add-parent-column-metadata`), so we
-    ;; append the field's own name to reconstruct the full path.
+    ;; mongo sync stores `:nfc-path` with the field's own name as the last element, matching sql-jdbc nested json
     (seq nfc-path)
-    (cond-> (vec nfc-path)
-      parent-id (conj field-name))
+    nfc-path
 
     ;; fall back to walking parent_id for fields synced before nfc-path was populated for Mongo subdocuments
     parent-id
