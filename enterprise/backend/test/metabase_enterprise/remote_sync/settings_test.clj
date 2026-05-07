@@ -151,9 +151,8 @@
 
 ;; ---------- Guard contract for settings mutations -----------------------------------------------
 ;;
-;; Pins the contract that `check-and-update-remote-settings!` must consult
-;; `guards/task-running?` and refuse if a task is in flight. Expected to FAIL until the
-;; function is wired up to call the guard.
+;; check-and-update-remote-settings! consults `guards/task-running?` and refuses if a task is
+;; in flight.
 
 (deftest check-and-update-remote-settings!-refuses-while-task-running-test
   (testing "check-and-update-remote-settings! must refuse when guards/task-running? returns true,

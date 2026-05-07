@@ -307,8 +307,7 @@
 
 ;; ---------- Guard contract for bulk-set-remote-sync ---------------------------------------------
 ;;
-;; Pins the contract that `bulk-set-remote-sync` must consult `guards/task-running?` and refuse
-;; if a task is in flight. Expected to FAIL until the function is wired up to call the guard.
+;; bulk-set-remote-sync consults `guards/task-running?` and refuses if a task is in flight.
 
 (deftest bulk-set-remote-sync-refuses-while-task-running-test
   (testing "bulk-set-remote-sync must refuse when guards/task-running? returns true,

@@ -147,7 +147,8 @@
   (testing "hydrates status"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           hydrated-task (t2/hydrate task :status)]
-      (is (= :running (:status hydrated-task))))))
+      (is (= :running (:status hydrated-task)))
+      (rst/complete-sync-task! (:id task)))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for Edge Cases and Error Handling
@@ -435,7 +436,8 @@
         (is (false? (:cancelled after))
             "brand-new task must remain unchanged")
         (is (nil? (:ended_at after))
-            "brand-new task must not be terminated")))))
+            "brand-new task must not be terminated"))
+      (rst/complete-sync-task! (:id new-task)))))
 
 (deftest supersede-stale-tasks!-leaves-active-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT mark a task that has reported progress recently"
@@ -449,7 +451,8 @@
         (is (false? (:cancelled after))
             "task with recent progress must remain unchanged")
         (is (nil? (:ended_at after))
-            "task with recent progress must not be terminated")))))
+            "task with recent progress must not be terminated"))
+      (rst/complete-sync-task! (:id active-task)))))
 
 (deftest supersede-stale-tasks!-leaves-terminated-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT touch tasks that already have ended_at set"

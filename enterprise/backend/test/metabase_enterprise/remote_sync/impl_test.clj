@@ -1456,11 +1456,9 @@ serdes/meta:
 
 ;; ---------- Guard contract: mutating operations must refuse while a task is running ----------------
 ;;
-;; These tests pin the contract that every mutating remote-sync operation must consult
-;; `guards/task-running?` and refuse if it returns true. They use `with-redefs` to flip the stub
-;; to `(constantly true)`, so they do not depend on actually inserting a RemoteSyncTask row.
-;;
-;; Expected to FAIL until the operations are wired up to call `guards/task-running?`.
+;; Every mutating remote-sync operation consults `guards/task-running?` and refuses if it returns
+;; true. The tests use `with-redefs` to flip it to `(constantly true)` so they don't depend on
+;; actually inserting a RemoteSyncTask row.
 
 (deftest async-import!-refuses-while-task-running-test
   (testing "async-import! must refuse when guards/task-running? returns true,
