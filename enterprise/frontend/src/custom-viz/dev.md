@@ -57,7 +57,24 @@ Convention:
 
 ### How to cut a release
 
-1. Open a PR against the intended source branch (`master` for a canary; `release-x.NN.x` for a stable) that bumps `version` in [package.json](package.json).
+1. Bump `version` in [package.json](package.json) and open a PR against the intended source branch (`master` for a canary; `release-x.NN.x` for a stable). The easiest way to bump is `npm version` from the package directory:
+
+   ```bash
+   cd enterprise/frontend/src/custom-viz
+
+   # canary → next canary  (e.g. 0.0.1-canary.17 → 0.0.1-canary.18)
+   npm version prerelease --preid=canary --no-git-tag-version
+
+   # canary → stable patch (e.g. 0.0.1-canary.17 → 0.0.1)
+   #   or stable → next patch (e.g. 0.0.1 → 0.0.2). Use minor/major as needed.
+   npm version patch --no-git-tag-version
+
+   # stable → first canary of next patch  (e.g. 0.0.1 → 0.0.2-canary.0)
+   npm version prerelease --preid=canary --no-git-tag-version
+   ```
+
+   `--no-git-tag-version` stops npm from making a commit or git tag — the release workflow creates the git tag after the version-bump PR lands. The package is bun-managed (no `package-lock.json`), so `npm version` only edits `package.json`.
+
 2. (Optional) Preview what the workflow will resolve, from the repo root:
 
    ```bash
@@ -82,12 +99,12 @@ Convention:
 
 1. `determine-release` — runs [`bin/custom-viz/resolve-release.sh`](../../../bin/custom-viz/resolve-release.sh) to read `version` from `package.json`, derive the npm dist-tag from its pre-release label, and compute the git tag `custom-viz-v<version>`.
 2. `preflight` — fails if the git tag already exists or if the version is already published on npm, then runs `bun run check:package-versions`.
-3. `build-and-publish` — installs, builds, and runs `npm publish --tag <npm_tag> --provenance` (skipped when `dry_run=true`).
+3. `build-and-publish` — installs, builds, and runs `npm publish --tag <npm_tag>` (skipped when `dry_run=true`).
 4. `tag-git` — creates and pushes the annotated git tag `custom-viz-v<version>` (push skipped when `dry_run=true`).
 
 ### npm provenance and required `package.json` fields
 
-Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) with `--provenance`, which signs a Sigstore bundle tying the tarball to this repo and the workflow run that built it.
+Publishing uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) from GitHub Actions, which automatically signs and publishes a Sigstore provenance attestation tying the tarball to this repo and the workflow run that built it.
 
 ### Local publishing (manual)
 

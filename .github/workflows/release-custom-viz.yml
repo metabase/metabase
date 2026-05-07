@@ -137,7 +137,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
-        run: npm publish --tag "$NPM_TAG" --provenance
+        run: npm publish --tag "$NPM_TAG"
 
       - name: Dry run — skipping npm publish
         if: ${{ inputs.dry_run }}
