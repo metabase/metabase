@@ -186,6 +186,7 @@ export const getMetadata: (
       table.fields = hydrateTableFields(table, metadata);
       table.fks = hydrateTableForeignKeys(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
+      table.measures = hydrateTableMeasures(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
     });
     Object.values(metadata.databases).forEach((database) => {
@@ -394,6 +395,12 @@ function hydrateTableForeignKeys(
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
   return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
+}
+
+function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
+  return Object.values(metadata.measures).filter(
+    (measure) => measure.table_id === table.id,
+  );
 }
 
 function hydrateTableMetrics(table: Table, metadata: Metadata): Question[] {

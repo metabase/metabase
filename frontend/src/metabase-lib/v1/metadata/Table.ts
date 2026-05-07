@@ -2,7 +2,7 @@ import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/utils/formatting";
-import type { NormalizedTable } from "metabase-types/api";
+import type { Measure, NormalizedTable } from "metabase-types/api";
 
 import Question from "../Question";
 
@@ -22,6 +22,7 @@ interface Table extends Omit<
   fields?: Field[];
   fks?: ForeignKey[];
   segments?: Segment[];
+  measures?: Measure[];
   metrics?: Question[];
   metadata?: Metadata;
 }

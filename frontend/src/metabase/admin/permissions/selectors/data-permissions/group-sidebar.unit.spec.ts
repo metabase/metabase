@@ -32,8 +32,12 @@ describe("getGroupsDataPermissionEditor", () => {
   // Reselect would otherwise return cached results across tests on the same state
   // reference and the mutation would go unobserved.
   beforeEach(() => {
-    getGroupsDataPermissionEditor.clearCache();
-    getGroupsDataPermissionEditor.memoizedResultFunc.clearCache();
+    const selector = getGroupsDataPermissionEditor as unknown as {
+      clearCache: () => void;
+      memoizedResultFunc: { clearCache: () => void };
+    };
+    selector.clearCache();
+    selector.memoizedResultFunc.clearCache();
   });
 
   it("returns data for permission editor header", () => {
