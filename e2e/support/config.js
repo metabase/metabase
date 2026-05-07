@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
@@ -151,7 +152,7 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
     config.env.grepOmitFiltered = true;
 
-    require("@cypress/grep/src/plugin")(config);
+    cypressGrepPlugin(config);
 
     if (isCI) {
       cypressSplit(on, config);
