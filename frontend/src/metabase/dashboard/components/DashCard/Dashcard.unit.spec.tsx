@@ -11,12 +11,12 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
+import * as dashboardSelectors from "metabase/dashboard/selectors";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   createMockDashboardState,
   createMockState,
@@ -439,6 +439,32 @@ describe("DashCard", () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByLabelText("Edit visualization"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show 'Visualize another way' for sankey cards (metabase#65317)", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          display: "sankey",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      // Anchor: prove sankey is routed as a non-visualizer type.
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
       ).not.toBeInTheDocument();
     });
 

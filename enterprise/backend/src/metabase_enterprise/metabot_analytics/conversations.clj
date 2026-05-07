@@ -121,6 +121,10 @@
    :search_count            (:search_count row 0)
    :query_count             (:query_count row 0)
    :ip_address              (:ip_address row)
+   :embedding_hostname      (:embedding_hostname row)
+   :embedding_path          (:embedding_path row)
+   :user_agent              (:user_agent row)
+   :sanitized_user_agent    (:sanitized_user_agent row)
    :user                    (trim-user (:user row))})
 
 (defn- hydrate-tool-counts
@@ -228,5 +232,9 @@
        :search_count    (analytics.queries/count-tool-invocations messages "search")
        :query_count     (analytics.queries/count-tool-invocations
                          messages analytics.queries/new-query-tool-names)
-       :ip_address      (:ip_address conversation)
-       :feedback        (fetch-conversation-feedback conversation-id)})))
+       :ip_address           (:ip_address conversation)
+       :embedding_hostname   (:embedding_hostname conversation)
+       :embedding_path       (:embedding_path conversation)
+       :user_agent           (:user_agent conversation)
+       :sanitized_user_agent (:sanitized_user_agent conversation)
+       :feedback             (fetch-conversation-feedback conversation-id)})))

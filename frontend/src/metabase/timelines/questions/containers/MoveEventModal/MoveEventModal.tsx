@@ -1,8 +1,5 @@
-import _ from "underscore";
-
+import { useGetTimelineEventQuery, useListTimelinesQuery } from "metabase/api";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
 import type { State } from "metabase/redux/store";
 import MoveEventModal, {
   type MoveEventModalProps,
@@ -16,33 +13,39 @@ interface OwnProps {
   onClose?: () => void;
 }
 
-const timelinesProps = {
-  query: { include: "events" },
-};
-
-const timelineEventProps = {
-  id: (state: State, props: OwnProps) => props.eventId,
-  entityAlias: "event",
-};
-
 const collectionProps = {
   id: (state: State, props: OwnProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
 
-type ContainerProps = Omit<MoveEventModalProps, "onSubmit" | "onSubmitSuccess">;
+type ContainerProps = Omit<
+  MoveEventModalProps,
+  "event" | "timelines" | "onSubmit" | "onSubmitSuccess"
+> & {
+  eventId: number;
+  onClose?: () => void;
+};
 
-function MoveEventModalContainer(props: ContainerProps) {
+function MoveEventModalContainer({ eventId, ...props }: ContainerProps) {
   const setTimeline = useSetTimeline();
+  const { data: event } = useGetTimelineEventQuery(eventId);
+  const { data: timelines = [] } = useListTimelinesQuery({ include: "events" });
   const handleSubmit = async (event: TimelineEvent, newTimeline?: Timeline) => {
     if (newTimeline) {
       await setTimeline(event, newTimeline);
     }
   };
+
+  if (!event) {
+    return null;
+  }
+
   return (
     <MoveEventModal
       {...props}
+      event={event}
+      timelines={timelines}
       onSubmit={handleSubmit}
       onSubmitSuccess={props.onClose}
     />
@@ -50,8 +53,4 @@ function MoveEventModalContainer(props: ContainerProps) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.loadList(timelinesProps),
-  TimelineEvents.load(timelineEventProps),
-  Collections.load(collectionProps),
-)(MoveEventModalContainer);
+export default Collections.load(collectionProps)(MoveEventModalContainer);

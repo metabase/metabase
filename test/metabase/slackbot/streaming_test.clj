@@ -231,6 +231,32 @@
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
+(deftest slackbot-streaming-never-writes-pii-columns-test
+  (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event]
+        (doseq [flag-on? [true false]]
+          (testing (str "with analytics-pii-retention-enabled=" flag-on?)
+            (let [store-opts (atom [])]
+              (tu/with-slackbot-mocks
+                {:ai-text "Hello!"}
+                (fn [{:keys [stop-stream-calls]}]
+                  (mt/with-temporary-setting-values [analytics-pii-retention-enabled flag-on?]
+                    (with-redefs [metabot.persistence/store-native-parts!
+                                  (fn [_conv-id _profile-id _parts & {:as opts}]
+                                    (swap! store-opts conj opts)
+                                    nil)]
+                      (mt/client :post 200 "metabot/slack/events"
+                                 (tu/slack-request-options event-body)
+                                 event-body)
+                      (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000})))
+                  (testing "store-native-parts! never received :hostname or :pii-info from the slackbot path"
+                    (doseq [opts @store-opts]
+                      (is (not (contains? opts :hostname)))
+                      (is (not (contains? opts :pii-info))))))))))))))
+
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"
     (tu/with-slackbot-setup
