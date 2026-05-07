@@ -133,7 +133,7 @@ export const NotificationsFiltersDropdown = ({ state, onChange }: Props) => {
         </Indicator>
       </Popover.Target>
       <Popover.Dropdown p="md">
-        <Stack gap="lg" w={300}>
+        <Stack gap="xl" w={300}>
           <FilterSection label={t`Channel`}>
             {CHANNEL_VALUES.map((channel) => (
               <FilterPill
@@ -199,7 +199,7 @@ type FilterSectionProps = {
 
 const FilterSection = ({ label, children }: FilterSectionProps) => (
   <Stack gap="sm">
-    <Text fw={700} fz="sm" c="text-primary">
+    <Text fw={700} fz="md" c="text-primary">
       {label}
     </Text>
     <Flex gap="sm" wrap="wrap">
@@ -226,7 +226,7 @@ const FilterPill = ({ icon, label, selected, onClick }: FilterPillProps) => (
   >
     <Flex gap={8} align="center">
       <Icon name={icon} size={16} c="text-secondary" />
-      <Text fz="sm" c="text-primary" lh="16px">
+      <Text fz="md" c="text-primary" lh="16px">
         {label}
       </Text>
     </Flex>
