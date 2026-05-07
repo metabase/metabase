@@ -34,7 +34,7 @@ export function ActionPicker({
 }) {
   const sortedModels =
     useMemo(
-      () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+      () => models?.toSorted((a, b) => a.name.localeCompare(b.name)),
       [models],
     ) ?? [];
 
