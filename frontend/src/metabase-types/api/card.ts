@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";

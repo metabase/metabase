@@ -11,10 +11,16 @@
     [(fn [result] (swap! results conj result))
      results]))
 
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each
   (fn [t]
+    ;; this is safe because we don't have any parallel deftests in this namespace
+    ;; but the linter rule is over-general and assumes we might. could be a problem
+    ;; if a parallel test gets added, maybe.
     (binding [experiment/*sync?* true]
-      (t))))
+      (experiment/set-experiments-enabled-fn! (constantly true))
+      (t)
+      (experiment/set-experiments-enabled-fn! (constantly false)))))
 
 ;;; ------------------------------------------------ Core behavior ------------------------------------------------
 

@@ -228,8 +228,8 @@
    Returns nil for blocks that should be skipped (tool-output, unknown types).
 
    `external-id` (the parent row's `metabot_message.external_id`) is attached to
-   agent-text chat messages as `:externalId` — the stable key for feedback; the
-   per-block `:id` stays unique."
+   agent text and data part chat messages as `:externalId` — the stable key for
+   feedback; the per-block `:id` stays unique."
   [external-id block]
   (let [block-type (:type block)
         block-role (:role block)]
@@ -265,12 +265,13 @@
 
       ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
       (= "data" block-type)
-      {:id   (str (random-uuid))
-       :role "agent"
-       :type "data_part"
-       :part {:type    (:data-type block)
-              :version (or (:version block) 1)
-              :value   (:data block)}}
+      (cond-> {:id   (str (random-uuid))
+               :role "agent"
+               :type "data_part"
+               :part {:type    (:data-type block)
+                      :version (or (:version block) 1)
+                      :value   (:data block)}}
+        external-id (assoc :externalId external-id))
 
       ;; Tool output — skip here, merged via merge-tool-results
       :else nil)))
