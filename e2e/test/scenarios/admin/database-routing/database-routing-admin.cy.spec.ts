@@ -650,7 +650,7 @@ function assertDbRoutingDisabled() {
 }
 
 function setupModelPersistence() {
-  H.interceptPerformanceRoutes();
+  cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
   cy.visit("/admin/performance/models");
   cy.findByTestId("admin-layout-content").findByLabelText("Disabled").click();
   cy.wait("@enablePersistence");

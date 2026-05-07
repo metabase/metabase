@@ -14,13 +14,15 @@ const preemptiveCachingSwitch = () =>
   cy.findByTestId("preemptive-caching-switch");
 
 const saveCacheStrategyForm = () => {
+  cy.intercept("PUT", "/api/cache").as("putCacheConfig");
   cy.findByRole("form", { name: "Select the cache invalidation policy" })
     .button(/Save/)
     .click();
-  return cy.wait("@putCacheConfig");
+  cy.wait("@putCacheConfig");
 };
 
 const openSidebarCacheStrategyForm = (type: "question" | "dashboard") => {
+  cy.intercept("GET", "/api/cache?model=*&id=*").as("getCacheConfig");
   if (type === "dashboard") {
     H.openDashboardSettingsSidebar();
   } else {
@@ -69,7 +71,6 @@ describe("scenarios > admin > performance > caching", () => {
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
       H.restore();
-      H.interceptPerformanceRoutes();
       cy.signInAsAdmin();
     });
 
@@ -84,7 +85,6 @@ describe("scenarios > admin > performance > caching", () => {
   describe("ee", () => {
     beforeEach(() => {
       H.restore();
-      H.interceptPerformanceRoutes();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
     });
@@ -104,6 +104,11 @@ describe("scenarios > admin > performance > caching", () => {
       cy.findByTestId("admin-layout-content").findByLabelText(
         /Edit.*Sample Database.*currently.*Duration/,
       );
+
+      cy.intercept(
+        "POST",
+        "/api/cache/invalidate?include=overrides&database=*",
+      ).as("invalidateCacheForSampleDatabase");
 
       cy.log("Clear-cache button is now visible — click it");
       cy.button(/Clear cache for this database/).click();

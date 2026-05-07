@@ -219,7 +219,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         query: "SELECT name FROM db_identifier;",
       },
     }).then(({ body: { id: questionId } }) => {
-      H.interceptPerformanceRoutes();
       cy.request("PUT", "api/cache", {
         model: "question",
         model_id: questionId,
@@ -235,20 +234,16 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       cy.log("User A");
       signInAs(DB_ROUTER_USERS.userA);
       H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]').should("contain", "destination_one");
-      cy.get('[data-column-id="name"]').should(
-        "not.contain",
-        "destination_two",
-      );
+      cy.get('[data-column-id="name"]')
+        .should("contain", "destination_one")
+        .and("not.contain", "destination_two");
 
       cy.log("User B");
       signInAs(DB_ROUTER_USERS.userB);
       H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]').should("contain", "destination_two");
-      cy.get('[data-column-id="name"]').should(
-        "not.contain",
-        "destination_one",
-      );
+      cy.get('[data-column-id="name"]')
+        .should("contain", "destination_two")
+        .and("not.contain", "destination_one");
     });
   });
 
