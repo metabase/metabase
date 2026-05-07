@@ -11,7 +11,6 @@
     "additionalProperties": false,
     "required": [
         "event",
-        "batch_id",
         "catalog",
         "key",
         "formula_version",
@@ -27,7 +26,7 @@
             "maxLength": 64
         },
         "batch_id": {
-            "description": "UUID identifying the scoring run that emitted this event.",
+            "description": "Unique identifier for the scoring run that emitted this event; consumers use it to group events from the same run.",
             "type": "string",
             "format": "uuid",
             "maxLength": 36

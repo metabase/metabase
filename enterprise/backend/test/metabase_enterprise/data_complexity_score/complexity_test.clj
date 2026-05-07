@@ -656,6 +656,12 @@
 
 (defn- snake [k] (-> k name (str/replace "-" "_")))
 
+(defn- uuid-string?
+  [s]
+  (try
+    (some? (java.util.UUID/fromString s))
+    (catch Exception _ false)))
+
 (defn- expected-keys-for-catalog
   "For a catalog result, return `#{[key score], ...}` matching what emit-snowplow! should emit:
    grand `total`, one `<group>.total` per group, and one `<group>.<leaf>` per sub-component."
@@ -793,9 +799,6 @@
           (is (every? #(= expected-model (get-in % ["parameters" "embedding_model"])) events))
           (is (every? #(= "names_split"  (get-in % ["parameters" "text_variant"])) events)))))))
 
-(def ^:private uuid-pattern
-  #"(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-
 (deftest ^:sequential emit-snowplow-batch-id-test
   (testing "scoring stamps every event with a UUID batch_id, constant within a pass and fresh between passes"
     (snowplow-test/with-fake-snowplow-collector
@@ -813,7 +816,7 @@
                     (is (= {"library" 8 "universe" 8 "metabot" 8} catalogs))
                     (is (= (count events) (count event-keys)))
                     (is (= 1 (count batch-ids)))
-                    (is (every? #(re-matches uuid-pattern %) batch-ids))
+                    (is (every? uuid-string? batch-ids))
                     (first batch-ids)))]
           (complexity/complexity-scores :embedder nil)
           (let [batch-1 (drain-and-check-pass!)]
