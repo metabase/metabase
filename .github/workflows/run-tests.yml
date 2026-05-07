@@ -51,12 +51,8 @@ jobs:
   uberjar:
     needs: [files-changed]
     if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    steps:
-      - name: Force uberjar failure (DEV-1928 verification, REVERT BEFORE MERGE)
-        run: |
-          echo "Forcing uberjar failure to verify e2e skip behavior"
-          exit 1
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
 
   backend-tests:
     if: ${{ !cancelled() && needs.files-changed.result == 'success' }}
