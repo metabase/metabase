@@ -16,7 +16,10 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import { getVirtualCardType } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isDashcardAccessRestricted,
+} from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -279,20 +282,20 @@ export function DashCardVisualization({
   );
 
   const visualizerErrMsg = useMemo(() => {
-    // If the user can't view the underlying card (permission denied), skip the
-    // missing-columns check. Every column would look "missing" when there is
-    // no data, and that would mask the real "no permission" message. Other
-    // errors (e.g. SQL failures in one of several sources) still get the
-    // missing-columns hint, since the visualizer can partially render.
-    if (error?.icon === "key") {
-      return;
-    }
     if (
       !dashcard ||
       !rawSeries ||
       rawSeries.length === 0 ||
       !isVisualizerDashboardCard(dashcard)
     ) {
+      return;
+    }
+    // If the user can't view the underlying card (permission denied), skip the
+    // missing-columns check. Every column would look "missing" when there is
+    // no data, and that would mask the real "no permission" message. Other
+    // errors (e.g. SQL failures in one of several sources) still get the
+    // missing-columns hint, since the visualizer can partially render.
+    if (isDashcardAccessRestricted(rawSeries)) {
       return;
     }
 
@@ -304,7 +307,7 @@ export function DashCardVisualization({
     if (missingCols.flat().length > 0) {
       return t`Some columns are missing, this card might not render correctly.`;
     }
-  }, [dashcard, rawSeries, error]);
+  }, [dashcard, rawSeries]);
 
   const untranslatedSeries = useMemo(() => {
     if (
