@@ -19,11 +19,6 @@ permissions:
   security-events: write
 
 jobs:
-  # Single decision point: combines file-pattern filters (dorny) and
-  # module-affected test selection (node) into one job so every downstream
-  # consumer reads "what runs and why" from one place. The node step is
-  # PR-only because it needs base/head SHAs to compute a diff; on push and
-  # merge_group, downstream gates fall back to dorny outputs alone.
   compute-test-plan:
     if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Compute test plan
@@ -194,7 +189,7 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.compute-test-plan.outputs.e2e_all != 'true' }}
-      # here we pass the list of changed files, comma separated
+      # here we pass the list of changed files
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
       # list of changed specs files, then only specs are changed and we can run only those specs
