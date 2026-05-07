@@ -11,6 +11,7 @@ import {
   Icon,
   Indicator,
   Input,
+  Loader,
   Popover,
   Select,
   Stack,
@@ -27,6 +28,7 @@ import { type NotificationsUrlState, getChannelLabel } from "./utils";
 
 type Props = {
   state: NotificationsUrlState;
+  isFetching?: boolean;
   onChange: (patch: Partial<NotificationsUrlState>) => void;
 };
 
@@ -68,16 +70,21 @@ const hasActiveAdvancedFilters = (state: NotificationsUrlState): boolean =>
   state.creator_id !== null ||
   state.card_id !== null;
 
-export const NotificationsFilters = ({ state, onChange }: Props) => {
+export const NotificationsFilters = ({
+  state,
+  isFetching = false,
+  onChange,
+}: Props) => {
   const activeOptions = getActiveOptions();
   const channelOptions = getChannelOptions();
   const hasAdvanced = hasActiveAdvancedFilters(state);
 
   return (
     <Flex gap="md" align="center">
-      <RecipientEmailInput
-        value={state.recipient_email}
-        onChange={(recipient_email) => onChange({ recipient_email, page: 0 })}
+      <QueryInput
+        value={state.query}
+        isLoading={isFetching}
+        onChange={(query) => onChange({ query, page: 0 })}
       />
 
       <Popover position="bottom-end" shadow="md" withinPortal>
@@ -130,14 +137,19 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   );
 };
 
-type RecipientEmailInputProps = {
+type QueryInputProps = {
   value: string;
+  isLoading?: boolean;
   onChange: (value: string) => void;
 };
 
-const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
-  const [email, setEmail] = useState(value);
-  const debounced = useDebouncedValue(email, SEARCH_DEBOUNCE_DURATION);
+const QueryInput = ({
+  value,
+  isLoading = false,
+  onChange,
+}: QueryInputProps) => {
+  const [query, setQuery] = useState(value);
+  const debounced = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
   const onChangeRef = useLatest(onChange);
   const lastPushedRef = useRef(value);
 
@@ -151,24 +163,34 @@ const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
   useEffect(() => {
     if (value !== lastPushedRef.current) {
       lastPushedRef.current = value;
-      setEmail(value);
+      setQuery(value);
     }
   }, [value]);
+
+  const showLoader = isLoading || query !== debounced;
+
+  const renderRightSection = () => {
+    if (showLoader) {
+      return <Loader size="xs" />;
+    }
+    if (query === "") {
+      return null;
+    }
+    return (
+      <Input.ClearButton c="text-secondary" onClick={() => setQuery("")} />
+    );
+  };
 
   return (
     <TextInput
       flex={1}
       placeholder={t`Search by question or owner…`}
-      value={email}
+      value={query}
       styles={{ input: { borderRadius: 8 } }}
-      onChange={(event) => setEmail(event.currentTarget.value)}
+      onChange={(event) => setQuery(event.currentTarget.value)}
       leftSection={<Icon c="text-secondary" name="search" size={16} />}
       rightSectionPointerEvents="all"
-      rightSection={
-        email === "" ? null : (
-          <Input.ClearButton c="text-secondary" onClick={() => setEmail("")} />
-        )
-      }
+      rightSection={renderRightSection()}
     />
   );
 };

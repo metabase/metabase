@@ -60,7 +60,7 @@ export const NotificationsAdminPage = ({
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
 
-  const { data, isLoading, error } = useAdminListNotificationsQuery(
+  const { data, isLoading, isFetching, error } = useAdminListNotificationsQuery(
     buildListParams(urlState, PAGE_SIZE),
   );
   const notifications = data?.data ?? [];
@@ -87,7 +87,7 @@ export const NotificationsAdminPage = ({
     urlState.owner_active,
     urlState.owner_id,
     urlState.card_id,
-    urlState.recipient_email,
+    urlState.query,
     urlState.channel,
     urlState.sort_column,
     urlState.sort_direction,
@@ -310,7 +310,11 @@ export const NotificationsAdminPage = ({
         onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
       />
 
-      <NotificationsFilters state={urlState} onChange={patchUrlState} />
+      <NotificationsFilters
+        state={urlState}
+        isFetching={isFetching}
+        onChange={patchUrlState}
+      />
 
       <NotificationsTable
         notifications={notifications}

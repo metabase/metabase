@@ -28,7 +28,7 @@ export type NotificationsUrlState = {
   status: NotificationStatus | null;
   creator_id: UserId | null;
   card_id: CardId | null;
-  recipient_email: string;
+  query: string;
   channel: NotificationChannelType | null;
   sort_column: AdminNotificationSortColumn;
   sort_direction: SortDirection;
@@ -74,7 +74,7 @@ const parseId = (param: QueryParam): number | null => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-const parseEmail = (param: QueryParam): string => {
+const parseQuery = (param: QueryParam): string => {
   const value = getFirstParamValue(param);
   return typeof value === "string" ? value.trim() : "";
 };
@@ -160,7 +160,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     status: parseStatusEnum(query.status),
     creator_id: parseId(query.creator_id),
     card_id: parseId(query.card_id),
-    recipient_email: parseEmail(query.recipient_email),
+    query: parseQuery(query.query),
     channel: parseChannelEnum(query.channel),
     sort_column: parseSortColumnEnum(query.sort_column),
     sort_direction: parseSortDirectionEnum(query.sort_direction),
@@ -171,7 +171,7 @@ export const urlStateConfig: UrlStateConfig<NotificationsUrlState> = {
     status: state.status ?? undefined,
     creator_id: state.creator_id == null ? undefined : String(state.creator_id),
     card_id: state.card_id == null ? undefined : String(state.card_id),
-    recipient_email: state.recipient_email || undefined,
+    query: state.query || undefined,
     channel: state.channel ?? undefined,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
@@ -192,7 +192,7 @@ export const buildListParams = (
   status: state.status ?? undefined,
   creator_id: state.creator_id ?? undefined,
   card_id: state.card_id ?? undefined,
-  recipient_email: state.recipient_email || undefined,
+  query: state.query || undefined,
   channel: state.channel ?? undefined,
   sort_column: state.sort_column,
   sort_direction: state.sort_direction,
