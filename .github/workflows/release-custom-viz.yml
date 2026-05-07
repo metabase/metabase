@@ -19,6 +19,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ inputs.branch }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   determine-release:
     runs-on: ubuntu-22.04
@@ -101,6 +104,9 @@ jobs:
     needs: [determine-release, preflight]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # OIDC handshake for npm trusted publishing
     defaults:
       run:
         working-directory: enterprise/frontend/src/custom-viz
@@ -113,23 +119,24 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Setup npm registry auth
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          registry-url: "https://registry.npmjs.org"
-
       - name: Install custom-viz dependencies
         run: bun install --frozen-lockfile
 
       - name: Build package
         run: bun run build
 
+      # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
+      # Node 22.x ships npm 10.x, so pin Node 24.x which ships npm 11.x.
+      - name: Setup Node.js for npm publish with trusted publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
       - name: Publish to NPM
         if: ${{ !inputs.dry_run }}
         env:
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
         run: npm publish --tag "$NPM_TAG"
 
       - name: Dry run — skipping npm publish
