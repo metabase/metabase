@@ -4,9 +4,10 @@
 
    Each entry in the registry is a map with `:uri`, `:name`, `:description`,
    `:mimeType`, an optional `:scope`, and a `:render-fn` that returns the textual
-   payload. `:scope` mirrors the scope semantics used by tools — nil means \"public\"
-   (any authenticated caller), a string is an MCP scope checked via
-   [[metabase.mcp.scope/matches?]]."
+   payload. For resources, `:scope` uses [[metabase.mcp.scope/public-or-matches?]]:
+   nil means \"public\" (any authenticated caller), and a string is an MCP scope
+   checked against the token scopes. This intentionally differs from tools, where
+   nil scope is treated as internal-only."
   (:require
    [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
