@@ -21,7 +21,16 @@ Pre-populate filters once on load. After the dashboard mounts, user widget edits
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/initial-parameters.tsx" snippet="example" %}
 ```
 
-For a single value, pass a `string`. For multiple values, pass an array of `string` values.
+For each parameter:
+
+- set to a value (a `string` for a single option, an array of `string`s for multiple): that value is applied.
+- set to `null`: strictly cleared, ignoring the parameter's default.
+- omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
+
+Examples:
+
+- Passing an empty object `{}` resets every parameter to its default.
+- Passing an object with every slug set to `null` clears all parameter values.
 
 #### `parameters` + `onParametersChange` (controlled)
 
@@ -78,6 +87,17 @@ Sets the parameter value once on load. After the question mounts, if the person 
 {% include_file "{{ dirname }}/snippets/parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
 
+For each parameter:
+
+- set to a value: that value is applied.
+- set to `null`: strictly cleared, ignoring the parameter's default.
+- omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
+
+Examples:
+
+- Passing an empty object `{}` resets every parameter to its default.
+- Passing an object with every slug set to `null` clears all parameter values.
+
 #### Controlled component with `sqlParameters` and `onSqlParametersChange`
 
 With this setup, your app maintains the parameter value state. When someone viewing the embed updates the value, a callback fires to update your app with the new value, and the question re-renders with this new value.  This works like a controlled `<input value onChange>`.
@@ -118,7 +138,7 @@ Set values on mount via attributes. The component reads them once on load and ig
 ></metabase-question>
 ```
 
-Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions).
+Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions). Setting a value to `null` strictly clears that parameter (ignoring its default); slugs omitted from the object fall back to the parameter's default.
 
 #### Push values at runtime with `parameters` / `sqlParameters`
 
