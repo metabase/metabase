@@ -1,7 +1,7 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { Column, Series } from "./data";
-import type { BaseWidgetProps, ClickBehavior } from "./viz";
+import type { ClickBehavior } from "./viz";
 
 export type WidgetName = keyof Widgets;
 
@@ -88,18 +88,7 @@ export type MultiselectProps = {
   placeholderNoOptions?: string;
 };
 
-type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
-  unknown,
-  Record<string, unknown>
-> extends keyof P
-  ? Omit<P, keyof BaseWidgetProps<unknown, Record<string, unknown>>>
-  : P;
-
-type PropsFromWidget<W> = W extends WidgetName
-  ? Widgets[W]
-  : W extends ComponentType<infer P>
-    ? OmitBaseWidgetProps<P>
-    : never;
+type PropsFromWidget<W extends WidgetName> = Widgets[W];
 
 type CommonVisualizationSettings = {
   "card.title"?: string | undefined | null;
@@ -113,10 +102,7 @@ export type CustomVisualizationSettings<
 > = TSettings & CommonVisualizationSettings;
 
 export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
-  () => <
-    W extends WidgetName | ComponentType<any>,
-    Key extends keyof TSettings,
-  >(settingDefinition: {
+  () => <W extends WidgetName, Key extends keyof TSettings>(settingDefinition: {
     /**
      * Unique key that identifies this setting. Must match the key used in your
      * `CustomVisualizationSettings` type and in the `settings` map passed to
@@ -202,11 +188,10 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
     eraseDependencies?: string[];
 
     /**
-     * Widget to render for this setting: either a built-in widget name (`WidgetName`)
-     * or a custom React component (`React.ComponentType<P>`).
-     *
-     * When using a custom component, `getProps` should return only the non-base props;
-     * base widget props are provided by the settings renderer.
+     * Widget to render for this setting. Must be one of the built-in widget
+     * names (see `WidgetName`). Custom React components are not supported:
+     * plugin code must run inside the sandbox, and a custom widget would be
+     * rendered host-side, bypassing it.
      */
     widget: W;
 
@@ -256,9 +241,7 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      * dropdown's `options` list from the available columns.
      *
      * The return type is inferred from the `widget` value: props of the named
-     * built-in widget when `widget` is a `WidgetName`, or the component's own
-     * props (minus the base props the engine injects) when `widget` is a custom
-     * React component. Omit `getProps` entirely when the widget has no
+     * built-in widget. Omit `getProps` entirely when the widget has no
      * configurable props (`ToggleProps` is `never`).
      *
      * @param series - The current query result (rows + column metadata).

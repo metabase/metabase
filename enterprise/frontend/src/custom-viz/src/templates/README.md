@@ -180,7 +180,7 @@ settings: {
 | `group`                        | Sub-heading within a section for grouping related settings.                          |
 | `index`                        | Display order within a group.                                                        |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (useful for `"toggle"`). |
-| `widget`                       | Built-in widget name or a custom React component.                                    |
+| `widget`                       | Built-in widget name (see below).                                                    |
 | `getDefault(series, settings)` | Computes the default value when none is stored.                                      |
 | `getValue(series, settings)`   | Always-computed value — overrides stored value on every render.                      |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                       |
@@ -204,8 +204,6 @@ settings: {
 | `"multiselect"`      | `{ options: { label, value }[], placeholder?, placeholderNoOptions? }`     | Multi-select dropdown    |
 | `"field"`            | `{ columns, options: { name, value }[], showColumnSetting? }`              | Single column picker     |
 | `"fields"`           | `{ columns, options: { name, value }[], addAnother?, showColumnSetting? }` | Multi-column picker      |
-
-You can also pass a **custom React component** as `widget`. Its props (minus the base props injected by Metabase) are returned by `getProps`.
 
 ---
 

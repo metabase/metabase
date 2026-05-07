@@ -6,6 +6,7 @@ import type {
   CustomVisualizationSettingDefinition,
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
+  Widgets,
 } from "custom-viz";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUnmount } from "react-use";
@@ -324,6 +325,8 @@ export async function loadCustomVizPlugin(
       );
     }
 
+    assertValidSettingWidgets(vizDef.settings);
+
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
@@ -402,6 +405,38 @@ type GenericVizMountHandle =
 
 function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
   return isObject(value) && typeof value.mount === "function";
+}
+
+const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
+  "input",
+  "number",
+  "radio",
+  "select",
+  "toggle",
+  "segmentedControl",
+  "field",
+  "fields",
+  "color",
+  "multiselect",
+] as const;
+
+function assertValidSettingWidgets(
+  settings: GenericVizDefinition["settings"] | undefined,
+): void {
+  if (!settings) {
+    return;
+  }
+  for (const [settingId, def] of Object.entries(settings)) {
+    const widget = (def as { widget?: unknown }).widget;
+    if (
+      typeof widget !== "string" ||
+      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
+    ) {
+      throw new Error(
+        t`Setting "${settingId}" has unsupported widget. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+      );
+    }
+  }
 }
 
 function createCustomVizWrapper(
