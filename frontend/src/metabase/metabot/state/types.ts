@@ -16,6 +16,14 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
+// Set on agent messages by the BE so the FE can distinguish completed turns
+// (`finished: true`, no `error`) from aborted ones (`finished: false`) and
+// errored ones (`error` set, admin endpoint only).
+type AgentTurnStatus = {
+  finished?: boolean;
+  error?: string | null;
+};
+
 export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
@@ -31,7 +39,7 @@ export type MetabotUserActionChatMessage = {
   userMessage: string;
 };
 
-export type MetabotAgentTextChatMessage = {
+export type MetabotAgentTextChatMessage = AgentTurnStatus & {
   id: string;
   role: "agent";
   type: "text";
@@ -39,7 +47,7 @@ export type MetabotAgentTextChatMessage = {
   externalId?: string;
 };
 
-export type MetabotAgentDataPartMessage = {
+export type MetabotAgentDataPartMessage = AgentTurnStatus & {
   id: string;
   role: "agent";
   type: "data_part";
@@ -48,7 +56,7 @@ export type MetabotAgentDataPartMessage = {
   externalId?: string;
 };
 
-export type MetabotDebugToolCallMessage = {
+export type MetabotDebugToolCallMessage = AgentTurnStatus & {
   id: string;
   role: "agent";
   type: "tool_call";

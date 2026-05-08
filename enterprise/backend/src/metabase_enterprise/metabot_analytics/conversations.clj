@@ -228,7 +228,8 @@
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
        :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
        :slack_permalink (slack-permalink conversation)
-       :chat_messages   (metabot-persistence/messages->chat-messages messages)
+       :chat_messages   (metabot-persistence/messages->chat-messages
+                         messages {:include-errored? true})
        :queries         (analytics.queries/messages->generated-queries messages)
        :search_count    (analytics.queries/count-tool-invocations messages "search")
        :query_count     (analytics.queries/count-tool-invocations

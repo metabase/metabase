@@ -102,12 +102,17 @@
      record the invoking Metabase user).
   - `:external-id` — message external id used by feedback; generated if omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
+  - `:finished?` — boolean (default true). False only for client-aborted turns.
+  - `:error` — string error message when the agent run threw; written to the
+     `error` column. Persisted partial parts are kept as-is so the audit page
+     can inspect what the agent emitted before the failure.
 
   Returns the inserted `MetabotMessage` primary key."
   [conversation-id profile-id parts
    & {:keys [hostname pii-info external-id
              slack-msg-id channel-id slack-team-id slack-thread-ts
-             user-id ai-proxy?]}]
+             user-id ai-proxy? finished? error]
+      :or   {finished? true}}]
   (let [state-part  (u/seek #(and (= :data (:type %))
                                   (= "state" (:data-type %)))
                             parts)
@@ -116,11 +121,14 @@
                       ai-proxy?
                       (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
         external-id (or external-id (str (random-uuid)))
-        ;; Filter out :start, :usage, :finish stream metadata. Data parts are
-        ;; persisted (so the analytics view can surface them) except :state,
-        ;; which is salvaged to MetabotConversation.state via `state-part` above.
+        ;; Filter out :start, :usage, :finish stream metadata. `:error` parts
+        ;; are dropped here too — the failure is captured on the dedicated
+        ;; `error` column, no need to duplicate it inside the data blob. Data
+        ;; parts are persisted (so the analytics view can surface them) except
+        ;; :state, which is salvaged to MetabotConversation.state via
+        ;; `state-part` above.
         content     (->> parts
-                         (remove #(#{:start :usage :finish} (:type %)))
+                         (remove #(#{:start :usage :finish :error} (:type %)))
                          (filter streaming/persistable-data-part?)
                          (mapv strip-tool-output-bloat))]
     (analytics/observe! :metabase-metabot/message-persist-bytes
@@ -165,7 +173,9 @@
                                         :total_tokens    (->> (vals usage)
                                                               (map #(+ (:prompt %) (:completion %)))
                                                               (reduce + 0))
-                                        :ai_proxied      (boolean ai-proxy?)}
+                                        :ai_proxied      (boolean ai-proxy?)
+                                        :finished        (boolean finished?)
+                                        :error           error}
                                  channel-id   (assoc :channel_id channel-id)
                                  slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                  user-id      (assoc :user_id user-id))))))
@@ -291,32 +301,132 @@
               msg))
           chat-messages)))
 
+(defn- annotate-agent-messages
+  "Stamp `:finished` and (when present) `:error` from the parent row onto every
+  agent-role chat message produced from it. The fields land on `MetabotChatMessage`s
+  so the FE can decide whether to surface a retry alert / 'excluded' badge."
+  [chat-messages {:keys [finished error]}]
+  (mapv (fn [m]
+          (if (= "agent" (:role m))
+            (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
+              (some? error) (assoc :error error))
+            m))
+        chat-messages))
+
+(defn- empty-agent-placeholder
+  "Stub chat message for an assistant row whose `:data` produced no chat messages
+  (typical for errored turns where the agent failed before emitting any text/
+  tool parts). Without this the FE has nowhere to render the error alert."
+  [{:keys [external_id]}]
+  (cond-> {:id      (or external_id (str (random-uuid)))
+           :role    "agent"
+           :type    "text"
+           :message ""}
+    external_id (assoc :externalId external_id)))
+
+(defn- error-block-message
+  "Pull the human-readable error message out of a legacy `:error` data block, if
+  any. Older assistant rows persisted the agent's `error-part` inside `:data`
+  before we added the dedicated `error` column."
+  [{:keys [data]}]
+  (some-> (u/seek #(= "error" (:type %)) data)
+          :error
+          :message))
+
+(defn- hoist-legacy-error
+  "Backfill a row's `:error` from any error block in `:data` so historical rows
+  surface the same failure signal as rows persisted with the dedicated column."
+  [message]
+  (if (and (= :assistant (:role message))
+           (nil? (:error message)))
+    (if-let [legacy (error-block-message message)]
+      (assoc message :error legacy)
+      message)
+    message))
+
 (defn message->chat-messages
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
-   Each message's `:data` (vector of content blocks) is flattened into typed chat messages."
+   Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
+   Assistant rows that produced zero chat messages but carry `:error` or
+   `:finished false` get a synthetic empty text message so the FE has something
+   to render the alert on."
   [message]
-  (let [blocks       (or (:data message) [])
+  (let [message      (hoist-legacy-error message)
+        blocks       (or (:data message) [])
         external-id  (:external_id message)
-        chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)]
-    (merge-tool-results chat-msgs blocks)))
+        chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)
+        merged       (merge-tool-results chat-msgs blocks)
+        with-stub    (if (and (= :assistant (:role message))
+                              (empty? merged)
+                              (or (some? (:error message))
+                                  (false? (:finished message))))
+                       [(empty-agent-placeholder message)]
+                       merged)]
+    (annotate-agent-messages with-stub message)))
+
+(defn- errored-agent-row?
+  "Errored assistant turns store an explanatory message in the `error` column
+  (or, for legacy rows, in an `:error` block inside `:data`)."
+  [m]
+  (and (= :assistant (:role m))
+       (some? (:error (hoist-legacy-error m)))))
+
+(defn- drop-errored-pairs
+  "Strip errored assistant rows and the user prompt that triggered them from a
+  conversation message seq. Used by the user-facing endpoint so the loaded
+  conversation reads as if the failed exchange never happened — and so the
+  `history` derived from it stays coherent on the next prompt."
+  [messages]
+  (let [msgs (vec messages)
+        n    (count msgs)]
+    (loop [i 0, acc (transient [])]
+      (cond
+        (>= i n)
+        (persistent! acc)
+
+        (and (< (inc i) n)
+             (= :user (:role (nth msgs i)))
+             (errored-agent-row? (nth msgs (inc i))))
+        (recur (+ i 2) acc)
+
+        (errored-agent-row? (nth msgs i))
+        (recur (inc i) acc)
+
+        :else
+        (recur (inc i) (conj! acc (nth msgs i)))))))
 
 (defn messages->chat-messages
-  "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector."
-  [messages]
-  (into [] (mapcat message->chat-messages) messages))
+  "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector.
+
+  Options:
+  - `:include-errored?` (default false). When false, errored assistant rows and
+    the user prompt that triggered them are dropped from the output (the
+    user-facing endpoint hides failed exchanges). When true, every row is kept
+    and the `:error` field surfaces on the affected agent messages."
+  ([messages] (messages->chat-messages messages nil))
+  ([messages {:keys [include-errored?]}]
+   (let [msgs (if include-errored? (vec messages) (drop-errored-pairs messages))]
+     (into [] (mapcat message->chat-messages) msgs))))
 
 (defn conversation-detail
   "Reconstruct a conversation-with-chat-messages snapshot from the DB. Returns nil if the
-   conversation does not exist."
-  [conversation-id]
-  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
-    (let [messages (t2/select :model/MetabotMessage
-                              {:where    [:and
-                                          [:= :conversation_id conversation-id]
-                                          [:= :deleted_at nil]]
-                               :order-by [[:created_at :asc]]})]
-      {:conversation_id (:id conversation)
-       :created_at      (:created_at conversation)
-       :summary         (:summary conversation)
-       :user_id         (:user_id conversation)
-       :chat_messages   (messages->chat-messages messages)})))
+   conversation does not exist.
+
+   `:include-errored?` (default false) controls whether errored assistant turns
+   (and the user prompt that triggered them) are filtered out — the user-facing
+   endpoint omits them so the conversation stays coherent; the analytics endpoint
+   keeps them and exposes `:excluded_from_history` so the admin UI can highlight
+   the failed exchange."
+  ([conversation-id] (conversation-detail conversation-id nil))
+  ([conversation-id opts]
+   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+     (let [messages (t2/select :model/MetabotMessage
+                               {:where    [:and
+                                           [:= :conversation_id conversation-id]
+                                           [:= :deleted_at nil]]
+                                :order-by [[:created_at :asc]]})]
+       {:conversation_id (:id conversation)
+        :created_at      (:created_at conversation)
+        :summary         (:summary conversation)
+        :user_id         (:user_id conversation)
+        :chat_messages   (messages->chat-messages messages opts)}))))

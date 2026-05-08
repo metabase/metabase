@@ -20,6 +20,7 @@ import {
   createConversation,
   getMetabotInitialState,
   getRequestConversation,
+  markCurrentAgentTurnAsAborted,
   resetReactionState,
 } from "./reducer-utils";
 import type {
@@ -360,6 +361,7 @@ export const metabot = createSlice({
           if (action.payload?.type === "abort") {
             convo.state = { ...(action.payload?.state ?? {}) };
             convo.history = action.payload?.history?.slice() ?? [];
+            markCurrentAgentTurnAsAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
               // update history w/ synthetic tool_result entries for each unresolved tool call
               // as having a tool_call without a matching tool_result is invalid

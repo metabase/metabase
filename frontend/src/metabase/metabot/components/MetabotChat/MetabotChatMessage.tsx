@@ -1,5 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -18,6 +19,7 @@ import type {
 } from "metabase/metabot/state";
 import {
   ActionIcon,
+  Button,
   Flex,
   type FlexProps,
   Icon,
@@ -218,6 +220,28 @@ export const AgentMessage = ({
       {message.type === "tool_call" && (
         <AgentToolCallMessage message={message} />
       )}
+      {message.error != null && (
+        <AgentTurnAlert variant="error" message={message.error} />
+      )}
+      {message.error == null && message.finished === false && (
+        <AgentTurnAlert
+          variant="info"
+          message={t`This response could not be fully generated.`}
+          cta={
+            !debug && onRetry ? (
+              <Button
+                variant="default"
+                size="compact-xs"
+                fz="xs"
+                onClick={() => onRetry(message.id)}
+                data-testid="metabot-chat-message-retry"
+              >
+                {t`Retry`}
+              </Button>
+            ) : null
+          }
+        />
+      )}
       <Flex className={Styles.messageActions}>
         {!hideActions && (
           <>
@@ -272,6 +296,37 @@ export const AgentMessage = ({
         )}
       </Flex>
     </MessageContainer>
+  );
+};
+
+const AgentTurnAlert = ({
+  variant,
+  message,
+  cta,
+}: {
+  variant: "error" | "info";
+  message: string;
+  cta?: ReactNode;
+}) => {
+  const iconColor = variant === "error" ? "error" : "text-secondary";
+  const iconName = variant === "error" ? "warning" : "info";
+  return (
+    <Flex
+      align="center"
+      gap="sm"
+      mt="sm"
+      p="sm"
+      bd={`1px solid var(--mb-color-border)`}
+      bdrs="sm"
+      data-testid="metabot-chat-message-turn-alert"
+      bg={"background-primary"}
+    >
+      <Icon name={iconName} c={iconColor} size="1rem" flex="0 0 auto" />
+      <Text c="text-secondary" size="sm" flex="1">
+        {message}
+      </Text>
+      {cta}
+    </Flex>
   );
 };
 

@@ -118,18 +118,24 @@
   When `canceled-chan` is provided, polls it before each write and returns `reduced`
   to stop the pipeline when the client has disconnected. Also catches EofException
   (client closed connection) and converts it to `reduced` so the pipeline shuts down
-  cleanly without triggering upstream retries."
-  [^java.io.OutputStream os canceled-chan]
+  cleanly without triggering upstream retries.
+
+  `canceled?` is a `volatile!` flipped to `true` when the writer detects a
+  disconnect or canceled-chan signal — read by the persistence layer in `finally`
+  to mark the assistant turn as `finished=false`."
+  [^java.io.OutputStream os canceled-chan canceled?]
   (fn
     ([] nil)
     ([_] nil)
     ([acc ^String line]
      (if (and canceled-chan (a/poll! canceled-chan))
-       (reduced acc)
+       (do (vreset! canceled? true)
+           (reduced acc))
        (try
          (.write os (.getBytes (str line "\n") "UTF-8"))
          (.flush os)
          (catch org.eclipse.jetty.io.EofException _
+           (vreset! canceled? true)
            (reduced acc)))))))
 
 (defn- native-agent-streaming-request
@@ -150,13 +156,14 @@
         external-id      (str (random-uuid))]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
+            canceled?  (volatile! false)
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
                                                        :external-id external-id}))]
         (try
           (transduce xf
-                     (streaming-writer-rf os canceled-chan)
+                     (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
                       (cond-> {:messages      messages
                                :state         state
@@ -166,15 +173,37 @@
                                :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
+            (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
           (finally
             (try
-              (metabot.persistence/store-native-parts!
-               conversation-id profile-id
-               (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-               :hostname    hostname
-               :pii-info    pii-info
-               :external-id external-id)
+              (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+                    canceled?*     @canceled?
+                    error-part     (u/seek #(= :error (:type %)) combined-parts)
+                    ;; Cancel wins over error: if the client tore down the
+                    ;; connection, the agent's downstream rf throws are a
+                    ;; consequence of the abort, not a separate failure.
+                    error-msg      (when-not canceled?*
+                                     (some-> error-part :error :message))]
+                (when canceled?*
+                  (log/info "User aborted metabot agent request"
+                            {:conversation-id conversation-id
+                             :external-id     external-id
+                             :profile-id      profile-id
+                             :parts-count     (count combined-parts)}))
+                (log/debug "Persisting agent turn"
+                           {:conversation-id conversation-id
+                            :external-id     external-id
+                            :canceled?       canceled?*
+                            :errored?        (some? error-msg)
+                            :parts-count     (count combined-parts)})
+                (metabot.persistence/store-native-parts!
+                 conversation-id profile-id combined-parts
+                 :hostname    hostname
+                 :pii-info    pii-info
+                 :external-id external-id
+                 :finished?   (not canceled?*)
+                 :error       error-msg))
               (catch Exception e
                 (log/error e "Failed to persist native agent parts"
                            {:conversation-id conversation-id

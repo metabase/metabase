@@ -123,6 +123,26 @@ export const convoReducer =
     );
   };
 
+/**
+ * Walk back from the most recent message and mark every agent message in the
+ * current turn (i.e. since the last user message) as `finished: false`.
+ * Mirrors the BE, which persists the assistant row with `finished=false` on
+ * user abort so the AgentTurnAlert surfaces the cancellation.
+ */
+export const markCurrentAgentTurnAsAborted = (
+  convo: WritableDraft<MetabotConverstationState>,
+) => {
+  for (let i = convo.messages.length - 1; i >= 0; i--) {
+    const msg = convo.messages[i];
+    if (msg.role === "user") {
+      return;
+    }
+    if (msg.role === "agent") {
+      msg.finished = false;
+    }
+  }
+};
+
 export const getMetabotInitialState = (): MetabotState => {
   return {
     conversations: {
