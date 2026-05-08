@@ -308,13 +308,13 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-;;; ----------------------------------- GET /api/ee/serialization/export/json ------------------------------------
+;;; ----------------------------------- GET /api/ee/serialization/metadata/export ------------------------------------
 
-(api.macros/defendpoint :get "/export/json"
-  :- (sr/streaming-response-schema ::schema/export-response)
+(api.macros/defendpoint :get "/metadata/export"
+  :- (sr/streaming-response-schema ::schema/export-metadata-response)
   "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
-  current user, with all references emitted in serdes-portable form (database names, table
-  `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).
+  current user. References between rows are emitted as raw numeric ids (`db_id`,
+  `table_id`, `parent_id`, `fk_target_field_id`).
 
   Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`
   query parameters — they all default to `false`. The response is streamed for efficiency
@@ -330,7 +330,7 @@
   (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
                                              :is-superuser? api/*is-superuser?*})]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (export/export! os opts))))
+      (export/export-metadata! os opts))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."
