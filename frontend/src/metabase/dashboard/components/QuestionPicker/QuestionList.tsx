@@ -13,11 +13,11 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { getIcon } from "metabase/common/utils/icon";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Search } from "metabase/entities/search";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
@@ -48,6 +48,7 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const getIcon = useGetIcon();
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -151,7 +152,7 @@ export function QuestionList({
               className={S.QuestionListItem}
               name={item.name}
               icon={{
-                name: getIcon(item).name,
+                ...getIcon(item),
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}

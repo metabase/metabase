@@ -328,6 +328,7 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
+           :title "Search Tables and Metrics"
            :description (str "Search for tables and metrics in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
@@ -400,13 +401,11 @@
   /v1/execute. See the agent_api reference for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a Metabase query from a structured program. "
-                             "The body is a JSON object with `source` and `operations` keys "
-                             "where source identifies the table/card/dataset/metric to query "
-                             "(e.g. {\"type\": \"table\", \"id\": 42}) and operations is an "
-                             "array of operator tuples (filter, aggregate, breakout, expression, "
-                             "with-fields, order-by, limit, join, append-stage, etc.). Returns "
-                             "an opaque query string that can be executed with execute_query.")
+           :description (str "Construct a Metabase query from a structured program with `source` and "
+                             "`operations`. Returns an opaque query string for execute_query. "
+                             "See the `metabase://docs/construct-query.md` resource for the full "
+                             "program syntax (sources, operations, operator forms, worked examples, "
+                             "and pitfalls).")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
@@ -524,12 +523,13 @@
   metadata and an optional `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
-           :description (str "Execute a Metabase query from a structured program and return "
-                             "results with column metadata. If more rows are available, the "
-                             "response includes a continuation_token — pass it back to get the "
-                             "next page.\n\n"
-                             "The body is either a structured program (see construct_query) or "
-                             "{\"continuation_token\": \"...\"} from a previous response.")}}
+           :title "Query Tables and Metrics"
+           :description (str "Execute a structured program and return results with column metadata. "
+                             "If more rows are available the response includes a continuation_token "
+                             "— pass it back to fetch the next page. Body is either a program (same "
+                             "shape as construct_query) or {\"continuation_token\": \"...\"}. See the "
+                             "`metabase://docs/construct-query.md` resource for program syntax.")
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    body :- ::query-request]
@@ -595,7 +595,8 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
+           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]

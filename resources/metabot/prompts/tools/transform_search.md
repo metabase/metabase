@@ -51,6 +51,11 @@ Each search should focus on a single conceptual area to maximize result quality.
 - When true, the search will also consider the actual SQL/Python code of transforms (defaults to false).
 - Use this when searching for transforms with specific SQL patterns, functions, table names referenced in code, or implementation details.
 
+`limit`:
+- Optional. The maximum number of results to return. Defaults to 10 and is capped at 50.
+- Use a larger limit (20–50) for broad or generic queries where many results may be relevant (e.g. "transforms", "pipelines", "customer data").
+- Keep the default (10) for narrow, specific searches with clear intent (e.g. "daily order aggregation transform").
+
 ## Examples
 
 <example>

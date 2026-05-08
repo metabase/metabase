@@ -6,10 +6,11 @@ import { jt, t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getCollection } from "metabase/collections/utils";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
-import { getIcon } from "metabase/common/utils/icon";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -25,8 +26,8 @@ import { modelToUrl } from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
+  type RecentCollectionItem,
   type RecentItem,
-  isRecentCollectionItem,
   isRecentTableItem,
 } from "metabase-types/api";
 
@@ -41,6 +42,7 @@ export const useCommandPalette = ({
   disabled: boolean;
   locationQuery: Query;
 }) => {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -185,6 +187,7 @@ export const useCommandPalette = ({
             name: result.name,
             subtitle: result.description || "",
             icon: icon.name,
+            iconUrl: icon.iconUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -232,6 +235,7 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
+    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -248,6 +252,7 @@ export const useCommandPalette = ({
           id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
           name: getName(item),
           icon: icon.name,
+          iconUrl: icon.iconUrl,
           section: "recent",
           perform: () => {},
           extra: {
@@ -261,7 +266,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems]);
+  }, [disabled, recentItems, getIcon]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
@@ -402,3 +407,8 @@ const SubtitleText = ({ children }: PropsWithChildren) => (
     {children}
   </Text>
 );
+
+const isRecentCollectionItem = (
+  item: OmniPickerItem,
+): item is RecentCollectionItem =>
+  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);

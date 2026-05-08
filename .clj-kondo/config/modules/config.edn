@@ -212,6 +212,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -362,6 +363,7 @@
                     :model/Channel
                     :model/Collection
                     :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/Database
                     :model/Document
@@ -1096,7 +1098,6 @@
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
 
-
   lib-be
   {:team "Querying Platform"
    :api  #{metabase.lib-be.core
@@ -1148,7 +1149,7 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1254,7 +1255,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
@@ -2038,7 +2038,6 @@
               analytics-interface
               api
               channel
-              config
               formatter
               lib
               metabot
@@ -2054,8 +2053,7 @@
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+                    :model/MetabotMessage}}
 
   source-swap
   {:team "Graphy"
@@ -2281,8 +2279,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2315,8 +2312,7 @@
            lib-be
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2851,6 +2847,20 @@
   {:team "DevEx"
    :api  #{metabase-enterprise.core.init}
    :uses :any}
+
+  enterprise/custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.init}
+   :uses #{api
+           config
+           events
+           models
+           premium-features
+           server
+           settings
+           util}
+   :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/dashboard-subscription-filters
   {:team "Graphy"

@@ -31,6 +31,7 @@ export function getDataStudioRoutes(
   CanAccessDataStudio: ComponentType,
   CanAccessDataModel: ComponentType,
   _CanAccessTransforms: ComponentType,
+  IsAdmin: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -42,7 +43,7 @@ export function getDataStudioRoutes(
         />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
-            {getDataStudioMetadataRoutes()}
+            {getDataStudioMetadataRoutes(IsAdmin)}
           </Route>
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
@@ -50,7 +51,7 @@ export function getDataStudioRoutes(
         </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
+          PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
           <Route path="library" component={LibraryUpsellPage} />
         )}

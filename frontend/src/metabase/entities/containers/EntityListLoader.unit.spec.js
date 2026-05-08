@@ -3,21 +3,21 @@ import "mutationobserver-shim";
 import { waitFor } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
+import { LegacyApi } from "metabase/api/legacy-client";
 import { EntityListLoader } from "metabase/entities/containers/rtk-query";
-import { Api } from "metabase/utils/api";
 
 describe("EntityListLoader", () => {
   let _makeRequest;
 
   beforeEach(() => {
-    _makeRequest = Api.prototype._makeRequest;
-    Api.prototype._makeRequest = jest
+    _makeRequest = LegacyApi.prototype._makeRequest;
+    LegacyApi.prototype._makeRequest = jest
       .fn()
       .mockReturnValue(Promise.resolve({ data: [] }));
   });
 
   afterEach(() => {
-    Api.prototype._makeRequest = _makeRequest;
+    LegacyApi.prototype._makeRequest = _makeRequest;
   });
 
   describe("with entityType of search", () => {
@@ -32,10 +32,10 @@ describe("EntityListLoader", () => {
         />,
       );
       await waitFor(() => {
-        expect(Api.prototype._makeRequest).toHaveBeenCalled();
+        expect(LegacyApi.prototype._makeRequest).toHaveBeenCalled();
       });
       expect(
-        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
+        LegacyApi.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
 
@@ -49,10 +49,10 @@ describe("EntityListLoader", () => {
         />,
       );
       await waitFor(() => {
-        expect(Api.prototype._makeRequest).toHaveBeenCalled();
+        expect(LegacyApi.prototype._makeRequest).toHaveBeenCalled();
       });
       expect(
-        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
+        LegacyApi.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
   });

@@ -1,6 +1,7 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { permissionApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import {
   combineReducers,
@@ -18,6 +19,7 @@ export const initializeApplicationPermissions = createThunkAction(
   INITIALIZE_APPLICATION_PERMISSIONS,
   () => async (dispatch) => {
     dispatch(loadApplicationPermissions());
+    dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({}));
   },
 );
 

@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
 import {
   IndexRedirect,
@@ -49,11 +50,12 @@ import {
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/routes";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_AI_CONTROLS,
+  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
@@ -65,6 +67,8 @@ import {
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
 
+import { AISettingsPage } from "./ai/AISettingsPage";
+import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
@@ -79,7 +83,7 @@ import {
 } from "./utils";
 
 export const getRoutes = (
-  store: { getState: () => State },
+  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -240,7 +244,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
@@ -265,7 +269,26 @@ export const getRoutes = (
 
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {getMetabotAdminRoutes()}
+          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          <Route key="index-layout" component={MetabotAdminLayout}>
+            <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="metabot" path=":metabotId" component={AISettingsPage} />
+          </Route>
+          <Route
+            key="layout"
+            component={(props) => (
+              <MetabotAdminLayout
+                {...props}
+                fullWidth={!PLUGIN_AI_CONTROLS.isEnabled}
+                innerContentProps={{
+                  fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+                  fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
+                }}
+              />
+            )}
+          >
+            {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
+          </Route>
         </Route>
 
         {PLUGIN_SECURITY_CENTER.isEnabled && (

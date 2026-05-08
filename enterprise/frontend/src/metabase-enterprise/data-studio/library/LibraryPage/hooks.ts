@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/common/utils/icon";
 import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -24,6 +24,7 @@ export const useBuildTreeForCollection = (
   tree: TreeItem[];
   error?: unknown;
 } => {
+  const getIcon = useGetIcon();
   const {
     data: items,
     isLoading,
@@ -82,6 +83,7 @@ export const useBuildTreeForCollection = (
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
+    getIcon,
   ]);
 };
 
