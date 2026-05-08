@@ -669,10 +669,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   // assigning the JS property (`el.parameters = ...`).
 
   /**
-   * Reads the named element attribute and returns it parsed as a JSON
-   * object. Returns `undefined` if the attribute isn't set, fails to
-   * parse, or parses to anything other than a plain object (e.g. a
-   * primitive or array).
+   * Reads the named element attribute and returns it as a plain object.
+   * Uses the same `parseAttributeValue` parser as `attributeChangedCallback`
+   * Returns `undefined` if the attribute isn't set, fails to parse,
+   * or doesn't resolve to a plain object (e.g. a primitive or array).
    */
   protected _readJsonAttribute<T>(attributeName: string): T | undefined {
     const rawValue = this.getAttribute(attributeName);
@@ -681,21 +681,17 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return undefined;
     }
 
-    try {
-      const parsed = JSON.parse(rawValue);
+    const parsed = parseAttributeValue(rawValue);
 
-      if (
-        parsed === null ||
-        typeof parsed !== "object" ||
-        Array.isArray(parsed)
-      ) {
-        return undefined;
-      }
-
-      return parsed as T;
-    } catch {
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
       return undefined;
     }
+
+    return parsed as T;
   }
 
   /**
