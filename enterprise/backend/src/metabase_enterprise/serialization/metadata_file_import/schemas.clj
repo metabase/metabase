@@ -1,70 +1,64 @@
 (ns metabase-enterprise.serialization.metadata-file-import.schemas
-  "Malli schemas describing the element shapes streamed in `MB_TABLE_METADATA_PATH`.
-  The shapes mirror the rows produced by `GET /api/database/metadata`, so the import
-  side validates the same structure the export side emits.
+  "Malli schemas describing the wire-format rows streamed by
+  `GET /api/ee/serialization/metadata/export` and consumed by
+  `POST /api/ee/serialization/metadata/import`.
 
-  Identifiers are **portable**: a database is identified by name; a table by
-  `[db-name schema-or-nil table-name]`; a field by `[db-name schema-or-nil
-  table-name & nfc-path leaf-name]` (length ≥ 4). The list types accept both
-  Clojure vectors (YAML parser output) and `java.util.ArrayList` (Jackson JSON
-  parser output) — Malli's `:tuple` rejects ArrayList, so the list shapes use
-  `[:fn ...]` predicates over `java.util.List`."
+  IDs are **integers from the source appdb**. They are internally consistent
+  within one file (so `:fields[].parent_id` references a `:fields[].id` in the
+  same file) but mean nothing across files.
+
+  Cross-row references:
+  - `:tables[].db_id`              → `:databases[].id`
+  - `:fields[].table_id`           → `:tables[].id`
+  - `:fields[].parent_id`          → another `:fields[].id` in the same file
+  - `:fields[].fk_target_field_id` → another `:fields[].id` in the same file
+
+  Optional columns (everything outside the always-present set per row type) are
+  *omitted from the row* by the export's `remove-nils` step rather than emitted
+  as `null`. Schemas mark these as `{:optional true}`.
+
+  `:effective_type` is special-cased: emitted only when `≠ :base_type`. Importer
+  treats absent as `≡ :base_type`."
   (:require
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn- nilable-string? [x] (or (nil? x) (string? x)))
-
-(mr/def ::portable-database-id :string)
-
-(mr/def ::portable-table-id
-  [:fn {:error/message "must be a [db schema-or-nil table] tuple"}
-   (fn [x] (and (instance? java.util.List x)
-                (= 3 (.size ^java.util.List x))
-                (string? (.get ^java.util.List x 0))
-                (nilable-string? (.get ^java.util.List x 1))
-                (string? (.get ^java.util.List x 2))))])
-
-(mr/def ::portable-field-id
-  [:fn {:error/message "must be a [db schema-or-nil table & path] list of length >= 4 with string elements"}
-   (fn [x] (and (instance? java.util.List x)
-                (>= (.size ^java.util.List x) 4)
-                (string? (.get ^java.util.List x 0))
-                (nilable-string? (.get ^java.util.List x 1))
-                (every? string? (drop 2 x))))])
-
 (mr/def ::database-info
+  "Database row. All three keys are required."
   [:map
+   [:id :int]
    [:name :string]
    [:engine :string]])
 
 (mr/def ::table-info
+  "Table row. `:id`, `:db_id`, and `:name` always present. `:schema` is emitted
+  even when null (no `metadata-query-format` on Table strips nils). `:description`
+  may be present-and-null or absent."
   [:map
-   [:db_id ::portable-database-id]
+   [:id :int]
+   [:db_id :int]
    [:name :string]
-   [:schema {:optional true} :string]
-   [:description {:optional true} :string]])
+   [:schema {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
 
 (mr/def ::field-info
-  ;; `:id` is required (the field's natural key — used to resolve `:parent_id`
-  ;; and `:fk_target_field_id` references and to detect re-imports). `:parent_id`
-  ;; and `:nfc_path` are independently optional:
-  ;;   - `:parent_id` present iff the source row had a non-NULL storage parent_id.
-  ;;   - `:nfc_path`  present iff the source row had a non-empty storage nfc_path.
-  ;;   - Both absent on flat root fields and top-level parents.
+  "Field row. Five required keys + several optional, per the export's
+  `metadata-query-format :model/Field` (which selects 12 columns and runs them
+  through `u/remove-nils`)."
   [:map
-   [:id ::portable-field-id]
-   [:table_id ::portable-table-id]
+   [:id :int]
+   [:table_id :int]
    [:name :string]
    [:base_type :string]
-   [:parent_id {:optional true} ::portable-field-id]
-   [:nfc_path  {:optional true} [:fn {:error/message "must be a sequence of strings"}
-                                 (fn [x] (and (instance? java.util.List x)
-                                              (every? string? x)))]]
-   [:fk_target_field_id {:optional true} ::portable-field-id]
+   [:database_type :string]
+   [:parent_id {:optional true} :int]
+   [:fk_target_field_id {:optional true} :int]
    [:description {:optional true} :string]
-   [:database_type {:optional true} :string]
    [:effective_type {:optional true} :string]
    [:semantic_type {:optional true} :string]
-   [:coercion_strategy {:optional true} :string]])
+   [:coercion_strategy {:optional true} :string]
+   [:nfc_path {:optional true}
+    [:fn {:error/message "must be a sequence of strings"}
+     (fn [x] (and (instance? java.util.List x)
+                  (every? string? x)))]]])
