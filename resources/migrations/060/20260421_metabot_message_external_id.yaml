@@ -39,9 +39,13 @@ databaseChangeLog:
               author: sloansparger
               changeLogFile: migrations/061_update_migrations.yaml
         - not:
-            uniqueConstraintExists:
-              tableName: metabot_message
-              constraintName: uq_metabot_message_external_id
+            - or:
+              - uniqueConstraintExists:
+                  tableName: metabot_message
+                  constraintName: uq_metabot_message_external_id
+              - indexExists:
+                  tableName: metabot_message
+                  indexName: uq_metabot_message_external_id
       changes:
         - addUniqueConstraint:
             tableName: metabot_message
