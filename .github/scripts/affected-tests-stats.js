@@ -1,6 +1,4 @@
-// Used by the compute-test-plan job in .github/workflows/run-tests.yml.
-// Test files are listed via `git ls-files` (no glob lib needed) so counts
-// match what's tracked at HEAD.
+// Changed files come from dorny/paths-filter's `all_changed_files` output
 
 const { execFileSync } = require("node:child_process");
 
@@ -9,14 +7,6 @@ const { elements, rules } = require("../../frontend/lint/module-boundaries");
 const { SUITES, createTestSelection } = require("./test-suites");
 
 const { decideAll } = createTestSelection({ elements, rules, suites: SUITES });
-
-const BASE_SHA = process.env.BASE_SHA;
-const HEAD_SHA = process.env.HEAD_SHA ?? "HEAD";
-
-if (!BASE_SHA) {
-  console.error("BASE_SHA env var is required");
-  process.exit(1);
-}
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -47,22 +37,17 @@ const E2E_GLOBS = [
   "e2e/test/scenarios/**/*.cy.spec.tsx",
 ];
 
-function git(args) {
-  return execFileSync("git", args, { encoding: "utf8" });
-}
-
 function gitLines(args) {
-  return git(args)
+  return execFileSync("git", args, { encoding: "utf8" })
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
-const changedFiles = gitLines([
-  "diff",
-  "--name-only",
-  `${BASE_SHA}...${HEAD_SHA}`,
-]);
+const changedFiles = (process.env.CHANGED_FILES ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const result = decideAll({
   changedFiles,

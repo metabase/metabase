@@ -1,3 +1,10 @@
+# Catch-all filter that emits the full changed-files list as
+# `all_changed_files` for compute-test-plan in run-tests.yml.
+# Reusing dorny's diff means we don't need a separate `git diff` (or full clone)
+# for the module-affected test selection step.
+all_changed:
+  - "**"
+
 default: &default
   - "locales/**"
   - "bin/**/!(*.md)"

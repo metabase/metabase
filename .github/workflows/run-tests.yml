@@ -44,10 +44,6 @@ jobs:
       e2e_tests_to_run: ${{ steps.compute.outputs.e2e_tests_to_run }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Full history so the node step's base..head diff resolves.
-          # dorny shallow-fetches on its own and is fine either way.
-          fetch-depth: 0
       - name: Test which files changed
         uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
@@ -60,8 +56,7 @@ jobs:
         id: compute
         if: ${{ github.event_name == 'pull_request' }}
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
         run: |
           OUTPUT=$(node .github/scripts/affected-tests-stats.js)
           echo "$OUTPUT" | jq '.stats'
