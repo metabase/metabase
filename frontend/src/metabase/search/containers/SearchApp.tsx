@@ -1,5 +1,4 @@
 import type { LocationDescriptorObject } from "history";
-import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
@@ -42,7 +41,7 @@ const getPageFromLocation = (location: SearchAwareLocation) => {
   return maybePage || 0;
 };
 
-function SearchApp({ location }: { location: SearchAwareLocation }) {
+export function SearchApp({ location }: { location: SearchAwareLocation }) {
   const dispatch = useDispatch();
 
   usePageTitle(t`Search`);
@@ -152,10 +151,3 @@ function SearchApp({ location }: { location: SearchAwareLocation }) {
     </SearchMain>
   );
 }
-
-SearchApp.propTypes = {
-  location: PropTypes.object,
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SearchApp;
