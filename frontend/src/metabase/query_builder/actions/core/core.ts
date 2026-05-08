@@ -7,7 +7,6 @@ import {
 } from "metabase/common/utils/card";
 import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
-import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -27,6 +26,7 @@ import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
+import { getDefaultSize } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -40,6 +40,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackNewQuestionSaved } from "../../analytics";
+import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   getCard,
   getIsResultDirty,
@@ -375,10 +376,13 @@ async function reduxCreateQuestion(
   dispatch: Dispatch,
   options?: OnCreateOptions,
 ) {
+  const display = question.display();
+  const size = getDefaultSize(display);
   const action = await dispatch(
     Questions.actions.create({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
+      ...(size && { size_x: size.width, size_y: size.height }),
     }),
   );
   return question.setCard(Questions.HACK_getObjectFromAction(action));

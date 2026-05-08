@@ -13,7 +13,6 @@ import {
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
@@ -47,6 +46,7 @@ import {
 } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
+import { selectGroupList } from "./data-permissions/groups";
 
 export const collectionsQuery = {
   tree: true,
@@ -243,7 +243,7 @@ const getCollectionDisabledTooltip = (
 export const getCollectionsPermissionEditor = createSelector(
   getCollectionsPermissions,
   getCollectionEntity,
-  Groups.selectors.getList,
+  selectGroupList,
   getNamespace,
   (permissions, collection, groups, namespace): PermissionEditorType | null => {
     if (!permissions || collection == null) {
@@ -273,6 +273,10 @@ export const getCollectionsPermissionEditor = createSelector(
         );
 
         if (isTenantGroup && !isTenantCollection) {
+          return null;
+        }
+
+        if (!defaultGroup) {
           return null;
         }
 

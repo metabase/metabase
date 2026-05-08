@@ -17,9 +17,11 @@
     Pool
     Pools)
    (java.io Closeable File)
-   (java.nio.file FileSystems)
+   (java.net URI)
+   (java.nio.channels SeekableByteChannel)
+   (java.nio.file AccessMode DirectoryStream DirectoryStream$Filter Files FileSystems Path)
    (java.time Duration)
-   (java.util Collections)
+   (java.util Map Set)
    (java.util.concurrent TimeUnit TimeoutException)
    (org.graalvm.polyglot Context HostAccess)
    (org.graalvm.polyglot.io FileSystem IOAccess)))
@@ -122,6 +124,45 @@
 
 ;;; -------------------------------------------------- Python path delay --------------------------------------------------
 
+(defn- nio-polyglot-fs
+  "Wrap a NIO `java.nio.file.FileSystem` as a polyglot `FileSystem`, routing reads to
+  `Files/newByteChannel` instead of the provider's `newFileChannel`.
+
+  The stock wrapper triggers ZipFileSystem to extract deflated entries to a temp file beside the jar,
+  which fails when the jar's parent directory isn't writable (e.g. non-root in a Kubernetes pod).
+  See https://github.com/metabase/metabase/issues/73541."
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
+  (let [provider (.provider nio-fs)]
+    (reify FileSystem
+      (^Path parsePath [_ ^URI uri]
+        (.getPath provider uri))
+      (^Path parsePath [_ ^String s]
+        (.getPath nio-fs s (into-array String [])))
+      (^void checkAccess [_ ^Path p ^Set modes ^"[Ljava.nio.file.LinkOption;" _opts]
+        ;; LinkOption opts are dropped: the only value is NOFOLLOW_LINKS, and neither our jar zip FS
+        ;; nor resources/python-sources contains symlinks.
+        (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes)))
+      (^void createDirectory [_ ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/createDirectory p attrs))
+      (^void delete [_ ^Path p]
+        (Files/delete p))
+      (^SeekableByteChannel newByteChannel
+        [_ ^Path p ^Set opts ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/newByteChannel p opts attrs))
+      (^DirectoryStream newDirectoryStream [_ ^Path dir ^DirectoryStream$Filter filter]
+        (Files/newDirectoryStream dir filter))
+      (^Path toAbsolutePath [_ ^Path p]
+        (.toAbsolutePath p))
+      (^Path toRealPath [_ ^Path p ^"[Ljava.nio.file.LinkOption;" opts]
+        (.toRealPath p opts))
+      (^Map readAttributes [_ ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts]
+        (Files/readAttributes p attrs opts)))))
+
+(defn- read-only-polyglot-fs
+  "Wrap an NIO `java.nio.file.FileSystem` as a read-only polyglot FileSystem suitable for GraalPy."
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
+  (-> nio-fs nio-polyglot-fs FileSystem/newReadOnlyFileSystem))
+
 (defonce ^:private
   ^{:doc "A read-only polyglot FileSystem and the PythonPath within it.
           In dev: wraps the default filesystem, path is resources/python-sources.
@@ -130,21 +171,17 @@
   python-fs-and-path
   (delay
     (if (jar-resource? python-sources-resource)
-      ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib
-      ;; are both inside the jar, so nothing is extracted to disk and there's nothing to tamper with.
-      (let [jar-path (u.files/get-jar-path)
-            jar-uri  (java.net.URI. (str "jar:file:" jar-path))
-            nio-fs   (FileSystems/newFileSystem jar-uri Collections/EMPTY_MAP)]
-        {:fs          (-> (FileSystem/newFileSystem nio-fs)
-                          FileSystem/newReadOnlyFileSystem)
-         :python-path "/python-sources"
-         :std-lib-home "/META-INF/resources/libpython"
-         :core-home "/META-INF/resources/libgraalpy"})
+      ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib are both inside the
+      ;; jar, so nothing is extracted to disk and there's nothing to tamper with. The filesystem lives for the
+      ;; duration of the process (via defonce + delay) and is shared by all pooled Python contexts.
+      {:fs           (-> (u.files/get-jar-path) u.files/nio-fs read-only-polyglot-fs)
+       :python-path  "/python-sources"
+       :std-lib-home "/META-INF/resources/libpython"
+       :core-home    "/META-INF/resources/libgraalpy"}
       ;; In dev: use the real filesystem (read-only wrapper). sqlglot is installed locally.
       (do
         (ensure-sqlglot-installed!)
-        {:fs          (-> (FileSystem/newFileSystem (FileSystems/getDefault))
-                          FileSystem/newReadOnlyFileSystem)
+        {:fs          (read-only-polyglot-fs (FileSystems/getDefault))
          :python-path dev-python-sources-dir}))))
 
 ;;; -------------------------------------------- Context Wrappers ----------------------------------------------------

@@ -11,8 +11,8 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { getIcon } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
@@ -49,6 +49,7 @@ const PinnedQuestionCard = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
+  const getIcon = useGetIcon();
   const isPreview = isPreviewShown(item);
 
   const actionMenu = (

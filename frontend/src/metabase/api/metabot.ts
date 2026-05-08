@@ -8,6 +8,7 @@ import type {
   MetabotProvider,
   MetabotSettingsResponse,
   MetabotSlackSettings,
+  MetabotSourceFeedback,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -112,7 +113,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "POST",
-        url: "/api/metabot/document/native-generate-content",
+        url: "/api/metabot/document/generate-content",
         body: params,
       }),
     }),
@@ -120,6 +121,13 @@ export const metabotApi = Api.injectEndpoints({
       query: (params) => ({
         method: "POST",
         url: "/api/metabot/feedback",
+        body: params,
+      }),
+    }),
+    submitMetabotSourceFeedback: builder.mutation<void, MetabotSourceFeedback>({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/source-feedback",
         body: params,
       }),
     }),
@@ -157,6 +165,7 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
+  useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
   useGetUserMetabotPermissionsQuery,
 } = metabotApi;

@@ -668,6 +668,25 @@
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
                             maybe-local))
 
+(def ^:private metadata-export-perms
+  {:perms/view-data      :unrestricted
+   :perms/create-queries :query-builder})
+
+(defmethod serdes/metadata-query :model/Database
+  [model opts]
+  (t2/reducible-query {:select [:id :name :engine]
+                       :from   [[(t2/table-name model) :db]]
+                       :where  (serdes/metadata-query-filter model :db opts)}))
+
+(defmethod serdes/metadata-query-filter :model/Database
+  [_model alias {:keys [user-info database-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key alias :is_audit) false]
+           [:= (u/qualified-key alias :router_database_id) nil]
+           [:in (u/qualified-key alias :id)
+            (perms/visible-database-filter-select user-info metadata-export-perms)]]
+    (seq database-ids) (conj [:in (u/qualified-key alias :id) database-ids])))
+
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
   (mdb/memoize-for-application-db

@@ -7,11 +7,14 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -28,7 +31,6 @@ import {
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
-import { JobDisabledBadge } from "../../components/JobDisabledBadge";
 import { JobListMoreMenu } from "../../components/JobListMoreMenu";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 
@@ -47,8 +49,9 @@ export const JobListPage = () => {
     [dispatch],
   );
 
-  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(() => {
-    const columns: TreeTableColumnDef<TransformJob>[] = [
+  const isMeterLocked = useSetting("transforms-meter-locked");
+  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
+    () => [
       {
         id: "name",
         accessorKey: "name",
@@ -72,25 +75,28 @@ export const JobListPage = () => {
           ) : null,
       },
       {
-        id: "active",
-        header: "",
-        width: 100,
+        id: "status",
+        maxWidth: 200,
         cell: ({ row }) =>
-          !row.original.active ? (
-            <JobDisabledBadge textProps={{ bg: "background-secondary" }} />
+          isMeterLocked || !row.original.active ? (
+            <TransformBadge bg="background-secondary">
+              {t`Disabled`}
+            </TransformBadge>
           ) : null,
       },
-    ];
-    if (isAdmin) {
-      columns.push({
-        id: "actions",
-        header: "",
-        width: 40,
-        cell: ({ row }) => <JobMoreMenu job={row.original} />,
-      });
-    }
-    return columns;
-  }, [isAdmin]);
+      ...(isAdmin
+        ? ([
+            {
+              id: "actions",
+              header: "",
+              width: 40,
+              cell: ({ row }) => <JobMoreMenu job={row.original} />,
+            },
+          ] satisfies TreeTableColumnDef<TransformJob>[])
+        : []),
+    ],
+    [isMeterLocked, isAdmin],
+  );
 
   const treeTableInstance = useTreeTableInstance({
     data: jobs,
@@ -120,6 +126,7 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack style={{ overflow: "hidden" }}>
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}

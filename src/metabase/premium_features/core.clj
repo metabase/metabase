@@ -55,6 +55,7 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
@@ -91,7 +92,9 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  locked-meters
   premium-embedding-token
+  security-center-disabled
   security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?

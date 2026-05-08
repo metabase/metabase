@@ -12,8 +12,14 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
-import { getMetabotAnalyticsNavItems } from "./metabot-analytics/nav";
-import { getAiAnalyticsRoutes } from "./metabot-analytics/routes";
+import {
+  getMetabotAnalyticsNavItems,
+  getMetabotAnalyticsUpsellNavItems,
+} from "./metabot-analytics/nav";
+import {
+  getAiAnalyticsRoutes,
+  getAiAnalyticsUpsellRoutes,
+} from "./metabot-analytics/routes";
 import { handleMetabotSlashCommand } from "./metabot-analytics/slash-commands";
 import { getUserMenuRotes } from "./routes";
 import { isAuditDb } from "./utils";
@@ -44,8 +50,15 @@ export function initializePlugin() {
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
-    PLUGIN_AUDIT.getMetabotAnalyticsNavItems = getMetabotAnalyticsNavItems;
-    PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsRoutes;
+    if (hasPremiumFeature("ai_controls")) {
+      PLUGIN_AUDIT.getMetabotAnalyticsNavItems = getMetabotAnalyticsNavItems;
+      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsRoutes;
+    } else {
+      PLUGIN_AUDIT.getMetabotAnalyticsNavItems =
+        getMetabotAnalyticsUpsellNavItems;
+      PLUGIN_AUDIT.getAiAnalyticsRoutes = getAiAnalyticsUpsellRoutes;
+    }
+
     PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
   }
 }

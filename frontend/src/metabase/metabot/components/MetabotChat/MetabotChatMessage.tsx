@@ -9,6 +9,7 @@ import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
   MetabotDataPart,
@@ -37,17 +38,28 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
     .with({ type: "todo_list" }, () => true)
     .with({ type: "transform_suggestion" }, () => true)
-    .with({ type: "navigate_to" }, () => false)
-    .with({ type: "code_edit" }, () => false)
+    .with({ type: "navigate_to" }, () => true)
+    .with({ type: "code_edit" }, () => true)
     .with({ type: "adhoc_viz" }, () => false)
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
+
+const isUserVisibleDataPartMessage = (
+  message: MetabotAgentDataPartMessage,
+): boolean =>
+  match(message)
+    .with({ part: { type: "code_edit" } }, ({ metadata }) => {
+      return metadata?.codeEditBuffer?.source.database_id != null;
+    })
+    .otherwise(({ part }) => isUserVisibleDataPart(part));
 
 const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
   match(message)
     .with({ type: "text" }, () => true)
     .with({ type: "action" }, () => true)
-    .with({ type: "data_part" }, ({ part }) => isUserVisibleDataPart(part))
+    .with({ type: "data_part" }, (message) =>
+      isUserVisibleDataPartMessage(message),
+    )
     .with({ type: "tool_call" }, () => false)
     .exhaustive();
 

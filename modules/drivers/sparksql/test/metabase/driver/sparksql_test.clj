@@ -6,6 +6,9 @@
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
@@ -120,3 +123,57 @@
              (testing "Rows should come back as expected Java types"
                (is (= [[#t "2024-03-22"]]
                       (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))
+
+(deftest ^:parallel omit-table-aliases-in-order-by-test
+  (testing "Make sure Spark SQL / Hive works correctly with table aliases in ORDER BY (#10973)"
+    (mt/test-driver :sparksql
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :categories)))
+                                    (lib/with-join-fields [(lib.metadata/field mp (mt/id :categories :id))])))
+                      (as-> $query (lib/with-fields $query (let [cols     (lib/visible-columns $query)
+                                                                 find-col (fn [table-name col-name]
+                                                                            (lib.tu.notebook/find-col-with-spec
+                                                                             $query
+                                                                             cols
+                                                                             {:display-name table-name}
+                                                                             {:display-name col-name}))]
+                                                             [(find-col "Venues"     "ID")
+                                                              (find-col "Categories" "ID")])))
+                      (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/visible-columns $query)
+                                                         {:display-name "Venues"}
+                                                         {:display-name "ID"})))
+                      (lib/limit 3))]
+        ;; allegedly this did not work in the past with Spark SQL / Hive, we needed to do
+        ;;
+        ;;    ORDER BY `id` ASC
+        ;;
+        ;; (exclude the subselect/join alias and use the `:lib/desired-column-alias`). However as of ~61 it seems to be
+        ;; working correctly even using the subselect alias (`t1`).
+        (testing "Confirm compiled SQL uses the subselect alias (`t1`) for ORDER BY, which was not working in the past"
+          (is (= ["SELECT"
+                  "  `t1`.`id` AS `id`,"
+                  "  `Categories`.`id` AS `Categories__id`"
+                  "FROM"
+                  "  `test_data`.`venues` AS `t1`"
+                  "  LEFT JOIN ("
+                  "    SELECT"
+                  "      `t1`.`id` AS `id`,"
+                  "      `t1`.`name` AS `name`" ; this doesn't really need to be selected but I guess is done because of remapping
+                  "    FROM"
+                  "      `test_data`.`categories` AS `t1`"
+                  "  ) AS `Categories` ON `t1`.`category_id` = `Categories`.`id`"
+                  "ORDER BY"
+                  "  `t1`.`id` ASC"
+                  "LIMIT"
+                  "  3"]
+                 (-> query
+                     qp.compile/compile
+                     :query
+                     (->> (driver/prettify-native-form :sparksql))
+                     str/split-lines))))
+        (testing "The query should run successfully"
+          (is (= [[1 4] [2 11] [3 11]]
+                 (mt/rows (qp/process-query query)))))))))

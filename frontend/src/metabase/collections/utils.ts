@@ -267,7 +267,9 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
 }
 
 export function canCopyItem(item: CollectionItem) {
-  return item.copy && !item.archived;
+  return (
+    (item.model === "dashboard" || item.model === "document") && !item.archived
+  );
 }
 
 export function canPlaceEntityInCollection(

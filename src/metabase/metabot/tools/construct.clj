@@ -138,9 +138,9 @@
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
 (defn- result-columns-for-query
-  "Generate result columns from a pMBQL query for LLM consumption."
-  [pmbql-query metadata-provider]
-  (let [query (lib/query metadata-provider pmbql-query)
+  "Generate result columns from a MBQL 5 query for LLM consumption."
+  [mbql5-query metadata-provider]
+  (let [query (lib/query metadata-provider mbql5-query)
         cols  (lib/returned-columns query)]
     (mapv #(tools.u/->result-column query %) cols)))
 
@@ -154,11 +154,11 @@
   (let [database-id (resolve-source-database-id source-entity)
         mp          (lib-be/application-database-metadata-provider database-id)
         context     (build-evaluation-context source-entity referenced-entities mp)
-        pmbql-query (agent-lib/evaluate-program program mp context)
+        mbql5-query (agent-lib/evaluate-program program mp context)
         query-id    (u/generate-nano-id)]
     {:structured-output {:query-id       query-id
-                         :query          pmbql-query
-                         :result-columns (result-columns-for-query pmbql-query mp)}
+                         :query          mbql5-query
+                         :result-columns (result-columns-for-query mbql5-query mp)}
      :instructions      (instructions/query-created-instructions-for query-id)}))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------

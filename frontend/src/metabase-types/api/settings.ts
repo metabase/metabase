@@ -231,7 +231,13 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "paused" | "error";
+  status:
+    | "not-connected"
+    | "initializing"
+    | "syncing"
+    | "active"
+    | "paused"
+    | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -327,6 +333,8 @@ export const tokenFeatures = [
   "cloud_custom_smtp",
   "content_translation",
   "content_verification",
+  "custom-viz",
+  "custom-viz-available",
   "data-complexity-score",
   "disable_password_login",
   "embedding",
@@ -633,6 +641,8 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "custom-viz-enabled": boolean;
+  "custom-viz-plugin-dev-mode-enabled": boolean;
   "non-table-chart-generated": boolean;
   "use-tenants": boolean;
 }
@@ -806,6 +816,7 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-client-secret"?: string | null;
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
+  "transforms-meter-locked": boolean | null;
   /**
    * @deprecated
    */

@@ -57,6 +57,7 @@ export const FontWidget = () => {
             value={fontValue}
             name="application-font"
             inputType="select"
+            searchable
             onChange={(newValue) => handleChange(newValue as string)}
             options={fontOptions}
           />
