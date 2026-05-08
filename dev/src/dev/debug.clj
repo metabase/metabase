@@ -3,7 +3,7 @@
 
        (let [filtered #d (filter valid? items)] ...)
        ;; logs to /tmp/<dir>_debug.log:
-       ;;   #d[src/foo.clj:2:23 nREPL-…]  (filter valid? items) => (1 3 7 …)
+       ;;   #d[src/foo.clj:2]  (filter valid? items) => (1 3 7 …)
 
    Commands: pass certain values to control it.
 
@@ -92,11 +92,6 @@
            (count s) " chars; consider narrower #d)")
       s)))
 
-(defn- thread-tag []
-  (let [n (.getName (Thread/currentThread))]
-    (when-not (str/blank? n)
-      (str " " n))))
-
 (defn- spit-line!
   "Append `line` (no trailing newline expected) to the resolved log path,
    swallowing IO errors so a debug helper never crashes the program."
@@ -108,7 +103,7 @@
   "Runtime impl of `#d`. Public so the reader macro's expansion can call it
    across compilation boundaries."
   [loc form-str value]
-  (spit-line! (str "#d[" loc (thread-tag) "]  " form-str " => " (render-value value)))
+  (spit-line! (str "#d[" loc "]  " form-str " => " (render-value value)))
   value)
 
 (defn stack!
@@ -129,7 +124,7 @@
                                   (.startsWith ^String % "cider.")))
                      (take 40))
          body (str/join "\n  " (cons (or tag "stack") frames))]
-     (spit-line! (str "[STACK" (thread-tag) "] " body)))))
+     (spit-line! (str "[STACK] " body)))))
 
 (defn clear!
   "Truncate the log. Call before each debug run so output isn't mixed with
@@ -214,12 +209,15 @@
     ;; Expression: log + return value. Wrap with the inner-marker so a
     ;; containing `#d` can strip our expansion when rendering its form-text.
     :else
-    (let [stripped              (strip-inner form)
-          {:keys [line column]} (meta form)
-          file                  (or *file* "?")
-          loc                   (str file ":" (or line "?")
-                                     (when column (str ":" column)))
-          form-str              (pr-str stripped)]
+    (let [stripped       (strip-inner form)
+          {:keys [line]} (meta form)
+          raw-file       (or *file* "?")
+          cwd            (System/getProperty "user.dir")
+          file           (if (and cwd (str/starts-with? raw-file (str cwd "/")))
+                           (subs raw-file (inc (count cwd)))
+                           raw-file)
+          loc            (str file ":" (or line "?"))
+          form-str       (pr-str stripped)]
       `(let [orig# ~inner-marker]
          (let [v# ~form]
            (print-debug-entry! ~loc ~form-str v#)
