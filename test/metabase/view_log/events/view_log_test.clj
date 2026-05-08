@@ -386,22 +386,23 @@
 ;; `metabase-enterprise.database-routing.query-execution-test`.
 
 (deftest query-execution-parameters-test
-  (testing "parameters is JSON-encoded when PII retention enabled"
-    (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
-      (let [params [{:type "text/single" :value "foo"}]
-            ei     (#'process-userland-query/query-execution-info
-                    (make-test-query :parameters params))]
-        (is (string? (:parameters ei)))
-        (is (= params (json/decode+kw (:parameters ei)))))))
-  (testing "parameters is nil when PII retention disabled"
-    (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
-      (let [params [{:type "text/single" :value "foo"}]
-            ei     (#'process-userland-query/query-execution-info
-                    (make-test-query :parameters params))]
-        (is (= nil (:parameters ei))))))
-  (testing "parameters is nil when absent"
-    (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
-      (is (= nil (:parameters ei))))))
+  (mt/with-premium-features #{:audit-app}
+    (testing "parameters is JSON-encoded when PII retention enabled"
+      (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+        (let [params [{:type "text/single" :value "foo"}]
+              ei     (#'process-userland-query/query-execution-info
+                      (make-test-query :parameters params))]
+          (is (string? (:parameters ei)))
+          (is (= params (json/decode+kw (:parameters ei)))))))
+    (testing "parameters is nil when PII retention disabled"
+      (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+        (let [params [{:type "text/single" :value "foo"}]
+              ei     (#'process-userland-query/query-execution-info
+                      (make-test-query :parameters params))]
+          (is (= nil (:parameters ei))))))
+    (testing "parameters is nil when absent"
+      (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
+        (is (= nil (:parameters ei)))))))
 
 ;; `is_impersonated` is now populated from the `*impersonation-role*` dynamic var in
 ;; `enrich-with-execution-context` (see process_userland_query.clj). End-to-end coverage lives in
