@@ -524,7 +524,7 @@
 ;; that Transform B succeeds and reads the rows Transform A wrote to the iso
 ;; copy.
 (deftest ^:synchronized native-transform-references-prior-canonical-output-test
-  (mt/test-drivers #{:postgres :mysql}
+  (mt/test-drivers #{:postgres :mysql}  ;; TODO: widen this as more drivers come online
     (mt/with-premium-features #{:workspaces}
       (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
         (let [admin-driver  driver/*driver*
