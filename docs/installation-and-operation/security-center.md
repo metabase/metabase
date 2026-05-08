@@ -13,7 +13,7 @@ The Security Center is the main way we (Metabase the company) let people who are
 
 ![Security center](./images/security-center.png)
 
-Security center is available for (and relevant to) self-hosted Metabases on Pro/Enterprise plans. Metabase Cloud instances are automatically patched as soon as issues are discovered and resolved.
+Security center is available for (and relevant to) self-hosted Metabases on Pro/Enterprise plans. Metabase Cloud instances are automatically patched as soon as issues are discovered and resolved. Air-gapped Metabases will not get the security center (regardless of the plan) because security center needs to check Metabases's security registry for updates, which would violate air-gapping.
 
 ## See security issues affecting your instance
 
@@ -27,7 +27,9 @@ To check whether your instance is affected by a security issue, Metabase analyze
 
 Metabase checks for new security advisories periodically, but you can also force the check by clicking **Check now** in the security center.
 
-## Fixing security issues
+You can dismiss security issues by clicking **Dismiss** on an issue. Keep in mind that you can't un-dismiss the issue, so only dismiss an issue once you've gone through remediation steps.
+
+## Remedy security issues
 
 Every security issue posted in **Admin > Security** will come with remediation steps. These steps will usually just involve upgrading your Metabase.
 
