@@ -595,8 +595,9 @@
              ;; deactivate the user again
              (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
-               (mt/with-dynamic-fn-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                                           appearance.settings/site-name (constantly "test")]
+               #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+               (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                             appearance.settings/site-name (constantly "test")]
                  (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                               default-redirect-uri)]
                    ;; we get a `401`
@@ -745,8 +746,9 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
-        (mt/with-dynamic-fn-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                                    appearance.settings/site-name (constantly "test")]
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                      appearance.settings/site-name (constantly "test")]
           (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                        default-redirect-uri)]
             (client/client-real-response :post 401 "/auth/sso" req-options)))))))
@@ -892,17 +894,18 @@
         (do-with-some-validators-disabled!
          (fn []
            ;; Mock the saml-response->attributes function to return mixed attribute types
-           (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                       (fn [_]
-                                         {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" "rasta@metabase.com"
-                                          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" "Rasta"
-                                          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" "Toucan"
-                                          "string_attr" "valid-string"
-                                          "number_attr" 42
-                                          "boolean_attr" true
-                                          "array_attr" ["item1" "item2"]
-                                          "object_attr" {:nested "value"}
-                                          "null_attr" nil})]
+           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+           (with-redefs [saml.p/saml-response->attributes
+                         (fn [_]
+                           {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" "rasta@metabase.com"
+                            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" "Rasta"
+                            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" "Toucan"
+                            "string_attr" "valid-string"
+                            "number_attr" 42
+                            "boolean_attr" true
+                            "array_attr" ["item1" "item2"]
+                            "object_attr" {:nested "value"}
+                            "null_attr" nil})]
              (let [req-options (saml-post-request-options (saml-test-response)
                                                           default-redirect-uri)
                    response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -1011,10 +1014,11 @@
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                      (is (successful-login? response)))))
                (testing "an existing user also fails to log in"
-                 (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                             (fn [_]
-                                               {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
-                                                "tenant" "tenant-mctenantson"})]
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
+                                  "tenant" "tenant-mctenantson"})]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -1030,7 +1034,8 @@
                                                         :name "Tenant McTenantson"
                                                         :is_active false}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
-            (mt/with-dynamic-fn-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+            (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)]
               (do-with-some-validators-disabled!
                (fn []
                  (testing "a new user fails to log in"
@@ -1040,10 +1045,11 @@
                            response    (client/client-real-response :post 401 "/auth/sso" req-options)]
                        (is (not (successful-login? response))))))
                  (testing "an existing user also fails to log in"
-                   (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                               (fn [_]
-                                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
-                                                  "tenant" "tenant-mctenantson"})]
+                   #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                   (with-redefs [saml.p/saml-response->attributes
+                                 (fn [_]
+                                   {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
+                                    "tenant" "tenant-mctenantson"})]
                      (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                   default-redirect-uri)
                            response    (client/client-real-response :post 401 "/auth/sso" req-options)]
@@ -1063,10 +1069,11 @@
             (do-with-some-validators-disabled!
              (fn []
                (testing "tenant -> other tenant fails with correct error message"
-                 (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                             (fn [_]
-                                               {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant
-                                                "tenant" "other"})]
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant
+                                  "tenant" "other"})]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 401 "/auth/sso" req-options)]
@@ -1085,9 +1092,10 @@
               (do-with-some-validators-disabled!
                (fn []
                  ;; Use the regular new-user response which doesn't have tenant attribute
-                 (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                             (fn [_]
-                                               {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant})]
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant})]
                    (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 401 "/auth/sso" req-options)]
@@ -1105,10 +1113,11 @@
                            :model/User {email-without-tenant :email} {:tenant_id nil}]
               (do-with-some-validators-disabled!
                (fn []
-                 (mt/with-dynamic-fn-redefs [saml.p/saml-response->attributes
-                                             (fn [_]
-                                               {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-without-tenant
-                                                "tenant" "tenant-mctenantson"})]
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-without-tenant
+                                  "tenant" "tenant-mctenantson"})]
                    (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 401 "/auth/sso" req-options)]

@@ -287,8 +287,9 @@
     (mt/with-model-cleanup [:model/User]
       (ldap.test/with-ldap-server!
         (testing "an error is thrown when a new user attempts to login via provider/login! and user provisioning is not enabled"
-          (mt/with-dynamic-fn-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
-                                      appearance.settings/site-name                (constantly "test")]
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+          (with-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
+                        appearance.settings/site-name                (constantly "test")]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
