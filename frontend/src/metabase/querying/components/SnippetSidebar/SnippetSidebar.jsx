@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { useListCollectionItemsQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
 import CS from "metabase/css/core/index.css";
@@ -252,12 +253,20 @@ class SnippetSidebarInner extends React.Component {
 function SnippetSidebarWithSearch(props) {
   const collectionId =
     props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
-  const { data: searchResponse } = useListCollectionItemsQuery({
+  const {
+    data: searchResponse,
+    isLoading,
+    error,
+  } = useListCollectionItemsQuery({
     id: collectionId,
     namespace: "snippets",
   });
   const search = searchResponse?.data ?? [];
-  return <SnippetSidebarInner {...props} search={search} />;
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <SnippetSidebarInner {...props} search={search} />
+    </LoadingAndErrorWrapper>
+  );
 }
 
 export const SnippetSidebar = _.compose(

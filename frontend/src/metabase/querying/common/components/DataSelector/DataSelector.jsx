@@ -1069,11 +1069,8 @@ function withAvailableModels(WrappedComponent) {
       limit: 0,
       models: ["dataset", "metric"],
     });
-    let metadata;
-    if (response) {
-      const { data: _data, ...rest } = response;
-      metadata = rest;
-    }
+
+    const { data: _data, metadata } = response ?? {};
     return (
       <WrappedComponent
         {...props}

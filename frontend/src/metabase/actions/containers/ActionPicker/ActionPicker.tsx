@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { useSearchQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
@@ -155,9 +156,17 @@ function ModelActionPicker({
 function ActionPickerWithModels(
   props: Omit<Parameters<typeof ActionPicker>[0], "models">,
 ) {
-  const { data: searchResponse } = useSearchQuery({ models: ["dataset"] });
+  const {
+    data: searchResponse,
+    isLoading,
+    error,
+  } = useSearchQuery({ models: ["dataset"] });
   const models = (searchResponse?.data ?? []) as unknown as Card[];
-  return <ActionPicker {...props} models={models} />;
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <ActionPicker {...props} models={models} />
+    </LoadingAndErrorWrapper>
+  );
 }
 
 export const ConnectedActionPicker = Actions.loadList({
