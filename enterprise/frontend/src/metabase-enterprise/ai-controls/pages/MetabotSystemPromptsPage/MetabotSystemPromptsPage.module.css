@@ -1,6 +1,15 @@
+.textareaRoot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
 .textareaWrapper {
-  textarea {
-    line-height: 1.25rem;
-    min-height: 400px;
-  }
+  flex: 1;
+  display: flex;
+}
+
+.textareaInput {
+  height: 100%;
+  line-height: 1.25rem;
 }
