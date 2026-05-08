@@ -183,11 +183,13 @@
   map when params are nil. Values are encoded as strings (the same encoding used
   for persistence) so spans render consistently regardless of base type."
   [source-range-params]
-  (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
+  (let [{:keys [checkpoint-filter-field-id]
+         {lo-value :value} :lo
+         {hi-value :value} :hi} source-range-params]
     (cond-> {}
       checkpoint-filter-field-id (assoc :transform/checkpoint-field-id checkpoint-filter-field-id)
-      (some? (:value lo))        (assoc :transform/checkpoint-lo (encode-checkpoint-value (:value lo)))
-      (some? (:value hi))        (assoc :transform/checkpoint-hi (encode-checkpoint-value (:value hi))))))
+      (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
+      (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
