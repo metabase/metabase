@@ -479,6 +479,9 @@
                               [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
                               {:transaction? false})))))))))
 
+;; Five related repro phases (v1-v5) share Snowflake connection setup and table-name lifecycle.
+;; Splitting would multiply CI Snowflake setup cost. Kondo's warning is acknowledged.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
   (mt/test-driver :snowflake
     (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
