@@ -2272,8 +2272,11 @@
     (when-let [report-fn @experiment/default-report-fn]
       (report-fn result))
     (when-not match?
-      (log/warnf "MBQL5 experiment mismatch:\nControl driver: %s, candidate driver: %s\nQuery: %s\nControl result: %s\nCandidate result: %s"
-                 driver experimental-driver query control-outcome candidate-outcome))))
+      (log/with-context {:experimental-mbql5-driver :mismatch
+                         :driver driver
+                         :experimental-driver experimental-driver}
+        (log/warnf "MBQL5 experiment mismatch:\nQuery: %s\nControl result: %s\nCandidate result: %s"
+                   query control-outcome candidate-outcome)))))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
