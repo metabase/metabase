@@ -60,27 +60,27 @@
           ;; in this test we change they key multiple times and we don't want the value to be cached when key change
           (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
                                                      :out #'mi/encrypted-json-out}]
-            (mc/binding
-             (mdb.connection/application-db-handle)
-              (mdb.connection/application-db driver/*driver* data-source)
-              (fn []
-                (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
-                        ;; at this point, all the state switching craziness that happens for
-                        ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
-                        ;; been bootstrapped to now return the site locale from the real, actual setting function
-                        ;; the trouble is, when we are swapping out the app DB, attempting to fetch the setting value WILL
-                        ;; FAIL, since there is no `SETTING `table yet created
-                        ;; the `load-from-h2!`, by way of invoking `copy!`, below, needs the site locale to internationalize
-                        ;; its loading progress messages (ex: "Set up h2 source database and run migrations...")
-                        ;; the reason this test has been flaky is that if we get "lucky" the *cached* value of the site
-                        ;; locale setting is returned, instead of the setting code having to query the app DB for it, and
-                        ;; hence no error occurs, but for a cache miss, then the error happens
-                        ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
-                          i18n/*site-locale-override*  "en"
+            (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
+                      ;; at this point, all the state switching craziness that happens for
+                      ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
+                      ;; been bootstrapped to now return the site locale from the real, actual setting function
+                      ;; the trouble is, when we are swapping out the app DB, attempting to fetch the setting value WILL
+                      ;; FAIL, since there is no `SETTING `table yet created
+                      ;; the `load-from-h2!`, by way of invoking `copy!`, below, needs the site locale to internationalize
+                      ;; its loading progress messages (ex: "Set up h2 source database and run migrations...")
+                      ;; the reason this test has been flaky is that if we get "lucky" the *cached* value of the site
+                      ;; locale setting is returned, instead of the setting code having to query the app DB for it, and
+                      ;; hence no error occurs, but for a cache miss, then the error happens
+                      ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
+                      i18n/*site-locale-override* "en"
 
-                        ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
-                        ;; so the cache itself is invalid and can only mask the real issues
-                          config/*disable-setting-cache*         true]
+                      ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
+                      ;; so the cache itself is invalid and can only mask the real issues
+                      config/*disable-setting-cache* true]
+              (mc/binding
+               (mdb.connection/application-db-handle)
+                (mdb.connection/application-db driver/*driver* data-source)
+                (fn []
                   (when-not (= driver/*driver* :h2)
                     (tx/create-db! driver/*driver* {:database-name db-name}))
                   (binding [copy/*copy-h2-database-details* true]
@@ -112,12 +112,12 @@
                   (testing "rotating with the same key is a noop"
                     (encryption-test/with-secret-key k1
                       (rotate-encryption-key! k1)
-                  ;; plain->newkey
+                      ;; plain->newkey
                       (testing "for unencrypted values"
                         (is (not= "unencrypted value" (raw-value "nocrypt")))
                         (is (= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                         (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc))))
-                  ;; samekey->samekey
+                      ;; samekey->samekey
                       (testing "for values encrypted with the same key"
                         (is (not= "encrypted with k1" (raw-value "k1crypted")))
                         (is (= "encrypted with k1" (t2/select-one-fn :value :model/Setting :key "k1crypted")))
@@ -161,11 +161,11 @@
                   (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                     (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                     (t2/update! :model/Database {:name "k3"} {:details {:db "/tmp/test.db"}})
-                    (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
+                    (encryption-test/with-secret-key k2         ; with the last key that we rotated to in the test
                       (rotate-encryption-key! nil))
                     (is (= "unencrypted value" (raw-value "nocrypt")))
-               ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
-               ;; should be decrypted
+                    ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
+                    ;; should be decrypted
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))
 
