@@ -711,26 +711,34 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     attrName: string,
     value: unknown,
   ) {
+    // `null` and `undefined` mean "clear this property"; anything else
+    // gets serialized as JSON. `nextJson === null` is the marker for
+    // "the attribute should not exist".
     const shouldRemoveValue = value === undefined || value === null;
     const nextJson = shouldRemoveValue ? null : JSON.stringify(value);
     const currentJson = this.getAttribute(attrName);
 
     if (nextJson === currentJson) {
-      // Skip when clearing something that was never set — no observable
-      // state change, no need for a postMessage.
+      // Both null: clearing something that was never set. Nothing to do.
       if (nextJson === null) {
         return;
       }
 
-      const nextSettings = {
+      // Same JSON string is already on the attribute, so calling
+      // `setAttribute` would be a no-op for `attributeChangedCallback`
+      // (it short-circuits on `oldVal === newVal`, see line ~323). The
+      // host explicitly assigned the property, so bypass the attribute
+      // and dispatch `_updateSettings` directly to keep the iframe
+      // synced with the caller's intent.
+      this._updateSettings({
         [settingKey]: value,
-      } as Partial<SdkIframeEmbedElementSettings>;
-
-      this._updateSettings(nextSettings);
+      } as Partial<SdkIframeEmbedElementSettings>);
 
       return;
     }
 
+    // Attribute is being added, removed, or replaced — mutating it
+    // fires `attributeChangedCallback`, which then calls `_updateSettings`.
     if (nextJson === null) {
       this.removeAttribute(attrName);
     } else {
