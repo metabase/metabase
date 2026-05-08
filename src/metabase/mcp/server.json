@@ -3,7 +3,7 @@
   "name": "io.github.metabase/mcp",
   "title": "Metabase",
   "description": "Lets AI clients search, explore, query, and visualize data in a Metabase instance.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "websiteUrl": "https://www.metabase.com",
   "icons": [
     {
