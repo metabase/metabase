@@ -89,7 +89,7 @@
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
       (tu/with-slackbot-setup
-        (with-redefs [slackbot.settings/unobfuscated-metabot-slack-signing-secret (constantly tu/test-signing-secret)]
+        (mt/with-dynamic-fn-redefs [slackbot.settings/unobfuscated-metabot-slack-signing-secret (constantly tu/test-signing-secret)]
           (let [body     (assoc-in tu/base-dm-event [:event :channel] "D123")
                 response (mt/client :post 200 "metabot/slack/events"
                                     (tu/slack-request-options body)
@@ -119,8 +119,8 @@
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge {:subtype "message_deleted"})
             ignored    (atom false)]
-        (with-redefs [slackbot/ignore-event  (fn [_] (reset! ignored true))
-                      slackbot/process-async (fn [& _] (throw (ex-info "process-async should not be called" {})))]
+        (mt/with-dynamic-fn-redefs [slackbot/ignore-event  (fn [_] (reset! ignored true))
+                                    slackbot/process-async (fn [& _] (throw (ex-info "process-async should not be called" {})))]
           (tu/with-slackbot-mocks
             {:ai-text "Should not be called"}
             (fn [{:keys [post-calls]}]
@@ -582,7 +582,7 @@
       (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" nil)))))
 
     (testing "returns :ignored for unknown Slack user"
-      (with-redefs [slackbot/slack-id->user-id (constantly nil)]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly nil)]
         (is (= {:status        :ignored
                 :reason        :unlinked-user
                 :slack-user-id "U-UNKNOWN"
@@ -591,19 +591,19 @@
                (#'slackbot/authorize-delete-request "U-UNKNOWN" "C123" "ts123")))))
 
     (testing "returns :ignored when response is not tracked in the DB"
-      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
-                    slackbot.persistence/response-owner-user-id (constantly nil)]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                                  slackbot.persistence/response-owner-user-id (constantly nil)]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
 
     (testing "returns :ignored when the requester is not the response owner"
-      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
-                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                                  slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
 
     (testing "returns :authorized when the requester owns the response"
       (let [user-id (mt/user->id :rasta)]
-        (with-redefs [slackbot/slack-id->user-id               (constantly user-id)
-                      slackbot.persistence/response-owner-user-id (constantly user-id)]
+        (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly user-id)
+                                    slackbot.persistence/response-owner-user-id (constantly user-id)]
           (is (= {:status          :authorized
                   :channel-id      "C123"
                   :message-ts      "ts123"
@@ -762,10 +762,10 @@
   (testing "feedback action opens modal with correct private_metadata"
     (let [conversation-id "conv-123"
           open-view-calls (atom [])]
-      (with-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
-                    slackbot.client/open-view  (fn [_ params]
-                                                 (swap! open-view-calls conj params)
-                                                 {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
+                                  slackbot.client/open-view  (fn [_ params]
+                                                               (swap! open-view-calls conj params)
+                                                               {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id conversation-id :positive true})}]
           (#'slackbot/handle-feedback-action
@@ -788,10 +788,10 @@
 (deftest handle-feedback-action-negative-test
   (testing "negative feedback action opens modal with issue type dropdown"
     (let [open-view-calls (atom [])]
-      (with-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
-                    slackbot.client/open-view  (fn [_ params]
-                                                 (swap! open-view-calls conj params)
-                                                 {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
+                                  slackbot.client/open-view  (fn [_ params]
+                                                               (swap! open-view-calls conj params)
+                                                               {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id "conv-123" :positive false})}]
           (#'slackbot/handle-feedback-action
@@ -807,10 +807,10 @@
 (deftest handle-feedback-action-unauthenticated-test
   (testing "feedback action is silently skipped for unauthenticated user"
     (let [open-view-calls (atom [])]
-      (with-redefs [slackbot/slack-id->user-id (constantly nil)
-                    slackbot.client/open-view  (fn [_ params]
-                                                 (swap! open-view-calls conj params)
-                                                 {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly nil)
+                                  slackbot.client/open-view  (fn [_ params]
+                                                               (swap! open-view-calls conj params)
+                                                               {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id "conv-456" :positive false})}
               result (#'slackbot/handle-feedback-action
@@ -1045,10 +1045,10 @@
 (deftest conversation-permalink-returns-nil-when-slack-not-configured-test
   (testing "conversation-permalink does not call Slack when slack-configured? is false"
     (let [client-calls (atom 0)]
-      (with-redefs [channel.settings/slack-configured?     (constantly false)
-                    slackbot.client/get-permalink          (fn [& _]
-                                                             (swap! client-calls inc)
-                                                             {:ok true :permalink "should-not-be-returned"})]
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly false)
+                                  slackbot.client/get-permalink          (fn [& _]
+                                                                           (swap! client-calls inc)
+                                                                           {:ok true :permalink "should-not-be-returned"})]
         (is (nil? (slackbot/conversation-permalink "C123" "1.0")))
         (is (zero? @client-calls)
             "no slack client call when not configured")))))
@@ -1056,39 +1056,39 @@
 (deftest conversation-permalink-returns-nil-when-channel-or-ts-missing-test
   (testing "conversation-permalink short-circuits to nil when channel or ts is missing — no client call"
     (let [client-calls (atom 0)]
-      (with-redefs [channel.settings/slack-configured?     (constantly true)
-                    channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
-                    slackbot.client/get-permalink          (fn [& _]
-                                                             (swap! client-calls inc)
-                                                             {:ok true})]
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
+                                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                  slackbot.client/get-permalink          (fn [& _]
+                                                                           (swap! client-calls inc)
+                                                                           {:ok true})]
         (is (nil? (slackbot/conversation-permalink nil "1.0")))
         (is (nil? (slackbot/conversation-permalink "C123" nil)))
         (is (zero? @client-calls))))))
 
 (deftest conversation-permalink-happy-path-test
   (testing "conversation-permalink returns the Slack permalink string when ok is true"
-    (with-redefs [channel.settings/slack-configured?     (constantly true)
-                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
-                  slackbot.client/get-permalink (fn [_client {:keys [channel ts]}]
-                                                  {:ok        true
-                                                   :permalink (format "https://slack.example/%s/%s" channel ts)})]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
+                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                slackbot.client/get-permalink (fn [_client {:keys [channel ts]}]
+                                                                {:ok        true
+                                                                 :permalink (format "https://slack.example/%s/%s" channel ts)})]
       (is (= "https://slack.example/C123/1.0"
              (slackbot/conversation-permalink "C123" "1.0"))))))
 
 (deftest conversation-permalink-returns-nil-when-slack-says-not-ok-test
   (testing "conversation-permalink returns nil when Slack responds with {:ok false}"
-    (with-redefs [channel.settings/slack-configured?     (constantly true)
-                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
-                  slackbot.client/get-permalink          (fn [& _]
-                                                           {:ok false :error "channel_not_found"})]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
+                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                slackbot.client/get-permalink          (fn [& _]
+                                                                         {:ok false :error "channel_not_found"})]
       (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
 
 (deftest conversation-permalink-swallows-client-exception-test
   (testing "exceptions from the Slack client are caught — function returns nil rather than propagating"
-    (with-redefs [channel.settings/slack-configured?     (constantly true)
-                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
-                  slackbot.client/get-permalink          (fn [& _]
-                                                           (throw (ex-info "slack down" {})))]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
+                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                slackbot.client/get-permalink          (fn [& _]
+                                                                         (throw (ex-info "slack down" {})))]
       (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
@@ -1306,7 +1306,7 @@
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [_]
-            (with-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
+            (mt/with-dynamic-fn-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
               (let [response (mt/client :post 200 "metabot/slack/events"
                                         (tu/slack-request-options tu/base-dm-event) tu/base-dm-event)]
                 (is (= "ok" response))
@@ -1326,8 +1326,8 @@
         (let [channel-id "C123"
               message-ts "1234567890.000001"
               user-id    (mt/user->id :rasta)]
-          (with-redefs [slackbot.client/update-message (constantly {:ok true})
-                        slackbot.persistence/soft-delete-response! (constantly true)]
+          (mt/with-dynamic-fn-redefs [slackbot.client/update-message (constantly {:ok true})
+                                      slackbot.persistence/soft-delete-response! (constantly true)]
             (#'slackbot/replace-response-with-removed-notice!
              {:token "xoxb-test"} channel-id message-ts user-id)
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-deleted)))))))))

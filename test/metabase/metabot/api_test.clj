@@ -1005,8 +1005,8 @@
           ip-for       (fn [conversation-id]
                          (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
           info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
-      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                    api/native-agent-streaming-request    (constantly nil)]
+      (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                  api/native-agent-streaming-request    (constantly nil)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-test-user :rasta
             (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
@@ -1046,8 +1046,8 @@
                           :ip-address nil})
           convo-for    (fn [conversation-id]
                          (t2/select-one :model/MetabotConversation :id conversation-id))]
-      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                    api/native-agent-streaming-request    (constantly nil)]
+      (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                  api/native-agent-streaming-request    (constantly nil)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-test-user :rasta
             (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
@@ -1087,12 +1087,12 @@
     (mt/with-premium-features #{:audit-app}
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-          (with-redefs [openrouter/openrouter (fn [_]
-                                                (mut/mock-llm-response
-                                                 [{:type :start :id "msg-1"}
-                                                  {:type :text :text "hi"}
-                                                  {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
-                                                   :model "test-model" :id    "msg-1"}]))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (mut/mock-llm-response
+                                                               [{:type :start :id "msg-1"}
+                                                                {:type :text :text "hi"}
+                                                                {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
+                                                                 :model "test-model" :id    "msg-1"}]))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (testing "flag on: hostname AND path are recorded"

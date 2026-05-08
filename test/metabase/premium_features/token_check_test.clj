@@ -250,8 +250,8 @@
                                                      :hard-ttl            (t/hours 36)
                                                      :db-hash-local-cache local-cache}))]
         (try
-          (with-redefs [token-check/http-fetch
-                        (fn [& _] {:status 200 :body (json/encode @response)})]
+          (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                      (fn [& _] {:status 200 :body (json/encode @response)})]
             (testing "successful response with :meters writes through"
               (reset! response {:valid true :status "ok"
                                 :meters {:transform-basic-runs    {:is-locked true}
@@ -292,8 +292,8 @@
                                                      :hard-ttl            (t/hours 36)
                                                      :db-hash-local-cache local-cache}))]
         (try
-          (with-redefs [token-check/http-fetch
-                        (fn [& _] (throw (ex-info "network failure!" {})))]
+          (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                      (fn [& _] (throw (ex-info "network failure!" {})))]
             (token-check/check-token checker token)
             (is (= {:transform-basic-runs true}
                    (premium-features/locked-meters))
