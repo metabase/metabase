@@ -108,12 +108,6 @@ export function SchemaViewer({
     null,
   );
 
-  // Track the node id most recently focused via the Focus node button so the
-  // button can disable itself until the user selects a different node.
-  const [lastFocusedNodeId, setLastFocusedNodeId] = useState<string | null>(
-    null,
-  );
-
   // Stable Set: returns the same reference until the *membership* changes.
   // Without this, dragging a node (which produces a new `nodes` array on
   // every animation frame) would build a new Set each tick, rebuild the
@@ -218,16 +212,6 @@ export function SchemaViewer({
     ],
   );
 
-  // Focus button: apply focal layout + remember last-focused so the button
-  // can disable itself until the user picks a different node.
-  const handleFocusNode = useCallback(
-    (nodeId: string) => {
-      focusOnNode(nodeId);
-      setLastFocusedNodeId(nodeId);
-    },
-    [focusOnNode],
-  );
-
   const handleClearSelection = useCallback(() => {
     setSelectedNodeId(null);
   }, []);
@@ -320,8 +304,7 @@ export function SchemaViewer({
                 <Button
                   bg="background-primary"
                   variant="default"
-                  disabled={selectedNodeId === lastFocusedNodeId}
-                  onClick={() => handleFocusNode(selectedNodeId)}
+                  onClick={() => focusOnNode(selectedNodeId)}
                 >
                   {t`Focus node`}
                 </Button>
