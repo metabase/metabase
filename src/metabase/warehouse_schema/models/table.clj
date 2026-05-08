@@ -615,6 +615,36 @@
   (conj (serdes/storage-path-prefixes (serdes/path table))
         {:label (:name table) :key (:name table)}))
 
+(defmethod serdes/metadata-query :model/Table
+  [model opts]
+  (t2/reducible-query
+   {:select [[:t.id :id]
+             [:t.db_id :db_id]
+             [:t.name :name]
+             [:t.schema :schema]
+             [:t.description :description]]
+    :from   [[(t2/table-name model) :t]]
+    :join   [[(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
+    :where  [:and
+             (serdes/metadata-query-filter :model/Database :db opts)
+             (serdes/metadata-query-filter model :t opts)]}))
+
+(defmethod serdes/metadata-query-filter :model/Table
+  [_model alias {:keys [user-info table-ids schema-ids]}]
+  (let [perm-mapping {:perms/view-data      :unrestricted
+                      :perms/create-queries :query-builder}]
+    (cond-> [:and
+             [:= (u/qualified-key alias :active) true]
+             [:= (u/qualified-key alias :visibility_type) nil]
+             [:in (u/qualified-key alias :id)
+              (perms/visible-table-filter-select :id user-info perm-mapping)]]
+      (seq schema-ids) (conj (into [:or]
+                                   (for [[db-id schemas] schema-ids]
+                                     [:and
+                                      [:= (u/qualified-key alias :db_id) db-id]
+                                      [:in (u/qualified-key alias :schema) schemas]])))
+      (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "table"

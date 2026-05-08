@@ -185,30 +185,29 @@
 ;;; ----------------------------------------- Metadata export --------------------------------------------------
 
 (defn- workspace-metadata-filters
-  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace."
-  [workspace]
-  {:database-ids (mapv :database_id (:databases workspace))
-   :schema-ids   (vec (for [{:keys [database_id input_schemas]} (:databases workspace)
-                            schema                              input_schemas]
-                        [database_id schema]))})
+  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
+  `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
+  [{:keys [databases]}]
+  {:database-ids (mapv :database_id databases)
+   :schema-ids   (into {} (map (juxt :database_id :input_schemas)) databases)})
 
 (api.macros/defendpoint :get "/:id/metadata/export"
-  :- (sr/streaming-response-schema ::serialization.schema/metadata-export-response)
+  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
   "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
   scoped to each database's `:input_schemas`. Same flag semantics as
   `/api/ee/serialization/metadata/export` — sections must be opted into via the
   `with-databases` / `with-tables` / `with-fields` query parameters."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-databases with-tables with-fields] :as query-params}
+   query-params
    :- [:map
        [:with-databases {:default false} [:maybe :boolean]]
        [:with-tables    {:default false} [:maybe :boolean]]
        [:with-fields    {:default false} [:maybe :boolean]]]]
   (api/read-check :model/Workspace id)
   (let [workspace (api/check-404 (ws/get-workspace id))
-        ; TODO fix the use of these filters
-        filters   (workspace-metadata-filters workspace)
-        opts (assoc query-params :user-info {:user-id       api/*current-user-id*
-                                             :is-superuser? api/*is-superuser?*})]
+        opts      (merge query-params
+                         (workspace-metadata-filters workspace)
+                         {:user-info {:user-id       api/*current-user-id*
+                                      :is-superuser? api/*is-superuser?*}})]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/export! os opts))))
+      (serialization/export-metadata! os opts))))

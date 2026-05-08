@@ -75,10 +75,10 @@
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
                    :model/Table {t1-id :id} {:db_id db-id :schema "schema-1" :name "table-1" :active true}
                    :model/Table {t2-id :id} {:db_id db-id :schema "schema-2" :name "table-2" :active true}
-                   :model/Field _ {:table_id t1-id :name "field-1" :active true
-                                   :base_type :type/Integer :database_type "BIGINT"}
-                   :model/Field _ {:table_id t2-id :name "field-2" :active true
-                                   :base_type :type/Text :database_type "TEXT"}
+                   :model/Field {f1-id :id} {:table_id t1-id :name "field-1" :active true
+                                             :base_type :type/Integer :database_type "BIGINT"}
+                   :model/Field _           {:table_id t2-id :name "field-2" :active true
+                                             :base_type :type/Text :database_type "TEXT"}
                    :model/Workspace         {ws-id :id} {:name       "Export"
                                                          :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _          {:workspace_id     ws-id
@@ -91,12 +91,9 @@
       ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
       ;; Length mismatch in any section would fail `=?` — that's how we assert the
       ;; schema filter is doing its job.
-      (is (=? {:databases [{:id db-name :name db-name :engine "postgres"}]
-               :tables    [{:id [db-name "schema-1" "table-1"] :db_id db-name
-                            :name "table-1" :schema "schema-1"}]
-               :fields    [{:id [db-name "schema-1" "table-1" "field-1"]
-                            :table_id [db-name "schema-1" "table-1"]
-                            :name "field-1" :base_type "type/Integer"}]}
+      (is (=? {:databases [{:id db-id :name db-name :engine "postgres"}]
+               :tables    [{:id t1-id :db_id db-id :name "table-1" :schema "schema-1"}]
+               :fields    [{:id f1-id :table_id t1-id :name "field-1" :base_type "type/Integer"}]}
               (mt/user-http-request :crowberto :get 202
                                     (str "ee/workspace-manager/" ws-id "/metadata/export")
                                     :with-databases true
