@@ -64,6 +64,7 @@
                                                       :dataset_query
                                                       :display
                                                       :document_id
+                                                      :entity_id
                                                       :last_used_at
                                                       :name
                                                       :query_type
@@ -107,10 +108,10 @@
                                 :fields #{:name :router_database_id}
                                 :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id :updated_at}
+                                :fields       #{:description :archived :entity_id :table_id :name :id :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
-                                :fields       #{:authority_level :archived :description :name :type :id
+                                :fields       #{:authority_level :archived :description :entity_id :name :type :id
 
                                                 :archived_directly :location :namespace :created_at}
                                 :where        [:= :updated.id :this.id]}

@@ -43,6 +43,7 @@
   {:archived                   false
    :dashboard                  nil
    :effective_location         nil
+   :entity_id                  true
    :location                   nil
    :bookmark                   false
    :collection                 default-collection
@@ -921,6 +922,7 @@
      :table_name          table-name
      :table_id            true
      :archived            nil
+     :entity_id           nil
      :model               "table"
      :database_id         true
      :database_name       "test-data (h2)"

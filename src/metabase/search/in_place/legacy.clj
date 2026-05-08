@@ -378,7 +378,7 @@
 
 (defmethod columns-for-model "action"
   [_]
-  (conj default-columns :model_id
+  (conj default-columns :entity_id :model_id
         :creator_id
         [:model.collection_id        :collection_id]
         [:model.id                   :model_id]
@@ -388,7 +388,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+  (conj default-columns :entity_id :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -401,11 +401,11 @@
 
 (defmethod columns-for-model "document"
   [_]
-  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
+  [:id :name :entity_id :archived :created_at :updated_at :collection_id :creator_id])
 
 (defmethod columns-for-model "transform"
   [_]
-  [:id :name :created_at :updated_at])
+  [:id :name :entity_id :created_at :updated_at])
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
@@ -421,7 +421,7 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
+  (conj default-columns :entity_id :archived_directly :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
@@ -433,6 +433,7 @@
 (defmethod columns-for-model "collection"
   [_]
   (conj (remove #{:updated_at} default-columns)
+        :entity_id
         [:collection.id :collection_id]
         [:name :collection_name]
         [:type :collection_type]
@@ -443,11 +444,11 @@
 
 (defmethod columns-for-model "segment"
   [_]
-  (concat default-columns table-columns [:creator_id]))
+  (concat default-columns table-columns [:entity_id :creator_id]))
 
 (defmethod columns-for-model "measure"
   [_]
-  [:id :name :description :archived :created_at :updated_at
+  [:id :name :description :archived :entity_id :created_at :updated_at
    :table_id
    :creator_id
    [:table.db_id       :database_id]
@@ -458,7 +459,7 @@
 
 (defmethod columns-for-model "metric"
   [_]
-  (concat default-columns table-columns [:creator_id]))
+  (concat default-columns table-columns [:entity_id :creator_id]))
 
 (defmethod columns-for-model "table"
   [_]

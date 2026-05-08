@@ -486,7 +486,8 @@
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
-   :render-terms {:model-id   :model.id
+   :render-terms {:entity-id  true
+                  :model-id   :model.id
                   :model-name :model.name}
    :where        [:= :collection.namespace nil]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]

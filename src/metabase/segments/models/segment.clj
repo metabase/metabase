@@ -246,7 +246,8 @@
            :created-at false
            :updated-at true}
    :search-terms [:name :description]
-   :render-terms {:table-id :table_id
+   :render-terms {:entity-id true
+                  :table-id :table_id
                   :table_description :table.description
                   :table_name :table.name
                   :table_display_name :table.display_name

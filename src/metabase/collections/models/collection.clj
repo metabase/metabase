@@ -2379,6 +2379,7 @@
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
+                  :entity-id                  true
                   :collection_authority_level :authority_level
                   :collection_name            :name
                   :collection_type            :type

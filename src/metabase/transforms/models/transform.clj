@@ -435,5 +435,6 @@
                   :database-id   :source_database_id
                   :source-type   true}
    :search-terms [:name :description]
-   :render-terms {:transform-name :name
+   :render-terms {:entity-id      true
+                  :transform-name :name
                   :transform-id   :id}})
