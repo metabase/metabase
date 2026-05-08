@@ -36,6 +36,10 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   transition: all 200ms;
   color: ${getColor};
 
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+
   &:focus {
     border-color: var(--mb-color-brand);
     outline: 2px solid var(--mb-color-focus);

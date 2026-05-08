@@ -33,6 +33,11 @@
 
   &[data-variant="default"] {
     border-color: var(--mb-color-border);
+    transition: border-color 0.3s;
+
+    &:hover {
+      border-color: var(--mb-color-brand);
+    }
 
     &:focus {
       border-color: var(--mb-color-brand);

@@ -5,11 +5,8 @@
   color: transparent;
 
   &:hover {
+    border-color: var(--mb-color-border) !important;
     background-color: var(--mb-color-background-hover);
-
-    &::placeholder {
-      color: var(--mb-color-brand);
-    }
   }
 }
 
@@ -25,6 +22,10 @@
     left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
+  }
+
+  &:hover::after {
+    color: var(--mb-color-text-hover);
   }
 }
 

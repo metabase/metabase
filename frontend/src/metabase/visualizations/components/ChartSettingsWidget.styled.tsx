@@ -24,13 +24,4 @@ export const Root = styled.div<{
       justify-content: space-between;
       align-items: center;
     `}
-
-  input {
-    transition: border 0.3s;
-
-    &:hover {
-      transition: border 0.3s;
-      border-color: var(--mb-color-brand);
-    }
-  }
 `;
