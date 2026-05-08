@@ -32,6 +32,16 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("Results")).toBeInTheDocument();
   });
 
+  it("should surface static actions before the remote search debounce fires", async () => {
+    setup({ query: "new" });
+
+    // Static actions render off the live (non-debounced) search term, so
+    // they must appear well before the 500ms remote-search debounce fires.
+    expect(
+      await screen.findByText("New question", undefined, { timeout: 200 }),
+    ).toBeInTheDocument();
+  });
+
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
   it("should allow you to create a new question", async () => {
     setup({ query: "ques" });
