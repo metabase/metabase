@@ -120,6 +120,39 @@
     (tracing/shutdown-groups!)
     (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
 
+(deftest add-span-attrs!-detects-inconsistent-overwrite-test
+  (testing "writing the same key with the same value is allowed"
+    (with-span-exporter _exporter
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (tracing/with-span :tasks "test.span" {:foo/k 1}
+          (tracing/add-span-attrs! :tasks {:foo/k 1}))
+        (finally
+          (tracing/shutdown-groups!)))))
+
+  (testing "writing the same key with a different value throws"
+    (with-span-exporter _exporter
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute conflict"
+                              (tracing/with-span :tasks "test.span" {:foo/k 1}
+                                (tracing/add-span-attrs! :tasks {:foo/k 2}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+
+  (testing "two add-span-attrs! calls writing the same key with different values throws"
+    (with-span-exporter _exporter
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute conflict"
+                              (tracing/with-span :tasks "test.span" {}
+                                (tracing/add-span-attrs! :tasks {:foo/k "first"})
+                                (tracing/add-span-attrs! :tasks {:foo/k "second"}))))
+        (finally
+          (tracing/shutdown-groups!))))))
+
 (deftest add-span-attrs!-merges-onto-finished-span-test
   (testing "attrs from with-span and add-span-attrs! both land on the same finished span; empty/nil attrs do not contribute"
     (with-span-exporter exporter

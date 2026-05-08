@@ -243,12 +243,31 @@
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
+(def ^:private ^:dynamic *span-attrs*
+  "Atom holding the merged attribute map for the active `with-span`. Used by
+   [[add-span-attrs!]] to detect inconsistent overwrites — writing the same key
+   twice with different values. nil when not inside a `with-span`."
+  nil)
+
+(defn- assert-no-inconsistent-overwrite! [attrs]
+  (when *span-attrs*
+    (let [snapshot @*span-attrs*]
+      (doseq [[k v] attrs
+              :when (and (contains? snapshot k)
+                         (not= (get snapshot k) v))]
+        (throw (ex-info (format "Span attribute conflict: %s was %s, now reassigned to %s"
+                                (pr-str k) (pr-str (get snapshot k)) (pr-str v))
+                        {:key k :existing (get snapshot k) :new v}))))
+    (swap! *span-attrs* merge attrs)))
+
 (defn add-span-attrs!
   "Add attributes to the currently active OTel span. No-op when tracing is disabled
    for `group` or when no span is active. Use this from inside a `with-span` body
-   to enrich the surrounding span with values that are only known mid-execution."
+   to enrich the surrounding span with values that are only known mid-execution.
+   Throws if `attrs` reassigns a key already on the span to a different value."
   [group attrs]
   (when (and (group-enabled? group) (seq attrs))
+    (assert-no-inconsistent-overwrite! attrs)
     (span/add-span-data! {:attributes attrs})))
 
 (defmacro with-span
@@ -271,27 +290,29 @@
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
-     (let [prev-trace-id# (ThreadContext/get "trace_id")
+     (let [attrs#         ~attrs
+           prev-trace-id# (ThreadContext/get "trace_id")
            prev-span-id#  (ThreadContext/get "span_id")
            root-span?#    (nil? prev-span-id#)]
-       (span/with-span! {:name ~span-name :attributes ~attrs}
-         (inject-trace-id-into-mdc!)
-         ;; For root spans (no parent in MDC), set Pyroscope profiling context.
-         ;; Nested child spans skip this — the root's context covers all samples.
-         (when root-span?#
-           (let [^Span span#                   (Span/current)
-                 ^SpanContext ctx#              (.getSpanContext span#)
-                 span-id#                       (.getSpanId ctx#)]
-             (set-pyroscope-context! span# span-id# ~span-name)))
-         (try
-           ~@body
-           (finally
-             (when root-span?#
-               (clear-pyroscope-context!))
-             (if prev-trace-id#
-               (do (ThreadContext/put "trace_id" prev-trace-id#)
-                   (ThreadContext/put "span_id" prev-span-id#))
-               (clear-trace-id-from-mdc!))))))
+       (binding [*span-attrs* (atom (or attrs# {}))]
+         (span/with-span! {:name ~span-name :attributes attrs#}
+           (inject-trace-id-into-mdc!)
+           ;; For root spans (no parent in MDC), set Pyroscope profiling context.
+           ;; Nested child spans skip this — the root's context covers all samples.
+           (when root-span?#
+             (let [^Span span#                   (Span/current)
+                   ^SpanContext ctx#              (.getSpanContext span#)
+                   span-id#                       (.getSpanId ctx#)]
+               (set-pyroscope-context! span# span-id# ~span-name)))
+           (try
+             ~@body
+             (finally
+               (when root-span?#
+                 (clear-pyroscope-context!))
+               (if prev-trace-id#
+                 (do (ThreadContext/put "trace_id" prev-trace-id#)
+                     (ThreadContext/put "span_id" prev-span-id#))
+                 (clear-trace-id-from-mdc!)))))))
      (do ~@body)))
 
 ;;; -------------------------------------------- SDK Lifecycle -------------------------------------------------
