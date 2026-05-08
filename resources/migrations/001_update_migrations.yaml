@@ -11776,37 +11776,6 @@ databaseChangeLog:
               - column:
                   name: match_status
 
-  - changeSet:
-      id: v55.2026-05-07T00:00:00
-      author: ericnormand
-      comment: >
-        GHY-3388 -- heal Field rows where coercion_strategy is NULL but effective_type drifted
-        away from base_type. The state is internally inconsistent (no coercion to justify the
-        divergence) and was observed on at least one cloud customer (pagaleve). Companion update
-        to metabase_field_user_settings prevents the user-settings overlay from re-introducing the
-        drift on the next field update via sync-user-settings. Restrict the field heal to active
-        rows so dead state isn't resurrected.
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_field
-              SET effective_type = base_type
-              WHERE active = TRUE
-                AND coercion_strategy IS NULL
-                AND effective_type IS NOT NULL
-                AND effective_type <> base_type;
-        - sql:
-            sql: >-
-              UPDATE metabase_field_user_settings
-              SET effective_type = (
-                SELECT base_type FROM metabase_field WHERE metabase_field.id = metabase_field_user_settings.field_id
-              )
-              WHERE coercion_strategy IS NULL
-                AND effective_type IS NOT NULL
-                AND effective_type <> (
-                  SELECT base_type FROM metabase_field WHERE metabase_field.id = metabase_field_user_settings.field_id
-                );
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

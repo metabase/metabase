@@ -2266,7 +2266,7 @@
            drifted away from base_type. The customer's pagaleve instance has many such rows
            (base_type=type/Number, effective_type=type/Text, coercion_strategy=NULL); the migration
            must repair them in metabase_field and metabase_field_user_settings."
-    (impl/test-migrations "v55.2026-05-07T00:00:00" [migrate!]
+    (impl/test-migrations ["v61.ghy3388-field-heal" "v61.ghy3388-user-settings-heal"] [migrate!]
       (let [db-id    (first (t2/insert-returning-pks!
                              (t2/table-name :model/Database)
                              {:name       "test-db"
