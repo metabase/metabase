@@ -31,7 +31,7 @@ Some things to put into place to get a workflow going:
 
 Once you have these set up, you can step through one of the example workflows.
 
-### 1. Set up a development Metabase
+### Set up a development Metabase
 
 1. Set up a Metabase instance to check your work before pushing changes to production. This Metabase should connect to the same data warehouse(s) your production Metabase connects to. A [config file](../configuring-metabase/config-file.md) will come in handy here.
 
