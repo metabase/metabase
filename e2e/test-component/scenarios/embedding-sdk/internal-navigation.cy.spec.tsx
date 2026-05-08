@@ -632,9 +632,17 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       );
     });
 
-    it("should switch to the target tab when click behavior points to a different tab on the same dashboard", () => {
+    it("should switch tab and pass parameters when click behavior points to a different tab on the same dashboard", () => {
       const TAB_1 = { id: -1, name: "Tab 1" };
       const TAB_2 = { id: -2, name: "Tab 2" };
+
+      const ID_FILTER: Parameter = createMockActionParameter({
+        id: "tabbed-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
 
       H.createQuestion({
         name: "Orders on Tab 1",
@@ -646,6 +654,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         }).then(({ body: tabTwoCard }) => {
           H.createDashboardWithTabs({
             name: "Tabbed Dashboard",
+            parameters: [ID_FILTER],
             tabs: [TAB_1, TAB_2],
             dashcards: [
               {
@@ -665,11 +674,18 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 col: 0,
                 size_x: 12,
                 size_y: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: ID_FILTER.id,
+                    card_id: tabTwoCard.id,
+                    target: ["dimension", ["field", ORDERS.ID, null]],
+                  },
+                ],
               },
             ],
           }).then((dashboard) => {
             // After creation, tabs and dashcards have real ids; wire the
-            // click behaviour with those resolved ids.
+            // click behavior (with parameter mapping + tabId) using those.
             const tabs = dashboard.tabs ?? [];
             const resolvedTab1 = tabs[0];
             const resolvedTab2 = tabs[1];
@@ -687,8 +703,21 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                           type: "link",
                           linkType: "dashboard",
                           targetId: dashboard.id,
-                          parameterMapping: {},
                           tabId: resolvedTab2.id,
+                          parameterMapping: {
+                            [ID_FILTER.id]: {
+                              source: {
+                                type: "column",
+                                id: "ID",
+                                name: "ID",
+                              },
+                              target: {
+                                type: "parameter",
+                                id: ID_FILTER.id,
+                              },
+                              id: ID_FILTER.id,
+                            },
+                          },
                         },
                       },
                     },
@@ -730,7 +759,9 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           "true",
         );
 
-        // Click the first ID cell on Tab 1 — it has click_behavior to Tab 2.
+        // Click the first ID cell on Tab 1 — it has click_behavior to Tab 2
+        // with a parameter mapping that should pass the cell's value to the
+        // dashboard's ID filter.
         H.getDashboardCard()
           .findByTestId("visualization-root")
           .findAllByRole("gridcell", { name: "1" })
@@ -745,6 +776,10 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           "aria-selected",
           "true",
         );
+
+        // The dashboard's ID filter widget should reflect the value passed by
+        // the click behavior's parameterMapping.
+        H.filterWidget().should("contain.text", "1");
 
         // No back-button entry should be created for an in-place tab switch.
         cy.findByText(/Back to/).should("not.exist");
