@@ -29,7 +29,7 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("New SQL query")).toBeInTheDocument();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
 
-    expect(screen.getByText("Results")).toBeInTheDocument();
+    expect(await screen.findByText("Results")).toBeInTheDocument();
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness

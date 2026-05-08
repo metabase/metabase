@@ -310,7 +310,8 @@ export const useCommandPalette = ({
   return {
     searchRequestId,
     searchResults,
-    searchTerm: debouncedSearchText,
+    liveSearchTerm: trimmedQuery,
+    appliedRemoteSearchTerm: debouncedSearchText,
   };
 };
 
