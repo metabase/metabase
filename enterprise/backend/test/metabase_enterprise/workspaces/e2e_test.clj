@@ -187,6 +187,7 @@
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-dwh-drivers
     (mt/with-premium-features #{:workspaces}
+      ;; todo: apply this just for redshift
       (with-redshift-describe-filter-disabled
         (fn []
           (testing "transform run on a workspaced DB → app db + describe-database stay in the input schema"
