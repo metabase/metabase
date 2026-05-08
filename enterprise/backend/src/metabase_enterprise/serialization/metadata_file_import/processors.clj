@@ -362,6 +362,120 @@
                        :orphan-parent-sample   (when (pos? parent-count) (orphan-sample :source_parent_id))
                        :orphan-fk-target-sample (when (pos? fk-count) (orphan-sample :source_fk_target_id))})))))
 
+;;; ============================== Depth tagging ==============================
+
+(def depth-iteration-cap
+  "Sentinel cap on the depth-tagging fixpoint loop. Real Metabase data has
+  parent chains ≤ 3 deep; in practice convergence is 2-4 rounds. The cap is a
+  safety belt — if a workload ever exceeds it, the algorithm itself is the
+  bug, not the data. Hitting the cap throws `:cycle_in_field_graph` with the
+  un-tagged sample for diagnostics."
+  50)
+
+(defn- mark-roots-at-depth-zero!
+  "Tag every staging row with no parent and no fk_target ref as `depth = 0`.
+  Bootstraps the iteration."
+  []
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:depth 0}
+    :where  [:and
+             [:= :source_parent_id nil]
+             [:= :source_fk_target_id nil]]}))
+
+(defn- mark-rows-at-depth!
+  "Tag every still-untagged staging row whose `source_parent_id` and
+  `source_fk_target_id` (when non-NULL) reference rows that already have
+  `depth < d`."
+  [d]
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:depth d}
+    :where  [:and
+             [:= :metabase_field_import.depth nil]
+             [:or
+              [:= :metabase_field_import.source_parent_id nil]
+              [:exists {:select [[[:inline 1]]]
+                        :from   [[:metabase_field_import :p]]
+                        :where  [:and
+                                 [:= :p.source_id :metabase_field_import.source_parent_id]
+                                 [:not= :p.depth nil]
+                                 [:< :p.depth d]]}]]
+             [:or
+              [:= :metabase_field_import.source_fk_target_id nil]
+              [:exists {:select [[[:inline 1]]]
+                        :from   [[:metabase_field_import :f]]
+                        :where  [:and
+                                 [:= :f.source_id :metabase_field_import.source_fk_target_id]
+                                 [:not= :f.depth nil]
+                                 [:< :f.depth d]]}]]]}))
+
+(defn- untagged-staging-row-count
+  "Number of `metabase_field_import` rows still at `depth IS NULL`. Used as
+  the convergence signal in `compute-staging-depth!`."
+  []
+  (t2/count :metabase_field_import :depth nil))
+
+(defn- untagged-staging-row-sample
+  "Up to `orphan-sample-cap` un-tagged rows for cycle-error diagnostics."
+  []
+  (t2/query
+   {:select [:source_id :source_parent_id :source_fk_target_id]
+    :from   [:metabase_field_import]
+    :where  [:= :depth nil]
+    :limit  orphan-sample-cap}))
+
+(defn compute-staging-depth!
+  "Tag every `metabase_field_import` row with a non-NULL `depth` value. depth=0
+  is roots (no parent, no fk_target ref). depth d is rows whose deps are all
+  already at depth < d. Iterates until convergence (no rows untagged) or a
+  no-progress round (which signals a cycle in the file's reference graph).
+
+  Throws `:cycle_in_field_graph` if any rows remain untagged after the loop
+  exits — the strict-consistency invariant from `assert-no-orphan-refs!`
+  guarantees this can only happen via a cycle (e.g., X.parent_id = Y AND
+  Y.parent_id = X).
+
+  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully. Without
+  the strict-consistency guarantee, the cycle vs. orphan distinction breaks
+  down (a row whose parent doesn't exist in the file would also be untagged,
+  but for a different reason).
+
+  Returns the maximum depth currently in staging (queried after tagging
+  completes). This is idempotent — re-running on already-tagged staging
+  returns the same max depth. Useful for the depth-walk merge to know how
+  many levels to iterate."
+  []
+  (mark-roots-at-depth-zero!)
+  (loop [d 1]
+    (let [before (untagged-staging-row-count)]
+      (cond
+        (zero? before)
+        nil
+
+        (>= d depth-iteration-cap)
+        (throw (ex-info (format "metadata-file-import: depth-tagging exceeded cap of %d iterations" depth-iteration-cap)
+                        {:kind                  :depth_tagging_cap_exceeded
+                         :iterations            d
+                         :remaining-rows-count  before
+                         :remaining-rows-sample (untagged-staging-row-sample)}))
+
+        :else
+        (do
+          (mark-rows-at-depth! d)
+          (let [after (untagged-staging-row-count)]
+            (if (= before after)
+              (throw (ex-info (format "metadata-file-import: %d staging row(s) could not be tagged with depth — cycle in file's parent/fk_target reference graph"
+                                      after)
+                              {:kind                  :cycle_in_field_graph
+                               :remaining-rows-count  after
+                               :iterations            d
+                               :remaining-rows-sample (untagged-staging-row-sample)}))
+              (recur (inc d))))))))
+  (or (:max (first (t2/query {:select [[[:max :depth] :max]]
+                              :from   [:metabase_field_import]})))
+      0))
+
 (defn- collect-missing-parent-portable-ids
   "Return a vector of distinct portable id vectors for staging rows whose
   parent didn't resolve (`parent_db_name` set, `parent_id` still NULL).
