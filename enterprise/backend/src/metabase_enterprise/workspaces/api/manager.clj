@@ -188,18 +188,16 @@
   `/api/ee/serialization/metadata/export` — sections must be opted into via the
   `with-databases` / `with-tables` / `with-fields` query parameters."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [with-databases with-tables with-fields]}
+   {:keys [with-databases with-tables with-fields] :as query-params}
    :- [:map
        [:with-databases {:default false} [:maybe :boolean]]
        [:with-tables    {:default false} [:maybe :boolean]]
        [:with-fields    {:default false} [:maybe :boolean]]]]
   (api/check-superuser)
   (let [workspace (api/check-404 (ws/get-workspace id))
-        filters   (workspace-metadata-filters workspace)]
+        ; TODO fix the use of these filters
+        filters   (workspace-metadata-filters workspace)
+        opts (assoc query-params :user-info {:user-id       api/*current-user-id*
+                                             :is-superuser? api/*is-superuser?*})]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/write-databases-metadata!
-       os
-       (merge filters
-              {:with-databases? with-databases
-               :with-tables?    with-tables
-               :with-fields?    with-fields})))))
+      (serialization/export! os opts))))

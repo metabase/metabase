@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.serialization.export :as export]
    [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
    [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]

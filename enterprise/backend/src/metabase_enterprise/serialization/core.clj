@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.core
   (:require
    [metabase-enterprise.serialization.dump]
+   [metabase-enterprise.serialization.export]
    [metabase-enterprise.serialization.metadata]
    ;; Required (without alias) so loading `serialization.core` populates the malli
    ;; registry — callers can then refer to `::serialization.schema/...` keywords.
@@ -26,8 +27,8 @@
 (p/import-vars
  [metabase-enterprise.serialization.dump
   serialization-deep-sort]
- [metabase-enterprise.serialization.metadata
-  write-databases-metadata!]
+ [metabase-enterprise.serialization.export
+  export!]
  [metabase-enterprise.serialization.v2.extract
   make-targets-of-type
   extract]
