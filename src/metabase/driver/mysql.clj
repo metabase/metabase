@@ -1335,21 +1335,22 @@
         (.executeBatch ^Statement stmt)))))
 
 (defn- grant-workspace-read-access-sqls
-  "Build SQL statements that grant `username` SELECT on all tables in each source database
-  referenced by `tables`. Per-table `:name` granularity is intentionally discarded —
-  workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
-  [username tables]
-  (let [qu              (sql.u/quote-name :mysql :field username)
-        source-databases (into #{} (keep :schema) tables)]
+  "Build SQL statements that grant `username` SELECT on all tables in each source
+  database referenced by `input`. MySQL has no schema layer — `qualified-name-components`
+  is `[]` — and the workspace input namespace puts the database name in the `:db`
+  slot. Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
+  [username input]
+  (let [qu               (sql.u/quote-name :mysql :field username)
+        source-databases (into #{} (keep :db) input)]
     (perf/mapv (fn [db]
                  (format "GRANT SELECT ON %s.* TO %s@'%%'"
                          (sql.u/quote-name :mysql :schema db) qu))
                source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
-  [_driver database workspace tables]
+  [_driver database workspace input]
   (let [username (-> workspace :database_details :user)
-        sqls     (grant-workspace-read-access-sqls username tables)]
+        sqls     (grant-workspace-read-access-sqls username input)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
@@ -1380,10 +1381,15 @@
                               workspace-with-details (merge test-workspace init-result)]
                           (when test-table
                             (try
-                              (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                              ;; `grant-workspace-read-access!` takes a vector of
+                              ;; `::table-namespace` maps `[{:db ?, :schema ?}]`.
+                              ;; MySQL has no schema layer; the database name
+                              ;; (`test-table`'s `:schema` from caller) lands in `:db`.
+                              (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                                   [{:db (:schema test-table)}])
                               (catch Exception e
-                                (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                                     (:schema test-table) (:name test-table) (ex-message e))
+                                (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
+                                                     (:schema test-table) (ex-message e))
                                                 {:step :grant :table test-table} e)))))
                           (try
                             (driver/destroy-workspace-isolation! driver database workspace-with-details)

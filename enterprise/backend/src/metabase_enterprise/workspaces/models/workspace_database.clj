@@ -15,7 +15,7 @@
 
 (t2/deftransforms :model/WorkspaceDatabase
   {:database_details mi/transform-encrypted-json
-   :input_schemas    mi/transform-json
+   :input            mi/transform-json
    :status           mi/transform-keyword})
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------

@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
+   [dev.debug]
    [environ.core :as env]
    [hashp.preload]
    [metabase.classloader.core :as classloader]

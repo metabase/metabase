@@ -1,0 +1,43 @@
+## Rename workspace_database.input_schemas -> input.
+##
+## Storage shape changes from `[String]` (vector of schema names) to
+## `[{:db ?, :schema ?}]` (vector of `::table-namespace` maps). Wire
+## format already uses the map shape; this migration aligns storage
+## with the wire so 3-slot drivers (Snowflake, SQL Server, BigQuery)
+## can carry per-row `:db` info needed for `GRANT ... ON SCHEMA
+## <db>.<schema>`.
+##
+## Branch hasn't shipped, so existing rows are pre-release fixture
+## data only. Hard cutover: column data is rewritten to the new shape
+## by best-effort transform, but rows whose driver requires `:db`
+## info that the old shape didn't carry will need to be reprovisioned.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-08T12:00:00
+      author: bryan
+      comment: Rename workspace_database.input_schemas to input
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - columnExists:
+                tableName: workspace_database
+                columnName: input_schemas
+            - not:
+                - columnExists:
+                    tableName: workspace_database
+                    columnName: input
+      changes:
+        - renameColumn:
+            tableName: workspace_database
+            oldColumnName: input_schemas
+            newColumnName: input
+            columnDataType: ${text.type}
+      rollback:
+        - renameColumn:
+            tableName: workspace_database
+            oldColumnName: input
+            newColumnName: input_schemas
+            columnDataType: ${text.type}

@@ -23,7 +23,7 @@
                     :database_id      db-id
                     :database_details {:user "mb_isolation_github" :password "secret"}
                     :output_schema    "mb_isolation_github"
-                    :input_schemas    ["raw_github"]
+                    :input            [{:schema "raw_github"}]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (testing "outer shape matches config.yml (version + config block)"
@@ -63,7 +63,7 @@
                     :database_id      db-id
                     :database_details {}
                     :output_schema    "WS_ALICE"
-                    :input_schemas    ["PUBLIC"]
+                    :input            [{:db "ANALYTICS" :schema "PUBLIC"}]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= {"Snowflake DW"
@@ -82,7 +82,7 @@
                     :database_id      db-id
                     :database_details {:user "u" :password "p"}
                     :output_schema    "out"
-                    :input_schemas    ["schema_a" "schema_b" "schema_c"]
+                    :input            [{:schema "schema_a"} {:schema "schema_b"} {:schema "schema_c"}]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
@@ -94,7 +94,7 @@
                                                  :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _
                    {:workspace_id ws-id :database_id (mt/id)
-                    :database_details {} :output_schema "" :input_schemas ["public"]
+                    :database_details {} :output_schema "" :input [{:schema "public"}]
                     :status :unprovisioned}]
       (is (thrown-with-msg?
            Exception

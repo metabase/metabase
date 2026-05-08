@@ -431,10 +431,13 @@
                  workspace-with-details (merge test-workspace init-result)]
              (when test-table
                (try
-                 (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                 ;; `grant-workspace-read-access!` takes `[{:db ?, :schema ?}]`
+                 ;; namespace maps; per-table grants no longer exist.
+                 (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                      [{:schema (:schema test-table)}])
                  (catch Exception e
-                   (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                        (:schema test-table) (:name test-table) (ex-message e))
+                   (throw (ex-info (tru "Failed to grant read access to schema {0}: {1}"
+                                        (:schema test-table) (ex-message e))
                                    {:step :grant :table test-table} e)))))
              (try
                (driver/destroy-workspace-isolation! driver database workspace-with-details)

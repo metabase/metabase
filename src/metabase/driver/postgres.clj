@@ -1470,14 +1470,16 @@
         (.executeBatch ^Statement stmt)))))
 
 (defn- grant-workspace-read-access-sqls
-  "Build the sequence of SQL statements that grant `username` read access to every table in each
-  source schema referenced by `tables`. Per source schema we emit three statements:
-  USAGE on the schema, SELECT on all existing tables in the schema, and an ALTER DEFAULT PRIVILEGES
-  covering future tables created by the granting role. Per-table `:name` granularity is intentionally
-  discarded — workspace-scoped users receive schema-wide SELECT."
-  [username tables]
+  "Build the sequence of SQL statements that grant `username` read access to every
+  table in each source schema referenced by `input`. Per source schema we emit
+  three statements: USAGE on the schema, SELECT on all existing tables in the
+  schema, and an ALTER DEFAULT PRIVILEGES covering future tables created by the
+  granting role. The `:db` slot of each input namespace is unused — Postgres has
+  `qualified-name-components` `[:schema]` and the connection is bound to one
+  database, so cross-DB workspace input is not expressible here."
+  [username input]
   (let [qu             (sql.u/quote-name :postgres :field username)
-        source-schemas (into #{} (keep :schema) tables)]
+        source-schemas (into #{} (keep :schema) input)]
     (mapcat (fn [s]
               (let [qs (sql.u/quote-name :postgres :schema s)]
                 [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
@@ -1486,9 +1488,9 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace tables]
+  [_driver database workspace input]
   (let [username       (-> workspace :database_details :user)
-        source-schemas (into #{} (keep :schema) tables)
+        source-schemas (into #{} (keep :schema) input)
         ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
         ;; the comment block above [[init-workspace-isolation! :postgres]] for the
         ;; isolation hole this catches. We probe per-schema so only the schemas
@@ -1497,7 +1499,7 @@
         _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
                            (assert-no-public-create-grant! check-conn s)))
-        sqls           (grant-workspace-read-access-sqls username tables)]
+        sqls           (grant-workspace-read-access-sqls username input)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

@@ -403,7 +403,7 @@
    (fn [_] (default-timestamped
             {:database_id      (data/id)
              :database_details {}
-             :input_schemas    []
+             :input            []
              :output_schema    ""
              :status           :unprovisioned}))})
 

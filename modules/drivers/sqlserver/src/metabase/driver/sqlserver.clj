@@ -1185,19 +1185,26 @@
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
-  [_driver database workspace tables]
+  [_driver database workspace input]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         username  (-> workspace :database_details :user)]
     (when-not username
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Grant SELECT on each specific table only - no schema-level grants
+    ;; SQL Server connection is bound to one DB, so per-namespace `:db` is
+    ;; informational here — schema lives in the bound DB. Cross-DB workspace
+    ;; on SQL Server would require a different login/user setup; not supported
+    ;; today. Per-schema grant: SELECT on the schema covers existing + future
+    ;; objects within it.
     (let [qu (sql.u/quote-name :sqlserver :field username)]
-      (doseq [table tables]
-        (jdbc/execute! conn-spec [(format "GRANT SELECT ON %s.%s TO %s"
-                                          (sql.u/quote-name :sqlserver :schema (:schema table))
-                                          (sql.u/quote-name :sqlserver :table (:name table))
-                                          qu)])))))
+      (doseq [{:keys [schema] :as ns} input]
+        (when (str/blank? schema)
+          (throw (ex-info (tru "SQL Server workspace input namespace is missing :schema")
+                          {:database-id (:id database) :namespace ns :step :grant})))
+        (jdbc/execute! conn-spec
+                       [(format "GRANT SELECT ON SCHEMA::%s TO %s"
+                                (sql.u/quote-name :sqlserver :schema schema)
+                                qu)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")

@@ -58,6 +58,22 @@
   [driver]
   (boolean (some #{:db} (driver/qualified-name-components driver))))
 
+(defn- workspace-input-namespace
+  "Build a `::table-namespace` map for `add-database!` that matches what each
+   driver's `qualified-name-components` says about how the canonical input
+   namespace is addressed.
+
+   - 3-slot drivers (Snowflake, SQL Server) populate both `:db` and `:schema`.
+   - 2-slot schema-having drivers (Postgres, Redshift, ClickHouse) populate
+     `:schema` only.
+   - MySQL has `qualified-name-components` `[]`; the canonical schema string
+     IS the database name and lands in `:db`."
+  [driver admin-details main-schema]
+  (cond-> {}
+    (three-slot-driver? driver) (assoc :db (:db admin-details))
+    (= :mysql driver)           (assoc :db main-schema)
+    (not= :mysql driver)        (assoc :schema main-schema)))
+
 (defn- qualified-table-sql
   "Return the dialect-correct schema-qualified table reference for a native SQL
    string, e.g. `\"PUBLIC\".\"VENUES\"` on Postgres, `[dbo].[venues]` on SQL Server.
@@ -212,7 +228,8 @@
                   ;; multimethods, but through `provisioning/provision-single!`, which writes
                   ;; the resulting `:database_details` and `:output_schema` back to the
                   ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
-                  (ws/add-database! ws-id (:id ws-db) [main-schema])
+                  (ws/add-database! ws-id (:id ws-db)
+                                    [(workspace-input-namespace admin-driver admin-details main-schema)])
                   ;; Diagnostic: provisioning must have populated :output_schema and flipped
                   ;; status to :provisioned. If empty, the workspace driver impl is broken.
                   (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
@@ -546,7 +563,8 @@
               (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
                                                        :creator_id (mt/user->id :crowberto)})]
                 (try
-                  (ws/add-database! ws-id (:id ws-db) [main-schema])
+                  (ws/add-database! ws-id (:id ws-db)
+                                    [(workspace-input-namespace admin-driver admin-details main-schema)])
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]

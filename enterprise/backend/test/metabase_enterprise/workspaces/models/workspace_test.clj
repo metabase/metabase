@@ -14,7 +14,7 @@
    (merge {:database_id      (mt/id)
            :database_details {:user "alice" :password "s3cr3t"}
            :output_schema    "ws_out"
-           :input_schemas    ["public" "analytics"]}
+           :input             [{:schema "public"} {:schema "analytics"}]}
           overrides)))
 
 (defn- create-ws!
@@ -40,14 +40,15 @@
                         :databases [(ws-db-attrs)
                                     (ws-db-attrs {:database_id   db2-id
                                                   :output_schema "other_out"
-                                                  :input_schemas ["raw"]})]})
+                                                  :input         [{:schema "raw"}]})]})
               dbs     (:databases created)]
           (is (= 2 (count dbs)))
           (is (= #{"ws_out" "other_out"} (into #{} (map :output_schema) dbs)))
           (testing "JSON columns round-trip with keywordized keys"
             (let [first-db (first (filter #(= "ws_out" (:output_schema %)) dbs))]
               (is (= {:user "alice" :password "s3cr3t"} (:database_details first-db)))
-              (is (= ["public" "analytics"] (:input_schemas first-db))))))))))
+              (is (= [{:schema "public"} {:schema "analytics"}]
+                     (:input first-db))))))))))
 
 (deftest get-workspace-test
   (testing "get-workspace returns a hydrated workspace"
@@ -83,18 +84,18 @@
         (let [{id :id} (create-ws!
                         {:name      "Before"
                          :databases [(ws-db-attrs {:output_schema "keep_out"
-                                                   :input_schemas ["keep"]})
+                                                   :input         [{:schema "keep"}]})
                                      (ws-db-attrs {:database_id   db2-id
                                                    :output_schema "drop_out"
-                                                   :input_schemas ["drop"]})]})
+                                                   :input         [{:schema "drop"}]})]})
               updated  (workspace/update-workspace!
                         id
                         {:name      "After"
                          :databases [(ws-db-attrs {:output_schema "keep_out"
-                                                   :input_schemas ["keep"]})
+                                                   :input         [{:schema "keep"}]})
                                      (ws-db-attrs {:database_id   db2-id
                                                    :output_schema "new_out"
-                                                   :input_schemas ["new"]})]})]
+                                                   :input         [{:schema "new"}]})]})]
           (is (= "After" (:name updated)))
           (is (= #{"keep_out" "new_out"}
                  (into #{} (map :output_schema) (:databases updated))))
@@ -157,19 +158,19 @@
         (is (= :provisioned (:status (first (:databases updated)))))))))
 
 (deftest update-preserves-initialized-rows-test
-  (testing "update-workspace! leaves :provisioned rows untouched when the PUT keeps their database_id + input_schemas"
+  (testing "update-workspace! leaves :provisioned rows untouched when the PUT keeps their database_id + input"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {init-id :id}
                    {:workspace_id     ws-id
                     :database_id      (mt/id)
                     :database_details {:user "keep-me" :password "keep-pw"}
                     :output_schema    "keep_schema"
-                    :input_schemas    ["public"]
+                    :input             [{:schema "public"}]
                     :status           :provisioned}]
       (let [updated (workspace/update-workspace!
                      ws-id
                      {:name      "Renamed"
-                      :databases [{:database_id (mt/id) :input_schemas ["public"]}]})
+                      :databases [{:database_id (mt/id) :input [{:schema "public"}]}]})
             row     (t2/select-one :model/WorkspaceDatabase :id init-id)]
         (testing "name update takes effect"
           (is (= "Renamed" (:name updated))))
@@ -189,24 +190,24 @@
                     :database_id      (mt/id)
                     :database_details {:user "u"}
                     :output_schema    "sch"
-                    :input_schemas    ["public"]
+                    :input             [{:schema "public"}]
                     :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
            #"provisioned"
            (workspace/update-workspace!
             ws-id
-            {:name "WS" :databases [{:database_id db2-id :input_schemas ["public"]}]}))))))
+            {:name "WS" :databases [{:database_id db2-id :input [{:schema "public"}]}]}))))))
 
-(deftest update-rejects-changing-initialized-input-schemas-test
-  (testing "update-workspace! refuses to change :input_schemas of an :provisioned row"
+(deftest update-rejects-changing-initialized-input-test
+  (testing "update-workspace! refuses to change :input of an :provisioned row"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
                     :database_id      (mt/id)
                     :database_details {:user "u"}
                     :output_schema    "sch"
-                    :input_schemas    ["public"]
+                    :input             [{:schema "public"}]
                     :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
@@ -214,7 +215,7 @@
            (workspace/update-workspace!
             ws-id
             {:name      "WS"
-             :databases [{:database_id (mt/id) :input_schemas ["analytics"]}]}))))))
+             :databases [{:database_id (mt/id) :input [{:schema "analytics"}]}]}))))))
 
 (deftest cascade-delete-database-test
   (testing "Deleting an underlying Database cascades to workspace_database rows"

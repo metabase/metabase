@@ -18,8 +18,9 @@
    Tests can reify custom implementations that fail on demand, count calls, etc."
   (init!    [this driver database workspace]
     "Create isolated schema + user. Returns {:schema ... :database_details ...}.")
-  (grant!   [this driver database workspace schemas]
-    "Grant read access on input schemas to the workspace user.")
+  (grant!   [this driver database workspace input]
+    "Grant read access on input namespaces to the workspace user/role. `input`
+     is a vector of `::table-namespace` maps `[{:db ?, :schema ?}]`.")
   (destroy! [this driver database workspace]
     "Tear down isolated schema + user. Should be idempotent."))
 
@@ -66,9 +67,12 @@
               workspace   {:id workspace-database-id :name (str "wsd-" workspace-database-id)}
               init-result (init! provisioner driver db workspace)
               ws-details  (merge workspace init-result)
-              schemas     (mapv (fn [s] {:schema s}) (:input_schemas wsd))]
+              ;; `:input` is a vector of `::table-namespace` maps `[{:db ?, :schema ?}]`.
+              ;; Driver `grant!` impls receive them directly — 3-slot drivers (Snowflake,
+              ;; SQL Server) read `:db`; schema-having drivers read `:schema`.
+              input       (vec (:input wsd))]
           (try
-            (grant! provisioner driver db ws-details schemas)
+            (grant! provisioner driver db ws-details input)
             (catch Throwable t
               (destroy! provisioner driver db ws-details)
               (throw t)))

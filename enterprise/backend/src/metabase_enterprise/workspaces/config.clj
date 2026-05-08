@@ -26,7 +26,9 @@
   [{:keys [engine] :as db} wsd]
   (if (driver/database-supports? engine :schemas db)
     {:schema-filters-type     "inclusion"
-     :schema-filters-patterns (str/join "," (:input_schemas wsd))}
+     :schema-filters-patterns (->> (:input wsd)
+                                   (keep :schema)
+                                   (str/join ","))}
     {}))
 
 (defn- database-entry [wsd db]
@@ -82,8 +84,17 @@
       (and ns-in-db     (not (str/blank? ns-name)))   (assoc :db ns-name)
       (and ns-in-schema (not (str/blank? db-slot)))   (assoc :db db-slot))))
 
+(defn- prune-blank-slots
+  "Drop empty-string `:db` / `:schema` keys from a stored namespace map. Storage
+   reserves `\"\"` as a sentinel; the wire format reserves `\"\"` for storage
+   only and uses missing keys to indicate an absent slot."
+  [ns]
+  (cond-> ns
+    (str/blank? (:db ns))     (dissoc :db)
+    (str/blank? (:schema ns)) (dissoc :schema)))
+
 (defn- workspace-database-entry [wsd db]
-  [(:name db) {:input  (mapv #(table-namespace db %) (:input_schemas wsd))
+  [(:name db) {:input  (mapv prune-blank-slots (:input wsd))
                :output (table-namespace db (:output_schema wsd))}])
 
 (defn build-workspace-config
@@ -97,7 +108,7 @@
 
   Each database entry merges the underlying `metabase_database.details` with the
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
-  derived from `:input_schemas`. Per-database workspace entries carry
+  derived from `:input`. Per-database workspace entries carry
   driver-agnostic `::table-namespace` maps (the AST level above `:table`); the
   `:db` slot is populated only for 3-part engines (Snowflake, SQL Server,
   BigQuery), the `:schema` slot is always populated when the storage row has it.

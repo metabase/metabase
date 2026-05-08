@@ -784,10 +784,10 @@
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [_driver database workspace tables]
+  [_driver database workspace input]
   (let [username       (-> workspace :database_details :user)
         qu             (sql.u/quote-name :postgres :field username)
-        source-schemas (into #{} (keep :schema) tables)]
+        source-schemas (into #{} (keep :schema) input)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC, or
       ;; the user-level REVOKE-s below are no-ops and isolation leaks. See the

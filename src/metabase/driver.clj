@@ -384,8 +384,10 @@
     consumers need a catalog name to route across DBs): `[:db]` — MySQL.
     The compiled SQL is still bare; this slot tells consumers MySQL has a
     meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
-  - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Snowflake, ClickHouse, H2
-  - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — BigQuery (project.dataset.table)
+  - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Redshift, ClickHouse, H2, Oracle
+  - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — Snowflake, SQL Server, BigQuery
+    (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
+    `project.dataset.table`).
 
   Used by workspace table remapping to decide:
   - which columns to populate when storing a `:model/TableRemapping` row
@@ -1835,12 +1837,20 @@
   :hierarchy #'hierarchy)
 
 (defmulti grant-workspace-read-access!
-  "Grant read access on specified tables to a workspace's isolated user.
-   This allows the workspace to read from source tables that it needs as inputs.
+  "Grant read access on the workspace's input namespaces to the workspace's isolated
+   user/role. `input` is a sequence of `::table-namespace` maps `[{:db ?, :schema ?}]`
+   identifying the namespaces to grant access to. Granularity is per-namespace
+   (schema-wide / database-wide); per-table grants are not supported.
 
-   `tables` is a sequence of maps with :schema and :name keys identifying
-   the tables to grant access to."
-  {:added "0.59.0" :arglists '([driver database workspace tables])}
+   Slot semantics by driver:
+
+   - 2-slot schema-having (Postgres, Redshift, ClickHouse): read `:schema`,
+     ignore `:db` (connection-bound).
+   - 3-slot (Snowflake, SQL Server, BigQuery): read `:db` + `:schema`. `:db`
+     falls back to the connection's bound db when absent.
+   - schema-less (MySQL): read `:db`; the `qualified-name-components` is `[]`
+     and the database name lives in the `:db` slot."
+  {:added "0.59.0" :arglists '([driver database workspace input])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

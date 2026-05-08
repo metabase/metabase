@@ -58,7 +58,7 @@
                                                  :database_id  db-id
                                                  :database_details {}
                                                  :output_schema ""
-                                                 :input_schemas []
+                                                 :input            []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :model/Database :id db-id) nil
@@ -93,7 +93,7 @@
                                                  :database_id  db-id
                                                  :database_details {}
                                                  :output_schema ""
-                                                 :input_schemas []
+                                                 :input            []
                                                  :status :unprovisioned})]
             (track-wsd! wsd-id)
             (t2/delete! :model/Database :id db-id)
@@ -124,7 +124,7 @@
                                                  :database_id  db-id
                                                  :database_details {}
                                                  :output_schema ""
-                                                 :input_schemas []
+                                                 :input            []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :metabase_database :id db-id) nil

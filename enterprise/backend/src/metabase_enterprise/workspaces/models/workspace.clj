@@ -111,14 +111,14 @@
 
 (defn- reject-active-modification!
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
-  is missing from the incoming `:databases` list or would have its `:input_schemas`
-  changed. Only `:unprovisioned` rows are freely mutable; `:provisioning`,
-  `:provisioned`, and `:deprovisioning` rows must be preserved verbatim."
+  is missing from the incoming `:databases` list or would have its `:input` changed.
+  Only `:unprovisioned` rows are freely mutable; `:provisioning`, `:provisioned`,
+  and `:deprovisioning` rows must be preserved verbatim."
   [existing-active incoming-by-db-id]
-  (doseq [{:keys [database_id input_schemas]} existing-active]
+  (doseq [{:keys [database_id input]} existing-active]
     (let [incoming (get incoming-by-db-id database_id)]
       (when (or (nil? incoming)
-                (not= (vec input_schemas) (vec (:input_schemas incoming))))
+                (not= (vec input) (vec (:input incoming))))
         (throw (ex-info "Cannot modify a workspace_database that is not :unprovisioned"
                         {:status-code 409
                          :database_id database_id}))))))
@@ -141,7 +141,7 @@
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
   list. Only `:unprovisioned` rows are freely mutable. Rows in any other state
   (`:provisioning`, `:provisioned`, `:deprovisioning`) must be preserved by
-  `database_id` with matching `:input_schemas`, or a 409 is raised. Fields not
+  `database_id` with matching `:input`, or a 409 is raised. Fields not
   present in `params` are left untouched."
   [id params]
   (t2/with-transaction [_conn]

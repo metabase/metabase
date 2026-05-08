@@ -1121,29 +1121,33 @@
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
-  [_driver database workspace tables]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        db-name   (:db (driver.conn/effective-details database))
-        role-name (-> workspace :database_details :role)]
-    (when-not db-name
-      (throw (ex-info (tru "Snowflake database configuration is missing required ''db'' (database name) setting")
-                      {:database-id (:id database) :step :grant})))
+  [_driver database workspace input]
+  (let [conn-spec    (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        default-db   (:db (driver.conn/effective-details database))
+        role-name    (-> workspace :database_details :role)]
     (when-not role-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
                       {:workspace-id (:id workspace) :step :grant})))
-    (let [qdb (sql.u/quote-name :snowflake :schema db-name)
-          qr  (sql.u/quote-name :snowflake :field role-name)]
-      ;; Grant USAGE on each unique schema first (required to access tables within)
-      (doseq [schema (distinct (map :schema tables))]
-        (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s"
-                                          qdb (sql.u/quote-name :snowflake :schema schema) qr)]))
-      ;; Grant SELECT on each specific table
-      (doseq [table tables]
-        (jdbc/execute! conn-spec [(format "GRANT SELECT ON TABLE %s.%s.%s TO ROLE %s"
-                                          qdb
-                                          (sql.u/quote-name :snowflake :schema (:schema table))
-                                          (sql.u/quote-name :snowflake :table (:name table))
-                                          qr)])))))
+    ;; Per-namespace shape: `{:db ?, :schema ?}`. Each input requires a
+    ;; database (input's `:db` if present, otherwise connection's bound `:db`)
+    ;; and a schema. Grants are schema-wide (all + future tables) — matches the
+    ;; Postgres semantics that workspace-scoped users receive whole-schema SELECT.
+    (let [qr (sql.u/quote-name :snowflake :field role-name)]
+      (doseq [{:keys [db schema] :as ns} input
+              :let [db-name (or db default-db)]]
+        (when (str/blank? db-name)
+          (throw (ex-info (tru "Snowflake workspace input namespace is missing :db")
+                          {:database-id (:id database) :namespace ns :step :grant})))
+        (when (str/blank? schema)
+          (throw (ex-info (tru "Snowflake workspace input namespace is missing :schema")
+                          {:database-id (:id database) :namespace ns :step :grant})))
+        (let [qdb (sql.u/quote-name :snowflake :schema db-name)
+              qs  (sql.u/quote-name :snowflake :schema schema)]
+          (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" qdb qr)
+                       (format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s" qdb qs qr)
+                       (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)
+                       (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)]]
+            (jdbc/execute! conn-spec [sql])))))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "metabot/prompts/dialects/snowflake.md")

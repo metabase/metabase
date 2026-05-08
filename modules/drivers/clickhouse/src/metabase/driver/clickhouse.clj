@@ -421,22 +421,28 @@
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace tables]
+  [_driver database workspace input]
   (let [read-user-name (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :clickhouse :field read-user-name)
-        sqls           (for [table tables]
-                         (format "GRANT SELECT ON %s.%s TO %s"
-                                 (sql.u/quote-name :clickhouse :schema (:schema table))
-                                 (sql.u/quote-name :clickhouse :table (:name table))
-                                 qu))]
+        qu             (sql.u/quote-name :clickhouse :field read-user-name)]
     (when-not read-user-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each input map
+    ;; carries the database-as-schema in `:schema`. Grant `*` covers all
+    ;; tables in the database; ClickHouse re-resolves `*` so future tables
+    ;; get coverage too.
+    (let [sqls (for [{:keys [schema] :as ns} input
+                     :let [_ (when (str/blank? schema)
+                               (throw (ex-info (tru "ClickHouse workspace input namespace is missing :schema")
+                                               {:database-id (:id database) :namespace ns :step :grant})))]]
+                 (format "GRANT SELECT ON %s.* TO %s"
+                         (sql.u/quote-name :clickhouse :schema schema)
+                         qu))]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql sqls]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [_driver database workspace]

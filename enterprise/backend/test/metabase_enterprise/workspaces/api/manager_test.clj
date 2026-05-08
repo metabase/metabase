@@ -57,13 +57,14 @@
             (is (=? {:databases [{:database_id (mt/id) :status "provisioned"}]}
                     (mt/user-http-request :crowberto :post 200
                                           (str "ee/workspace-manager/" ws-id "/database")
-                                          {:database_id (mt/id) :input_schemas ["PUBLIC"]}))))
+                                          {:database_id (mt/id) :input [{:schema "PUBLIC"}]}))))
 
-          (testing "PUT /:id/database/:db-id updates schemas"
-            (is (=? {:databases [{:database_id (mt/id) :input_schemas ["PUBLIC" "ANALYTICS"]}]}
+          (testing "PUT /:id/database/:db-id updates input"
+            (is (=? {:databases [{:database_id (mt/id)
+                                  :input [{:schema "PUBLIC"} {:schema "ANALYTICS"}]}]}
                     (mt/user-http-request :crowberto :put 200
                                           (str "ee/workspace-manager/" ws-id "/database/" (mt/id))
-                                          {:input_schemas ["PUBLIC" "ANALYTICS"]}))))
+                                          {:input [{:schema "PUBLIC"} {:schema "ANALYTICS"}]}))))
 
           (testing "DELETE /:id/database/:db-id deprovisions and removes"
             (is (=? {:databases empty?}
@@ -71,7 +72,7 @@
                                           (str "ee/workspace-manager/" ws-id "/database/" (mt/id)))))))))))
 
 (deftest metadata-export-test
-  (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input_schemas"
+  (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
                    :model/Table {t1-id :id} {:db_id db-id :schema "schema-1" :name "table-1" :active true}
                    :model/Table {t2-id :id} {:db_id db-id :schema "schema-2" :name "table-2" :active true}
@@ -86,7 +87,7 @@
                                                         :database_details {}
                                                         :output_schema    ""
                                                         ;; schema-2 is deliberately excluded
-                                                        :input_schemas    ["schema-1"]
+                                                        :input            [{:schema "schema-1"}]
                                                         :status           :provisioned}]
       ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
       ;; Length mismatch in any section would fail `=?` — that's how we assert the
@@ -149,27 +150,27 @@
             (testing "POST /:id/database — 403 against the no-perm DB"
               (mt/user-http-request :rasta :post 403
                                     (str "ee/workspace-manager/" ws-id "/database")
-                                    {:database_id other-db-id :input_schemas ["PUBLIC"]}))
+                                    {:database_id other-db-id :input [{:schema "PUBLIC"}]}))
 
             (testing "POST /:id/database — 200 against the perm-holding DB"
               (mt/user-http-request :rasta :post 200
                                     (str "ee/workspace-manager/" ws-id "/database")
-                                    {:database_id target-db-id :input_schemas ["PUBLIC"]}))
+                                    {:database_id target-db-id :input [{:schema "PUBLIC"}]}))
 
             ;; Attach `other-db-id` so we can target it on PUT / DELETE too.
-            (mt/with-temp [:model/WorkspaceDatabase _ {:workspace_id  ws-id
-                                                       :database_id   other-db-id
-                                                       :input_schemas ["PUBLIC"]
-                                                       :status        :provisioned}]
+            (mt/with-temp [:model/WorkspaceDatabase _ {:workspace_id ws-id
+                                                       :database_id  other-db-id
+                                                       :input        [{:schema "PUBLIC"}]
+                                                       :status       :provisioned}]
               (testing "PUT /:id/database/:db-id — 403 against the no-perm DB"
                 (mt/user-http-request :rasta :put 403
                                       (str "ee/workspace-manager/" ws-id "/database/" other-db-id)
-                                      {:input_schemas ["ANALYTICS"]}))
+                                      {:input [{:schema "ANALYTICS"}]}))
 
               (testing "PUT /:id/database/:db-id — 200 against the perm-holding DB"
                 (mt/user-http-request :rasta :put 200
                                       (str "ee/workspace-manager/" ws-id "/database/" target-db-id)
-                                      {:input_schemas ["PUBLIC"]}))
+                                      {:input [{:schema "PUBLIC"}]}))
 
               (testing "DELETE /:id/database/:db-id — 403 against the no-perm DB"
                 (mt/user-http-request :rasta :delete 403
