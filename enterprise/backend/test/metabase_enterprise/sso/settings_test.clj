@@ -4,6 +4,7 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.session.core :as session]
    [metabase.sso.settings :as sso.settings]
+   [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
@@ -277,3 +278,27 @@
 (deftest sso-source-enabled?-unknown-test
   (testing "sso-source-enabled? returns false for unknown sources"
     (is (false? (sso.settings/sso-source-enabled? :unknown-provider)))))
+
+(deftest other-sso-enabled?-test
+  (testing "other-sso-enabled? gates the `/auth/sso` login button (SAML/JWT only)"
+    (testing "false when nothing is enabled"
+      (mt/with-premium-features #{:sso-saml :sso-jwt}
+        (is (false? (sso-settings/other-sso-enabled?)))))
+    (testing "true when SAML is enabled and configured"
+      (mt/with-premium-features #{:sso-saml}
+        (tu/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
+                                           saml-identity-provider-certificate default-idp-cert
+                                           saml-enabled                       true]
+          (is (true? (sso-settings/other-sso-enabled?))))))
+    (testing "true when JWT is enabled and configured"
+      (mt/with-premium-features #{:sso-jwt}
+        (tu/with-temporary-setting-values [jwt-identity-provider-uri default-idp-uri
+                                           jwt-shared-secret         "01234"
+                                           jwt-enabled               true]
+          (is (true? (sso-settings/other-sso-enabled?))))))
+    (testing "false when only Slack Connect is enabled (UXW-3940 regression)"
+      ;; Slack Connect uses /auth/sso/slack-connect, not /auth/sso, so it must
+      ;; not flip on the SAML/JWT login button. See UXW-3940.
+      (sso.test-helpers/with-slack-default-setup!
+        (is (true? (sso.settings/slack-connect-enabled)))
+        (is (false? (sso-settings/other-sso-enabled?)))))))

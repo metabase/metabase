@@ -270,10 +270,12 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9,
+                                             :nfc-path ["nested_mixed_uuid" "nested_data"]}}
                            :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5,
+                                             :nfc-path ["nested_mixed_not_uuid" "nested_data_2"]}}
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
@@ -1064,7 +1066,8 @@
                    :database-position 2,
                    :base-type :type/Dictionary,
                    :name "b",
-                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c"}}}}}}
+                   :nfc-path ["a" "b"],
+                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c", :nfc-path ["a" "b" "c"]}}}}}}
              @nested-fields)))))
 
 (deftest nulls-are-last-test
@@ -1082,7 +1085,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b"}}}
+                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 
@@ -1102,7 +1105,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b"}}}
+                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 

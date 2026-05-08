@@ -7,8 +7,6 @@ redirect_from:
 
 # Modular embedding
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
 
 Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.

@@ -10,14 +10,18 @@ import type {
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type { PermissionEditorType } from "metabase/admin/permissions/types";
+import { selectGroupList } from "metabase/admin/permissions/selectors/data-permissions/groups";
+import {
+  DataPermission,
+  DataPermissionType,
+  type PermissionEditorType,
+} from "metabase/admin/permissions/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import {
@@ -25,6 +29,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type {
   CollectionId,
   CollectionPermissions,
@@ -134,7 +139,7 @@ const getTenantSpecificCollectionPermission = (
 export const getTenantSpecificCollectionsPermissionEditor = createSelector(
   getTenantSpecificCollectionsPermissions,
   getTenantSpecificCollectionEntity,
-  Groups.selectors.getList,
+  selectGroupList,
   (permissions, collection, groups): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
@@ -159,6 +164,10 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
             )
           : "none";
 
+        if (!defaultGroup) {
+          return null;
+        }
+
         const confirmations = (newValue: DataPermissionValue) => [
           getPermissionWarningModal(
             newValue,
@@ -182,6 +191,8 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
           name: getGroupNameLocalized(group),
           permissions: [
             {
+              permission: DataPermission.COLLECTIONS,
+              type: DataPermissionType.COLLECTIONS,
               // Always show toggle as checked and disabled for tenant-specific collections
               toggleLabel: t`Also change sub-collections`,
               hasChildren: true,
@@ -207,7 +218,7 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
           ],
         };
       })
-      .filter(Boolean);
+      .filter(isNotNull);
 
     return {
       title: t`Permissions for ${collection.name}`,

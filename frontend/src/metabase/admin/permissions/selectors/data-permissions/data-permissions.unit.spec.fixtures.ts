@@ -1,3 +1,5 @@
+import { QueryStatus } from "@reduxjs/toolkit/query";
+
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockGroup } from "metabase-types/api/mocks";
 
@@ -199,4 +201,18 @@ export const state = {
   },
   entities: normalizedMetadata,
   settings: createMockSettingsState(),
+  "metabase-api": {
+    queries: {
+      "listPermissionsGroups({})": {
+        status: QueryStatus.fulfilled,
+        data: Object.values(normalizedMetadata.groups),
+        error: undefined,
+        originalArgs: {},
+        requestId: "test-request-groups",
+        endpointName: "listPermissionsGroups",
+        startedTimeStamp: Date.now(),
+        fulfilledTimeStamp: Date.now(),
+      },
+    },
+  },
 };

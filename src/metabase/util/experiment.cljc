@@ -19,10 +19,10 @@
 
 (defonce ^{:private true
            :doc "Atom holding a zero-arg function that returns whether experiments are enabled.
-   Defaults to (constantly true). On JVM, wired to the setting getter at startup.
+   On JVM, wired to the setting getter at startup.
    On CLJS, wired to read from bootstrap data."}
   experiments-enabled-fn
-  (atom (constantly true)))
+  (atom (constantly false)))
 
 (defn experiments-enabled?
   "Returns true if experiments are globally enabled. Checks the setting on every call."

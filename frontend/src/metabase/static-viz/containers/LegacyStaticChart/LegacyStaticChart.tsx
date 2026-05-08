@@ -13,7 +13,7 @@ export interface LegacyStaticChartProps {
 }
 
 /**
- * @deprecated use StaticChart instead
+ * @deprecated use RenderChart instead
  */
 export const LegacyStaticChart = ({
   type,

@@ -52,6 +52,7 @@
   extract-hostname
   extract-path
   include-sdk-info
+  pii-fields-from
   pii-request-info
   with-auth-method! get-auth-method
   with-client! get-client
