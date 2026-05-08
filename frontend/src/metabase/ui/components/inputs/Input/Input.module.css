@@ -35,7 +35,7 @@
     border-color: var(--mb-color-border);
     transition: border-color 0.3s;
 
-    &:hover {
+    &:hover:not(:disabled) {
       border-color: var(--mb-color-brand);
     }
 
