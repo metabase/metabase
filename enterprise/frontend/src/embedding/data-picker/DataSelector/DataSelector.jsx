@@ -867,17 +867,14 @@ function withAvailableModels(WrappedComponent) {
       limit: 0,
       models: ["dataset"],
     });
-    let metadata;
-    if (response) {
-      const { data: _data, ...rest } = response;
-      metadata = rest;
-    }
+    const { data: _data, ...metadata } = response ?? {};
     return (
       <WrappedComponent
         {...props}
         metadata={metadata}
         loading={isLoading}
         loaded={!isLoading && response != null}
+        allLoading={isLoading || (props.allLoading ?? false)}
       />
     );
   };
