@@ -661,15 +661,19 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     return data.jwt;
   }
 
-  // JSON-typed properties (e.g. `parameters`, `sqlParameters`) follow the
-  // attribute-as-source-of-truth pattern: the getter parses the backing
-  // HTML attribute on every read, the setter serializes via
-  // `_writeJsonProperty` below. Lets `<el parameters='...'>` markup work
-  // out of the box and auto-sync with external attribute mutations
-  // (DevTools, framework bindings); trade-off is that ref-identity isn't
-  // preserved across `set` then `get`.
+  // `parameters` and `sqlParameters` are JS properties whose value
+  // lives in the element's attribute of the same name. Reading the
+  // property parses the attribute as JSON; writing the property
+  // serializes the value back into the attribute. So setting the
+  // attribute directly (`<metabase-dashboard parameters='{"state":"NY"}'>`),
+  // assigning the JS property (`el.parameters = ...`).
 
-  /** Reads a JSON-typed attribute. `undefined` if absent / not a plain object. */
+  /**
+   * Reads the named element attribute and returns it parsed as a JSON
+   * object. Returns `undefined` if the attribute isn't set, fails to
+   * parse, or parses to anything other than a plain object (e.g. a
+   * primitive or array).
+   */
   protected _readJsonAttribute<T>(attributeName: string): T | undefined {
     const rawValue = this.getAttribute(attributeName);
 
@@ -695,10 +699,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   /**
-   * Writes a property-setter value to the backing JSON attribute.
-   * `null`/`undefined` clear it; same-string re-push dispatches
-   * `_updateSettings` directly (browser would otherwise short-circuit
-   * `setAttribute` and skip `attributeChangedCallback`).
+   * Serializes a value as JSON and writes it to the named element
+   * attribute. `null` or `undefined` removes the attribute. If the
+   * resulting JSON string equals what's already on the attribute, our
+   * `attributeChangedCallback` short-circuits on `oldVal === newVal`
+   * , so we bypass `setAttribute` and dispatch `_updateSettings` directly to
+   * keep the iframe in sync with the caller's intent.
    */
   protected _writeJsonProperty(
     settingKey: string,
