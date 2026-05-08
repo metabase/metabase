@@ -110,7 +110,7 @@
                  :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
-    (= driver :postgres)))
+    (or (= driver :postgres) (= driver :postgres-mbql5))))
 
 (defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
   (when entity-name
@@ -630,7 +630,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :median]
   [driver [_ _opts arg]]
@@ -780,11 +780,11 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name opts]]
+  [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver [:field id-or-name opts])]
+        identifier    (parent-method driver clause)]
     (cond
       (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
