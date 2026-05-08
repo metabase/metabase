@@ -787,26 +787,24 @@
   [_driver database workspace input]
   (let [username       (-> workspace :database_details :user)
         qu             (sql.u/quote-name :postgres :field username)
-        source-schemas (into #{} (keep :schema) input)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC, or
-      ;; the user-level REVOKE-s below are no-ops and isolation leaks. See the
-      ;; comment block at the top of this section for the full picture.
+        source-schemas (into #{} (keep :schema) input)
+        spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; Pre-flight check (read-only) can run in its own transaction.
+    (jdbc/with-db-transaction [t-conn spec]
       (doseq [s source-schemas]
-        (assert-no-public-create-grant! t-conn s))
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [s   source-schemas
-                :let [sq (sql.u/quote-name :postgres :schema s)]
-                sql [(format "GRANT USAGE ON SCHEMA %s TO %s" sq qu)
-                     (format "REVOKE CREATE ON SCHEMA %s FROM %s" sq qu)
-                     (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s" sq qu)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (doseq [{s :schema, t :name} tables
-                :let [tq (if (str/blank? s)
-                           (sql.u/quote-name :postgres :table t)
-                           (str (sql.u/quote-name :postgres :schema s) "." (sql.u/quote-name :postgres :table t)))]]
-          (.addBatch ^Statement stmt ^String (format "GRANT SELECT ON TABLE %s TO %s" tq qu)))
-        (.executeBatch ^Statement stmt)))))
+        (assert-no-public-create-grant! t-conn s)))
+    ;; Grants run as auto-commit per statement so privileges are immediately
+    ;; observable to a subsequent describe-database from a different connection.
+    (doseq [s   source-schemas
+            :let [sq (sql.u/quote-name :postgres :schema s)]
+            sql [(format "GRANT USAGE ON SCHEMA %s TO %s" sq qu)
+                 (format "REVOKE CREATE ON SCHEMA %s FROM %s" sq qu)
+                 (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s" sq qu)
+                 ;; Schema-wide SELECT — workspace-scoped users receive whole-schema access.
+                 ;; Per-table granularity intentionally discarded (API contract is namespace-grained).
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" sq qu)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" sq qu)]]
+      (jdbc/execute! spec [sql]))))
 
 (defn- schema-exists?
   "Check if a schema exists in Redshift."
