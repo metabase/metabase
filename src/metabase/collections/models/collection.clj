@@ -46,7 +46,7 @@
 
 (defn- archived-directly-models
   []
-  #{:model/Card :model/Dashboard :model/Document})
+  #{:model/Card :model/Dashboard :model/Document :model/Exploration})
 
 (defn- collectable-models
   []

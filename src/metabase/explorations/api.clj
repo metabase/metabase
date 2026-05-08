@@ -449,11 +449,12 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
-  (let [existing (get-exploration-or-404 id)]
+  (let [existing (get-exploration-or-404 id)
+        updates' (api/updates-with-archived-directly existing updates)]
     (api/write-check existing)
-    (check-publish-perms! existing updates)
-    (when (seq updates)
-      (t2/update! :model/Exploration id updates))
+    (check-publish-perms! existing updates')
+    (when (seq updates')
+      (t2/update! :model/Exploration id updates'))
     (hydrate-exploration (t2/select-one :model/Exploration :id id))))
 
 (def ^:private query-summary-columns

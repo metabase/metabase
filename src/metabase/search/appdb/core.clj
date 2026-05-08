@@ -94,6 +94,19 @@
                     [:= :search_index.model [:inline "table"]]
                     clause]]))))
 
+(defn add-exploration-where-clauses
+  "Restrict exploration rows in search results to published explorations. Unpublished explorations
+   are still indexed (so flipping `is_published` doesn't churn the index) but are hidden from search.
+   Collection perms are enforced separately by `add-collection-join-and-where-clauses`."
+  [qry]
+  (sql.helpers/where qry
+                     [:or
+                      [:= :search_index.model nil]
+                      [:!= :search_index.model [:inline "exploration"]]
+                      [:and
+                       [:= :search_index.model [:inline "exploration"]]
+                       [:= :search_index.is_published true]]]))
+
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -155,6 +168,7 @@
             query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
                          (add-collection-join-and-where-clauses search-ctx)
                          (add-table-where-clauses search-ctx)
+                         add-exploration-where-clauses
                          (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                                  search-ctx
                                                  :search_index.model
