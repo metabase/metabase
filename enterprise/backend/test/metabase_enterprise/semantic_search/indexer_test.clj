@@ -292,7 +292,7 @@
       (testing "exists early if no new records after a time"
         (let [run-time       (u/start-timer)
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))
-              upsert-index!  semantic.index/upsert-index!
+              upsert-index!  (dynamic-redefs/original-fn #'semantic.index/upsert-index!)
               indexed        (atom [])]
           (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
           (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep       (fn [_])
