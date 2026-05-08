@@ -18,11 +18,15 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
+  Collection as ApiCollection,
   Card,
+  Metric,
+  NormalizedCollection,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
   NormalizedMeasure,
+  NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
@@ -92,6 +96,7 @@ const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedCollections = (state: State) => state.entities.collections;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -112,6 +117,7 @@ export const getMetadata: (
     getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
+    getNormalizedCollections,
     getSettings,
   ],
   (
@@ -124,6 +130,7 @@ export const getMetadata: (
     metrics,
     questions,
     snippets,
+    collections,
     settings,
   ) => {
     const metadata = new Metadata({ settings });
@@ -148,7 +155,9 @@ export const getMetadata: (
     metadata.measures = Object.fromEntries(
       Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
     );
-    metadata.metrics = metrics;
+    metadata.metrics = Object.fromEntries(
+      Object.values(metrics).map((m) => [m.id, createMetric(m)]),
+    );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
     );
@@ -182,6 +191,9 @@ export const getMetadata: (
     });
     Object.values(metadata.measures).forEach((measure) => {
       measure.table = hydrateMeasureTable(measure, metadata);
+    });
+    Object.values(metadata.metrics).forEach((metric) => {
+      metric.collection = hydrateMetricCollection(metric, collections);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -271,6 +283,11 @@ function createMeasure(
   const instance = new Measure(measure);
   instance.metadata = metadata;
   return instance;
+}
+
+function createMetric(metric: NormalizedMetric): Metric {
+  const { collection: _normalizedCollectionId, ...rest } = metric;
+  return { ...rest, collection: null };
 }
 
 function createQuestion(card: Card, metadata: Metadata): Question {
@@ -428,4 +445,19 @@ function hydrateMeasureTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(measure.table_id) ?? undefined;
+}
+
+function hydrateMetricCollection(
+  metric: Metric,
+  collections: Record<string, NormalizedCollection>,
+): ApiCollection | null {
+  if (metric.collection_id == null) {
+    return null;
+  }
+  const normalized = collections[metric.collection_id];
+  if (!normalized) {
+    return null;
+  }
+  const { items: _items, ...rest } = normalized;
+  return rest;
 }

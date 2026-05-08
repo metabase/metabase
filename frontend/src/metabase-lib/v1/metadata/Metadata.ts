@@ -7,8 +7,8 @@ import type {
   FieldId,
   FieldReference,
   MeasureId,
+  Metric,
   NativeQuerySnippet,
-  NormalizedMetric,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -55,7 +55,7 @@ class Metadata {
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
   measures: Record<string, Measure> = {};
-  metrics: Record<string, NormalizedMetric> = {};
+  metrics: Record<string, Metric> = {};
   questions: Record<string, Question> = {};
   snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;

@@ -112,7 +112,8 @@ export const GEO_DIM_IDX = {
 export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
   const metadata = new Metadata();
   for (const metric of metrics) {
-    metadata.metrics[metric.id] = metric;
+    const { collection: _normalizedCollectionId, ...rest } = metric;
+    metadata.metrics[metric.id] = { ...rest, collection: null };
   }
   return metadata;
 }
