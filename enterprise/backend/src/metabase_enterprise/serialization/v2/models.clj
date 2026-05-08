@@ -33,7 +33,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["EmbeddingTheme"
+          ["CustomVizPlugin"
+           "EmbeddingTheme"
            "FieldValues"
            "Metabot"
            "PythonLibrary"

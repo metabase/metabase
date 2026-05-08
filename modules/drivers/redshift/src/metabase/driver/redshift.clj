@@ -17,7 +17,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,8 +36,9 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres
-                                       ::like-escape-char-built-in/like-escape-char-built-in})
+;; `::like-escape-char-built-in/like-escape-char-built-in` is inherited transitively via
+;; `:postgres` (see `metabase.driver.postgres`).
+(driver/register! :redshift, :parent :postgres)
 
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true

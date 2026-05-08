@@ -5,11 +5,10 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
-   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -36,26 +35,13 @@
     (generate-manifest)
     @manifest-delay))
 
-(defn- scope-matches?
-  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
-   - nil token-scopes → always matches (internal callers)
-   - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → only matches nil or unrestricted token-scopes
-   - Delegates wildcard/exact matching to [[api-scope/scope-matches?]]"
-  [token-scopes tool-scope]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::scope/unrestricted)
-      (when (and (some? tool-scope)
-                 (api-scope/scope-matches? token-scopes tool-scope))
-        true)))
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
   (let [{:keys [tools]} (manifest)]
     (into []
-          (comp (filter #(scope-matches? token-scopes (:scope %)))
+          (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                 (map (fn [tool]
                        (cond-> {:name        (:name tool)
                                 :title       (:title tool)

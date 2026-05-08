@@ -88,6 +88,41 @@ describe("command palette", () => {
     });
   });
 
+  it("should match the action with alias when typing original name", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    // Original shortcut name is "Create a question" but when registering action
+    // we rename it to "New question"
+    await userEvent.type(input, "create q");
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+  });
+
+  it("should match actions via verb-swap aliases", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    await userEvent.type(input, "add dashboard");
+
+    expect(await screen.findByText("New dashboard")).toBeInTheDocument();
+  });
+
+  it("should tolerate small typos in the search query", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    await userEvent.type(input, "creat q");
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+  });
+
   it("should preserve user navigation selection when search results load", async () => {
     const getSelectedOption = () =>
       screen

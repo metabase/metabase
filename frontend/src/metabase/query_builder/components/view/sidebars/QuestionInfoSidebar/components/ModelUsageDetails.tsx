@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useListCardsQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -17,6 +17,7 @@ type ModelUsageDetailsProps = {
 };
 
 export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
+  const getIcon = useGetIcon();
   const {
     data: cards = [],
     error,
