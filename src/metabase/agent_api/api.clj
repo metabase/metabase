@@ -328,6 +328,7 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
+           :title "Search Tables and Metrics"
            :description (str "Search for tables and metrics in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
@@ -642,12 +643,14 @@
   metadata and an optional `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
+           :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query from a structured program and return "
                              "results with column metadata. If more rows are available, the "
                              "response includes a continuation_token — pass it back to get the "
                              "next page.\n\n"
                              "The body is either a structured program (see construct_query) or "
-                             "{\"continuation_token\": \"...\"} from a previous response.")}}
+                             "{\"continuation_token\": \"...\"} from a previous response.")
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    body :- ::query-request]
@@ -713,7 +716,8 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
+           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]

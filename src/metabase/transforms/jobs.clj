@@ -12,11 +12,11 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
+   [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -86,7 +86,7 @@
     (not (transforms.u/check-feature-enabled transform))
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
 
-    (transforms.gating/transform-locked? transform)
+    (transforms.usage/transform-locked? transform)
     (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
 
     :else

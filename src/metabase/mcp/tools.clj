@@ -57,9 +57,11 @@
     (into []
           (comp (filter #(scope-matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       {:name        (:name tool)
-                        :description (:description tool)
-                        :inputSchema (:inputSchema tool)})))
+                       (cond-> {:name        (:name tool)
+                                :title       (:title tool)
+                                :description (:description tool)
+                                :inputSchema (:inputSchema tool)}
+                         (:annotations tool) (assoc :annotations (:annotations tool))))))
           tools)))
 
 (defn- build-tool-index
@@ -96,9 +98,13 @@
    returns `:specific-errors`/`:errors` for schema-validation 400s (see
    [[metabase.api.macros/decode-and-validate-params]]) and `:message`/`:error` for
    other failures — surfacing the validation detail turns \"Invalid body\" into an
-   actionable message for MCP clients."
+   actionable message for MCP clients. String bodies (e.g. 404 \"Not found.\") are
+   surfaced as the message rather than collapsed to a bare \"Agent API error: <status>\"."
   [response]
-  (let [{msg :message :keys [specific-errors errors error]} (:body response)
+  (let [body                                              (:body response)
+        body-map                                          (when (map? body) body)
+        body-str                                          (when (and (string? body) (not (str/blank? body))) body)
+        {msg :message :keys [specific-errors errors error]} body-map
         detail (cond
                  (seq specific-errors) (format-validation-detail specific-errors)
                  (seq errors)          (format-validation-detail errors))]
@@ -107,6 +113,7 @@
       detail           detail
       msg              msg
       error            error
+      body-str         body-str
       :else            (str "Agent API error: " (:status response)))))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------

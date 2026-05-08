@@ -442,6 +442,32 @@ describe("DashCard", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should not show 'Visualize another way' for sankey cards (metabase#65317)", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          display: "sankey",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      // Anchor: prove sankey is routed as a non-visualizer type.
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+    });
+
     it.each([
       ["heading", createMockHeadingDashboardCard()],
       ["text", createMockTextDashboardCard()],
