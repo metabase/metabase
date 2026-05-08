@@ -88,7 +88,7 @@ function SearchApp({ location }) {
   };
 
   const { data, error, isFetching, requestId } = useSearchQuery(query);
-  const list = data?.data ?? [];
+  const list = useMemo(() => data?.data ?? [], [data?.data]);
 
   return (
     <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">
