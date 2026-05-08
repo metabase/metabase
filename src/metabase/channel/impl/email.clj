@@ -315,9 +315,12 @@
                      :let [details (:details recipient)
                            emails (case (:type recipient)
                                     :notification-recipient/user
-                                    [(-> recipient :user :email)]
+                                    (when (not= :api-key (-> recipient :user :type))
+                                      [(-> recipient :user :email)])
                                     :notification-recipient/group
-                                    (->> recipient :permissions_group :members (map :email))
+                                    (->> recipient :permissions_group :members
+                                         (remove #(= :api-key (:type %)))
+                                         (map :email))
                                     :notification-recipient/raw-value
                                     [(:value details)]
                                     :notification-recipient/template

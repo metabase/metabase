@@ -165,6 +165,7 @@
                                                             :u.last_name
                                                             :u.email
                                                             :u.is_superuser
+                                                            :u.type
                                                             :pgm.group_id
                                                             [:pgm.id :membership_id]
                                                             (when (premium-features/enable-advanced-permissions?)
