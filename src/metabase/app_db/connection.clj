@@ -68,7 +68,7 @@
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
   with [[ApplicationDbHandle]]:
 
-    (mc/do-with-value (mdb.connection/application-db-handle)
+    (mc/binding (mdb.connection/application-db-handle)
                       (mdb.connection/application-db :h2 my-data-source)
                       (fn [] ...))
 
@@ -99,7 +99,7 @@
 #_{:clj-kondo/ignore [:metabase/check-def-no-underscores]}
 (defonce ^:private _init
   ; Initialize the current Metabase application database.
-  (do (mc/reset-value! (application-db-handle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+  (do (mc/alter-root (application-db-handle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
       ::done))
 
 (defn db-type

@@ -5,7 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^{:doc "The system" :dynamic true} *system*
+(defonce ^{:doc "The system" :dynamic true :private true} *system*
   (atom {}))
 
 (defn mutable-component-handle
@@ -14,12 +14,14 @@
   (reify mc/MutableComponentHandle
     (current [_] (get @*system* k))
     (root [_] (get @(.getRawRoot ^Var #'*system*) k))
-    (do-with-value [_ new-value thunk]
-      (binding [*system* (atom (assoc @*system* k new-value))]
+    (binding [_ new-value thunk]
+      (clojure.core/binding [*system* (atom (assoc @*system* k new-value))]
         (thunk)))
-    (reset-value! [_ new-value]
-      (swap! (.getRawRoot ^Var #'*system*) assoc k new-value))
-    (swap-value! [_ f]
-      (swap! (.getRawRoot ^Var #'*system*) update k f))
-    (swap-value! [_ f args]
-      (swap! (.getRawRoot ^Var #'*system*) (fn [s] (apply update s k f args))))))
+    (reset! [_ new-value]
+      (clojure.core/swap! *system* assoc k new-value))
+    (swap! [_ f]
+      (clojure.core/swap! *system* update k f))
+    (swap! [_ f args]
+      (clojure.core/swap! *system* (fn [old-system] (apply update old-system k f args))))
+    (alter-root [_ new-value]
+      (alter-var-root #'*system* (fn [old-system-atom] (atom (assoc @old-system-atom k new-value)))))))

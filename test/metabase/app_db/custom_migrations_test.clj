@@ -1849,7 +1849,7 @@
             ;; see the same app DB as this test, then restore the prior root on exit
             (let [handle     (mdb.connection/application-db-handle)
                   prior-root (mc/root handle)]
-              (mc/reset-value! handle (mc/current handle))
+              (mc/alter-root handle (mc/current handle))
               (try
                 ;; simulate starting MB after migrate up, which will trigger this function
                 (task/init! ::task.send-pulses/SendPulses)
@@ -1863,7 +1863,7 @@
                            "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                          (scheduler-job-keys))))
                 (finally
-                  (mc/reset-value! handle prior-root))))))))))
+                  (mc/alter-root handle prior-root))))))))))
 
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"

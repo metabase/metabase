@@ -263,15 +263,15 @@
   (u/profile (trs "Database setup")
     (u/with-us-locale
 
-      (mc/do-with-value (mdb.connection/application-db-handle)
-                        (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                        (fn []
-                          (binding [config/*disable-setting-cache*            true
-                                    custom-migrations/*create-sample-content* create-sample-content?]
-                            (verify-db-connection db-type data-source)
-                            (error-if-downgrade-required! data-source)
-                            (run-schema-migrations! data-source auto-migrate?)
-                            (check-encryption))))))
+      (mc/binding (mdb.connection/application-db-handle)
+        (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+        (fn []
+          (binding [config/*disable-setting-cache*            true
+                    custom-migrations/*create-sample-content* create-sample-content?]
+            (verify-db-connection db-type data-source)
+            (error-if-downgrade-required! data-source)
+            (run-schema-migrations! data-source auto-migrate?)
+            (check-encryption))))))
   :done)
 
 (defn release-migration-locks!
