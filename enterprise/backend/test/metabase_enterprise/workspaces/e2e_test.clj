@@ -542,7 +542,13 @@
 ;; that Transform B succeeds and reads the rows Transform A wrote to the iso
 ;; copy.
 (deftest ^:synchronized native-transform-references-prior-canonical-output-test
-  (mt/test-drivers #{:postgres :mysql}  ;; TODO: widen this as more drivers come online
+  ;; Redshift omitted: `workspace-full-e2e-test` already fails on Redshift because
+  ;; `describe-database` returns `{:tables #{}}` for the workspace user even though
+  ;; the user has USAGE on the schema and SELECT on the tables (verified directly via
+  ;; the same connection pool). The native-transform repro depends on sync seeing the
+  ;; source table, so it inherits that failure mode. Investigation pending; unrelated
+  ;; to the native-SQL-rewrite hook this test was written to cover.
+  (mt/test-drivers #{:postgres :mysql}
     (mt/with-premium-features #{:workspaces}
       (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
         (let [admin-driver  driver/*driver*
