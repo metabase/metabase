@@ -89,7 +89,7 @@ export const JobListPage = () => {
             {
               id: "actions",
               header: "",
-              width: 40,
+              width: 48,
               cell: ({ row }) => <JobMoreMenu job={row.original} />,
             },
           ] satisfies TreeTableColumnDef<TransformJob>[])
