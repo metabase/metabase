@@ -931,6 +931,9 @@
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
     :enabled   (premium-features/enable-dependencies?)}
+   {:name      :schema-viewer
+    :available (premium-features/enable-schema-viewer?)
+    :enabled   (premium-features/enable-schema-viewer?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
     :enabled   (premium-features/enable-support-users?)}

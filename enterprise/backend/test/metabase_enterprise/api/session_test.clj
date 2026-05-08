@@ -118,6 +118,7 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
+            :schema-viewer                  false
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 

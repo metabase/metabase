@@ -2986,17 +2986,6 @@
            settings
            util}}
 
-  enterprise/erd
-  {:team "Gadget"
-   :api  #{metabase-enterprise.erd.api
-           metabase-enterprise.erd.core}
-   :uses #{api
-           models
-           util}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table}}
-
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -3024,6 +3013,16 @@
    ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
    ;; make token tracking a hook). Drop this dep once the relocation lands.
    :uses #{enterprise/semantic-search}}
+
+  enterprise/erd
+  {:team "Gadget"
+   :api  #{metabase-enterprise.erd.api}
+   :uses #{api
+           models
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table}}
 
   enterprise/gsheets
   {:team "Cloud"
