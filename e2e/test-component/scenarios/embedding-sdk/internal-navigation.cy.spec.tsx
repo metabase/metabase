@@ -622,6 +622,205 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
+  describe("same-dashboard navigation (EMB-1714)", () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+    });
+
+    it("should switch to the target tab when click behavior points to a different tab on the same dashboard", () => {
+      const TAB_1 = { id: -1, name: "Tab 1" };
+      const TAB_2 = { id: -2, name: "Tab 2" };
+
+      H.createQuestion({
+        name: "Orders on Tab 1",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: tabOneCard }) => {
+        H.createQuestion({
+          name: "Orders on Tab 2",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: tabTwoCard }) => {
+          H.createDashboardWithTabs({
+            name: "Tabbed Dashboard",
+            tabs: [TAB_1, TAB_2],
+            dashcards: [
+              {
+                id: -10,
+                card_id: tabOneCard.id,
+                dashboard_tab_id: TAB_1.id,
+                row: 0,
+                col: 0,
+                size_x: 12,
+                size_y: 6,
+              },
+              {
+                id: -11,
+                card_id: tabTwoCard.id,
+                dashboard_tab_id: TAB_2.id,
+                row: 0,
+                col: 0,
+                size_x: 12,
+                size_y: 6,
+              },
+            ],
+          }).then((dashboard) => {
+            // After creation, tabs and dashcards have real ids; wire the
+            // click behaviour with those resolved ids.
+            const tabs = dashboard.tabs ?? [];
+            const resolvedTab1 = tabs[0];
+            const resolvedTab2 = tabs[1];
+            const updatedDashcards = (dashboard.dashcards ?? []).map(
+              (dashcard) => {
+                if (dashcard.dashboard_tab_id !== resolvedTab1.id) {
+                  return dashcard;
+                }
+                return {
+                  ...dashcard,
+                  visualization_settings: {
+                    column_settings: {
+                      [`["ref",["field",${ORDERS.ID},null]]`]: {
+                        click_behavior: {
+                          type: "link",
+                          linkType: "dashboard",
+                          targetId: dashboard.id,
+                          parameterMapping: {},
+                          tabId: resolvedTab2.id,
+                        },
+                      },
+                    },
+                  },
+                };
+              },
+            );
+
+            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+              ...dashboard,
+              dashcards: updatedDashcards,
+            });
+
+            cy.wrap(dashboard.id).as("tabbedDashboardId");
+          });
+        });
+      });
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.get<number>("@tabbedDashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Tabbed Dashboard").should("be.visible");
+        cy.findByRole("tab", { name: "Tab 1" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
+        // Click the first ID cell on Tab 1 — it has click_behavior to Tab 2.
+        H.getDashboardCard()
+          .findByTestId("visualization-root")
+          .findAllByRole("gridcell", { name: "1" })
+          .first()
+          .click();
+
+        // Expected: Tab 2 becomes the active tab on the same dashboard.
+        // On master this fails: SDK pushes a new dashboard entry, re-mounts on
+        // Tab 1, and never honours the click behavior's tabId.
+        cy.findByRole("tab", { name: "Tab 2" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
+        // No back-button entry should be created for an in-place tab switch.
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should be a no-op when click behavior points to the same tab-less dashboard", () => {
+      H.createQuestion({
+        name: "Self-linking card",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: card }) => {
+        H.createDashboard({ name: "Self-linking Dashboard" }).then(
+          ({ body: dashboard }) => {
+            H.addOrUpdateDashboardCard({
+              card_id: card.id,
+              dashboard_id: dashboard.id,
+              card: {
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 8,
+                visualization_settings: {
+                  column_settings: {
+                    [`["ref",["field",${ORDERS.ID},null]]`]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        targetId: dashboard.id,
+                        parameterMapping: {},
+                      },
+                    },
+                  },
+                },
+              },
+            });
+            cy.wrap(dashboard.id).as("selfDashboardId");
+          },
+        );
+      });
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.get<number>("@selfDashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Self-linking Dashboard").should("be.visible");
+
+        // Click the first ID cell — it has self-linking click_behavior.
+        H.getDashboardCard()
+          .findByTestId("visualization-root")
+          .findAllByRole("gridcell", { name: "1" })
+          .first()
+          .click();
+
+        // Expected: clicking a same-dashboard, no-tab link is a no-op — we are
+        // already on the only view there is. No back-button frame should be
+        // pushed onto the navigation stack.
+        // On master this fails: a new "dashboard" entry is pushed and the
+        // back-button "Back to Self-linking Dashboard" appears.
+        cy.findByText(/Back to/).should("not.exist");
+        cy.findByText("Self-linking Dashboard").should("be.visible");
+      });
+    });
+  });
+
   describe("question", () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
