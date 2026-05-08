@@ -24,6 +24,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
@@ -572,13 +573,14 @@
                                                    :name   tgt-a-name}}]
                             (transforms.execute/execute! transform-a {:run-method :manual})
                             (testing "transform A produced a remap row for its canonical target"
-                              ;; `:from_schema` storage shape: canonical schema for schema-having
-                              ;; drivers, empty-string sentinel for MySQL (no schema layer).
-                              (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)]
+                              (let [{from-db :db from-schema :schema from-table :table}
+                                    (ws.table-remapping/spec-for-table
+                                     ws-db {:name tgt-a-name :schema main-schema})]
                                 (is (some? (t2/select-one :model/TableRemapping
                                                           :database_id     (:id ws-db)
-                                                          :from_schema     from-schema-stored
-                                                          :from_table_name tgt-a-name))
+                                                          :from_db         from-db
+                                                          :from_schema     from-schema
+                                                          :from_table_name from-table))
                                     "MBQL transform A's canonical target became a remap row")))
                             ;; Transform B: native SQL referencing the canonical name of A's
                             ;; output. Pre-fix, this would fail at the warehouse with
@@ -603,24 +605,21 @@
                                     (is (= :ok outcome)
                                         (str "native transform B failed; outcome=" (pr-str outcome)))))
                                 (testing "B's iso output table contains the count of A's source rows"
-                                  ;; Source has 3 rows; A copies them to its iso target; B's SELECT count(*)
-                                  ;; should see those 3 rows via the rewriter substituting the iso name.
-                                  ;;
-                                  ;; Iso identifier shape:
-                                  ;;   schema-having drivers: `:to_schema`=iso schema, `:to_db`="";
-                                  ;;     2-slot `qualified-table-sql` of (to_schema, to_table) is correct.
-                                  ;;   MySQL: `:to_schema`="", `:to_db`=iso DB. The iso table lives at
-                                  ;;     `to_db.to_table`, which on MySQL is the same shape
-                                  ;;     `qualified-table-sql` emits when given (to_db, to_table).
-                                  (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)
-                                        {b-to-table :to_table_name
-                                         b-to-schema :to_schema
-                                         b-to-db    :to_db}
-                                        (t2/select-one :model/TableRemapping
-                                                       :database_id     (:id ws-db)
-                                                       :from_schema     from-schema-stored
-                                                       :from_table_name tgt-b-name)
-                                        iso-namespace (if (= :mysql admin-driver) b-to-db b-to-schema)
+                                  ;; Iso namespace lives at `:to_schema` (schema-having drivers) or
+                                  ;; `:to_db` (MySQL); pruning empty-string sentinels picks the right one.
+                                  (let [{from-db :db from-schema :schema from-table :table}
+                                        (ws.table-remapping/spec-for-table
+                                         ws-db {:name tgt-b-name :schema main-schema})
+                                        b-row (t2/select-one :model/TableRemapping
+                                                             :database_id     (:id ws-db)
+                                                             :from_db         from-db
+                                                             :from_schema     from-schema
+                                                             :from_table_name from-table)
+                                        b-to-table  (:to_table_name b-row)
+                                        b-iso-spec  (ws.table-remapping/prune-no-level
+                                                     {:db     (:to_db b-row)
+                                                      :schema (:to_schema b-row)})
+                                        iso-namespace (or (:schema b-iso-spec) (:db b-iso-spec))
                                         rows (jdbc/query admin-spec
                                                          [(format "SELECT n FROM %s"
                                                                   (qualified-table-sql admin-driver iso-namespace b-to-table))])]
