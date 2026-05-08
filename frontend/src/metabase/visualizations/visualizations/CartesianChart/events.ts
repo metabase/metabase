@@ -166,7 +166,9 @@ export const getEventDimensions = (
   // Include any other breakout column whose value is present at this data point but isn't yet
   // captured as a dimension — e.g. a scatterplot whose categorical breakout is not bound to the
   // series/color in viz settings would otherwise drop that filter from "See these records" (#73803).
-  const alreadyAddedColumns = new Set(dimensions.map((d) => d.column));
+  const alreadyAddedColumns = new Set(
+    dimensions.map((dimension) => dimension.column),
+  );
   for (const dataKey of sameCardDataKeys) {
     const column = chartModel.columnByDataKey[dataKey];
     if (

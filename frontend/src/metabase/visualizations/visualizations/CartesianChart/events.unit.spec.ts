@@ -1,42 +1,45 @@
+import {
+  createMockBreakoutSeriesModel,
+  createMockCartesianChartModel,
+  createMockSeriesModel,
+} from "__support__/echarts";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  BaseCartesianChartModel,
-  BreakoutSeriesModel,
   Datum,
   DimensionModel,
-  ScatterSeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { DatasetColumn } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatetimeColumn,
+} from "metabase-types/api/mocks";
 
 import { getEventDimensions } from "./events";
 
 const CARD_ID = 107;
 
-const createdAtColumn = {
+const createdAtColumn = createMockDatetimeColumn({
   name: "CREATED_AT",
   display_name: "Created At: Month",
   source: "breakout",
-  base_type: "type/DateTime",
-  effective_type: "type/DateTime",
   semantic_type: "type/CreationTimestamp",
-} as DatasetColumn;
+});
 
-const sourceColumn = {
+const sourceColumn = createMockColumn({
   name: "SOURCE",
   display_name: "User → Source",
   source: "breakout",
   base_type: "type/Text",
   effective_type: "type/Text",
   semantic_type: "type/Source",
-} as DatasetColumn;
+});
 
-const sumColumn = {
+const sumColumn = createMockColumn({
   name: "sum",
   display_name: "Sum of Total",
   source: "aggregation",
   base_type: "type/Float",
   effective_type: "type/Float",
-} as DatasetColumn;
+});
 
 const dimensionModel: DimensionModel = {
   column: createdAtColumn,
@@ -61,28 +64,23 @@ describe("getEventDimensions", () => {
       [sumKey]: 6720.6432478784345,
     };
 
-    const chartModel = {
+    const chartModel = createMockCartesianChartModel({
       columnByDataKey: {
         [createdAtKey]: createdAtColumn,
         [sourceKey]: sourceColumn,
         [sumKey]: sumColumn,
       },
-    } as unknown as BaseCartesianChartModel;
+    });
 
     // Scatter series model without `breakoutColumn`: this is what happens when graph.dimensions
     // has only the X-axis column even though the underlying query has a second breakout.
-    const seriesModel = {
-      name: "Sum of Total",
-      color: "#509EE3",
+    const seriesModel = createMockSeriesModel({
       dataKey: sumKey,
-      visible: true,
       column: sumColumn,
       columnIndex: 2,
       cardId: CARD_ID,
       vizSettingsKey: "sum",
-      legacySeriesSettingsObjectKey: { vizSettingsKey: "sum" },
-      tooltipName: "Sum of Total",
-    } as unknown as ScatterSeriesModel;
+    });
 
     const dimensions = getEventDimensions(
       chartModel,
@@ -102,19 +100,21 @@ describe("getEventDimensions", () => {
   // each becoming a separate DatasetColumn — so both should land in dimensions, even though they
   // point at the same underlying field.
   it("includes both breakouts when the same field is broken out twice with different temporal units", () => {
-    const monthColumn = {
-      ...createdAtColumn,
+    const monthColumn = createMockDatetimeColumn({
       name: "CREATED_AT",
       display_name: "Created At: Month",
+      source: "breakout",
+      semantic_type: "type/CreationTimestamp",
       unit: "month",
-    } as DatasetColumn;
+    });
 
-    const yearColumn = {
-      ...createdAtColumn,
+    const yearColumn = createMockDatetimeColumn({
       name: "CREATED_AT_2",
       display_name: "Created At: Year",
+      source: "breakout",
+      semantic_type: "type/CreationTimestamp",
       unit: "year",
-    } as DatasetColumn;
+    });
 
     const monthKey = `${CARD_ID}:CREATED_AT`;
     const yearKey = `${CARD_ID}:CREATED_AT_2`;
@@ -127,13 +127,13 @@ describe("getEventDimensions", () => {
       [sumKey]: 6720.6432478784345,
     };
 
-    const chartModel = {
+    const chartModel = createMockCartesianChartModel({
       columnByDataKey: {
         [monthKey]: monthColumn,
         [yearKey]: yearColumn,
         [sumKey]: sumColumn,
       },
-    } as unknown as BaseCartesianChartModel;
+    });
 
     const dimensionModelMonthAxis: DimensionModel = {
       column: monthColumn,
@@ -141,18 +141,13 @@ describe("getEventDimensions", () => {
       columnByCardId: { [CARD_ID]: monthColumn },
     };
 
-    const seriesModel = {
-      name: "Sum of Total",
-      color: "#509EE3",
+    const seriesModel = createMockSeriesModel({
       dataKey: sumKey,
-      visible: true,
       column: sumColumn,
       columnIndex: 2,
       cardId: CARD_ID,
       vizSettingsKey: "sum",
-      legacySeriesSettingsObjectKey: { vizSettingsKey: "sum" },
-      tooltipName: "Sum of Total",
-    } as unknown as ScatterSeriesModel;
+    });
 
     const dimensions = getEventDimensions(
       chartModel,
@@ -179,30 +174,25 @@ describe("getEventDimensions", () => {
       [sumKey]: 6720.6432478784345,
     };
 
-    const chartModel = {
+    const chartModel = createMockCartesianChartModel({
       columnByDataKey: {
         [createdAtKey]: createdAtColumn,
         [sourceKey]: sourceColumn,
         [sumKey]: sumColumn,
       },
-    } as unknown as BaseCartesianChartModel;
+    });
 
-    // Scatter series model WITH breakoutColumn (the working case where series/color is set).
-    const seriesModel = {
-      name: "Affiliate",
-      color: "#509EE3",
+    // Series model WITH breakoutColumn (the working case where series/color is set).
+    const seriesModel = createMockBreakoutSeriesModel({
       dataKey: sumKey,
-      visible: true,
       column: sumColumn,
       columnIndex: 2,
       cardId: CARD_ID,
       vizSettingsKey: "Affiliate",
-      legacySeriesSettingsObjectKey: { vizSettingsKey: "Affiliate" },
-      tooltipName: "Sum of Total",
       breakoutColumn: sourceColumn,
       breakoutColumnIndex: 1,
       breakoutValue: "Affiliate",
-    } as unknown as BreakoutSeriesModel;
+    });
 
     const dimensions = getEventDimensions(
       chartModel,
