@@ -115,7 +115,8 @@ export const useCommandPalette = ({
           ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
-        keywords: debouncedSearchText, // Always match the debouncedSearchText string
+        // Include original search query in keywords so kbar always shows it
+        keywords: searchQuery,
         icon: "document",
         extra: {
           href: link,
@@ -123,7 +124,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsUrl]);
+  }, [debouncedSearchText, docsUrl, searchQuery]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
@@ -150,7 +151,7 @@ export const useCommandPalette = ({
           id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
-          keywords: debouncedSearchText,
+          keywords: searchQuery,
           icon: "link" as const,
           priority: Priority.HIGH,
           extra: {
@@ -189,7 +190,7 @@ export const useCommandPalette = ({
             icon: icon.name,
             iconUrl: icon.iconUrl,
             section: "search",
-            keywords: debouncedSearchText,
+            keywords: searchQuery,
             priority: Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
@@ -216,7 +217,7 @@ export const useCommandPalette = ({
           {
             id: "no-search-results",
             name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
+            keywords: searchQuery,
             section: "search",
             disabled: true,
           },
