@@ -11,7 +11,7 @@ This page covers how to pass parameter values to embedded dashboards and SQL que
 
 ### Pass parameter values to a dashboard
 
-You can set initial values for embeds (uncontrolled), and optionally keep your app in sync with values as people change them (controlled).
+You can set initial values for embeds (uncontrolled), and optionally keep your app in sync with values as people change them (controlled). You can pick either `initialParameters` and `parameters`, but don't combine them.
 
 #### `initialParameters` (uncontrolled)
 
@@ -25,7 +25,7 @@ See [How parameter values are resolved](#how-parameter-values-are-resolved) for 
 
 #### `parameters` + `onParametersChange` (controlled)
 
-Push values from your app, and observe every applied change via `onParametersChange`. This works like a controlled `<input value onChange>` - your app holds the source of truth, the dashboard re-renders when the prop changes, and you receive a callback whenever applied values change.
+Push values from your app, and observe every applied change via `onParametersChange`. This works like a controlled `<input value onChange>`. Your app holds the source of truth, the dashboard re-renders when the prop changes, and you receive a callback whenever applied values change.
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
@@ -61,8 +61,6 @@ Push values from your app, and observe every applied change via `onSqlParameters
 ```
 
 `onSqlParametersChange` receives the [SQL question parameter change payload](#sql-question-parameter-change-payload).
-
-> Don't combine `initialSqlParameters` and `sqlParameters` - pick one. For controlled behavior, only use `sqlParameters`.
 
 ## Modular embedding (web components)
 
@@ -152,9 +150,9 @@ For SQL questions, listen for `sql-parameters-change` on `<metabase-question>`. 
 
 These rules apply to all four props — `initialParameters` / `parameters` (dashboards) and `initialSqlParameters` / `sqlParameters` (SQL questions) — and to the matching web component attributes (`initial-parameters`, `parameters`, etc.). For each parameter slug:
 
-- set to a value: that value is applied. For dashboards, use a `string` for a single-option filter and an array of `string`s for multi-option filters.
-- set to `null`: the parameter is cleared and its default is not used.
-- omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
+- **Set a value**: Pass a `string` for a single-option filter, and an array of `string`s for multi-option filters.
+- **Clear a value:** Set to `null`: the parameter is cleared and its default is not used.
+- **Reset to the default value**: Omit a value (or set to `undefined`) and the embed will fall back to the parameter's default (or `null` if it has no default).
 
 ## Dashboard parameter change payload
 
