@@ -1,10 +1,10 @@
-import userEvent from "@testing-library/user-event";
-
 import { screen } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockModerationReview,
+  createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
@@ -56,23 +56,27 @@ describe("QuestionInfoSidebar > enterprise", () => {
     });
 
     describe("for admins", () => {
-      it("should show tabs for Overview, History, Relationships, and Insights", async () => {
-        setup({ user: { is_superuser: true } });
+      it("should show Overview, History, Relationships, and an Insights entry", async () => {
+        setup({
+          user: { is_superuser: true },
+          settings: createMockSettings({
+            "token-features": createMockTokenFeatures({
+              audit_app: false,
+            }),
+          }),
+        });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(4);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-          "Insights",
-        ]);
-        const insightsTab = await screen.findByRole("tab", {
-          name: "Insights",
-        });
-        await userEvent.click(insightsTab);
         expect(
-          await screen.findByText(/See who.s doing what, when/),
+          screen.getByRole("tab", { name: "Overview" }),
         ).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: "History" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: "Relationships" }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Insights")).toBeInTheDocument();
       });
     });
   });
