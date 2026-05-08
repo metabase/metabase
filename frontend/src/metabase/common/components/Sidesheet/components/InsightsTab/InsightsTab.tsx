@@ -8,13 +8,12 @@ import { Flex, Tabs } from "metabase/ui";
 /** This tab just shows the Insights upsell */
 const InsightsTabComponent = () => {
   const shouldShowGem = !useHasTokenFeature("audit_app");
-  const gemSize = 14;
 
   return (
     <Tabs.Tab value="insights">
       <Flex align="center" gap="xs">
         {t`Insights`}
-        {shouldShowGem && <UpsellGem size={gemSize} />}
+        {shouldShowGem && <UpsellGem size={14} />}
       </Flex>
     </Tabs.Tab>
   );
