@@ -15,6 +15,7 @@
 
 (comment
   metabase-enterprise.serialization.dump/keep-me
+  metabase-enterprise.serialization.export/keep-me
   metabase-enterprise.serialization.v2.extract/keep-me
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
