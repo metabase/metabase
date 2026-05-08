@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.serialization.metadata :as metadata]
+   [metabase-enterprise.serialization.export :as export]
    [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
@@ -22,7 +22,6 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -309,67 +308,10 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-;;; ----------------------------------- GET /api/ee/serialization/metadata/export -----------------------------------
+;;; ----------------------------------- GET /api/ee/serialization/export/json ------------------------------------
 
-(defn- write-json-array!
-  "Streams a reducible collection as a JSON array to `writer`. Each value is JSON-encoded
-  directly with no transformation — apply per-row formatting via an `eduction` (or other
-  transducer pipeline) before passing in.
-
-  `run!` is required here because it dispatches through `reduce`, which consumes the
-  `IReduceInit` returned by `t2/reducible-query` row-by-row without materializing.
-  `doseq` cannot be used: it walks a seq, and producing a seq from the reducible
-  would realize every row into memory — defeating the point of streaming."
-  [^java.io.Writer writer reducible]
-  (.write writer "[")
-  (let [first? (volatile! true)]
-    (run! (fn [row]
-            (if @first?
-              (vreset! first? false)
-              (.write writer ","))
-            (json/encode-to row writer {}))
-          reducible))
-  (.write writer "]"))
-
-(defn- write-json-object!
-  "Writes a JSON object whose values are JSON arrays to `writer`. `entries` is a reducible
-  of `[entry-name objects]` pairs; `objects` is itself a reducible (typically an `eduction`)
-  of already-formatted values to encode.
-
-  `run!` is used over the entries — `doseq` would walk a seq and realize the underlying
-  reducible, defeating streaming."
-  [^java.io.Writer writer entries]
-  (.write writer "{")
-  (let [first? (volatile! true)]
-    (run! (fn [[entry-name objects]]
-            (if @first? (vreset! first? false) (.write writer ","))
-            (.write writer (str "\"" entry-name "\":"))
-            (write-json-array! writer objects))
-          entries))
-  (.write writer "}"))
-
-(defn- write-databases-metadata!
-  "Streams the databases/tables/fields metadata to the given OutputStream. Sections are
-  included only when their `with-...?` flag is true. All references — database, table,
-  fk_target_field — are emitted in serdes-portable form (names rather than numeric IDs)
-  so the response can be ingested by another Metabase instance with different surrogate
-  keys.
-
-  Warehouses with large schemas can produce gigabytes of metadata, so rows are pulled
-  from reducible queries and streamed directly to the writer — memory stays bounded
-  regardless of schema size."
-  [^java.io.OutputStream os {:keys [with-databases? with-tables? with-fields?]}]
-  (let [writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
-    (write-json-object!
-     writer
-     (cond-> []
-       with-databases? (conj ["databases" (metadata/reducible-databases)])
-       with-tables?    (conj ["tables"    (metadata/reducible-tables)])
-       with-fields?    (conj ["fields"    (metadata/reducible-fields)])))
-    (.flush writer)))
-
-(api.macros/defendpoint :get "/metadata/export"
-  :- (sr/streaming-response-schema ::schema/metadata-export-response)
+(api.macros/defendpoint :get "/export/json"
+  :- (sr/streaming-response-schema ::schema/export-response)
   "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
   current user, with all references emitted in serdes-portable form (database names, table
   `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).
@@ -381,16 +323,14 @@
   Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
   `Query builder and native`) permissions on each database and table."
   [_route-params
-   {:keys [with-databases with-tables with-fields]}
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-    (write-databases-metadata! os
-                               {:with-databases? with-databases
-                                :with-tables?    with-tables
-                                :with-fields?    with-fields})))
+   query-params :- [:map
+                    [:with-databases {:default false} [:maybe :boolean]]
+                    [:with-tables    {:default false} [:maybe :boolean]]
+                    [:with-fields    {:default false} [:maybe :boolean]]]]
+  (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
+                                             :is-superuser? api/*is-superuser?*})]
+    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+      (export/export! os opts))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."
