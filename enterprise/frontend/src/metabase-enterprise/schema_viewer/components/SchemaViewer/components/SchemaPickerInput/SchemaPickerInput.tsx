@@ -150,11 +150,15 @@ export function SchemaPickerInput({
     close();
   }, [close]);
 
+  // React Flow's pane uses pointerdown handlers that call preventDefault(),
+  // which suppresses the follow-up `mousedown`/`click` that Mantine's default
+  // useClickOutside listens for. Listen to `pointerdown` (and `touchstart`)
+  // instead so clicks on the canvas reliably dismiss the popover.
   const clickOutsideRef = useClickOutside(() => {
     if (opened) {
       handleClose();
     }
-  });
+  }, ["pointerdown", "touchstart"]);
 
   const hasSelection = databaseId != null;
 
