@@ -1,6 +1,6 @@
 {
   "name": "@metabase/custom-viz",
-  "version": "0.0.1-canary.18",
+  "version": "1.0.0",
   "description": "Creating custom visualizations for Metabase",
   "type": "module",
   "bin": {
