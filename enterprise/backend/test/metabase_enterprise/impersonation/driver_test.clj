@@ -810,7 +810,7 @@
                                        :tables
                                        set)
                       default-table-set (tables-set)
-                      do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
+                      do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
                   (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
                                               (fn [driver db options f]
                                                 (do-with-resolved-connection driver db options
