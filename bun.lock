@@ -33,6 +33,7 @@
         "@juggle/resize-observer": "^3.4.0",
         "@lezer/highlight": "^1.2.1",
         "@lezer/lr": "^1.4.2",
+        "@locker/near-membrane-dom": "^0.15.0",
         "@loki/browser": "0.35.0",
         "@mantine/core": "8.3.18",
         "@mantine/dates": "8.3.18",
@@ -93,6 +94,7 @@
         "dayjs": "^1.11.18",
         "detect-package-manager": "^3.0.2",
         "diff": "^5.2.2",
+        "dompurify": "^3.4.0",
         "echarts": "6.0.0",
         "events": "^3.3.0",
         "fast-text-encoding": "^1.0.6",
@@ -1116,6 +1118,14 @@
     "@lezer/lr": ["@lezer/lr@1.4.2", "", { "dependencies": { "@lezer/common": "^1.0.0" } }, "sha512-pu0K1jCIdnQ12aWNaAVU5bzi7Bd1w54J3ECgANPmYLtQKP0HBj2cE/5coBD66MT10xbtIuUr7tg0Shbsvk0mDA=="],
 
     "@lezer/python": ["@lezer/python@1.1.15", "", { "dependencies": { "@lezer/common": "^1.2.0", "@lezer/highlight": "^1.0.0", "@lezer/lr": "^1.0.0" } }, "sha512-aVQ43m2zk4FZYedCqL0KHPEUsqZOrmAvRhkhHlVPnDD1HODDyyQv5BRIuod4DadkgBEZd53vQOtXTonNbEgjrQ=="],
+
+    "@locker/near-membrane-base": ["@locker/near-membrane-base@0.15.0", "", { "dependencies": { "@locker/near-membrane-shared": "0.15.0" } }, "sha512-ui7JZF4lG0TosGSl1ECGd4w0pwE9JXFw+JB0YYFA61qqw0ZmPk6yacPb6mawGqg1boa/yASZ1JIC5YRfk+jMCw=="],
+
+    "@locker/near-membrane-dom": ["@locker/near-membrane-dom@0.15.0", "", { "dependencies": { "@locker/near-membrane-base": "0.15.0", "@locker/near-membrane-shared": "0.15.0", "@locker/near-membrane-shared-dom": "0.15.0" } }, "sha512-sOo9rE7smymkBust2FzBhUAcbKksSTl9q/amroFE4P1Zlof6moTHCvVh3X/wnP4o7Md+yPWOEhNyrAA56kMIsg=="],
+
+    "@locker/near-membrane-shared": ["@locker/near-membrane-shared@0.15.0", "", {}, "sha512-d6sJH7GrLmK9+k1ujobMCya7sIXIzAhjOCqRSxp03YGgnfurGR3ymq1R2oqdaGJldYIw3W4rD/Zc0n9q01CHfA=="],
+
+    "@locker/near-membrane-shared-dom": ["@locker/near-membrane-shared-dom@0.15.0", "", { "dependencies": { "@locker/near-membrane-shared": "0.15.0" } }, "sha512-Pe3xDLiWHk0NqRjwE3KSGqEXwiQ7pfZIwX8n/9JAfFeUV6AQPrn5+8X4kFQter3zY4Aj8rGg+C9S8BluFtxafg=="],
 
     "@loki/browser": ["@loki/browser@0.35.0", "", { "dependencies": { "@loki/integration-core": "^0.35.0" } }, "sha512-VYSd3bx9dOQ/Wo2C1gdNdE2mcYPleVtGInRcZmCOJ01va14L9VEGzG2zL1dMcmMUuJ2cT3Ri1GR59vEO3vKWvQ=="],
 
@@ -2865,7 +2875,7 @@
 
     "domhandler": ["domhandler@5.0.3", "", { "dependencies": { "domelementtype": "^2.3.0" } }, "sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w=="],
 
-    "dompurify": ["dompurify@3.4.2", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-lHeS9SA/IKeIFFyYciHBr2n0v1VMPlSj843HdLOwjb2OxNwdq9Xykxqhk+FE42MzAdHvInbAolSE4mhahPpjXA=="],
+    "dompurify": ["dompurify@3.4.0", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-nolgK9JcaUXMSmW+j1yaSvaEaoXYHwWyGJlkoCTghc97KgGDDSnpoU/PlEnw63Ah+TGKFOyY+X5LnxaWbCSfXg=="],
 
     "domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
 

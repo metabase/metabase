@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupCustomVizPluginListEndpoint,
   setupDatabasesEndpoints,
   setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -55,6 +56,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   setupRecentViewsAndSelectionsEndpoints([]);
   setupLibraryEndpoints();
   setupDatabasesEndpoints([]);
+  setupCustomVizPluginListEndpoint();
   const onClose = jest.fn();
 
   const settings = mockSettings({});

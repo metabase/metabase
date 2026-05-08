@@ -16,7 +16,7 @@ import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/util
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
@@ -592,7 +592,9 @@ const isMeasure = (
   return item.model === "measure";
 };
 
-const getLocationDetails = (item: MiniPickerPickableItem) => {
+const useLocationDetails = (item: MiniPickerPickableItem) => {
+  const getIcon = useGetIcon();
+
   if (isTableInDb(item)) {
     return {
       itemText: `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`,
@@ -612,7 +614,7 @@ const getLocationDetails = (item: MiniPickerPickableItem) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const { itemText, iconProps } = getLocationDetails(item);
+  const { itemText, iconProps } = useLocationDetails(item);
 
   if (!itemText) {
     return null;

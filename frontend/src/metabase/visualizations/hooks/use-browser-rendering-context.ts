@@ -36,6 +36,7 @@ export const useBrowserRenderingContext = (
       measureText: measureTextWidth,
       measureTextHeight,
       fontFamily: getFontFamilyValue(fontFamily),
+      colorScheme: theme.other?.colorScheme ?? "light",
       theme: style,
     };
   }, [fontFamily, palette, theme, isDashboard]);

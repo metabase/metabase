@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/common/utils/icon";
 import type { TreeItem } from "metabase/data-studio/common/types";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { CollectionId } from "metabase-types/api";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -16,6 +16,7 @@ export function useLibrarySearch(
 ) {
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const isActive = debouncedQuery.trim().length > 0;
+  const getIcon = useGetIcon();
 
   const {
     data: searchResponse,
@@ -108,7 +109,7 @@ export function useLibrarySearch(
     sections.push(...filteredSnippets);
 
     return sections;
-  }, [isActive, searchResponse, snippetTree, debouncedQuery]);
+  }, [isActive, searchResponse, snippetTree, debouncedQuery, getIcon]);
 
   return {
     tree,

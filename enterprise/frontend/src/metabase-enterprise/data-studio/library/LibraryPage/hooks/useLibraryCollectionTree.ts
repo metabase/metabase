@@ -6,7 +6,6 @@ import {
   skipToken,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { getIcon } from "metabase/common/utils/icon";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -15,6 +14,7 @@ import {
   createEmptyStateItem,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
@@ -29,6 +29,7 @@ export function useLibraryCollectionTree(
   metricCollectionId?: CollectionId,
 ) {
   const dispatch = useDispatch();
+  const getIcon = useGetIcon();
 
   // 1. Fetch top-level items
   const {
@@ -99,7 +100,11 @@ export function useLibraryCollectionTree(
       return [];
     }
 
-    const children = buildChildren(topLevelItems.data, loadedCollections);
+    const children = buildChildren(
+      topLevelItems.data,
+      loadedCollections,
+      getIcon,
+    );
     const hasItems = children.length > 0;
 
     return [
@@ -125,6 +130,7 @@ export function useLibraryCollectionTree(
     topLevelItems,
     collection,
     loadedCollections,
+    getIcon,
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
@@ -176,6 +182,7 @@ export function useLibraryCollectionTree(
 function buildChildren(
   items: CollectionItem[],
   loadedCollections: Map<CollectionId, CollectionItem[]>,
+  getIcon: ReturnType<typeof useGetIcon>,
 ): TreeItem[] {
   const visibleItems = items.filter((i) => !i.archived);
   const collections = visibleItems.filter((i) => i.model === "collection");
@@ -187,7 +194,7 @@ function buildChildren(
       let children: TreeItem[] | undefined;
 
       if (childItems !== undefined) {
-        const built = buildChildren(childItems, loadedCollections);
+        const built = buildChildren(childItems, loadedCollections, getIcon);
         children = built.length > 0 ? built : undefined;
       } else if (hasContent(col)) {
         children = [];
@@ -203,11 +210,14 @@ function buildChildren(
         childrenLoaded: childItems !== undefined,
       };
     }),
-    ...leafItems.map(buildItemNode),
+    ...leafItems.map((leafItem) => buildItemNode(leafItem, getIcon)),
   ];
 }
 
-function buildItemNode(item: CollectionItem): TreeItem {
+function buildItemNode(
+  item: CollectionItem,
+  getIcon: ReturnType<typeof useGetIcon>,
+): TreeItem {
   return {
     name: item.name,
     updatedAt: item["last-edit-info"]?.timestamp,

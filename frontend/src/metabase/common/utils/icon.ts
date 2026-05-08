@@ -1,8 +1,5 @@
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
-import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardType,
   Collection,
@@ -67,74 +64,6 @@ export const modelIconMap: Record<IconModel, IconName> = {
 export type IconData = {
   name: IconName;
   color?: ColorName;
+  iconUrl?: string;
   tooltip?: string;
-};
-
-const getCollectionIcon = (item: ObjectWithModel): IconData | void => {
-  if (item.model !== "collection") {
-    return;
-  }
-
-  if (item.id === PERSONAL_COLLECTIONS.id) {
-    return { name: "group" };
-  }
-
-  if (item.is_personal && item.location === "/") {
-    return { name: "person" };
-  }
-
-  if (item.id === "databases") {
-    return { name: "database" };
-  }
-
-  if (item.model === "collection" && item.is_library_root === true) {
-    switch (item.type) {
-      case "library":
-        return { name: "repository" };
-      case "library-data":
-        return { name: "table" };
-      case "library-metrics":
-        return { name: "metric" };
-    }
-  }
-};
-
-const getModelIcon = (model: IconModel): IconData => {
-  return {
-    name: modelIconMap[model] ?? "unknown",
-  };
-};
-
-/**
- * Get an Icon for any entity object, doesn't depend on the entity system.
- */
-export const getIconBase = (item: ObjectWithModel): IconData => {
-  if (item.model === "card" && item.display) {
-    return {
-      name: getIconForVisualizationType(item.display),
-    };
-  }
-
-  if (item.model === "collection") {
-    const data = getCollectionIcon(item);
-    if (data) {
-      return data;
-    }
-  }
-
-  return getModelIcon(item.model);
-};
-
-/**
- * relies mainly on the `model` property to determine the icon to return
- * also handle special collection icons and visualization types for cards
- */
-export const getIcon = (
-  item: ObjectWithModel,
-  { isTenantUser = false }: { isTenantUser?: boolean } = {},
-): IconData => {
-  if (PLUGIN_COLLECTIONS) {
-    return PLUGIN_COLLECTIONS.getIcon(item, { isTenantUser });
-  }
-  return getIconBase(item);
 };
