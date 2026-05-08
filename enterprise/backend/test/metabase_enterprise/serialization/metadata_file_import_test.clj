@@ -91,68 +91,6 @@
         (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "orders"))]
           (is (some? (t2/select-one :model/Field :table_id tbl-id :name "id"))))))))
 
-;;; ============================== Single-pass stubs ==============================
-
-(deftest single-pass-stubs-three-deep-nested-fields-test
-  (testing "interleaved order (children before parents): stubs get filled by their real rows in the same pass"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "deep-nest-db" :engine :postgres}]
-      (let [meta-file (json-file
-                       {:databases [{:name "deep-nest-db" :engine "postgres"}]
-                        :tables    [{:db_id "deep-nest-db" :schema "public" :name "events"}]
-                        ;; intentionally interleaved order — child rows appear before parents
-                        :fields    [{:id ["deep-nest-db" "public" "events" "root" "mid" "leaf"]
-                                     :table_id ["deep-nest-db" "public" "events"]
-                                     :parent_id ["deep-nest-db" "public" "events" "root" "mid"]
-                                     :nfc_path ["root" "mid"]
-                                     :name "leaf"
-                                     :base_type "type/Text" :database_type "text"}
-                                    {:id ["deep-nest-db" "public" "events" "root"]
-                                     :table_id ["deep-nest-db" "public" "events"]
-                                     :name "root"
-                                     :base_type "type/Structured" :database_type "json"}
-                                    {:id ["deep-nest-db" "public" "events" "root" "mid"]
-                                     :table_id ["deep-nest-db" "public" "events"]
-                                     :parent_id ["deep-nest-db" "public" "events" "root"]
-                                     :nfc_path ["root"]
-                                     :name "mid"
-                                     :base_type "type/Structured" :database_type "json"}]})]
-        (loader/import-metadata-file! meta-file)
-        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "events"))
-              root   (t2/select-one :model/Field :table_id tbl-id :name "root")
-              mid    (t2/select-one :model/Field :table_id tbl-id :name "mid")
-              leaf   (t2/select-one :model/Field :table_id tbl-id :name "leaf")]
-          (is (every? some? [root mid leaf]))
-          (is (nil? (:parent_id root)))
-          (is (= (:id root) (:parent_id mid)))
-          (is (= (:id mid)  (:parent_id leaf)))
-          (is (every? #(false? (processors/stub-row? %)) [root mid leaf])
-              "all three fields ended up as real rows (their real arrivals clobbered any stubs)"))))))
-
-;;; ============================== Unfilled stubs (orphan parent) ==============================
-
-(deftest unfilled-stubs-warns-test
-  (testing "orphan parent: stub remains, warn-on-unfilled-stubs! logs but does not throw"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "orphan-db" :engine :postgres}]
-      (let [meta-file (json-file
-                       {:databases [{:name "orphan-db" :engine "postgres"}]
-                        :tables    [{:db_id "orphan-db" :schema "public" :name "t"}]
-                        :fields    [{:id ["orphan-db" "public" "t" "missing-parent" "child"]
-                                     :table_id ["orphan-db" "public" "t"]
-                                     :parent_id ["orphan-db" "public" "t" "missing-parent"]
-                                     :nfc_path ["missing-parent"]
-                                     :name "child"
-                                     :base_type "type/Text" :database_type "text"}]})]
-        ;; Should NOT throw — unfilled stubs are warned, not failed
-        (is (= :ok (loader/import-metadata-file! meta-file)))
-        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "t"))
-              stub   (t2/select-one :model/Field :table_id tbl-id :name "missing-parent")
-              child  (t2/select-one :model/Field :table_id tbl-id :name "child")]
-          (is (some? stub) "the orphan parent was inserted as a stub")
-          (is (processors/stub-row? stub) "the orphan parent is identified as a stub")
-          (is (= false (:active stub)))
-          (is (= (:id stub) (:parent_id child))
-              "child's parent_id points at the stub"))))))
-
 ;;; ============================== No-match skipping ==============================
 
 (deftest unmatched-source-database-skips-its-tables-and-fields-test

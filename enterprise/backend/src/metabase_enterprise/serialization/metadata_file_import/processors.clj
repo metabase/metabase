@@ -122,22 +122,25 @@
   "Process a batch of database rows. Returns an eduction of result maps.
 
   Result shapes:
-    `{:source-id <db-name> :target-id M :status :matched}`
-    `{:source-id <db-name> :status :no-match :line L :detail S}`
+    `{:source-id <int> :name <string> :target-id <int> :status :matched}`
+    `{:source-id <int> :name <string> :status :no-match :line L :detail S}`
 
-  `:source-id` is the row's `:name` (its portable database id).
+  `:source-id` is the wire row's `:id` (the source appdb's database id, an
+  integer). `:name` is also surfaced so the caller can build a
+  `source-id → name` map for the tables/fields handlers' `db_name`
+  denormalization.
 
   Validation failures throw; lookup misses produce `:no-match` results
   (non-fatal)."
   [batch]
   (doseq [[ln line] batch]
-    (validate-line! ::schemas/database-info ln line {:source-id (:name line)}))
+    (validate-line! ::schemas/database-info ln line {:source-id (:id line)}))
   (let [match-idx (match-databases-batch (mapv second batch))]
     (eduction
-     (map (fn [[ln {:keys [name engine]}]]
+     (map (fn [[ln {:keys [id name engine]}]]
             (if-let [target (match-idx [name (engine-name engine)])]
-              {:source-id name :target-id target :status :matched}
-              {:source-id name
+              {:source-id id :name name :target-id target :status :matched}
+              {:source-id id :name name
                :status    :no-match
                :line      ln
                :detail    (format "No database with name=%s engine=%s"
@@ -146,40 +149,26 @@
 
 ;;; ============================== tables — drain + merge ==============================
 
-(defn- portable-table-id
-  "The portable id for a table row — `[db-name schema-or-nil name]`. Used for
-  validation-error attribution."
-  [{:keys [db_id schema name]}]
-  [db_id schema name])
-
 (defn drain-tables-batch!
-  "Per-batch handler for `:tables`: validate each row, then bulk-insert into
-  `metabase_table_import`. Pure side-effecting; suitable as a callback for
-  `parsers/stream-array-batches!` or `parsers/stream-keyed-arrays!`."
-  [batch]
+  "Per-batch handler for `:tables`: validate each row, denormalize `db_name`
+  from the in-memory `databases-by-source-id` map (built by the databases
+  handler), and bulk-insert into `metabase_table_import`. Suitable as a
+  callback for `parsers/stream-keyed-arrays!` once partial-applied with
+  `databases-by-source-id`."
+  [databases-by-source-id batch]
   (doseq [[ln line] batch]
-    (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
+    (validate-line! ::schemas/table-info ln line {:source-id (:id line)}))
   (when (seq batch)
-    (let [rows (mapv (fn [[_ {:keys [db_id schema name description]}]]
-                       {:db_name      db_id
-                        :table_schema schema
-                        :table_name   name
+    (let [rows (mapv (fn [[_ {:keys [id db_id schema name description]}]]
+                       {:source_id    id
+                        :source_db_id db_id
+                        :db_name      (get databases-by-source-id db_id)
+                        :schema       schema
+                        :name         name
                         :description  description
                         :display_name (humanization/name->human-readable-name name)})
                      batch)]
       (t2/insert! :metabase_table_import rows))))
-
-(defn drain-tables-into-staging!
-  "Stream `:tables` from `metadata-file` into `metabase_table_import`.
-
-  Validates each row against [[schemas/table-info]] up front. Computes
-  `display_name` at drain time via [[humanization/name->human-readable-name]] —
-  the merge SQL can then carry the value verbatim instead of re-implementing
-  the algorithm in three SQL dialects. Writes only to staging; no live-data
-  writes."
-  [^File metadata-file]
-  (parsers/stream-array-batches!
-   metadata-file :tables import-batch-size drain-tables-batch!))
 
 (defn resolve-target-table-ids-in-staging!
   "Set `metabase_table_import.target_table_id` to the int id of the matching
@@ -293,75 +282,33 @@
   [coll]
   (when (seq coll) (json/encode (vec coll))))
 
-(defn- decompose-portable-field-id
-  "Split a portable field id vector into its natural-key components.
-
-  For any portable id of length ≥ 4 — `[db, schema, tbl, ...middle, last]` —
-  returns `{:db_name :table_schema :table_name :path :name}`, where `:name`
-  is the last element and `:path` is the middle (encoded same as
-  `metabase_field.nfc_path`). Length-4 portable ids have an empty middle, so
-  `:path` is NULL.
-
-  Convention-blind: trusts the export to emit portable ids that uniquely
-  identify storage rows. The import treats them as opaque match keys."
-  [pid]
-  (let [v (vec pid)]
-    {:db_name      (get v 0)
-     :table_schema (get v 1)
-     :table_name   (get v 2)
-     :path         (encode-path-or-nil (subvec v 3 (dec (count v))))
-     :name         (peek v)}))
-
 (defn drain-fields-batch!
-  "Per-batch handler for `:fields`: validate each row, decompose wire keys
-  (`:table_id`, `:parent_id`, `:fk_target_field_id`) into staging columns,
-  bulk-insert into `metabase_field_import`. Suitable as a callback for
-  `parsers/stream-array-batches!` or `parsers/stream-keyed-arrays!`."
+  "Per-batch handler for `:fields`: validate each row, then bulk-insert into
+  `metabase_field_import`. Wire integer ids (`:id`, `:table_id`, `:parent_id`,
+  `:fk_target_field_id`) go into the matching `source_*_id` columns verbatim;
+  resolution to target ids happens later in the merge phase."
   [batch]
   (doseq [[ln line] batch]
-    (validate-line! ::schemas/field-info ln line {:source-id (vec (:id line))}))
+    (validate-line! ::schemas/field-info ln line {:source-id (:id line)}))
   (when (seq batch)
-    (let [rows (mapv (fn [[_ {:keys [table_id name nfc_path parent_id fk_target_field_id
-                                     base_type database_type description effective_type
-                                     semantic_type coercion_strategy]}]]
-                       (let [tid (vec table_id)
-                             p   (some-> parent_id decompose-portable-field-id)
-                             fk  (some-> fk_target_field_id decompose-portable-field-id)]
-                         (cond-> {:db_name           (get tid 0)
-                                  :table_schema      (get tid 1)
-                                  :table_name        (get tid 2)
-                                  :field_name        name
-                                  :nfc_path          (encode-path-or-nil nfc_path)
-                                  :base_type         base_type
-                                  :database_type     database_type
-                                  :description       description
-                                  :effective_type    effective_type
-                                  :semantic_type     semantic_type
-                                  :coercion_strategy coercion_strategy}
-                           p  (assoc :parent_db_name      (:db_name p)
-                                     :parent_table_schema (:table_schema p)
-                                     :parent_table_name   (:table_name p)
-                                     :parent_path         (:path p)
-                                     :parent_name         (:name p))
-                           fk (assoc :fk_target_db_name      (:db_name fk)
-                                     :fk_target_table_schema (:table_schema fk)
-                                     :fk_target_table_name   (:table_name fk)
-                                     :fk_target_path         (:path fk)
-                                     :fk_target_name         (:name fk)))))
+    (let [rows (mapv (fn [[_ {:keys [id table_id parent_id fk_target_field_id
+                                     name base_type database_type
+                                     effective_type semantic_type coercion_strategy
+                                     description nfc_path]}]]
+                       {:source_id           id
+                        :source_table_id     table_id
+                        :source_parent_id    parent_id
+                        :source_fk_target_id fk_target_field_id
+                        :name                name
+                        :base_type           base_type
+                        :database_type       database_type
+                        :effective_type      effective_type
+                        :semantic_type       semantic_type
+                        :coercion_strategy   coercion_strategy
+                        :description         description
+                        :nfc_path            (encode-path-or-nil nfc_path)})
                      batch)]
       (t2/insert! :metabase_field_import rows))))
-
-(defn drain-fields-into-staging!
-  "Stream `:fields` from `metadata-file` into `metabase_field_import`.
-
-  Validates each row up front. Decomposes wire `:table_id`, `:parent_id`, and
-  `:fk_target_field_id` into staging columns. Encodes wire `:nfc_path` to match
-  `metabase_field.nfc_path`. Resolved-id columns (`parent_id`, `fk_target_id`,
-  `target_field_id`) start NULL — they're filled by the resolve functions in
-  the merge phase. Writes only to staging."
-  [^File metadata-file]
-  (parsers/stream-array-batches!
-   metadata-file :fields import-batch-size drain-fields-batch!))
 
 (defn- collect-missing-parent-portable-ids
   "Return a vector of distinct portable id vectors for staging rows whose

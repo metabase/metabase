@@ -66,6 +66,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: display_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Pre-humanized at drain time so the merge SQL doesn't replicate the algorithm in three dialects.
+              - column:
                   name: target_id
                   type: int
                   constraints:
