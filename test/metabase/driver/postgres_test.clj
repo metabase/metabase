@@ -426,7 +426,7 @@
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest ^:parallel json-field-test
-  (mt/test-driver :postgres
+  (mt/test-driver :postgres-mbql5
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         {:database (assoc meta/database :engine :postgres, :id 1)
@@ -854,7 +854,7 @@
     (driver/notify-database-updated :postgres database)))
 
 (deftest ^:parallel enums-test
-  (mt/test-driver :postgres
+  (mt/test-driver :postgres-mbql5
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
