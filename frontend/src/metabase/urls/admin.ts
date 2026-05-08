@@ -1,5 +1,6 @@
 import type {
   BaseUser,
+  CustomVizPluginId,
   DatabaseId,
   FieldId,
   SchemaName,
@@ -141,6 +142,22 @@ export function adminRemoteSync() {
 
 export function adminLicense() {
   return "/admin/settings/license";
+}
+
+export function customViz() {
+  return "/admin/settings/custom-visualizations";
+}
+
+export function customVizAdd() {
+  return `${customViz()}/new`;
+}
+
+export function customVizEdit(id: CustomVizPluginId | undefined) {
+  return `${customViz()}/edit/${id ?? ""}`;
+}
+
+export function customVizDev() {
+  return `${customViz()}/development`;
 }
 
 export function adminToolsHelp() {

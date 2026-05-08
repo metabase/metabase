@@ -135,6 +135,7 @@
     :model/MetabotConversation
     :model/MetabotMessage
     :model/MetabotFeedback
+    :model/MetabotSourceFeedback
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/MetabotPermissions
@@ -143,6 +144,7 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
+      :model/CustomVizPlugin
       :model/Workspace
       :model/WorkspaceDatabase
       :model/TableRemapping])))

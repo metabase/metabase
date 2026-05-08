@@ -691,11 +691,14 @@
     (condp #(isa? %2 %1) (or effective-type base-type)
       ;; When we are dealing with a uuid type we should try to convert to a real UUID
       ;; If that fails,, we will add a fallback cast to "text"
-      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
-                   (try
-                     (UUID/fromString value)
-                     (catch IllegalArgumentException _
-                       (h2x/with-type-info value {:database-type "varchar"}))))
+      :type/UUID (cond
+                   (instance? UUID value) value
+                   (= "" value)           nil ; support is-empty/non-empty checks
+                   (string? value)        (try
+                                            (UUID/fromString value)
+                                            (catch IllegalArgumentException _
+                                              (h2x/with-type-info value {:database-type "varchar"})))
+                   :else                  value)
       (->honeysql driver value))))
 
 (defn- literal-text-value?

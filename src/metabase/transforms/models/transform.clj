@@ -20,7 +20,6 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.table :as ws.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -104,22 +103,11 @@
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (let [target-db-id (transforms-base.i/target-db-id transform)
-        ;; This is defensive code to cope with some tests for remote sync, where we deserialize a transform
-        ;; with a concrete database id within it, for a potentially non-existent database.
-        ;; In practice, our serialized representation should not contain any database ids, and this should
-        ;; not be required.
-        ;; TODO (Chris 2026-02-02) -- Update tests so this workaround is unnecessary.
-        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))
-        target-name  (get-in transform [:target :name])
-        table-id     (when (and valid-db-id? target-name)
-                       (transforms-base.u/upsert-target-table!
-                        target-db-id (get-in transform [:target :schema]) target-name))]
+        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     (when-not valid-db-id?
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
-        (cond-> table-id (-> (assoc-in [:target :table_id] table-id)
-                             (assoc :target_table_id table-id)))
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
@@ -136,11 +124,7 @@
         target-db-id    (when target-changed?
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
-                          (transforms-base.i/target-db-id transform))
-        target-name     (get-in transform [:target :name])
-        table-id        (when (and target-db-id target-name)
-                          (transforms-base.u/upsert-target-table!
-                           target-db-id (get-in transform [:target :schema]) target-name))]
+                          (transforms-base.i/target-db-id transform))]
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
@@ -148,10 +132,6 @@
 
       target-changed?
       (assoc :target_db_id target-db-id)
-
-      table-id
-      (-> (assoc-in [:target :table_id] table-id)
-          (assoc :target_table_id table-id))
 
       ;; Reset checkpoint when the incremental filter field changes
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
@@ -260,7 +240,6 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
-  (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (search.core/delete! :model/Transform [(str (:id transform))])

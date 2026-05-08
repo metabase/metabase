@@ -16,6 +16,7 @@
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
+   [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -81,8 +82,14 @@
       (Thread/sleep 2000))))
 
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
-  (if-not (transforms.u/check-feature-enabled transform)
+  (cond
+    (not (transforms.u/check-feature-enabled transform))
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+
+    (transforms.usage/transform-locked? transform)
+    (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
+
+    :else
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}
       (block-until-not-already-running transform-id)

@@ -187,10 +187,10 @@
     (testing "relative path resolves under the representation dir, not cwd"
       (let [resolved (#'representation/resolve-embeddings-file (.getAbsolutePath tmp-dir)
                                                                "embeddings/variant.json")]
-        (is (= (.getCanonicalPath present) (.getCanonicalPath resolved)))))
+        (is (= (.getCanonicalPath present) (.getCanonicalPath ^java.io.File resolved)))))
     (testing "absolute path is honored as-is, regardless of dir"
       (let [resolved (#'representation/resolve-embeddings-file "/tmp" (.getAbsolutePath present))]
-        (is (= (.getCanonicalPath present) (.getCanonicalPath resolved)))))
+        (is (= (.getCanonicalPath present) (.getCanonicalPath ^java.io.File resolved)))))
     (testing "missing file throws ex-info carrying both the request and the resolved path"
       (let [ex (try (#'representation/resolve-embeddings-file (.getAbsolutePath tmp-dir)
                                                               "embeddings/does-not-exist.json")

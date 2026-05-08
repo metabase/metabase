@@ -4,7 +4,12 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetPermissionsGroupQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
@@ -25,6 +30,7 @@ import type {
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
   Table,
   UserAttributeKey,
@@ -310,6 +316,11 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
   </div>
 );
 
+const PermissionsGroupName = ({ groupId }: { groupId: GroupId }) => {
+  const { data: group } = useGetPermissionsGroupQuery(groupId);
+  return group ? <span>{group.name}</span> : null;
+};
+
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
   policyTable: Table | undefined;
@@ -329,7 +340,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
         icon="group"
         content={jt`Users in ${(
           <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
+            <PermissionsGroupName groupId={policy.group_id} />
           </strong>
         )} can view`}
       />

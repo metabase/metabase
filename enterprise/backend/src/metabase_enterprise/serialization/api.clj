@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.serialization.metadata :as metadata]
    [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
    [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -309,10 +308,10 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-;;; ----------------------------------- GET /api/ee/serialization/metadata/export -----------------------------------
+;;; ----------------------------------- GET /api/ee/serialization/export/json ------------------------------------
 
-(api.macros/defendpoint :get "/metadata/export"
-  :- (sr/streaming-response-schema ::schema/metadata-export-response)
+(api.macros/defendpoint :get "/export/json"
+  :- (sr/streaming-response-schema ::schema/export-response)
   "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
   current user, with all references emitted in serdes-portable form (database names, table
   `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).
@@ -324,16 +323,14 @@
   Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
   `Query builder and native`) permissions on each database and table."
   [_route-params
-   {:keys [with-databases with-tables with-fields]}
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-    (metadata/write-databases-metadata! os
-                                        {:with-databases? with-databases
-                                         :with-tables?    with-tables
-                                         :with-fields?    with-fields})))
+   query-params :- [:map
+                    [:with-databases {:default false} [:maybe :boolean]]
+                    [:with-tables    {:default false} [:maybe :boolean]]
+                    [:with-fields    {:default false} [:maybe :boolean]]]]
+  (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
+                                             :is-superuser? api/*is-superuser?*})]
+    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+      (export/export! os opts))))
 
 ;;; ----------------------------------- POST /api/ee/serialization/metadata/import -----------------------------------
 

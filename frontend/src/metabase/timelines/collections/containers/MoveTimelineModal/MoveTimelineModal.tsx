@@ -1,39 +1,35 @@
 import { useCallback } from "react";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
-import { collectionApi, useGetCollectionQuery } from "metabase/api";
+import {
+  collectionApi,
+  skipToken,
+  useGetCollectionQuery,
+  useGetTimelineQuery,
+} from "metabase/api";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
-import { Timelines } from "metabase/entities/timelines";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
 
-interface MoveTimelineModalProps {
-  params: ModalParams;
-  timeline: Timeline;
-  onClose: () => void;
-}
-
-const timelineProps = {
-  id: (state: State, props: MoveTimelineModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
-
-function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
+function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   const dispatch = useDispatch();
   const setCollection = useSetCollection();
-  const { data: sourceCollection } = useGetCollectionQuery({
-    id: props.timeline.collection_id ?? "root",
-  });
+  const id = Urls.extractEntityId(params.timelineId);
+  const {
+    data: timeline,
+    isLoading,
+    error,
+  } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
+
+  const { data: sourceCollection } = useGetCollectionQuery(
+    timeline ? { id: timeline.collection_id ?? "root" } : skipToken,
+  );
 
   const handleSubmit = useCallback(
     (timeline: Timeline, collectionId: CollectionId) => {
@@ -68,10 +64,16 @@ function MoveTimelineModalContainer(props: MoveTimelineModalProps) {
     [dispatch, setCollection, sourceCollection],
   );
 
-  return <MoveTimelineModal {...props} onSubmit={handleSubmit} />;
+  if (isLoading || error || !timeline) {
+    return (
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+    );
+  }
+
+  return (
+    <MoveTimelineModal {...props} timeline={timeline} onSubmit={handleSubmit} />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Timelines.load(timelineProps))(
-  MoveTimelineModalContainer,
-);
+export default MoveTimelineModalContainer;

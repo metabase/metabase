@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { Icon, Tooltip } from "metabase/ui";
 import { isDefaultGroup } from "metabase/utils/groups";
-import type { Group, GroupId } from "metabase-types/api";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -24,7 +24,7 @@ import {
 } from "./GroupMappingsWidget.styled";
 import { MappingRow } from "./MappingRow";
 
-const groupIsMappable = (group: Group) => !isDefaultGroup(group);
+const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
 
 const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
@@ -46,7 +46,7 @@ const noMappingText = (mappingSetting: string, syncSwitchValue: boolean) => {
 interface GroupMappingsWidgetViewProps {
   groupHeading: string;
   groupPlaceholder: string;
-  allGroups: Group[];
+  allGroups: GroupInfo[];
   mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
   deleteGroup: ({ id }: { id: number }) => Promise<void>;
   clearGroupMember: ({ id }: { id: number }) => Promise<void>;

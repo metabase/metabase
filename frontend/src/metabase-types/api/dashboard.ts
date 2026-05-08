@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type {
   BaseEntityId,
   CardDisplayType,
@@ -137,6 +137,15 @@ export type DashboardCardLayoutAttrs = {
   size_x: number;
   size_y: number;
 };
+
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
 
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
