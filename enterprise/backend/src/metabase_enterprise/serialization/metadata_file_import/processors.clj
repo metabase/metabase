@@ -11,7 +11,8 @@
     - **Merge** (atomic, designed to compose under one outer `t2/with-transaction`):
       [[merge-tables!]], [[insert-stubs-where-not-exists!]],
       [[resolve-existing-parents-in-staging!]], [[assert-no-unresolved-parent-refs!]],
-      [[merge-fields!]], [[resolve-fk-target-ids-in-staging!]],
+      [[merge-fields-pass-1!]], [[merge-fields-pass-2!]],
+      [[resolve-fk-target-ids-in-staging!]],
       [[assert-no-unresolved-fk-targets!]], [[merge-fk-targets!]],
       [[warn-on-orphan-staging-rows!]].
 
@@ -247,7 +248,13 @@
   in the outer's all-or-nothing semantics."
   []
   (t2/with-transaction [_]
-    ;; UPDATE matched rows first (clobber description, bump updated_at)
+    ;; UPDATE matched rows first (clobber description, bump updated_at).
+    ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
+    ;; description actually differs (NULL-safe via COALESCE-with-empty-
+    ;; string), so a re-import with identical description is a true no-op
+    ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
+    ;; in the predicate (otherwise the UPDATE would always fire,
+    ;; defeating the optimization).
     (t2/query
      {:update :metabase_table
       :set    {:description {:select [:it.description]
@@ -259,7 +266,10 @@
                [:= :metabase_table.active [:inline true]]
                [:exists {:select [[[:inline 1]]]
                          :from   [[:metabase_table_import :it]]
-                         :where  [:= :it.target_table_id :metabase_table.id]}]]})
+                         :where  [:and
+                                  [:= :it.target_table_id :metabase_table.id]
+                                  [:!= [:coalesce :metabase_table.description [:inline ""]]
+                                   [:coalesce :it.description             [:inline ""]]]]}]]})
     ;; INSERT rows with no matching live row (target_table_id IS NULL)
     (t2/query
      {:insert-into
@@ -374,69 +384,107 @@
                   (conj parent_name))))
           rows)))
 
-(defn- parent-exists-in-metabase-field?
-  "Probe `metabase_field` for a non-defective row whose natural-key matches the
-  portable id `pid`. Match key: `(d.name, t.schema, t.name, f.name,
-  f.nfc_path)`. Same `(name = last, path = middle)` decomposition that
-  `resolve-existing-parents-in-staging!` uses."
+(defn- portable-field-parent
+  "Return the parent's portable id of `pid`, or nil if `pid` is a top-level
+  field (length 4: `[db schema table name]` with no path). Same `(name = last,
+  path = middle)` decomposition the rest of the importer uses."
   [pid]
-  (let [v        (vec pid)
-        db-name  (get v 0)
-        schema   (get v 1)
-        tbl-name (get v 2)
-        leaf     (peek v)
-        path     (encode-path-or-nil (subvec v 3 (dec (count v))))]
-    (boolean
-     (seq
-      (t2/query {:select [[[:inline 1] :present]]
-                 :from   [[:metabase_field :f]]
-                 :join   [[:metabase_table :t]    [:= :t.id :f.table_id]
-                          [:metabase_database :d] [:= :d.id :t.db_id]]
-                 :where  [:and
-                          [:= :d.name db-name]
-                          [:= [:coalesce :t.schema [:inline ""]] [:coalesce schema [:inline ""]]]
-                          [:= :t.name tbl-name]
-                          [:= :f.name leaf]
-                          [:= [:coalesce :f.nfc_path [:inline ""]] [:coalesce path [:inline ""]]]
-                          [:= :f.is_defective_duplicate [:inline false]]]
-                 :limit  1})))))
+  (let [v (vec pid)]
+    (when (> (count v) 4)
+      (subvec v 0 (dec (count v))))))
 
-(defn- walk-ancestor-chain!
-  "Walk up the parent chain from portable id `pid`, depth-first. For each
-  ancestor not already in `cache!`:
-    - if it exists in `metabase_field`, cache `:exists` and stop;
-    - else recurse on its own parent (one element shorter), then conj a stub
-      spec for `pid` to `stub-specs!` (root-first dependency order).
+(defn- bulk-check-existence
+  "Return the subset of portable ids in `pids` that exist as non-defective rows
+  in `metabase_field`. One SELECT per distinct `(db, schema, table)` triple,
+  filtered in Clojure for the exact `(name, nfc_path)` match.
 
-  `cache!` is a `volatile!` keyed by portable-id vector, valued either
-  `:exists` (already in live) or `:stub` (will be inserted as part of this
-  run)."
-  [pid cache! stub-specs!]
-  (when-not (contains? @cache! pid)
-    (if (parent-exists-in-metabase-field? pid)
-      (vswap! cache! assoc pid :exists)
-      (let [parent-pid (when (> (count pid) 4) (subvec pid 0 (dec (count pid))))]
-        (when parent-pid
-          (walk-ancestor-chain! parent-pid cache! stub-specs!))
-        (vswap! stub-specs! conj {:portable-id        pid
-                                  :parent-portable-id parent-pid})
-        (vswap! cache! assoc pid :stub)))))
+  Replaces the per-pid `parent-exists-in-metabase-field?` probe — the
+  `compute-stubs!` walk uses this so it does O(D × T) reads (D = nesting
+  depth in the missing set, T = distinct tables involved) instead of
+  O(K × D) per-ancestor probes."
+  [pids]
+  (if (empty? pids)
+    #{}
+    (let [decomposed (mapv (fn [pid]
+                             (let [v (vec pid)]
+                               {:pid    pid
+                                :db     (get v 0)
+                                :schema (get v 1)
+                                :tbl    (get v 2)
+                                :name   (peek v)
+                                :path   (encode-path-or-nil (subvec v 3 (dec (count v))))}))
+                           pids)
+          by-table   (group-by (juxt :db :schema :tbl) decomposed)]
+      (into #{}
+            (mapcat (fn [[[db schema tbl] tuples]]
+                      (let [names   (into #{} (map :name) tuples)
+                            rows    (t2/query
+                                     {:select [:f.name
+                                               [[:coalesce :f.nfc_path [:inline ""]] :nfc]]
+                                      :from   [[:metabase_field :f]]
+                                      :join   [[:metabase_table :t]    [:= :t.id :f.table_id]
+                                               [:metabase_database :d] [:= :d.id :t.db_id]]
+                                      :where  [:and
+                                               [:= :d.name db]
+                                               [:= [:coalesce :t.schema [:inline ""]]
+                                                [:coalesce schema [:inline ""]]]
+                                               [:= :t.name tbl]
+                                               [:in :f.name names]
+                                               [:= :f.is_defective_duplicate [:inline false]]]})
+                            present (into #{}
+                                          (map (fn [{:keys [name nfc]}]
+                                                 [name (or nfc "")]))
+                                          rows)]
+                        (keep (fn [{:keys [pid name path]}]
+                                (when (contains? present [name (or path "")])
+                                  pid))
+                              tuples))))
+            by-table))))
 
 (defn compute-stubs!
   "Walk every distinct unresolved-parent portable id in staging and return a
   vector of stub specs `{:portable-id ... :parent-portable-id ...}` for the
   ancestors missing from `metabase_field`. Specs are returned in dependency
-  order (root before descendant) so a sequential insert can JOIN to its
+  order (root first, then descendants) so a sequential insert can JOIN to its
   parent.
+
+  Bulk-per-level: probes `metabase_field` once per `(db, schema, table)`
+  group per nesting level, walking up the ancestor chain breadth-first
+  rather than depth-first. Reads scale O(D × T) — D = nesting depth in
+  the missing set, T = distinct tables involved — instead of O(K × D) per
+  ancestor as the prior recursive walk did.
 
   Read-only against `metabase_field`; produces Clojure data only. Idempotent."
   []
-  (let [missing-keys (collect-missing-parent-portable-ids)
-        cache        (volatile! {})
-        stub-specs   (volatile! [])]
-    (doseq [k missing-keys]
-      (walk-ancestor-chain! k cache stub-specs))
-    @stub-specs))
+  (let [direct-demands (set (collect-missing-parent-portable-ids))]
+    (loop [frontier direct-demands
+           seen     #{}
+           level    0
+           by-level {}]
+      (if (empty? frontier)
+        ;; Emit specs from highest (deepest walk = roots) to lowest (directly-
+        ;; demanded). Within a level, sort by pid length so shallower ancestors
+        ;; come before their own descendants (when a frontier mixes depths).
+        (->> (range level 0 -1)
+             (mapcat (fn [d]
+                       (->> (get by-level (dec d))
+                            (sort-by (comp count :portable-id)))))
+             vec)
+        (let [existing      (bulk-check-existence frontier)
+              missing       (into #{} (remove existing) frontier)
+              specs         (mapv (fn [pid]
+                                    {:portable-id        pid
+                                     :parent-portable-id (portable-field-parent pid)})
+                                  missing)
+              next-frontier (into #{}
+                                  (comp (keep portable-field-parent)
+                                        (remove seen)
+                                        (remove frontier))
+                                  missing)]
+          (recur next-frontier
+                 (into seen frontier)
+                 (inc level)
+                 (assoc by-level level specs)))))))
 
 (def ^:private stub-insert-cols
   "Column list for stub INSERT-SELECT statements. Identical for root and nested
@@ -538,17 +586,18 @@
       (insert-one-stub! spec))))
 
 (def ^:private fields-clobber-cols
-  "Columns clobbered on UPDATE-EXISTS in [[merge-fields!]]. The matched-row
-  payload is overwritten regardless of whether values changed (the import is
-  an alternate sync). `parent_id` and `fk_target_field_id` are not clobbered:
-  parent_id is part of the match key (already correct on a matched row),
-  and fk_target_field_id is set later by phase 4."
+  "Columns clobbered on UPDATE-EXISTS in [[merge-fields-pass-1!]] /
+  [[merge-fields-pass-2!]]. The matched-row payload is overwritten regardless of
+  whether values changed (the import is an alternate sync). `parent_id` is not
+  clobbered: it's part of the match key (already correct on a matched row).
+  `fk_target_field_id` is clobbered by Pass 2 only (using the resolved
+  `staging.fk_target_id`), since Pass 1 only handles non-FK staging rows."
   [:base_type :database_type :description
    :effective_type :semantic_type :coercion_strategy :nfc_path])
 
 (defn- target-field-id-clobber-subquery
-  "Correlated subquery used by `merge-fields!`'s UPDATE to fetch one column
-  value from the matched staging row. The match is a single PK lookup on
+  "Correlated subquery used by `merge-fields-pass-*!`'s UPDATE to fetch one
+  column value from the matched staging row. The match is a single PK lookup on
   `target_field_id` (pre-resolved by `resolve-target-field-ids-in-staging!`),
   so each subquery is an indexed one-row probe — no joins, no COALESCE."
   [col]
@@ -556,42 +605,62 @@
    :from   [[:metabase_field_import :fi]]
    :where  [:= :fi.target_field_id :metabase_field.id]})
 
-(defn merge-fields!
-  "Merge `metabase_field_import` into `metabase_field` atomically, in two SQL
-  statements wrapped in a single `t2/with-transaction`:
+(def ^:private fields-payload-changed-predicate
+  "OR-block over the seven clobber-payload columns plus `active`. Used by
+  the skip-if-unchanged check on the merge-fields UPDATE: if every observable
+  column already matches staging, no UPDATE fires (no dead tuple). Used
+  verbatim by Pass 1 and as the prefix of Pass 2's predicate (which appends
+  `fk_target_field_id`).
 
-    1. **UPDATE** rows whose `target_field_id` resolved (i.e., a matching live
-       row exists, possibly a stub). Clobbers the seven payload columns
-       (`base_type`, `database_type`, `description`, `effective_type`,
-       `semantic_type`, `coercion_strategy`, `nfc_path`), sets `active=true`
-       (flips stubs to live), bumps `updated_at`. Each SET column is a
-       single-key lookup on `staging.target_field_id`.
-    2. **INSERT** rows whose `target_field_id` is NULL — no live row matched,
-       so they are insert candidates. Sets `active=true`,
-       `is_defective_duplicate=false`, `fk_target_field_id=NULL` (phase 4
-       fills it).
+  Coalesce-with-empty-string is the portable NULL-safe equivalent of
+  `IS DISTINCT FROM` (PG/H2-only). For `effective_type` we coalesce against
+  `base_type` on both sides because the export side omits `:effective_type`
+  when it equals `:base_type` (documented asymmetric optimization at
+  metadata.clj:186) and the application universally treats
+  `effective_type IS NULL` as 'use base_type'. `active` is checked against
+  TRUE since SET sets it to TRUE always (so a stub with active=false still
+  fires the UPDATE). `updated_at` is deliberately NOT in the predicate."
+  [[:!= [:coalesce :metabase_field.base_type         [:inline ""]] [:coalesce :fi.base_type         [:inline ""]]]
+   [:!= [:coalesce :metabase_field.database_type     [:inline ""]] [:coalesce :fi.database_type     [:inline ""]]]
+   [:!= [:coalesce :metabase_field.description       [:inline ""]] [:coalesce :fi.description       [:inline ""]]]
+   [:!= [:coalesce :metabase_field.effective_type    :metabase_field.base_type]
+    [:coalesce :fi.effective_type                :fi.base_type]]
+   [:!= [:coalesce :metabase_field.semantic_type     [:inline ""]] [:coalesce :fi.semantic_type     [:inline ""]]]
+   [:!= [:coalesce :metabase_field.coercion_strategy [:inline ""]] [:coalesce :fi.coercion_strategy [:inline ""]]]
+   [:!= [:coalesce :metabase_field.nfc_path          [:inline ""]] [:coalesce :fi.nfc_path          [:inline ""]]]
+   [:!= :metabase_field.active [:inline true]]])
+
+(defn merge-fields-pass-1!
+  "Merge non-FK staging rows into `metabase_field` atomically, in two SQL
+  statements wrapped in a single `t2/with-transaction`. \"Non-FK\" means
+  `fi.fk_target_db_name IS NULL`.
+
+    1. **UPDATE** rows whose `target_field_id` resolved AND whose staging row
+       has no FK. Clobbers the seven payload columns (`base_type`,
+       `database_type`, `description`, `effective_type`, `semantic_type`,
+       `coercion_strategy`, `nfc_path`), sets `active=true` (flips stubs to
+       live), bumps `updated_at`. Each SET column is a single-key lookup on
+       `staging.target_field_id`. Skip-if-unchanged: the EXISTS subquery
+       additionally requires that at least one observable column differs.
+    2. **INSERT** rows whose `target_field_id` is NULL AND whose staging row
+       has no FK. Sets `active=true`, `is_defective_duplicate=false`,
+       `fk_target_field_id=NULL`.
 
   Order matters: UPDATE first so on a clean-schema import the UPDATE matches
-  nothing (fast no-op) and the INSERT writes each row exactly once. The
-  reverse order would INSERT every row and then UPDATE-clobber every
-  just-inserted row with the same payload.
+  nothing (fast no-op) and the INSERT writes each row exactly once.
 
   Pre-condition: `resolve-target-field-ids-in-staging!` must have run (the
-  orchestrator does this just before calling this fn). Without that, every
-  staging row's `target_field_id` is NULL and the UPDATE matches nothing —
-  you'd get correct INSERTs but no clobber.
+  orchestrator does this just before calling this fn).
 
-  Match key (used by the resolve fn that populated `target_field_id`) is
-  `(table_id, name, unique_field_helper)` where
-  `unique_field_helper = COALESCE(parent_id, 0)` — stable across re-imports
-  and looked up via the existing unique index.
+  After Pass 1 lands, every non-FK staging row exists in `metabase_field`. The
+  orchestrator then re-resolves `target_field_id` (round 2) and resolves
+  `fk_target_id` against `metabase_field` — for FK staging rows whose target
+  is non-FK (the common case) this picks up the just-inserted target rows so
+  Pass 2 can carry the resolved id through the INSERT/UPDATE.
 
-  Composes with an outer `t2/with-transaction`: when the orchestrator wraps
-  tables-merge + stub-insert + this together, all participate in the outer
-  txn's all-or-nothing semantics."
+  Composes with an outer `t2/with-transaction`: t2 joins outer."
   []
   (t2/with-transaction [_]
-    ;; UPDATE matched rows (clobber payload, flip stubs active=true, bump updated_at)
     (t2/query
      {:update :metabase_field
       :set    (-> (into {} (map (fn [c] [c (target-field-id-clobber-subquery c)])) fields-clobber-cols)
@@ -601,8 +670,12 @@
                [:= :metabase_field.is_defective_duplicate [:inline false]]
                [:exists {:select [[[:inline 1]]]
                          :from   [[:metabase_field_import :fi]]
-                         :where  [:= :fi.target_field_id :metabase_field.id]}]]})
-    ;; INSERT rows with no matching live row (target_field_id IS NULL)
+                         :where  [:and
+                                  [:= :fi.target_field_id :metabase_field.id]
+                                  [:= :fi.fk_target_db_name nil]
+                                  (into [:or] fields-payload-changed-predicate)]}]]})
+    ;; INSERT non-FK rows with no matching live row (target_field_id IS NULL,
+    ;; fk_target_db_name IS NULL). fk_target_field_id stays NULL on these rows.
     (t2/query
      {:insert-into
       [[:metabase_field [:table_id :name :base_type :database_type :description
@@ -620,7 +693,81 @@
                                         [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
                                         [:= :t.name :fi.table_name]
                                         [:= :t.is_defective_duplicate [:inline false]]]]
-        :where [:= :fi.target_field_id nil]}]})))
+        :where [:and
+                [:= :fi.target_field_id nil]
+                [:= :fi.fk_target_db_name nil]]}]})))
+
+(defn merge-fields-pass-2!
+  "Merge FK staging rows into `metabase_field` atomically. \"FK\" means
+  `fi.fk_target_db_name IS NOT NULL`. Two SQL statements in a single
+  `t2/with-transaction`:
+
+    1. **UPDATE** rows whose `target_field_id` resolved AND whose staging row
+       has an FK. Clobbers the seven payload columns AND `fk_target_field_id`
+       (from `staging.fk_target_id`). Skip-if-unchanged predicate includes
+       `fk_target_field_id` in the change check (compared NULL-safely with
+       `COALESCE(., 0)` since 0 is never a valid id).
+    2. **INSERT** rows whose `target_field_id` is NULL AND whose staging row
+       has an FK. `fk_target_field_id` is set in the INSERT from
+       `staging.fk_target_id` — no separate UPDATE pass needed for the
+       common case (FK target was non-FK and got resolved between Pass 1 and
+       Pass 2). For FK chain cases where the target is itself a Pass-2 row,
+       `staging.fk_target_id` may still be NULL at INSERT time, so the
+       column lands NULL and the orchestrator's final `merge-fk-targets!`
+       cleanup fills it in.
+
+  Pre-conditions:
+    - Pass 1 has run (so non-FK rows exist in `metabase_field`).
+    - `resolve-target-field-ids-in-staging!` ran after Pass 1 (so newly-
+      inserted non-FK rows have their `target_field_id` populated, useful when
+      another FK row points at them).
+    - `resolve-fk-target-ids-in-staging!` ran after Pass 1 (so `fk_target_id`
+      is populated for FK rows whose target exists by now).
+
+  Composes with an outer `t2/with-transaction`: t2 joins outer."
+  []
+  (t2/with-transaction [_]
+    (t2/query
+     {:update :metabase_field
+      :set    (-> (into {} (map (fn [c] [c (target-field-id-clobber-subquery c)])) fields-clobber-cols)
+                  (assoc :active             [:inline true]
+                         :fk_target_field_id (target-field-id-clobber-subquery :fk_target_id)
+                         :updated_at         :%now))
+      :where  [:and
+               [:= :metabase_field.is_defective_duplicate [:inline false]]
+               [:exists {:select [[[:inline 1]]]
+                         :from   [[:metabase_field_import :fi]]
+                         :where  [:and
+                                  [:= :fi.target_field_id :metabase_field.id]
+                                  [:!= :fi.fk_target_db_name nil]
+                                  (into [:or]
+                                        (conj fields-payload-changed-predicate
+                                              [:!= [:coalesce :metabase_field.fk_target_field_id [:inline 0]]
+                                               [:coalesce :fi.fk_target_id [:inline 0]]]))]}]]})
+    ;; INSERT FK rows with no matching live row. fk_target_field_id is set
+    ;; from staging.fk_target_id (resolved between Pass 1 and Pass 2 for
+    ;; non-chain cases; NULL for chain cases — handled by the cleanup
+    ;; merge-fk-targets! after the second resolve pass).
+    (t2/query
+     {:insert-into
+      [[:metabase_field [:table_id :name :base_type :database_type :description
+                         :effective_type :semantic_type :coercion_strategy
+                         :nfc_path :parent_id :fk_target_field_id
+                         :is_defective_duplicate :active :created_at :updated_at]]
+       {:select [:t.id :fi.field_name :fi.base_type :fi.database_type :fi.description
+                 :fi.effective_type :fi.semantic_type :fi.coercion_strategy
+                 :fi.nfc_path :fi.parent_id :fi.fk_target_id
+                 [[:inline false]] [[:inline true]] :%now :%now]
+        :from [[:metabase_field_import :fi]]
+        :join [[:metabase_database :d] [:= :d.name :fi.db_name]
+               [:metabase_table :t]    [:and
+                                        [:= :t.db_id :d.id]
+                                        [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
+                                        [:= :t.name :fi.table_name]
+                                        [:= :t.is_defective_duplicate [:inline false]]]]
+        :where [:and
+                [:= :fi.target_field_id nil]
+                [:!= :fi.fk_target_db_name nil]]}]})))
 
 (defn assert-no-unresolved-parent-refs!
   "Defensive guard: every staging row with a non-NULL `parent_db_name` should
@@ -699,49 +846,47 @@
   was resolved. Single UPDATE wrapped in `t2/with-transaction` for caller
   composability.
 
-  Match key: `(table_id, name, unique_field_helper)` against staging's
-  natural-key columns + `COALESCE(fi.parent_id, 0)`. The OWN row is
-  identified by its own staging columns; we set its `fk_target_field_id`
-  to the staging row's `fk_target_id` (resolved earlier in the merge txn
-  by [[resolve-fk-target-ids-in-staging!]]).
+  Pre-condition: every staging row with non-NULL `fk_target_id` must also have
+  non-NULL `target_field_id` (the row's own metabase_field.id). The
+  orchestrator guarantees this by running
+  [[resolve-target-field-ids-in-staging!]] after [[merge-fields!]] (so
+  just-inserted rows get their target_field_id populated) and then
+  [[resolve-fk-target-ids-in-staging!]].
 
-  Driver-blind via t2 + correlated subquery in SET. No second file read —
-  every value comes from staging.
+  The outer UPDATE pre-filters with an uncorrelated `WHERE id IN (SELECT
+  target_field_id FROM staging WHERE fk_target_id IS NOT NULL)`. The planner
+  hash-joins this once and the per-row SET subquery runs only against the
+  matched subset, instead of evaluating both an EXISTS check and the SET
+  subquery for every row of `metabase_field`. Each SET subquery is a
+  single-column key lookup on `staging.target_field_id` — no joins.
 
-  Composes with an outer transaction (t2 joins outer)."
+  Driver-blind via t2. Composes with an outer transaction (t2 joins outer)."
   []
   (t2/with-transaction [_]
+    ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
+    ;; the FK target value actually differs. We compare with COALESCE-with-0
+    ;; since 0 is never a valid metabase_field id (PG sequences start at 1) —
+    ;; this is the portable NULL-safe equivalent of IS DISTINCT FROM. The
+    ;; uncorrelated IN-subquery pre-filter is kept intact so the outer
+    ;; UPDATE still narrows to the staging-referenced rows up front.
     (t2/query
      {:update :metabase_field
       :set    {:fk_target_field_id
                {:select [:fi.fk_target_id]
                 :from   [[:metabase_field_import :fi]]
-                :join   [[:metabase_database :d] [:= :d.name :fi.db_name]
-                         [:metabase_table :t]    [:and
-                                                  [:= :t.db_id :d.id]
-                                                  [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
-                                                  [:= :t.name :fi.table_name]
-                                                  [:= :t.is_defective_duplicate [:inline false]]]]
-                :where  [:and
-                         [:= :metabase_field.table_id :t.id]
-                         [:= :metabase_field.name :fi.field_name]
-                         [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]
-                         [:!= :fi.fk_target_id nil]]}}
+                :where  [:= :fi.target_field_id :metabase_field.id]}}
       :where  [:and
                [:= :metabase_field.is_defective_duplicate [:inline false]]
+               [:in :metabase_field.id
+                {:select [:fi.target_field_id]
+                 :from   [[:metabase_field_import :fi]]
+                 :where  [:!= :fi.fk_target_id nil]}]
                [:exists {:select [[[:inline 1]]]
-                         :from [[:metabase_field_import :fi]]
-                         :join [[:metabase_database :d] [:= :d.name :fi.db_name]
-                                [:metabase_table :t]    [:and
-                                                         [:= :t.db_id :d.id]
-                                                         [:= [:coalesce :t.schema [:inline ""]] [:coalesce :fi.table_schema [:inline ""]]]
-                                                         [:= :t.name :fi.table_name]
-                                                         [:= :t.is_defective_duplicate [:inline false]]]]
-                         :where [:and
-                                 [:= :metabase_field.table_id :t.id]
-                                 [:= :metabase_field.name :fi.field_name]
-                                 [:= :metabase_field.unique_field_helper [:coalesce :fi.parent_id [:inline 0]]]
-                                 [:!= :fi.fk_target_id nil]]}]]})))
+                         :from   [[:metabase_field_import :fi]]
+                         :where  [:and
+                                  [:= :fi.target_field_id :metabase_field.id]
+                                  [:!= [:coalesce :fi.fk_target_id              [:inline 0]]
+                                   [:coalesce :metabase_field.fk_target_field_id [:inline 0]]]]}]]})))
 
 (defn assert-no-unresolved-fk-targets!
   "Defensive guard: every staging row with a non-NULL `fk_target_db_name`

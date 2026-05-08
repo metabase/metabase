@@ -1035,7 +1035,7 @@
                    :model/Table   {tbl-id :id}  {:db_id db-id :schema "public" :name "t"}]
       (let [count-before (t2/count :model/Field :table_id tbl-id)]
         (processors/with-staging-tables
-          (processors/merge-fields!))
+          (processors/merge-fields-pass-1!))
         (is (= count-before (t2/count :model/Field :table_id tbl-id))
             "no rows written when staging is empty")))))
 
@@ -1055,7 +1055,7 @@
                                             :semantic_type     "type/PK"
                                             :effective_type    "type/Integer"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (let [row (t2/select-one :model/Field :table_id tbl-id :name "id")]
         (is (some? row))
         (is (= :type/Integer (:base_type row)))
@@ -1088,7 +1088,7 @@
                                             :description    "new"
                                             :semantic_type  "type/Description"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (let [row (t2/select-one :model/Field :id f-id)]
         (is (= :type/Text         (:base_type row)))
         (is (= "varchar"          (:database_type row)))
@@ -1115,7 +1115,7 @@
                                             :database_type  "json"
                                             :description    "real row"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (let [row (t2/select-one :model/Field :id stub-id)]
         (is (true?              (:active row)) "stub flipped to active")
         (is (= :type/Structured (:base_type row)))
@@ -1151,7 +1151,7 @@
                                             :database_type  "varchar"
                                             :description    "nested-new"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (is (= "nested-new" (:description (t2/select-one :model/Field :id nested-id))))
       (is (= "flat-old"   (:description (t2/select-one :model/Field :id flat-id)))
           "flat 'x' (parent_id=NULL) is unaffected — different unique_field_helper"))))
@@ -1172,7 +1172,7 @@
                                             :database_type "varchar"
                                             :description   "patched"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (is (= "patched" (:description (t2/select-one :model/Field :id f-id)))))))
 
 (deftest merge-fields-idempotent-test
@@ -1190,9 +1190,9 @@
                                             :base_type     "type/Text"
                                             :database_type "varchar"})
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!)
+        (processors/merge-fields-pass-1!)
         (processors/resolve-target-field-ids-in-staging!)
-        (processors/merge-fields!))
+        (processors/merge-fields-pass-1!))
       (is (= 1 (count (t2/select :model/Field :table_id tbl-id :name "x")))))))
 
 (deftest merge-fields-rolls-back-when-outer-txn-aborts-test
@@ -1211,11 +1211,214 @@
                                                 :database_type "varchar"})
             (processors/resolve-target-field-ids-in-staging!)
             (t2/with-transaction [_]
-              (processors/merge-fields!)
+              (processors/merge-fields-pass-1!)
               (throw (ex-info "force rollback" {:kind :test_force_rollback}))))
           (catch clojure.lang.ExceptionInfo _e))
         (is (= count-before (t2/count :model/Field :table_id tbl-id)))
         (is (nil? (t2/select-one :model/Field :table_id tbl-id :name "would-be-inserted")))))))
+
+;;; ============================== merge-fields! skip-if-unchanged ==============================
+
+(defn- stamp-field-updated-at!
+  "Pin a field row's `updated_at` to a known past sentinel timestamp via raw
+  SQL UPDATE (does NOT itself bump `updated_at` like `t2/update!` would). Used
+  by skip-if-unchanged tests to detect whether a subsequent merge UPDATE
+  fired: if `updated_at` is still the sentinel afterward, no UPDATE happened."
+  [field-id]
+  (t2/query {:update :metabase_field
+             :set    {:updated_at [:inline "2000-01-01 00:00:00"]}
+             :where  [:= :metabase_field.id field-id]}))
+
+(deftest merge-fields-skip-if-unchanged-test
+  (testing "an existing field row whose seven payload columns plus active match
+            the staging row exactly does NOT get UPDATEd — proven by the
+            sentinel `updated_at` surviving the merge call. This is the perf
+            optimization: re-imports of unchanged fields generate no dead
+            tuples."
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-skip-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {f-id :id}   {:table_id          tbl-id
+                                                :name              "x"
+                                                :base_type         "type/Integer"
+                                                :database_type     "integer"
+                                                :description       "primary key"
+                                                :effective_type    "type/Integer"
+                                                :semantic_type     "type/PK"
+                                                :coercion_strategy nil
+                                                :nfc_path          nil
+                                                :active            true}]
+      (stamp-field-updated-at! f-id)
+      (let [updated-before (:updated_at (t2/select-one :model/Field :id f-id))]
+        (processors/with-staging-tables
+          (t2/insert! :metabase_field_import {:db_name           "mf-skip-db"
+                                              :table_schema      "public"
+                                              :table_name        "u"
+                                              :field_name        "x"
+                                              :base_type         "type/Integer"
+                                              :database_type     "integer"
+                                              :description       "primary key"
+                                              :effective_type    "type/Integer"
+                                              :semantic_type     "type/PK"
+                                              :coercion_strategy nil
+                                              :nfc_path          nil})
+          (processors/resolve-target-field-ids-in-staging!)
+          (processors/merge-fields-pass-1!))
+        (let [updated-after (:updated_at (t2/select-one :model/Field :id f-id))]
+          (is (= updated-before updated-after)
+              "updated_at unchanged — merge UPDATE did not fire on identical-payload row"))))))
+
+(deftest merge-fields-fires-when-only-one-column-differs-test
+  (testing "an existing field row that differs from staging in exactly one
+            payload column (description) DOES get UPDATEd — proves the
+            predicate's OR fires when any single column differs"
+    (mt/with-temp [:model/Database {db-id :id} {:name "mf-onediff-db" :engine :postgres}
+                   :model/Table   {tbl-id :id} {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {f-id :id}   {:table_id          tbl-id
+                                                :name              "x"
+                                                :base_type         "type/Integer"
+                                                :database_type     "integer"
+                                                :description       "old"
+                                                :effective_type    "type/Integer"
+                                                :semantic_type     "type/PK"
+                                                :coercion_strategy nil
+                                                :nfc_path          nil
+                                                :active            true}]
+      (stamp-field-updated-at! f-id)
+      (let [updated-before (:updated_at (t2/select-one :model/Field :id f-id))]
+        (processors/with-staging-tables
+          (t2/insert! :metabase_field_import {:db_name           "mf-onediff-db"
+                                              :table_schema      "public"
+                                              :table_name        "u"
+                                              :field_name        "x"
+                                              :base_type         "type/Integer"
+                                              :database_type     "integer"
+                                              :description       "new" ;; only difference
+                                              :effective_type    "type/Integer"
+                                              :semantic_type     "type/PK"
+                                              :coercion_strategy nil
+                                              :nfc_path          nil})
+          (processors/resolve-target-field-ids-in-staging!)
+          (processors/merge-fields-pass-1!))
+        (let [row (t2/select-one :model/Field :id f-id)]
+          (is (= "new" (:description row))
+              "description clobbered to staging value")
+          (is (not= updated-before (:updated_at row))
+              "updated_at advanced — merge UPDATE fired because one column differed"))))))
+
+;;; ============================== merge-fields-pass-2! ==============================
+
+(deftest merge-fields-pass-2-sets-fk-target-on-insert-test
+  (testing "an unmatched FK staging row is INSERTed by Pass 2 with
+            fk_target_field_id pre-populated from staging.fk_target_id —
+            no separate post-INSERT UPDATE pass needed for the new row.
+            Verified by: row exists with the FK set, AND `updated_at` ==
+            `created_at` (within tolerance), proving the row was not
+            UPDATEd after its initial INSERT."
+    (mt/with-temp [:model/Database {db-id :id}    {:name "mfp2-ins-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}]
+      (processors/with-staging-tables
+        ;; FK staging row pointing at the existing "id" field.
+        (t2/insert! :metabase_field_import {:db_name                "mfp2-ins-db"
+                                            :table_schema           "public"
+                                            :table_name             "u"
+                                            :field_name             "user_id"
+                                            :base_type              "type/Integer"
+                                            :database_type          "integer"
+                                            :fk_target_db_name      "mfp2-ins-db"
+                                            :fk_target_table_schema "public"
+                                            :fk_target_table_name   "u"
+                                            :fk_target_name         "id"
+                                            :fk_target_id           target-id})
+        (processors/resolve-target-field-ids-in-staging!) ; staging.target_field_id stays NULL (no match yet)
+        (processors/merge-fields-pass-2!))
+      (let [row (t2/select-one :model/Field :table_id tbl-id :name "user_id")]
+        (is (some? row) "row was inserted by Pass 2 INSERT")
+        (is (= target-id (:fk_target_field_id row))
+            "fk_target_field_id was populated in the INSERT (not by a later UPDATE)")
+        (is (= (:created_at row) (:updated_at row))
+            "updated_at == created_at — no post-INSERT UPDATE happened to set the FK")))))
+
+(deftest merge-fields-pass-2-clobbers-fk-target-on-update-test
+  (testing "an existing matched FK row whose fk_target_field_id differs from
+            the staging row's resolved fk_target_id gets UPDATEd. The
+            skip-if-unchanged predicate fires the UPDATE because the FK target
+            differs (compared with COALESCE-with-0 since 0 is never a valid
+            id)."
+    (mt/with-temp [:model/Database {db-id :id}      {:name "mfp2-clobber-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}      {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {old-target :id}  {:table_id tbl-id :name "old_id"
+                                                     :base_type "type/Integer"
+                                                     :database_type "integer"}
+                   :model/Field   {new-target :id}  {:table_id tbl-id :name "new_id"
+                                                     :base_type "type/Integer"
+                                                     :database_type "integer"}
+                   :model/Field   {ref-id :id}      {:table_id tbl-id :name "user_id"
+                                                     :base_type "type/Integer"
+                                                     :database_type "integer"
+                                                     :fk_target_field_id old-target}]
+      (stamp-field-updated-at! ref-id)
+      (let [updated-before (:updated_at (t2/select-one :model/Field :id ref-id))]
+        (processors/with-staging-tables
+          ;; Staging row matches existing user_id and has FK pointing at new_id.
+          (t2/insert! :metabase_field_import {:db_name                "mfp2-clobber-db"
+                                              :table_schema           "public"
+                                              :table_name             "u"
+                                              :field_name             "user_id"
+                                              :base_type              "type/Integer"
+                                              :database_type          "integer"
+                                              :fk_target_db_name      "mfp2-clobber-db"
+                                              :fk_target_table_schema "public"
+                                              :fk_target_table_name   "u"
+                                              :fk_target_name         "new_id"
+                                              :fk_target_id           new-target})
+          (processors/resolve-target-field-ids-in-staging!)
+          (processors/merge-fields-pass-2!))
+        (let [row (t2/select-one :model/Field :id ref-id)]
+          (is (= new-target (:fk_target_field_id row))
+              "fk_target_field_id was clobbered to staging's resolved fk_target_id")
+          (is (not= updated-before (:updated_at row))
+              "updated_at advanced — Pass 2 UPDATE fired because fk_target_field_id differed"))))))
+
+(deftest merge-fields-pass-2-skip-if-unchanged-with-same-fk-test
+  (testing "an existing matched FK row whose fk_target_field_id already equals
+            the staging row's resolved fk_target_id (and whose payload is also
+            unchanged) does NOT get UPDATEd by Pass 2 — the skip-if-unchanged
+            predicate correctly counts the FK as unchanged when both sides
+            agree. Proven by `updated_at` surviving the merge call."
+    (mt/with-temp [:model/Database {db-id :id}    {:name "mfp2-skip-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}
+                   :model/Field   {ref-id :id}    {:table_id tbl-id :name "user_id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"
+                                                   :fk_target_field_id target-id}]
+      (stamp-field-updated-at! ref-id)
+      (let [updated-before (:updated_at (t2/select-one :model/Field :id ref-id))]
+        (processors/with-staging-tables
+          ;; Staging row matches user_id and points at the SAME FK target (id).
+          (t2/insert! :metabase_field_import {:db_name                "mfp2-skip-db"
+                                              :table_schema           "public"
+                                              :table_name             "u"
+                                              :field_name             "user_id"
+                                              :base_type              "type/Integer"
+                                              :database_type          "integer"
+                                              :fk_target_db_name      "mfp2-skip-db"
+                                              :fk_target_table_schema "public"
+                                              :fk_target_table_name   "u"
+                                              :fk_target_name         "id"
+                                              :fk_target_id           target-id})
+          (processors/resolve-target-field-ids-in-staging!)
+          (processors/merge-fields-pass-2!))
+        (let [row (t2/select-one :model/Field :id ref-id)]
+          (is (= target-id (:fk_target_field_id row))
+              "fk_target_field_id stays correct (was already the right value)")
+          (is (= updated-before (:updated_at row))
+              "updated_at unchanged — Pass 2 UPDATE did not fire on identical-payload+FK row"))))))
 
 ;;; ============================== warn-on-orphan-staging-rows! ==============================
 
@@ -1292,6 +1495,7 @@
                                             :base_type      "type/Integer"
                                             :database_type  "integer"
                                             :fk_target_id   target-id})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fk-targets!))
       (is (= target-id (:fk_target_field_id (t2/select-one :model/Field :id ref-id))))
       (is (nil? (:fk_target_field_id (t2/select-one :model/Field :id target-id)))
@@ -1334,9 +1538,42 @@
                                             :base_type      "type/Integer"
                                             :database_type  "integer"
                                             :fk_target_id   target-id})
+        (processors/resolve-target-field-ids-in-staging!)
         (processors/merge-fk-targets!)
         (processors/merge-fk-targets!))
       (is (= target-id (:fk_target_field_id (t2/select-one :model/Field :id ref-id)))))))
+
+(deftest merge-fk-targets-skip-if-unchanged-test
+  (testing "an existing field row whose fk_target_field_id already matches the
+            staging row's resolved fk_target_id does NOT get UPDATEd — proven by
+            the sentinel `updated_at` surviving the merge call. This is the
+            re-import-no-op case for FK targets that haven't changed."
+    (mt/with-temp [:model/Database {db-id :id}    {:name "mft-skip-db" :engine :postgres}
+                   :model/Table   {tbl-id :id}    {:db_id db-id :schema "public" :name "u"}
+                   :model/Field   {target-id :id} {:table_id tbl-id :name "id"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"}
+                   :model/Field   {ref-id :id}    {:table_id tbl-id :name "uid"
+                                                   :base_type "type/Integer"
+                                                   :database_type "integer"
+                                                   :fk_target_field_id target-id}]
+      (stamp-field-updated-at! ref-id)
+      (let [updated-before (:updated_at (t2/select-one :model/Field :id ref-id))]
+        (processors/with-staging-tables
+          (t2/insert! :metabase_field_import {:db_name        "mft-skip-db"
+                                              :table_schema   "public"
+                                              :table_name     "u"
+                                              :field_name     "uid"
+                                              :base_type      "type/Integer"
+                                              :database_type  "integer"
+                                              :fk_target_id   target-id})
+          (processors/resolve-target-field-ids-in-staging!)
+          (processors/merge-fk-targets!))
+        (let [row (t2/select-one :model/Field :id ref-id)]
+          (is (= target-id (:fk_target_field_id row))
+              "fk_target_field_id stays correct (was already the right value)")
+          (is (= updated-before (:updated_at row))
+              "updated_at unchanged — merge-fk-targets UPDATE did not fire on already-correct row"))))))
 
 ;;; ============================== assert-no-unresolved-fk-targets! ==============================
 
@@ -1557,4 +1794,3 @@
             via-seq    (vec (seq result))]
         (is (= {"stream-probe" target-id} via-reduce))
         (is (= 1 (count via-seq)))))))
-

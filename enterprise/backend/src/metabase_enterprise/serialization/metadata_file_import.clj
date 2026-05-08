@@ -140,12 +140,17 @@
 
 (defn- mark-databases-sync-complete!
   "Flip every matched target Database's `initial_sync_status` to `\"complete\"`
-  so the UI surfaces tables immediately. Without this, the UI stays in the
-  `Setting up...` state for matched databases."
+  so the UI surfaces tables immediately.
+
+  Writes via raw `:metabase_database` to bypass `:model/Database`'s
+  `:after-update` hook, which would schedule per-database Quartz sync
+  triggers — undesirable here, since the whole point of metadata-file-import
+  is to skip warehouse sync. App startup re-registers triggers."
   [matched-target-db-ids]
   (when (seq matched-target-db-ids)
-    (t2/update! :model/Database :id [:in (vec matched-target-db-ids)]
-                {:initial_sync_status "complete"})))
+    (t2/query {:update :metabase_database
+               :set    {:initial_sync_status "complete"}
+               :where  [:in :id (vec matched-target-db-ids)]})))
 
 (defn import-metadata-file!
   "Run the full metadata import pipeline against the given file.
@@ -171,11 +176,21 @@
             (processors/insert-stubs-where-not-exists! stub-specs)
             (processors/resolve-existing-parents-in-staging!)        ; round 2 — picks up just-inserted stubs
             (processors/assert-no-unresolved-parent-refs!)
-            (processors/resolve-target-field-ids-in-staging!)        ; staging now knows which rows are matches vs inserts
-            (processors/merge-fields!)
-            (processors/resolve-fk-target-ids-in-staging!)
+            (processors/resolve-target-field-ids-in-staging!)        ; round 1 — staging now knows which rows are matches vs inserts
+            ;; Pass 1: non-FK staging rows (UPDATE matched + INSERT new).
+            ;; Splitting by FK status lets Pass 2 set fk_target_field_id at
+            ;; INSERT/UPDATE time, avoiding a separate post-INSERT UPDATE
+            ;; pass for the common case (FK source pointing at a non-FK row).
+            (processors/merge-fields-pass-1!)
+            (processors/resolve-target-field-ids-in-staging!)        ; round 2 — picks up Pass-1 INSERTs
+            (processors/resolve-fk-target-ids-in-staging!)           ; round 1 — resolves FK targets that exist (pre-existing or Pass-1 inserts)
+            ;; Pass 2: FK staging rows (UPDATE matched + INSERT new with
+            ;; fk_target_field_id pre-populated from staging.fk_target_id).
+            (processors/merge-fields-pass-2!)
+            (processors/resolve-target-field-ids-in-staging!)        ; round 3 — picks up Pass-2 INSERTs
+            (processors/resolve-fk-target-ids-in-staging!)           ; round 2 — picks up chain-case targets (Pass-2 sources pointing at other Pass-2 sources)
             (processors/assert-no-unresolved-fk-targets!)
-            (processors/merge-fk-targets!)
+            (processors/merge-fk-targets!)                           ; cleanup for FK chains (no-op for non-chain workloads)
             (processors/warn-on-orphan-staging-rows! matched-target-db-ids)
             (warn-on-unfilled-stubs! matched-target-db-ids)
             (mark-databases-sync-complete! matched-target-db-ids)))
