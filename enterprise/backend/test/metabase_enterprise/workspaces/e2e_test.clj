@@ -523,7 +523,7 @@
 ;; that Transform B succeeds and reads the rows Transform A wrote to the iso
 ;; copy.
 (deftest ^:synchronized native-transform-references-prior-canonical-output-test
-  (mt/test-drivers #{:postgres}
+  (mt/test-drivers #{:postgres :mysql}
     (mt/with-premium-features #{:workspaces}
       (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
         (let [admin-driver  driver/*driver*
@@ -572,11 +572,14 @@
                                                    :name   tgt-a-name}}]
                             (transforms.execute/execute! transform-a {:run-method :manual})
                             (testing "transform A produced a remap row for its canonical target"
-                              (is (some? (t2/select-one :model/TableRemapping
-                                                        :database_id     (:id ws-db)
-                                                        :from_schema     main-schema
-                                                        :from_table_name tgt-a-name))
-                                  "MBQL transform A's canonical target became a remap row"))
+                              ;; `:from_schema` storage shape: canonical schema for schema-having
+                              ;; drivers, empty-string sentinel for MySQL (no schema layer).
+                              (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)]
+                                (is (some? (t2/select-one :model/TableRemapping
+                                                          :database_id     (:id ws-db)
+                                                          :from_schema     from-schema-stored
+                                                          :from_table_name tgt-a-name))
+                                    "MBQL transform A's canonical target became a remap row")))
                             ;; Transform B: native SQL referencing the canonical name of A's
                             ;; output. Pre-fix, this would fail at the warehouse with
                             ;; `relation does not exist`. Post-fix, `rewrite-native-sql-for-workspace`
@@ -602,14 +605,25 @@
                                 (testing "B's iso output table contains the count of A's source rows"
                                   ;; Source has 3 rows; A copies them to its iso target; B's SELECT count(*)
                                   ;; should see those 3 rows via the rewriter substituting the iso name.
-                                  (let [{b-to-table :to_table_name b-to-schema :to_schema}
+                                  ;;
+                                  ;; Iso identifier shape:
+                                  ;;   schema-having drivers: `:to_schema`=iso schema, `:to_db`="";
+                                  ;;     2-slot `qualified-table-sql` of (to_schema, to_table) is correct.
+                                  ;;   MySQL: `:to_schema`="", `:to_db`=iso DB. The iso table lives at
+                                  ;;     `to_db.to_table`, which on MySQL is the same shape
+                                  ;;     `qualified-table-sql` emits when given (to_db, to_table).
+                                  (let [from-schema-stored (if (= :mysql admin-driver) "" main-schema)
+                                        {b-to-table :to_table_name
+                                         b-to-schema :to_schema
+                                         b-to-db    :to_db}
                                         (t2/select-one :model/TableRemapping
                                                        :database_id     (:id ws-db)
-                                                       :from_schema     main-schema
+                                                       :from_schema     from-schema-stored
                                                        :from_table_name tgt-b-name)
+                                        iso-namespace (if (= :mysql admin-driver) b-to-db b-to-schema)
                                         rows (jdbc/query admin-spec
                                                          [(format "SELECT n FROM %s"
-                                                                  (qualified-table-sql admin-driver b-to-schema b-to-table))])]
+                                                                  (qualified-table-sql admin-driver iso-namespace b-to-table))])]
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
