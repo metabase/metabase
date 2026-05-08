@@ -32,7 +32,7 @@ export type MetabotAgentChartMessage = {
 };
 
 // Internal variants intentionally omitted. `use-metabot.tsx` only exposes
-// `type === "text"` messages and `data_part` messages with `part.type === "navigate_to"`:
+// `type === "text"` messages `:
 // - `tool_call` messages: debug-only, gated on metabot's `debugMode`.
 // - `action` user messages: produced only when replaying historical audit conversations,
 //   never via the SDK input path.

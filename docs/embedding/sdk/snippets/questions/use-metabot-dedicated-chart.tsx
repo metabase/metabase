@@ -63,7 +63,8 @@ function MetabotChat() {
         >
           {metabot.messages.map((message) => {
             // Chart messages render in the dedicated panel on the left,
-            // so skip them in the chat transcript.
+            // so you should filter them out in the chat transcript
+            // so they don't render twice.
             if (message.role === "agent" && message.type === "chart") {
               return null;
             }

@@ -65,7 +65,7 @@ If `MetabotQuestion`'s built-in layouts don't fit your app, use the `useMetabot`
 
 ![AI chat inline charts](../images/ai-chat-inline-chart.png)
 
-Each agent chart message carries a pre-wired `Chart` component. Walk the messages and render charts inline alongside the chat transcript:
+When an agent responds, the message can contain a `Chart` component. You can walk the agent's messages and render charts inline alongside the chat transcript:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/use-metabot-inline-charts.tsx" %}
@@ -84,5 +84,5 @@ The `CurrentChart` component is bound to the latest chart the agent produced. Re
 ### Notes on `useMetabot`
 
 - **Guard against null while waiting for the SDK bundle**: `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted. Always guard before use. If you don't guard it, the first render will throw `Cannot read properties of null` when you reach for `metabot.messages`, `metabot.submitMessage`, etc., because the SDK ships its Metabot internals via a code-split chunk that isn't available synchronously.
-- **Bring your own Markdown renderer**: `MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state, which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets below render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
+- **Bring your own Markdown renderer**: `MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state, which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets above render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
 - **Strip links returned by the agent**: the agent text may include links pointing back to the host Metabase (like a link to a chart it created). Those links require an authenticated Metabase session, so people won't be able to view the links.
