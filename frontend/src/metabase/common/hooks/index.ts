@@ -15,6 +15,7 @@ export * from "./use-url-with-utm";
 export { useStoreUrl } from "./use-store-url/use-store-url";
 export * from "./use-capture-event";
 export * from "./use-progressive-loader";
+export * from "./use-delete-item";
 export * from "./use-set-archive";
 export * from "./use-set-collection";
 export * from "./use-set-pinned";

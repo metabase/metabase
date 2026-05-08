@@ -1,0 +1,114 @@
+## Persist Metabot source feedback
+
+databaseChangeLog:
+  - changeSet:
+      id: v60.srcefb
+      author: undrfined
+      comment: metabot_source_feedback table
+      changes:
+        - createTable:
+            tableName: metabot_source_feedback
+            remarks: User feedback on sources used by Metabot responses
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Auto-incrementing primary key
+              - column:
+                  name: message_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: FK to the Metabot message whose source was rated
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: The Metabase user who submitted the feedback. Unconstrained int so audit rows survive user deletion.
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: ID of the source object used by the response
+              - column:
+                  name: source_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                  remarks: Type of source object, e.g. table, card, or model
+              - column:
+                  name: positive
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  remarks: true = thumbs up, false = thumbs down
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When the feedback was submitted
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When the feedback was last updated
+      rollback:
+        - dropTable:
+            tableName: metabot_source_feedback
+
+  - changeSet:
+      id: v60.srcefu
+      author: undrfined
+      comment: Unique constraint on metabot_source_feedback source rating
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_source_feedback
+            columnNames: message_id, user_id, source_type, source_id
+            constraintName: uq_metabot_source_feedback_message_user_source
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_source_feedback
+            constraintName: uq_metabot_source_feedback_message_user_source
+
+  - changeSet:
+      id: v60.srcefm
+      author: undrfined
+      comment: Index on metabot_source_feedback.message_id
+      changes:
+        - createIndex:
+            tableName: metabot_source_feedback
+            indexName: idx_metabot_source_feedback_message_id
+            columns:
+              - column:
+                  name: message_id
+      rollback:
+        - dropIndex:
+            tableName: metabot_source_feedback
+            indexName: idx_metabot_source_feedback_message_id
+
+  - changeSet:
+      id: v60.srcefk
+      author: undrfined
+      comment: Foreign key from metabot_source_feedback.message_id to metabot_message.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_source_feedback
+            baseColumnNames: message_id
+            constraintName: fk_metabot_source_feedback_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_source_feedback
+            constraintName: fk_metabot_source_feedback_message_id

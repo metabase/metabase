@@ -264,6 +264,32 @@
           (is (=? {:ip_address "10.0.0.1"} w-ip))
           (is (nil? (:ip_address no-ip))))))))
 
+(deftest pii-fields-roundtrip-test
+  (testing "embedding_hostname/embedding_path/user_agent/sanitized_user_agent round-trip through the view"
+    (let [convo-with    (str (random-uuid))
+          convo-without (str (random-uuid))]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/MetabotConversation _ {:id                   convo-with
+                                                   :user_id              user-id
+                                                   :embedding_hostname   "customer.example.com"
+                                                   :embedding_path       "/dashboard/42"
+                                                   :user_agent           "Mozilla/5.0 (TestAgent)"
+                                                   :sanitized_user_agent "Chrome 130 / macOS"}
+                     :model/MetabotConversation _ {:id      convo-without
+                                                   :user_id user-id}]
+        (let [rows (query-view [convo-with convo-without])
+              w    (find-row rows convo-with)
+              wo   (find-row rows convo-without)]
+          (is (=? {:embedding_hostname   "customer.example.com"
+                   :embedding_path       "/dashboard/42"
+                   :user_agent           "Mozilla/5.0 (TestAgent)"
+                   :sanitized_user_agent "Chrome 130 / macOS"}
+                  w))
+          (is (nil? (:embedding_hostname   wo)))
+          (is (nil? (:embedding_path       wo)))
+          (is (nil? (:user_agent           wo)))
+          (is (nil? (:sanitized_user_agent wo))))))))
+
 (deftest tenant-id-and-name-test
   (testing "tenant_id and tenant_name come from ai_usage_log joined with tenant table"
     (let [convo-id (str (random-uuid))]

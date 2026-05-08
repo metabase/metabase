@@ -20,7 +20,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -28,6 +28,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
@@ -113,6 +114,7 @@ export const TransformListPage = ({
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const isMeterLocked = useSetting("transforms-meter-locked");
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -341,6 +343,7 @@ export const TransformListPage = ({
         py={0}
       />
       <Stack className={CS.overflowHidden}>
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="md">
           <TextInput
             placeholder={t`Search...`}
