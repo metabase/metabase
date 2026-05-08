@@ -310,6 +310,58 @@
                      batch)]
       (t2/insert! :metabase_field_import rows))))
 
+;;; ============================== Pre-flight orphan check ==============================
+
+(def ^:private orphan-sample-cap
+  "How many orphan rows to surface in the error data when bailing out. Enough
+  to give the operator a starting point for tracing back to the source file
+  without ballooning the exception payload."
+  10)
+
+(defn- orphan-count
+  "Number of `metabase_field_import` rows whose `column-key` (a `:source_*_id`
+  column) is non-null but doesn't reference any other row's `source_id`."
+  [column-key]
+  (t2/count :metabase_field_import
+            {:where [:and
+                     [:not= column-key nil]
+                     [:not-in column-key
+                      {:select [:source_id] :from [:metabase_field_import]}]]}))
+
+(defn- orphan-sample
+  "Up to `orphan-sample-cap` `[source_id, <column-key>]` pairs for orphan rows."
+  [column-key]
+  (t2/query
+   {:select [:source_id column-key]
+    :from   [:metabase_field_import]
+    :where  [:and
+             [:not= column-key nil]
+             [:not-in column-key
+              {:select [:source_id] :from [:metabase_field_import]}]]
+    :limit  orphan-sample-cap}))
+
+(defn assert-no-orphan-refs!
+  "Pre-flight check after drain: every staging field row's `source_parent_id`
+  and `source_fk_target_id` must reference another staging row's `source_id`.
+  Throws `ex-info` with `:kind :file_incomplete` and a sample of orphan rows
+  in the error data when any orphan exists.
+
+  This is the cheap one-shot check that makes the strict-consistency
+  invariant load-bearing — orphans are hard errors, not warnings, and the
+  depth-walk merge can rely on every cross-row reference being resolvable
+  within staging."
+  []
+  (let [parent-count (orphan-count :source_parent_id)
+        fk-count     (orphan-count :source_fk_target_id)]
+    (when (or (pos? parent-count) (pos? fk-count))
+      (throw (ex-info (format "metadata-file-import: file is incomplete — %d orphan parent ref(s), %d orphan fk-target ref(s)"
+                              parent-count fk-count)
+                      {:kind                   :file_incomplete
+                       :orphan-parent-count    parent-count
+                       :orphan-fk-target-count fk-count
+                       :orphan-parent-sample   (when (pos? parent-count) (orphan-sample :source_parent_id))
+                       :orphan-fk-target-sample (when (pos? fk-count) (orphan-sample :source_fk_target_id))})))))
+
 (defn- collect-missing-parent-portable-ids
   "Return a vector of distinct portable id vectors for staging rows whose
   parent didn't resolve (`parent_db_name` set, `parent_id` still NULL).
