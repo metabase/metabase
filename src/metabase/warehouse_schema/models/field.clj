@@ -511,18 +511,11 @@
            [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
     (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
 
-(defn- decode-nfc-path
-  "JSON-decode an `nfc_path` value pulled via raw query (no model transform). Returns nil for
-  null/empty, the original collection when sequential, or the decoded vector when a JSON string."
-  [nfc-path]
-  (cond
-    (nil? nfc-path)        nil
-    (sequential? nfc-path) (seq nfc-path)
-    (string? nfc-path)     (seq (json/decode nfc-path))))
-
 (defmethod serdes/metadata-query-format :model/Field
-  [_model {:keys [base_type effective_type nfc_path] :as field}]
-  (-> field
-      (cond-> (= base_type effective_type) (dissoc :effective_type))
-      (assoc :nfc_path (decode-nfc-path nfc_path))
+  [_model {:keys [base_type effective_type nfc_path] :as row}]
+  (-> row
+      (assoc :effective_type (when (not= base_type effective_type) effective_type))
+      (assoc :nfc_path (cond-> nfc_path
+                         (string? nfc_path) json/decode
+                         nfc_path           seq))
       u/remove-nils))
