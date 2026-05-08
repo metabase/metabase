@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ShieldIcon from "assets/shield.svg?component";
 import {
   useGetChannelInfoQuery,
   useListSecurityAdvisoriesQuery,
@@ -9,9 +8,9 @@ import {
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
+import { Icon } from "metabase/ui";
 
 import { isAffected } from "../../utils";
-import { Icon } from "metabase/ui";
 
 const DISMISSED_KEY = "security-center-promo-dismissed";
 
