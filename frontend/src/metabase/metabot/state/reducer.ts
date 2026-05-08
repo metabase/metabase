@@ -81,14 +81,16 @@ export const metabot = createSlice({
       (
         convo,
         action: ConvoPayloadAction<
-          Omit<MetabotAgentChatMessage, "id" | "role">
+          Omit<MetabotAgentChatMessage, "id" | "role" | "externalId">
         >,
       ) => {
         convo.activeToolCalls = [];
+        const externalId = convo.pendingMessageExternalId;
         convo.messages.push({
           id: createMessageId(),
           role: "agent",
           ...action.payload,
+          ...(externalId ? { externalId } : {}),
           // transforms in message is making this flakily produce possibly infinite
           // typescript errors. since unused ts-expect-error directives produces
           // errors, casting this as any to avoid having to add / remove constantly.
@@ -112,15 +114,22 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
+          const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
             id: createMessageId(),
             role: "agent",
             type: "text",
             message: action.payload.text,
+            ...(externalId ? { externalId } : {}),
           });
         }
 
         convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
+      },
+    ),
+    setPendingMessageExternalId: convoReducer(
+      (convo, action: ConvoPayloadAction<{ externalId: string }>) => {
+        convo.pendingMessageExternalId = action.payload.externalId;
       },
     ),
     toolCallStart: convoReducer(

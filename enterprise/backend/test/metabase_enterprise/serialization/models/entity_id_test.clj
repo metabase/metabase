@@ -60,6 +60,7 @@
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotMessage
+    :model/MetabotSourceFeedback
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
