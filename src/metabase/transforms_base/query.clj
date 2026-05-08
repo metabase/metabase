@@ -11,6 +11,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -94,12 +95,20 @@
                                             (nil? (:last_checkpoint_value transform)))
                                      :table
                                      (keyword (:type target)))
+          ;; Workspace SQL rewrite. Native transforms bypass QP middleware, so the
+          ;; QP's Phase 2 rewriter never sees their SQL -- apply the equivalent rewrite
+          ;; here so canonical refs resolve to workspace-isolation tables. No-op when no
+          ;; workspace is active. See `metabase.transforms-base.workspace-hooks`.
+          compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
+                             (update :query
+                                     #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
+                                       driver db %)))
           transform-details {:db-id db
                              :database database
                              :transform-id   id
                              :transform-type effective-transform-type
                              :conn-spec (driver/connection-spec driver database)
-                             :query (transforms-base.u/compile-source transform source-range-params)
+                             :query compiled-query
                              :output-schema (:schema target)
                              ;; Cross-DB write target qualifier. Populated when the driver's
                              ;; `qualified-name-components` includes `:db` (MySQL/Snowflake/

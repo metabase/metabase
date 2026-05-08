@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -177,7 +178,7 @@
   (testing "builds replacement map with raw identifiers (SQLGlot handles quoting per dialect)"
     (let [remappings {{:db "" :schema "public" :table "orders"} {:db "" :schema "mb_iso" :table "orders"}
                       {:db "" :schema "public" :table "users"}  {:db "" :schema "mb_iso" :table "users"}}
-          result (#'ws.middleware/build-table-replacements remappings)]
+          result (#'ws.table-remapping/build-table-replacements remappings)]
       (is (= 2 (count result)))
       ;; Empty-string sentinels are pruned before being handed to SQLGlot.
       (is (= {:schema "mb_iso" :table "orders"}
@@ -186,14 +187,16 @@
              (get result {:schema "public" :table "users"})))))
 
   (testing "3-level remappings (BigQuery-style) preserve :db"
+    ;; 3-slot specs translate to SQLGlot's `:catalog`+`:schema`+`:table` shape.
+    ;; Our `:db` -> SQLGlot's `:catalog`; our `:schema` stays as `:schema`.
     (let [remappings {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
-          result (#'ws.middleware/build-table-replacements remappings)]
-      (is (= {:db "proj" :schema "ws_ds" :table "orders"}
-             (get result {:db "proj" :schema "ds" :table "orders"})))))
+          result (#'ws.table-remapping/build-table-replacements remappings)]
+      (is (= {:catalog "proj" :schema "ws_ds" :table "orders"}
+             (get result {:catalog "proj" :schema "ds" :table "orders"})))))
 
   (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
     (let [remappings {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
-          result (#'ws.middleware/build-table-replacements remappings)]
+          result (#'ws.table-remapping/build-table-replacements remappings)]
       (is (= {:schema "ws_db" :table "orders"}
              (get result {:table "orders"}))))))
 

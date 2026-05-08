@@ -2,6 +2,7 @@
   "Enterprise hooks that integrate the transform execution path with workspace isolation."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -48,3 +49,22 @@
       ;; a per-call shim.
       (assoc target :db to-db :schema to-schema :name to-name))
     target))
+
+(defenterprise rewrite-native-sql-for-workspace
+  "Workspace-isolation SQL rewrite for the native-transform exec path. Reuses the same
+   `rewrite-sql` primitive as the QP's Phase 2 middleware, so canonical refs in a native
+   transform's SQL resolve to the same isolation-schema names the QP would emit.
+
+   Short-circuits when no remappings are active for `db-id`.
+
+   Deliberately ungated on premium features. See [[resolve-transform-target]] for the
+   rationale -- if a workspace child has `TableRemapping` rows, isolation must engage
+   regardless of token state."
+  :feature :none
+  [driver db-id sql]
+  (if-not (ws.remapping/enabled-for-db? db-id)
+    sql
+    (let [remappings (ws.remapping/remappings-for-db db-id)]
+      (if (empty? remappings)
+        sql
+        (ws.table-remapping/rewrite-sql driver sql remappings)))))

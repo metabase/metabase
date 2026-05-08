@@ -53,6 +53,8 @@
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -247,6 +249,74 @@
    but would match an empty string literally)."
   [m]
   (into {} (remove (fn [[_ v]] (= no-level v))) m))
+
+;;; ----------------------------------------- SQL rewriting -----------------------------------------
+;;;
+;;; Pure SQL rewrite primitives keyed off `::table-spec`. Pure relative to a `{from-spec to-spec}`
+;;; remappings map -- callers fetch from the active store and pass it in. Used by every workspace
+;;; rewrite site: QP middleware Phase 2 and the native-transform exec hook.
+
+(defn table-spec->sqlglot-key
+  "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
+   where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
+   `metabase.sql-parsing/replace-names` (SQLGlot) expects.
+
+   SQLGlot's `replace-names` matcher uses `:schema` for the db-position qualifier
+   (the leftmost in `db.tbl`) and `:catalog` for the catalog-position (the leftmost
+   in `catalog.db.tbl`). Empirically:
+
+     {:db \"x\"         :table \"t\"} -> doesn't match `x.t` on MySQL
+     {:schema \"x\"     :table \"t\"} -> matches `x.t` (and `db.x.t`)
+     {:catalog \"x\" :db \"y\" :table \"t\"} -> matches `x.y.t`
+
+   The translation:
+     - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
+     - Our `:db`     -> SQLGlot's `:catalog` *if* `:schema` is also populated
+                        (i.e. 3-part Snowflake/SQL Server/BigQuery shape),
+                        otherwise SQLGlot's `:schema` (the 2-part MySQL case
+                        where our `:db` IS the leftmost qualifier in the SQL).
+
+   `\"\"` sentinels are pruned (`prune-no-level`) so SQLGlot treats absent slots
+   as wildcards rather than matching the literal empty string."
+  [{:keys [db schema table] :as spec}]
+  (let [pruned (prune-no-level spec)
+        db?    (contains? pruned :db)
+        sch?   (contains? pruned :schema)]
+    (cond-> {:table table}
+      (and db? sch?) (assoc :catalog db :schema schema)
+      (and db? (not sch?)) (assoc :schema db)
+      (and (not db?) sch?) (assoc :schema schema))))
+
+(defn build-table-replacements
+  "Convert a `{from-spec to-spec}` remappings map into the format expected by
+   `sql-tools/replace-names`. SQLGlot handles quoting internally based on the
+   dialect, so we pass raw identifiers."
+  [remappings]
+  (into {}
+        (map (fn [[from-spec to-spec]]
+               [(table-spec->sqlglot-key from-spec)
+                (table-spec->sqlglot-key to-spec)]))
+        remappings))
+
+(defn rewrite-sql
+  "Parse `sql` and rewrite every table reference whose `(catalog, schema, table)` matches a
+   `from-spec` key in `remappings` to its `to-spec` counterpart. Returns the rewritten SQL.
+
+   `remappings` is a `{from-spec to-spec}` map of `::table-spec`s. Caller is responsible for
+   fetching it (typically `ws.remapping/remappings-for-db`).
+
+   Fail-closed: throws `ex-info` with `:type qp.error-type/qp` on parse failure. A workspace
+   child must not silently pass canonical refs through to the warehouse."
+  [driver sql remappings]
+  (try
+    (let [replacements {:tables (build-table-replacements remappings)}]
+      (sql-tools/replace-names driver sql replacements {:allow-unused? true}))
+    (catch Exception e
+      (throw (ex-info "Workspace table remapping failed: cannot parse SQL"
+                      {:type   qp.error-type/qp
+                       :sql    sql
+                       :driver driver}
+                      e)))))
 
 ; TODO Is this the same as prune-no-level?
 (defn- spec->consumer-shape

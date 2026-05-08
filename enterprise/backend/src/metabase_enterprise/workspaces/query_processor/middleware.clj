@@ -70,71 +70,16 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.sql-tools.core :as sql-tools]))
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
-
-(defn- table-spec->sqlglot-key
-  "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
-   where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
-   `metabase.sql-parsing/replace-names` (SQLGlot) expects.
-
-   SQLGlot's `replace-names` matcher uses `:schema` for the db-position qualifier
-   (the leftmost in `db.tbl`) and `:catalog` for the catalog-position (the leftmost
-   in `catalog.db.tbl`). Empirically:
-
-     {:db \"x\"         :table \"t\"} -> doesn't match `x.t` on MySQL
-     {:schema \"x\"     :table \"t\"} -> matches `x.t` (and `db.x.t`)
-     {:catalog \"x\" :db \"y\" :table \"t\"} -> matches `x.y.t`
-
-   The translation:
-     - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
-     - Our `:db`     -> SQLGlot's `:catalog` *if* `:schema` is also populated
-                        (i.e. 3-part Snowflake/SQL Server/BigQuery shape),
-                        otherwise SQLGlot's `:schema` (the 2-part MySQL case
-                        where our `:db` IS the leftmost qualifier in the SQL).
-
-   `\"\"` sentinels are pruned (`prune-no-level`) so SQLGlot treats absent slots
-   as wildcards rather than matching the literal empty string."
-  [{:keys [db schema table] :as spec}]
-  (let [pruned (ws.table-remapping/prune-no-level spec)
-        ;; pruned still has our keys; rebuild with SQLGlot keys.
-        db?    (contains? pruned :db)
-        sch?   (contains? pruned :schema)]
-    (cond-> {:table table}
-      (and db? sch?) (assoc :catalog db :schema schema)
-      (and db? (not sch?)) (assoc :schema db)
-      (and (not db?) sch?) (assoc :schema schema))))
-
-(defn- build-table-replacements
-  "Convert remappings map into the format expected by `sql-tools/replace-names`.
-   SQLGlot handles quoting internally based on the dialect, so we pass raw identifiers.
-
-   Remappings are `{from-spec to-spec}` `::table-spec` maps. Translates each
-   spec's slot vocabulary to SQLGlot's via [[table-spec->sqlglot-key]]."
-  [remappings]
-  (into {}
-        (map (fn [[from-spec to-spec]]
-               [(table-spec->sqlglot-key from-spec)
-                (table-spec->sqlglot-key to-spec)]))
-        remappings))
-
-(defn- rewrite-sql
-  "Parse and rewrite table references in a complete SQL string. Returns the rewritten SQL.
-   Throws on parse failure — we never silently pass through a query we can't understand."
-  [driver sql remappings]
-  (try
-    (let [replacements {:tables (build-table-replacements remappings)}]
-      (sql-tools/replace-names driver sql replacements {:allow-unused? true}))
-    (catch Exception e
-      (throw (ex-info "Workspace table remapping failed: cannot parse SQL"
-                      {:type   qp.error-type/qp
-                       :sql    sql
-                       :driver driver}
-                      e)))))
+;;;
+;;; SQL-rewrite primitives (`rewrite-sql`, `build-table-replacements`,
+;;; `table-spec->sqlglot-key`) live in [[metabase-enterprise.workspaces.table-remapping]]
+;;; alongside the `::table-spec` shape they consume. The native-transform exec hook
+;;; needs the same primitives outside this QP middleware path.
 
 (defn- remap-mbql-table-metadata!
   "Override `:db`, `:schema`, and `:name` on table metadata in the CachedMetadataProvider
@@ -217,7 +162,7 @@
    complete SQL, replaces production schema/table refs with workspace equivalents, re-emits."
   [driver compiled-map remappings]
   (let [sql       (:query compiled-map)
-        rewritten (rewrite-sql driver sql remappings)]
+        rewritten (ws.table-remapping/rewrite-sql driver sql remappings)]
     (assoc compiled-map :query rewritten)))
 
 (defn- rewrite-stages
@@ -235,7 +180,7 @@
           (cond-> stage
             (and (= :mbql.stage/native (:lib/type stage))
                  (string? (:native stage)))
-            (update :native #(rewrite-sql driver % remappings))
+            (update :native #(ws.table-remapping/rewrite-sql driver % remappings))
 
             (seq (:joins stage))
             (update :joins
