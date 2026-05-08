@@ -218,7 +218,7 @@
   [driver details]
   ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
   ;; a warning if it is
-  (let [match (re-find disallowed-additional-opts (:additional-options details ""))]
+  (let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
     (when match
       (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
@@ -496,7 +496,7 @@
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (driver-api/qp.add.source-alias opts))
+      (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
 
       ;; The field is referenced through a join (source-table is a join-alias
       ;; string). The join target is compiled as a subquery that already

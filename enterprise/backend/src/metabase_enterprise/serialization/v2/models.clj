@@ -87,6 +87,7 @@
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotMessage"
+   "MetabotSourceFeedback"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

@@ -134,6 +134,7 @@
     :model/MetabotConversation
     :model/MetabotMessage
     :model/MetabotFeedback
+    :model/MetabotSourceFeedback
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/Sandbox

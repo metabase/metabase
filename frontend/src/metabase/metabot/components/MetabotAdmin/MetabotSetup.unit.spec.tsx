@@ -414,6 +414,19 @@ async function selectProvider(name: string) {
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
+async function openDisconnectProviderModal() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Disconnect" }),
+  );
+}
+
+async function confirmDisconnectProvider() {
+  await openDisconnectProviderModal();
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Disconnect provider" }),
+  );
+}
+
 describe("MetabotSetup", () => {
   afterEach(() => {
     reinitialize();
@@ -1062,6 +1075,17 @@ describe("MetabotSetup", () => {
       screen.getByRole("button", { name: "Use a different AI provider" }),
     );
 
+    expect(
+      await screen.findByText("Disconnect AI provider?"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
+    ).toHaveLength(0);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Disconnect provider" }),
+    );
+
     await waitFor(() => {
       expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
     });
@@ -1167,8 +1191,22 @@ describe("MetabotSetup", () => {
     await setup();
 
     await screen.findByLabelText("API key");
+    await openDisconnectProviderModal();
+
+    expect(
+      await screen.findByText("Disconnect AI provider?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
+    ).toHaveLength(0);
+
     await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
+      screen.getByRole("button", { name: "Disconnect provider" }),
     );
 
     await waitFor(() => {
@@ -1203,9 +1241,7 @@ describe("MetabotSetup", () => {
     });
 
     await screen.findByText("Connected to Metabase");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    );
+    await confirmDisconnectProvider();
 
     expect(
       fetchMock.callHistory.called(
@@ -1258,9 +1294,7 @@ describe("MetabotSetup", () => {
     });
 
     await screen.findByText("Connected to Metabase");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    );
+    await confirmDisconnectProvider();
 
     expect(
       fetchMock.callHistory.called(
@@ -1315,9 +1349,7 @@ describe("MetabotSetup", () => {
 
     await screen.findByText("Connected to Metabase");
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    );
+    await confirmDisconnectProvider();
 
     expect(
       fetchMock.callHistory.called(
@@ -1356,9 +1388,7 @@ describe("MetabotSetup", () => {
     });
 
     await screen.findByText("Current billing cycle");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    );
+    await confirmDisconnectProvider();
 
     await waitFor(() => {
       expect(
@@ -1379,9 +1409,7 @@ describe("MetabotSetup", () => {
   it("shows an error toast when disconnect fails", async () => {
     const { store } = await setup({ settingUpdateResponse: { status: 500 } });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    );
+    await confirmDisconnectProvider();
 
     await waitFor(() => {
       expect(

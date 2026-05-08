@@ -235,6 +235,22 @@
         (log/error e "Failed to submit feedback to Harbormaster"))))
   api/generic-204-no-content)
 
+(api.macros/defendpoint :post "/source-feedback" :- [:map
+                                                     [:status [:= 204]]
+                                                     [:body :nil]]
+  "Persist Metabot source feedback."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:metabot_id   ms/PositiveInt]
+            [:message_id   ms/NonBlankString]
+            [:source_id    ms/PositiveInt]
+            [:source_type  [:enum "table" "card" "model"]]
+            [:positive     :boolean]]]
+  (metabot.config/check-metabot-enabled!)
+  (metabot.feedback/persist-source-feedback! body)
+  api/generic-204-no-content)
+
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))
 

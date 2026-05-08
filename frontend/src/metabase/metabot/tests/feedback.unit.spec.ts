@@ -14,10 +14,15 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
+const whoIsYourFavoriteResponseWithId = [
+  `f:{"messageId":"mock-metabot-message-id"}`,
+  ...whoIsYourFavoriteResponse,
+];
+
 const setupWithNegativeFeedback = async () => {
   setup({ isHosted: true });
   const feedbackEndpoint = mockFeedbackEndpoint();
-  mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+  mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponseWithId });
 
   await enterChatMessage("Who is your favorite?");
   const lastMessage = (await lastChatMessage())!;
@@ -53,7 +58,7 @@ const submitFeedback = async (modal: HTMLElement) => {
 describe("metabot > feedback", () => {
   it("should not show feedback buttons for non-hosted instances", async () => {
     setup({ isHosted: false });
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponseWithId });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;
@@ -69,7 +74,7 @@ describe("metabot > feedback", () => {
   it("should present the user an option to provide feedback for hosted instances", async () => {
     setup({ isHosted: true });
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponseWithId });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = (await lastChatMessage())!;

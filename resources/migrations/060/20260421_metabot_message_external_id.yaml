@@ -12,6 +12,10 @@ databaseChangeLog:
               id: v61.2026-04-21T10:00:00
               author: sloansparger
               changeLogFile: migrations/061_update_migrations.yaml
+        - not:
+            columnExists:
+              tableName: metabot_message
+              columnName: external_id
       changes:
         - addColumn:
             tableName: metabot_message
@@ -34,6 +38,10 @@ databaseChangeLog:
               id: v61.2026-04-21T10:00:01
               author: sloansparger
               changeLogFile: migrations/061_update_migrations.yaml
+        - not:
+            uniqueConstraintExists:
+              tableName: metabot_message
+              constraintName: uq_metabot_message_external_id
       changes:
         - addUniqueConstraint:
             tableName: metabot_message

@@ -61,6 +61,7 @@
     :model/MetabotConversation
     :model/MetabotFeedback
     :model/MetabotMessage
+    :model/MetabotSourceFeedback
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

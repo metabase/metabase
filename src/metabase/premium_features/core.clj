@@ -90,6 +90,7 @@
   hide-embed-branding?
   is-hosted?
   premium-embedding-token
+  security-center-disabled
   security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
