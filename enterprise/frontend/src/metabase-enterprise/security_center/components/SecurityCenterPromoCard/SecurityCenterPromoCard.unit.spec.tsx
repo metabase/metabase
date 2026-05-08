@@ -68,10 +68,10 @@ describe("SecurityCenterPromoCard", () => {
     setup();
 
     expect(
-      await screen.findByText(/Stay on top of Metabase security/),
+      await screen.findByText(/Stay safe with security alerts/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Set up notifications/i }),
+      screen.getByRole("link", { name: /Set up security alerts/i }),
     ).toHaveAttribute("href", "/admin/security-center?open=notifications");
   });
 
@@ -80,7 +80,7 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(() => false).catch(() => {});
     expect(
-      screen.queryByText(/Stay on top of Metabase security/),
+      screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
@@ -89,7 +89,7 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(() => false).catch(() => {});
     expect(
-      screen.queryByText(/Stay on top of Metabase security/),
+      screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(() => false).catch(() => {});
     expect(
-      screen.queryByText(/Stay on top of Metabase security/),
+      screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
@@ -109,20 +109,20 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(() => false).catch(() => {});
     expect(
-      screen.queryByText(/Stay on top of Metabase security/),
+      screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("is dismissible", async () => {
     setup();
 
-    await screen.findByText(/Stay on top of Metabase security/);
+    await screen.findByText(/Stay safe with security alerts/);
     const close = screen.getByRole("button", { name: /close/i });
     close.click();
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/Stay on top of Metabase security/),
+        screen.queryByText(/Stay safe with security alerts/),
       ).not.toBeInTheDocument();
     });
     expect(localStorage.getItem(DISMISSED_KEY)).toBe("true");
@@ -135,7 +135,7 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(() => false).catch(() => {});
     expect(
-      screen.queryByText(/Stay on top of Metabase security/),
+      screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 });
