@@ -505,6 +505,127 @@
               (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name output-table-name)
                    (catch Throwable _ nil)))))))))
 
+;; -----------------------------------------------------------------------------
+;; Native transform that references a prior MBQL transform's canonical output table.
+;;
+;; Repro for the user-reported bug: on a workspace-mode child instance, given a
+;; Transform A whose target is a canonical `(main_schema, t_a)` (which the
+;; transform-hook redirects to iso.<derived>), a *native* Transform B whose SQL
+;; references `main_schema.t_a` historically failed at the warehouse with
+;; `relation does not exist`. Native transforms bypass the QP middleware
+;; pipeline, so Phase 2's `apply-workspace-sql-remapping` never saw their SQL,
+;; and the canonical name -- which exists only virtually, backed by the iso
+;; copy -- reached the warehouse unrewritten.
+;;
+;; The fix wires `transforms-base.workspace-hooks/rewrite-native-sql-for-workspace`
+;; into `transforms-base.query/run-query-transform!` so native transforms get
+;; the same SQL rewrite the QP middleware applies to cards. This test asserts
+;; that Transform B succeeds and reads the rows Transform A wrote to the iso
+;; copy.
+(deftest ^:synchronized native-transform-references-prior-canonical-output-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-premium-features #{:workspaces}
+      (testing "a native transform whose SQL references a prior MBQL transform's canonical target succeeds via the workspace SQL rewriter"
+        (let [admin-driver  driver/*driver*
+              admin-db      (mt/db)
+              admin-details (:details admin-db)
+              admin-spec    (sql-jdbc.conn/connection-details->spec admin-driver admin-details)
+              run-id        (random-suffix)
+              main-schema   (canonical-schema-name admin-driver run-id admin-details)
+              tbl-schema    (table-row-schema-value admin-driver main-schema)
+              src-name      (str "x_input_" run-id)
+              tgt-a-name    (str "t_a_" run-id)
+              tgt-b-name    (str "t_b_" run-id)]
+          (try
+            (create-canonical-schema! admin-driver admin-spec main-schema)
+            (create-source-table! admin-driver admin-spec main-schema src-name)
+            (mt/with-temp [:model/Database ws-db {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "ws-native-repro-" run-id)}]
+              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)})]
+                (try
+                  (ws/add-database! ws-id (:id ws-db) [main-schema])
+                  (let [cfg-map  (ws.config/build-workspace-config ws-id)
+                        yaml-str (ws.config/config->yaml cfg-map)
+                        reparsed (yaml/parse-string yaml-str)]
+                    (binding [advanced-config.file/*config* reparsed]
+                      (advanced-config.file/initialize!))
+                    (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
+                      (mt/with-db ws-db
+                        (sync/sync-database! ws-db {:scan :schema})
+                        (let [src-table (t2/select-one :model/Table
+                                                       :db_id  (:id ws-db)
+                                                       :schema tbl-schema
+                                                       :name   src-name)
+                              _         (is (some? src-table) "input source table is synced")
+                              mp        (mt/metadata-provider)
+                              mbql-q    (lib/query mp (lib.metadata/table mp (:id src-table)))]
+                          ;; Transform A: MBQL -> writes to canonical (main_schema, t_a).
+                          ;; Hook redirects target to iso.<derived> and records a TableRemapping
+                          ;; for the canonical (main_schema, t_a) pair.
+                          (mt/with-temp [:model/Transform transform-a
+                                         {:name   (str "transform-a-" run-id)
+                                          :source {:type :query :query mbql-q}
+                                          :target {:type   :table
+                                                   :schema main-schema
+                                                   :name   tgt-a-name}}]
+                            (transforms.execute/execute! transform-a {:run-method :manual})
+                            (testing "transform A produced a remap row for its canonical target"
+                              (is (some? (t2/select-one :model/TableRemapping
+                                                        :database_id     (:id ws-db)
+                                                        :from_schema     main-schema
+                                                        :from_table_name tgt-a-name))
+                                  "MBQL transform A's canonical target became a remap row"))
+                            ;; Transform B: native SQL referencing the canonical name of A's
+                            ;; output. Pre-fix, this would fail at the warehouse with
+                            ;; `relation does not exist`. Post-fix, `rewrite-native-sql-for-workspace`
+                            ;; substitutes the iso table name before driver/run-transform!.
+                            (let [native-sql (format "SELECT count(*) AS n FROM %s"
+                                                     (qualified-table-sql admin-driver main-schema tgt-a-name))]
+                              (mt/with-temp [:model/Transform transform-b
+                                             {:name   (str "transform-b-" run-id)
+                                              :source {:type :query
+                                                       :query {:database (:id ws-db)
+                                                               :type     :native
+                                                               :native   {:query native-sql}}}
+                                              :target {:type   :table
+                                                       :schema main-schema
+                                                       :name   tgt-b-name}}]
+                                (testing "native transform B referencing A's canonical output runs without warehouse error"
+                                  (let [outcome (try (transforms.execute/execute! transform-b {:run-method :manual})
+                                                     :ok
+                                                     (catch Throwable t
+                                                       [::failed (ex-message t)]))]
+                                    (is (= :ok outcome)
+                                        (str "native transform B failed; outcome=" (pr-str outcome)))))
+                                (testing "B's iso output table contains the count of A's source rows"
+                                  ;; Source has 3 rows; A copies them to its iso target; B's SELECT count(*)
+                                  ;; should see those 3 rows via the rewriter substituting the iso name.
+                                  (let [{b-to-table :to_table_name b-to-schema :to_schema}
+                                        (t2/select-one :model/TableRemapping
+                                                       :database_id     (:id ws-db)
+                                                       :from_schema     main-schema
+                                                       :from_table_name tgt-b-name)
+                                        rows (jdbc/query admin-spec
+                                                         [(format "SELECT n FROM %s"
+                                                                  (qualified-table-sql admin-driver b-to-schema b-to-table))])]
+                                    (is (= [{:n 3}] (vec rows))
+                                        "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
+                  (finally
+                    (ws/clear-instance-workspace!)
+                    (t2/update! :model/Database (:id ws-db) {:details admin-details})
+                    (try (ws/delete-workspace! ws-id)
+                         (catch Throwable t
+                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
+            (finally
+              (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name tgt-a-name)
+                   (catch Throwable _ nil))
+              (try (jdbc/execute! admin-spec
+                                  [(format "DROP TABLE IF EXISTS %s"
+                                           (qualified-table-sql admin-driver main-schema tgt-b-name))])
+                   (catch Throwable _ nil)))))))))
+
 (comment
   (workspace-full-e2e-test))
 
