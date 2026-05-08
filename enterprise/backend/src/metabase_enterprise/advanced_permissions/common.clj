@@ -78,6 +78,9 @@
             :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
+            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
+                                                                                                     :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 

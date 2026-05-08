@@ -12,6 +12,7 @@ import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
+  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
@@ -630,6 +631,17 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
         );
       }
 
+      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
+        return updatePermission(
+          state,
+          groupId,
+          entityId.databaseId,
+          DataPermission.WORKSPACES,
+          [],
+          value,
+        );
+      }
+
       if (
         permissionInfo.type === DataPermissionType.NATIVE &&
         PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -654,6 +666,14 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
+        state,
+        groupId,
+        entityId,
+        permissionInfo.permission,
+        value,
+      );
+
+      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,

@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -223,3 +226,74 @@
           (is (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))
           (t2/delete! :model/Database :id db-id)
           (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))))))))
+
+;;; ========================================= Permission predicates =========================================
+;;;
+;;; - read:   Data Analyst + can-read? for every attached WorkspaceDatabase.
+;;; - create: Data Analyst + `:perms/workspaces :yes` on any database.
+;;; - write:  Data Analyst + `:perms/workspaces :yes` on any database
+;;;           + can-write? for every attached WorkspaceDatabase.
+;;; Admins always pass via the underlying superuser bypass.
+
+(defmacro ^:private with-normal-user [& body]
+  `(mt/with-test-user :rasta ~@body))
+
+(defmacro ^:private with-data-analyst [& body]
+  `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta)
+     (mt/with-test-user :rasta ~@body)))
+
+(defmacro ^:private with-workspaces-perm [db-id & body]
+  `(perms.test-util/with-db-perm-for-group! (perms/all-users-group) ~db-id
+     :perms/workspaces :yes
+     ~@body))
+
+(deftest can-read?-test
+  (testing "Workspace `mi/can-read?`"
+    (mt/with-temp [:model/Workspace ws {}]
+      (testing "non-Data-Analyst — false"
+        (with-normal-user (is (false? (mi/can-read? ws)))))
+      (testing "Data Analyst, empty workspace — true"
+        (with-data-analyst (is (true? (mi/can-read? ws))))))
+
+    (mt/with-temp [:model/Workspace         {ws-id :id :as ws} {}
+                   :model/WorkspaceDatabase _                  {:workspace_id ws-id}]
+      (testing "Data Analyst with attached database — every WSD `can-read?` is satisfied (analyst-level)"
+        (with-data-analyst (is (true? (mi/can-read? ws))))))))
+
+(deftest can-create?-test
+  (testing "Workspace `mi/can-create?`"
+    (testing "non-Data-Analyst — false"
+      (with-normal-user (is (false? (mi/can-create? :model/Workspace {})))))
+    (testing "Data Analyst alone (no `:perms/workspaces` anywhere) — false"
+      (with-data-analyst (is (false? (mi/can-create? :model/Workspace {})))))
+    (testing "Data Analyst + `:perms/workspaces :yes` on any database — true"
+      (with-data-analyst
+        (with-workspaces-perm (mt/id)
+          (is (true? (mi/can-create? :model/Workspace {}))))))))
+
+(deftest can-write?-test
+  (testing "Workspace `mi/can-write?`"
+    (mt/with-temp [:model/Workspace ws {}]
+      (testing "non-Data-Analyst — false"
+        (with-normal-user (is (false? (mi/can-write? ws)))))
+      (testing "Data Analyst alone, even on an empty workspace — false (need workspaces perm somewhere)"
+        (with-data-analyst (is (false? (mi/can-write? ws)))))
+      (testing "Data Analyst + `:perms/workspaces :yes` on any database, empty workspace — true"
+        (with-data-analyst
+          (with-workspaces-perm (mt/id)
+            (is (true? (mi/can-write? ws)))))))
+
+    (mt/with-temp [:model/Database          {db1-id :id}      {}
+                   :model/Database          {db2-id :id}      {}
+                   :model/Workspace         {ws-id :id :as ws} {}
+                   :model/WorkspaceDatabase _                  {:workspace_id ws-id, :database_id db1-id}
+                   :model/WorkspaceDatabase _                  {:workspace_id ws-id, :database_id db2-id}]
+      (testing "Data Analyst + perm on ONE of two attached databases — false"
+        (with-data-analyst
+          (with-workspaces-perm db1-id
+            (is (false? (mi/can-write? ws))))))
+      (testing "Data Analyst + perm on BOTH attached databases — true"
+        (with-data-analyst
+          (with-workspaces-perm db1-id
+            (with-workspaces-perm db2-id
+              (is (true? (mi/can-write? ws))))))))))

@@ -199,6 +199,17 @@ export const getShouldShowTransformPermissions = createSelector(
   },
 );
 
+export const getShouldShowWorkspacesPermissions = createSelector(
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (state: State) => getTokenFeature(state, "workspaces"),
+  (plan, workspacesFeatureEnabled) => {
+    if (plan === "oss") {
+      return false;
+    }
+    return Boolean(workspacesFeatureEnabled);
+  },
+);
+
 export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
@@ -208,6 +219,7 @@ export const getDatabasesPermissionEditor = createSelector(
   Groups.selectors.getList,
   getIsLoadingDatabaseTables,
   getShouldShowTransformPermissions,
+  getShouldShowWorkspacesPermissions,
   (
     metadata,
     params,
@@ -217,6 +229,7 @@ export const getDatabasesPermissionEditor = createSelector(
     groups: Group[],
     isLoading,
     showTransformPermissions,
+    showWorkspacesPermissions,
   ): PermissionEditorType | null => {
     const { groupId, databaseId, schemaName } = params;
 
@@ -273,6 +286,7 @@ export const getDatabasesPermissionEditor = createSelector(
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -297,6 +311,7 @@ export const getDatabasesPermissionEditor = createSelector(
               defaultGroup: isExternal ? externalUsersGroup : defaultGroup,
               database,
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -330,6 +345,7 @@ export const getDatabasesPermissionEditor = createSelector(
               database,
               permissionView: "group",
               showTransformPermissions,
+              showWorkspacesPermissions,
             }),
           };
         });
@@ -347,6 +363,7 @@ export const getDatabasesPermissionEditor = createSelector(
             groupType,
             isExternal,
             showTransformPermissions,
+            showWorkspacesPermissions,
           })
         : []),
     ]);
@@ -400,6 +417,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getOriginalDataPermissions,
     getOrderedGroups,
     getShouldShowTransformPermissions,
+    getShouldShowWorkspacesPermissions,
     (
       metadata,
       params,
@@ -407,6 +425,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       originalPermissions,
       groups,
       showTransformPermissions,
+      showWorkspacesPermissions,
     ) => {
       const { databaseId, schemaName, tableId } = params;
       const database = metadata?.database(databaseId);
@@ -458,6 +477,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               : defaultGroup,
             database,
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         } else if (schemaName != null) {
           groupPermissions = buildTablesPermissions({
@@ -474,6 +494,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
               : defaultGroup,
             database,
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions({
@@ -490,6 +511,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             database,
             permissionView: "database",
             showTransformPermissions,
+            showWorkspacesPermissions,
           });
         }
 
@@ -518,6 +540,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns({
           subject: permissionSubject,
           showTransformPermissions,
+          showWorkspacesPermissions,
         }),
       ]);
 

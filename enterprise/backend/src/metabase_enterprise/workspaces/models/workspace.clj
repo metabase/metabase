@@ -1,7 +1,9 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,6 +15,35 @@
 (doto :model/Workspace
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;;; --------------------------------------- Permission predicates ---------------------------------------
+;;;
+;;; - read:   Data Analyst + `mi/can-read?` for every attached WorkspaceDatabase.
+;;; - write:  Data Analyst + `:perms/workspaces :yes` on any database
+;;;           + `mi/can-write?` for every attached WorkspaceDatabase.
+;;; - create: Data Analyst + `:perms/workspaces :yes` on any database.
+
+(defmethod mi/can-read? :model/Workspace
+  ([instance]
+   (and (api/is-data-analyst?)
+        (every? mi/can-read? (:databases (t2/hydrate instance :databases)))))
+  ([_model pk]
+   (when-let [ws (t2/select-one :model/Workspace :id pk)]
+     (mi/can-read? ws))))
+
+(defmethod mi/can-create? :model/Workspace
+  [_model _instance]
+  (and (api/is-data-analyst?)
+       (perms/has-any-workspaces-permission? api/*current-user-id*)))
+
+(defmethod mi/can-write? :model/Workspace
+  ([instance]
+   (and (api/is-data-analyst?)
+        (perms/has-any-workspaces-permission? api/*current-user-id*)
+        (every? mi/can-write? (:databases (t2/hydrate instance :databases)))))
+  ([_model pk]
+   (when-let [ws (t2/select-one :model/Workspace :id pk)]
+     (mi/can-write? ws))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Workspace :databases]
   [_model k workspaces]

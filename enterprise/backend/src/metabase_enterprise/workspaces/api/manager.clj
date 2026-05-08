@@ -1,7 +1,8 @@
 (ns metabase-enterprise.workspaces.api.manager
-  "EE API endpoints for managing workspaces (admin), served under `/api/ee/workspace-manager`.
-   Validation, auth, and presentation only — all logic lives in
-   [[metabase-enterprise.workspaces.core]]."
+  "EE API endpoints for managing workspaces, served under `/api/ee/workspace-manager`.
+   Validation and presentation only — domain logic lives in
+   [[metabase-enterprise.workspaces.core]] and permission predicates live on
+   `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
    [metabase-enterprise.serialization.core :as serialization]
@@ -10,6 +11,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.models.interface :as mi]
    [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -90,19 +92,24 @@
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
   []
-  (api/check-superuser)
-  (mapv present-workspace (ws/list-workspaces)))
+  ;; Top-level gate: only Data Analysts (and admins) may list. We then apply `mi/can-read?` per row
+  ;; for defense in depth — if `can-read?` ever grows tighter rules, the listing will narrow with it
+  ;; instead of leaking rows that the per-row check would refuse.
+  (api/check-data-analyst)
+  (into [] (comp (filter mi/can-read?)
+                 (map present-workspace))
+        (ws/list-workspaces)))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace (name only, no databases)."
   [_route-params _query-params params :- CreateWorkspaceParams]
-  (api/check-superuser)
+  (api/create-check :model/Workspace params)
   (present-workspace
    (ws/create-workspace!
     (assoc params :creator_id api/*current-user-id*))))
@@ -112,7 +119,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
-  (api/check-superuser)
+  (api/write-check :model/Workspace id)
   (when (:name params)
     (t2/update! :model/Workspace :id id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
@@ -121,7 +128,7 @@
   :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
   "Delete a Workspace. Deprovisions all databases first (blocking)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
@@ -132,7 +139,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- AddDatabaseParams]
-  (api/check-superuser)
+  (api/create-check :model/WorkspaceDatabase params)
   (present-workspace
    (ws/add-database! id (:database_id params) (:input_schemas params))))
 
@@ -142,7 +149,9 @@
   [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]
    _query-params
    params :- UpdateDatabaseParams]
-  (api/check-superuser)
+  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
+                                                 :workspace_id id
+                                                 :database_id db-id)))
   (present-workspace
    (ws/update-database! id db-id (:input_schemas params))))
 
@@ -150,7 +159,9 @@
   :- WorkspaceResponse
   "Deprovision and remove a database from a workspace (blocking)."
   [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
+                                                 :workspace_id id
+                                                 :database_id db-id)))
   (present-workspace
    (ws/remove-database! id db-id)))
 
@@ -164,7 +175,7 @@
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"
@@ -193,7 +204,7 @@
        [:with-databases {:default false} [:maybe :boolean]]
        [:with-tables    {:default false} [:maybe :boolean]]
        [:with-fields    {:default false} [:maybe :boolean]]]]
-  (api/check-superuser)
+  (api/read-check :model/Workspace id)
   (let [workspace (api/check-404 (ws/get-workspace id))
         filters   (workspace-metadata-filters workspace)]
     (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]

@@ -1,0 +1,1 @@
+- [User role](user_role.md) — Alexander Polyankin, senior Metabase engineer, cloning transforms permission pattern for workspaces
