@@ -307,6 +307,27 @@ describe("scenarios > admin > settings (EE)", () => {
       .findByLabelText("store icon")
       .should("not.exist");
   });
+
+  it("should show the usage analytics PII toggle only when the audit_app feature is enabled", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.log("With the pro-self-hosted token, audit_app is enabled");
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("Usage tracking");
+      cy.contains("Collect user data to display in usage analytics");
+    });
+
+    cy.log("Without a token, audit_app is gone and the toggle is hidden");
+    H.deleteToken();
+    cy.reload();
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("Send anonymous tracking data to Metabase");
+      cy.contains("Collect user data to display in usage analytics").should(
+        "not.exist",
+      );
+    });
+  });
 });
 
 describe("Cloud settings section", () => {
