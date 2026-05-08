@@ -33,12 +33,12 @@ const PAGE_SIZE = 4;
 const FullSearchCTA = ({
   locationQuery,
   searchResults,
-  appliedRemoteSearchTerm,
+  debouncedSearchTerm,
   onClick,
 }: {
   locationQuery: Query;
   searchResults: SearchResponse;
-  appliedRemoteSearchTerm: string;
+  debouncedSearchTerm: string;
   onClick: () => void;
 }) => {
   const showOtherUsersCollections = useShowOtherUsersCollections();
@@ -59,7 +59,7 @@ const FullSearchCTA = ({
         pathname: "search",
         query: {
           ...locationQuery,
-          q: appliedRemoteSearchTerm,
+          q: debouncedSearchTerm,
         },
       }}
       className={S.viewAndFilterResults}
@@ -82,7 +82,7 @@ type Props = Omit<StackProps, "children"> & {
   searchRequestId?: string;
   searchResults?: SearchResponse;
   liveSearchTerm: string;
-  appliedRemoteSearchTerm: string;
+  debouncedSearchTerm: string;
 };
 
 export const PaletteResults = ({
@@ -90,7 +90,7 @@ export const PaletteResults = ({
   searchRequestId,
   searchResults,
   liveSearchTerm,
-  appliedRemoteSearchTerm,
+  debouncedSearchTerm,
   ...props
 }: Props) => {
   // Used for finding actions within the list
@@ -171,7 +171,7 @@ export const PaletteResults = ({
                     <FullSearchCTA
                       locationQuery={locationQuery}
                       searchResults={searchResults}
-                      appliedRemoteSearchTerm={appliedRemoteSearchTerm}
+                      debouncedSearchTerm={debouncedSearchTerm}
                       onClick={() => {
                         query.setVisualState(VisualState.hidden);
 
@@ -183,7 +183,7 @@ export const PaletteResults = ({
                           requestId: searchRequestId,
                           entityModel: null,
                           entityId: null,
-                          searchTerm: appliedRemoteSearchTerm,
+                          searchTerm: debouncedSearchTerm,
                         });
                       }}
                     />

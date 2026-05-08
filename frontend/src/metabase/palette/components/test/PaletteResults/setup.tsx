@@ -38,7 +38,7 @@ const TestComponent = withRouter(
       searchRequestId,
       searchResults,
       liveSearchTerm,
-      appliedRemoteSearchTerm,
+      debouncedSearchTerm,
     } = useCommandPalette({
       disabled: false,
       locationQuery: props.location.query,
@@ -59,7 +59,7 @@ const TestComponent = withRouter(
         searchRequestId={searchRequestId}
         searchResults={searchResults}
         liveSearchTerm={liveSearchTerm}
-        appliedRemoteSearchTerm={appliedRemoteSearchTerm}
+        debouncedSearchTerm={debouncedSearchTerm}
       />
     );
   },

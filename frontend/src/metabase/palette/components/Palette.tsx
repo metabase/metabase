@@ -63,7 +63,7 @@ export const PaletteContainer = withRouter(
       searchRequestId,
       searchResults,
       liveSearchTerm,
-      appliedRemoteSearchTerm,
+      debouncedSearchTerm,
     } = useCommandPalette({
       locationQuery,
       disabled,
@@ -105,7 +105,7 @@ export const PaletteContainer = withRouter(
             searchRequestId={searchRequestId}
             searchResults={searchResults}
             liveSearchTerm={liveSearchTerm}
-            appliedRemoteSearchTerm={appliedRemoteSearchTerm}
+            debouncedSearchTerm={debouncedSearchTerm}
           />
         </Stack>
       </Card>
