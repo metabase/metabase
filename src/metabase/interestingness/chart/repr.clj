@@ -226,6 +226,12 @@
                 significant-changes most-recent-change]} series-stats
         sections [(str "## Series: " series-name)
                   (render-series-summary series-stats)
+                  ;; Calibration warnings (small values, high variance, sparse data) — same
+                  ;; helper that categorical/scatter use; previously omitted for time-series,
+                  ;; which let downstream consumers (e.g. exploration summarization) cite
+                  ;; exaggerated percentage changes for series with values like 1 → 418
+                  ;; without realizing the small base made the % unreliable.
+                  (render-data-characteristics-note series-stats)
                   (render-trend trend)
                   (when is-cumulative "**Note**: Data appears to be cumulative")
                   (when volatility (render-volatility volatility))

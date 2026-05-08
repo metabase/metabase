@@ -1,5 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
+   [clojure.edn :as edn]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -23,5 +25,31 @@
     (instance? Blob v) (let [^Blob b v] (.getBytes b 1 (int (.length b))))
     :else            v))
 
+(defn- chart-stats-in
+  "Encode `compute-chart-stats` output as EDN. JSON would mangle the shape:
+  `:chart-type` is a keyword, `:series` is keyed by series-name *strings*,
+  and the histogram `:distribution :estimated-percentiles` is keyed by
+  *integers* — only EDN round-trips all three."
+  [v]
+  (cond
+    (nil? v)    nil
+    (string? v) v
+    :else       (pr-str v)))
+
+(defn- chart-stats-out
+  "Decode the EDN blob, recovering `nil` (with a warning) on parse failure
+  rather than crashing the whole `t2/select`. Bad rows can come from data
+  written under an earlier transform (e.g. JSON), or from forward-compat
+  scenarios where the writer used types the reader can't parse — neither
+  should ever break a read."
+  [s]
+  (when (string? s)
+    (try
+      (edn/read-string s)
+      (catch Throwable e
+        (log/warnf e "Failed to parse exploration_query_result.chart_stats; returning nil")
+        nil))))
+
 (t2/deftransforms :model/ExplorationQueryResult
-  {:result_data {:out blob->bytes}})
+  {:result_data {:out blob->bytes}
+   :chart_stats {:in chart-stats-in :out chart-stats-out}})

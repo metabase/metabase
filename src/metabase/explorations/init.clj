@@ -1,5 +1,6 @@
 (ns metabase.explorations.init
   (:require
+   [metabase.explorations.auto-insights]
    [metabase.explorations.models.exploration]
    [metabase.explorations.models.exploration-query]
    [metabase.explorations.models.exploration-query-result]

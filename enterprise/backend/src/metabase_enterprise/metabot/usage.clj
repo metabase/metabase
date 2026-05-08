@@ -24,6 +24,7 @@
     "contextual_interestingness"
     "document_generate_content"
     "example_question_generation_batch"
+    "exploration"
     "slack"
     "slackbot"
     "oss-sql-gen"

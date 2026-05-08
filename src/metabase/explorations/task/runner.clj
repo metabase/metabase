@@ -22,6 +22,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
+   [metabase.explorations.auto-insights :as explorations.auto-insights]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
@@ -75,33 +76,115 @@
      (in qp-result)
      (result-fn))))
 
-(defn- safe-score
-  "Best-effort interestingness score for `qp-result`. Logs and returns nil on any failure so the
-  worker still persists the result row — a scoring bug must never flip a successful query to
-  errored."
+(defn- safe-chart-config
+  "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
+  no numeric measure, unexpected shape, or any throw)."
   [exploration-query qp-result]
   (try
-    (when-let [chart-config (explorations.interestingness/qp-result->chart-config
-                             exploration-query qp-result)]
-      (interestingness/chart-interestingness chart-config))
+    (explorations.interestingness/qp-result->chart-config exploration-query qp-result)
+    (catch Throwable e
+      (log/warnf e "Failed to build chart-config for ExplorationQuery %d" (:id exploration-query))
+      nil)))
+
+(defn- safe-deep-stats
+  "Best-effort deep `compute-chart-stats`. Returns nil on failure. Stored on
+  the result row so summarization, chart-detail UIs, and any other consumer
+  read the cached stats instead of re-running the pipeline against the
+  serialized result blob."
+  [exploration-query chart-config]
+  (when chart-config
+    (try
+      (interestingness/compute-chart-stats chart-config {:deep? true})
+      (catch Throwable e
+        (log/warnf e "Failed to compute chart stats for ExplorationQuery %d" (:id exploration-query))
+        nil))))
+
+(defn- safe-score
+  "Best-effort interestingness score. Reuses the pre-computed `stats` so we
+  don't run the stats pipeline twice. Logs and returns nil on any failure so
+  the worker still persists the result row — a scoring bug must never flip a
+  successful query to errored."
+  [exploration-query chart-config stats]
+  (try
+    (when (and chart-config stats)
+      (interestingness/chart-interestingness chart-config stats))
     (catch Throwable e
       (log/warnf e "Failed to compute interestingness for ExplorationQuery %d"
                  (:id exploration-query))
       nil)))
 
+(defn- mark-thread-completed-if-done!
+  "Atomically flip `exploration_thread.completed_at` from NULL to NOW() iff every
+  query on the thread has reached a terminal status (anything other than `pending`)
+  AND every (query, timeline) pair has `scored_at` set. Returns true iff this caller
+  was the one that flipped it."
+  [thread-id]
+  (pos?
+   (t2/query-one
+    {:update :exploration_thread
+     :set    {:completed_at (OffsetDateTime/now)}
+     :where  [:and
+              [:= :id thread-id]
+              [:= :completed_at nil]
+              [:not-exists {:select [1]
+                            :from   [:exploration_query]
+                            :where  [:and
+                                     [:= :exploration_thread_id thread-id]
+                                     [:= :status "pending"]]}]
+              [:not-exists {:select    [1]
+                            :from      [[:exploration_query :q]]
+                            :join      [[:exploration_thread_timeline :ett]
+                                        [:= :ett.exploration_thread_id :q.exploration_thread_id]]
+                            :left-join [[:exploration_query_timeline_interestingness :s]
+                                        [:and
+                                         [:= :s.exploration_query_id :q.id]
+                                         [:= :s.timeline_id :ett.timeline_id]]]
+                            :where     [:and
+                                        [:= :q.exploration_thread_id thread-id]
+                                        [:= :q.status "done"]
+                                        [:or
+                                         [:= :s.id nil]
+                                         [:= :s.scored_at nil]]]}]]})))
+
+(defn- on-thread-completed
+  "Single entry point for post-completion work. Always invoked with `thread-id` (a long)
+  exactly once per thread, on a background daemon thread. Runs after the runner's row
+  transaction has committed, so it's free to do its own DB I/O, HTTP, LLM calls, etc.
+
+  Add new sub-steps inline here. Each sub-step should defend itself with try/catch so
+  one failure doesn't kill subsequent steps."
+  [thread-id]
+  (log/infof "Exploration thread %d completed" thread-id)
+  (explorations.auto-insights/generate-auto-insights! thread-id))
+
+(defn- maybe-complete-thread!
+  "Invoke after any state transition that could be the last unit of work for `thread-id`
+  (a query reaching a terminal status, or a timeline pair being scored). If this call is
+  the one that flips the thread to completed, runs `on-thread-completed` on a background
+  `future`. Safe to call repeatedly: subsequent calls are no-ops thanks to the
+  `completed_at IS NULL` predicate.
+
+  `thread-id` may be nil (e.g. the runner couldn't resolve the thread for a now-deleted
+  query); in that case this is a no-op."
+  [thread-id]
+  (when (and thread-id (mark-thread-completed-if-done! thread-id))
+    (future
+      (try
+        (on-thread-completed thread-id)
+        (catch Throwable e
+          (log/errorf e "on-thread-completed failed for thread %d" thread-id))))))
+
 (defn- safe-contextual-score
-  "Best-effort contextual interestingness score for `qp-result` against the thread's `prompt`.
+  "Best-effort contextual interestingness score against the thread's `prompt`.
   Returns nil whenever scoring isn't applicable (no prompt, no chart-config) or anything throws,
   so a scoring failure can never break the query lifecycle. Same fail-soft contract as
   `safe-score`."
-  [exploration-query qp-result]
+  [exploration-query chart-config]
   (try
     (when-let [thread-id (:exploration_thread_id exploration-query)]
       (let [prompt (:prompt (t2/select-one [:model/ExplorationThread :prompt] :id thread-id))]
-        (when-not (str/blank? prompt)
-          (when-let [chart-config (explorations.interestingness/qp-result->chart-config
-                                   exploration-query qp-result)]
-            (contextual-interestingness/contextual-chart-interestingness chart-config prompt)))))
+        (when (and chart-config (not (str/blank? prompt)))
+          (contextual-interestingness/contextual-chart-interestingness chart-config prompt))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
@@ -109,33 +192,46 @@
 
 (defn- run-one-query-iteration!
   "Try to claim and execute a single pending query. Returns truthy when work was done so the
-  caller knows whether to sleep."
+  caller knows whether to sleep.
+
+  Returns `{:thread-id ...}` on a row transition so the caller can run the
+  thread-completion check after the claim transaction commits — we don't want the
+  completion CAS UPDATE (or any handlers it triggers) inside the row's transaction
+  because it would extend the lock window."
   []
-  (t2/with-transaction [_conn]
-    (when-let [row (claim-pending-query)]
-      (let [started (OffsetDateTime/now)]
-        (try
-          (let [qp-result (qp/process-query
-                           (qp/userland-query-with-default-constraints (:dataset_query row)))
-                bytes     (serialize-result qp-result)
-                score     (safe-score row qp-result)
-                ctx-score (safe-contextual-score row qp-result)]
-            (t2/insert! :model/ExplorationQueryResult
-                        {:exploration_query_id             (:id row)
-                         :result_data                      bytes
-                         :interestingness_score            score
-                         :contextual_interestingness_score ctx-score})
-            (t2/update! :model/ExplorationQuery (:id row)
-                        {:status      "done"
-                         :started_at  started
-                         :finished_at (OffsetDateTime/now)}))
-          (catch Throwable e
-            (log/errorf e "ExplorationQuery %d failed" (:id row))
-            (t2/update! :model/ExplorationQuery (:id row)
-                        {:status        "error"
-                         :error_message (.getMessage e)
-                         :started_at    started
-                         :finished_at   (OffsetDateTime/now)}))))
+  (let [row-thread (atom nil)]
+    (t2/with-transaction [_conn]
+      (when-let [row (claim-pending-query)]
+        (reset! row-thread (:exploration_thread_id row))
+        (let [started (OffsetDateTime/now)]
+          (try
+            (let [qp-result    (qp/process-query
+                                (qp/userland-query-with-default-constraints (:dataset_query row)))
+                  bytes        (serialize-result qp-result)
+                  chart-config (safe-chart-config row qp-result)
+                  stats        (safe-deep-stats row chart-config)
+                  score        (safe-score row chart-config stats)
+                  ctx-score    (safe-contextual-score row chart-config)]
+              (t2/insert! :model/ExplorationQueryResult
+                          {:exploration_query_id             (:id row)
+                           :result_data                      bytes
+                           :chart_stats                      stats
+                           :interestingness_score            score
+                           :contextual_interestingness_score ctx-score})
+              (t2/update! :model/ExplorationQuery (:id row)
+                          {:status      "done"
+                           :started_at  started
+                           :finished_at (OffsetDateTime/now)}))
+            (catch Throwable e
+              (log/errorf e "ExplorationQuery %d failed" (:id row))
+              (t2/update! :model/ExplorationQuery (:id row)
+                          {:status        "error"
+                           :error_message (.getMessage e)
+                           :started_at    started
+                           :finished_at   (OffsetDateTime/now)}))))
+        :worked))
+    (when-let [tid @row-thread]
+      (maybe-complete-thread! tid)
       :worked)))
 
 (def ^:private ^:const stale-claim-cutoff-minutes
@@ -230,6 +326,10 @@
       (t2/update! :model/ExplorationQueryTimelineInterestingness id
                   {:interestingness_score score
                    :scored_at             (OffsetDateTime/now)}))
+    (maybe-complete-thread!
+     (:exploration_thread_id
+      (t2/select-one [:model/ExplorationQuery :exploration_thread_id]
+                     :id exploration_query_id)))
     :worked))
 
 (defn- run-one-iteration!

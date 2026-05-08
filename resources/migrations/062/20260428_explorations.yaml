@@ -961,3 +961,33 @@ databaseChangeLog:
             columns:
               - column:
                   name: exploration_query_id
+
+  - changeSet:
+      id: v62.g4ersd
+      author: nvoxland
+      comment: Add exploration_thread.completed_at as the gate for completion hooks
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: Set once when every query in the thread has reached a terminal status (done or error) AND every (query, timeline) pair has been scored. Used as a CAS gate so completion handlers fire exactly once.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.gr324asd
+      author: nvoxland
+      comment: Raw stats on the chart
+      changes:
+        - addColumn:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: chart_stats
+                  type: ${text.type}
+                  remarks: JSON-encoded raw stats on the chart
+                  constraints:
+                    nullable: true

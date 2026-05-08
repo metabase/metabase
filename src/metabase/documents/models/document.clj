@@ -14,7 +14,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -99,7 +100,16 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/document-update {:object instance}))
+    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
+    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
+    ;; rejects non-instances with "object must be a model instance" — caught and
+    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
+    ;; recorded for content updates. Promote it to a real instance here so the
+    ;; revisions push can complete cleanly.
+    (events/publish-event! :event/document-update
+                           {:object (if (t2/instance-of? :model/Document instance)
+                                      instance
+                                      (t2.instance/instance :model/Document instance))}))
   instance)
 
 (t2/define-after-select :model/Document
