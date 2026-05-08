@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -32,6 +33,25 @@ import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 import { getDimensions } from "./utils";
 
+// Per-chunk panel-cap constants (cartesian path). See the
+// "Many-charts-on-one-page" plan for the derivation.
+//
+// We measure the chart card directly via `useElementSize` (its inner
+// content rect already excludes the card's own padding). That gives a
+// reliable, accurate height that adapts to the actual layout — no
+// approximations for topbar, sidebar, page padding, etc.
+const MIN_PANEL_HEIGHT_PX = 300;
+const PANEL_GAP_PX = 30; // ECharts caps the gap at 48; 30 is the typical observed value
+const PER_PANEL_BUDGET_PX = MIN_PANEL_HEIGHT_PX + PANEL_GAP_PX;
+const CHUNK_CHROME_PX = 50; // outer padding + bottom x-axis labels inside one chunk
+// Internal chrome between the measured card and the chunked Stack:
+// the header (~32 px) plus the Stack's `gap="md"` between header and
+// chunks (~16 px). The card's own `p="lg"` padding is already excluded
+// because `useElementSize` reports `contentRect.height` (border-box
+// minus padding/border).
+const CARD_INTERNAL_CHROME_PX = 50;
+const FALLBACK_MAX_PANELS = 4; // safety net before the first measurement lands
+
 interface ExplorationGroupVisualizationProps {
   group: ExplorationQueryGroup;
   queries: ExplorationQuery[];
@@ -46,9 +66,16 @@ interface ExplorationGroupVisualizationProps {
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
+  // Measure the chart card. Its `contentRect` (border-box minus the
+  // `p="lg"` padding) is the actual usable space available for the
+  // header + chunked charts. Driving the per-chunk cap off this value
+  // keeps the math accurate regardless of topbar / sidebar / page
+  // padding sizes — those don't matter once we have the card height.
+  const { ref: cardRef, height: cardHeight } = useElementSize();
   return (
     <Stack flex={1} h="100%" py="3rem" pr="3rem" align="center">
       <Stack
+        ref={cardRef}
         flex={1}
         w="100%"
         maw="70rem"
@@ -57,14 +84,24 @@ export function ExplorationGroupVisualization(
         bdrs="md"
         p="lg"
       >
-        <ExplorationGroupVisualizationBody {...props} />
+        <ExplorationGroupVisualizationBody {...props} cardHeight={cardHeight} />
       </Stack>
     </Stack>
   );
 }
 
+type ExplorationGroupVisualizationBodyProps =
+  ExplorationGroupVisualizationProps & {
+    /**
+     * Measured `contentRect.height` of the chart card (i.e. the
+     * `<Stack p="lg">` wrapping this body). Drives the per-chunk
+     * panel cap in the cartesian render path.
+     */
+    cardHeight: number;
+  };
+
 function ExplorationGroupVisualizationBody(
-  props: ExplorationGroupVisualizationProps,
+  props: ExplorationGroupVisualizationBodyProps,
 ) {
   const { group, queries } = props;
   const groupName = group.name ?? t`Group`;
@@ -139,7 +176,8 @@ function ExplorationGroupVisualizationChart({
   onSelectTimelineId,
   timelineEvents,
   interestingTimelineIds,
-}: ExplorationGroupVisualizationProps) {
+  cardHeight,
+}: ExplorationGroupVisualizationBodyProps) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
   // `queries` length is stable for the lifetime of a single mount.
@@ -212,6 +250,34 @@ function ExplorationGroupVisualizationChart({
     [display],
   );
 
+  // Cartesian-only: cap panels-per-chunk so each panel keeps a
+  // readable height regardless of how many queries the group has.
+  // The cap is derived from the chart card's measured content height
+  // (passed in as `cardHeight`) — accurate by construction, no
+  // approximations for topbar / sidebar / page padding.
+  // See `frontend/src/metabase/visualizations/echarts/cartesian/layout/index.ts`
+  // for the elastic panel-height formula we're sizing against.
+  const maxPanelsPerChunk = useMemo(() => {
+    if (cardHeight <= 0) {
+      return FALLBACK_MAX_PANELS;
+    }
+    const usable = cardHeight - CARD_INTERNAL_CHROME_PX - CHUNK_CHROME_PX;
+    // Floor at 2 so a tiny container never produces single-panel
+    // chunks (a 1-panel chunk loses the multi-panel value-add).
+    return Math.max(2, Math.floor(usable / PER_PANEL_BUDGET_PX));
+  }, [cardHeight]);
+
+  const seriesChunks = useMemo(() => {
+    if (!series || series.length === 0) {
+      return [];
+    }
+    const out: (typeof series)[] = [];
+    for (let i = 0; i < series.length; i += maxPanelsPerChunk) {
+      out.push(series.slice(i, i + maxPanelsPerChunk));
+    }
+    return out;
+  }, [series, maxPanelsPerChunk]);
+
   const showTimelineDropdown = useMemo(() => {
     const firstSeries = series?.[0];
     const col = firstSeries?.data?.cols[0];
@@ -242,11 +308,35 @@ function ExplorationGroupVisualizationChart({
         interestingTimelineIds={interestingTimelineIds}
       />
       {isCartesian ? (
-        <Visualization
-          rawSeries={series}
-          timelineEvents={timelineEvents}
-          className={S.chart}
-        />
+        // Slice the queries into chunks so each panel keeps a readable
+        // height. Each chunk is its own `<Visualization>` with
+        // `graph.split_panels: true` (per-card setting set in the
+        // series builder above), so each chunk has its own visible
+        // x-axis directly under its panels — no "axis below the fold"
+        // problem when the user scrolls between chunks.
+        <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
+          {seriesChunks.map((chunk, i) => (
+            <Box
+              // The series array is already keyed by query id under
+              // the hood; the chunk index is stable across renders for
+              // a given (queries, maxPanelsPerChunk) pair.
+              key={i}
+              h={`${chunk.length * PER_PANEL_BUDGET_PX + CHUNK_CHROME_PX}px`}
+              style={{ flexShrink: 0 }}
+            >
+              <Visualization
+                rawSeries={chunk}
+                // Timeline events are time-domain; chunks share the
+                // dimension by construction (BE only emits `page`
+                // groups for queries that share `(card_id, dimension_id)`),
+                // so the same events render on every chunk at the same
+                // x positions.
+                timelineEvents={timelineEvents}
+                className={S.chart}
+              />
+            </Box>
+          ))}
+        </Stack>
       ) : (
         <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
           <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>

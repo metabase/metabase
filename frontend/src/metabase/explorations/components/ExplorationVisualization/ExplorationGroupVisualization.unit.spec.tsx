@@ -72,6 +72,19 @@ jest.mock("metabase/visualizations", () => ({
     ),
 }));
 
+// `useElementSize` measures the chart card directly. Mock it so tests
+// can assert chunking behavior at known card heights — jsdom's
+// ResizeObserver doesn't compute real layout dimensions.
+const mockElementSize = { value: { width: 0, height: 0 } };
+jest.mock("@mantine/hooks", () => ({
+  ...jest.requireActual("@mantine/hooks"),
+  useElementSize: () => ({
+    ref: jest.fn(),
+    width: mockElementSize.value.width,
+    height: mockElementSize.value.height,
+  }),
+}));
+
 function makeQuery(
   overrides: Partial<ExplorationQuery> & {
     id: number;
@@ -166,6 +179,7 @@ describe("ExplorationGroupVisualization", () => {
       display: "line",
       settings: { "graph.x_axis.scale": "timeseries" },
     };
+    mockElementSize.value = { width: 0, height: 0 };
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
@@ -268,6 +282,80 @@ describe("ExplorationGroupVisualization", () => {
     expect(
       within(header.parentElement!).queryByText("Revenue (US)"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("chunking many queries into multiple split-panels charts", () => {
+    /**
+     * Helper: build N queries + their datasets, set the chart-card
+     * `contentRect.height`, render, and return the rendered chunks'
+     * lengths.
+     *
+     * Cap math (matches the component):
+     *   usable = cardHeight − 50 (card internal chrome) − 50 (chunk chrome)
+     *   maxPerChunk = max(2, floor(usable / 330))   // 330 = 300 panel + 30 gap
+     */
+    function setupChunked(queryCount: number, cardHeight: number) {
+      mockElementSize.value = { width: 1280, height: cardHeight };
+      const queries = Array.from({ length: queryCount }, (_, i) =>
+        makeQuery({ id: 100 + i, name: `Q${i + 1}`, status: "done" }),
+      );
+      const datasets = new Map(queries.map((q) => [q.id, makeDataset()]));
+      setup({ queries, datasets });
+
+      const stubs = screen.getAllByTestId("visualization-stub");
+      return stubs.map(
+        (s) =>
+          JSON.parse(s.getAttribute("data-raw-series") ?? "[]")
+            .length as number,
+      );
+    }
+
+    it("renders one chunk when the queries fit under the per-chunk cap", () => {
+      // cardHeight=1420 → usable=1320 → cap=floor(1320/330)=4.
+      // 4 queries fit in a single chunk.
+      const chunks = setupChunked(4, 1420);
+      expect(chunks).toEqual([4]);
+    });
+
+    it("splits queries across chunks once the cap is exceeded", () => {
+      // cardHeight=1090 → usable=990 → cap=floor(990/330)=3.
+      // 8 queries → ceil(8/3) = 3 chunks of sizes [3, 3, 2].
+      const chunks = setupChunked(8, 1090);
+      expect(chunks).toEqual([3, 3, 2]);
+    });
+
+    it("never produces single-panel chunks even on a tiny container", () => {
+      // cardHeight=200 → usable<0 → cap floors at 2.
+      // 5 queries → ceil(5/2) = 3 chunks of sizes [2, 2, 1].
+      // The trailing 1-panel chunk is the natural remainder; the floor
+      // is on the cap, not on chunk size — leftover queries always get
+      // a chunk regardless.
+      const chunks = setupChunked(5, 200);
+      expect(chunks).toEqual([2, 2, 1]);
+    });
+
+    it("falls back to a 4-panel cap before the first measurement lands", () => {
+      // cardHeight=0 → fallback cap of 4 kicks in.
+      // 8 queries → ceil(8/4) = 2 chunks of sizes [4, 4].
+      const chunks = setupChunked(8, 0);
+      expect(chunks).toEqual([4, 4]);
+    });
+
+    it("keeps graph.split_panels enabled on every chunk's series", () => {
+      const chunks = setupChunked(8, 1090);
+      expect(chunks).toEqual([3, 3, 2]);
+      const stubs = screen.getAllByTestId("visualization-stub");
+      for (const stub of stubs) {
+        const rawSeries = JSON.parse(
+          stub.getAttribute("data-raw-series") ?? "[]",
+        );
+        for (const s of rawSeries) {
+          expect(s.card.visualization_settings["graph.split_panels"]).toBe(
+            true,
+          );
+        }
+      }
+    });
   });
 
   describe("non-cartesian displays (e.g. map)", () => {
