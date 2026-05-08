@@ -10,7 +10,7 @@
       "devDependencies": {
         "@types/node": "^25.5.0",
         "@types/react": "^18.3.3",
-        "@types/react-dom": "18",
+        "@types/react-dom": "^18.3.1",
         "np": "^11.0.2",
         "oxlint": "^1.59.0",
         "prettier": "^3.8.1",
