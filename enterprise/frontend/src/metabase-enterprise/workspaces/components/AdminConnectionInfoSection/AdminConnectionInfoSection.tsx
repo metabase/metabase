@@ -25,7 +25,7 @@ export function AdminConnectionInfoSection({
   const { modalContent, show: showConfirmation } = useConfirmation();
   const isDbRoutingEnabled = hasDbRoutingEnabled(database);
 
-  if (!isDbModifiable(database) || !hasFeature(database, "workspaces")) {
+  if (!isDbModifiable(database) || !hasFeature(database, "workspace")) {
     return null;
   }
 

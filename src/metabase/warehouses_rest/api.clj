@@ -1027,7 +1027,7 @@
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
   (when (some? admin_details)
-    (premium-features/assert-has-feature :admin-connection (tru "Admin Connection")))
+    (premium-features/assert-has-feature :workspaces (tru "Admin Connection")))
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))

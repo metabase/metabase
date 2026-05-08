@@ -942,9 +942,6 @@
    {:name      :writable-connection
     :available (premium-features/enable-writable-connection?)
     :enabled   (premium-features/enable-writable-connection?)}
-   {:name      :admin-connection
-    :available (premium-features/enable-admin-connection?)
-    :enabled   (premium-features/enable-admin-connection?)}
    {:name      :ai-controls
     :available (premium-features/enable-ai-controls?)
     :enabled   (premium-features/enable-ai-controls?)}])

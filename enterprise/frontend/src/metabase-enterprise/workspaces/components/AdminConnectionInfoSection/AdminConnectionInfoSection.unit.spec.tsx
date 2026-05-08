@@ -10,7 +10,7 @@ interface SetupOpts {
 }
 
 function setup({
-  database = createMockDatabase({ features: ["workspaces"] }),
+  database = createMockDatabase({ features: ["workspace"] }),
 }: SetupOpts = {}) {
   setupDatabaseEndpoints(database);
   renderWithProviders(<AdminConnectionInfoSection database={database} />);
@@ -21,7 +21,7 @@ describe("AdminConnectionInfoSection", () => {
     setup({
       database: createMockDatabase({
         is_attached_dwh: true,
-        features: ["workspaces"],
+        features: ["workspace"],
       }),
     });
 
@@ -30,7 +30,7 @@ describe("AdminConnectionInfoSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not render when the database does not support the workspaces feature", () => {
+  it("should not render when the database does not support the workspace feature", () => {
     setup({ database: createMockDatabase({ features: [] }) });
 
     expect(
@@ -38,11 +38,11 @@ describe("AdminConnectionInfoSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should render for a modifiable database that supports the workspaces feature", () => {
+  it("should render for a modifiable database that supports the workspace feature", () => {
     setup({
       database: createMockDatabase({
         is_attached_dwh: false,
-        features: ["workspaces"],
+        features: ["workspace"],
       }),
     });
 
@@ -55,7 +55,7 @@ describe("AdminConnectionInfoSection", () => {
     setup({
       database: createMockDatabase({
         router_user_attribute: "some_attribute",
-        features: ["workspaces"],
+        features: ["workspace"],
       }),
     });
 
@@ -70,7 +70,7 @@ describe("AdminConnectionInfoSection", () => {
     setup({
       database: createMockDatabase({
         router_user_attribute: null,
-        features: ["workspaces"],
+        features: ["workspace"],
       }),
     });
 

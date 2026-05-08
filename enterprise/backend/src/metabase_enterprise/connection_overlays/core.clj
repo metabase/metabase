@@ -13,9 +13,9 @@
   (:write-data-details database))
 
 (defenterprise database-admin-details
-  "Returns the `:admin-details` for a database when the `:admin-connection` feature is available.
+  "Returns the `:admin-details` for a database when the `:workspaces` feature is available.
 
   `database` is a [[lib/metadata]] database instance. To pass a Toucan2 database instance, use [[driver.u/ensure-lib-database]]."
-  :feature :admin-connection
+  :feature :workspaces
   [database]
   (:admin-details database))
