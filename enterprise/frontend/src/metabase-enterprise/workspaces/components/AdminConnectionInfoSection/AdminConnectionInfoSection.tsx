@@ -10,6 +10,7 @@ import { useUpdateDatabaseMutation } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,
+  hasFeature,
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { AdminConnectionInfoSectionProps } from "metabase/plugins/oss/workspaces";
@@ -24,7 +25,7 @@ export function AdminConnectionInfoSection({
   const { modalContent, show: showConfirmation } = useConfirmation();
   const isDbRoutingEnabled = hasDbRoutingEnabled(database);
 
-  if (!isDbModifiable(database)) {
+  if (!isDbModifiable(database) || !hasFeature(database, "workspaces")) {
     return null;
   }
 
