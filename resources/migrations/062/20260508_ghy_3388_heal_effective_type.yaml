@@ -21,7 +21,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v61.ghy3388-field-heal
+      id: v62.ghy3388-field-heal
       author: ericnormand
       comment: GHY-3388 heal metabase_field where coercion_strategy is NULL and effective_type drifted
       changes:
@@ -36,7 +36,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v61.ghy3388-user-settings-heal
+      id: v62.ghy3388-user-settings-heal
       author: ericnormand
       comment: GHY-3388 heal metabase_field_user_settings overlay so it doesn't reintroduce drift
       changes:
