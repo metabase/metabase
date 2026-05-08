@@ -826,3 +826,25 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (mt/test-driver :mysql
+    (let [details (:details (mt/db))]
+      (testing "Reject connection strings with malicious properties"
+        (are [bad-option] (let [details (assoc details :additional-options bad-option)]
+                            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                  #"Potentially dangerous keys in additional options"
+                                                  (driver/can-connect? :mysql details))))
+          "allowLoadLocalInfile=true"
+          "allowLoadLocalInfileInPath=1"
+          "allowUrlInLocalInfile=1"
+          "autoDeserialize=1"
+          "serverRSAPublicKeyFile=/path/to/file"))
+      (testing "Allow connection strings with non-malicious properties"
+        (are [ok-option] (let [details (assoc details :additional-options ok-option)]
+                           (is (true? (driver/can-connect? :mysql details))))
+          nil
+          ""
+          " "
+          "tinyInt1isBit=1")
+        (is (true? (driver/can-connect? :mysql details)))))))
