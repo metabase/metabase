@@ -52,6 +52,7 @@
             {:perms/view-data :blocked
              :perms/create-queries :no
              :perms/transforms :no
+             :perms/workspaces :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
@@ -82,7 +83,8 @@
            {database-id-1
             {:perms/create-queries :query-builder
              :perms/view-data :unrestricted
-             :perms/transforms :no}}}
+             :perms/transforms :no
+             :perms/workspaces :no}}}
 
           {group-id-1
            {database-id-1
@@ -90,7 +92,8 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries :no
-             :perms/transforms :no}}}
+             :perms/transforms :no
+             :perms/workspaces :no}}}
 
           {group-id-1
            {database-id-1
@@ -152,6 +155,7 @@
            {database-id-1
             {:perms/create-queries :no
              :perms/transforms :no
+             :perms/workspaces :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}
@@ -159,6 +163,9 @@
                                {table-id-3 :unrestricted}}}}}
 
           ;; Restoring full data access and native query permissions
+          ;; Note: :perms/workspaces persists from the previous step (which forced it to :no when
+          ;; create-queries was :no). It would be cleared explicitly by a graph entry setting
+          ;; :workspaces :yes; we just exercise the cascade-clearance for transforms here.
           {group-id-1
            {database-id-1
             {:create-queries :query-builder-and-native
@@ -168,7 +175,8 @@
            {database-id-1
             {:perms/create-queries :query-builder-and-native
              :perms/view-data :unrestricted
-             :perms/transforms :yes}}}
+             :perms/transforms :yes
+             :perms/workspaces :no}}}
 
           ;; Setting data access permissions at the schema-level
           {group-id-1
@@ -180,6 +188,7 @@
            {database-id-1
             {:perms/create-queries :no
              :perms/transforms :no
+             :perms/workspaces :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :unrestricted}
@@ -195,6 +204,7 @@
             {:perms/create-queries :no
              :perms/view-data :blocked
              :perms/transforms :no
+             :perms/workspaces :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test

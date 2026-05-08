@@ -1,6 +1,8 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,6 +17,30 @@
   {:database_details mi/transform-encrypted-json
    :input_schemas    mi/transform-json
    :status           mi/transform-keyword})
+
+;;; --------------------------------------- Permission predicates ---------------------------------------
+;;;
+;;; - read:          Data Analyst.
+;;; - write/create:  Data Analyst + `:perms/workspaces :yes` for `:database_id`.
+
+(defmethod mi/can-read? :model/WorkspaceDatabase
+  ([_instance]
+   (api/is-data-analyst?))
+  ([_model _pk]
+   (api/is-data-analyst?)))
+
+(defmethod mi/can-write? :model/WorkspaceDatabase
+  ([{:keys [database_id]}]
+   (and (api/is-data-analyst?)
+        (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
+  ([_model pk]
+   (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id pk)]
+     (mi/can-write? wsd))))
+
+(defmethod mi/can-create? :model/WorkspaceDatabase
+  [_model {:keys [database_id]}]
+  (and (api/is-data-analyst?)
+       (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

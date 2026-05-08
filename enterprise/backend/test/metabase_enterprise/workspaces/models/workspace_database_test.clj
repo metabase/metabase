@@ -13,6 +13,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -130,3 +133,54 @@
                   "raw-table delete must still throw — the FK enforces the invariant at the DB layer")
               (is (true? (t2/exists? :model/WorkspaceDatabase :id wsd-id))
                   "WorkspaceDatabase row must survive the refused raw delete"))))))))
+
+;;; ========================================= Permission predicates =========================================
+;;;
+;;; - read:         Data Analyst.
+;;; - write/create: Data Analyst + `:perms/workspaces :yes` for `:database_id`.
+
+(defmacro ^:private with-normal-user [& body]
+  `(mt/with-test-user :rasta ~@body))
+
+(defmacro ^:private with-data-analyst [& body]
+  `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta)
+     (mt/with-test-user :rasta ~@body)))
+
+(defmacro ^:private with-workspaces-perm [db-id & body]
+  `(perms.test-util/with-db-perm-for-group! (perms/all-users-group) ~db-id
+     :perms/workspaces :yes
+     ~@body))
+
+(deftest can-read?-test
+  (testing "WorkspaceDatabase `mi/can-read?`"
+    (mt/with-temp [:model/Workspace         {ws-id :id} {}
+                   :model/WorkspaceDatabase wsd         {:workspace_id ws-id}]
+      (testing "non-Data-Analyst — false"
+        (with-normal-user (is (false? (mi/can-read? wsd)))))
+      (testing "Data Analyst — true (no per-database check)"
+        (with-data-analyst (is (true? (mi/can-read? wsd))))))))
+
+(deftest can-create?-test
+  (testing "WorkspaceDatabase `mi/can-create?`"
+    (testing "non-Data-Analyst — false"
+      (with-normal-user (is (false? (mi/can-create? :model/WorkspaceDatabase {:database_id (mt/id)})))))
+    (testing "Data Analyst without `:perms/workspaces` for the target database — false"
+      (with-data-analyst
+        (is (false? (mi/can-create? :model/WorkspaceDatabase {:database_id (mt/id)})))))
+    (testing "Data Analyst with `:perms/workspaces :yes` for the target database — true"
+      (with-data-analyst
+        (with-workspaces-perm (mt/id)
+          (is (true? (mi/can-create? :model/WorkspaceDatabase {:database_id (mt/id)}))))))))
+
+(deftest can-write?-test
+  (testing "WorkspaceDatabase `mi/can-write?`"
+    (mt/with-temp [:model/Workspace         {ws-id :id} {}
+                   :model/WorkspaceDatabase wsd         {:workspace_id ws-id}]
+      (testing "non-Data-Analyst — false"
+        (with-normal-user (is (false? (mi/can-write? wsd)))))
+      (testing "Data Analyst without `:perms/workspaces` for the row's database — false"
+        (with-data-analyst (is (false? (mi/can-write? wsd)))))
+      (testing "Data Analyst with `:perms/workspaces :yes` for the row's database — true"
+        (with-data-analyst
+          (with-workspaces-perm (mt/id)
+            (is (true? (mi/can-write? wsd)))))))))

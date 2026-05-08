@@ -15,6 +15,7 @@ export enum DataPermission {
   DATA_MODEL = "data-model",
   DETAILS = "details",
   TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -85,6 +86,10 @@ export type TransformsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
+export type WorkspacesPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
+
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
@@ -92,6 +97,7 @@ export type DatabasePermissions = {
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
+  [DataPermission.WORKSPACES]?: WorkspacesPermission;
 };
 
 export type DataModelPermissions = {

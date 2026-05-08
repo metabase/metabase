@@ -713,10 +713,12 @@
                                  (build-database-permission group-or-id db-or-id :perms/download-results :no)])
 
                           (and (= perm-type :perms/view-data) (not= value :unrestricted))
-                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no))
+                          (into [(build-database-permission group-or-id db-or-id :perms/transforms :no)
+                                 (build-database-permission group-or-id db-or-id :perms/workspaces :no)])
 
                           (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
-                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no)))]
+                          (into [(build-database-permission group-or-id db-or-id :perms/transforms :no)
+                                 (build-database-permission group-or-id db-or-id :perms/workspaces :no)]))]
     (apply merge-with concat
            {:to-delete existing-perms
             :to-insert [new-perm]}
@@ -1010,7 +1012,8 @@
                                           :perms/manage-database       :no}
                                    (or (not= view-data-level :unrestricted)
                                        (not= cq-level :query-builder-and-native))
-                                   (assoc :perms/transforms :no))]
+                                   (assoc :perms/transforms :no
+                                          :perms/workspaces :no))]
                  [perm-type perm-value] perm-map]
              {:perm_type  perm-type
               :group_id   group-id
@@ -1061,7 +1064,8 @@
                                    :perms/download-results      :one-million-rows
                                    :perms/manage-table-metadata :no
                                    :perms/manage-database       :no
-                                   :perms/transforms            :no}
+                                   :perms/transforms            :no
+                                   :perms/workspaces            :no}
 
                                   ;; Normal: compute based on group's lowest existing perm level
                                   :else
@@ -1084,7 +1088,8 @@
                                              :perms/manage-database       :no}
                                       (or (not= view-data-level :unrestricted)
                                           (not= cq-level :query-builder-and-native))
-                                      (assoc :perms/transforms :no))))]
+                                      (assoc :perms/transforms :no
+                                             :perms/workspaces :no))))]
                             (for [[perm-type perm-value] perm-map]
                               {:perm_type  perm-type
                                :group_id   group-id
@@ -1216,3 +1221,17 @@
   "Returns true if the current user has the transforms permission for _any_ source db."
   [user-id]
   (user-has-any-perms-of-type? user-id :perms/transforms))
+
+(defn has-db-workspaces-permission?
+  "Returns true if the given user has the workspaces permission for the given database."
+  [user-id database-id]
+  (and (not= database-id audit/audit-db-id)
+       (user-has-permission-for-database? user-id
+                                          :perms/workspaces
+                                          :yes
+                                          database-id)))
+
+(defn has-any-workspaces-permission?
+  "Returns true if the given user has the workspaces permission for _any_ source db."
+  [user-id]
+  (user-has-any-perms-of-type? user-id :perms/workspaces))

@@ -87,6 +87,7 @@
   enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   enable-admin-connection?

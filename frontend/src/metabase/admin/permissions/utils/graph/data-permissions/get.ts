@@ -19,6 +19,7 @@ const flatPermissions = new Set([
   DataPermission.VIEW_DATA,
   DataPermission.CREATE_QUERIES,
   DataPermission.TRANSFORMS,
+  DataPermission.WORKSPACES,
 ]);
 
 // util to ease migration of perms attributes into a flatter structure
@@ -44,6 +45,7 @@ const omittedDefaultValues: Record<DataPermission, DataPermissionValue> = {
   [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
   [DataPermission.DETAILS]: DataPermissionValue.NO,
   [DataPermission.TRANSFORMS]: DataPermissionValue.NO,
+  [DataPermission.WORKSPACES]: DataPermissionValue.NO,
   [DataPermission.COLLECTIONS]: DataPermissionValue.NONE,
 };
 
