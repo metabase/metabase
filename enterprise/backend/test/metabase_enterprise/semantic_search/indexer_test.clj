@@ -10,6 +10,7 @@
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test.util :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -151,30 +152,30 @@
                                     (is (< @sleep-metric-state current-sleep))
                                     (vreset! sleep-metric-state current-sleep))))]
         (testing "high novelty ratio (>25%) - no sleep"
-          (with-redefs [semantic.indexer/sleep (fn [ms] (throw (ex-info "Should not sleep" {:ms ms})))]
+          (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep (fn [ms] (throw (ex-info "Should not sleep" {:ms ms})))]
             (is (nil? (semantic.indexer/on-indexing-idle indexing-state)))))
         (testing "medium novelty ratio (10-25%) - small backoff"
           (vswap! indexing-state assoc :last-novel-count 15) ; 15% novelty
           (let [sleep-called (atom nil)]
-            (with-redefs [semantic.indexer/sleep (fn [ms]
-                                                   (original-sleep-fn ms)
-                                                   (reset! sleep-called ms)) #_#(reset! sleep-called %)]
+            (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep (fn [ms]
+                                                                             (original-sleep-fn ms)
+                                                                             (reset! sleep-called ms)) #_#(reset! sleep-called %)]
               (semantic.indexer/on-indexing-idle indexing-state)
               (is (= 250 @sleep-called))
               (test-sleep-metric))))
         (testing "low novelty ratio (1-10%) - medium backoff"
           (vswap! indexing-state assoc :last-novel-count 5) ; 5% novelty
           (let [sleep-called (atom nil)]
-            (with-redefs [semantic.indexer/sleep (fn [ms]
-                                                   (original-sleep-fn ms)
-                                                   (reset! sleep-called ms)) #_#(reset! sleep-called %)]
+            (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep (fn [ms]
+                                                                             (original-sleep-fn ms)
+                                                                             (reset! sleep-called ms)) #_#(reset! sleep-called %)]
               (semantic.indexer/on-indexing-idle indexing-state)
               (is (= 1500 @sleep-called))
               (test-sleep-metric))))
         (testing "very low novelty ratio (<1%) - big backoff"
           (vswap! indexing-state assoc :last-novel-count 0) ; 0% novelty
           (let [sleep-called (atom nil)]
-            (with-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
+            (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep #(reset! sleep-called %)]
               (semantic.indexer/on-indexing-idle indexing-state)
               (is (= 3000 @sleep-called)))))))))
 
@@ -218,17 +219,17 @@
                                :else (recur)))))
         step-called    (promise)
         idle-called    (promise)]
-    (with-redefs [semantic.indexer/on-indexing-idle (fn [_]
-                                                      (deliver idle-called true)
-                                                      (swap! call-counter update :idle inc)
-                                                      (when (.isInterrupted (Thread/currentThread))
-                                                        (throw (InterruptedException.))))
-                  semantic.indexer/indexing-step    (fn [& _]
-                                                      (deliver step-called true)
-                                                      (swap! call-counter update :step inc)
-                                                      (when-some [ex @step-ex] (throw ex))
-                                                      (when (.isInterrupted (Thread/currentThread))
-                                                        (throw (InterruptedException.))))]
+    (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/on-indexing-idle (fn [_]
+                                                                                (deliver idle-called true)
+                                                                                (swap! call-counter update :idle inc)
+                                                                                (when (.isInterrupted (Thread/currentThread))
+                                                                                  (throw (InterruptedException.))))
+                                            semantic.indexer/indexing-step    (fn [& _]
+                                                                                (deliver step-called true)
+                                                                                (swap! call-counter update :step inc)
+                                                                                (when-some [ex @step-ex] (throw ex))
+                                                                                (when (.isInterrupted (Thread/currentThread))
+                                                                                  (throw (InterruptedException.))))]
       (with-open [loop-thread
                   (open-loop-thread! pgvector
                                      index-metadata
@@ -276,7 +277,7 @@
         (let [run-time       (u/start-timer)
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
           (vswap! indexing-state assoc :max-run-duration (Duration/ofMillis 1))
-          (with-redefs [semantic.indexer/sleep (fn [_])]
+          (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep (fn [_])]
             (with-open [loop-thread (open-loop-thread! pgvector
                                                        index-metadata
                                                        index
@@ -294,11 +295,11 @@
               upsert-index!  semantic.index/upsert-index!
               indexed        (atom [])]
           (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
-          (with-redefs [semantic.indexer/sleep       (fn [_])
-                        semantic.index/upsert-index! (fn [pgvector index docs]
-                                                       (let [docs (vec docs)]
-                                                         (swap! indexed into docs)
-                                                         (upsert-index! pgvector index docs)))]
+          (dynamic-redefs/with-dynamic-fn-redefs [semantic.indexer/sleep       (fn [_])
+                                                  semantic.index/upsert-index! (fn [pgvector index docs]
+                                                                                 (let [docs (vec docs)]
+                                                                                   (swap! indexed into docs)
+                                                                                   (upsert-index! pgvector index docs)))]
             ;; need some data first for early exit, or it does nothing
             (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1)])
             (with-open [loop-thread (open-loop-thread! pgvector
@@ -370,8 +371,8 @@
             metadata-row {:indexer_last_poll (ts "2025-01-01T12:00:00Z")
                           :indexer_last_seen (ts "2025-01-01T11:30:00Z")}
             index        {:table-name "foo"}]
-        (with-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index index :metadata-row metadata-row})
-                      semantic.indexer/indexing-loop                 (fn [& args] (swap! loop-args conj args) nil)]
+        (dynamic-redefs/with-dynamic-fn-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index index :metadata-row metadata-row})
+                                                semantic.indexer/indexing-loop                 (fn [& args] (swap! loop-args conj args) nil)]
           (with-open [job-thread ^Closeable (open-job-thread pgvector index-metadata)]
             (let [{:keys [caught-ex ^Thread thread]} @job-thread]
               (testing "thread exited (loop returned)"
@@ -387,8 +388,8 @@
                 (AssertionError. "Assert")
                 (InterruptedException. "Interrupt")]]
       (testing "exit on exception/error during loop"
-        (with-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index {} :metadata-row {}})
-                      semantic.indexer/indexing-loop                 (fn [& _] (throw ex))]
+        (dynamic-redefs/with-dynamic-fn-redefs [semantic.index-metadata/get-active-index-state (fn [& _] {:index {} :metadata-row {}})
+                                                semantic.indexer/indexing-loop                 (fn [& _] (throw ex))]
           (with-open [job-thread ^Closeable (open-job-thread pgvector index-metadata)]
             (let [{:keys [caught-ex ^Thread thread]} @job-thread]
               (testing "thread exited"
@@ -543,7 +544,7 @@
           (testing "indexing failure marks as stalled"
             (let [indexing-state (fresh-indexing-state)]
               (semantic.gate/gate-documents! pgvector index-metadata [(version (card 2) t1)])
-              (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Index failure")))]
+              (dynamic-redefs/with-dynamic-fn-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Index failure")))]
                 (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)))
                 (is (some? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index)))))
               (test-metric-growth))
@@ -555,7 +556,7 @@
                 (is (= stall-time (:stalled-at @indexing-state)))
                 ;; Advance clock but (just about) stay within grace period
                 (vreset! clock-ref (.plus initial-clock (.minus semantic.indexer/stall-grace-period (Duration/ofSeconds 1))))
-                (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing during grace period")))]
+                (dynamic-redefs/with-dynamic-fn-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing during grace period")))]
                   (is (thrown? RuntimeException (semantic.indexer/indexing-step pgvector index-metadata index indexing-state))))
                 ;; Stall time should not be overwritten (retains original lower value)
                 (let [current-stall-time (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))]
@@ -579,7 +580,7 @@
                                      (.plus semantic.indexer/stall-grace-period)
                                      (.plus (Duration/ofSeconds 1))))
               (semantic.gate/gate-documents! pgvector index-metadata [(version (card 4) t1)])
-              (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing")))]
+              (dynamic-redefs/with-dynamic-fn-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Still failing")))]
                 (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
                 (testing "DLQ entries created"
                   (let [dlq-rows (get-dlq-rows! pgvector index-metadata @index-id-ref)]
@@ -695,13 +696,13 @@
                         :indexer_last_seen (ts "2025-01-01T11:30:00Z")}
           index        {:table-name "foo"}]
       (testing ":metabase-search/semantic-indexer-loop-ms"
-        (with-redefs [semantic.index-metadata/get-active-index-state
-                      (fn [& _]
-                        {:index index :metadata-row metadata-row})
+        (dynamic-redefs/with-dynamic-fn-redefs [semantic.index-metadata/get-active-index-state
+                                                (fn [& _]
+                                                  {:index index :metadata-row metadata-row})
 
-                      semantic.indexer/indexing-loop
-                      (fn [& _]
-                        (Thread/sleep 200)
-                        nil)]
+                                                semantic.indexer/indexing-loop
+                                                (fn [& _]
+                                                  (Thread/sleep 200)
+                                                  nil)]
           (semantic.indexer/quartz-job-run! pgvector index-metadata)
           (is (<= 0.2 (mt/metric-value system :metabase-search/semantic-indexer-loop-ms))))))))

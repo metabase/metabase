@@ -29,7 +29,7 @@
                                            site-url                           "http://localhost:3000"
                                            saml-slo-enabled                   true
                                            saml-identity-provider-slo-uri     "http://idp.example.com/logout"]
-          (with-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
+          (mt/with-dynamic-fn-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
             (binding [client/*url-prefix* ""]
               (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                              :model/Session {session-id :id} {:user_id (:id user) :id (session/generate-session-id) :key_hashed (session/hash-session-key (session/generate-session-key))}]
@@ -120,8 +120,8 @@
                              ;; existing login history so it's not the user's first login ever
                              :model/LoginHistory _ {:user_id   user-id
                                                     :device_id "existing-device"}]
-                (with-redefs [messages/send-login-from-new-device-email! (fn [info]
-                                                                           (swap! emails-sent conj info))]
+                (mt/with-dynamic-fn-redefs [messages/send-login-from-new-device-email! (fn [info]
+                                                                                         (swap! emails-sent conj info))]
                   (let [jwt-token (create-valid-jwt-token {:email email-addr})
                         response  (mt/client :post 200 "/auth/sso/to_session" {:jwt jwt-token})]
                     (is (string? (:session_token response)))

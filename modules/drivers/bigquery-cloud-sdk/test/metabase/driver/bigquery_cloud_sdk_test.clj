@@ -69,8 +69,8 @@
       (testing "can-connect? returns false for bogus credentials"
         (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
-        (with-redefs [bigquery/describe-database-tables (fn [& _]
-                                                          [])]
+        (mt/with-dynamic-fn-redefs [bigquery/describe-database-tables (fn [& _]
+                                                                        [])]
           (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
       (testing "can-connect? returns an appropriate exception message if no datasets are found"
         (is (thrown-with-msg? Exception
@@ -984,12 +984,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [& args]
-                                                  (if-not @fake-execute-called
-                                                    (do (reset! fake-execute-called true)
+        (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
+                                                                (if-not @fake-execute-called
+                                                                  (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
-                                                        (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (apply orig-fn args)))]
+                                                                      (throw (ex-info "Transient error" {:retryable? true})))
+                                                                  (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -1000,12 +1000,12 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [& args]
-                                                  (if (not @fake-execute-called)
-                                                    (do (reset! fake-execute-called true)
+        (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
+                                                                (if (not @fake-execute-called)
+                                                                  (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
-                                                        (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (apply orig-fn args)))]
+                                                                      (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
+                                                                  (apply orig-fn args)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -1069,8 +1069,8 @@
                                (if (zero? @page-counter)
                                  nil
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                            (apply orig-exec (wrap-result page) args))]
+        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                                          (apply orig-exec (wrap-result page) args))]
           (binding [bigquery/*page-size*     10 ; small pages so there are several
                     bigquery/*page-callback* (fn []
                                                (let [pages (swap! page-counter #(max (dec %) 0))]
@@ -1096,8 +1096,8 @@
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                            (apply orig-exec (wrap-result page) args))]
+        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                                          (apply orig-exec (wrap-result page) args))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -1198,9 +1198,9 @@
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
-          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
-                                                                  (swap! call-count inc)
-                                                                  (orig-fn database dataset-id))]
+          (mt/with-dynamic-fn-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                                (swap! call-count inc)
+                                                                                (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
               (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:details :dataset-id]))))

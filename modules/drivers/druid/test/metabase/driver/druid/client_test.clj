@@ -37,9 +37,9 @@
     (tqpt/with-flattened-dbdef
       (let [query (mt/mbql-query checkins)
             executed-query (atom nil)]
-        (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
-                                                                (reset! executed-query query)
-                                                                [])]
+        (mt/with-dynamic-fn-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
+                                                                              (reset! executed-query query)
+                                                                              [])]
           (qp/process-query query)
           (is (partial= {:context {:timeout driver.settings/*query-timeout-ms*}}
                         @executed-query)))))))

@@ -568,8 +568,8 @@
         ;; deactivate the user again
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
-        (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                      appearance.settings/site-name               (constantly "test")]
+        (mt/with-dynamic-fn-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                                    appearance.settings/site-name               (constantly "test")]
           (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
                   (client/client-real-response :get 401 "/auth/sso"
                                                {:request-options {:redirect-strategy :none}}
@@ -758,7 +758,7 @@
                                                       :name "Tenant McTenantson"
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
-          (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
+          (mt/with-dynamic-fn-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
             (testing "with user provisioning turned off"
               (testing "a new user cannot log into a deactivated tenant, and the tenant doesn't get activated"
                 (mt/with-model-cleanup [:model/User]
@@ -903,8 +903,8 @@
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
-      (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                    appearance.settings/site-name               (constantly "test")]
+      (mt/with-dynamic-fn-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                                  appearance.settings/site-name               (constantly "test")]
         (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
                 (client/client-real-response :get 401 "/auth/sso"
                                              {:request-options {:redirect-strategy :none}}

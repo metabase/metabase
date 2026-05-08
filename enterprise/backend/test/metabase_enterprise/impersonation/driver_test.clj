@@ -811,13 +811,13 @@
                                        set)
                       default-table-set (tables-set)
                       do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
-                  (with-redefs [sql-jdbc.execute/do-with-resolved-connection
-                                (fn [driver db options f]
-                                  (do-with-resolved-connection driver db options
-                                                               (fn [conn]
-                                                                 (when-not (:connection db)
-                                                                   (driver/set-role! driver/*driver* conn role-a))
-                                                                 (f conn))))]
+                  (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                              (fn [driver db options f]
+                                                (do-with-resolved-connection driver db options
+                                                                             (fn [conn]
+                                                                               (when-not (:connection db)
+                                                                                 (driver/set-role! driver/*driver* conn role-a))
+                                                                               (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 
 (defn do-on-all-connection-in-pool [driver db-id options f]

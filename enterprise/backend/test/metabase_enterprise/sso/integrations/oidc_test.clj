@@ -236,9 +236,9 @@
                 (binding [*group-sync-claims* claims
                           *group-sync-email*  email]
                   (with-group-sync-oidc!
-                    (with-redefs [oidc.state/validate-oidc-callback
-                                  (fn [_request _state _provider & _opts]
-                                    {:valid? true :nonce "test-nonce" :redirect "/"})]
+                    (mt/with-dynamic-fn-redefs [oidc.state/validate-oidc-callback
+                                                (fn [_request _state _provider & _opts]
+                                                  {:valid? true :nonce "test-nonce" :redirect "/"})]
                       (let [result (auth-identity/login!
                                     :provider/custom-oidc
                                     {:oidc-provider-key "test-idp"
