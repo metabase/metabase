@@ -1632,7 +1632,7 @@
                      :model/Card       c2   {:name "card2" :collection_id (:id coll)}
                      :model/Card       _c3  {:name "card3" :collection_id (:id coll)}]
         (testing "It's possible to skip a few errors during extract"
-          (let [extract-one serdes/extract-one]
+          (let [extract-one (mt/original-fn #'serdes/extract-one)]
             (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
                                                              (if (= (:entity_id instance) (:entity_id c1))
                                                                (throw (ex-info "Skip me" {}))
