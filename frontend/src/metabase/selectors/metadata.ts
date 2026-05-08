@@ -18,11 +18,13 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
+  Table as ApiTable,
   Card,
   Measure,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
+  NormalizedMeasure,
   NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
@@ -146,7 +148,9 @@ export const getMetadata: (
     metadata.segments = Object.fromEntries(
       Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
     );
-    metadata.measures = measures as Metadata["measures"];
+    metadata.measures = Object.fromEntries(
+      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
+    );
     metadata.metrics = Object.fromEntries(
       Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
     );
@@ -180,6 +184,9 @@ export const getMetadata: (
     });
     Object.values(metadata.segments).forEach((segment) => {
       segment.table = hydrateSegmentTable(segment, metadata);
+    });
+    Object.values(metadata.measures).forEach((measure) => {
+      measure.table = hydrateMeasureTable(measure, tables);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -260,6 +267,11 @@ function createSegment(
   const instance = new Segment(segment);
   instance.metadata = metadata;
   return instance;
+}
+
+function createMeasure(measure: NormalizedMeasure): Measure {
+  const { table: _normalizedTableId, ...rest } = measure;
+  return rest;
 }
 
 function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
@@ -416,4 +428,27 @@ function hydrateSegmentTable(
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(segment.table_id) ?? undefined;
+}
+
+function hydrateMeasureTable(
+  measure: Measure,
+  tables: Record<string, NormalizedTable>,
+): ApiTable | undefined {
+  const normalized = tables[measure.table_id];
+  if (!normalized) {
+    return undefined;
+  }
+  const {
+    db: _db,
+    fields: _fields,
+    fks: _fks,
+    segments: _segments,
+    measures: _measures,
+    metrics: _metrics,
+    schema: _schema,
+    schema_name,
+    original_fields: _original_fields,
+    ...rest
+  } = normalized;
+  return { ...rest, schema: schema_name ?? "" };
 }
