@@ -1,7 +1,5 @@
-# Catch-all filter that emits the full changed-files list as
-# `all_changed_files` for compute-test-plan in run-tests.yml.
-# Reusing dorny's diff means we don't need a separate `git diff` (or full clone)
-# for the module-affected test selection step.
+# Catch-all filter — emits the full changed-files list as `all_changed_files`
+# so compute-test-plan in run-tests.yml can reuse dorny's diff.
 all_changed:
   - "**"
 

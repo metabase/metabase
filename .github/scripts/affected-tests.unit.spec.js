@@ -2,113 +2,158 @@ const { createAffectedTests } = require("./affected-tests");
 
 const ELEMENTS = [
   { type: "lib/utils", pattern: "src/utils/**" },
-  { type: "lib/types", pattern: "src/types/**" },
-  // Nested-pattern pair: lib/inner is inside lib/outer. Order matters — the
-  // inner pattern must be listed first so first-match-wins picks it up.
-  // Mirrors the mlv1-inside-mlv2 case in the real module-boundaries config.
-  { type: "lib/inner", pattern: "src/shared/v1/**" },
-  { type: "lib/outer", pattern: "src/shared/**" },
   { type: "feature/foo", pattern: "src/foo/**" },
   { type: "feature/bar", pattern: "src/bar/**" },
-  { type: "feature/super", pattern: "src/super/**" },
-  // Different folder root from the rest — mirrors feature/enterprise's
-  // enterprise/frontend/src/metabase-enterprise/** pattern in the real config.
-  { type: "feature/external", pattern: "external/lib/**" },
-  // app/main appears twice with different exact-path patterns — mirrors how
-  // app/misc is declared once per app entry point in the real config.
-  { type: "app/main", pattern: "src/app.js" },
-  { type: "app/main", pattern: "src/embed.tsx" },
-  { type: "shared/other", pattern: "src/*/**" }, // catch-all, must be last
+  { type: "shared/other", pattern: "src/*/**" },
 ];
 
 const RULES = [
   ...ELEMENTS.map((el) => ({ from: [el.type], allow: [el.type] })),
   { from: ["lib/*"], allow: ["lib/*"] },
   { from: ["feature/*"], allow: ["lib/*"] },
-  { from: ["feature/super"], allow: ["feature/*"] },
-  { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
 ];
 
-const { affectedModules, directlyTouchedModules, fileToModule, selectTests } =
-  createAffectedTests(ELEMENTS, RULES);
+const SUITES = {
+  unit: {
+    statsPrefix: "unit_tests",
+    infraPatterns: ["jest.config.js", "src/test/**"],
+  },
+  loki: {
+    statsPrefix: "loki_stories",
+    infraPatterns: [".storybook/**"],
+  },
+  e2e: {
+    statsPrefix: "e2e_tests",
+    infraPatterns: [],
+    stub: true,
+  },
+};
 
-describe("fileToModule", () => {
-  it.each([
-    ["src/utils/colors.ts", "lib/utils"],
-    ["src/types/api.ts", "lib/types"],
-    ["src/foo/foo.tsx", "feature/foo"],
-    ["src/bar/bar.tsx", "feature/bar"],
-    ["src/super/index.ts", "feature/super"],
-    ["src/app.js", "app/main"],
-    ["src/randomthing/file.ts", "shared/other"],
-    ["src/shared/v1/expr.ts", "lib/inner"],
-    ["src/shared/v2/expr.ts", "lib/outer"],
-    ["src/shared/index.ts", "lib/outer"],
-    ["external/lib/foo.ts", "feature/external"],
-    ["src/embed.tsx", "app/main"],
-  ])("maps %s → %s", (path, expected) => {
-    expect(fileToModule(path)).toBe(expected);
-  });
+const UNIT_FILES = [
+  "src/foo/foo.unit.spec.ts",
+  "src/foo/bar.unit.spec.ts",
+  "src/bar/bar.unit.spec.ts",
+  "src/utils/utils.unit.spec.ts",
+];
+const LOKI_FILES = ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"];
+const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 
-  it("returns null for files outside any pattern", () => {
-    expect(fileToModule("docs/foo.md")).toBe(null);
-    expect(fileToModule("README.md")).toBe(null);
-    expect(fileToModule("external/notlib/foo.ts")).toBe(null);
-  });
+const { selectForSuite, decideAll } = createAffectedTests({
+  elements: ELEMENTS,
+  rules: RULES,
+  suites: SUITES,
 });
 
-describe("directlyTouchedModules", () => {
-  it("returns the unique set of modules whose files changed", () => {
-    const result = directlyTouchedModules([
-      "src/utils/colors.ts",
-      "src/foo/x.ts",
-      "src/foo/y.ts",
-      "docs/unrelated.md",
-    ]);
-    expect([...result].sort()).toEqual(["feature/foo", "lib/utils"]);
+describe("selectForSuite", () => {
+  it("should run all tests when an infra pattern matches", () => {
+    const result = selectForSuite("unit", ["jest.config.js"], UNIT_FILES);
+    expect(result.trigger).toBe("infra");
+    expect(result.run).toEqual(UNIT_FILES);
+    expect(result.total).toBe(UNIT_FILES.length);
   });
 
-  it("returns an empty set when no file maps to a module", () => {
-    expect(directlyTouchedModules(["docs/foo.md"]).size).toBe(0);
-  });
-});
-
-describe("affectedModules", () => {
-  it("includes feature/super and app/main but not feature/bar when feature/foo changes", () => {
-    const result = affectedModules(["src/foo/x.ts"]);
-    expect([...result].sort()).toEqual([
-      "app/main",
-      "feature/foo",
-      "feature/super",
-    ]);
+  it("should run all tests when a deeper infra pattern matches via **", () => {
+    const result = selectForSuite(
+      "unit",
+      ["src/test/setup-env.ts"],
+      UNIT_FILES,
+    );
+    expect(result.trigger).toBe("infra");
+    expect(result.run.length).toBe(UNIT_FILES.length);
   });
 
-  it("ripples broadly when a lib module changes", () => {
-    const result = affectedModules(["src/utils/colors.ts"]);
-    expect(result.has("lib/utils")).toBe(true);
-    expect(result.has("feature/foo")).toBe(true);
-    expect(result.has("feature/bar")).toBe(true);
-    expect(result.has("feature/super")).toBe(true);
-    expect(result.has("app/main")).toBe(true);
-  });
-
-  it("returns empty when no file maps to a module", () => {
-    expect(affectedModules(["docs/foo.md"]).size).toBe(0);
-  });
-});
-
-describe("selectTests", () => {
-  it("keeps only tests inside affected modules", () => {
-    const affected = new Set(["feature/foo", "lib/utils"]);
-    const tests = [
+  it("should fall back to module-affected selection when no infra matches", () => {
+    const result = selectForSuite("unit", ["src/foo/x.ts"], UNIT_FILES);
+    expect(result.trigger).toBe("modules");
+    expect(result.run.sort()).toEqual([
+      "src/foo/bar.unit.spec.ts",
       "src/foo/foo.unit.spec.ts",
-      "src/utils/colors.unit.spec.ts",
-      "src/bar/bar.unit.spec.ts",
-      "docs/unrelated.unit.spec.ts",
-    ];
-    expect(selectTests(affected, tests)).toEqual([
-      "src/foo/foo.unit.spec.ts",
-      "src/utils/colors.unit.spec.ts",
     ]);
+  });
+
+  it("should return nothing when no infra matches and no file maps to a module", () => {
+    const result = selectForSuite("unit", ["docs/foo.md"], UNIT_FILES);
+    expect(result.trigger).toBe("modules");
+    expect(result.run).toEqual([]);
+  });
+
+  it("should use each suite's own infra patterns", () => {
+    const lokiInfra = selectForSuite(
+      "loki",
+      [".storybook/main.ts"],
+      LOKI_FILES,
+    );
+    expect(lokiInfra.trigger).toBe("infra");
+    expect(lokiInfra.run.length).toBe(LOKI_FILES.length);
+
+    const lokiOther = selectForSuite("loki", ["jest.config.js"], LOKI_FILES);
+    expect(lokiOther.trigger).toBe("modules");
+    expect(lokiOther.run).toEqual([]);
+  });
+
+  it("should run all tests for stub suites regardless of diff", () => {
+    expect(selectForSuite("e2e", ["docs/foo.md"], E2E_FILES).run).toEqual(
+      E2E_FILES,
+    );
+    expect(selectForSuite("e2e", ["src/foo/x.ts"], E2E_FILES).run).toEqual(
+      E2E_FILES,
+    );
+  });
+});
+
+describe("decideAll", () => {
+  it("should return run lists and stats together", () => {
+    const result = decideAll({
+      changedFiles: ["src/foo/x.ts"],
+      suiteFiles: {
+        unit: UNIT_FILES,
+        loki: LOKI_FILES,
+        e2e: E2E_FILES,
+      },
+    });
+
+    expect(result.unit_tests_to_run.sort()).toEqual([
+      "src/foo/bar.unit.spec.ts",
+      "src/foo/foo.unit.spec.ts",
+    ]);
+    expect(result.loki_stories_to_run).toEqual(["src/foo/Foo.stories.tsx"]);
+    expect(result.e2e_tests_to_run).toEqual(E2E_FILES);
+
+    expect(result.stats).toEqual({
+      modules_changed: 1,
+      modules_affected: 1,
+      affected_modules: ["feature/foo"],
+      unit_tests_total: 4,
+      unit_tests_to_run: 2,
+      unit_tests_to_skip: 2,
+      loki_stories_total: 2,
+      loki_stories_to_run: 1,
+      loki_stories_to_skip: 1,
+      e2e_tests_total: 1,
+      e2e_tests_to_run: 1,
+      e2e_tests_to_skip: 0,
+    });
+  });
+
+  it("should run all tests for the suite when its infra files change", () => {
+    const result = decideAll({
+      changedFiles: ["jest.config.js"],
+      suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+    });
+    expect(result.stats.unit_tests_to_run).toBe(UNIT_FILES.length);
+    expect(result.stats.unit_tests_to_skip).toBe(0);
+    // Loki has its own infra patterns; jest.config.js doesn't match.
+    expect(result.stats.loki_stories_to_run).toBe(0);
+  });
+
+  it("should not run anything when changes don't touch any module or infra", () => {
+    const result = decideAll({
+      changedFiles: ["docs/foo.md"],
+      suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+    });
+    expect(result.stats.unit_tests_to_run).toBe(0);
+    expect(result.stats.loki_stories_to_run).toBe(0);
+    // Stub: e2e still reports run = total.
+    expect(result.stats.e2e_tests_to_run).toBe(E2E_FILES.length);
   });
 });

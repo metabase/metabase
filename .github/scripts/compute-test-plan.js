@@ -4,9 +4,9 @@ const { execFileSync } = require("node:child_process");
 
 const { elements, rules } = require("../../frontend/lint/module-boundaries");
 
-const { SUITES, createTestSelection } = require("./test-suites");
+const { SUITES, createAffectedTests } = require("./affected-tests");
 
-const { decideAll } = createTestSelection({ elements, rules, suites: SUITES });
+const { decideAll } = createAffectedTests({ elements, rules, suites: SUITES });
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",

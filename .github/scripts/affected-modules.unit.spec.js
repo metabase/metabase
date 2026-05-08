@@ -1,0 +1,111 @@
+const { createAffectedModules } = require("./affected-modules");
+
+const ELEMENTS = [
+  { type: "lib/utils", pattern: "src/utils/**" },
+  { type: "lib/types", pattern: "src/types/**" },
+  // Nested-pattern pair (mirrors mlv1-inside-mlv2): inner must come first
+  // so first-match-wins picks it up before the outer pattern.
+  { type: "lib/inner", pattern: "src/shared/v1/**" },
+  { type: "lib/outer", pattern: "src/shared/**" },
+  { type: "feature/foo", pattern: "src/foo/**" },
+  { type: "feature/bar", pattern: "src/bar/**" },
+  { type: "feature/super", pattern: "src/super/**" },
+  // Different folder root (mirrors feature/enterprise's enterprise/ path).
+  { type: "feature/external", pattern: "external/lib/**" },
+  // Same type, two patterns (mirrors app/misc per-entry-point declarations).
+  { type: "app/main", pattern: "src/app.js" },
+  { type: "app/main", pattern: "src/embed.tsx" },
+  { type: "shared/other", pattern: "src/*/**" }, // catch-all, must be last
+];
+
+const RULES = [
+  ...ELEMENTS.map((el) => ({ from: [el.type], allow: [el.type] })),
+  { from: ["lib/*"], allow: ["lib/*"] },
+  { from: ["feature/*"], allow: ["lib/*"] },
+  { from: ["feature/super"], allow: ["feature/*"] },
+  { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
+];
+
+const { affectedModules, directlyTouchedModules, fileToModule, selectTests } =
+  createAffectedModules(ELEMENTS, RULES);
+
+describe("fileToModule", () => {
+  it.each([
+    ["src/utils/colors.ts", "lib/utils"],
+    ["src/types/api.ts", "lib/types"],
+    ["src/foo/foo.tsx", "feature/foo"],
+    ["src/bar/bar.tsx", "feature/bar"],
+    ["src/super/index.ts", "feature/super"],
+    ["src/app.js", "app/main"],
+    ["src/randomthing/file.ts", "shared/other"],
+    ["src/shared/v1/expr.ts", "lib/inner"],
+    ["src/shared/v2/expr.ts", "lib/outer"],
+    ["src/shared/index.ts", "lib/outer"],
+    ["external/lib/foo.ts", "feature/external"],
+    ["src/embed.tsx", "app/main"],
+  ])("should map %s to %s", (path, expected) => {
+    expect(fileToModule(path)).toBe(expected);
+  });
+
+  it("should return null for files outside any pattern", () => {
+    expect(fileToModule("docs/foo.md")).toBe(null);
+    expect(fileToModule("README.md")).toBe(null);
+    expect(fileToModule("external/notlib/foo.ts")).toBe(null);
+  });
+});
+
+describe("directlyTouchedModules", () => {
+  it("should return the unique set of modules whose files changed", () => {
+    const result = directlyTouchedModules([
+      "src/utils/colors.ts",
+      "src/foo/x.ts",
+      "src/foo/y.ts",
+      "docs/unrelated.md",
+    ]);
+    expect([...result].sort()).toEqual(["feature/foo", "lib/utils"]);
+  });
+
+  it("should return an empty set when no file maps to a module", () => {
+    expect(directlyTouchedModules(["docs/foo.md"]).size).toBe(0);
+  });
+});
+
+describe("affectedModules", () => {
+  it("should affect feature/super and app/main but not feature/bar when feature/foo changes", () => {
+    const result = affectedModules(["src/foo/x.ts"]);
+    expect([...result].sort()).toEqual([
+      "app/main",
+      "feature/foo",
+      "feature/super",
+    ]);
+  });
+
+  it("should affect lots of modules a lib module changes", () => {
+    const result = affectedModules(["src/utils/colors.ts"]);
+    expect(result.has("lib/utils")).toBe(true);
+    expect(result.has("feature/foo")).toBe(true);
+    expect(result.has("feature/bar")).toBe(true);
+    expect(result.has("feature/super")).toBe(true);
+    expect(result.has("app/main")).toBe(true);
+  });
+
+  it("should return empty when no file maps to a module", () => {
+    expect(affectedModules(["docs/foo.md"]).size).toBe(0);
+  });
+});
+
+describe("selectTests", () => {
+  it("should keep only tests inside affected modules", () => {
+    const affected = new Set(["feature/foo", "lib/utils"]);
+    const tests = [
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
+      "src/bar/bar.unit.spec.ts",
+      "docs/unrelated.unit.spec.ts",
+    ];
+    expect(selectTests(affected, tests)).toEqual([
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
+    ]);
+  });
+});

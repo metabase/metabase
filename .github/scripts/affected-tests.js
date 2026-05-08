@@ -1,102 +1,116 @@
-function globToRegex(glob) {
-  const escaped = glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  // Stash ** before expanding *, otherwise the second replace eats the first.
-  const placeholder = " DOUBLESTAR ";
-  const withPlaceholder = escaped.replace(/\*\*/g, placeholder);
-  const withSingleStar = withPlaceholder.replace(/\*/g, "[^/]*");
-  return new RegExp(
-    `^${withSingleStar.replace(new RegExp(placeholder, "g"), ".*")}$`,
+// Per-suite affected-tests logic: combines module-affected closure with
+// per-suite "infra-file" patterns that force a full-suite run when changed.
+// Mirrors the relevant subset of `.github/file-paths.yaml`'s frontend_specs
+// and frontend_loki_ci entries — keep both in sync.
+
+const { createAffectedModules, globToRegex } = require("./affected-modules");
+
+const SHARED_INFRA = [
+  "babel.config.json",
+  "tsconfig.json",
+  "package.json",
+  "bun.lock",
+  "rspack.*.js",
+  ".github/workflows/run-tests.yml",
+];
+
+const SUITES = {
+  unit: {
+    statsPrefix: "unit_tests",
+    infraPatterns: [
+      ...SHARED_INFRA,
+      "jest.config.js",
+      "jest.tz.unit.conf.json",
+      "frontend/test/**",
+      "frontend/**/__mocks__/**",
+      ".github/workflows/frontend.yml",
+    ],
+  },
+  loki: {
+    statsPrefix: "loki_stories",
+    infraPatterns: [
+      ...SHARED_INFRA,
+      ".loki/**",
+      ".storybook/**",
+      "loki.config.js",
+      ".github/workflows/loki.yml",
+    ],
+  },
+  e2e: {
+    // E2E specs don't map to modules; build-e2e-matrix.js handles its own
+    // changed-spec selection. Stub run = total here so the schema stays
+    // populated until that logic moves into this file.
+    statsPrefix: "e2e_tests",
+    infraPatterns: [],
+    stub: true,
+  },
+};
+
+function createAffectedTests({ elements, rules, suites }) {
+  const modules = createAffectedModules(elements, rules);
+  const compiled = Object.fromEntries(
+    Object.entries(suites).map(([name, s]) => [
+      name,
+      { ...s, compiledInfra: s.infraPatterns.map(globToRegex) },
+    ]),
   );
+
+  function selectForSuite(suiteName, changedFiles, allTestFiles) {
+    const suite = compiled[suiteName];
+    if (suite.stub) {
+      return {
+        run: allTestFiles,
+        total: allTestFiles.length,
+        trigger: "stub",
+      };
+    }
+    const infraTouched = changedFiles.some((f) =>
+      suite.compiledInfra.some((re) => re.test(f)),
+    );
+    if (infraTouched) {
+      return {
+        run: allTestFiles,
+        total: allTestFiles.length,
+        trigger: "infra",
+      };
+    }
+    const affected = modules.affectedModules(changedFiles);
+    return {
+      run: modules.selectTests(affected, allTestFiles),
+      total: allTestFiles.length,
+      trigger: "modules",
+    };
+  }
+
+  function decideAll({ changedFiles, suiteFiles }) {
+    const direct = modules.directlyTouchedModules(changedFiles);
+    const affected = modules.affectedModules(changedFiles);
+
+    const decisions = {};
+    const stats = {
+      modules_changed: direct.size,
+      modules_affected: affected.size,
+      affected_modules: [...affected].sort(),
+    };
+
+    for (const [name, suite] of Object.entries(compiled)) {
+      const files = suiteFiles[name] ?? [];
+      const dec = selectForSuite(name, changedFiles, files);
+      decisions[name] = dec;
+      stats[`${suite.statsPrefix}_total`] = dec.total;
+      stats[`${suite.statsPrefix}_to_run`] = dec.run.length;
+      stats[`${suite.statsPrefix}_to_skip`] = dec.total - dec.run.length;
+    }
+
+    return {
+      stats,
+      unit_tests_to_run: decisions.unit?.run ?? [],
+      loki_stories_to_run: decisions.loki?.run ?? [],
+      e2e_tests_to_run: decisions.e2e?.run ?? [],
+    };
+  }
+
+  return { selectForSuite, decideAll };
 }
 
-/**
- * Builds the family of affected-tests functions against a given module config.
- * The factory shape lets tests pass an isolated fixture instead of binding to
- * frontend/lint/module-boundaries.js — config reshuffles can't break tests.
- */
-function createAffectedTests(elements, rules) {
-  const compiledElements = elements.map((el) => ({
-    type: el.type,
-    regex: globToRegex(el.pattern),
-  }));
-
-  const allTypes = elements.map((e) => e.type);
-
-  function expandPattern(pattern) {
-    if (pattern === "*") {
-      return [...allTypes];
-    }
-    if (pattern.endsWith("/*")) {
-      const prefix = pattern.slice(0, -1);
-      return allTypes.filter((t) => t.startsWith(prefix));
-    }
-    return allTypes.includes(pattern) ? [pattern] : [];
-  }
-
-  // Inverse adjacency: dependentsOf.get(M) is the set of modules that may
-  // import M (i.e. modules that need to be invalidated when M changes).
-  const dependentsOf = new Map(allTypes.map((t) => [t, new Set()]));
-  for (const rule of rules) {
-    const fromTypes = rule.from.flatMap(expandPattern);
-    const allowTypes = rule.allow.flatMap(expandPattern);
-    for (const target of allowTypes) {
-      for (const importer of fromTypes) {
-        if (importer !== target) {
-          dependentsOf.get(target).add(importer);
-        }
-      }
-    }
-  }
-
-  function fileToModule(path) {
-    for (const el of compiledElements) {
-      if (el.regex.test(path)) {
-        return el.type;
-      }
-    }
-    return null;
-  }
-
-  function directlyTouchedModules(changedFiles) {
-    const direct = new Set();
-    for (const file of changedFiles) {
-      const m = fileToModule(file);
-      if (m) {
-        direct.add(m);
-      }
-    }
-    return direct;
-  }
-
-  function affectedModules(changedFiles) {
-    const direct = directlyTouchedModules(changedFiles);
-    const affected = new Set(direct);
-    const queue = [...direct];
-    while (queue.length > 0) {
-      const m = queue.shift();
-      for (const dep of dependentsOf.get(m) ?? []) {
-        if (!affected.has(dep)) {
-          affected.add(dep);
-          queue.push(dep);
-        }
-      }
-    }
-    return affected;
-  }
-
-  function selectTests(affected, testFiles) {
-    return testFiles.filter((f) => {
-      const m = fileToModule(f);
-      return m !== null && affected.has(m);
-    });
-  }
-
-  return {
-    fileToModule,
-    directlyTouchedModules,
-    affectedModules,
-    selectTests,
-  };
-}
-
-module.exports = { createAffectedTests, globToRegex };
+module.exports = { SUITES, createAffectedTests };

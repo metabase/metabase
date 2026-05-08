@@ -58,14 +58,14 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
         run: |
-          OUTPUT=$(node .github/scripts/affected-tests-stats.js)
+          OUTPUT=$(node .github/scripts/compute-test-plan.js)
           echo "$OUTPUT" | jq '.stats'
           echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> $GITHUB_OUTPUT
           echo "unit_tests_to_run=$(echo "$OUTPUT" | jq -c '.unit_tests_to_run')" >> $GITHUB_OUTPUT
           echo "loki_stories_to_run=$(echo "$OUTPUT" | jq -c '.loki_stories_to_run')" >> $GITHUB_OUTPUT
           echo "e2e_tests_to_run=$(echo "$OUTPUT" | jq -c '.e2e_tests_to_run')" >> $GITHUB_OUTPUT
 
-  upload-test-selection-stats:
+  upload-affected-tests-stats:
     needs: compute-test-plan
     # Only land rows for the upstream repo so forks don't pollute the table.
     if: ${{ !cancelled() && needs.compute-test-plan.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
@@ -75,49 +75,14 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/github-script@v7
+      - name: Upload test selection stats
         env:
           STATS_JSON: ${{ needs.compute-test-plan.outputs.stats }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           API_KEY: ${{ secrets.STATS_API_KEY }}
-        with:
-          script: | # js
-            const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
-
-            const stats = JSON.parse(process.env.STATS_JSON);
-            console.log('stats', stats);
-
-            const row = {
-              'Date': new Date().toISOString(),
-              'PR': Number(process.env.PR_NUMBER),
-              'Head SHA': process.env.HEAD_SHA,
-              'Base SHA': process.env.BASE_SHA,
-              'Modules Changed': stats.modules_changed,
-              'Modules affected': stats.modules_affected,
-              'FE Unit tests total': stats.unit_tests_total,
-              'FE Unit tests run': stats.unit_tests_to_run,
-              'FE Unit tests skipped': stats.unit_tests_to_skip,
-              'Loki stories total': stats.loki_stories_total,
-              'Loki stories run': stats.loki_stories_to_run,
-              'Loki stories skipped': stats.loki_stories_to_skip,
-              'E2E tests total': stats.e2e_tests_total,
-              'E2E tests run': stats.e2e_tests_to_run,
-              'E2E tests skipped': stats.e2e_tests_to_skip,
-            };
-
-            uploadCsvToMb({
-              baseUrl: 'https://stats.metabase.com',
-              tableId: 0, // TODO: replace with the real table id once provisioned in stats.metabase.com
-              jsonData: [row],
-              mode: 'append',
-            }).then(() => {
-              console.log('Data uploaded successfully');
-            }).catch((error) => {
-              console.error('Error uploading data:', error);
-              process.exit(1);
-            });
+        run: node .github/scripts/upload-affected-tests-stats.js
 
   uberjar:
     needs: [compute-test-plan]
