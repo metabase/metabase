@@ -56,7 +56,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
     });
 
     describe("for admins", () => {
-      it("should show Overview, History, Relationships, and an Insights entry", async () => {
+      it("should show tabs for Overview, History, Relationships, and Insights", async () => {
         setup({
           user: { is_superuser: true },
           settings: createMockSettings({
