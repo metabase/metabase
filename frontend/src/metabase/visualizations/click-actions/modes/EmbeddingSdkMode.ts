@@ -4,6 +4,7 @@ import {
   getParameterValuesBySlug,
 } from "metabase/dashboard/utils/dashboard-click-drill";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { DashboardTabId } from "metabase-types/api";
 
 import type {
   ClickObject,
@@ -21,6 +22,7 @@ export type ClickBehaviorTarget = {
   id: number;
   name: string;
   parameters: ParameterValues;
+  tabId?: DashboardTabId;
 };
 
 const getClickBehaviorTarget = (
@@ -31,7 +33,7 @@ const getClickBehaviorTarget = (
     return null;
   }
 
-  const { linkType, targetId, extraData, parameterMapping, data } =
+  const { linkType, targetId, extraData, parameterMapping, data, tabId } =
     getClickBehaviorData(clicked, clickBehavior);
 
   if (linkType !== "dashboard" && linkType !== "question") {
@@ -57,7 +59,13 @@ const getClickBehaviorTarget = (
     return null;
   }
 
-  return { type: linkType, id: target.id, name: target.name, parameters };
+  return {
+    type: linkType,
+    id: target.id,
+    name: target.name,
+    parameters,
+    tabId,
+  };
 };
 
 type CreateEmbeddingSdkModeOptions = {

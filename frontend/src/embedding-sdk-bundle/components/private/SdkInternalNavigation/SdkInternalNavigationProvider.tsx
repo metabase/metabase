@@ -9,7 +9,12 @@ import {
 import { match } from "ts-pattern";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
+import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
+import { getDashboardComplete } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/redux";
+import { selectTab } from "metabase/redux/dashboard";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
@@ -49,10 +54,32 @@ const SdkInternalNavigationProviderInner = ({
   keepChildrenMounted = false,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
+  const dispatch = useSdkDispatch();
+  const currentDashboard = useSelector(getDashboardComplete);
 
-  const push = useCallback((entry: SdkInternalNavigationEntry) => {
-    setStack((prev) => [...prev, entry]);
-  }, []);
+  // Click behaviours that target the *currently* loaded dashboard should
+  // switch tab / apply parameters in place rather than push a new stack
+  // entry (which would re-mount the dashboard from scratch and lose the
+  // requested tab).
+  const push = useCallback(
+    (entry: SdkInternalNavigationEntry) => {
+      if (
+        entry.type === "dashboard" &&
+        currentDashboard != null &&
+        entry.id === currentDashboard.id
+      ) {
+        if (entry.tabId != null) {
+          dispatch(selectTab({ tabId: entry.tabId }));
+        }
+        if (entry.parameters && Object.keys(entry.parameters).length > 0) {
+          dispatch(setParameterValuesFromQueryParams(entry.parameters));
+        }
+        return;
+      }
+      setStack((prev) => [...prev, entry]);
+    },
+    [dispatch, currentDashboard],
+  );
 
   const pop = useCallback(() => {
     setStack((prev) => {
