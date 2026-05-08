@@ -590,8 +590,8 @@
   ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :check
-  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
-                                 :sha     "d997df866b2a04b7ce7b17533093ee0a2e2cb729"}}
+  {:extra-deps {bgrabow/clj-check {:git/url "https://github.com/bgrabow/clj-check.git"
+                                   :sha     "465a5f253328b94f103896b1877d3c00cdd14cc9"}}
    :main-opts  ["-m" "clj-check.check"
                 "src"
                 "enterprise/backend/src"
@@ -619,40 +619,40 @@
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths    ["src"
-                                 "enterprise/backend/src"
-                                 "modules/drivers/athena/src"
-                                 "modules/drivers/bigquery-cloud-sdk/src"
-                                 "modules/drivers/clickhouse/src"
-                                 "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
-                                 "modules/drivers/druid-jdbc/src"
-                                 "modules/drivers/hive-like/src"
-                                 "modules/drivers/mongo/src"
-                                 "modules/drivers/oracle/src"
-                                 "modules/drivers/presto-jdbc/src"
-                                 "modules/drivers/redshift/src"
-                                 "modules/drivers/snowflake/src"
-                                 "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlite/src"
-                                 "modules/drivers/sqlserver/src"
-                                 "modules/drivers/starburst/src"
-                                 "modules/drivers/vertica/src"]
-               :exclude-linters [;; Turn this off temporarily until we finish removing
-                                 ;; self-deprecated functions & macros
-                                 :deprecations
-                                 ;; this has a fit in libs that use Potemkin `import-vars` such
-                                 ;; as `java-time`
-                                 :implicit-dependencies
-                                 ;; too many false positives for now
-                                 :unused-ret-vals
-                                 ;; hard to clear on for lib.util.match macros, and disabling the linter just there
-                                 ;; doesn't seem to work
-                                 :unused-meta-on-macro
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :suspicious-expression]
+               :source-paths       ["src"
+                                    "enterprise/backend/src"
+                                    "modules/drivers/athena/src"
+                                    "modules/drivers/bigquery-cloud-sdk/src"
+                                    "modules/drivers/clickhouse/src"
+                                    "modules/drivers/databricks/src"
+                                    "modules/drivers/druid/src"
+                                    "modules/drivers/druid-jdbc/src"
+                                    "modules/drivers/hive-like/src"
+                                    "modules/drivers/mongo/src"
+                                    "modules/drivers/oracle/src"
+                                    "modules/drivers/presto-jdbc/src"
+                                    "modules/drivers/redshift/src"
+                                    "modules/drivers/snowflake/src"
+                                    "modules/drivers/sparksql/src"
+                                    "modules/drivers/sqlite/src"
+                                    "modules/drivers/sqlserver/src"
+                                    "modules/drivers/starburst/src"
+                                    "modules/drivers/vertica/src"]
+               :exclude-linters    [;; Turn this off temporarily until we finish removing
+                                    ;; self-deprecated functions & macros
+                                    :deprecations
+                                    ;; this has a fit in libs that use Potemkin `import-vars` such
+                                    ;; as `java-time`
+                                    :implicit-dependencies
+                                    ;; too many false positives for now
+                                    :unused-ret-vals
+                                    ;; hard to clear on for lib.util.match macros, and disabling the linter just there
+                                    ;; doesn't seem to work
+                                    :unused-meta-on-macro
+                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                    :wrong-arity
+                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                    :suspicious-expression]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -755,7 +755,7 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"]}
+   :jvm-opts  ["-Dmb.jetty.port=3002"]}
 
   ;; To fix indentation in all source files
   ;;
@@ -779,7 +779,7 @@
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
-;;; building Uberjar, build and release scripts
+  ;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths
@@ -870,7 +870,7 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
-;;; Other misc convenience aliases
+  ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
@@ -895,7 +895,7 @@
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  :socket    {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
@@ -917,7 +917,7 @@
   ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
   ;;    clojure -M:migrate status                   ;; print the latest migration id
   :migrate
-  {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
+  {:extra-deps  {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 
@@ -948,7 +948,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
+  ;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
@@ -1008,4 +1008,4 @@
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; on them all from a single REPL process.
