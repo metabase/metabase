@@ -27,6 +27,7 @@ import { MAX_GROUP_SIZE } from "metabase/documents/constants";
 import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import {
   loadMetadataForDocumentCard,
+  openTimelineEventsSidebar,
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
@@ -53,11 +54,17 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
@@ -354,6 +361,23 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const shouldShowTimelineEventsMenu = useMemo(() => {
+      if (!series) {
+        return false;
+      }
+      const transformed = getVisualizationTransformed(
+        extractRemappings(series),
+      );
+      const settings = getComputedSettingsForSeries(transformed.series);
+      return isTimeseries(settings);
+    }, [series]);
+
+    const handleEditTimelineEvents = () => {
+      if (embedIndex !== -1) {
+        dispatch(openTimelineEventsSidebar({ embedIndex }));
+      }
+    };
+
     const handleTitleClick = () => {
       if (card && metadata) {
         try {
@@ -631,6 +655,10 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
+                            shouldShowTimelineEventsMenu={
+                              shouldShowTimelineEventsMenu
+                            }
+                            handleEditTimelineEvents={handleEditTimelineEvents}
                             handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}

@@ -17,6 +17,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
+  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -39,17 +40,18 @@ import {
   trackDocumentUnsavedChangesWarningDisplayed,
 } from "../analytics";
 import {
-  openVizSettingsSidebar,
   resetDocuments,
   setChildTargetId,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
+  updateSelectedEmbedIndex,
 } from "../documents.slice";
 import { useDocumentEditor } from "../hooks/use-document-editor";
 import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
+  getSideBarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -58,6 +60,7 @@ import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
+import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 
 export const DocumentPage = ({
   params,
@@ -107,12 +110,14 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const sideBarMode = useSelector(getSideBarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [copyDocument] = useCopyDocumentMutation();
   const [duplicateModalMode, setDuplicateModalMode] = useState<
     "duplicate" | "leave" | null
   >(null);
 
+  useListTimelinesQuery({ include: "events" }); // warm the cache for the timeline sidebar
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
   });
@@ -222,7 +227,7 @@ export const DocumentPage = ({
         selectedEmbedIndex !== null
       ) {
         // Only update the selected embed index if the sidebar is already open
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(updateSelectedEmbedIndex(embedIndex));
       }
     },
     [dispatch, selectedEmbedIndex],
@@ -287,10 +292,26 @@ export const DocumentPage = ({
 
         {selectedQuestionId &&
           selectedEmbedIndex !== null &&
-          editorInstance && (
+          editorInstance &&
+          sideBarMode === "viz-settings" && (
             <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
+                editorInstance={editorInstance}
+              />
+            </Box>
+          )}
+        {selectedQuestionId &&
+          selectedEmbedIndex !== null &&
+          editorInstance &&
+          sideBarMode === "timeline-events" && (
+            <Box
+              className={styles.sidebar}
+              data-testid="document-timeline-sidebar"
+            >
+              <TimelineEventsSidebar
+                cardId={selectedQuestionId}
+                selectedEmbedIndex={selectedEmbedIndex}
                 editorInstance={editorInstance}
               />
             </Box>

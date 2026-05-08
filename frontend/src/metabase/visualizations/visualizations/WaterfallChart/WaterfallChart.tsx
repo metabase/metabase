@@ -20,6 +20,7 @@ import type {
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
+import { TIMELINE_EVENTS_SETTINGS } from "../../lib/settings/timelineEvents";
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
 
@@ -86,6 +87,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

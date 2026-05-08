@@ -8,7 +8,7 @@ import type { TimelineEvent } from "metabase-types/api";
 import TimelinePanel from "../../components/TimelinePanel";
 
 interface TimelinePanelProps {
-  collectionId?: number;
+  collectionId?: number | null | undefined;
 }
 
 const collectionProps = {
