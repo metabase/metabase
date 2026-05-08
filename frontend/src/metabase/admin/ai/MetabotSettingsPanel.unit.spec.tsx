@@ -6,6 +6,7 @@ import {
   findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
+  setupCustomVizPluginListEndpoint,
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
@@ -147,6 +148,7 @@ const setupEmbeddingPlugin = () => {
     }),
   });
   setupEnterprisePlugins();
+  setupCustomVizPluginListEndpoint([]);
 };
 
 const setupContentVerificationPlugin = () => {

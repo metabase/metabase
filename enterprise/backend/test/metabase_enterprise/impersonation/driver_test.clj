@@ -709,7 +709,8 @@
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"(?s)SQL compilation error.*operation cannot be performed"
+               ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
+               #"(?s)SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 

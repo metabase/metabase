@@ -98,4 +98,5 @@
   :type       :boolean
   :default    false
   :visibility :admin
-  :export?    true)
+  :export?    true
+  :feature    :audit-app)

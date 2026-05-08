@@ -9,11 +9,11 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
-import { getIcon } from "metabase/common/utils/icon";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import {
@@ -42,6 +42,7 @@ function QuestionPickerInner({
   onSelect,
   collectionsById: baseCollectionsById,
 }: QuestionPickerInnerProps) {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;

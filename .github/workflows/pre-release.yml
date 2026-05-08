@@ -212,7 +212,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@EE" \
+            --expose grepTags="@smoke+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -221,7 +221,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="@smoke+-@OSS" \
+            --expose grepTags="@smoke+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
@@ -259,7 +259,13 @@ jobs:
   tests-complete-message:
     if: always()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    needs: [run-sanity-check, check-uberjar-health, containerize-ee, containerize-oss]
+    needs:
+      [
+        run-sanity-check,
+        check-uberjar-health,
+        containerize-ee,
+        containerize-oss,
+      ]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
