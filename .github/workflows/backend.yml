@@ -37,7 +37,8 @@ jobs:
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
-    if: ${{ !inputs.skip && github.ref_name == 'master' }}
+    # Master / release safety net: lint every backend test namespace.
+    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     name: Eastwood (tests only)
@@ -47,6 +48,50 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
         name: Run Eastwood linter on our backend tests
+
+  be-linter-eastwood-test-changed:
+    # PR / merge queue: lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    name: Eastwood (changed tests only)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compute changed test namespaces
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "No base SHA available; skipping."
+            echo "namespaces=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Make sure the base commit is reachable for the diff.
+          git fetch --no-tags --depth=200 origin "$BASE_SHA" 2>/dev/null \
+            || git fetch --no-tags origin
+          FILES=$(git diff --name-only --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" \
+                    -- 'test/**/*.clj' 'enterprise/backend/test/**/*.clj' || true)
+          if [ -z "$FILES" ]; then
+            echo "No backend test files changed; skipping lint."
+            echo "namespaces=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          NS=$(echo "$FILES" \
+            | sed -E 's#^(test/|enterprise/backend/test/)##; s#\.clj$##; s#/#.#g; s#_#-#g' \
+            | sort -u \
+            | tr '\n' ' ')
+          echo "Changed test namespaces: $NS"
+          echo "namespaces=[$NS]" >> "$GITHUB_OUTPUT"
+      - name: Run Eastwood on changed test namespaces
+        if: steps.changed.outputs.namespaces != ''
+        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces '${{ steps.changed.outputs.namespaces }}'
 
   be-tests:
     if: ${{ !inputs.skip }}
@@ -196,6 +241,7 @@ jobs:
     needs:
       - be-linter-eastwood
       - be-linter-eastwood-test
+      - be-linter-eastwood-test-changed
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
