@@ -3200,7 +3200,6 @@
            lib
            logger
            models
-           permissions
            plugins
            premium-features
            search
