@@ -705,7 +705,7 @@
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"(?s)SQL compilation error.*:Object.*does not exist or not authorized"
+               #"(?s)SQL compilation error:.*Object.*does not exist or not authorized"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 
