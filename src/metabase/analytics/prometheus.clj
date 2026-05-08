@@ -535,9 +535,6 @@
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:status]})
-   (prometheus/gauge :metabase-transforms/checkpoint-value
-     {:description "Last persisted high-watermark checkpoint value for an incremental transform. Numeric values are reported as-is; temporal values are reported as epoch milliseconds."
-      :labels [:transform-id :field-id]})
    (prometheus/counter :metabase-transforms/inspector-discovery
                        {:description "Transform Inspector lens discovery calls."
                         :labels [:status]})

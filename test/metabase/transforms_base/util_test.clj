@@ -63,34 +63,3 @@
       (is (= 9 (:transform/checkpoint-field-id attrs)))
       (is (string? (:transform/checkpoint-hi attrs)))
       (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
-
-(deftest save-watermark!-emits-checkpoint-gauge-test
-  (mt/with-prometheus-system! [_ system]
-    (mt/with-temp [:model/Transform {transform-id :id} {}]
-      (testing "numeric hi value emits the gauge keyed on transform-id and field-id"
-        (transforms-base.u/save-watermark! transform-id
-                                           {:checkpoint-filter-field-id 7
-                                            :hi {:value 42}})
-        (is (== 42.0
-                (mt/metric-value system :metabase-transforms/checkpoint-value
-                                 {:transform-id (str transform-id) :field-id "7"}))))
-      (testing "temporal hi value emits epoch millis on the gauge"
-        (let [t (t/instant "2024-01-16T10:00:00Z")]
-          (transforms-base.u/save-watermark! transform-id
-                                             {:checkpoint-filter-field-id 8
-                                              :hi {:value t}})
-          (is (== (double (.toEpochMilli t))
-                  (mt/metric-value system :metabase-transforms/checkpoint-value
-                                   {:transform-id (str transform-id) :field-id "8"})))))
-      (testing "nil hi value does not emit the gauge"
-        (transforms-base.u/save-watermark! transform-id
-                                           {:checkpoint-filter-field-id 9
-                                            :hi nil})
-        (is (== 0
-                (mt/metric-value system :metabase-transforms/checkpoint-value
-                                 {:transform-id (str transform-id) :field-id "9"}))))
-      (testing "nil source-range-params does not emit the gauge"
-        (transforms-base.u/save-watermark! transform-id nil)
-        (is (== 0
-                (mt/metric-value system :metabase-transforms/checkpoint-value
-                                 {:transform-id (str transform-id) :field-id "missing"})))))))

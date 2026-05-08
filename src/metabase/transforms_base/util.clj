@@ -6,7 +6,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -153,37 +152,6 @@
       remap/disable-remaps
       lib/disable-default-limit))
 
-;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------
-
-(defn ->instant
-  "Convert a temporal value `t` to an Instant in the system timezone."
-  ^Instant [t]
-  (when t
-    (condp instance? t
-      Instant        t
-      Date           (.toInstant ^Date t)
-      OffsetDateTime (.toInstant ^OffsetDateTime t)
-      ZonedDateTime  (.toInstant ^ZonedDateTime t)
-      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
-      String         (recur (u.date/parse t))
-      LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
-      OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
-      LocalDate      (recur (.atStartOfDay ^LocalDate t))
-      (throw (ex-info (str "Cannot convert temporal " t " of type " (type t) " to an Instant")
-                      {:temporal t})))))
-
-(defn utc-timestamp-string
-  "Convert the timestamp `t` to a UTC ISO-8601 string."
-  [t]
-  (-> t ->instant str))
-
-(defn localize-run-timestamps
-  "Convert the timestamps of a `run` to ISO strings in UTC."
-  [run]
-  (-> run
-      (u/update-some :start_time utc-timestamp-string)
-      (u/update-some :end_time   utc-timestamp-string)))
-
 ;;; ------------------------------------------------- Incremental/Checkpoint Helpers -------------------------------------------------
 
 (defn supported-incremental-filter-type?
@@ -210,25 +178,6 @@
     (str v)
     (u.date/format v)))
 
-(defn- checkpoint-value->double
-  "Coerce a checkpoint value to a double for Prometheus gauge emission.
-   Numeric values pass through; temporal values are reported as epoch milliseconds.
-   Logs and returns nil for values that cannot be coerced."
-  ^Double [v]
-  (cond
-    (nil? v)
-    nil
-
-    (number? v)
-    (double v)
-
-    (instance? java.time.temporal.Temporal v)
-    (try
-      (-> ^Instant (->instant v) .toEpochMilli double)
-      (catch Throwable t
-        (log/debugf t "Cannot coerce checkpoint value %s (type %s) to double" v (type v))
-        nil))))
-
 (defn checkpoint-span-attrs
   "Build a map of OTel span attributes from `source-range-params`. Returns an empty
   map when params are nil. Values are encoded as strings (the same encoding used
@@ -241,20 +190,12 @@
       (some? (:value hi))        (assoc :transform/checkpoint-hi (encode-checkpoint-value (:value hi))))))
 
 (defn save-watermark!
-  "Commits the incremental transforms :hi watermark value to the appdb. Also
-  records the watermark on the `metabase-transforms/checkpoint-value` gauge when
-  the value is a number or temporal."
+  "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
-  (let [{:keys [checkpoint-filter-field-id hi]} source-range-params
-        hi-value (:value hi)]
+  (let [hi-value (:value (:hi source-range-params))]
     (t2/update! :model/Transform
                 transform-id
-                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})
-    (when-let [v (and checkpoint-filter-field-id (checkpoint-value->double hi-value))]
-      (analytics/set-gauge! :metabase-transforms/checkpoint-value
-                            {:transform-id (str transform-id)
-                             :field-id     (str checkpoint-filter-field-id)}
-                            v))))
+                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -722,6 +663,37 @@
 (def keyword-type-dispatch
   "Dispatch function for malli :multi schemas that dispatch on `(keyword (:type m))`."
   (comp keyword :type))
+
+;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------
+
+(defn ->instant
+  "Convert a temporal value `t` to an Instant in the system timezone."
+  ^Instant [t]
+  (when t
+    (condp instance? t
+      Instant        t
+      Date           (.toInstant ^Date t)
+      OffsetDateTime (.toInstant ^OffsetDateTime t)
+      ZonedDateTime  (.toInstant ^ZonedDateTime t)
+      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
+      String         (recur (u.date/parse t))
+      LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
+      OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
+      LocalDate      (recur (.atStartOfDay ^LocalDate t))
+      (throw (ex-info (str "Cannot convert temporal " t " of type " (type t) " to an Instant")
+                      {:temporal t})))))
+
+(defn utc-timestamp-string
+  "Convert the timestamp `t` to a UTC ISO-8601 string."
+  [t]
+  (-> t ->instant str))
+
+(defn localize-run-timestamps
+  "Convert the timestamps of a `run` to ISO strings in UTC."
+  [run]
+  (-> run
+      (u/update-some :start_time utc-timestamp-string)
+      (u/update-some :end_time   utc-timestamp-string)))
 
 ;;; ------------------------------------------------- Filter Transforms -------------------------------------------------
 
