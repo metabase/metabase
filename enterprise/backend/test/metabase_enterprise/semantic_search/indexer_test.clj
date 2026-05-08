@@ -144,7 +144,7 @@
   (mt/with-prometheus-system! [_ system]
     (testing "idle behavior based on novelty ratio"
       (let [indexing-state (volatile! {:last-poll-count 100 :last-novel-count 30})
-            original-sleep-fn @#'semantic.indexer/sleep
+            original-sleep-fn (dynamic-redefs/original-fn #'semantic.indexer/sleep)
             sleep-metric-state (volatile! 0)
             test-sleep-metric (fn []
                                 (testing "Sleep metric grows"

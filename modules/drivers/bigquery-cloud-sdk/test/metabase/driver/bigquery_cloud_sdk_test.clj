@@ -982,7 +982,7 @@
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [fake-execute-called (atom false)
-          orig-fn             @#'bigquery/execute-bigquery]
+          orig-fn             (mt/original-fn #'bigquery/execute-bigquery)]
       (testing "Retry functionality works as expected"
         (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
                                                                 (if-not @fake-execute-called
@@ -998,7 +998,7 @@
 (deftest not-retry-cancellation-exception-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [fake-execute-called (atom false)
-          orig-fn        @#'bigquery/execute-bigquery]
+          orig-fn        (mt/original-fn #'bigquery/execute-bigquery)]
       (testing "Should not retry query on cancellation"
         (mt/with-dynamic-fn-redefs [bigquery/execute-bigquery (fn [& args]
                                                                 (if (not @fake-execute-called)
@@ -1059,7 +1059,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [page-counter (atom 3)
-            orig-exec    @#'bigquery/reducible-bigquery-results
+            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -1086,7 +1086,7 @@
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    @#'bigquery/reducible-bigquery-results
+            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -1197,7 +1197,7 @@
                                              :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
-              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
+              orig-fn    (mt/original-fn #'bigquery/convert-dataset-id-to-filters!)]
           (mt/with-dynamic-fn-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
                                                                                 (swap! call-count inc)
                                                                                 (orig-fn database dataset-id))]

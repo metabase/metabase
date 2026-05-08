@@ -107,7 +107,7 @@
                                                    :query (str "[{\"$addFields\": {}}\n"
                                                                " {\"$limit\":1}]")}}}]
         (mt/with-temporary-setting-values [enable-query-caching true]
-          (let [orig-freeze! @#'middleware.cache.impl/freeze!
+          (let [orig-freeze! (mt/original-fn #'middleware.cache.impl/freeze!)
                 freeze-started (atom false)
                 thrown-data (atom [])]
             (mt/with-dynamic-fn-redefs [middleware.cache.impl/freeze! (fn [& args]

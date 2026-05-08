@@ -84,7 +84,7 @@
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                                (filter #(= "serialization" (get % "event")))
                                first)))))
-              (let [ingest-file @#'v2.ingest/ingest-file]
+              (let [ingest-file (mt/original-fn #'v2.ingest/ingest-file)]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
                 (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
