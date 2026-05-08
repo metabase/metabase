@@ -164,7 +164,7 @@ export const SearchResults = ({
           return (
             <li key={`${item.model}:${item.id}`} ref={ref}>
               <SearchResult
-                result={item as unknown as SearchResultType}
+                result={item}
                 compact={true}
                 showDescription={true}
                 isSelected={cursorIndex === index}
