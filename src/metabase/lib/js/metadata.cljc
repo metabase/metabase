@@ -504,8 +504,8 @@
   [_object-type]
   (fn [k v]
     (case k
-      :definition #?(:cljs (js->clj v)
-                     :clj  v)
+      :definition #?(:cljs (js->clj v :keywordize-keys true)
+                     :clj  (perf/keywordize-keys v))
       v)))
 
 (defmethod parse-objects-default-key :measure
