@@ -18,11 +18,15 @@ import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { DashCardLoadingView } from "metabase/dashboard/components/DashCard/DashCardLoadingView";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
+import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -1036,6 +1040,28 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
+      const display = props.rawSeries?.[0]?.card?.display;
+      const { loading: customVizLoading } =
+        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+
+      if (customVizLoading) {
+        if (props.isDocument) {
+          return <CardEmbedLoadingState />;
+        }
+
+        if (props.isDashboard) {
+          return (
+            <DashCardLoadingView
+              display="table"
+              expectedDuration={props.expectedDuration}
+              isSlow={props.isSlow}
+            />
+          );
+        }
+
+        return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
+      }
+
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),

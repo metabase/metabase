@@ -57,7 +57,6 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:construct`  | `construct_query`                             |
 | `agent:query`            | `query`                                       |
 | `agent:query:execute`    | `execute_query`                               |
-| `agent:visualize`        | `visualize_query`, visualize-query resource    |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
@@ -83,26 +82,18 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `construct_query` | Construct a query against a table or metric. Returns an opaque query string for use with `execute_query`. |
 | `execute_query` | Execute a previously constructed query and return results with column metadata. |
 | `query` | Query a table or metric directly. Supports pagination via continuation tokens. |
-| `visualize_query` | Visualize a previously constructed query as an interactive chart or table. |
 
 Query results are limited to 200 rows per request. When more rows are available, the response includes a
 `continuation_token` that can be passed back to fetch the next page.
 
-## Resources (MCP Apps)
+## Resources
 
-The server also exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) that
-render interactive Metabase visualizations inside the client's UI.
+The server exposes MCP [resources](https://modelcontextprotocol.io/specification/2025-03-26/server/resources) so
+clients can fetch supplementary content by URI without inflating tool descriptions.
 
 | Resource URI | Description |
 |---|---|
-| `ui://metabase/visualize-query.html` | Interactive Metabase SDK visualization for a query. |
-
-When a client calls `resources/read`, the server returns an HTML page that embeds the Metabase SDK to render a fully
-interactive visualization. The `visualize_query` tool works with this resource — it returns a reference to the resource
-URI along with the query to visualize, and supporting clients render the result as an embedded iframe.
-
-Resources include CSP metadata (`_meta.ui.csp`) so clients can set appropriate Content-Security-Policy headers for the
-embedded content.
+| `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query` — sources, operations, operator forms, worked examples, pitfalls. |
 
 ## Supported JSON-RPC methods
 
@@ -130,8 +121,9 @@ The implementation lives in these files:
 - **[`tools.clj`](tools.clj)** — Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
   metadata, checks scopes, and routes tool calls through synthetic Agent API requests.
 
-- **[`resources.clj`](resources.clj)** — MCP resource registry and handlers. Manages UI resources (like the
-  visualize-query HTML page) and their associated tools, with scope-based access control.
+- **[`resources.clj`](resources.clj)** — MCP resource registry and handlers. Holds documentation resources (like
+  the `construct_query` reference) keyed by URI, with scope-based access control on `resources/list` and
+  `resources/read`.
 
 - **[`scope.clj`](scope.clj)** — Scope matching logic. Supports exact matches, wildcard patterns, and the
   `::unrestricted` sentinel for session-based auth.

@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
 import {
   IndexRedirect,
@@ -81,7 +82,7 @@ import {
 } from "./utils";
 
 export const getRoutes = (
-  store: { getState: () => State },
+  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -242,7 +243,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>

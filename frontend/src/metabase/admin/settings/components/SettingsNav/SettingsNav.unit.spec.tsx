@@ -11,6 +11,7 @@ import {
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
   createMockVersionInfo,
 } from "metabase-types/api/mocks";
 
@@ -19,15 +20,20 @@ import { SettingsNav } from "./SettingsNav";
 const setup = async ({
   initialRoute,
   isHosted,
+  customVizDevModeEnabled,
 }: {
   initialRoute: string;
   isHosted?: boolean;
+  customVizDevModeEnabled?: boolean;
 }) => {
   const versionInfo = createMockVersionInfo();
   const settings = createMockSettings({
     "version-info": versionInfo,
+    "custom-viz-plugin-dev-mode-enabled": Boolean(customVizDevModeEnabled),
     "token-features": createMockTokenFeatures({
       hosting: Boolean(isHosted),
+      "custom-viz": true,
+      "custom-viz-available": true,
     }),
   });
 
@@ -40,6 +46,7 @@ const setup = async ({
     withRouter: true,
     initialRoute,
     storeInitialState: {
+      currentUser: createMockUser({ is_superuser: true }),
       routing: createMockRoutingState({
         locationBeforeTransitions: createMockLocation({
           pathname: initialRoute,
@@ -122,5 +129,34 @@ describe("SettingsNav", () => {
   it("should only show Updates nav item when hosted", async () => {
     await setup({ initialRoute: "/admin/settings/general", isHosted: true });
     expect(screen.queryByText("Updates")).not.toBeInTheDocument();
+  });
+
+  it("should show Development nav item when custom viz dev mode is enabled", async () => {
+    await setup({
+      initialRoute: "/admin/settings/custom-visualizations",
+      customVizDevModeEnabled: true,
+    });
+
+    const customVizNavItem = await screen.findByRole("link", {
+      name: /Custom visualizations/,
+    });
+    await userEvent.click(customVizNavItem);
+
+    expect(screen.getByText("Development")).toBeInTheDocument();
+  });
+
+  it("should hide Development nav item when custom viz dev mode is disabled", async () => {
+    await setup({
+      initialRoute: "/admin/settings/custom-visualizations",
+      customVizDevModeEnabled: false,
+    });
+
+    const customVizNavItem = await screen.findByRole("link", {
+      name: /Custom visualizations/,
+    });
+    await userEvent.click(customVizNavItem);
+
+    expect(screen.queryByText("Manage visualizations")).not.toBeInTheDocument();
+    expect(screen.queryByText("Development")).not.toBeInTheDocument();
   });
 });

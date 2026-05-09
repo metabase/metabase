@@ -28,6 +28,7 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
+export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -170,6 +171,7 @@ import { reinitialize as reinitializeCollections } from "./oss/collections";
 import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
+import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
@@ -213,6 +215,7 @@ export function reinitialize() {
   reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();
+  reinitializeCustomViz();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
