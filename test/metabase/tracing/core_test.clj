@@ -2,35 +2,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.tracing.core :as tracing]
-   [steffan-westcott.clj-otel.api.trace.span :as span])
+   [metabase.tracing.test-util :as tracing.tu])
   (:import
-   (io.opentelemetry.api.common AttributeKey)
-   (io.opentelemetry.sdk.testing.exporter InMemorySpanExporter)
-   (io.opentelemetry.sdk.trace SdkTracerProvider)
-   (io.opentelemetry.sdk.trace.data SpanData)
-   (io.opentelemetry.sdk.trace.export SimpleSpanProcessor)
    (org.apache.logging.log4j ThreadContext)))
 
 (set! *warn-on-reflection* true)
-
-(defmacro ^:private with-span-exporter
-  "Run `body` with clj-otel's default tracer pointed at an InMemorySpanExporter.
-   Binds `exporter-binding` to the exporter — call `.getFinishedSpanItems` on it
-   after the body to read captured spans. SimpleSpanProcessor exports synchronously
-   on span end, so reads after the body are deterministic.
-   On exit, the default tracer is reset to nil (clj-otel's initial state).
-   The tracing test suite never calls `init-otel-sdk!`, so no preset tracer is lost."
-  [exporter-binding & body]
-  `(let [~exporter-binding            (InMemorySpanExporter/create)
-         provider# ^SdkTracerProvider (-> (SdkTracerProvider/builder)
-                                          (.addSpanProcessor (SimpleSpanProcessor/create ~exporter-binding))
-                                          (.build))]
-     (span/set-default-tracer! (.get provider# "metabase-test"))
-     (try
-       ~@body
-       (finally
-         (span/set-default-tracer! nil)
-         (.shutdown provider#)))))
 
 (deftest group-enabled?-disabled-by-default-test
   (testing "group-enabled? returns false when tracing is not initialized"
@@ -122,7 +98,7 @@
 
 (deftest add-span-attrs!-detects-inconsistent-overwrite-test
   (testing "writing the same key with the same value is allowed"
-    (with-span-exporter _exporter
+    (tracing.tu/with-span-exporter [_exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (tracing/with-span :tasks "test.span" {:foo/k 1}
@@ -131,7 +107,7 @@
           (tracing/shutdown-groups!)))))
 
   (testing "writing the same key with a different value throws"
-    (with-span-exporter _exporter
+    (tracing.tu/with-span-exporter [_exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -142,7 +118,7 @@
           (tracing/shutdown-groups!)))))
 
   (testing "two add-span-attrs! calls writing the same key with different values throws"
-    (with-span-exporter _exporter
+    (tracing.tu/with-span-exporter [_exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -155,7 +131,7 @@
 
 (deftest add-span-attrs!-merges-onto-finished-span-test
   (testing "attrs from with-span and add-span-attrs! both land on the same finished span; empty/nil attrs do not contribute"
-    (with-span-exporter exporter
+    (tracing.tu/with-span-exporter [exporter]
       (try
         (tracing/init-enabled-groups! "tasks" "INFO")
         (tracing/with-span :tasks "test.span" {:foo/id 42 :foo/seed "yes"}
@@ -167,13 +143,11 @@
         ;; e.g. :foo/first-incremental-run -> "foo.first_incremental_run".
         ;; It also auto-adds default attrs (thread.*, code.*) on every span, so we filter to our prefix
         ;; before counting to detect any spurious contributions.
-        (let [finished (.getFinishedSpanItems ^InMemorySpanExporter exporter)
-              ^SpanData span (first finished)
-              attrs     (into {} (map (fn [[^AttributeKey k v]] [(.getKey k) v]))
-                              (.asMap (.getAttributes span)))
-              our-attrs (into {} (filter (fn [[^String k _]] (.startsWith k "foo."))) attrs)]
+        (let [finished  (tracing.tu/finished-spans exporter)
+              span      (first finished)
+              our-attrs (into {} (filter (fn [[^String k _]] (.startsWith k "foo."))) (:attrs span))]
           (is (= 1 (count finished)))
-          (is (= "test.span" (.getName span)))
+          (is (= "test.span" (:name span)))
           (is (= 4 (count our-attrs)) "exactly the four contributed attrs, nothing extra under our prefix")
           (is (= 42 (get our-attrs "foo.id")))
           (is (= "yes" (get our-attrs "foo.seed")))
