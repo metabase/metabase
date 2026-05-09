@@ -49,7 +49,7 @@ const ORDERS_METRIC = createMockMetric({
 function createMetadata(metrics: ReturnType<typeof createMockMetric>[]) {
   const metadata = new Metadata();
   for (const metric of metrics) {
-    metadata.metrics[metric.id] = metric as any;
+    metadata.metrics[metric.id] = metric;
   }
   return metadata;
 }
