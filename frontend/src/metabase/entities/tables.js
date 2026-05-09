@@ -456,7 +456,7 @@ function useListQuery({ dbId, schemaName, ...params } = {}, options) {
 }
 
 function getUseListQueryEndpoint(dbId, schemaName) {
-  if (dbId != null && schemaName != null) {
+  if (dbId != null && schemaName) {
     return "listDatabaseSchemaTables";
   }
 
