@@ -5,9 +5,9 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";

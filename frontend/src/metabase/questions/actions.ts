@@ -1,6 +1,6 @@
 import { cardApi, datasetApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch } from "metabase/redux/store";
 import type { Card, TableId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";

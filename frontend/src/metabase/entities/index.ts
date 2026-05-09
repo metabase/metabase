@@ -84,5 +84,3 @@ export { Metrics as metrics } from "./metrics";
 
 export { Search as search } from "./search";
 export { Snippets as snippets } from "./snippets";
-
-export { entityCompatibleQuery, combineEntities } from "./utils";
