@@ -151,8 +151,8 @@
           (is (= 4 (count our-attrs)) "exactly the four contributed attrs, nothing extra under our prefix")
           (is (= 42 (get our-attrs "foo.id")))
           (is (= "yes" (get our-attrs "foo.seed")))
-          (is (= true (get our-attrs "foo.incremental")))
-          (is (= false (get our-attrs "foo.first_incremental_run"))))
+          (is (true? (get our-attrs "foo.incremental")))
+          (is (false? (get our-attrs "foo.first_incremental_run"))))
         (finally
           (tracing/shutdown-groups!))))))
 

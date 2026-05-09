@@ -674,6 +674,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.tracing.test-util/with-span-exporter                                                                             hooks.common/with-one-binding
    metabase.users-rest.api-test/with-temp-user-email!                                                                        hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
