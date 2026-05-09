@@ -83,5 +83,3 @@ export { Segments as segments } from "./segments";
 export { Measures as measures } from "./measures";
 
 export { Snippets as snippets } from "./snippets";
-
-export { entityCompatibleQuery, combineEntities } from "./utils";
