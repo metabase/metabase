@@ -6,7 +6,7 @@
     "module": "commonjs",
     "isolatedModules": true,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "allowJs": true,
     "esModuleInterop": true,
