@@ -248,18 +248,27 @@ export type Entity = {
 type EntityRtkBridge = Record<string, any>;
 
 /**
- * A slice reducer manages a single entity slice — `Record<id, EntityObject>`.
- * Every normalized entity in `state.entities.<name>` extends `EntityObject` (it
- * has at least an `id`), so this is the precise common shape for any slice
- * regardless of which concrete `NormalizedX` it stores.
+ * A single value held in an entity-list cache slice (`state.entities.<name>_list`):
+ * either a flat array of ids ("default" list, no `entityQuery`) or a per-query
+ * payload of result + result metadata. The `list` field comes straight from
+ * the dispatched action payload, so it's typed `unknown` here.
  */
-type EntitiesReducer = Reducer<Record<string, EntityObject>>;
+type EntityListEntry = EntityId[] | { list: unknown; metadata?: unknown };
 
 /**
- * The list-cache slice (`state.entities.<name>_list`) stores per-query payloads
- * (`{ list, metadata }`), not entity objects, so it has its own loose shape.
+ * Per-value type for any slice managed by the entities reducer. Concrete slices
+ * only hold one of these kinds — entity slices hold `EntityObject`s, list
+ * slices hold `EntityListEntry`s — but `combineReducers` requires reducers in
+ * the same map to share a state type (reducer state is invariant), so both
+ * reducers below operate on this union.
  */
-type EntityListReducer = Reducer<Record<string, unknown>>;
+type EntitySliceValue = EntityObject | EntityListEntry;
+
+/** Reducer for a single entity slice (`state.entities.<name>`). */
+type EntitiesReducer = Reducer<Record<string, EntitySliceValue>>;
+
+/** Reducer for an entity-list cache slice (`state.entities.<name>_list`). */
+type EntityListReducer = Reducer<Record<string, EntitySliceValue>>;
 
 type EntityDef = {
   name: string;
@@ -815,7 +824,7 @@ export function createEntity(def: EntityDef): Entity {
   );
 
   const listReducer: EntityListReducer = (
-    state: Record<string, unknown> = {},
+    state = {},
     action: {
       type: string;
       error?: boolean;
@@ -939,10 +948,17 @@ export function createEntity(def: EntityDef): Entity {
 
 type EntitiesReducersMap = Record<string, EntitiesReducer | EntityListReducer>;
 
+/**
+ * State shape produced by `combineReducers(reducersMap)`: each top-level key is
+ * either an entity slice or a `${name}_list` cache slice. See `EntitySliceValue`
+ * for the per-value type.
+ */
+type EntitiesCombinedState = Record<string, Record<string, EntitySliceValue>>;
+
 type CombinedEntities = {
   entities: Record<string, Entity>;
   reducers: EntitiesReducersMap;
-  reducer: ReturnType<typeof combineReducers<EntitiesReducersMap>>;
+  reducer: Reducer<EntitiesCombinedState>;
   requestsReducer: (
     state: RequestsStateTree | undefined,
     action: { type: string },
