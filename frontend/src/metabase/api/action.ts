@@ -116,7 +116,9 @@ export const {
   useGetActionQuery,
   useListActionsQuery,
   useListPublicActionsQuery,
+  useCreateActionMutation,
   useUpdateActionMutation,
+  useDeleteActionMutation,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
   endpoints: {
