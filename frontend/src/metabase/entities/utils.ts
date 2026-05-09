@@ -936,6 +936,16 @@ type CombinedEntities = {
   ) => RequestsStateTree;
 };
 
+/**
+ * Names of entities whose full `createEntity` definitions have been retired
+ * (their CRUD now lives in `metabase/api/*`), but whose normalized slice in
+ * `state.entities.<name>` still needs to receive updates dispatched via the
+ * `metabase/entities/UPDATE` action — typically because they appear nested in
+ * another entity's normalizr schema (e.g. measures inside a table's
+ * `query_metadata` response).
+ */
+const RETIRED_ENTITY_NAMES = ["measures"];
+
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};
   const reducersMap: Record<string, Reducer<Record<string, unknown>>> = {};
@@ -946,6 +956,12 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
     } else {
       entitiesMap[entity.name] = entity;
       Object.assign(reducersMap, entity.reducers);
+    }
+  }
+
+  for (const name of RETIRED_ENTITY_NAMES) {
+    if (!(name in reducersMap)) {
+      reducersMap[name] = handleEntities(/^metabase\/entities\//, name);
     }
   }
 
