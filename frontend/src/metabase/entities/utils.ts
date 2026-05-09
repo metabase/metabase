@@ -202,7 +202,10 @@ export type Entity = {
 
   // Reducers
   reducer?: EntitiesReducer;
-  reducers: Record<string, EntitiesReducer | Reducer<Record<string, unknown>>>;
+  reducers: {
+    slice: EntitiesReducer;
+    list: EntityListReducer;
+  };
   requestsReducer: (
     state: RequestsStateTree,
     action: { type: string },
@@ -243,10 +246,20 @@ export type Entity = {
  */
 
 type EntityRtkBridge = Record<string, any>;
-type EntitiesReducer = Reducer<
-  Partial<EntitiesState> | undefined,
-  { type: string; payload: EntitiesState }
->;
+
+/**
+ * A slice reducer manages a single entity slice — `Record<id, EntityObject>`.
+ * Every normalized entity in `state.entities.<name>` extends `EntityObject` (it
+ * has at least an `id`), so this is the precise common shape for any slice
+ * regardless of which concrete `NormalizedX` it stores.
+ */
+type EntitiesReducer = Reducer<Record<string, EntityObject>>;
+
+/**
+ * The list-cache slice (`state.entities.<name>_list`) stores per-query payloads
+ * (`{ list, metadata }`), not entity objects, so it has its own loose shape.
+ */
+type EntityListReducer = Reducer<Record<string, unknown>>;
 
 type EntityDef = {
   name: string;
@@ -795,15 +808,13 @@ export function createEntity(def: EntityDef): Entity {
 
   // REDUCERS
 
-  entity.reducers = {};
-
-  entity.reducers[entity.name] = handleEntities(
+  const sliceReducer = handleEntities(
     /^metabase\/entities\//,
     entity.name,
     def.reducer,
   );
 
-  const listReducer: Reducer<Record<string, unknown>> = (
+  const listReducer: EntityListReducer = (
     state: Record<string, unknown> = {},
     action: {
       type: string;
@@ -844,7 +855,7 @@ export function createEntity(def: EntityDef): Entity {
     }
     return state;
   };
-  entity.reducers[`${entity.name}_list`] = listReducer;
+  entity.reducers = { slice: sliceReducer, list: listReducer };
 
   // REQUEST STATE REDUCER
 
@@ -926,10 +937,12 @@ export function createEntity(def: EntityDef): Entity {
   return entity;
 }
 
+type EntitiesReducersMap = Record<string, EntitiesReducer | EntityListReducer>;
+
 type CombinedEntities = {
   entities: Record<string, Entity>;
-  reducers: Record<string, Reducer<Record<string, unknown>>>;
-  reducer: Reducer<Record<string, Record<string, unknown>>>;
+  reducers: EntitiesReducersMap;
+  reducer: ReturnType<typeof combineReducers<EntitiesReducersMap>>;
   requestsReducer: (
     state: RequestsStateTree | undefined,
     action: { type: string },
@@ -948,14 +961,15 @@ const RETIRED_ENTITY_NAMES = ["measures"];
 
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};
-  const reducersMap: Record<string, Reducer<Record<string, unknown>>> = {};
+  const reducersMap: EntitiesReducersMap = {};
 
   for (const entity of entities) {
     if (entity.name in entitiesMap) {
       console.warn(`Entity with name ${entity.name} already exists!`);
     } else {
       entitiesMap[entity.name] = entity;
-      Object.assign(reducersMap, entity.reducers);
+      reducersMap[entity.name] = entity.reducers.slice;
+      reducersMap[`${entity.name}_list`] = entity.reducers.list;
     }
   }
 
