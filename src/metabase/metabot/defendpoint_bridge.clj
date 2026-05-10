@@ -253,8 +253,21 @@
 
    "list_collection_items"
    (str "Reference items using their entity link, e.g. `[name](metabase://question/{id})` "
-        "or `[name](metabase://dashboard/{id})`. Filter to specific `models` when the user "
-        "asked about one entity type rather than dumping the entire list.")
+        "or `[name](metabase://dashboard/{id})`. "
+        "If `truncated?` is true, narrow the result before answering: pass `q` to filter "
+        "by name, `models` to restrict to one entity type, or pick a deeper sub-collection "
+        "as the new root. Do not summarise as 'showing the first N of M' — the items past "
+        "`limit` are not in your context. "
+        "When `depth > 0`, each item carries `collection_id` / `collection_name` so you "
+        "can render `[name](metabase://collection/{id})` provenance links. The response's "
+        "`collections_searched` tells you how many sub-collections contributed.")
+
+   "list_collection_tree"
+   (str "Use this for structural reconnaissance — \"what's under this collection?\" or "
+        "\"where would <thing> live?\". The result has no items, only the hierarchy. "
+        "If you need the items inside, follow up with `list_collection_items` against "
+        "a specific node (with `depth > 0` if you want the sub-tree). "
+        "Reference any node as `[name](metabase://collection/{id})`.")
 
    "create_collection"
    (str "The collection has been created. Reference it as "

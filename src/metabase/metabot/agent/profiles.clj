@@ -111,6 +111,7 @@
                     #'tools/analyze-chart-tool
                     #'tools/save-card-tool]
   :endpoint-tools  ["list_collections"
+                    "list_collection_tree"
                     "get_collection"
                     "list_collection_items"
                     "create_collection"
