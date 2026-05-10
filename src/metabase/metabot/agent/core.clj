@@ -397,27 +397,30 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
-  (let [context      (assign-context-ids context)
-        profile      (or (profiles/get-profile profile-id)
-                         (throw (ex-info "Unknown profile" {:profile-id profile-id})))
-        capabilities (get context :capabilities #{})
-        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
-        seeded       (-> (or state {})
-                         (seed-state context)
-                         (seed-chart-configs context)
-                         (seed-charts context))
-        memory       (-> (memory/initialize messages seeded context)
-                         (memory/load-queries-from-state seeded)
-                         (memory/load-charts-from-state seeded)
-                         (memory/load-transforms-from-state seeded)
-                         (memory/load-todos-from-state seeded)
-                         (memory/load-link-registry-from-state seeded))
-        memory-atom  (atom memory)
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
-    (log/info "Starting agent" {:profile  profile-id
-                                :tools    (count tools)
-                                :max-iter (:max-iterations profile)
-                                :msgs     (count messages)})
+  (let [context        (assign-context-ids context)
+        profile        (or (profiles/get-profile profile-id)
+                           (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        capabilities   (get context :capabilities #{})
+        base-tools     (profiles/get-tools-for-profile profile-id capabilities)
+        endpoint-tools (profiles/get-endpoint-tools-for-profile profile-id)
+        seeded         (-> (or state {})
+                           (seed-state context)
+                           (seed-chart-configs context)
+                           (seed-charts context))
+        memory         (-> (memory/initialize messages seeded context)
+                           (memory/load-queries-from-state seeded)
+                           (memory/load-charts-from-state seeded)
+                           (memory/load-transforms-from-state seeded)
+                           (memory/load-todos-from-state seeded)
+                           (memory/load-link-registry-from-state seeded))
+        memory-atom    (atom memory)
+        tools          (merge (tools/wrap-tools-with-state base-tools memory-atom metabot-id)
+                              endpoint-tools)]
+    (log/info "Starting agent" {:profile        profile-id
+                                :tools          (count tools)
+                                :endpoint-tools (count endpoint-tools)
+                                :max-iter       (:max-iterations profile)
+                                :msgs           (count messages)})
     {:profile       profile
      :tools         tools
      :context       context

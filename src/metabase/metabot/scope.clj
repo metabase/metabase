@@ -38,6 +38,16 @@
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
 
+;; Card (saved cards via memory-backed save_card tool)
+(api-scope/defscope agent-card-create "agent:card:create"
+  (deferred-tru "Save in-memory queries as cards"))
+
+;; Collection
+(api-scope/defscope agent-collection-read "agent:collection:read"
+  (deferred-tru "Browse collections and their contents"))
+(api-scope/defscope agent-collection-create "agent:collection:create"
+  (deferred-tru "Create new collections"))
+
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
@@ -146,9 +156,9 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*" "agent:card:create"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*" "agent:card:create"}
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."

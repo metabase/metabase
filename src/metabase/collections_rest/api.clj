@@ -145,38 +145,59 @@
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`.
 
-  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`.
+
+  When `q` is supplied, results are filtered by case-insensitive substring match on the collection name. When `limit`
+  is supplied (default 50, max 50), only the first matching collections are returned."
+  {:scope "agent:collection:read"
+   :tool  {:name        "list_collections"
+           :description (str "List collections the current user can see. Use `q` to filter by name "
+                             "(case-insensitive substring match) and `limit` to cap the result size. "
+                             "Each entry includes `id`, `name`, `location`, and `can_write` so the LLM can "
+                             "pick a write-eligible collection before saving cards.")}}
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
-  (as->
-   (select-collections {:archived                       (boolean archived)
-                        :exclude-other-user-collections exclude-other-user-collections
-                        :namespaces                     (cond
-                                                          namespace [namespace]
-                                                          (premium-features/enable-audit-app?) #{"analytics" nil}
-                                                          :else
-                                                          #{nil})
-                        :shallow                        false
-                        :personal-only                  personal-only
-                        :include-library?               true}) collections
-    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
-    (if (or archived personal-only)
-      collections
-      (let [root (root-collection namespace)]
-        (cond->> collections
-          (mi/can-read? root)
-          (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
-    ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
-    ;; and for personal/tenant collections we translate the name to user's locale
-    (->> (for [collection collections]
-           (dissoc collection ::collection.root/is-root?))
-         collection/personal-collections-with-ui-details
-         collection/maybe-localize-tenant-collection-names)))
+   {:keys [archived exclude-other-user-collections namespace personal-only q limit]}
+   :- [:map
+       [:archived                       {:default false} [:maybe ms/BooleanValue]]
+       [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+       [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+       [:q                              {:optional true
+                                         :tool/description "Case-insensitive substring filter on collection name."}
+        [:maybe ms/NonBlankString]]
+       [:limit                          {:optional true
+                                         :tool/description "Maximum number of collections to return (1-50, default 50)."}
+        [:maybe [:int {:min 1 :max 50}]]]]]
+  (let [effective-limit (min 50 (or limit 50))]
+    (as->
+     (select-collections {:archived                       (boolean archived)
+                          :exclude-other-user-collections exclude-other-user-collections
+                          :namespaces                     (cond
+                                                            namespace [namespace]
+                                                            (premium-features/enable-audit-app?) #{"analytics" nil}
+                                                            :else
+                                                            #{nil})
+                          :shallow                        false
+                          :personal-only                  personal-only
+                          :include-library?               true}) collections
+      ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+      (if (or archived personal-only)
+        collections
+        (let [root (root-collection namespace)]
+          (cond->> collections
+            (mi/can-read? root)
+            (cons root))))
+      (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
+      ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
+      ;; and for personal/tenant collections we translate the name to user's locale
+      (->> (for [collection collections]
+             (dissoc collection ::collection.root/is-root?))
+           collection/personal-collections-with-ui-details
+           collection/maybe-localize-tenant-collection-names)
+      (cond->> collections
+        q (filter #(str/includes? (u/lower-case-en (str (:name %)))
+                                  (u/lower-case-en q))))
+      (take effective-limit collections))))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -1462,6 +1483,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new Collection."
+  {:scope "agent:collection:create"
+   :tool  {:name        "create_collection"
+           :description (str "Create a new collection. Pass `parent_id` to nest the new collection inside another "
+                             "collection (omit to place at the root). Optional `description` is shown in the UI.")}}
   [_route-params
    _query-params
    body :- [:map
@@ -1626,6 +1651,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
+  {:scope "agent:collection:read"
+   :tool  {:name        "get_collection"
+           :description (str "Fetch metadata for a single collection by id, including its name, "
+                             "description, parent location, and write-permission flag.")}}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
@@ -1718,6 +1747,11 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope "agent:collection:read"
+   :tool  {:name        "list_collection_items"
+           :description (str "List the cards, dashboards, sub-collections, models, metrics, and other items "
+                             "inside a collection. Use `models` to narrow to a single entity type when you "
+                             "only need one kind of result.")}}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first

@@ -78,19 +78,28 @@
 
 ;;; Tool definition format
 
+(defn- json-schema?
+  "True if `schema` is a pre-built JSON Schema object (e.g. produced by the defendpoint
+  tools manifest), as opposed to a Malli `[:=> [:cat …] …]` form."
+  [schema]
+  (and (map? schema) (= (:type schema) "object")))
+
 (defn- tool->openai-chat
   "Convert a tool definition map to Chat Completions tool format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
   [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params     (schema/filter-schema-by-features params)
-        doc        (if (str/starts-with? (or doc "") "Inputs: ")
+  (let [doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
-                     doc)]
+                     doc)
+        parameters (if (json-schema? schema)
+                     schema
+                     (let [[_:=> [_:cat params] _out] schema
+                           params (schema/filter-schema-by-features params)]
+                       (mjs/transform params {:additionalProperties false})))]
     {:type     "function"
      :function {:name        tool-name
                 :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
+                :parameters  parameters}}))
 
 (defn- openrouter-errors [res]
   (let [status    (long (:status res 0))
