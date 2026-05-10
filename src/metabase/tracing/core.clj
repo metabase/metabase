@@ -294,7 +294,7 @@
            prev-trace-id# (ThreadContext/get "trace_id")
            prev-span-id#  (ThreadContext/get "span_id")
            root-span?#    (nil? prev-span-id#)]
-       (binding [*span-attrs* (atom (or attrs# {}))]
+       (binding [*span-attrs* (atom attrs#)]
          (span/with-span! {:name ~span-name :attributes attrs#}
            (inject-trace-id-into-mdc!)
            ;; For root spans (no parent in MDC), set Pyroscope profiling context.
