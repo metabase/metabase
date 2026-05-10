@@ -11,6 +11,8 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import type { EntityChangedValue } from "metabase/api/ai-streaming/schemas";
 import { idTag, listTag } from "metabase/api/tags";
+import { fetchDashboard } from "metabase/dashboard/actions";
+import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import {
@@ -24,6 +26,7 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import type {
+  DashboardId,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -413,7 +416,23 @@ const tagsForEntityChange = (value: EntityChangedValue) => {
           : []),
       ];
     case "dashboard":
-      return [listTag("dashboard"), idTag("dashboard", value.id)];
+      return [
+        listTag("dashboard"),
+        idTag("dashboard", value.id),
+        // Mirror dashboardApi.updateDashboard, which invalidates revisions
+        // because PUT /api/dashboard/:id creates a new revision.
+        listTag("revision"),
+        // For moves to root, `collection_id` is null; key on "root" so the
+        // root-collection items list also refreshes.
+        ...(value.collection_id !== undefined
+          ? [idTag("collection", value.collection_id ?? "root")]
+          : []),
+        // Public-link tools toggle the dashboard's public_uuid, which the
+        // public-dashboard list/lookup caches mirror.
+        ...(value.public_link_changed
+          ? [listTag("public-dashboard"), idTag("public-dashboard", value.id)]
+          : []),
+      ];
     default:
       return [];
   }
@@ -437,6 +456,34 @@ const qbCardIdNeedingReload = (
   }
   if (value.entity_type === "collection" && card.collection_id === value.id) {
     return card.id;
+  }
+  return null;
+};
+
+// The dashboard view holds its own snapshot in `state.dashboard.dashboards[id]`
+// — RTK Query tag invalidation alone won't refresh it (see the comment in
+// `dashboard/actions/trash.ts`). When Metabot mutates the dashboard the user
+// is currently viewing, we have to re-dispatch `fetchDashboard` ourselves.
+// Returns the dashboard id to reload, or null. We reload when:
+//   - the changed dashboard is the one being viewed
+//   - the open dashboard's parent collection changed (its breadcrumb / inline
+//     collection metadata is stale)
+const dashboardIdNeedingReload = (
+  state: State,
+  value: EntityChangedValue,
+): DashboardId | null => {
+  const openDashboardId = getDashboardId(state);
+  if (openDashboardId == null) {
+    return null;
+  }
+  if (value.entity_type === "dashboard" && openDashboardId === value.id) {
+    return openDashboardId;
+  }
+  if (value.entity_type === "collection") {
+    const dashboard = getDashboard(state);
+    if (dashboard?.collection_id === value.id) {
+      return openDashboardId;
+    }
   }
   return null;
 };
@@ -537,8 +584,22 @@ export const sendAgentRequest = createAsyncThunk<
                 if (tags.length > 0) {
                   dispatch(Api.util.invalidateTags(tags));
                 }
-                if (qbCardIdNeedingReload(getState(), part.value) != null) {
+                const state = getState();
+                if (qbCardIdNeedingReload(state, part.value) != null) {
                   dispatch(softReloadCard() as unknown as UnknownAction);
+                }
+                const dashIdToReload = dashboardIdNeedingReload(
+                  state,
+                  part.value,
+                );
+                if (dashIdToReload != null) {
+                  dispatch(
+                    fetchDashboard({
+                      dashId: dashIdToReload,
+                      queryParams: {},
+                      options: { preserveParameters: true },
+                    }) as unknown as UnknownAction,
+                  );
                 }
                 pushDataPart({ type: "data_part", part });
               })

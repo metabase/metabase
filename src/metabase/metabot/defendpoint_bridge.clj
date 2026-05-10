@@ -360,75 +360,99 @@
 ;;
 ;; The keys are intentionally snake_case — they cross the wire as JSON to the FE.
 
-(defn- card-changed-parts [body]
-  (when-let [id (:id body)]
-    [(streaming/entity-changed-part
-      (cond-> {:entity_type "card" :id id}
-        ;; Always include :collection_id (even if `nil`) so the FE knows to
-        ;; invalidate `idTag("collection", "root")` for moves to root.
-        (contains? body :collection_id) (assoc :collection_id (:collection_id body))))]))
+;; entity-change-fns take both the LLM-supplied arguments and the response body.
+;; Most fns derive the entity id from the body (e.g. `update_dashboard` returns
+;; the updated dashboard map). The public-link fns have an empty/uuid-only body
+;; and need the dashboard id from the request arguments instead.
 
-(defn- collection-changed-parts [body]
-  (when-let [id (:id body)]
-    [(streaming/entity-changed-part
-      (cond-> {:entity_type "collection" :id id}
-        (contains? body :parent_id) (assoc :parent_id (:parent_id body))))]))
+(defn- card-changed-parts [_arguments body]
+  (when (map? body)
+    (when-let [id (:id body)]
+      [(streaming/entity-changed-part
+        (cond-> {:entity_type "card" :id id}
+          ;; Always include :collection_id (even if `nil`) so the FE knows to
+          ;; invalidate `idTag("collection", "root")` for moves to root.
+          (contains? body :collection_id) (assoc :collection_id (:collection_id body))))])))
 
-(defn- dashboard-changed-parts [body]
-  (when-let [id (:id body)]
+(defn- collection-changed-parts [_arguments body]
+  (when (map? body)
+    (when-let [id (:id body)]
+      [(streaming/entity-changed-part
+        (cond-> {:entity_type "collection" :id id}
+          (contains? body :parent_id) (assoc :parent_id (:parent_id body))))])))
+
+(defn- dashboard-changed-parts [_arguments body]
+  (when (map? body)
+    (when-let [id (:id body)]
+      [(streaming/entity-changed-part
+        (cond-> {:entity_type "dashboard" :id id}
+          ;; Always include :collection_id (even if `nil`) so the FE knows to
+          ;; invalidate the right collection's items list — including root.
+          (contains? body :collection_id) (assoc :collection_id (:collection_id body))))])))
+
+(defn- dashboard-public-link-changed-parts
+  "The public-link endpoints return either `{:uuid …}` or an empty 204 body, so
+  the dashboard id has to come from the request arguments. The `public_link_changed`
+  flag tells the FE to invalidate the public-dashboard caches in addition to the
+  usual dashboard caches."
+  [arguments _body]
+  (when-let [id (or (get arguments :dashboard-id)
+                    (get arguments "dashboard-id")
+                    (get arguments :dashboard_id)
+                    (get arguments "dashboard_id"))]
     [(streaming/entity-changed-part
-      (cond-> {:entity_type "dashboard" :id id}
-        ;; Always include :collection_id (even if `nil`) so the FE knows to
-        ;; invalidate the right collection's items list — including root.
-        (contains? body :collection_id) (assoc :collection_id (:collection_id body))))]))
+      {:entity_type "dashboard" :id id :public_link_changed true})]))
 
 (defn- moderation-changed-parts
   "verify_card targets a card or a dashboard via `:moderated_item_type`. Map to
   the FE's entity-type vocabulary so the right cache tags get invalidated."
-  [body]
-  (when-let [id (:moderated_item_id body)]
-    (let [item-type (some-> (:moderated_item_type body) name)
-          entity    (case item-type
-                      "card"      "card"
-                      "dashboard" "dashboard"
-                      ;; Fall back to "card" — verify_card historically targets cards.
-                      "card")]
-      [(streaming/entity-changed-part {:entity_type entity :id id})])))
+  [_arguments body]
+  (when (map? body)
+    (when-let [id (:moderated_item_id body)]
+      (let [item-type (some-> (:moderated_item_type body) name)
+            entity    (case item-type
+                        "card"      "card"
+                        "dashboard" "dashboard"
+                        ;; Fall back to "card" — verify_card historically targets cards.
+                        "card")]
+        [(streaming/entity-changed-part {:entity_type entity :id id})]))))
 
 (def ^:private entity-change-fns
-  "Per-tool: function `body → [data-parts]` for cache-invalidation hints. Read-only
-  tools have no entry; nothing extra is attached to their results."
-  {"update_card"         card-changed-parts
-   "move_card"           card-changed-parts
-   "archive_card"        card-changed-parts
-   "copy_card"           card-changed-parts
-   "verify_card"         moderation-changed-parts
-   "create_collection"   collection-changed-parts
-   "update_collection"   collection-changed-parts
-   "move_collection"     collection-changed-parts
-   "archive_collection"  collection-changed-parts
-   "create_dashboard"    dashboard-changed-parts
-   "update_dashboard"    dashboard-changed-parts
-   "move_dashboard"      dashboard-changed-parts
-   "archive_dashboard"   dashboard-changed-parts
-   "copy_dashboard"      dashboard-changed-parts})
+  "Per-tool: function `(arguments body) → [data-parts]` for cache-invalidation
+  hints. Read-only tools have no entry; nothing extra is attached to their
+  results."
+  {"update_card"                  card-changed-parts
+   "move_card"                    card-changed-parts
+   "archive_card"                 card-changed-parts
+   "copy_card"                    card-changed-parts
+   "verify_card"                  moderation-changed-parts
+   "create_collection"            collection-changed-parts
+   "update_collection"            collection-changed-parts
+   "move_collection"              collection-changed-parts
+   "archive_collection"           collection-changed-parts
+   "create_dashboard"             dashboard-changed-parts
+   "update_dashboard"             dashboard-changed-parts
+   "move_dashboard"               dashboard-changed-parts
+   "archive_dashboard"            dashboard-changed-parts
+   "copy_dashboard"               dashboard-changed-parts
+   "create_dashboard_public_link" dashboard-public-link-changed-parts
+   "delete_dashboard_public_link" dashboard-public-link-changed-parts})
 
 (defn- entity-changes-for-result
   "Compute cache-invalidation data parts for a 2xx tool response, or `nil`."
-  [tool-name body]
+  [tool-name arguments body]
   (when-let [f (get entity-change-fns tool-name)]
-    (when (map? body)
-      (try
-        (seq (f body))
-        (catch Throwable t
-          ;; Never let a hint-construction bug break a successful tool call.
-          (log/warn t "Failed to compute entity-changed parts" {:tool tool-name})
-          nil)))))
+    (try
+      (seq (f arguments body))
+      (catch Throwable t
+        ;; Never let a hint-construction bug break a successful tool call.
+        (log/warn t "Failed to compute entity-changed parts" {:tool tool-name})
+        nil))))
 
 (defn- shape-success
   "Convert a 2xx HTTP response into a metabot tool result map."
-  [tool-name body]
-  (let [data-parts (entity-changes-for-result tool-name body)]
+  [tool-name arguments body]
+  (let [data-parts (entity-changes-for-result tool-name arguments body)]
     (cond-> {:output            (str "Result from `" tool-name "`:\n" (json-encode-body body))
              :structured-output body}
       (contains? endpoint-tool-instructions tool-name)
@@ -443,9 +467,9 @@
   {:output (str "Error from `" tool-name "`: " (extract-error-message response))})
 
 (defn- shape-result
-  [tool-name {:keys [status] :as response}]
+  [tool-name arguments {:keys [status] :as response}]
   (if (and (integer? status) (<= 200 status 299))
-    (shape-success tool-name (:body response))
+    (shape-success tool-name arguments (:body response))
     (shape-error   tool-name response)))
 
 ;;; ----------------------------------------------------------------------------
@@ -489,7 +513,7 @@
                             {:agent-error? true :path resolved-path})))
           (let [request  (build-request ring-method-kw resolved-path prefix remaining)
                 response (invoke-handler handler request)]
-            (shape-result name response)))
+            (shape-result name filtered response)))
         (catch Throwable t
           (log/warn t "Bridge tool failure" {:tool name})
           {:output (str "Error from `" name "`: " (or (ex-message t) "Unknown error"))})))))

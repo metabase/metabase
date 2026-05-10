@@ -221,8 +221,10 @@
 ;;; ----------------------------------------------------------------------------
 
 (defn- entity-changes-for-result
-  [tool-name body]
-  (#'bridge/entity-changes-for-result tool-name body))
+  ([tool-name body]
+   (#'bridge/entity-changes-for-result tool-name nil body))
+  ([tool-name arguments body]
+   (#'bridge/entity-changes-for-result tool-name arguments body)))
 
 (deftest entity-changed-emitted-for-card-mutations-test
   (testing "update_card response → one entity_changed part for the card"
@@ -538,7 +540,47 @@
       (is (contains? (:data (first parts)) :collection_id))
       (is (nil? (get-in (first parts) [:data :collection_id]))))))
 
-(deftest entity-changed-skipped-for-public-link-tools-test
-  (testing "public-link tools do not emit entity_changed parts (no FE cache to invalidate by id)"
-    (is (nil? (entity-changes-for-result "create_dashboard_public_link" {:uuid "abc"})))
-    (is (nil? (entity-changes-for-result "delete_dashboard_public_link" nil)))))
+(deftest entity-changed-emitted-for-public-link-tools-test
+  (testing "public-link tools emit a dashboard entity_changed with public_link_changed: true"
+    (testing "create_dashboard_public_link uses :dashboard-id from arguments (kebab-case path param)"
+      (let [parts (entity-changes-for-result "create_dashboard_public_link"
+                                             {:dashboard-id 42}
+                                             {:uuid "abc"})]
+        (is (= 1 (count parts)))
+        (is (= "entity_changed" (:data-type (first parts))))
+        (is (= {:entity_type "dashboard" :id 42 :public_link_changed true}
+               (:data (first parts))))))
+    (testing "delete_dashboard_public_link works with a nil body (204 response)"
+      (let [parts (entity-changes-for-result "delete_dashboard_public_link"
+                                             {:dashboard-id 42}
+                                             nil)]
+        (is (= 1 (count parts)))
+        (is (= {:entity_type "dashboard" :id 42 :public_link_changed true}
+               (:data (first parts))))))
+    (testing "snake_case dashboard_id is also accepted (defensive)"
+      (let [parts (entity-changes-for-result "create_dashboard_public_link"
+                                             {:dashboard_id 42}
+                                             {:uuid "abc"})]
+        (is (= {:entity_type "dashboard" :id 42 :public_link_changed true}
+               (:data (first parts))))))
+    (testing "missing dashboard id ⇒ no parts (rather than throwing)"
+      (is (nil? (entity-changes-for-result "create_dashboard_public_link" {} {:uuid "abc"}))))))
+
+(deftest create-dashboard-public-link-end-to-end-test
+  (testing "create_dashboard_public_link routed through the bridge attaches an entity_changed data part"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Bridge Public Link Dashboard"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (let [tool   (get (bridge/endpoint-tools #{"create_dashboard_public_link"})
+                              "create_dashboard_public_link")
+                  result ((:fn tool) {:dashboard-id dash-id})
+                  parts  (:data-parts result)]
+              (is (some? (get-in result [:structured-output :uuid]))
+                  "the create endpoint returns a uuid")
+              (is (= 1 (count parts)))
+              (is (= "entity_changed" (:data-type (first parts))))
+              (is (= {:entity_type         "dashboard"
+                      :id                  dash-id
+                      :public_link_changed true}
+                     (:data (first parts)))))))))))

@@ -39,6 +39,10 @@ export type EntityChangedValue = {
   id: number;
   collection_id?: number | null;
   parent_id?: number | null;
+  // Set on dashboard parts emitted by `create_dashboard_public_link` /
+  // `delete_dashboard_public_link` so the FE additionally invalidates the
+  // public-dashboard caches.
+  public_link_changed?: boolean;
 };
 
 export type KnownDataPart =
