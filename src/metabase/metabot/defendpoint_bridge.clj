@@ -58,6 +58,7 @@
   namespaces on an OSS classpath) are silently skipped at manifest-build time."
   {'metabase.collections-rest.api  "/api/collection"
    'metabase.queries-rest.api.card "/api/card"
+   'metabase.dashboards-rest.api   "/api/dashboard"
    'metabase-enterprise.content-verification.api.moderation-review
    "/api/moderation-review"})
 
@@ -302,7 +303,44 @@
    "archive_collection"
    (str "If `archived: true` was passed, the collection and its descendants are now "
         "in the Trash. If `archived: false`, the collection has been restored. "
-        "Reference it as `[name](metabase://collection/{id})`.")})
+        "Reference it as `[name](metabase://collection/{id})`.")
+
+   "create_dashboard"
+   (str "The dashboard has been created. Reference it as "
+        "`[name](metabase://dashboard/{id})`. The dashboard is empty — guide the "
+        "user to add cards from the dashboard UI, or save existing cards into it.")
+
+   "update_dashboard"
+   (str "Updated `[name](metabase://dashboard/{id})`. The change took effect "
+        "immediately; the user does not need to refresh.")
+
+   "move_dashboard"
+   (str "Moved `[name](metabase://dashboard/{id})` to "
+        "`[collection](metabase://collection/{collection_id})`. The previous "
+        "collection no longer contains this dashboard.")
+
+   "archive_dashboard"
+   (str "If `archived: true` was passed, the dashboard is now in the Trash and is "
+        "hidden from collection listings; tell the user it can be restored from the "
+        "Trash UI or by asking you to restore it. If `archived: false` was passed, "
+        "the dashboard has been restored. Reference it as "
+        "`[name](metabase://dashboard/{id})`.")
+
+   "copy_dashboard"
+   (str "Duplicated the original dashboard. Reference the new dashboard as "
+        "`[name](metabase://dashboard/{id})`. Pass `is_deep_copy: true` if the user "
+        "wants the dashboard's questions duplicated (otherwise the copy references "
+        "the same questions). Follow up with `update_dashboard` to rename or "
+        "`move_dashboard` to relocate when needed.")
+
+   "create_dashboard_public_link"
+   (str "Generated a public link for the dashboard. The response includes a `uuid` "
+        "the user can append to the public-sharing URL. Public sharing must be "
+        "enabled instance-wide; this action requires admin privileges.")
+
+   "delete_dashboard_public_link"
+   (str "Removed the dashboard's public link. The previously-shared URL will no "
+        "longer resolve.")})
 
 (defn- json-encode-body [body]
   (try
@@ -336,6 +374,14 @@
       (cond-> {:entity_type "collection" :id id}
         (contains? body :parent_id) (assoc :parent_id (:parent_id body))))]))
 
+(defn- dashboard-changed-parts [body]
+  (when-let [id (:id body)]
+    [(streaming/entity-changed-part
+      (cond-> {:entity_type "dashboard" :id id}
+        ;; Always include :collection_id (even if `nil`) so the FE knows to
+        ;; invalidate the right collection's items list — including root.
+        (contains? body :collection_id) (assoc :collection_id (:collection_id body))))]))
+
 (defn- moderation-changed-parts
   "verify_card targets a card or a dashboard via `:moderated_item_type`. Map to
   the FE's entity-type vocabulary so the right cache tags get invalidated."
@@ -360,7 +406,12 @@
    "create_collection"   collection-changed-parts
    "update_collection"   collection-changed-parts
    "move_collection"     collection-changed-parts
-   "archive_collection"  collection-changed-parts})
+   "archive_collection"  collection-changed-parts
+   "create_dashboard"    dashboard-changed-parts
+   "update_dashboard"    dashboard-changed-parts
+   "move_dashboard"      dashboard-changed-parts
+   "archive_dashboard"   dashboard-changed-parts
+   "copy_dashboard"      dashboard-changed-parts})
 
 (defn- entity-changes-for-result
   "Compute cache-invalidation data parts for a 2xx tool response, or `nil`."

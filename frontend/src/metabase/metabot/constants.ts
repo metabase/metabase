@@ -183,4 +183,25 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get verify_card() {
     return t`Updating verification status`;
   },
+  get create_dashboard() {
+    return t`Creating a dashboard`;
+  },
+  get update_dashboard() {
+    return t`Updating the dashboard`;
+  },
+  get move_dashboard() {
+    return t`Moving the dashboard`;
+  },
+  get archive_dashboard() {
+    return t`Archiving the dashboard`;
+  },
+  get copy_dashboard() {
+    return t`Duplicating the dashboard`;
+  },
+  get create_dashboard_public_link() {
+    return t`Creating a public link`;
+  },
+  get delete_dashboard_public_link() {
+    return t`Removing the public link`;
+  },
 };

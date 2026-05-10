@@ -69,6 +69,10 @@
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-update "agent:dashboard:update"
+  (deferred-tru "Modify existing dashboards (rename, describe, move, archive)"))
+(api-scope/defscope agent-dashboard-share "agent:dashboard:share"
+  (deferred-tru "Create or remove public sharing links for dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
 

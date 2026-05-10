@@ -1235,6 +1235,7 @@
               collections
               collections-rest
               config
+              dashboards-rest
               documents
               driver
               interestingness

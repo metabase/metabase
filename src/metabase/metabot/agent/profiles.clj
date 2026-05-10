@@ -121,7 +121,14 @@
                     "move_card"
                     "archive_card"
                     "copy_card"
-                    "verify_card"]})
+                    "verify_card"
+                    "create_dashboard"
+                    "update_dashboard"
+                    "move_dashboard"
+                    "archive_dashboard"
+                    "copy_dashboard"
+                    "create_dashboard_public_link"
+                    "delete_dashboard_public_link"]})
 
 (register-profile!
  {:name            :transforms_codegen

@@ -127,6 +127,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
+  {:scope "agent:dashboard:create"
+   :tool  {:name        "create_dashboard"
+           :description (str "Create a new (empty) dashboard. Pass `collection_id` to place "
+                             "it inside a specific collection (omit to use the user's default). "
+                             "Cards are not added at creation time — guide the user to add them "
+                             "from the dashboard UI or via `save_card` / existing-card workflows.")
+           :fields      [:name :description :collection_id]}}
   [_route-params
    _query-params
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
@@ -527,6 +534,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
   "Copy a Dashboard."
+  {:scope "agent:dashboard:create"
+   :tool  {:name        "copy_dashboard"
+           :description (str "Duplicate an existing dashboard. Pass `is_deep_copy: true` to also "
+                             "copy each card inside the dashboard (otherwise the copy references "
+                             "the same underlying cards). Optional `name`, `description`, and "
+                             "`collection_id` override the originals on the new dashboard.")
+           :fields      [:name :description :collection_id :is_deep_copy]}}
   [{:keys [from-dashboard-id]} :- [:map
                                    [:from-dashboard-id ms/PositiveInt]]
    _query-params
@@ -1096,6 +1110,21 @@
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
+  {:scope "agent:dashboard:update"
+   :tool  [{:name        "update_dashboard"
+            :description (str "Rename a dashboard, edit its description, change its width "
+                              "(`fixed`/`full`), or update its cache TTL. Does not modify "
+                              "cards, tabs, parameters, or layout.")
+            :fields      [:name :description :width :cache_ttl]}
+           {:name        "move_dashboard"
+            :description (str "Move a dashboard to a different collection. Pass "
+                              "`collection_id: null` to move it to the root collection.")
+            :fields      [:collection_id]}
+           {:name        "archive_dashboard"
+            :description (str "Move a dashboard to the Trash (`archived: true`) or restore it "
+                              "from the Trash (`archived: false`). Confirm with the user before "
+                              "archiving.")
+            :fields      [:archived]}]}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -1164,6 +1193,11 @@
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
+  {:scope "agent:dashboard:share"
+   :tool  {:name        "create_dashboard_public_link"
+           :description (str "Generate a public-share URL for a dashboard. Returns the UUID "
+                             "the FE appends to the public-sharing path. Requires admin "
+                             "privileges and instance-wide public sharing to be enabled.")}}
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -1189,6 +1223,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
+  {:scope "agent:dashboard:share"
+   :tool  {:name        "delete_dashboard_public_link"
+           :description (str "Remove the public-share URL from a dashboard. Requires admin "
+                             "privileges. The previously-shared URL will no longer resolve.")}}
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)

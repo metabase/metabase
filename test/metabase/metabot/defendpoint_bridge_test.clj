@@ -388,3 +388,157 @@
                                            {:id 4321 :collection_id 17 :name "Copy of X"})]
       (is (= {:entity_type "card" :id 4321 :collection_id 17}
              (:data (first parts)))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Dashboard tools (Tier 1 from notes/bot-1453/adding-dashboards.md)
+;;; ----------------------------------------------------------------------------
+
+(deftest manifest-includes-dashboard-tools-test
+  (testing "the seven Tier 1 dashboard endpoints surface as tools"
+    (let [names (bridge/manifest-tool-names)]
+      (is (contains? names "create_dashboard"))
+      (is (contains? names "update_dashboard"))
+      (is (contains? names "move_dashboard"))
+      (is (contains? names "archive_dashboard"))
+      (is (contains? names "copy_dashboard"))
+      (is (contains? names "create_dashboard_public_link"))
+      (is (contains? names "delete_dashboard_public_link")))))
+
+(deftest update-dashboard-input-schema-is-narrowed-test
+  (testing ":fields restricts update_dashboard to name/description/width/cache_ttl"
+    (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+      (let [tool       (get (bridge/endpoint-tools #{"update_dashboard"}) "update_dashboard")
+            properties (set (map keyword (keys (get-in tool [:schema :properties]))))]
+        (is (= #{:id :name :description :width :cache_ttl} properties)
+            "only the path :id and the four allow-listed fields should be exposed")
+        (is (not (contains? properties :collection_id))
+            ":collection_id belongs to move_dashboard")
+        (is (not (contains? properties :archived))
+            ":archived belongs to archive_dashboard")
+        (is (not (contains? properties :dashcards))
+            ":dashcards is not exposed in Tier 1")))))
+
+(deftest archive-dashboard-input-schema-is-narrowed-test
+  (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+    (let [tool       (get (bridge/endpoint-tools #{"archive_dashboard"}) "archive_dashboard")
+          properties (set (map keyword (keys (get-in tool [:schema :properties]))))]
+      (is (= #{:id :archived} properties)))))
+
+(deftest move-dashboard-input-schema-is-narrowed-test
+  (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+    (let [tool       (get (bridge/endpoint-tools #{"move_dashboard"}) "move_dashboard")
+          properties (set (map keyword (keys (get-in tool [:schema :properties]))))]
+      (is (= #{:id :collection_id} properties)))))
+
+(deftest create-dashboard-creates-a-dashboard-test
+  (testing "create_dashboard creates a new dashboard via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bridge Dashboard Coll"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"create_dashboard"}) "create_dashboard")
+                result ((:fn tool) {:name          "Bridge Dashboard"
+                                    :description   "made via the bridge"
+                                    :collection_id coll-id})
+                body   (:structured-output result)]
+            (is (integer? (:id body)))
+            (is (= "Bridge Dashboard" (:name body)))
+            (is (= coll-id (:collection_id body)))))))))
+
+(deftest update-dashboard-renames-through-bridge-test
+  (testing "update_dashboard mutates name/description/width via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Bridge Dashboard Initial"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool  (get (bridge/endpoint-tools #{"update_dashboard"}) "update_dashboard")
+                _     ((:fn tool) {:id          dash-id
+                                   :name        "Bridge Dashboard Renamed"
+                                   :description "via update_dashboard"
+                                   :width       "full"})
+                after (t2/select-one [:model/Dashboard :name :description :width] dash-id)]
+            (is (= "Bridge Dashboard Renamed" (:name after)))
+            (is (= "via update_dashboard" (:description after)))
+            (is (= "full" (:width after)))))))))
+
+(deftest update-dashboard-strips-disallowed-keys-test
+  (testing "the bridge filters extra keys before dispatch — :archived can't sneak through update_dashboard"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Bridge Dashboard Filter"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool  (get (bridge/endpoint-tools #{"update_dashboard"}) "update_dashboard")
+                _     ((:fn tool) {:id       dash-id
+                                   :name     "Bridge Dashboard Filter (renamed)"
+                                   :archived true})
+                after (t2/select-one [:model/Dashboard :name :archived] dash-id)]
+            (is (= "Bridge Dashboard Filter (renamed)" (:name after))
+                "the rename should land — :name is allow-listed")
+            (is (false? (boolean (:archived after)))
+                "the bridge stripped :archived; only archive_dashboard exposes it")))))))
+
+(deftest move-dashboard-changes-collection-id-test
+  (testing "move_dashboard reparents a dashboard via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {dest-id :id} {:name "Bridge Move Dashboard Dest"}
+                     :model/Dashboard  {dash-id :id} {:name "Bridge Move Dashboard"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool  (get (bridge/endpoint-tools #{"move_dashboard"}) "move_dashboard")
+                _     ((:fn tool) {:id            dash-id
+                                   :collection_id dest-id})
+                after (t2/select-one [:model/Dashboard :collection_id] dash-id)]
+            (is (= dest-id (:collection_id after)))))))))
+
+(deftest archive-dashboard-trashes-and-restores-test
+  (testing "archive_dashboard with archived=true moves a dashboard to the Trash"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Bridge Archive Dashboard"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool  (get (bridge/endpoint-tools #{"archive_dashboard"}) "archive_dashboard")
+                _     ((:fn tool) {:id dash-id :archived true})
+                after (t2/select-one [:model/Dashboard :archived] dash-id)]
+            (is (true? (:archived after))))))))
+  (testing "archive_dashboard with archived=false restores from the Trash"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name     "Bridge Restore Dashboard"
+                                                     :archived true}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool  (get (bridge/endpoint-tools #{"archive_dashboard"}) "archive_dashboard")
+                _     ((:fn tool) {:id dash-id :archived false})
+                after (t2/select-one [:model/Dashboard :archived] dash-id)]
+            (is (false? (:archived after)))))))))
+
+(deftest copy-dashboard-creates-a-new-dashboard-test
+  (testing "copy_dashboard duplicates a dashboard via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {src-id :id} {:name "Bridge Copy Source Dashboard"}]
+        (binding [scope/*current-user-scope* #{"agent:dashboard:*"}]
+          (let [tool      (get (bridge/endpoint-tools #{"copy_dashboard"}) "copy_dashboard")
+                result    ((:fn tool) {:from-dashboard-id src-id
+                                       :name              "Bridge Copy Result"})
+                new-dash  (:structured-output result)]
+            (is (map? new-dash))
+            (is (integer? (:id new-dash)))
+            (is (not= src-id (:id new-dash))
+                "copy_dashboard returns a freshly created dashboard, not the original")
+            (is (= "Bridge Copy Result" (:name new-dash)))))))))
+
+(deftest entity-changed-emitted-for-dashboard-mutations-test
+  (testing "create/update/move/archive/copy each emit a dashboard entity_changed part"
+    (doseq [tool-name ["create_dashboard"
+                       "update_dashboard"
+                       "move_dashboard"
+                       "archive_dashboard"
+                       "copy_dashboard"]]
+      (let [parts (entity-changes-for-result tool-name {:id 7 :collection_id 3 :name "X"})]
+        (is (= 1 (count parts)))
+        (is (= "entity_changed" (:data-type (first parts))))
+        (is (= {:entity_type "dashboard" :id 7 :collection_id 3}
+               (:data (first parts)))
+            (str tool-name " should describe the dashboard that changed")))))
+  (testing "move_dashboard to root keeps :collection_id nil"
+    (let [parts (entity-changes-for-result "move_dashboard" {:id 7 :collection_id nil})]
+      (is (contains? (:data (first parts)) :collection_id))
+      (is (nil? (get-in (first parts) [:data :collection_id]))))))
+
+(deftest entity-changed-skipped-for-public-link-tools-test
+  (testing "public-link tools do not emit entity_changed parts (no FE cache to invalidate by id)"
+    (is (nil? (entity-changes-for-result "create_dashboard_public_link" {:uuid "abc"})))
+    (is (nil? (entity-changes-for-result "delete_dashboard_public_link" nil)))))
