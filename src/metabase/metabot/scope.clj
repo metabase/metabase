@@ -41,12 +41,20 @@
 ;; Card (saved cards via memory-backed save_card tool)
 (api-scope/defscope agent-card-create "agent:card:create"
   (deferred-tru "Save in-memory queries as cards"))
+(api-scope/defscope agent-card-update "agent:card:update"
+  (deferred-tru "Modify existing saved cards (rename, describe, change display, move)"))
 
 ;; Collection
 (api-scope/defscope agent-collection-read "agent:collection:read"
   (deferred-tru "Browse collections and their contents"))
 (api-scope/defscope agent-collection-create "agent:collection:create"
   (deferred-tru "Create new collections"))
+(api-scope/defscope agent-collection-update "agent:collection:update"
+  (deferred-tru "Modify existing collections (rename, describe, mark official, move)"))
+
+;; Moderation (EE — verify saved cards/dashboards)
+(api-scope/defscope agent-moderation-write "agent:moderation:write"
+  (deferred-tru "Verify or unverify saved content"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -156,9 +164,9 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*" "agent:card:create"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*" "agent:card:create"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*" "agent:collection:*"}})
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*" "agent:card:create" "agent:card:update"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*" "agent:card:create" "agent:card:update"}
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*" "agent:collection:*" "agent:moderation:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."

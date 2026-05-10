@@ -745,6 +745,16 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
+  {:scope "agent:card:update"
+   :tool  [{:name        "update_card"
+            :description (str "Rename a saved card, update its description, or change "
+                              "its display type. Does not modify the underlying query "
+                              "or visualization settings.")
+            :fields      [:name :description :display]}
+           {:name        "move_card"
+            :description (str "Move a saved card to a different collection. Pass "
+                              "`collection_id: null` to move it to the root collection.")
+            :fields      [:collection_id]}]}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map

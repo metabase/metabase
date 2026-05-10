@@ -87,7 +87,30 @@
   (testing "a user with metabot-other-tools can browse collections"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
       (is (api-scope/scope-matches? scopes "agent:collection:read"))
-      (is (api-scope/scope-matches? scopes "agent:collection:create")))))
+      (is (api-scope/scope-matches? scopes "agent:collection:create"))
+      (is (api-scope/scope-matches? scopes "agent:collection:update")
+          "collection-update rides on metabot-other-tools alongside read/create"))))
+
+(deftest ^:parallel perms->scopes-card-update-test
+  (testing "agent:card:update is granted by either SQL generation or NLQ permissions"
+    (is (api-scope/scope-matches?
+         (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})
+         "agent:card:update"))
+    (is (api-scope/scope-matches?
+         (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})
+         "agent:card:update")))
+  (testing "agent:card:update is NOT granted by only metabot-other-tools"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
+      (is (not (api-scope/scope-matches? scopes "agent:card:update"))))))
+
+(deftest ^:parallel perms->scopes-moderation-test
+  (testing "agent:moderation:write rides under metabot-other-tools"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
+      (is (api-scope/scope-matches? scopes "agent:moderation:write"))))
+  (testing "agent:moderation:write is NOT granted by query permissions alone"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes
+                                                    :permission/metabot-nlq            :yes})]
+      (is (not (api-scope/scope-matches? scopes "agent:moderation:write"))))))
 
 (deftest ^:parallel perms->scopes-no-does-not-grant-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :no

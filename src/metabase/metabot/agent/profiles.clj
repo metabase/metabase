@@ -113,7 +113,12 @@
   :endpoint-tools  ["list_collections"
                     "get_collection"
                     "list_collection_items"
-                    "create_collection"]})
+                    "create_collection"
+                    "update_collection"
+                    "move_collection"
+                    "update_card"
+                    "move_card"
+                    "verify_card"]})
 
 (register-profile!
  {:name            :transforms_codegen

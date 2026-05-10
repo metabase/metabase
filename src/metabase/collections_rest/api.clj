@@ -1666,6 +1666,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
+  {:scope "agent:collection:update"
+   :tool  [{:name        "update_collection"
+            :description (str "Rename a collection, edit its description, change its type, "
+                              "or mark it Official (or unmark it). Authority-level changes "
+                              "require superuser and the :official-collections premium feature.")
+            :fields      [:name :description :authority_level :type]}
+           {:name        "move_collection"
+            :description (str "Re-parent a collection. Pass `parent_id: null` to move it to "
+                              "the root collection. Sub-collections move with the parent.")
+            :fields      [:parent_id]}]}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params

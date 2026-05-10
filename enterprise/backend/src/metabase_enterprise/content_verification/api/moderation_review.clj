@@ -13,6 +13,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `ModerationReview`."
+  {:scope "agent:moderation:write"
+   :tool  {:name        "verify_card"
+           :description (str "Mark a saved card or dashboard as Verified, or remove its "
+                             "verified status. Set `status` to \"verified\" to verify or "
+                             "leave it null to clear the verification. Requires superuser "
+                             "and the :content-verification premium feature.")
+           :feature     :content-verification
+           :fields      [:moderated_item_id :moderated_item_type :status :text]}}
   [_route-params
    _query-params
    {:keys [text moderated_item_id moderated_item_type status]}

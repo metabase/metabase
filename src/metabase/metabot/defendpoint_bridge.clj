@@ -8,7 +8,7 @@
   loop expects (see [[metabase.metabot.tools/wrap-tools-with-state]]), and synthesises
   Ring requests that dispatch directly to the originating namespace's handler.
 
-  Two design choices worth flagging:
+  Three design choices worth flagging:
 
   - `:schema` here is a JSON Schema object (the manifest already produces JSON Schema
     2020-12), not a Malli `[:=> [:cat …] …]` form. The provider adapters detect this
@@ -16,7 +16,12 @@
     et al.
   - We dispatch via `api.macros/ns-handler`, not by going back through the top-level
     `+auth` middleware. The agent loop is already authenticated; round-tripping through
-    auth would require fabricating session cookies."
+    auth would require fabricating session cookies.
+  - When a tool entry declares `:fields` (a keyword allowlist on the underlying body
+    schema), the bridge double-enforces it: the manifest narrows the LLM-visible
+    inputSchema, and [[endpoint-tool-fn]] hard-filters incoming args by `inputSchema`
+    keys before forwarding to the handler. Unintended fields can never reach the
+    handler even under prompt injection."
   (:require
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
@@ -24,6 +29,7 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
    [metabase.metabot.scope :as scope]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -38,17 +44,28 @@
 (def ^:private bridged-namespace-prefixes
   "Map of `{namespace-symbol \"<route-prefix>\"}` whose endpoints we want to expose
   to the agent loop. The namespace-symbol must match the namespace mounted under the
-  prefix in `metabase.api-routes.routes`."
-  {'metabase.collections-rest.api "/api/collection"})
+  prefix in `metabase.api-routes.routes`. Namespaces that fail to `require` (e.g. EE
+  namespaces on an OSS classpath) are silently skipped at manifest-build time."
+  {'metabase.collections-rest.api  "/api/collection"
+   'metabase.queries-rest.api.card "/api/card"
+   'metabase-enterprise.content-verification.api.moderation-review
+   "/api/moderation-review"})
 
 (defn- generate-manifest []
   ;; Eagerly load the bridged namespaces so their `:api/endpoints` metadata is available
-  ;; when the manifest is built. Otherwise profile registration (which forces this delay)
-  ;; can fire before `metabase.api-routes.routes` has loaded the endpoint namespace and
-  ;; we'd see an empty manifest.
-  (doseq [ns-sym (keys bridged-namespace-prefixes)]
-    (require ns-sym))
-  (tools-manifest/generate-tools-manifest bridged-namespace-prefixes))
+  ;; when the manifest is built. EE namespaces may not exist on the OSS classpath, so we
+  ;; tolerate require failures and only feed successfully-loaded namespaces to the manifest.
+  (let [loaded (into {}
+                     (keep (fn [[ns-sym prefix]]
+                             (try
+                               (require ns-sym)
+                               [ns-sym prefix]
+                               (catch Throwable t
+                                 (log/info t "Bridged namespace not available; skipping"
+                                           {:ns ns-sym})
+                                 nil))))
+                     bridged-namespace-prefixes)]
+    (tools-manifest/generate-tools-manifest loaded)))
 
 (def ^:private manifest-delay
   (delay (generate-manifest)))
@@ -60,11 +77,23 @@
     (generate-manifest)
     @manifest-delay))
 
+(def ^:private optional-tool-names
+  "Tool names whose backing namespace is OSS-vs-EE conditional, or which sit behind a
+  premium feature. These names are always considered valid in profile registration
+  so the OSS classpath doesn't reject EE-only tools at JVM start. At request time
+  they are filtered out either by the namespace failing to load (on OSS) or by the
+  per-tool `:feature` gate in [[endpoint-tools]]."
+  #{"verify_card"})
+
 (defn manifest-tool-names
-  "Set of tool names registered in the bridge manifest. Used by profile registration
-  to validate that an `:endpoint-tools` entry refers to a real annotated endpoint."
+  "Set of tool names registered in the bridge manifest, plus the names of tools that
+  live in conditionally-loaded EE namespaces. Used by profile registration to validate
+  that an `:endpoint-tools` entry refers to a real annotated endpoint without
+  rejecting EE-only tools on an OSS classpath."
   []
-  (set (map :name (:tools (manifest)))))
+  (into optional-tool-names
+        (map :name)
+        (:tools (manifest))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Path interpolation
@@ -104,12 +133,18 @@
 
 (defn- handler-for-tool
   "Find the namespace symbol whose prefix matches `tool-path`, then return its
-  ns-handler. Memoised in prod so we resolve the handler only once."
+  ns-handler. Memoised in prod so we resolve the handler only once. Skips entries
+  whose namespace failed to load (so OSS builds can declare EE namespaces here
+  without crashing)."
   [tool-path]
   (some (fn [[ns-sym prefix]]
-          (when (str/starts-with? tool-path prefix)
+          (when (and (str/starts-with? tool-path prefix)
+                     (find-ns ns-sym))
             [ns-sym prefix (ns-handler-for ns-sym)]))
-        bridged-namespace-prefixes))
+        ;; Sort by descending prefix length so a more-specific prefix wins over a
+        ;; shorter one that happens to be a prefix-of-prefix. (Today none of our
+        ;; bridged prefixes are nested, but the comparator is cheap insurance.)
+        (sort-by (fn [[_ prefix]] (- (count prefix))) bridged-namespace-prefixes)))
 
 (def ^:private memoised-handler-for-tool
   ;; Cache only in prod; in dev we want REPL-driven changes to defendpoints to take effect.
@@ -214,7 +249,31 @@
    "create_collection"
    (str "The collection has been created. Reference it as "
         "`[name](metabase://collection/{id})`. If the user mentioned cards to put in "
-        "the collection, call `save_card` next with this `collection_id`.")})
+        "the collection, call `save_card` next with this `collection_id`.")
+
+   "update_collection"
+   (str "Updated `[name](metabase://collection/{id})`. If the user wanted to move the "
+        "collection to a different parent, call `move_collection` next. Marking a "
+        "collection Official is visible to all users in the org — do not apply it silently.")
+
+   "move_collection"
+   (str "Collection moved. Reference the new location as "
+        "`[name](metabase://collection/{id})`. Sub-collections move with it; mention "
+        "this if the user might be surprised.")
+
+   "update_card"
+   (str "Updated `[name](metabase://question/{id})`. The change took effect "
+        "immediately; the user does not need to refresh.")
+
+   "move_card"
+   (str "Moved `[name](metabase://question/{id})` to "
+        "`[collection](metabase://collection/{collection_id})`. The previous "
+        "collection no longer contains this card.")
+
+   "verify_card"
+   (str "Marked `[name](metabase://question/{id})` as verified (or removed verification). "
+        "The verified badge will appear in search results and on the item's detail page "
+        "after the next search-index refresh.")})
 
 (defn- json-encode-body [body]
   (try
@@ -243,15 +302,39 @@
 ;;; ----------------------------------------------------------------------------
 ;;; Tool function
 
+(defn- inputschema-allowed-keys
+  "Return the set of keyword keys the LLM is permitted to send for this tool, or nil
+  if the schema doesn't enumerate properties (e.g. raw `:or`-shaped bodies)."
+  [inputSchema]
+  (some-> inputSchema :properties keys (->> (map keyword) set)))
+
+(defn- filter-arguments
+  "Hard-filter LLM-supplied arguments to the keys exposed in `inputSchema`. This is
+  defence-in-depth on top of the manifest's narrowed schema — even a misbehaving
+  model or prompt-injected argument map can never thread a forbidden key through
+  to the underlying handler. When `allowed-keys` is nil (no schema constraint),
+  arguments pass through unchanged."
+  [allowed-keys arguments]
+  (let [args (or arguments {})]
+    (if (nil? allowed-keys)
+      args
+      (into {}
+            (filter (fn [[k _v]]
+                      (contains? allowed-keys
+                                 (if (keyword? k) k (keyword (str k))))))
+            args))))
+
 (defn- endpoint-tool-fn
   "Build the `:fn` value for a defendpoint-backed tool from its manifest entry."
-  [{:keys [name endpoint]}]
+  [{:keys [name endpoint inputSchema]}]
   (let [{:keys [method path]} endpoint
-        ring-method-kw         (ring-method method)]
+        ring-method-kw         (ring-method method)
+        allowed-keys           (inputschema-allowed-keys inputSchema)]
     (fn [arguments]
       (try
-        (let [[resolved-path remaining]   (interpolate-path path (or arguments {}))
-              [_ns-sym prefix handler]    (resolve-handler resolved-path)]
+        (let [filtered                     (filter-arguments allowed-keys arguments)
+              [resolved-path remaining]    (interpolate-path path filtered)
+              [_ns-sym prefix handler]     (resolve-handler resolved-path)]
           (when-not handler
             (throw (ex-info (str "No bridged namespace handles path: " resolved-path)
                             {:agent-error? true :path resolved-path})))
@@ -275,19 +358,27 @@
            :fn        (endpoint-tool-fn entry)}
     scope (assoc :scope scope)))
 
+(defn- feature-available?
+  "True if `feature` is nil (no gate) or the running instance has the premium feature."
+  [feature]
+  (or (nil? feature)
+      (premium-features/has-feature? feature)))
+
 (defn endpoint-tools
   "Return a `{tool-name → tool-def}` map suitable for merging into the agent loop's
   tool registry. Tools whose `:scope` is not satisfied by the current
-  [[scope/*current-user-scope*]] binding are filtered out."
+  [[scope/*current-user-scope*]] binding, or whose `:feature` is not active for
+  the running instance, are filtered out."
   ([]
    (endpoint-tools (manifest-tool-names)))
   ([allowed-names]
    (let [allowed (set allowed-names)
          entries (filter #(contains? allowed (:name %)) (:tools (manifest)))]
      (into {}
-           (comp (filter (fn [{:keys [scope]}]
-                           (or (nil? scope)
-                               (api-scope/scope-matches? scope/*current-user-scope* scope))))
+           (comp (filter (fn [{:keys [scope feature]}]
+                           (and (or (nil? scope)
+                                    (api-scope/scope-matches? scope/*current-user-scope* scope))
+                                (feature-available? feature))))
                  (map (juxt :name manifest-entry->tool-def)))
            entries))))
 

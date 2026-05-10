@@ -3,8 +3,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.defendpoint-bridge :as bridge]
    [metabase.metabot.scope :as scope]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (deftest manifest-includes-collection-tools-test
   (testing "the four annotated collection endpoints show up in the manifest"
@@ -87,3 +89,124 @@
               [_ encoded] (re-find #"(?s)Result.*?:\n(.*)" (:output result))]
           (is (some? encoded))
           (is (sequential? (json/decode encoded))))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Phase 2: vector :tool, :fields allowlist enforcement, :feature gating
+;;; ----------------------------------------------------------------------------
+
+(deftest manifest-includes-phase2-update-tools-test
+  (testing "the multi-intent :tool vector splits PUT /collection/:id and PUT /card/:id into intent-narrow tools"
+    (let [names (bridge/manifest-tool-names)]
+      (is (contains? names "update_collection"))
+      (is (contains? names "move_collection"))
+      (is (contains? names "update_card"))
+      (is (contains? names "move_card")))))
+
+(deftest update-collection-input-schema-is-narrowed-test
+  (testing ":fields restricts the LLM-visible inputSchema"
+    (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+      (let [tool       (get (bridge/endpoint-tools #{"update_collection"}) "update_collection")
+            properties (set (keys (get-in tool [:schema :properties])))]
+        (is (= #{:id :name :description :authority_level :type} properties)
+            "only the route :id and the four allow-listed body fields should be exposed")
+        (is (not (contains? properties :parent_id))
+            "parent_id belongs to move_collection, not update_collection")
+        (is (not (contains? properties :archived))
+            "archived is not exposed by either intent in Phase 2")))))
+
+(deftest move-collection-input-schema-is-narrowed-test
+  (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+    (let [tool       (get (bridge/endpoint-tools #{"move_collection"}) "move_collection")
+          properties (set (keys (get-in tool [:schema :properties])))]
+      (is (= #{:id :parent_id} properties)))))
+
+(deftest bridge-strips-disallowed-keys-before-handler-test
+  (testing "extra LLM-supplied keys are filtered out at the bridge boundary, never reaching the handler"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bridge Filter Test"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"update_collection"}) "update_collection")
+                ;; The LLM sneaks `archived` in even though it's not in the tool schema.
+                _      ((:fn tool) {:id          coll-id
+                                    :name        "Bridge Filter Test (renamed)"
+                                    :archived    true
+                                    :parent_id   1})
+                after  (t2/select-one [:model/Collection :name :archived] coll-id)]
+            (is (= "Bridge Filter Test (renamed)" (:name after))
+                "the rename did happen — allow-listed fields go through")
+            (is (false? (boolean (:archived after)))
+                "the bridge stripped :archived before the handler ever saw it")))))))
+
+(deftest verify-card-feature-gating-test
+  (testing "verify_card surfaces the :feature on its manifest entry"
+    (when (some #(= "verify_card" (:name %))
+                (:tools (#'bridge/manifest)))
+      (let [entry (first (filter #(= "verify_card" (:name %))
+                                 (:tools (#'bridge/manifest))))]
+        (is (= :content-verification (:feature entry))))))
+  (testing "endpoint-tools omits feature-gated tools when the feature is off"
+    (binding [scope/*current-user-scope* #{"agent:moderation:*"}]
+      (with-redefs [premium-features/has-feature? (constantly false)]
+        (is (not (contains? (bridge/endpoint-tools #{"verify_card"}) "verify_card"))
+            "feature off ⇒ tool filtered out"))
+      (with-redefs [premium-features/has-feature? (constantly true)]
+        ;; Only assert presence when the EE namespace is actually loaded; on OSS-only
+        ;; classpaths the namespace isn't loaded and the tool isn't bridgeable.
+        (when (find-ns 'metabase-enterprise.content-verification.api.moderation-review)
+          (is (contains? (bridge/endpoint-tools #{"verify_card"}) "verify_card")))))))
+
+(deftest profile-validation-tolerates-missing-ee-tools-test
+  (testing "manifest-tool-names includes EE-feature-gated names so OSS profile registration doesn't reject them"
+    (is (contains? (bridge/manifest-tool-names) "verify_card")
+        "verify_card must be considered a valid endpoint-tool name regardless of EE classpath presence")))
+
+(deftest update-card-renames-through-bridge-test
+  (testing "update_card mutates name/description/display via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:name "Bridge Card Initial"}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"update_card"}) "update_card")
+                _      ((:fn tool) {:id          card-id
+                                    :name        "Bridge Card Renamed"
+                                    :description "via update_card"})
+                after  (t2/select-one [:model/Card :name :description] card-id)]
+            (is (= "Bridge Card Renamed" (:name after)))
+            (is (= "via update_card" (:description after)))))))))
+
+(deftest move-card-changes-collection-id-test
+  (testing "move_card moves a card between collections via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {dest-id :id} {:name "Bridge Move Destination"}
+                     :model/Card       {card-id :id} {:name "Bridge Move Card"}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"move_card"}) "move_card")
+                _      ((:fn tool) {:id            card-id
+                                    :collection_id dest-id})
+                after  (t2/select-one [:model/Card :collection_id] card-id)]
+            (is (= dest-id (:collection_id after)))))))))
+
+(deftest update-collection-renames-through-bridge-test
+  (testing "update_collection renames a collection via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bridge Collection A"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"update_collection"}) "update_collection")
+                _      ((:fn tool) {:id          coll-id
+                                    :name        "Bridge Collection A (renamed)"
+                                    :description "now described"})
+                after  (t2/select-one [:model/Collection :name :description] coll-id)]
+            (is (= "Bridge Collection A (renamed)" (:name after)))
+            (is (= "now described" (:description after)))))))))
+
+(deftest move-collection-reparents-through-bridge-test
+  (testing "move_collection sets a new parent via the bridge"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Bridge Parent"}
+                     :model/Collection {child-id  :id} {:name "Bridge Child"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"move_collection"}) "move_collection")
+                _      ((:fn tool) {:id        child-id
+                                    :parent_id parent-id})
+                after  (t2/select-one [:model/Collection :location] child-id)]
+            (is (re-find (re-pattern (str "/" parent-id "/")) (:location after))
+                "the child collection's location should now contain the new parent's id")))))))
