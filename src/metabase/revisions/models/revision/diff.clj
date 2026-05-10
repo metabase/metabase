@@ -118,7 +118,10 @@
     ;;  whenever database_id, query_type, table_id changed,
     ;; the dataset_query will changed so we don't need a description for this
     [#{:table_id :database_id :query_type} _ _]
-    nil))
+    nil
+
+    ;; Don't recurse, bail on fallthrough.
+    _ nil))
 
 (defn- diff-string [k v1 v2 identifier]
   (or (match-1 k v1 v2 identifier)

@@ -193,7 +193,10 @@
           (and user-control-scheduling (not is_full_sync))
           ;; schedules should only contains metadata_sync, but FE might sending both
           ;; so we just manually nullify it here
-          (assoc database :cache_field_values_schedule nil))))
+          (assoc database :cache_field_values_schedule nil)
+
+          :else (throw (ex-info "Illegal options combination."
+                                (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn is-destination?
   "Is this database a destination database for some router database?"

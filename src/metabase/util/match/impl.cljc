@@ -5,7 +5,7 @@
    [metabase.util.performance :refer [mapv get-in empty?]]))
 
 (defn update-in-unless-empty
-  "Like `update-in`, but only updates in the existing value is non-empty."
+  "Like `update-in`, but only updates if the existing value is non-empty."
   [m ks f]
   (if (empty? (get-in m ks))
     m

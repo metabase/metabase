@@ -671,7 +671,8 @@
       [:min      _]    [[(or output-name-kwd :min)]
                         {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}]
       [:max      _]    [[(or output-name-kwd :max)]
-                        {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
+                        {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}]
+      _                (throw (ex-info (str "Unknown aggregation tuple: " [ag-type ag-field]) {})))))
 
 (defn ^:private ^:dynamic *query-unique-name-fn*
   [& _]

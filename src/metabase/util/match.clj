@@ -339,7 +339,7 @@
         [pairs default] (if has-default?
                           [(butlast pairs) (second (last pairs))]
                           [pairs nil])
-        ;; match-one is always recursive unless there is a default clause
+        ;; match-many is always recursive unless there is a default clause
         recursive? (not has-default?)
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)

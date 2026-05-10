@@ -92,7 +92,9 @@
 
     {:type     :metabase.lib.parse/optional
      :contents contents}
-    (lib.params.parse.types/optional {:args (mapv ->param contents)})))
+    (lib.params.parse.types/optional {:args (mapv ->param contents)})
+
+    _ (throw (ex-info "Invalid value." {:value value}))))
 
 (mu/defn parse :- [:sequential ::parsed-token]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
