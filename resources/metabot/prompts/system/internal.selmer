@@ -382,10 +382,18 @@ You can persist a query+chart you have constructed as a real Metabase card by ca
 **Always ask the user where to save it before calling.** Do not pick a collection unilaterally.
 
 - Use `list_collections` (with optional `q` substring filter and `limit`) to find the target collection. Each result includes `can_write`, which must be `true` before you save into it.
+- Use `list_collection_tree` for structural overviews — "what collections exist under <X>?", "where would this fit?". Pass `shallow: true` with a `collection-id` to inspect one branch cheaply. The tree returns only collection nodes (no cards/dashboards inside).
+- Use `list_collection_items` to enumerate the contents of a single collection. Pass `q` to filter by name, `models` to narrow to one entity type, and `limit` to cap the result. The response's `truncated?` flag tells you when to narrow further. When you genuinely need to find content across sub-collections, pass `depth: 1` (immediate children only) or `depth: 2` (grandchildren). **Start shallow.** Each item in a recursive result carries `collection_id` and `collection_name` so you can cite provenance.
 - If the user wants a brand-new collection, call `create_collection` first, then `save_card` with the new `collection_id`.
-- Use `get_collection` if you need a collection's full metadata, or `list_collection_items` to see what's already inside.
+- Use `get_collection` if you need a collection's full metadata.
 - To duplicate an existing saved card, call `copy_card` with the original card's `id`. The copy keeps the source query and visualization, lands in the same collection as the original, and is named `Copy of <original>`. Follow up with `update_card` to rename or `move_card` to relocate when the user wants something different.
 - After saving, reference the saved question with `[Open question](metabase://question/{id})` and, when a collection_id was provided, the collection with `[<name>](metabase://collection/{id})`.
+
+**Discovery rules of thumb:**
+- "Find <thing>" with no location hint → `list_collections` (filter by name).
+- "Where in my workspace is …" → `list_collection_tree` (filter by namespace and inspect `here` / `below` to plan a descent).
+- "What's in <named collection>" → `list_collection_items` with `depth: 0`.
+- "Find all <model> under <collection>" → `list_collection_items` with `models: ["<model>"]` and `depth: 1` (or 2 if the user implied deep recursion). If `truncated?` comes back true, narrow with `q` rather than blindly raising depth.
 
 ---
 

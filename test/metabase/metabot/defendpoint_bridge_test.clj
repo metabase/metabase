@@ -584,3 +584,141 @@
                       :id                  dash-id
                       :public_link_changed true}
                      (:data (first parts)))))))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Recursive collection discovery: q / limit / depth on list_collection_items,
+;;; plus the new list_collection_tree bridge tool.
+;;; ----------------------------------------------------------------------------
+
+(deftest manifest-includes-tree-and-recursive-tools-test
+  (testing "the tree endpoint is in the manifest"
+    (is (contains? (bridge/manifest-tool-names) "list_collection_tree")))
+  (testing "list_collection_items exposes the new q / limit / depth properties"
+    (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+      (let [tool       (get (bridge/endpoint-tools #{"list_collection_items"}) "list_collection_items")
+            properties (set (map keyword (keys (get-in tool [:schema :properties]))))]
+        (is (contains? properties :q))
+        (is (contains? properties :limit))
+        (is (contains? properties :depth))
+        (is (contains? properties :id)
+            "the path id remains exposed")))))
+
+(deftest list-collection-items-limit-truncation-test
+  (testing "limit caps results and truncated? signals overflow"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection coll {:name "Bridge POC Limit"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Bridge POC Limit A"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Bridge POC Limit B"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Bridge POC Limit C"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"list_collection_items"}) "list_collection_items")
+                result ((:fn tool) {:id (:id coll) :limit 2})
+                body   (:structured-output result)]
+            (is (= 2 (count (:data body))))
+            (is (= 3 (:total body)))
+            (is (true? (:truncated? body)))
+            (is (= 0 (:depth body)))))))))
+
+(deftest list-collection-items-q-filter-test
+  (testing "q filters items by case-insensitive substring on name"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection coll {:name "Bridge POC Q"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Q1 Revenue"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Q2 Revenue"}
+                     :model/Card       _    {:collection_id (:id coll) :name "Customers"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"list_collection_items"}) "list_collection_items")
+                result ((:fn tool) {:id (:id coll) :q "revenue"})
+                names  (set (map :name (:data (:structured-output result))))]
+            (is (contains? names "Q1 Revenue"))
+            (is (contains? names "Q2 Revenue"))
+            (is (not (contains? names "Customers")))))))))
+
+(deftest list-collection-items-recursive-test
+  (testing "depth > 0 returns items from descendant collections, tagged with provenance"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection root  {:name "Bridge POC Root"}
+                     :model/Collection child {:name     "Bridge POC Child"
+                                              :location (str "/" (:id root) "/")}
+                     :model/Card       _     {:collection_id (:id root)  :name "Bridge Root Card"}
+                     :model/Card       _     {:collection_id (:id child) :name "Bridge Child Card"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool          (get (bridge/endpoint-tools #{"list_collection_items"}) "list_collection_items")
+                shallow-body  (:structured-output ((:fn tool) {:id (:id root) :depth 0}))
+                deep-body     (:structured-output ((:fn tool) {:id (:id root) :depth 1}))
+                shallow-names (set (map :name (:data shallow-body)))
+                deep-names    (set (map :name (:data deep-body)))
+                deep-child    (some #(when (= "Bridge Child Card" (:name %)) %)
+                                    (:data deep-body))]
+            (testing "depth 0 returns only the root collection's items"
+              (is (contains? shallow-names "Bridge Root Card"))
+              (is (not (contains? shallow-names "Bridge Child Card"))))
+            (testing "depth 1 includes the child collection's items"
+              (is (contains? deep-names "Bridge Root Card"))
+              (is (contains? deep-names "Bridge Child Card")))
+            (testing "descendant items carry provenance fields"
+              (is (some? deep-child))
+              (is (= (:id child) (:collection_id deep-child)))
+              (is (= "Bridge POC Child" (:collection_name deep-child))))
+            (testing "the response declares how many collections were searched"
+              (is (= 2 (:collections_searched deep-body))))
+            (testing "depth band is echoed back to the caller"
+              (is (= 1 (:depth deep-body))))))))))
+
+(deftest list-collection-items-recursive-traversal-cap-test
+  (testing "depth-bounded recursion respects the max-colls hard ceiling"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection root {:name "Bridge POC Cap Root"}]
+        ;; Seed > 50 sibling sub-collections under one root so the cap trips.
+        ;; with-temp inside a doseq is the simplest way to lean on auto-cleanup.
+        (let [child-loc (str "/" (:id root) "/")]
+          (doseq [i (range 60)]
+            (t2/insert! :model/Collection {:name     (str "Bridge POC Cap Child " i)
+                                           :location child-loc})))
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"list_collection_items"}) "list_collection_items")
+                result ((:fn tool) {:id (:id root) :depth 1 :limit 10})
+                body   (:structured-output result)]
+            (is (true? (:truncated? body)))
+            (is (= "collection-traversal-cap" (:truncation_reason body)))))))))
+
+(deftest list-collection-tree-happy-path-test
+  (testing "list_collection_tree returns a hierarchical view without items"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection parent {:name "Bridge Tree Parent"}
+                     :model/Collection _child {:name     "Bridge Tree Child"
+                                               :location (str "/" (:id parent) "/")}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool         (get (bridge/endpoint-tools #{"list_collection_tree"}) "list_collection_tree")
+                result       ((:fn tool) {})
+                tree         (:structured-output result)
+                find-by-name (fn find-by-name [nodes target]
+                               (some (fn [n]
+                                       (or (when (= target (:name n)) n)
+                                           (find-by-name (:children n) target)))
+                                     nodes))
+                parent-node  (find-by-name tree "Bridge Tree Parent")]
+            (is (some? parent-node)
+                "the seeded parent collection appears in the tree")
+            (is (some #(= "Bridge Tree Child" (:name %)) (:children parent-node))
+                "the parent's child appears under it")))))))
+
+(deftest list-collection-tree-shallow-test
+  (testing "shallow=true scopes to immediate children of the requested root"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection root  {:name "Bridge Tree Shallow Root"}
+                     :model/Collection child {:name     "Bridge Tree Shallow Child"
+                                              :location (str "/" (:id root) "/")}
+                     :model/Collection _gc   {:name     "Bridge Tree Shallow Grandchild"
+                                              :location (str "/" (:id root) "/" (:id child) "/")}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"list_collection_tree"}) "list_collection_tree")
+                result ((:fn tool) {:shallow true :collection-id (:id root)})
+                names  (set (map :name (:structured-output result)))]
+            (is (contains? names "Bridge Tree Shallow Child"))
+            (is (not (contains? names "Bridge Tree Shallow Grandchild"))
+                "shallow trees stop at the immediate children")))))))
+
+(deftest entity-changed-skipped-for-tree-test
+  (testing "the tree tool is read-only and emits no entity_changed parts"
+    (is (nil? (entity-changes-for-result "list_collection_tree" [])))))

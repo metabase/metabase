@@ -255,17 +255,38 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
+  {:scope "agent:collection:read"
+   :tool  {:name        "list_collection_tree"
+           :description (str "Return the user-visible collection hierarchy as a nested tree, "
+                             "without the cards/dashboards/etc. inside. Each node carries `id`, "
+                             "`name`, `here` (item types directly inside), `below` (item types "
+                             "anywhere in its sub-tree), and `children`. Cheap navigation primitive: "
+                             "use it to plan a descent before calling `list_collection_items` with "
+                             "`depth > 0`. Pass `shallow: true` and `collection-id` to scope to one branch.")}}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
-       [:exclude-other-user-collections {:default false} [:maybe :boolean]]
-       [:include-library                {:default false} [:maybe :boolean]]
-       [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:exclude-other-user-collections {:default false
+                                         :tool/description "Hide other users' personal collections (admin-only relevant; default false)."}
+        [:maybe :boolean]]
+       [:include-library                {:default false
+                                         :tool/description "Include the shared Library namespace (Pro/Ent feature)."}
+        [:maybe :boolean]]
+       [:namespace                      {:optional true
+                                         :tool/description "Restrict to a single collection namespace (e.g. \"snippets\"). Omit for the default namespace."}
+        [:maybe ms/NonBlankString]]
+       ;; `namespaces` (vector form) is intentionally not annotated with
+       ;; `:tool/description`; the singular `namespace` arg covers every agent
+       ;; use case and the vector form remains available to non-LLM callers.
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
-       [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:shallow                        {:default false
+                                         :tool/description "When true, return only the immediate children of the target. Pair with `collection-id` to inspect one branch cheaply."}
+        [:maybe :boolean]]
+       [:collection-id                  {:optional true
+                                         :tool/description "Root the tree at this collection. Defaults to the user's full visible tree."}
+        [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
   (let [archived    (if exclude-archived false nil)
@@ -355,6 +376,8 @@
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
+   ;; case-insensitive substring filter on item names; threaded into per-model queries
+   [:name-substring {:optional true} [:maybe :string]]
    [:sort-info    {:optional true} [:maybe [:map
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
@@ -363,6 +386,15 @@
                                                                    (map normalize-sort-choice)
                                                                    valid-sort-directions)]
                                             [:official-collections-first? {:optional true} :boolean]]]]])
+
+(defn- with-name-substring
+  "Apply a case-insensitive substring filter on `name-col` to `query` when `q` is
+  a non-blank string. Returns the query unchanged otherwise. Used by every
+  `collection-children-query` defmethod whose model has a queryable name column."
+  [query q name-col]
+  (if (and q (string? q) (not (str/blank? q)))
+    (sql.helpers/where query [:like [:lower name-col] (str "%" (u/lower-case-en q) "%")])
+    query))
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -433,7 +465,7 @@
               :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state name-substring]}]
   (-> {:select [:document.id
                 :document.name
                 :document.collection_id
@@ -460,10 +492,11 @@
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
-      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
+      (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))
+      (with-name-substring name-substring :document.name)))
 
 (defmethod collection-children-query :pulse
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state name-substring]}]
   (-> {:select-distinct [:p.id
                          :p.name
                          :p.entity_id
@@ -479,7 +512,8 @@
                          [:= :p.alert_condition    nil]
                          ;; exclude dashboard subscriptions
                          [:= :p.dashboard_id nil]]}
-      (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
+      (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))
+      (with-name-substring name-substring :p.name)))
 
 (defmethod post-process-collection-children :pulse
   [_ _ _ rows]
@@ -492,37 +526,40 @@
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_collection {:keys [archived?]}]
-  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
-   :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+  [_collection {:keys [archived? name-substring]}]
+  (-> {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
+       :from   [[:native_query_snippet :nqs]]
+       :where  [:= :archived (boolean archived?)]}
+      (with-name-substring name-substring :nqs.name)))
 
 (defmethod collection-children-query :snippet
   [_model collection options]
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
-  [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
-   :from   [[:timeline :timeline]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+  [_ collection {:keys [archived? pinned-state name-substring]}]
+  (-> {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+       :from   [[:timeline :timeline]]
+       :where  [:and
+                (poison-when-pinned-clause pinned-state)
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]}
+      (with-name-substring name-substring :timeline.name)))
 
 (defmethod collection-children-query :transform
-  [_model collection {:keys [pinned-state]}]
+  [_model collection {:keys [pinned-state name-substring]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
-    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-     :from   [[:transform :transform]]
-     :where  [:and
-              (poison-when-pinned-clause pinned-state)
-              [:= :collection_id (:id collection)]
-              (if (seq enabled-types)
-                [:in :source_type enabled-types]
-                [:=
-                 [:inline 0]
-                 [:inline 1]])]}))
+    (-> {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+         :from   [[:transform :transform]]
+         :where  [:and
+                  (poison-when-pinned-clause pinned-state)
+                  [:= :collection_id (:id collection)]
+                  (if (seq enabled-types)
+                    [:in :source_type enabled-types]
+                    [:=
+                     [:inline 0]
+                     [:inline 1]])]}
+        (with-name-substring name-substring :transform.name))))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -540,7 +577,7 @@
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
-(defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions? name-substring]}]
   (-> {:select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                     :dashboard_id
@@ -594,7 +631,8 @@
       (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
-      (sql.helpers/where (pinned-state->clause pinned-state))))
+      (sql.helpers/where (pinned-state->clause pinned-state))
+      (with-name-substring name-substring :c.name)))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
@@ -658,7 +696,7 @@
   [_ options _ rows]
   (post-process-card-like (assoc options :hydrate-based-on-upload true) rows))
 
-(defn- dashboard-query [collection {:keys [archived? pinned-state]}]
+(defn- dashboard-query [collection {:keys [archived? pinned-state name-substring]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    [:last_viewed_at :last_used_at]
                    :d.collection_id
@@ -689,7 +727,8 @@
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
                    [:= :d.archived (boolean archived?)]]}
-      (sql.helpers/where (pinned-state->clause pinned-state))))
+      (sql.helpers/where (pinned-state->clause pinned-state))
+      (with-name-substring name-substring :d.name)))
 
 (defmethod collection-children-query :dashboard
   [_ collection options]
@@ -723,7 +762,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library? name-substring]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -769,14 +808,15 @@
                 [(h2x/literal "collection") :model]
                 :authority_level])
       ;; the nil indicates that collections are never pinned.
-      (sql.helpers/where (pinned-state->clause pinned-state nil))))
+      (sql.helpers/where (pinned-state->clause pinned-state nil))
+      (with-name-substring name-substring :name)))
 
 (defmethod collection-children-query :collection
   [_ collection options]
   (collection-query collection options))
 
 (defmethod collection-children-query :table
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state name-substring]}]
   (let [user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
         published-clause (perms/published-table-visible-clause :t.id user-info)
@@ -792,24 +832,27 @@
                                                                user-info
                                                                {:perms/view-data :unrestricted})]
                                                    published-clause]))]
-    {:select [:t.id
-              [:t.id :table_id]
-              [:t.display_name :name]
-              :t.description
-              :t.collection_id
-              [:t.db_id :database_id]
-              [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
-     :from   [[:metabase_table :t]]
-     :where  [:and
-              [:= :t.is_published true]
-              (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-              queryable-clause
-              [:= :t.collection_id (:id collection)]
-              (if archived?
-                [:!= :t.archived_at nil]
-                [:= :t.archived_at nil])]}))
+    (-> {:select [:t.id
+                  [:t.id :table_id]
+                  [:t.display_name :name]
+                  :t.description
+                  :t.collection_id
+                  [:t.db_id :database_id]
+                  [[:!= :t.archived_at nil] :archived]
+                  [(h2x/literal "table") :model]]
+         :from   [[:metabase_table :t]]
+         :where  [:and
+                  [:= :t.is_published true]
+                  (poison-when-pinned-clause pinned-state)
+                  (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+                  queryable-clause
+                  [:= :t.collection_id (:id collection)]
+                  (if archived?
+                    [:!= :t.archived_at nil]
+                    [:= :t.archived_at nil])]}
+        ;; Tables expose `display_name` as `:name` in the result, but at the SQL
+        ;; level we filter on `t.display_name` to match what the LLM sees.
+        (with-name-substring name-substring :t.display_name))))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -1166,6 +1209,90 @@
        :limit  (request/limit)
        :offset (request/offset)
        :models valid-models})))
+
+(defn- depth-from-target
+  "Distance, in collection levels, between a collection at `child-loc` and the
+  target collection located at `target-loc`. `target-loc` is the target's
+  `:location` (path of ancestors), not its `children-location`.
+
+  Direct children of the target are at depth 1, grandchildren at depth 2, etc.
+
+      target.location = \"/\"      child.location = \"/1/\"       ⇒ 1
+      target.location = \"/\"      child.location = \"/1/2/\"     ⇒ 2
+      target.location = \"/1/\"    child.location = \"/1/2/\"     ⇒ 1
+      target.location = \"/1/\"    child.location = \"/1/2/3/\"   ⇒ 2"
+  [target-loc child-loc]
+  (let [count-segs (fn [loc] (count (filter (complement str/blank?) (str/split (or loc "") #"/"))))]
+    (- (count-segs child-loc) (count-segs target-loc))))
+
+(def ^:private content-only-models
+  "Default model set for descendant collections in a recursive walk: every model
+  except `:collection`. At depth > 0 we want items, not folders containing items."
+  #{:dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform :table :measure})
+
+(mu/defn collection-children-recursive
+  "Run `collection-children` against `root-collection` and each of its descendants
+  up to `:depth`, then merge the results into a single `{:data … :total … …}` map.
+
+  Items from sub-collections are tagged with `:collection_id`,
+  `:collection_name`, and `:collection_location` so the caller can render the
+  right entity links and reason about provenance. Sub-collection rows are
+  excluded from descendant results — at depth > 0 the user is asking 'find
+  items', not 'find folders containing items'.
+
+  Hard ceilings the caller cannot override:
+  - `:max-colls` descendant collections traversed (default 50). When tripped,
+    `:truncated? true` and `:truncation_reason \"collection-traversal-cap\"`.
+  - The merged data list is itself capped at `:limit`, in the order rows are
+    emitted (root first, then descendants in `location` order)."
+  [root-collection :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models] :as opts} :- CollectionChildrenOptions
+   {:keys [depth limit max-colls]} :- [:map
+                                       [:depth     pos-int?]
+                                       [:limit     pos-int?]
+                                       [:max-colls pos-int?]]]
+  (let [root-loc           (or (:location root-collection) "/")
+        ;; Filter descendants both by user-visibility and by requested depth band.
+        ;; Passing the visible-collection-filter-clause matches the pattern in
+        ;; `annotate-collections` and avoids wasted SQL on inaccessible folders.
+        all-descendants    (->> (collection/descendants-flat
+                                 root-collection
+                                 (collection/visible-collection-filter-clause
+                                  :id
+                                  {:include-archived-items :all}))
+                                (filter #(<= 1 (depth-from-target root-loc (:location %)) depth)))
+        traversal-cap?     (> (count all-descendants) max-colls)
+        descendants        (vec (take max-colls all-descendants))
+        descendant-models  (cond
+                             (seq models) (disj models :collection)
+                             :else        content-only-models)
+        descendant-opts    (assoc opts :models descendant-models)
+        root-result        (collection-children root-collection opts)
+        descendant-results (mapv (fn [coll]
+                                   [coll (collection-children coll descendant-opts)])
+                                 descendants)
+        merged-data        (concat
+                            (:data root-result)
+                            (mapcat (fn [[coll {:keys [data]}]]
+                                      (map #(assoc %
+                                                   :collection_id       (:id coll)
+                                                   :collection_name     (:name coll)
+                                                   :collection_location (:location coll))
+                                           data))
+                                    descendant-results))
+        merged-total       (+ (or (:total root-result) 0)
+                              (apply + 0 (map (comp #(or % 0) :total second) descendant-results)))
+        capped-data        (vec (take limit merged-data))]
+    (cond-> {:data                 capped-data
+             :total                merged-total
+             :limit                limit
+             :depth                depth
+             :collections_searched (inc (count descendants))
+             :truncated?           (boolean (or traversal-cap?
+                                                (> merged-total limit)))
+             :models               (:models root-result)}
+      traversal-cap?
+      (assoc :truncation_reason "collection-traversal-cap"))))
 
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -1760,6 +1887,14 @@
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
   *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
+  *  `q` - case-insensitive substring filter on item name. Applied across the
+     whole sub-tree when `depth > 0`.
+  *  `limit` - cap the result set (1-500, default 100). The response includes
+     `total` and `truncated?` so callers can detect when results were dropped.
+  *  `depth` - recursive descent into sub-collections (0-10, default 0). When
+     > 0, items from descendant collections are flattened into the response,
+     each tagged with `collection_id`, `collection_name`, and
+     `collection_location` so callers can render the right entity links.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
@@ -1767,35 +1902,71 @@
    :tool  {:name        "list_collection_items"
            :description (str "List the cards, dashboards, sub-collections, models, metrics, and other items "
                              "inside a collection. Use `models` to narrow to a single entity type when you "
-                             "only need one kind of result.")}}
+                             "only need one kind of result. Pass `q` to filter by item name. Pass `limit` "
+                             "to cap the result size (response includes `total` and `truncated?` so you can "
+                             "tell when to narrow). Pass `depth > 0` to find items recursively across "
+                             "sub-collections, each tagged with its `collection_id` and `collection_name`.")}}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :collection id)
-        model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection resolved-id)]
-    (u/prog1 (collection-children collection
-                                  {:show-dashboard-questions?   show_dashboard_questions
-                                   :models                      model-kwds
-                                   :include-library?             true
-                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                                   :pinned-state                (keyword pinned_state)
-                                   :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                                                 ;; default to sorting official collections first, except for the trash.
-                                                                 :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                       (not (collection/is-trash? collection)))
-                                                                                                true
-                                                                                                (boolean official_collections_first))}})
+           show_dashboard_questions
+           q limit depth]} :- [:map
+                               [:models                      {:optional true} [:maybe Models]]
+                               [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                               [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                               [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                               [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                               [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                               [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                               [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                               [:q     {:optional true
+                                        :tool/description "Case-insensitive substring filter on item name. Applied across the sub-tree when depth > 0."}
+                                [:maybe ms/NonBlankString]]
+                               [:limit {:optional true
+                                        :tool/description "Maximum number of items to return (1-500, default 100). Response includes `total` and `truncated?` so the caller can detect truncation."}
+                                [:maybe [:int {:min 1 :max 500}]]]
+                               [:depth {:optional true
+                                        :tool/description "Recursive depth into sub-collections (0-10, default 0). At 0, only the target collection's direct items are returned. At >0, items from descendants up to that depth are flattened in, each tagged with collection_id and collection_name."}
+                                [:maybe [:int {:min 0 :max 10}]]]]]
+  (let [resolved-id     (eid-translation/->id-or-404 :collection id)
+        model-kwds      (set (map keyword (u/one-or-many models)))
+        collection      (api/read-check :model/Collection resolved-id)
+        effective-limit (or limit 100)
+        effective-depth (or depth 0)
+        sort-info       {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                         :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                         ;; default to sorting official collections first, except for the trash.
+                         :official-collections-first? (if (and (nil? official_collections_first)
+                                                               (not (collection/is-trash? collection)))
+                                                        true
+                                                        (boolean official_collections_first))}
+        opts            {:show-dashboard-questions?   show_dashboard_questions
+                         :models                      model-kwds
+                         :include-library?            true
+                         :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                         :pinned-state                (keyword pinned_state)
+                         :include-can-run-adhoc-query include_can_run_adhoc_query
+                         :sort-info                   sort-info
+                         :name-substring              q}]
+    (u/prog1 (if (zero? effective-depth)
+               ;; FE callers receive `*limit*` / `*offset*` from the offset-paging
+               ;; middleware; bridge calls bypass that middleware, so we bind them
+               ;; here only when the middleware didn't already set them. This keeps
+               ;; the FE's `limit=2&offset=1` semantics intact while still letting
+               ;; the LLM-driven path supply `:limit` via the body schema.
+               (let [run (fn []
+                           (let [{:keys [total] :as base-result} (collection-children collection opts)]
+                             (assoc base-result
+                                    :limit      effective-limit
+                                    :truncated? (boolean (and total (> total effective-limit)))
+                                    :depth      0)))]
+                 (if (request/limit)
+                   (run)
+                   (request/with-limit-and-offset effective-limit 0
+                     (run))))
+               (collection-children-recursive collection opts
+                                              {:depth     effective-depth
+                                               :limit     effective-limit
+                                               :max-colls 50}))
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
