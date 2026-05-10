@@ -144,4 +144,34 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_tables() {
     return t`Searching database tables`;
   },
+  get list_collections() {
+    return t`Browsing collections`;
+  },
+  get get_collection() {
+    return t`Reading collection details`;
+  },
+  get list_collection_items() {
+    return t`Listing collection contents`;
+  },
+  get create_collection() {
+    return t`Creating a collection`;
+  },
+  get save_card() {
+    return t`Saving the question`;
+  },
+  get update_collection() {
+    return t`Updating the collection`;
+  },
+  get move_collection() {
+    return t`Moving the collection`;
+  },
+  get update_card() {
+    return t`Updating the question`;
+  },
+  get move_card() {
+    return t`Moving the question`;
+  },
+  get verify_card() {
+    return t`Updating verification status`;
+  },
 };
