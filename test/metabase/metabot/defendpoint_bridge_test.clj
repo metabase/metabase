@@ -291,3 +291,100 @@
             (is (= {:entity_type "card" :id card-id :collection_id dest-id}
                    (:data part))
                 "the data part identifies the card and its new collection")))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Archive + copy: destructive / lifecycle operations
+;;; ----------------------------------------------------------------------------
+
+(deftest manifest-includes-archive-and-copy-tools-test
+  (testing "archive_card, archive_collection, and copy_card are exposed via the bridge"
+    (let [names (bridge/manifest-tool-names)]
+      (is (contains? names "archive_card"))
+      (is (contains? names "archive_collection"))
+      (is (contains? names "copy_card")))))
+
+(deftest archive-card-allowlist-narrows-input-schema-test
+  (testing "archive_card's inputSchema exposes :archived but not :name / :collection_id"
+    (binding [scope/*current-user-scope* #{"agent:card:*"}]
+      (let [tool (get (bridge/endpoint-tools #{"archive_card"}) "archive_card")
+            ks   (set (map keyword (keys (get-in tool [:schema :properties]))))]
+        (is (contains? ks :id)        "the path id is always exposed")
+        (is (contains? ks :archived)  ":fields [:archived] is exposed")
+        (is (not (contains? ks :name))
+            ":name belongs to update_card, not archive_card")
+        (is (not (contains? ks :collection_id))
+            ":collection_id belongs to move_card, not archive_card"))))
+  (testing "even if the LLM passes a forbidden key, the bridge strips it before dispatch"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:name "Bridge Archive Allowlist Card"}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"archive_card"}) "archive_card")
+                _      ((:fn tool) {:id       card-id
+                                    :archived true
+                                    :name     "Should-Be-Stripped"})
+                after  (t2/select-one [:model/Card :name :archived] card-id)]
+            (is (true? (:archived after)))
+            (is (= "Bridge Archive Allowlist Card" (:name after))
+                "name was stripped by the inputSchema allowlist before dispatch")))))))
+
+(deftest archive-card-trashes-and-restores-test
+  (testing "archive_card with archived=true moves a card to the Trash"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:name "Bridge Archive Card"}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"archive_card"}) "archive_card")
+                _      ((:fn tool) {:id card-id :archived true})
+                after  (t2/select-one [:model/Card :archived] card-id)]
+            (is (true? (:archived after))))))))
+  (testing "archive_card with archived=false restores from the Trash"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:name     "Bridge Restore Card"
+                                                :archived true}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"archive_card"}) "archive_card")
+                _      ((:fn tool) {:id card-id :archived false})
+                after  (t2/select-one [:model/Card :archived] card-id)]
+            (is (false? (:archived after)))))))))
+
+(deftest archive-collection-trashes-test
+  (testing "archive_collection with archived=true moves a collection to the Trash"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bridge Archive Collection"}]
+        (binding [scope/*current-user-scope* #{"agent:collection:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"archive_collection"}) "archive_collection")
+                _      ((:fn tool) {:id coll-id :archived true})
+                after  (t2/select-one [:model/Collection :archived] coll-id)]
+            (is (true? (:archived after)))))))))
+
+(deftest copy-card-creates-a-new-card-test
+  (testing "copy_card creates a new card and returns its hydrated row"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Bridge Copy Source"
+                                                :dataset_query (mt/mbql-query orders {:limit 1})}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool      (get (bridge/endpoint-tools #{"copy_card"}) "copy_card")
+                result    ((:fn tool) {:id card-id})
+                new-card  (:structured-output result)]
+            (is (map? new-card))
+            (is (integer? (:id new-card)))
+            (is (not= card-id (:id new-card))
+                "copy_card returns a freshly created card, not the original")
+            (is (re-find #"^Copy of " (:name new-card))
+                "the new card's name follows the 'Copy of …' pattern")))))))
+
+(deftest entity-changed-emitted-for-archive-and-copy-test
+  (testing "archive_card → entity_changed for the card (with :collection_id when present)"
+    (let [parts (entity-changes-for-result "archive_card"
+                                           {:id 42 :collection_id 7 :archived true})]
+      (is (= {:entity_type "card" :id 42 :collection_id 7}
+             (:data (first parts))))))
+  (testing "archive_collection → entity_changed for the collection"
+    (let [parts (entity-changes-for-result "archive_collection"
+                                           {:id 99 :parent_id 7 :archived true})]
+      (is (= {:entity_type "collection" :id 99 :parent_id 7}
+             (:data (first parts))))))
+  (testing "copy_card → entity_changed for the new card so the destination collection refreshes"
+    (let [parts (entity-changes-for-result "copy_card"
+                                           {:id 4321 :collection_id 17 :name "Copy of X"})]
+      (is (= {:entity_type "card" :id 4321 :collection_id 17}
+             (:data (first parts)))))))

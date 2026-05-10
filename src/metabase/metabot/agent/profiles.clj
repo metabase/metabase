@@ -116,8 +116,11 @@
                     "create_collection"
                     "update_collection"
                     "move_collection"
+                    "archive_collection"
                     "update_card"
                     "move_card"
+                    "archive_card"
+                    "copy_card"
                     "verify_card"]})
 
 (register-profile!

@@ -1675,7 +1675,13 @@
            {:name        "move_collection"
             :description (str "Re-parent a collection. Pass `parent_id: null` to move it to "
                               "the root collection. Sub-collections move with the parent.")
-            :fields      [:parent_id]}]}
+            :fields      [:parent_id]}
+           {:name        "archive_collection"
+            :description (str "Move a collection to the Trash (`archived: true`) or restore "
+                              "it (`archived: false`). Archiving cascades to all descendant "
+                              "collections and their contents. Confirm with the user before "
+                              "archiving.")
+            :fields      [:archived]}]}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params

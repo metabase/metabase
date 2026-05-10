@@ -171,6 +171,15 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get move_card() {
     return t`Moving the question`;
   },
+  get archive_card() {
+    return t`Archiving the question`;
+  },
+  get copy_card() {
+    return t`Duplicating the question`;
+  },
+  get archive_collection() {
+    return t`Archiving the collection`;
+  },
   get verify_card() {
     return t`Updating verification status`;
   },

@@ -280,10 +280,29 @@
         "`[collection](metabase://collection/{collection_id})`. The previous "
         "collection no longer contains this card.")
 
+   "archive_card"
+   (str "If `archived: true` was passed, the card is now in the Trash and is hidden "
+        "from collection listings; tell the user it can be restored from the Trash UI "
+        "or by asking you to restore it. If `archived: false` was passed, the card "
+        "has been restored to its original collection. Reference it as "
+        "`[name](metabase://question/{id})`.")
+
+   "copy_card"
+   (str "Duplicated the original. Reference the new card as "
+        "`[name](metabase://question/{id})` (it lands in `[collection]"
+        "(metabase://collection/{collection_id})`). If the user wanted a different "
+        "name, follow up with `update_card`. If they wanted a different collection, "
+        "follow up with `move_card`.")
+
    "verify_card"
    (str "Marked `[name](metabase://question/{id})` as verified (or removed verification). "
         "The verified badge will appear in search results and on the item's detail page "
-        "after the next search-index refresh.")})
+        "after the next search-index refresh.")
+
+   "archive_collection"
+   (str "If `archived: true` was passed, the collection and its descendants are now "
+        "in the Trash. If `archived: false`, the collection has been restored. "
+        "Reference it as `[name](metabase://collection/{id})`.")})
 
 (defn- json-encode-body [body]
   (try
@@ -333,12 +352,15 @@
 (def ^:private entity-change-fns
   "Per-tool: function `body → [data-parts]` for cache-invalidation hints. Read-only
   tools have no entry; nothing extra is attached to their results."
-  {"update_card"        card-changed-parts
-   "move_card"          card-changed-parts
-   "verify_card"        moderation-changed-parts
-   "create_collection"  collection-changed-parts
-   "update_collection"  collection-changed-parts
-   "move_collection"    collection-changed-parts})
+  {"update_card"         card-changed-parts
+   "move_card"           card-changed-parts
+   "archive_card"        card-changed-parts
+   "copy_card"           card-changed-parts
+   "verify_card"         moderation-changed-parts
+   "create_collection"   collection-changed-parts
+   "update_collection"   collection-changed-parts
+   "move_collection"     collection-changed-parts
+   "archive_collection"  collection-changed-parts})
 
 (defn- entity-changes-for-result
   "Compute cache-invalidation data parts for a 2xx tool response, or `nil`."
