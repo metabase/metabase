@@ -10,7 +10,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -623,7 +623,7 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match-many breakouts
+                            id       (match/match-many breakouts
                                        [:field {:binning &truthy} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
@@ -657,7 +657,7 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match-many breakouts
+                                           id       (match/match-many breakouts
                                                       [:field {:temporal-unit &truthy} (id :guard pos-int?)]
                                                       id)]
                                        id)]
