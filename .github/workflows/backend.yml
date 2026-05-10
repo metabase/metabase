@@ -58,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Enough history for `git merge-base` to find the divergence point on any reasonable PR.
+          # Enough history for `git merge-base` on a typical PR.
           fetch-depth: 200
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
@@ -69,36 +69,31 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          if [ -z "${BASE_SHA:-}" ]; then
-            echo "No base SHA available; skipping."
-            echo "namespaces=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # Pull the base commit so we can compute the merge-base; 200 matches the checkout depth.
+
+          # Diff from the merge-base so changes that landed on the base branch after the PR was
+          # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
-          # Diff from the merge-base, not the base ref tip, so unrelated changes that landed on the
-          # base branch after this PR was last synced don't widen our scope. Fall back to BASE_SHA
-          # if the merge-base is outside the fetched window.
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
           FILES=$(git diff --name-only --diff-filter=AM "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
                        'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc')
+
           if [ -z "$FILES" ]; then
             echo "No backend test files changed; skipping lint."
             echo "namespaces=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # File paths flow into a subsequent shell command via the step output. Reject anything
-          # outside the conservative character set we expect from Clojure source paths.
-          if printf '%s\n' "$FILES" | grep -Eqv '^[A-Za-z0-9_./-]+$'; then
-            echo "Refusing to lint: unexpected characters in changed file paths." >&2
-            printf '%s\n' "$FILES" >&2
+
+          # Defence-in-depth: paths flow into a subsequent shell command via $GITHUB_OUTPUT.
+          if grep -Eqv '^[A-Za-z0-9_./-]+$' <<<"$FILES"; then
+            echo "Refusing to lint: unexpected characters in changed file paths:" >&2
+            echo "$FILES" >&2
             exit 1
           fi
-          NS=$(printf '%s\n' "$FILES" \
-            | sed -E 's#^(test/|enterprise/backend/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' \
-            | sort -u \
-            | paste -sd' ' -)
+
+          NS=$(sed -E 's#^(test/|enterprise/backend/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+                 | sort -u \
+                 | paste -sd' ' -)
           echo "Changed test namespaces: $NS"
           echo "namespaces=$NS" >> "$GITHUB_OUTPUT"
       - name: Run Eastwood on changed test namespaces
