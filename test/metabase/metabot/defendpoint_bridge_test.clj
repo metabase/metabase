@@ -210,3 +210,84 @@
                 after  (t2/select-one [:model/Collection :location] child-id)]
             (is (re-find (re-pattern (str "/" parent-id "/")) (:location after))
                 "the child collection's location should now contain the new parent's id")))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Cache-invalidation hints (`entity_changed` data parts)
+;;;
+;;; The bridge bypasses the FE's HTTP path, so RTK Query mutation lifecycles
+;;; never fire. To keep caches in sync, mutating tools attach `entity_changed`
+;;; data parts which the FE handler in `metabase/metabot/state/actions.ts`
+;;; consumes to invalidate tags and (for the QB-current card) soft-reload.
+;;; ----------------------------------------------------------------------------
+
+(defn- entity-changes-for-result
+  [tool-name body]
+  (#'bridge/entity-changes-for-result tool-name body))
+
+(deftest entity-changed-emitted-for-card-mutations-test
+  (testing "update_card response → one entity_changed part for the card"
+    (let [parts (entity-changes-for-result "update_card" {:id 42 :name "X"})]
+      (is (= 1 (count parts)))
+      (is (= "entity_changed" (:data-type (first parts))))
+      (is (= {:entity_type "card" :id 42}
+             (:data (first parts))))))
+  (testing "move_card preserves :collection_id (including nil for moves to root)"
+    (let [parts (entity-changes-for-result "move_card" {:id 42 :collection_id 7})]
+      (is (= {:entity_type "card" :id 42 :collection_id 7}
+             (:data (first parts)))))
+    (let [parts (entity-changes-for-result "move_card" {:id 42 :collection_id nil})]
+      (is (contains? (:data (first parts)) :collection_id)
+          "nil collection_id is kept so the FE invalidates the root collection")
+      (is (nil? (get-in (first parts) [:data :collection_id]))))))
+
+(deftest entity-changed-emitted-for-collection-mutations-test
+  (testing "update_collection / move_collection / create_collection produce a collection part"
+    (doseq [tool-name ["update_collection" "move_collection" "create_collection"]]
+      (let [parts (entity-changes-for-result tool-name {:id 99 :parent_id 7 :name "X"})]
+        (is (= 1 (count parts)))
+        (is (= {:entity_type "collection" :id 99 :parent_id 7}
+               (:data (first parts)))
+            (str tool-name " should describe the collection that changed")))))
+  (testing "move_collection to root keeps :parent_id nil"
+    (let [parts (entity-changes-for-result "move_collection" {:id 99 :parent_id nil})]
+      (is (contains? (:data (first parts)) :parent_id))
+      (is (nil? (get-in (first parts) [:data :parent_id]))))))
+
+(deftest entity-changed-emitted-for-verify-card-test
+  (testing "verify_card response → entity_changed for the moderated card"
+    (let [parts (entity-changes-for-result "verify_card"
+                                           {:moderated_item_id 42
+                                            :moderated_item_type :card
+                                            :status "verified"})]
+      (is (= 1 (count parts)))
+      (is (= {:entity_type "card" :id 42}
+             (:data (first parts))))))
+  (testing "verify_card targeting a dashboard maps to entity_type \"dashboard\""
+    (let [parts (entity-changes-for-result "verify_card"
+                                           {:moderated_item_id 7
+                                            :moderated_item_type "dashboard"
+                                            :status "verified"})]
+      (is (= {:entity_type "dashboard" :id 7}
+             (:data (first parts)))))))
+
+(deftest entity-changed-skipped-for-read-tools-test
+  (testing "read-only tools produce no entity_changed data parts"
+    (is (nil? (entity-changes-for-result "list_collections" [{:id 1} {:id 2}])))
+    (is (nil? (entity-changes-for-result "get_collection" {:id 1 :name "X"})))
+    (is (nil? (entity-changes-for-result "list_collection_items" {:data []})))))
+
+(deftest entity-changed-flows-through-bridge-tool-test
+  (testing "a successful bridge tool call attaches data-parts for the FE"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection {dest-id :id} {:name "Bridge Cache Hint Dest"}
+                     :model/Card       {card-id :id} {:name          "Bridge Cache Hint Card"
+                                                      :dataset_query (mt/mbql-query orders {:limit 1})}]
+        (binding [scope/*current-user-scope* #{"agent:card:*"}]
+          (let [tool   (get (bridge/endpoint-tools #{"move_card"}) "move_card")
+                result ((:fn tool) {:id card-id :collection_id dest-id})
+                part   (some-> result :data-parts first)]
+            (is (some? part) "move_card should attach an entity_changed data part")
+            (is (= "entity_changed" (:data-type part)))
+            (is (= {:entity_type "card" :id card-id :collection_id dest-id}
+                   (:data part))
+                "the data part identifies the card and its new collection")))))))

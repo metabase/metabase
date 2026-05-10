@@ -20,6 +20,7 @@ export const knownDataPartTypes = [
   "transform_suggestion",
   "adhoc_viz",
   "static_viz",
+  "entity_changed",
 ];
 
 export type AdhocVizValue = {
@@ -33,6 +34,13 @@ export type StaticVizValue = {
   entity_id: number;
 };
 
+export type EntityChangedValue = {
+  entity_type: "card" | "collection" | "dashboard";
+  id: number;
+  collection_id?: number | null;
+  parent_id?: number | null;
+};
+
 export type KnownDataPart =
   | { type: "navigate_to"; version: 1; value: string }
   | { type: "state"; version: 1; value: Record<string, any> }
@@ -40,7 +48,8 @@ export type KnownDataPart =
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
-  | { type: "static_viz"; version: 1; value: StaticVizValue };
+  | { type: "static_viz"; version: 1; value: StaticVizValue }
+  | { type: "entity_changed"; version: 1; value: EntityChangedValue };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

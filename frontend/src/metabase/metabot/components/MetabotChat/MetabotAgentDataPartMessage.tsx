@@ -80,6 +80,9 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
+    .with({ part: { type: "entity_changed" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
+    )
     .exhaustive((msg: unknown) => {
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;

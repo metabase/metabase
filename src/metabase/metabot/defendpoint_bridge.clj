@@ -21,13 +21,23 @@
     schema), the bridge double-enforces it: the manifest narrows the LLM-visible
     inputSchema, and [[endpoint-tool-fn]] hard-filters incoming args by `inputSchema`
     keys before forwarding to the handler. Unintended fields can never reach the
-    handler even under prompt injection."
+    handler even under prompt injection.
+
+  Cache-invalidation hints
+  ------------------------
+  Bridge tools call handlers in-process, bypassing the browser's HTTP path. That
+  means RTK Query mutation lifecycles (which invalidate FE caches) never run for
+  bridge writes. To keep the UI in sync, mutating tools attach `entity_changed`
+  data parts to their results (see [[entity-changes-for-result]]); the FE handler
+  in `metabase/metabot/state/actions.ts` consumes them to invalidate RTK tags
+  and (if the QB is viewing the affected card) soft-reload the question."
   (:require
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -280,13 +290,79 @@
     (json/encode body)
     (catch Throwable _ (pr-str body))))
 
+;;; ----------------------------------------------------------------------------
+;;; Cache-invalidation hints
+;;
+;; The functions in this section produce `entity_changed` data parts that the FE
+;; consumes to invalidate stale caches. The shape of the data-part value is:
+;;
+;;   {:entity_type   "card"|"collection"|"dashboard"
+;;    :id            <primary id>
+;;    :collection_id <optional, for cards>
+;;    :parent_id     <optional, for collections>}
+;;
+;; The keys are intentionally snake_case — they cross the wire as JSON to the FE.
+
+(defn- card-changed-parts [body]
+  (when-let [id (:id body)]
+    [(streaming/entity-changed-part
+      (cond-> {:entity_type "card" :id id}
+        ;; Always include :collection_id (even if `nil`) so the FE knows to
+        ;; invalidate `idTag("collection", "root")` for moves to root.
+        (contains? body :collection_id) (assoc :collection_id (:collection_id body))))]))
+
+(defn- collection-changed-parts [body]
+  (when-let [id (:id body)]
+    [(streaming/entity-changed-part
+      (cond-> {:entity_type "collection" :id id}
+        (contains? body :parent_id) (assoc :parent_id (:parent_id body))))]))
+
+(defn- moderation-changed-parts
+  "verify_card targets a card or a dashboard via `:moderated_item_type`. Map to
+  the FE's entity-type vocabulary so the right cache tags get invalidated."
+  [body]
+  (when-let [id (:moderated_item_id body)]
+    (let [item-type (some-> (:moderated_item_type body) name)
+          entity    (case item-type
+                      "card"      "card"
+                      "dashboard" "dashboard"
+                      ;; Fall back to "card" — verify_card historically targets cards.
+                      "card")]
+      [(streaming/entity-changed-part {:entity_type entity :id id})])))
+
+(def ^:private entity-change-fns
+  "Per-tool: function `body → [data-parts]` for cache-invalidation hints. Read-only
+  tools have no entry; nothing extra is attached to their results."
+  {"update_card"        card-changed-parts
+   "move_card"          card-changed-parts
+   "verify_card"        moderation-changed-parts
+   "create_collection"  collection-changed-parts
+   "update_collection"  collection-changed-parts
+   "move_collection"    collection-changed-parts})
+
+(defn- entity-changes-for-result
+  "Compute cache-invalidation data parts for a 2xx tool response, or `nil`."
+  [tool-name body]
+  (when-let [f (get entity-change-fns tool-name)]
+    (when (map? body)
+      (try
+        (seq (f body))
+        (catch Throwable t
+          ;; Never let a hint-construction bug break a successful tool call.
+          (log/warn t "Failed to compute entity-changed parts" {:tool tool-name})
+          nil)))))
+
 (defn- shape-success
   "Convert a 2xx HTTP response into a metabot tool result map."
   [tool-name body]
-  (cond-> {:output            (str "Result from `" tool-name "`:\n" (json-encode-body body))
-           :structured-output body}
-    (contains? endpoint-tool-instructions tool-name)
-    (assoc :instructions (get endpoint-tool-instructions tool-name))))
+  (let [data-parts (entity-changes-for-result tool-name body)]
+    (cond-> {:output            (str "Result from `" tool-name "`:\n" (json-encode-body body))
+             :structured-output body}
+      (contains? endpoint-tool-instructions tool-name)
+      (assoc :instructions (get endpoint-tool-instructions tool-name))
+
+      data-parts
+      (assoc :data-parts (vec data-parts)))))
 
 (defn- shape-error
   "Convert a non-2xx HTTP response into a metabot tool result map."

@@ -20,6 +20,7 @@
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def entity-changed-type "AI-SDK data type for cache-invalidation hints." "entity_changed")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -133,6 +134,28 @@
   [value]
   {:type :data
    :data-type static-viz-type
+   :version 1
+   :data value})
+
+(defn entity-changed-part
+  "Create an ENTITY_CHANGED data part for streaming.
+
+  Tells the frontend that an entity has changed server-side so any cached
+  representation (RTK Query, query-builder Redux state) can be refreshed.
+
+  Value is a map containing at least:
+    :entity_type   - one of \"card\", \"collection\", \"dashboard\"
+    :id            - the entity's primary id
+
+  Optional keys aid more targeted invalidation:
+    :collection_id - for cards: the collection the card now lives in
+    :parent_id     - for collections: the parent collection (or nil for root)
+
+  Bridge tools that mutate cached entities emit one of these per affected
+  entity (see [[metabase.metabot.defendpoint-bridge]])."
+  [value]
+  {:type :data
+   :data-type entity-changed-type
    :version 1
    :data value})
 
