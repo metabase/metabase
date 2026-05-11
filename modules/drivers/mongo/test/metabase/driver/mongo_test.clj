@@ -65,6 +65,13 @@
                                                               :dbname "test-data"}
                                                    :expected true
                                                    :message  "should use default port 27017 if not specified"}
+                                                  {:details  {:host   "localhost"
+                                                              :user   "metabase"
+                                                              :pass   "metasample123"
+                                                              :dbname "test-data"
+                                                              :additional-options "authMechanism=MONGODB-X509"}
+                                                   :expected true
+                                                   :message  "should use X509 authentication"}
                                                   {:details  {:host   "123.4.5.6"
                                                               :dbname "bad-db-name?connectTimeoutMS=50"}
                                                    :expected false}

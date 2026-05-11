@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.connection-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
@@ -50,7 +51,20 @@
                             (-> db-details
                                 (assoc :host "localhost")
                                 mongo.db/details-normalized
-                                mongo.connection/db-details->connection-string))))))
+                                mongo.connection/db-details->connection-string))))
+    (testing "uses x509 credentials"
+      (let [db-details (assoc db-details
+                              :additional-options "authMechanism=MONGODB-X509"
+                              :use-conn-uri false
+                              :ssl true
+                              :ssl-use-client-auth true
+                              :client-ssl-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+                              :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+                              :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+            settings (mongo.connection/db-details->mongo-client-settings db-details)
+            ^MongoCredential credential (.getCredential settings)]
+        (is (= "test-user" (.getUserName credential)))
+        (is (= "MONGODB-X509" (.getMechanism credential)))))))
 
 (deftest ^:parallel srv-connection-properties-test
   (testing "connection properties when using SRV"
