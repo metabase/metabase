@@ -19,7 +19,7 @@ permissions:
   security-events: write
 
 jobs:
-  compute-test-plan:
+  create-test-plan:
     if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Compute test plan
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -58,7 +58,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
         run: |
-          OUTPUT=$(node .github/scripts/compute-test-plan.js)
+          OUTPUT=$(node .github/scripts/create-test-plan.js)
           echo "$OUTPUT" | jq '.stats'
           echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> $GITHUB_OUTPUT
           echo "unit_tests_to_run=$(echo "$OUTPUT" | jq -c '.unit_tests_to_run')" >> $GITHUB_OUTPUT
@@ -66,9 +66,9 @@ jobs:
           echo "e2e_tests_to_run=$(echo "$OUTPUT" | jq -c '.e2e_tests_to_run')" >> $GITHUB_OUTPUT
 
   upload-affected-tests-stats:
-    needs: compute-test-plan
+    needs: create-test-plan
     # Only land rows for the upstream repo so forks don't pollute the table.
-    if: ${{ !cancelled() && needs.compute-test-plan.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -77,7 +77,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Upload test selection stats
         env:
-          STATS_JSON: ${{ needs.compute-test-plan.outputs.stats }}
+          STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -85,53 +85,53 @@ jobs:
         run: node .github/scripts/upload-affected-tests-stats.js
 
   uberjar:
-    needs: [compute-test-plan]
-    if: ${{ !cancelled() && !(needs.compute-test-plan.outputs.documentation == 'true' && needs.compute-test-plan.outputs.backend_all == 'false' && needs.compute-test-plan.outputs.frontend_all == 'false' && needs.compute-test-plan.outputs.e2e_all == 'false') }}
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && !(needs.create-test-plan.outputs.documentation == 'true' && needs.create-test-plan.outputs.backend_all == 'false' && needs.create-test-plan.outputs.frontend_all == 'false' && needs.create-test-plan.outputs.e2e_all == 'false') }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
   backend-tests:
-    if: ${{ !cancelled() && needs.compute-test-plan.result == 'success' }}
-    needs: [compute-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
+    needs: [create-test-plan]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
 
   semantic-search-tests:
-    needs: compute-test-plan
+    needs: create-test-plan
     uses: ./.github/workflows/semantic-search.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
 
   app-db-tests:
-    needs: compute-test-plan
+    needs: create-test-plan
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
 
   driver-tests:
-    needs: compute-test-plan
+    needs: create-test-plan
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
 
   frontend-tests:
-    needs: [compute-test-plan]
-    if: ${{ !cancelled() && needs.compute-test-plan.result == 'success' }}
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.frontend_all != 'true' }}
-      skip-lint: ${{ needs.compute-test-plan.outputs.frontend_all != 'true' && needs.compute-test-plan.outputs.e2e_all != 'true' }}
-      skip-custom-viz: ${{ needs.compute-test-plan.outputs.custom_viz_all != 'true' }}
-      unit-tests-to-run: ${{ needs.compute-test-plan.outputs.unit_tests_to_run || '' }}
+      skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
+      skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
+      skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
+      unit-tests-to-run: ${{ needs.create-test-plan.outputs.unit_tests_to_run || '' }}
 
   e2e-tests:
-    needs: [compute-test-plan, uberjar]
+    needs: [create-test-plan, uberjar]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -142,43 +142,43 @@ jobs:
     # branch protection blocks the merge as pending.
     if: |
       always() && !cancelled() &&
-      needs.compute-test-plan.result == 'success' &&
+      needs.create-test-plan.result == 'success' &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.compute-test-plan.outputs.e2e_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.e2e_all != 'true' }}
       # here we pass the list of changed files
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
       # list of changed specs files, then only specs are changed and we can run only those specs
-      specs: ${{ needs.compute-test-plan.outputs.e2e_all_files == needs.compute-test-plan.outputs.e2e_specs_files && needs.compute-test-plan.outputs.e2e_specs_files || '' }}
+      specs: ${{ needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
 
   embedding-sdk-package:
-    needs: [compute-test-plan]
+    needs: [create-test-plan]
     if: |
       !cancelled() &&
-      (needs.compute-test-plan.outputs.embedding_sdk_components == 'true' ||
-      needs.compute-test-plan.outputs.frontend_sources == 'true' ||
-      needs.compute-test-plan.outputs.embedding_documentation == 'true' ||
-      needs.compute-test-plan.outputs.embedding_sdk_ci == 'true' ||
-      needs.compute-test-plan.outputs.embedding_sdk_host_sample_apps == 'true')
+      (needs.create-test-plan.outputs.embedding_sdk_components == 'true' ||
+      needs.create-test-plan.outputs.frontend_sources == 'true' ||
+      needs.create-test-plan.outputs.embedding_documentation == 'true' ||
+      needs.create-test-plan.outputs.embedding_sdk_ci == 'true' ||
+      needs.create-test-plan.outputs.embedding_sdk_host_sample_apps == 'true')
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 
   sdk-tests:
-    needs: [uberjar, embedding-sdk-package, compute-test-plan]
+    needs: [uberjar, embedding-sdk-package, create-test-plan]
     if: always() && !cancelled()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' && needs.compute-test-plan.outputs.frontend_sources == 'true' }}
-      cli-snippets-type-check: ${{ needs.compute-test-plan.outputs.frontend_sources == 'true' }}
-      docs-snippets-type-check: ${{ needs.compute-test-plan.outputs.embedding_documentation == 'true' }}
-      documentation-validation: ${{ needs.compute-test-plan.outputs.frontend_sources == 'true' }}
-      component-tests: ${{ needs.compute-test-plan.outputs.embedding_sdk_components == 'true' }}
-      host-sample-apps-tests: ${{ needs.compute-test-plan.outputs.embedding_sdk_host_sample_apps == 'true' }}
+      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' && needs.create-test-plan.outputs.frontend_sources == 'true' }}
+      cli-snippets-type-check: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
+      docs-snippets-type-check: ${{ needs.create-test-plan.outputs.embedding_documentation == 'true' }}
+      documentation-validation: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
+      component-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_components == 'true' }}
+      host-sample-apps-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_host_sample_apps == 'true' }}
       skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}
 
   pr-env:

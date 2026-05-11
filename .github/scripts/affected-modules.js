@@ -1,3 +1,6 @@
+/**
+ * Compiles a glob pattern (supports `*` and `**`) to an anchored RegExp.
+ */
 function globToRegex(glob) {
   // Split on ** so single-segment expansion of * doesn't see them.
   const escapeSegment = (seg) =>
@@ -7,9 +10,10 @@ function globToRegex(glob) {
 }
 
 /**
- * Returns module-graph helpers for a given (elements, rules) config.
+ * Precomputes a module-graph value for a given (elements, rules) config.
+ * Returns plain data; the helpers below take that value as their first arg.
  */
-function createAffectedModules(elements, rules) {
+function buildModuleGraph(elements, rules) {
   const compiledElements = elements.map((el) => ({
     type: el.type,
     regex: globToRegex(el.pattern),
@@ -43,55 +47,71 @@ function createAffectedModules(elements, rules) {
     }
   }
 
-  function fileToModule(path) {
-    for (const el of compiledElements) {
-      if (el.regex.test(path)) {
-        return el.type;
-      }
-    }
-    return null;
-  }
-
-  function directlyTouchedModules(changedFiles) {
-    const direct = new Set();
-    for (const file of changedFiles) {
-      const m = fileToModule(file);
-      if (m) {
-        direct.add(m);
-      }
-    }
-    return direct;
-  }
-
-  function affectedModules(changedFiles) {
-    const direct = directlyTouchedModules(changedFiles);
-    const affected = new Set(direct);
-    const queue = [...direct];
-    while (queue.length > 0) {
-      const m = queue.shift();
-      for (const dep of dependentsOf.get(m) ?? []) {
-        if (!affected.has(dep)) {
-          affected.add(dep);
-          queue.push(dep);
-        }
-      }
-    }
-    return affected;
-  }
-
-  function selectTests(affected, testFiles) {
-    return testFiles.filter((f) => {
-      const m = fileToModule(f);
-      return m !== null && affected.has(m);
-    });
-  }
-
-  return {
-    fileToModule,
-    directlyTouchedModules,
-    affectedModules,
-    selectTests,
-  };
+  return { compiledElements, dependentsOf };
 }
 
-module.exports = { createAffectedModules, globToRegex };
+/**
+ * Returns the module type that owns the given file, or null if none matches.
+ * First match wins, so element ordering matters for nested patterns.
+ */
+function fileToModule(graph, path) {
+  for (const el of graph.compiledElements) {
+    if (el.regex.test(path)) {
+      return el.type;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns the set of module types containing any of the changed files.
+ */
+function directlyTouchedModules(graph, changedFiles) {
+  const direct = new Set();
+  for (const file of changedFiles) {
+    const m = fileToModule(graph, file);
+    if (m) {
+      direct.add(m);
+    }
+  }
+  return direct;
+}
+
+/**
+ * Returns directly-touched modules plus the transitive closure of modules
+ * that depend on them, i.e. everything potentially invalidated by the diff.
+ */
+function affectedModules(graph, changedFiles) {
+  const direct = directlyTouchedModules(graph, changedFiles);
+  const affected = new Set(direct);
+  const queue = [...direct];
+  while (queue.length > 0) {
+    const m = queue.shift();
+    for (const dep of graph.dependentsOf.get(m) ?? []) {
+      if (!affected.has(dep)) {
+        affected.add(dep);
+        queue.push(dep);
+      }
+    }
+  }
+  return affected;
+}
+
+/**
+ * Filters the test-file list down to tests whose owning module is affected.
+ */
+function selectTests(graph, affected, testFiles) {
+  return testFiles.filter((f) => {
+    const m = fileToModule(graph, f);
+    return m !== null && affected.has(m);
+  });
+}
+
+module.exports = {
+  globToRegex,
+  buildModuleGraph,
+  fileToModule,
+  directlyTouchedModules,
+  affectedModules,
+  selectTests,
+};

@@ -4,9 +4,13 @@ const { execFileSync } = require("node:child_process");
 
 const { elements, rules } = require("../../frontend/lint/module-boundaries");
 
-const { SUITES, createAffectedTests } = require("./affected-tests");
+const {
+  TEST_SUITES,
+  computeAffectedTests,
+  createTestPlan,
+} = require("./affected-tests");
 
-const { decideAll } = createAffectedTests({ elements, rules, suites: SUITES });
+const config = computeAffectedTests({ elements, rules, suites: TEST_SUITES });
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -49,7 +53,7 @@ const changedFiles = (process.env.CHANGED_FILES ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const result = decideAll({
+const result = createTestPlan(config, {
   changedFiles,
   suiteFiles: {
     unit: gitLines(["ls-files", "--", ...UNIT_GLOBS]),

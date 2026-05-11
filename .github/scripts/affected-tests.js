@@ -3,7 +3,13 @@
 // Mirrors the relevant subset of `.github/file-paths.yaml`'s frontend_specs
 // and frontend_loki_ci entries — keep both in sync.
 
-const { createAffectedModules, globToRegex } = require("./affected-modules");
+const {
+  affectedModules,
+  buildModuleGraph,
+  directlyTouchedModules,
+  globToRegex,
+  selectTests,
+} = require("./affected-modules");
 
 const SHARED_INFRA = [
   "babel.config.json",
@@ -14,7 +20,7 @@ const SHARED_INFRA = [
   ".github/workflows/run-tests.yml",
 ];
 
-const SUITES = {
+const TEST_SUITES = {
   unit: {
     statsPrefix: "unit_tests",
     infraPatterns: [
@@ -37,80 +43,90 @@ const SUITES = {
     ],
   },
   e2e: {
-    // E2E specs don't map to modules; build-e2e-matrix.js handles its own
-    // changed-spec selection. Stub run = total here so the schema stays
-    // populated until that logic moves into this file.
     statsPrefix: "e2e_tests",
     infraPatterns: [],
-    stub: true,
+    // We don't map changed files to e2e tests yet, so for now just run them all
+    runAllTests: true,
   },
 };
 
-function createAffectedTests({ elements, rules, suites }) {
-  const modules = createAffectedModules(elements, rules);
-  const compiled = Object.fromEntries(
-    Object.entries(suites).map(([name, s]) => [
-      name,
-      { ...s, compiledInfra: s.infraPatterns.map(globToRegex) },
-    ]),
-  );
-
-  function selectForSuite(suiteName, changedFiles, allTestFiles) {
-    const suite = compiled[suiteName];
-    if (suite.stub) {
-      return {
-        run: allTestFiles,
-        total: allTestFiles.length,
-        trigger: "stub",
-      };
-    }
-    const infraTouched = changedFiles.some((f) =>
-      suite.compiledInfra.some((re) => re.test(f)),
-    );
-    if (infraTouched) {
-      return {
-        run: allTestFiles,
-        total: allTestFiles.length,
-        trigger: "infra",
-      };
-    }
-    const affected = modules.affectedModules(changedFiles);
-    return {
-      run: modules.selectTests(affected, allTestFiles),
-      total: allTestFiles.length,
-      trigger: "modules",
-    };
-  }
-
-  function decideAll({ changedFiles, suiteFiles }) {
-    const direct = modules.directlyTouchedModules(changedFiles);
-    const affected = modules.affectedModules(changedFiles);
-
-    const decisions = {};
-    const stats = {
-      modules_changed: direct.size,
-      modules_affected: affected.size,
-      affected_modules: [...affected].sort(),
-    };
-
-    for (const [name, suite] of Object.entries(compiled)) {
-      const files = suiteFiles[name] ?? [];
-      const dec = selectForSuite(name, changedFiles, files);
-      decisions[name] = dec;
-      stats[`${suite.statsPrefix}_total`] = dec.total;
-      stats[`${suite.statsPrefix}_to_run`] = dec.run.length;
-      stats[`${suite.statsPrefix}_to_skip`] = dec.total - dec.run.length;
-    }
-
-    return {
-      stats,
-      unit_tests_to_run: decisions.unit?.run ?? [],
-      loki_stories_to_run: decisions.loki?.run ?? [],
-      e2e_tests_to_run: decisions.e2e?.run ?? [],
-    };
-  }
-
-  return { selectForSuite, decideAll };
+/**
+ * Precomputes a graph + compiled-suites bundle for a given config.
+ */
+function computeAffectedTests({ elements, rules, suites }) {
+  return {
+    graph: buildModuleGraph(elements, rules),
+    suites: Object.fromEntries(
+      Object.entries(suites).map(([name, s]) => [
+        name,
+        { ...s, compiledInfra: s.infraPatterns.map(globToRegex) },
+      ]),
+    ),
+  };
 }
 
-module.exports = { SUITES, createAffectedTests };
+/**
+ * Computes the test plan for one test suite
+ *
+ * Runs the full suite when the suite is marked `runAllTests`
+ * or when any changed file matches its infra patterns; otherwise picks the
+ * tests inside the affected-modules closure.
+ */
+function createTestPlanForSuite(
+  config,
+  suiteName,
+  changedFiles,
+  allTestFiles,
+) {
+  const suite = config.suites[suiteName];
+  const infraTouched = changedFiles.some((f) =>
+    suite.compiledInfra.some((re) => re.test(f)),
+  );
+  if (suite.runAllTests || infraTouched) {
+    return { run: allTestFiles, total: allTestFiles.length };
+  }
+  const affected = affectedModules(config.graph, changedFiles);
+  return {
+    run: selectTests(config.graph, affected, allTestFiles),
+    total: allTestFiles.length,
+  };
+}
+
+/**
+ * Computes the full test plan: per-suite run lists plus the stats row
+ * uploaded by upload-affected-tests-stats.js.
+ */
+function createTestPlan(config, { changedFiles, suiteFiles }) {
+  const direct = directlyTouchedModules(config.graph, changedFiles);
+  const affected = affectedModules(config.graph, changedFiles);
+
+  const decisions = {};
+  const stats = {
+    modules_changed: direct.size,
+    modules_affected: affected.size,
+    affected_modules: [...affected].sort(),
+  };
+
+  for (const [name, suite] of Object.entries(config.suites)) {
+    const files = suiteFiles[name] ?? [];
+    const dec = createTestPlanForSuite(config, name, changedFiles, files);
+    decisions[name] = dec;
+    stats[`${suite.statsPrefix}_total`] = dec.total;
+    stats[`${suite.statsPrefix}_to_run`] = dec.run.length;
+    stats[`${suite.statsPrefix}_to_skip`] = dec.total - dec.run.length;
+  }
+
+  return {
+    stats,
+    unit_tests_to_run: decisions.unit?.run ?? [],
+    loki_stories_to_run: decisions.loki?.run ?? [],
+    e2e_tests_to_run: decisions.e2e?.run ?? [],
+  };
+}
+
+module.exports = {
+  TEST_SUITES,
+  computeAffectedTests,
+  createTestPlanForSuite,
+  createTestPlan,
+};

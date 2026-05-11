@@ -1,4 +1,8 @@
-const { createAffectedTests } = require("./affected-tests");
+const {
+  computeAffectedTests,
+  createTestPlan,
+  createTestPlanForSuite,
+} = require("./affected-tests");
 
 const ELEMENTS = [
   { type: "lib/utils", pattern: "src/utils/**" },
@@ -13,7 +17,7 @@ const RULES = [
   { from: ["feature/*"], allow: ["lib/*"] },
 ];
 
-const SUITES = {
+const TEST_SUITES = {
   unit: {
     statsPrefix: "unit_tests",
     infraPatterns: ["jest.config.js", "src/test/**"],
@@ -25,7 +29,7 @@ const SUITES = {
   e2e: {
     statsPrefix: "e2e_tests",
     infraPatterns: [],
-    stub: true,
+    runAllTests: true,
   },
 };
 
@@ -38,33 +42,41 @@ const UNIT_FILES = [
 const LOKI_FILES = ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"];
 const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 
-const { selectForSuite, decideAll } = createAffectedTests({
+const config = computeAffectedTests({
   elements: ELEMENTS,
   rules: RULES,
-  suites: SUITES,
+  suites: TEST_SUITES,
 });
 
-describe("selectForSuite", () => {
+describe("createTestPlanForSuite", () => {
   it("should run all tests when an infra pattern matches", () => {
-    const result = selectForSuite("unit", ["jest.config.js"], UNIT_FILES);
-    expect(result.trigger).toBe("infra");
+    const result = createTestPlanForSuite(
+      config,
+      "unit",
+      ["jest.config.js"],
+      UNIT_FILES,
+    );
     expect(result.run).toEqual(UNIT_FILES);
     expect(result.total).toBe(UNIT_FILES.length);
   });
 
   it("should run all tests when a deeper infra pattern matches via **", () => {
-    const result = selectForSuite(
+    const result = createTestPlanForSuite(
+      config,
       "unit",
       ["src/test/setup-env.ts"],
       UNIT_FILES,
     );
-    expect(result.trigger).toBe("infra");
-    expect(result.run.length).toBe(UNIT_FILES.length);
+    expect(result.run).toEqual(UNIT_FILES);
   });
 
   it("should fall back to module-affected selection when no infra matches", () => {
-    const result = selectForSuite("unit", ["src/foo/x.ts"], UNIT_FILES);
-    expect(result.trigger).toBe("modules");
+    const result = createTestPlanForSuite(
+      config,
+      "unit",
+      ["src/foo/x.ts"],
+      UNIT_FILES,
+    );
     expect(result.run.sort()).toEqual([
       "src/foo/bar.unit.spec.ts",
       "src/foo/foo.unit.spec.ts",
@@ -72,38 +84,46 @@ describe("selectForSuite", () => {
   });
 
   it("should return nothing when no infra matches and no file maps to a module", () => {
-    const result = selectForSuite("unit", ["docs/foo.md"], UNIT_FILES);
-    expect(result.trigger).toBe("modules");
+    const result = createTestPlanForSuite(
+      config,
+      "unit",
+      ["docs/foo.md"],
+      UNIT_FILES,
+    );
     expect(result.run).toEqual([]);
   });
 
   it("should use each suite's own infra patterns", () => {
-    const lokiInfra = selectForSuite(
+    const lokiInfra = createTestPlanForSuite(
+      config,
       "loki",
       [".storybook/main.ts"],
       LOKI_FILES,
     );
-    expect(lokiInfra.trigger).toBe("infra");
-    expect(lokiInfra.run.length).toBe(LOKI_FILES.length);
+    expect(lokiInfra.run).toEqual(LOKI_FILES);
 
-    const lokiOther = selectForSuite("loki", ["jest.config.js"], LOKI_FILES);
-    expect(lokiOther.trigger).toBe("modules");
+    const lokiOther = createTestPlanForSuite(
+      config,
+      "loki",
+      ["jest.config.js"],
+      LOKI_FILES,
+    );
     expect(lokiOther.run).toEqual([]);
   });
 
-  it("should run all tests for stub suites regardless of diff", () => {
-    expect(selectForSuite("e2e", ["docs/foo.md"], E2E_FILES).run).toEqual(
-      E2E_FILES,
-    );
-    expect(selectForSuite("e2e", ["src/foo/x.ts"], E2E_FILES).run).toEqual(
-      E2E_FILES,
-    );
+  it("should run all tests for runAllTests suites regardless of diff", () => {
+    expect(
+      createTestPlanForSuite(config, "e2e", ["docs/foo.md"], E2E_FILES).run,
+    ).toEqual(E2E_FILES);
+    expect(
+      createTestPlanForSuite(config, "e2e", ["src/foo/x.ts"], E2E_FILES).run,
+    ).toEqual(E2E_FILES);
   });
 });
 
-describe("decideAll", () => {
+describe("createTestPlan", () => {
   it("should return run lists and stats together", () => {
-    const result = decideAll({
+    const result = createTestPlan(config, {
       changedFiles: ["src/foo/x.ts"],
       suiteFiles: {
         unit: UNIT_FILES,
@@ -136,7 +156,7 @@ describe("decideAll", () => {
   });
 
   it("should run all tests for the suite when its infra files change", () => {
-    const result = decideAll({
+    const result = createTestPlan(config, {
       changedFiles: ["jest.config.js"],
       suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
     });
@@ -147,13 +167,13 @@ describe("decideAll", () => {
   });
 
   it("should not run anything when changes don't touch any module or infra", () => {
-    const result = decideAll({
+    const result = createTestPlan(config, {
       changedFiles: ["docs/foo.md"],
       suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
     });
     expect(result.stats.unit_tests_to_run).toBe(0);
     expect(result.stats.loki_stories_to_run).toBe(0);
-    // Stub: e2e still reports run = total.
+    // e2e is runAllTests, so it still reports run = total.
     expect(result.stats.e2e_tests_to_run).toBe(E2E_FILES.length);
   });
 });

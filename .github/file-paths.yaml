@@ -1,5 +1,5 @@
 # Catch-all filter — emits the full changed-files list as `all_changed_files`
-# so compute-test-plan in run-tests.yml can reuse dorny's diff.
+# so create-test-plan in run-tests.yml can reuse dorny's diff.
 all_changed:
   - "**"
 

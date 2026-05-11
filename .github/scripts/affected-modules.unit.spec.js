@@ -1,4 +1,10 @@
-const { createAffectedModules } = require("./affected-modules");
+const {
+  affectedModules,
+  buildModuleGraph,
+  directlyTouchedModules,
+  fileToModule,
+  selectTests,
+} = require("./affected-modules");
 
 const ELEMENTS = [
   { type: "lib/utils", pattern: "src/utils/**" },
@@ -26,8 +32,7 @@ const RULES = [
   { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
 ];
 
-const { affectedModules, directlyTouchedModules, fileToModule, selectTests } =
-  createAffectedModules(ELEMENTS, RULES);
+const graph = buildModuleGraph(ELEMENTS, RULES);
 
 describe("fileToModule", () => {
   it.each([
@@ -44,19 +49,19 @@ describe("fileToModule", () => {
     ["external/lib/foo.ts", "feature/external"],
     ["src/embed.tsx", "app/main"],
   ])("should map %s to %s", (path, expected) => {
-    expect(fileToModule(path)).toBe(expected);
+    expect(fileToModule(graph, path)).toBe(expected);
   });
 
   it("should return null for files outside any pattern", () => {
-    expect(fileToModule("docs/foo.md")).toBe(null);
-    expect(fileToModule("README.md")).toBe(null);
-    expect(fileToModule("external/notlib/foo.ts")).toBe(null);
+    expect(fileToModule(graph, "docs/foo.md")).toBe(null);
+    expect(fileToModule(graph, "README.md")).toBe(null);
+    expect(fileToModule(graph, "external/notlib/foo.ts")).toBe(null);
   });
 });
 
 describe("directlyTouchedModules", () => {
   it("should return the unique set of modules whose files changed", () => {
-    const result = directlyTouchedModules([
+    const result = directlyTouchedModules(graph, [
       "src/utils/colors.ts",
       "src/foo/x.ts",
       "src/foo/y.ts",
@@ -66,13 +71,13 @@ describe("directlyTouchedModules", () => {
   });
 
   it("should return an empty set when no file maps to a module", () => {
-    expect(directlyTouchedModules(["docs/foo.md"]).size).toBe(0);
+    expect(directlyTouchedModules(graph, ["docs/foo.md"]).size).toBe(0);
   });
 });
 
 describe("affectedModules", () => {
   it("should affect feature/super and app/main but not feature/bar when feature/foo changes", () => {
-    const result = affectedModules(["src/foo/x.ts"]);
+    const result = affectedModules(graph, ["src/foo/x.ts"]);
     expect([...result].sort()).toEqual([
       "app/main",
       "feature/foo",
@@ -81,7 +86,7 @@ describe("affectedModules", () => {
   });
 
   it("should affect lots of modules a lib module changes", () => {
-    const result = affectedModules(["src/utils/colors.ts"]);
+    const result = affectedModules(graph, ["src/utils/colors.ts"]);
     expect(result.has("lib/utils")).toBe(true);
     expect(result.has("feature/foo")).toBe(true);
     expect(result.has("feature/bar")).toBe(true);
@@ -90,7 +95,7 @@ describe("affectedModules", () => {
   });
 
   it("should return empty when no file maps to a module", () => {
-    expect(affectedModules(["docs/foo.md"]).size).toBe(0);
+    expect(affectedModules(graph, ["docs/foo.md"]).size).toBe(0);
   });
 });
 
@@ -103,7 +108,7 @@ describe("selectTests", () => {
       "src/bar/bar.unit.spec.ts",
       "docs/unrelated.unit.spec.ts",
     ];
-    expect(selectTests(affected, tests)).toEqual([
+    expect(selectTests(graph, affected, tests)).toEqual([
       "src/foo/foo.unit.spec.ts",
       "src/utils/colors.unit.spec.ts",
     ]);

@@ -1,5 +1,5 @@
 // This script is used in .github/workflows/run-tests.yml.
-// It uploads the test-plan stats row produced by compute-test-plan.js to
+// It uploads the test-plan stats row produced by create-test-plan.js to
 // the stats.metabase.com tracking table.
 // Reads STATS_JSON, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
 
