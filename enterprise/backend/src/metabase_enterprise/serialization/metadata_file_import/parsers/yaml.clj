@@ -20,9 +20,7 @@
 
 (defn- coerce-scalar
   "Coerce a YAML scalar event to a Clojure value. Plain (unquoted) scalars get
-  YAML 1.1 type inference: empty / `~` / `null` → nil; `true`/`false` (case
-  variants) → Boolean; integer-shaped → Long; decimal-shaped → Double; otherwise
-  → String. Quoted scalars stay String."
+  YAML 1.1 type inference; quoted scalars stay String."
   [^ScalarEvent ev]
   (let [v (.getValue ev)]
     (if-not (.isPlain ev)

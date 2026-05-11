@@ -669,10 +669,8 @@
 ;;; --------------------------------------- /metadata/import ---------------------------------------
 
 (defn- import-metadata!
-  "Helper: POST `payload` (a Clojure map) to `/api/ee/serialization/metadata/import`
-  as a streamed body with `Content-Type: application/octet-stream`. The map is
-  JSON-encoded and sent as a raw `InputStream` so the request middleware does
-  not pre-parse it."
+  "Helper: JSON-encode `payload` and POST it as an octet-stream body to
+  `/api/ee/serialization/metadata/import`."
   ([payload] (import-metadata! :crowberto 200 payload))
   ([user expected-status payload]
    (mt/user-http-request

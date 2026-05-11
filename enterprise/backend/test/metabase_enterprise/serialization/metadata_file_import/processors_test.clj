@@ -2,12 +2,7 @@
   "Tests for the pure batch processors. Each processor is exercised against an
   appdb populated via `mt/with-temp` — no HTTP, no streaming parser. Tests
   verify the processor's behavior contract: input shape, return shape, batch
-  ordering, error attribution, and observable side-effects on the appdb.
-
-  Tests are DBMS-agnostic: all SQL goes through toucan2 / HoneySQL or simple
-  parameterized queries; no Postgres-specific syntax in test code or test
-  fixtures. The suite runs against H2, MySQL 8+, or Postgres appdb depending
-  on `MB_DB_TYPE` in the test environment."
+  ordering, error attribution, and observable side-effects on the appdb."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]

@@ -13,8 +13,7 @@
 
 (defn- insert-staging-fields!
   "Insert a sequence of partial field rows into `metabase_field_import`,
-  filling in required NOT NULL columns with sensible defaults so the test
-  can focus on the `source_*_id` graph."
+  filling in required NOT NULL columns with sensible defaults."
   [rows]
   (let [defaults {:name "x" :base_type "type/Integer" :database_type "int"}]
     (t2/insert! :metabase_field_import

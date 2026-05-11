@@ -1,29 +1,6 @@
 (ns metabase-enterprise.serialization.metadata-file-import.processors
   "SQL building blocks for the metadata file importer's drain-then-merge flow.
 
-  Three groups of functions:
-
-    - **Databases** ([[process-databases!]]): per-batch in-Clojure match by
-      natural key (name, engine). No live writes; returns matched/no-match
-      result maps for the orchestrator to aggregate.
-    - **Drain** ([[drain-tables-batch!]] / [[drain-fields-batch!]]): per-batch
-      handlers writing wire rows into `metabase_table_import` /
-      `metabase_field_import` verbatim — source-side integer IDs go into
-      `source_*_id` staging columns.
-    - **Pre-flight** ([[assert-no-orphan-refs!]]) and **depth tagging**
-      ([[compute-staging-depth!]]): post-drain validation and graph-walk.
-      Together they make the strict-consistency assumption load-bearing —
-      orphan refs become hard errors, cycles are caught, and the merge can
-      iterate by depth without fallback paths.
-    - **Merge** (atomic, designed to compose under one outer
-      `t2/with-transaction`): [[resolve-target-table-ids-in-staging!]],
-      [[merge-tables!]], [[resolve-target-table-ids-for-fields-in-staging!]],
-      then [[merge-fields-by-depth!]] which loops the per-depth helpers
-      (`fill-target-parent-ids-at-depth!`,
-      `fill-target-fk-target-ids-at-depth!`,
-      `resolve-target-field-ids-at-depth!`, `update-matched-fields-at-depth!`,
-      `insert-new-fields-at-depth!`).
-
   Driver-blind: every SQL statement goes through `t2/query` with a HoneySQL
   map; correlated subqueries instead of `UPDATE … FROM` for cross-dialect
   portability.
@@ -43,20 +20,19 @@
 (set! *warn-on-reflection* true)
 
 (def import-batch-size
-  "Row batch size shared by all processors. Tuned at 250 against the
-  real-stats benchmark (~234K-field dump): the cost per row is minimized
-  here because larger batches make the per-batch INSERT super-linear (the
-  WAL/index overhead grows with batch size against a filling staging
-  table) and smaller batches start paying parser/handler-dispatch overhead
-  that swamps the per-row savings."
+  "Row batch size shared by all processors. Larger batches make per-batch
+  INSERT cost super-linear (WAL/index overhead grows with batch size
+  against a filling staging table); smaller batches pay parser/handler-
+  dispatch overhead that swamps the per-row savings. 250 looked like a
+  sweet spot in local benchmarks."
   250)
 
 ;;; ============================== Validation ==============================
 
 (defn- validate-line!
-  "Validate `line` against the registered Malli `schema-ref`. Succeeds silently when valid
-  (cached validator — fast path); on failure throws an `ex-info` with `:kind :invalid_input`,
-  `:line`, a humanized `:detail`, and `extras` merged into the ex-data for echo-key attribution."
+  "Validate `line` against the registered Malli `schema-ref`. On failure
+  throws `ex-info` with `:kind :invalid_input`, `:line`, a humanized
+  `:detail`, and `extras` merged into the ex-data."
   [schema-ref line-num line extras]
   (when-not (mr/validate schema-ref line)
     (let [humanized (me/humanize (mr/explain schema-ref line))]
@@ -69,38 +45,28 @@
 ;;; ============================== Staging tables ==============================
 
 (defn clear-staging-tables!
-  "Empty `metabase_table_import` and `metabase_field_import`. Called by
-  [[with-staging-tables]] on entry and on exit (try/finally) so a crashed
-  prior attempt cannot leak rows into the next run.
-
-  Uses `TRUNCATE` rather than `DELETE` so that running the importer
-  multiple times in one process lifetime doesn't accumulate dead tuples
-  in staging (DELETE leaves dead rows in the heap and indexes until the
-  next autovacuum, which won't run mid-import). HoneySQL's `:truncate`
-  compiles to `TRUNCATE TABLE …` on PG, H2, and MySQL.
-
-  Called outside any outer transaction (the entry call runs before the
-  merge's `t2/with-transaction`, and the exit call is in `finally` after
-  the txn has closed), so MySQL's implicit commit on TRUNCATE is fine."
+  "Empty `metabase_table_import` and `metabase_field_import`."
   []
+  ;; TRUNCATE (not DELETE) so multiple imports in one process lifetime don't
+  ;; accumulate dead tuples in staging — autovacuum won't fire mid-import.
+  ;; HoneySQL's :truncate compiles to TRUNCATE TABLE on PG, H2, and MySQL.
+  ;; Called outside any outer transaction, so MySQL's implicit-commit-on-
+  ;; TRUNCATE doesn't break composition.
   (t2/query {:truncate :metabase_table_import})
   (t2/query {:truncate :metabase_field_import}))
 
 (defn analyze-staging-tables!
   "Refresh planner statistics on `metabase_table_import` and
-  `metabase_field_import` after drain, before any of the staging-driven
-  UPDATEs (orphan check, depth tagging, per-depth resolves, the merge
-  itself). Without this, PG's planner has zero rows-and-distribution
-  knowledge of staging — autovacuum's stats refresh won't fire mid-
-  import — and selectivity defaults can drive plan choices that scan
-  far more pages than the actual selectivity would.
-
-  Driver-conditional: there's no portable HoneySQL form for ANALYZE,
-  and the syntax differs (`ANALYZE name` on PG, `ANALYZE TABLE name`
-  on MySQL, `ANALYZE` whole-DB on H2). H2 dev/test only, and analyzing
-  the full H2 DB is cheap; MySQL is documented but we don't benchmark
-  there. PG is where the win matters in practice."
+  `metabase_field_import`."
   []
+  ;; Autovacuum's stats refresh won't fire mid-import; without explicit
+  ;; ANALYZE, PG's planner falls back to default selectivity and picks
+  ;; plans that scan far more pages than needed.
+  ;;
+  ;; Driver-conditional: ANALYZE syntax differs (PG: `ANALYZE name`,
+  ;; MySQL: `ANALYZE TABLE name`, H2: whole-DB `ANALYZE`). H2 is dev/test
+  ;; only and analyzing the whole DB is cheap; PG is where the win
+  ;; matters in practice.
   (case (mdb/db-type)
     :postgres
     (do (t2/query "ANALYZE metabase_table_import")
@@ -112,17 +78,8 @@
     (t2/query "ANALYZE")))
 
 (defmacro with-staging-tables
-  "Run `body` with the staging tables pre-cleared, and clear them again on exit.
-
-  The exit clear is a `finally` so a thrown exception from the body still
-  wipes staging — both branches of the contract matter:
-
-    - **Entry clear** ensures the body sees an empty staging area regardless
-      of any leftover rows from a crashed prior attempt.
-    - **Exit clear** ensures we leak nothing to the next attempt, whether the
-      body returned normally or threw.
-
-  The body's exception is re-raised after the finally runs."
+  "Run `body` with staging cleared on entry and on exit (try/finally,
+  so a thrown exception from `body` still wipes staging)."
   [& body]
   `(do (clear-staging-tables!)
        (try ~@body
@@ -167,8 +124,6 @@
   Result shapes:
     `{:source-id <int> :name <string> :target-id <int> :status :matched}`
     `{:source-id <int> :name <string> :status :no-match :line L :detail S}`
-
-  `:source-id` is the wire row's `:id` (the source appdb's database id, an integer).
 
   Validation failures throw; lookup misses produce `:no-match` results
   (non-fatal)."
@@ -216,15 +171,12 @@
   match key is `(db_name, schema, name)` against `(d.name, t.schema, t.name)`,
   restricted to active, non-defective live rows.
 
-  Lets [[merge-tables!]]'s UPDATE key on a single column instead of repeating
-  the 2-table-join match in each correlated subquery. Rows that do not match
-  keep `target_id` NULL — `merge-tables!`'s INSERT picks up exactly those
-  rows. Inactive matches are deliberately not resolved so a re-import after
-  a deactivation creates a fresh active row.
+  Rows that do not match keep `target_id` NULL. Inactive matches are
+  deliberately not resolved so a re-import after a deactivation creates a
+  fresh active row.
 
   Idempotent — running again with the same staging contents produces the
-  same assignments. Uses a correlated subquery in SET so it serializes
-  portably across PG / H2 / MySQL via `t2/query`."
+  same assignments."
   []
   (t2/query
    {:update :metabase_table_import
@@ -263,17 +215,12 @@
   The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
   source DB has no target appdb match are silently dropped.
 
-  The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
-  not fire here because the INSERT goes through the raw table keyword
-  (`:metabase_table`) rather than the model. Per-table permissions therefore
-  aren't set on insert. TODO: batched-grant fix.
-
-  Composes safely inside a larger transaction: Toucan2's `t2/with-transaction`
-  joins an outer txn rather than creating a savepoint, so when an outer caller
-  wraps several merge steps in one txn, this function's inner txn participates
-  in the outer's all-or-nothing semantics."
+  Per-table permissions aren't set on insert. TODO: batched-grant fix."
   []
   (t2/with-transaction [_]
+    ;; t2 joins an outer txn rather than creating a savepoint, so wrapping
+    ;; this call in a larger transaction is safe.
+
     ;; UPDATE matched rows first (clobber description, bump updated_at).
     ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
     ;; description actually differs (NULL-safe via COALESCE-with-empty-
@@ -296,7 +243,11 @@
                                   [:= :it.target_id :metabase_table.id]
                                   [:!= [:coalesce :metabase_table.description [:inline ""]]
                                    [:coalesce :it.description             [:inline ""]]]]}]]})
-    ;; INSERT rows with no matching live row (target_id IS NULL)
+    ;; INSERT rows with no matching live row (target_id IS NULL).
+    ;; Goes through the raw :metabase_table keyword (not :model/Table) to
+    ;; skip the :after-insert hook — that hook schedules Quartz sync triggers
+    ;; we don't want and calls set-new-table-permissions!, hence the gap
+    ;; documented above.
     (t2/query
      {:insert-into
       [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
@@ -396,18 +347,10 @@
   `:kind :file_incomplete` and a sample of orphan rows in the error data
   when any orphan parent ref exists.
 
-  Orphan `source_fk_target_id` refs are *not* fatal — they're handled
-  separately by [[null-orphan-fk-target-refs!]], which NULLs them and lets
-  the loader emit a WARN. Foreign-key target refs are informational (used
-  for join discovery and drill-through); a missing target degrades to
-  'no fk relationship known' rather than blocking the import. Parent refs
-  are structural — a field claiming to be a child of a missing field can't
-  be positioned, so the file is genuinely incomplete.
-
-  This is the cheap one-shot check that makes the strict-consistency
-  invariant load-bearing for parent_id — orphan parents are hard errors,
-  and the depth-walk merge can rely on every parent reference being
-  resolvable within staging."
+  Parent refs are structural — a field claiming to be a child of a missing
+  field can't be positioned, so the file is genuinely incomplete. Orphan
+  `source_fk_target_id` refs are not fatal here; see
+  [[null-orphan-fk-target-refs!]]."
   []
   (let [parent-count (orphan-count :source_parent_id)]
     (when (pos? parent-count)
@@ -446,11 +389,11 @@
 ;;; ============================== Depth tagging ==============================
 
 (def depth-iteration-cap
-  "Sentinel cap on the depth-tagging fixpoint loop. Real Metabase data has
-  parent chains ≤ 3 deep; in practice convergence is 2-4 rounds. The cap is a
-  safety belt — if a workload ever exceeds it, the algorithm itself is the
-  bug, not the data. Hitting the cap throws `:cycle_in_field_graph` with the
-  un-tagged sample for diagnostics."
+  "Sentinel cap on the depth-tagging fixpoint loop. Field parent chains
+  are shallow in practice (a few levels at most), so 50 is a comfortable
+  safety belt — if a workload ever exceeds it, the algorithm itself is
+  the bug, not the data. Hitting the cap throws `:cycle_in_field_graph`
+  with the un-tagged sample for diagnostics."
   50)
 
 (defn- mark-roots-at-depth-zero!
@@ -513,19 +456,12 @@
   no-progress round (which signals a cycle in the file's reference graph).
 
   Throws `:cycle_in_field_graph` if any rows remain untagged after the loop
-  exits — the strict-consistency invariant from `assert-no-orphan-refs!`
-  guarantees this can only happen via a cycle (e.g., X.parent_id = Y AND
-  Y.parent_id = X).
+  exits.
 
-  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully. Without
-  the strict-consistency guarantee, the cycle vs. orphan distinction breaks
-  down (a row whose parent doesn't exist in the file would also be untagged,
-  but for a different reason).
+  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully — that
+  invariant is what guarantees no-progress means cycle (vs. orphan).
 
-  Returns the maximum depth currently in staging (queried after tagging
-  completes). This is idempotent — re-running on already-tagged staging
-  returns the same max depth. Useful for the depth-walk merge to know how
-  many levels to iterate."
+  Returns the maximum depth currently in staging."
   []
   (mark-roots-at-depth-zero!)
   (loop [d 1]
@@ -602,16 +538,12 @@
   "Populate `metabase_field_import.target_table_id` by joining through
   `metabase_table_import.source_id → metabase_table_import.target_id`.
 
-  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have been
-  called *twice* — once before [[merge-tables!]] (for the UPDATE/INSERT
-  decision) and once after (to capture INSERT-assigned ids back into table
-  staging). Without the second call, table rows that were just inserted
-  have `target_id IS NULL` in table staging, and the field rows that
-  reference them would get `target_table_id IS NULL`.
+  Pre-condition: `metabase_table_import.target_id` must be populated
+  (via [[resolve-target-table-ids-in-staging!]]) for both matched and
+  newly-inserted target rows.
 
   Field rows whose source table has no target (orphan-source-database
-  case) keep `target_table_id NULL` and are silently skipped by both the
-  resolve and the merge."
+  case) keep `target_table_id NULL`."
   []
   (t2/query
    {:update :metabase_field_import
