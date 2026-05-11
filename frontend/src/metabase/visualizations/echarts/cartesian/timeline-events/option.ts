@@ -88,8 +88,8 @@ export const getTimelineEventsSeries = (
 
     if (splitPanelYExtent) {
       const markLineData: MarkLine2DDataItemOption = [
-        { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
         { ...itemProps, xAxis: date, y: splitPanelYExtent.bottomY },
+        { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
       ];
       return markLineData;
     }
