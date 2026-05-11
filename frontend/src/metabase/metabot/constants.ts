@@ -144,4 +144,10 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_tables() {
     return t`Searching database tables`;
   },
+  get document_read() {
+    return t`Reading the document`;
+  },
+  get document_update() {
+    return t`Updating the document`;
+  },
 };

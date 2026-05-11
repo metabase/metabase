@@ -147,6 +147,7 @@ export type MetabotAdhocQueryInfo = {
 export type MetabotDocumentInfo = {
   type: "document";
   id: number;
+  has_unsaved_changes?: boolean;
 };
 
 export type MetabotTransformInfo =

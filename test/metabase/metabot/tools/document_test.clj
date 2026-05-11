@@ -1,13 +1,16 @@
 (ns metabase.metabot.tools.document-test
   (:require
    [clojure.test :refer :all]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.document :as document-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor :as qp]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.test :as mt]
+   [metabase.warehouses.core :as warehouses]
+   [toucan2.core :as t2]))
 
 (deftest document-schema-collect-tool-test
   (testing "returns schema/instructions when one database reference is present"
@@ -139,3 +142,112 @@
         (is (= {:database 1
                 :type "query"}
                (:dataset_query structured)))))))
+
+(def ^:private sample-doc-ast
+  {:type "doc"
+   :content [{:type "heading" :attrs {:level 1}
+              :content [{:type "text" :text "Title"}]}
+             {:type "paragraph"
+              :content [{:type "text" :text "Hello world."}]}
+             {:type "cardEmbed" :attrs {:id 42 :name "Sales"}}]})
+
+(deftest document-read-tool-test
+  (testing "renders an existing document for the LLM"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Read Me"
+                                                 :document sample-doc-ast
+                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-test-user :crowberto
+        (let [{:keys [output structured-output]}
+              (document-tools/document-read-tool {:document_id doc-id})]
+          (is (string? output))
+          (is (re-find #"Title: Read Me" output))
+          (is (re-find #"# Title" output))
+          (is (re-find #"Hello world\." output))
+          (is (re-find #"\[Card #42" output))
+          (is (= doc-id (:id structured-output)))
+          (is (= sample-doc-ast (:document structured-output)))))))
+
+  (testing "returns a not-found message for missing documents"
+    (mt/with-test-user :crowberto
+      (let [result (document-tools/document-read-tool {:document_id Integer/MAX_VALUE})]
+        (is (re-find #"not found" (:output result)))
+        (is (nil? (:structured-output result)))))))
+
+(deftest document-update-tool-test
+  (testing "replaces document content and bumps the title"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Before"
+                                                 :document sample-doc-ast
+                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-test-user :crowberto
+        (let [new-ast {:type "doc"
+                       :content [{:type "heading" :attrs {:level 2}
+                                  :content [{:type "text" :text "Summary"}]}
+                                 {:type "paragraph"
+                                  :content [{:type "text" :text "Updated body."}]}
+                                 {:type "cardEmbed" :attrs {:id 42 :name "Sales"}}]}
+              {:keys [output structured-output]}
+              (document-tools/document-update-tool {:document_id doc-id
+                                                    :document new-ast
+                                                    :name "After"})
+              reloaded (t2/select-one :model/Document :id doc-id)]
+          (is (re-find #"updated" output))
+          (is (= "document_update" (:tool structured-output)))
+          (is (= :document-updated (:result-type structured-output)))
+          (is (= "After" (:name reloaded)))
+          (testing "id-bearing nodes get a synthesized :_id so the editor doesn't show them as dirty"
+            (let [persisted-content (-> reloaded :document :content)]
+              (is (= 3 (count persisted-content)))
+              (doseq [node persisted-content]
+                (is (string? (get-in node [:attrs :_id]))
+                    (str "node " (:type node) " should have an :_id"))))
+            ;; cardEmbed's existing :id attr is preserved
+            (is (= 42 (get-in (last (-> reloaded :document :content)) [:attrs :id]))))))))
+
+  (testing "rejects non-doc roots without changing the database"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Untouched"
+                                                 :document sample-doc-ast
+                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-test-user :crowberto
+        (let [result (document-tools/document-update-tool
+                      {:document_id doc-id
+                       :document {:type "paragraph"
+                                  :content [{:type "text" :text "no good"}]}})]
+          (is (re-find #"Invalid document AST" (:output result)))
+          (is (= sample-doc-ast (:document (t2/select-one :model/Document :id doc-id))))))))
+
+  (testing "refuses to edit archived documents"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Archived"
+                                                 :document sample-doc-ast
+                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                 :archived true
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-test-user :crowberto
+        (let [result (document-tools/document-update-tool {:document_id doc-id
+                                                           :document sample-doc-ast})]
+          (is (re-find #"archived" (:output result))))))))
+
+(deftest document-tools-refuse-on-unsaved-changes-test
+  (testing "both tools refuse when the user has unsaved local changes"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Dirty"
+                                                 :document sample-doc-ast
+                                                 :content_type prose-mirror/prose-mirror-content-type
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-test-user :crowberto
+        (let [memory-atom (atom {:context {:user_is_viewing
+                                           [{:type "document"
+                                             :id doc-id
+                                             :has_unsaved_changes true}]}})]
+          (binding [shared/*memory-atom* memory-atom]
+            (let [read-result (document-tools/document-read-tool {:document_id doc-id})
+                  update-result (document-tools/document-update-tool
+                                 {:document_id doc-id
+                                  :document {:type "doc" :content []}})]
+              (is (re-find #"unsaved changes" (:output read-result)))
+              (is (nil? (:structured-output read-result)))
+              (is (re-find #"unsaved changes" (:output update-result)))
+              ;; Persisted contents are unchanged
+              (is (= sample-doc-ast
+                     (:document (t2/select-one :model/Document :id doc-id)))))))))))
