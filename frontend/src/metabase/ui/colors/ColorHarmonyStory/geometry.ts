@@ -3,13 +3,13 @@ import Color from "color";
 /** Container dimensions. The wheel diameter is taken from the smaller of the
  *  two so the wheel always fits, with the remainder distributed as label halo
  *  on every side. */
-export const WIDTH = 720;
-export const HEIGHT = 720;
+export const WHEEL_WIDTH = 720;
+export const WHEEL_HEIGHT = 720;
 
-export const CENTER_X = WIDTH / 2;
-export const CENTER_Y = HEIGHT / 2;
+export const WHEEL_CENTER_X = WHEEL_WIDTH / 2;
+export const WHEEL_CENTER_Y = WHEEL_HEIGHT / 2;
 
-const SHORT_SIDE = Math.min(WIDTH, HEIGHT);
+const SHORT_SIDE = Math.min(WHEEL_WIDTH, WHEEL_HEIGHT);
 
 /** Padding between the wheel's outer edge and the container edge (per side).
  *  Sized to accommodate the longest label plus its swatch. */
@@ -29,16 +29,22 @@ export const ANCHOR_MARKER_RADIUS = 11;
 /** Extra space between every label's inner edge and its swatch's outer edge.
  *  Set to 0 to make labels touch their swatches; raise to push every label
  *  further from the wheel center uniformly. */
-export const LABEL_PADDING = 10;
+export const WHEEL_LABEL_PADDING = 10;
 
 /**
  * Maps a hue (0–360°) to an (x, y) point at the given radius around the wheel
  * center. Hue 0 sits at the top, increasing clockwise — matched to the
  * `conic-gradient(from 0deg, …)` that paints the hue ring.
  */
-export const polar = (radius: number, hueDeg: number): [number, number] => {
+export const polarPoint = (
+  radius: number,
+  hueDeg: number,
+): [number, number] => {
   const rad = ((hueDeg - 90) * Math.PI) / 180;
-  return [CENTER_X + radius * Math.cos(rad), CENTER_Y + radius * Math.sin(rad)];
+  return [
+    WHEEL_CENTER_X + radius * Math.cos(rad),
+    WHEEL_CENTER_Y + radius * Math.sin(rad),
+  ];
 };
 
 export const HUE_GRADIENT_STOPS = Array.from(

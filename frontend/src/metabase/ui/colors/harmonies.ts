@@ -1,7 +1,7 @@
-/* eslint-disable metabase/no-color-literals -- this module owns the static fallback palette used when a brand color is too desaturated to derive a harmony from */
 import Color from "color";
 
 import { DEFAULT_ACCENT_COLORS } from "./constants/accent-colors";
+import { METABASE_LIGHT_THEME } from "./constants/themes/light";
 
 type ColorInstance = ReturnType<typeof Color>;
 
@@ -22,15 +22,24 @@ export interface HarmonyColors {
   charts: string[];
 }
 
-const FALLBACK: HarmonyColors = {
-  filter: "#7c7cd8",
-  summarize: "#669533",
-  positive: "#669533",
-  negative: "#ed6e6e",
-  charts: DEFAULT_ACCENT_COLORS as string[],
-};
-
 const toHex = (c: ColorInstance) => c.hex().toLowerCase();
+
+const normalize = (cssColor: string) => toHex(Color(cssColor));
+
+const FALLBACK: HarmonyColors = {
+  filter: normalize(METABASE_LIGHT_THEME.colors.filter),
+  summarize: normalize(METABASE_LIGHT_THEME.colors.summarize),
+  positive: normalize(METABASE_LIGHT_THEME.colors.success),
+  negative: normalize(METABASE_LIGHT_THEME.colors.danger),
+  charts: DEFAULT_ACCENT_COLORS.flatMap((c) => {
+    if (c == null) {
+      return [];
+    }
+    return [normalize(typeof c === "string" ? c : c.base)];
+  }),
+};
+Object.freeze(FALLBACK);
+Object.freeze(FALLBACK.charts);
 
 const rotated = (brand: ColorInstance, degrees: number) =>
   toHex(brand.rotate(degrees));

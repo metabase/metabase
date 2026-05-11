@@ -271,9 +271,6 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
       return true;
     }
     const currentCharts = (colors.charts ?? []).map(chartBase);
-    if (currentCharts.length !== expected.charts.length) {
-      return true;
-    }
     return expected.charts.some((c, i) => !eqColor(currentCharts[i], c));
   }, [currentTheme]);
 
@@ -281,7 +278,6 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     if (!currentTheme?.settings.colors?.brand) {
       return;
     }
-    const snapshot = currentTheme;
     setCurrentTheme({
       ...currentTheme,
       settings: withBrandHarmony(currentTheme.settings),
@@ -290,7 +286,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
       addUndo({
         message: t`Filter, summarize, positive, negative, and chart colors regenerated from the brand color.`,
         actionLabel: t`Undo`,
-        actions: [() => setCurrentTheme(snapshot)],
+        actions: [() => setCurrentTheme(currentTheme)],
       }),
     );
   }, [currentTheme, dispatch]);
@@ -304,7 +300,6 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
     for (const key of PRIMARY_COLORS_KEYS) {
       updatedColors[key] = (defaultColors[key] as string) ?? "";
     }
-    const snapshot = currentTheme;
     setCurrentTheme({
       ...currentTheme,
       settings: { ...currentTheme.settings, colors: updatedColors },
@@ -313,7 +308,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
       addUndo({
         message: t`Main colors reset to defaults.`,
         actionLabel: t`Undo`,
-        actions: [() => setCurrentTheme(snapshot)],
+        actions: [() => setCurrentTheme(currentTheme)],
       }),
     );
   }, [currentTheme, defaultThemeSettings, dispatch]);

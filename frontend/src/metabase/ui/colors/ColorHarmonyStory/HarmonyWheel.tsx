@@ -9,18 +9,18 @@ import { PillLabel } from "./PillLabel";
 import {
   ANCHOR_MARKER_RADIUS,
   BRAND_SWATCH_RADIUS,
-  CENTER_X,
-  CENTER_Y,
   CHART_SWATCH_RADIUS,
-  HEIGHT,
   HUE_GRADIENT_STOPS,
   RING_INNER,
   RING_OUTER,
   SQUARE_SIDE_SWATCH_RADIUS,
   VERTEX_RADIUS,
-  WIDTH,
+  WHEEL_CENTER_X,
+  WHEEL_CENTER_Y,
+  WHEEL_HEIGHT,
+  WHEEL_WIDTH,
   isLightColor,
-  polar,
+  polarPoint,
 } from "./geometry";
 
 const POSITIVE_HUE = 89;
@@ -52,14 +52,14 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
 
   const octVertices = Array.from({ length: 8 }, (_, i) => {
     const hue = (brandHue + i * 45 + 360) % 360;
-    const [x, y] = polar(VERTEX_RADIUS, hue);
+    const [x, y] = polarPoint(VERTEX_RADIUS, hue);
     return { hue, x, y, color: harmony.charts[i] };
   });
 
   const squarePoints = SQUARE_INDICES.map((i) => octVertices[i]);
 
-  const [posX, posY] = polar(RING_OUTER + 26, POSITIVE_HUE);
-  const [negX, negY] = polar(RING_OUTER + 26, NEGATIVE_HUE);
+  const [posX, posY] = polarPoint(RING_OUTER + 26, POSITIVE_HUE);
+  const [negX, negY] = polarPoint(RING_OUTER + 26, NEGATIVE_HUE);
 
   const [isDragging, setIsDragging] = useState(false);
   const brandRef = useRef(brand);
@@ -80,13 +80,6 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
 
       setIsDragging(true);
 
-      // Suppress text selection (and the I-beam cursor) anywhere on the page
-      // while the gesture is active, then restore.
-      const previousUserSelect = document.body.style.userSelect;
-      const previousCursor = document.body.style.cursor;
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "grabbing";
-
       const onMove = (ev: PointerEvent) => {
         const delta = thetaAt(ev.clientX, ev.clientY) - originTheta;
         const newHue = (((originHue + delta) % 360) + 360) % 360;
@@ -94,8 +87,6 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
       };
       const onEnd = () => {
         setIsDragging(false);
-        document.body.style.userSelect = previousUserSelect;
-        document.body.style.cursor = previousCursor;
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onEnd);
         window.removeEventListener("pointercancel", onEnd);
@@ -111,17 +102,18 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
     <Box
       style={{
         position: "relative",
-        width: WIDTH,
-        height: HEIGHT,
+        width: WHEEL_WIDTH,
+        height: WHEEL_HEIGHT,
         flexShrink: 0,
+        userSelect: isDragging ? "none" : "auto",
       }}
     >
       {/* Hue donut */}
       <Box
         style={{
           position: "absolute",
-          left: CENTER_X - RING_OUTER,
-          top: CENTER_Y - RING_OUTER,
+          left: WHEEL_CENTER_X - RING_OUTER,
+          top: WHEEL_CENTER_Y - RING_OUTER,
           width: RING_OUTER * 2,
           height: RING_OUTER * 2,
           borderRadius: "50%",
@@ -133,8 +125,8 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
       />
 
       <svg
-        width={WIDTH}
-        height={HEIGHT}
+        width={WHEEL_WIDTH}
+        height={WHEEL_HEIGHT}
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
       >
         <polygon
@@ -223,8 +215,8 @@ export function HarmonyWheel({ brand, onBrandChange }: HarmonyWheelProps) {
         onPointerDown={handleGlassPointerDown}
         style={{
           position: "absolute",
-          left: CENTER_X - RING_OUTER - 10,
-          top: CENTER_Y - RING_OUTER - 10,
+          left: WHEEL_CENTER_X - RING_OUTER - 10,
+          top: WHEEL_CENTER_Y - RING_OUTER - 10,
           width: (RING_OUTER + 10) * 2,
           height: (RING_OUTER + 10) * 2,
           cursor: isDragging ? "grabbing" : "grab",
@@ -306,8 +298,8 @@ function CenterSwatch({ brand }: { brand: string }) {
   return (
     <>
       <circle
-        cx={CENTER_X}
-        cy={CENTER_Y}
+        cx={WHEEL_CENTER_X}
+        cy={WHEEL_CENTER_Y}
         r={66}
         fill={brand}
         stroke="white"
@@ -315,8 +307,8 @@ function CenterSwatch({ brand }: { brand: string }) {
         style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
       />
       <text
-        x={CENTER_X}
-        y={CENTER_Y + 4}
+        x={WHEEL_CENTER_X}
+        y={WHEEL_CENTER_Y + 4}
         textAnchor="middle"
         fontSize={13}
         fontWeight={600}
@@ -340,7 +332,7 @@ function ExternalMarker({
   y: number;
   color: string;
 }) {
-  const [ringX, ringY] = polar(RING_OUTER + 4, hue);
+  const [ringX, ringY] = polarPoint(RING_OUTER + 4, hue);
   return (
     <g>
       <line

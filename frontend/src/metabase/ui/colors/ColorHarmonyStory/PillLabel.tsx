@@ -3,7 +3,11 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import { Box } from "metabase/ui";
 
-import { CENTER_X, CENTER_Y, LABEL_PADDING } from "./geometry";
+import {
+  WHEEL_CENTER_X,
+  WHEEL_CENTER_Y,
+  WHEEL_LABEL_PADDING,
+} from "./geometry";
 
 interface PillLabelProps {
   /** Center of the swatch the label is attached to. */
@@ -12,7 +16,7 @@ interface PillLabelProps {
   /**
    * Visible radius of the swatch (in pixels). The label's closest point
    * (treating the pill as a stadium / discorectangle) is placed at exactly
-   * `swatchRadius + LABEL_PADDING` from the swatch center, so the gap between
+   * `swatchRadius + WHEEL_LABEL_PADDING` from the swatch center, so the gap between
    * the swatch's outer edge and the label is uniform at every angle.
    */
   swatchRadius: number;
@@ -108,18 +112,18 @@ export function PillLabel({
     });
   }, []);
 
-  const dx = x - CENTER_X;
-  const dy = y - CENTER_Y;
+  const dx = x - WHEEL_CENTER_X;
+  const dy = y - WHEEL_CENTER_Y;
   const r = Math.hypot(dx, dy) || 1;
   const ux = dx / r;
   const uy = dy / r;
 
-  const D = swatchRadius + LABEL_PADDING;
+  const D = swatchRadius + WHEEL_LABEL_PADDING;
   const distFromSwatch = size ? labelDistanceFromSwatch(ux, uy, size, D) : 0;
   const totalR = r + distFromSwatch;
 
-  const lx = CENTER_X + ux * totalR;
-  const ly = CENTER_Y + uy * totalR;
+  const lx = WHEEL_CENTER_X + ux * totalR;
+  const ly = WHEEL_CENTER_Y + uy * totalR;
 
   return (
     <Box

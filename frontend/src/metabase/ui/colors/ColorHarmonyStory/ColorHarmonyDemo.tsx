@@ -3,6 +3,7 @@
 /* eslint-disable i18next/no-literal-string -- storybook demo */
 import Color from "color";
 import { useCallback, useState } from "react";
+import { match } from "ts-pattern";
 
 import { Box, Group, Stack, Text } from "metabase/ui";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
@@ -20,12 +21,11 @@ export function ColorHarmonyDemo() {
   const handleHsl = useCallback(
     (channel: HslChannel) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = Number(e.currentTarget.value);
-      const next =
-        channel === "hue"
-          ? c.hue(value)
-          : channel === "saturationl"
-            ? c.saturationl(value)
-            : c.lightness(value);
+      const next = match(channel)
+        .with("hue", () => c.hue(value))
+        .with("saturationl", () => c.saturationl(value))
+        .with("lightness", () => c.lightness(value))
+        .exhaustive();
       setBrand(next.hex().toLowerCase());
     },
     [c],
