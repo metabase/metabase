@@ -11,6 +11,7 @@ import * as Urls from "metabase/urls";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
+import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceSection } from "./WorkspaceSection";
 
 export function WorkspaceListPage() {
@@ -28,8 +29,17 @@ export function WorkspaceListPage() {
   const isLoading = isLoadingWorkspaces || isLoadingDatabases;
   const error = workspacesError ?? databasesError;
 
+  if (
+    isLoading ||
+    error != null ||
+    workspaces == null ||
+    databasesResponse == null
+  ) {
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
-    <PageContainer data-testid="workspace-list" gap="2.5rem">
+    <PageContainer data-testid="workspace-list">
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
@@ -44,17 +54,10 @@ export function WorkspaceListPage() {
         }
         py={0}
       />
-      {isLoading ||
-      error != null ||
-      workspaces == null ||
-      databasesResponse == null ? (
-        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-      ) : (
-        <WorkspaceListPageBody
-          workspaces={workspaces}
-          availableDatabases={databasesResponse.data}
-        />
-      )}
+      <WorkspaceListPageBody
+        workspaces={workspaces}
+        availableDatabases={databasesResponse.data}
+      />
     </PageContainer>
   );
 }
@@ -68,6 +71,10 @@ function WorkspaceListPageBody({
   workspaces,
   availableDatabases,
 }: WorkspaceListPageBodyProps) {
+  if (workspaces.length === 0) {
+    return <WorkspaceEmptyState />;
+  }
+
   return (
     <Stack gap="lg">
       {workspaces.map((workspace) => (

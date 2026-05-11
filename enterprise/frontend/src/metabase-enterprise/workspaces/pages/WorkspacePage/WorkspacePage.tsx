@@ -123,7 +123,7 @@ function WorkspacePageBody({
 
   return (
     <>
-      <PageContainer data-testid="workspace-editor" gap="2.5rem">
+      <PageContainer data-testid="workspace-editor">
         <WorkspaceHeader
           name={workspace.name}
           onChangeName={handleNameChange}
