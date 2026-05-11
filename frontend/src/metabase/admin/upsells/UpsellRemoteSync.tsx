@@ -33,7 +33,7 @@ export const UpsellRemoteSync = ({ source }: { source: string }) => {
       buttonLink={UPGRADE_URL}
       source={source}
       onClick={triggerUpsellFlow}
-      illustrationSrc="app/assets/img/data-studio-remote-sync-upsell.svg"
+      illustrationSrc="app/assets/img/upsell-remote-sync.png"
     >
       {t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`}
       <ExternalLink
