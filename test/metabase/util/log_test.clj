@@ -1,5 +1,4 @@
 (ns metabase.util.log-test
-  ;; Trivial touch to exercise CI: Eastwood (changed tests only) — see PR #73951.
   (:require
    [clojure.test :refer :all]
    [metabase.util.log :as log])
