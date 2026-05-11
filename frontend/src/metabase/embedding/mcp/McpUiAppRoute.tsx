@@ -132,7 +132,7 @@ export function McpUiAppRoute() {
               <McpQuestionTitle />
             </div>
 
-            <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+            <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
               <McpFeedbackButtons
                 instanceUrl={instanceUrl}
                 sessionToken={sessionToken}

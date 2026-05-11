@@ -108,6 +108,7 @@ export function McpFeedbackButtons({
           onClick={() => setModalData({ positive: true })}
         />
       </Tooltip>
+
       <Tooltip label={t`Give negative feedback`}>
         <FeedbackButton
           data-testid="mcp-feedback-thumbs-down"
@@ -117,6 +118,7 @@ export function McpFeedbackButtons({
           onClick={() => setModalData({ positive: false })}
         />
       </Tooltip>
+
       {modalData && (
         <McpFeedbackModal
           positive={modalData.positive}
