@@ -13,9 +13,10 @@
 ## and `target_*_id` columns populated by the resolve step against the
 ## live appdb.
 ##
-## Indexes are all on `source_*` columns (for the self-joins that
-## populate target_* during the depth-walk merge), `target_id` (for
-## the merge SQL keying), and `depth` (for per-level scoping).
+## Indexes:
+##   - PK on `source_id`     — probed by every depth-walk EXISTS subquery
+##   - `target_id`           — keys the merge UPDATE's clobber subqueries
+##   - `depth`               — per-level scoping for the depth-walk merge
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
@@ -194,24 +195,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: Populated per-depth-level by self-join on source_fk_target_id → another row's target_id.
-        - createIndex:
-            tableName: metabase_field_import
-            indexName: idx_mfi_source_parent_id
-            columns:
-              - column:
-                  name: source_parent_id
-        - createIndex:
-            tableName: metabase_field_import
-            indexName: idx_mfi_source_fk_target_id
-            columns:
-              - column:
-                  name: source_fk_target_id
-        - createIndex:
-            tableName: metabase_field_import
-            indexName: idx_mfi_source_table_id
-            columns:
-              - column:
-                  name: source_table_id
         - createIndex:
             tableName: metabase_field_import
             indexName: idx_mfi_depth
