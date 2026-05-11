@@ -28,20 +28,22 @@ const SECTION_PRIORITY: SectionId[] = [
   SectionId.Formatting,
 ];
 
-// localized labels for sections actually used in production. Sections in
-// SECTION_PRIORITY without a label here are English-ID-only.
-const getSectionLabel = (id: SectionId): string | undefined => {
+// localized labels for each section ID, evaluated at call time so the
+// priority list works in any locale
+const getSectionLabel = (id: SectionId): string => {
   switch (id) {
     case SectionId.Data:
       return t`Data`;
+    case SectionId.Columns:
+      return t`Columns`;
     case SectionId.Display:
       return t`Display`;
+    case SectionId.Axes:
+      return t`Axes`;
+    case SectionId.Ranges:
+      return t`Ranges`;
     case SectionId.Formatting:
       return t`Formatting`;
-    case SectionId.Columns:
-    case SectionId.Axes:
-    case SectionId.Ranges:
-      return undefined;
   }
 };
 
@@ -49,10 +51,7 @@ const orderSectionNames = (names: string[]): string[] => {
   // precompute lowercase labels once so the inner loop is just string compares
   const labelById = new Map<SectionId, string>();
   for (const id of SECTION_PRIORITY) {
-    const label = getSectionLabel(id);
-    if (label) {
-      labelById.set(id, label.toLowerCase());
-    }
+    labelById.set(id, getSectionLabel(id).toLowerCase());
   }
   const matchesSectionId = (name: string, id: SectionId): boolean => {
     const lower = name.toLowerCase();
