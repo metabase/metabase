@@ -36,6 +36,25 @@
      :description "New description"}
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
 
+;; Regression test for https://github.com/metabase/metabase/issues/73681
+(deftest diff-cards-str-deleted-collection-test
+  (mt/initialize-if-needed! :db)
+  (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
+    (let [deleted-coll-id 99999]
+      (are [x y expected] (= expected
+                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+        ;; moved from nil (root) to a now-deleted collection
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        (str "moved this Card to #" deleted-coll-id ".")
+
+        ;; moved from a now-deleted collection back to root: should show ID, not "null"
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        {:name "Apple"}
+        (str "moved this Card from #" deleted-coll-id " to Our analytics.")))))
+
 (deftest ^:parallel diff-cards-str-update-collection--test
   (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
