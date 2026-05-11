@@ -274,6 +274,25 @@ export type MetabotSourceFeedback = {
   positive: boolean;
 };
 
+export type McpMetabotFeedback = {
+  feedback: {
+    message_id: string;
+    positive: boolean;
+    issue_type?: string;
+    freeform_feedback?: string;
+  };
+  conversation_data: {
+    source: "mcp";
+    prompt: string | null;
+    query: string | null;
+  };
+};
+
+export type SubmitMcpMetabotFeedbackRequest = {
+  mcpSessionId: string;
+  payload: McpMetabotFeedback;
+};
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;

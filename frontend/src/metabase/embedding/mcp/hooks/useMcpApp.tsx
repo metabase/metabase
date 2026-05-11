@@ -10,11 +10,12 @@ import { useEffect, useState } from "react";
 
 interface McpAppState {
   query: string | null;
+  prompt: string | null;
   hostContext: McpUiHostContext | null;
   app: App | null;
 }
 
-type ToolArgument = { query?: string } | undefined;
+type ToolArgument = { query?: string; prompt?: string } | undefined;
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -32,6 +33,7 @@ function applyHostContext(ctx: McpUiHostContext) {
 
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -50,16 +52,22 @@ export function useMcpApp(): McpAppState {
 
         if (query) {
           setQuery(query);
+          setPrompt(null);
         }
       };
 
       // Fallback: ontoolinput may be missed if the tool returns instantly
       // (notification sent before the app finishes connecting).
+      // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
-        const { query } = (params.structuredContent as ToolArgument) ?? {};
+        const { query, prompt } =
+          (params.structuredContent as ToolArgument) ?? {};
 
         if (query) {
           setQuery(query);
+          setPrompt(prompt ?? null);
+        } else if (prompt) {
+          setPrompt(prompt);
         }
       };
     },
@@ -77,5 +85,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, hostContext, app };
+  return { query, prompt, hostContext, app };
 }

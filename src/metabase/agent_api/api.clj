@@ -3,6 +3,7 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
@@ -355,7 +356,7 @@
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
 (mr/def ::program-request
-  "Request body for /v2/construct-query and /v2/query.
+  "Request body for /v2/query.
   An agent-lib structured program with `:source` and `:operations`. The top-level
   `:source` must reference a database entity (`table`, `card`, `dataset`, or
   `metric`); `context` and nested `program` sources are rejected at the HTTP
@@ -363,10 +364,22 @@
   in-process evaluation context."
   agent-lib/program-schema)
 
+(mr/def ::construct-query-request
+  "Request body for /v2/construct-query. Same as program-request, with an optional prompt
+  capturing the user's original intent (e.g. \"visualize this orders\") when called from MCP."
+  (mut/merge agent-lib/program-schema
+             [:map
+              [:prompt {:optional true} [:and
+                                         {:json-schema {:type        "string"
+                                                        :minLength   1
+                                                        :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}
+                                         ms/NonBlankString]]]))
+
 (mr/def ::construct-query-response
-  "Response containing a base64-encoded MBQL query for use with /v1/execute."
+  "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."
   [:map
-   [:query ms/NonBlankString]])
+   [:query ms/NonBlankString]
+   [:prompt {:optional true} ms/NonBlankString]])
 
 (def ^:private allowed-program-source-types
   "Top-level program source types that the HTTP boundary accepts. `context` and
@@ -380,19 +393,23 @@
   reference — covers the program shape, canonical operator names, reference forms,
   and a few worked examples spanning the common patterns."
   (str
-   "Construct a Metabase MBQL query from a structured program. The body is the program itself — no envelope — shaped:\n"
-   "`{\"source\": {...}, \"operations\": [...]}`\n"
+   "Construct a Metabase MBQL query from a structured program. The body structure is:\n"
+   "`{\"prompt\": \"<user's exact original message>\", \"source\": {...}, \"operations\": [...]}`\n"
+   "When a `prompt` is available, include the user's message as-is; do not summarize or modify it.\n"
    "Returns `{\"query_handle\": \"<uuid>\"}` — pass it as `query_handle` to `execute_query` or `visualize_query`.\n"
    "For the full reference, read the `metabase://docs/construct-query.md` MCP resource.\n"
    "\n"
    "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
    "Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, "
    "but the canonical names below always work.\n"
+   "For follow-up requests about the current visible MCP widget/chart, use source "
+   "`{\"type\": \"context\", \"ref\": \"source\"}`. MCP resolves that to the most recently active view "
+   "(the last view created by `visualize_query` or drilled in the widget).\n"
    "\n"
    "## Workflow\n"
    "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
-   "2. Call `construct_query` with the program. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
-   "3. Pass that handle to `execute_query` or `visualize_query`.\n"
+   "2. Call `construct_query` with the program and, when available, the user's original `prompt`. You get back `{\"query_handle\": \"<uuid>\"}`.\n"
+   "3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.\n"
    "Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.\n"
    "\n"
    "## Source\n"
@@ -401,6 +418,7 @@
    "- `card` — a saved question\n"
    "- `dataset` — a model (model card id)\n"
    "- `metric` — a metric (supplies its own aggregation and time dimension; extra aggregates usually unnecessary)\n"
+   "- `context` with `ref: source` — MCP only; the current active widget/chart query\n"
    "\n"
    "## Top-level operations (applied in order)\n"
    "Each operation is `[\"op\", arg, ...]`:\n"
@@ -442,7 +460,8 @@
    "## Examples\n"
    "Top 5 customers by revenue:\n"
    "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   "{\"prompt\": \"Top 5 customers by revenue\",\n"
+   " \"source\": {\"type\": \"table\", \"id\": 42},\n"
    " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
    "                [\"breakout\", [\"field\", 101]],\n"
    "                [\"order-by\", [\"aggregation-ref\", 0], \"desc\"],\n"
@@ -450,13 +469,15 @@
    "```\n"
    "Monthly revenue from a metric (metric supplies the aggregation):\n"
    "```\n"
-   "{\"source\": {\"type\": \"metric\", \"id\": 10},\n"
+   "{\"prompt\": \"Monthly revenue\",\n"
+   " \"source\": {\"type\": \"metric\", \"id\": 10},\n"
    " \"operations\": [[\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]],\n"
    "                [\"order-by\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"], \"asc\"]]}\n"
    "```\n"
    "Filter on an aggregated value (requires `append-stage`):\n"
    "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   "{\"prompt\": \"Customers with revenue over 1000\",\n"
+   " \"source\": {\"type\": \"table\", \"id\": 42},\n"
    " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
    "                [\"breakout\", [\"field\", 101]],\n"
    "                [\"append-stage\"],\n"
@@ -464,13 +485,15 @@
    "```\n"
    "Named expression referenced later:\n"
    "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   "{\"prompt\": \"Total discount\",\n"
+   " \"source\": {\"type\": \"table\", \"id\": 42},\n"
    " \"operations\": [[\"expression\", \"Discount\", [\"-\", [\"field\", 302], [\"field\", 303]]],\n"
    "                [\"aggregate\", [\"sum\", [\"expression-ref\", \"Discount\"]]]]}\n"
    "```\n"
    "Previous-period comparison with `offset` (stay in the SAME stage — do NOT add `append-stage`):\n"
    "```\n"
-   "{\"source\": {\"type\": \"table\", \"id\": 42},\n"
+   "{\"prompt\": \"Monthly revenue compared with the previous month\",\n"
+   " \"source\": {\"type\": \"table\", \"id\": 42},\n"
    " \"operations\": [[\"aggregate\", [\"sum\", [\"field\", 302]]],\n"
    "                [\"aggregate\", [\"offset\", [\"sum\", [\"field\", 302]], -1]],\n"
    "                [\"breakout\", [\"with-temporal-bucket\", [\"field\", 305], \"month\"]]]}\n"
@@ -517,22 +540,30 @@
   [program]
   (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
 
+(defn construct-query-from-context-source
+  "MCP-only prototype path: evaluate a `context/source` program against an active view query."
+  [program encoded-query]
+  (metabot-construct/construct-query-from-context-source program encoded-query))
+
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a structured agent-lib program.
 
   The body is the program itself: a JSON object with `source` (identifying the
-  table/card/dataset/metric to query) and `operations` (an array of operator
-  tuples). Returns a base64-encoded MBQL query that can be executed via
-  /v1/execute. See the agent_api reference for the full program syntax."
+  table/card/dataset/metric to query), `operations` (an array of operator
+  tuples), and `prompt` (the user's original request). Returns a base64-encoded
+  MBQL query that can be executed via /v1/execute. See the agent_api reference
+  for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
            :description construct-query-tool-description
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   program :- ::program-request]
-  (let [query (evaluate-program-for-execution program)]
-    {:query (-> query json/encode u/encode-base64)}))
+   {:keys [prompt] :as request} :- ::construct-query-request]
+  (let [program (dissoc request :prompt)
+        query   (evaluate-program-for-execution program)]
+    (cond-> {:query (-> query json/encode u/encode-base64)}
+      prompt (assoc :prompt prompt))))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 

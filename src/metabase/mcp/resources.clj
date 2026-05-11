@@ -230,20 +230,26 @@
                                             :description "Base64-encoded MBQL query (use query_handle instead when available)"}
                              :query_handle {:type "string" :format "uuid"
                                             :description "Handle returned by construct_query; preferred over raw query"}}}
-  :response-fn (fn [arguments _opts]
+  :response-fn (fn [arguments {:keys [session-id]}]
                  (let [query   (:query arguments)
                        handle  (:query_handle arguments)
-                       encoded (or query (some-> handle mcp.session/read-handle))]
+                       resolved (some-> handle mcp.session/resolve-query-handle)
+                       encoded (or query (:encoded_query resolved))
+                       prompt  (:prompt resolved)]
                    (cond
                      (and (nil? query) (nil? handle))
                      {:content [{:type "text" :text "Provide either 'query' or 'query_handle'."}]
                       :isError true}
 
                      encoded
-                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                   "Do not call execute_query after this; "
-                                                                   "the visualization is the final result.")}]
-                      :structuredContent {:query encoded}}
+                     (do
+                       (when (and session-id handle)
+                         (mcp.session/mark-handle-active! session-id handle))
+                       {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                     "Do not call execute_query after this; "
+                                                                     "the visualization is the final result.")}]
+                        :structuredContent (cond-> {:query encoded}
+                                             prompt (assoc :prompt prompt))})
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -261,9 +267,12 @@
                 :properties {:handle {:type "string" :format "uuid"
                                       :description "Handle UUID from the user's drill-through message."}}
                 :required   ["handle"]}
-  :response-fn (fn [arguments _opts]
-                 (if-let [encoded (some-> (:handle arguments) mcp.session/read-handle)]
-                   {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
-                    :structuredContent {:query encoded}}
+  :response-fn (fn [arguments {:keys [session-id]}]
+                 (if-let [handle (:handle arguments)]
+                   (if-let [encoded (mcp.session/read-handle handle)]
+                     {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
+                      :structuredContent {:query encoded}}
+                     {:content [{:type "text" :text "No drill-through found for that handle."}]
+                      :isError true})
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
                     :isError true}))})

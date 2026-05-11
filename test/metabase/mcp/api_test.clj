@@ -1,5 +1,6 @@
 (ns metabase.mcp.api-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
@@ -218,7 +219,20 @@
           (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
-          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
+      (testing "construct_query exposes the optional user prompt"
+        (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
+              construct-query-tool   (get tools-by-name "construct_query")
+              construct-query-schema (:inputSchema construct-query-tool)
+              prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
+                                         (get-in construct-query-schema [:properties :prompt]))
+              required-fields        (set (:required construct-query-schema))
+              reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
+          (is (str/includes? (:description construct-query-tool) "When a `prompt` is available"))
+          (is (not (contains? required-fields "prompt")))
+          (is (str/includes? (:description prompt-schema) "exact original message"))
+          (is (str/includes? reference "\"prompt\": \"<user's exact original message>\""))
+          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -529,7 +543,8 @@
                   ;; Query construction + execution
                   construct-data (call-tool session-id "construct_query"
                                             {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]})
+                                             :operations [["limit" 5]]
+                                             :prompt     "show 5 orders"})
                   _              (call-tool session-id "query"
                                             {:source     {:type "table" :id orders-id}
                                              :operations [["limit" 5]]})
@@ -567,7 +582,8 @@
         (let [[session-id _] (initialize!)
               construct-data (call-tool session-id "construct_query"
                                         {:source     {:type "table" :id (mt/id :orders)}
-                                         :operations [["limit" 5]]})
+                                         :operations [["limit" 5]]
+                                         :prompt     "show 5 orders"})
               execute-data   (call-tool session-id "execute_query"
                                         {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
@@ -576,6 +592,81 @@
                    :data      {:cols sequential?
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
+
+(deftest tools-call-construct-query-from-active-view-test
+  (testing "construct_query can use the most recently visualized query as context"
+    (let [[session-id _] (initialize!)
+          initial-data   (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          _              (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle initial-data)}})
+                                      {"mcp-session-id" session-id})
+          next-data      (call-tool session-id "construct_query"
+                                    {:source     {:type "context" :ref "source"}
+                                     :operations [["limit" 2]]
+                                     :prompt     "show 2 orders from the current chart"})
+          execute-data   (call-tool session-id "execute_query"
+                                    {:query_handle (:query_handle next-data)})]
+      (is (=? {:status    "completed"
+               :row_count 2
+               :data      {:rows (fn [rows] (= 2 (count rows)))}}
+              execute-data))))
+
+  (testing "render_drill_through does not replace the construct_query context"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          initial-data   (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          _              (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle initial-data)}})
+                                      {"mcp-session-id" session-id})
+          _              (mt/with-current-user user-id
+                           (let [handle (mcp.session/store-handle! session-id user-id "e30=")]
+                             (mcp-request (jsonrpc-request "tools/call"
+                                                           {:name      "render_drill_through"
+                                                            :arguments {:handle handle}})
+                                          {"mcp-session-id" session-id})))
+          next-data      (call-tool session-id "construct_query"
+                                    {:source     {:type "context" :ref "source"}
+                                     :operations [["limit" 2]]
+                                     :prompt     "show 2 orders from the current chart"})
+          execute-data   (call-tool session-id "execute_query"
+                                    {:query_handle (:query_handle next-data)})]
+      (is (=? {:status    "completed"
+               :row_count 2
+               :data      {:rows (fn [rows] (= 2 (count rows)))}}
+              execute-data))))
+
+  (testing "visualize_query with an inline query does not replace the construct_query context"
+    (let [[session-id _] (initialize!)
+          initial-data   (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          _              (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle initial-data)}})
+                                      {"mcp-session-id" session-id})
+          _              (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query "e30="}})
+                                      {"mcp-session-id" session-id})
+          next-data      (call-tool session-id "construct_query"
+                                    {:source     {:type "context" :ref "source"}
+                                     :operations [["limit" 2]]
+                                     :prompt     "show 2 orders from the current chart"})
+          execute-data   (call-tool session-id "execute_query"
+                                    {:query_handle (:query_handle next-data)})]
+      (is (=? {:status    "completed"
+               :row_count 2
+               :data      {:rows (fn [rows] (= 2 (count rows)))}}
+              execute-data)))))
 
 ;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
 
@@ -624,6 +715,21 @@
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
                            {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query includes the prompt stored with a construct_query handle"
+    (let [[session-id _] (initialize!)
+          construct-data (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle construct-data)}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query  string?
+                                                     :prompt "show 5 orders"}}}}
+              response))))
 
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
     (let [[session-id _] (initialize!)]

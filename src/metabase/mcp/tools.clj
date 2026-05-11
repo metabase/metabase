@@ -112,15 +112,15 @@
   [tool-name arguments]
   (cond
     (:query_handle arguments)
-    (if-let [encoded (mcp.session/read-handle (:query_handle arguments))]
-      (-> arguments (dissoc :query_handle) (assoc :query encoded))
+    (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle (:query_handle arguments))]
+      (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
       ::handle-not-found)
 
     (mcp.session/valid-id? (:query arguments))
     (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                    tool-name)
-        (if-let [encoded (mcp.session/read-handle (:query arguments))]
-          (assoc arguments :query encoded)
+        (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle (:query arguments))]
+          (assoc arguments :query encoded_query)
           ::handle-not-found))
 
     :else
@@ -133,12 +133,28 @@
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      {:query_handle (mcp.session/store-handle! session-id user-id encoded)}
+      {:query_handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))}
       body)))
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
 (def ^:private tools-accepting-query-handle
   #{"execute_query" "visualize_query"})
+
+(declare text-content error-content)
+
+;;; ---------------------------------------------- Active View Context ---------------------------------------------
+
+(defn- context-source-program?
+  [arguments]
+  (= {:type "context" :ref "source"} (:source arguments)))
+
+(defn- construct-query-from-active-context
+  [session-id arguments]
+  (if-let [encoded (mcp.session/active-query session-id)]
+    (let [query (agent-api/construct-query-from-context-source (dissoc arguments :prompt) encoded)]
+      (text-content {:query_handle (mcp.session/store-handle! session-id api/*current-user-id*
+                                                              (:query query) (:prompt arguments))}))
+    (error-content "No active MCP view context. Call visualize_query first, or use a table/card/dataset/metric source.")))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -253,8 +269,11 @@
         body-transform-fn     (when (= tool-name "construct_query")
                                 (make-store-construct-query-result
                                  session-id api/*current-user-id*))]
-    (invoke-agent-api method api-path token-scopes remaining-args
-                      :body-transform-fn body-transform-fn)))
+    (if (and (= tool-name "construct_query")
+             (context-source-program? remaining-args))
+      (construct-query-from-active-context session-id remaining-args)
+      (invoke-agent-api method api-path token-scopes remaining-args
+                        :body-transform-fn body-transform-fn))))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.

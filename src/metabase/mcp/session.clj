@@ -145,7 +145,9 @@
 ;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
 ;; calls. Each row carries a fresh UUID handle that the iframe (drill-through) or
 ;; agent (construct_query) passes through downstream so the LLM never carries the
-;; encoded query.
+;; encoded query. Construct-query handles can also be marked active when
+;; visualized; this DB-backed active handle powers `context/source` follow-ups
+;; across pod hops and reloads.
 
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the MCP session, and return
@@ -155,21 +157,52 @@
    happens via cascade when the session row is reaped. When nil — e.g. agent flows
    that don't render an iframe — the row is stored without a `core_session_id` and
    relies on explicit `delete!` for cleanup."
-  [session-id user-id encoded-query]
-  (let [core-session-id (when user-id
-                          (:id (get-or-create-embedding-session! session-id user-id)))
-        handle-id       (str (UUID/randomUUID))]
-    (t2/insert! :model/McpQueryHandle
-                {:id              handle-id
-                 :mcp_session_id  session-id
-                 :core_session_id core-session-id
-                 :encoded_query   encoded-query})
-    handle-id))
+  ([session-id user-id encoded-query]
+   (store-handle! session-id user-id encoded-query nil))
+  ([session-id user-id encoded-query prompt]
+   (let [core-session-id (when user-id
+                           (:id (get-or-create-embedding-session! session-id user-id)))
+         handle-id       (str (UUID/randomUUID))]
+     (t2/insert! :model/McpQueryHandle
+                 (cond-> {:id              handle-id
+                          :mcp_session_id  session-id
+                          :core_session_id core-session-id
+                          :encoded_query   encoded-query}
+                   prompt (assoc :prompt prompt)))
+     handle-id)))
 
 (defn read-handle
   "Return the encoded query for `handle-id`, or nil if no row exists."
   [handle-id]
   (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id))
+
+(defn mark-handle-active!
+  "Mark an existing construct-query handle as the active context for `session-id`."
+  [session-id handle-id]
+  (t2/update! :model/McpQueryHandle
+              {:id handle-id, :mcp_session_id session-id}
+              {:active_at :%now})
+  nil)
+
+(defn active-query
+  "Return the encoded query for the latest visualized construct-query handle in `session-id`."
+  [session-id]
+  (:encoded_query
+   (t2/query-one {:select   [:encoded_query]
+                  :from     [:mcp_query_handle]
+                  :where    [:and
+                             [:= :mcp_session_id session-id]
+                             [:not= :active_at nil]]
+                  :order-by [[:active_at :desc]
+                             [:created_at :desc]]
+                  :limit    1})))
+
+(defn resolve-query-handle
+  "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
+   Used by visualize_query and execute_query to resolve construct_query handles."
+  [handle-id]
+  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id)]
+    (select-keys row [:encoded_query :prompt])))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)

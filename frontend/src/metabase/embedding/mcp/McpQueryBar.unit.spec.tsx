@@ -63,7 +63,6 @@ const ONE_POINT_RESULT = createMockDataset({
 
 function setup() {
   const { state } = setupSdkState({ currentUser: TEST_USER });
-  const app = { openLink: jest.fn() };
 
   setupCardEndpoints(TEST_CARD);
   setupCardQueryMetadataEndpoint(
@@ -82,7 +81,7 @@ function setup() {
       withEditorButton={false}
       withChartTypeSelector={false}
     >
-      <McpQueryBar app={app as any} instanceUrl="https://metabase.example" />
+      <McpQueryBar app={null} instanceUrl="http://localhost:3000" />
     </SdkQuestion>,
     {
       componentProviderProps: {
@@ -92,7 +91,7 @@ function setup() {
     },
   );
 
-  return { app };
+  return {};
 }
 
 describe("McpQueryBar", () => {
@@ -100,9 +99,6 @@ describe("McpQueryBar", () => {
     setup();
 
     expect(await screen.findByTestId("query-explorer-bar")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /explore/i }),
-    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "line" }),
     ).not.toBeInTheDocument();

@@ -1,0 +1,22 @@
+## Mark which MCP query handle is the latest active view for a session.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-29T00:00:00
+      author: phoomparin
+      comment: Add active_at column to mcp_query_handle for the latest active MCP view context
+      changes:
+        - addColumn:
+            tableName: mcp_query_handle
+            columns:
+              - column:
+                  name: active_at
+                  type: ${timestamp_type}
+                  remarks: When this handle became the active MCP view context; nullable for inactive handles
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: mcp_query_handle
+            columnName: active_at

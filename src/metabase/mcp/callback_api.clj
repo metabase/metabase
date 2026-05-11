@@ -10,7 +10,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
@@ -40,6 +43,36 @@
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id*)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+
+(api.macros/defendpoint :post "/feedback" :- [:map
+                                              [:status [:= 204]]
+                                              [:body :nil]]
+  "Proxy MCP Apps visualization feedback to Harbormaster."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:feedback [:map
+                        [:message_id        ms/NonBlankString]
+                        [:positive          :boolean]
+                        [:issue_type        {:optional true} [:maybe :string]]
+                        [:freeform_feedback {:optional true} [:maybe :string]]]]
+            [:conversation_data [:map
+                                 [:source [:= "mcp"]]
+                                 [:prompt {:optional true} [:maybe :string]]
+                                 [:query  {:optional true} [:maybe :string]]]]]
+   request]
+  (let [session-id (mcp-session-id-from-headers request)
+        _          (check-session-header! session-id api/*current-user-id*)
+        metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
+        body       (assoc body :metabot_id metabot-id)]
+    (metabot.config/check-metabot-enabled!)
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/mcp-harbormaster-payload body))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/error "Failed to submit MCP feedback to Harbormaster: " (ex-message e)))))
+  api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
   "Iframe-callback routes mounted at `/api/embed-mcp`. MCP-feature gated; auth is
