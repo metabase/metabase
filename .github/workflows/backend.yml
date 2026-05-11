@@ -75,9 +75,10 @@ jobs:
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
           # Test roots we lint: core, EE, and each driver module's test tree.
-          # The :eastwood/test alias declares matching :source-paths so any namespace
-          # we name here is reachable.
-          FILES=$(git diff --name-only --diff-filter=AM "$DIFF_BASE" "$HEAD_SHA" \
+          # :eastwood/test derives matching :source-paths from the classpath, so any
+          # namespace we name here is reachable. Include renames (R) so a test that
+          # was just renamed still gets linted under its new name.
+          FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
                        'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
                        'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
