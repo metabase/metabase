@@ -56,9 +56,7 @@ jobs:
             const BUN_PACKAGE_MANAGER_THRESHOLD = 59;
 
             // Versions v60 and earlier ship with an older Cypress that only knows --env;
-            // v61 and later use --expose. This workflow always runs from master but checks
-            // out the release branch's e2e code, so we have to pick the flag the older
-            // Cypress understands.
+            // v61 and later use --expose. (See CYPRESS_GREP_FLAG in run-sanity-check.)
             const CYPRESS_EXPOSE_FLAG_THRESHOLD = 61;
 
             const version = '${{ inputs.version }}';
@@ -155,6 +153,11 @@ jobs:
       DISPLAY: ""
       MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
       METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
+      # v60 and earlier ship with an older Cypress that only knows --env;
+      # v61 and later use --expose. This workflow always runs from master but
+      # checks out the release branch's e2e code, so we have to pick the flag
+      # the older Cypress understands.
+      CYPRESS_GREP_FLAG: ${{ needs.test-mode-config.outputs.cypress_grep_flag }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
@@ -220,7 +223,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            ${{ needs.test-mode-config.outputs.cypress_grep_flag }} grepTags="@smoke+-@EE" \
+            $CYPRESS_GREP_FLAG grepTags="@smoke+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -229,7 +232,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            ${{ needs.test-mode-config.outputs.cypress_grep_flag }} grepTags="@smoke+-@OSS" \
+            $CYPRESS_GREP_FLAG grepTags="@smoke+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure
