@@ -20,7 +20,6 @@
          :model/Collection {child-coll :id}  {:name     "Child Collection"
                                               :location (collection/location-path parent-coll)
                                               :type     "library-data"}
-         ;:model/Card       {card-1 :id}      {:collection_id parent-coll :name "Parent Card"}
          :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
          :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
          :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}

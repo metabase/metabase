@@ -134,8 +134,6 @@
                      :model/Table      table3     {:collection_id (:id child)
                                                    :is_published  true
                                                    :name          "Child_Table"}]
-
-        (t2/select-fn-set :location :model/Collection)
         (collection/archive-collection! archive-me)
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
@@ -185,3 +183,35 @@
         (is (= "Can only add tables to the 'Data' collection"
                (mt/user-http-request :crowberto :put 400 (str "collection/" (:id metrics-child))
                                      {:parent_id (:id data-parent)})))))))
+
+(deftest cannot-move-library-collections-to-vanilla-collection-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection library-root   {:name "Library"  :type collection/library-collection-type}
+                   :model/Collection data-root      {:name "Data"     :type collection/library-data-collection-type
+                                                     :location (str "/" (:id library-root) "/")}
+                   :model/Collection metrics-root   {:name "Metrics"  :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id library-root) "/")}
+                   :model/Collection data-sub       {:name "Data Sub" :type collection/library-data-collection-type
+                                                     :location (str "/" (:id library-root) "/" (:id data-root) "/")}
+                   :model/Collection metrics-sub    {:name "Metrics Sub" :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id library-root) "/" (:id metrics-root) "/")}
+                   :model/Collection vanilla        {:name "Vanilla Collection" :type nil}]
+      (let [vanilla-location (str "/" (:id vanilla) "/")]
+        (with-redefs [collection/library-root-collection? (fn [coll]
+                                                            (contains? #{(:id library-root) (:id data-root) (:id metrics-root)}
+                                                                       (:id coll)))]
+          (testing "Cannot move the Library collection itself into a vanilla collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+                                  (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))
+          (testing "Cannot move a top-level Data collection into a vanilla collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+                                  (t2/update! :model/Collection (:id data-root) {:location vanilla-location}))))
+          (testing "Cannot move a top-level Metrics collection into a vanilla collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
+                                  (t2/update! :model/Collection (:id metrics-root) {:location vanilla-location})))))
+        (testing "Cannot move a Data subcollection into a vanilla collection"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
+                                (t2/update! :model/Collection (:id data-sub) {:location vanilla-location}))))
+        (testing "Cannot move a Metrics subcollection into a vanilla collection"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
+                                (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))
