@@ -46,8 +46,9 @@
           last-usage   (volatile! nil)
           close!       (fn [result]
                          (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text     :text-end
-                                                             :tool_use :tool-input-available)}
+                                                             :text      :text-end
+                                                             :thinking  :reasoning-end
+                                                             :tool_use  :tool-input-available)}
                                                     @payload))
                            (vreset! current-type nil)
                            (vreset! current-id nil)
@@ -82,22 +83,32 @@
                                                (vreset! payload
                                                         (case block-type
                                                           :text     {:id chunk-id}
+                                                          :thinking {:id chunk-id}
                                                           :tool_use {:toolCallId chunk-id
                                                                      :toolName   (:name content_block)}
                                                           nil)))
                                              (rf (merge (case block-type
                                                           :text     {:type :text-start}
+                                                          :thinking {:type :reasoning-start}
                                                           :tool_use {:type :tool-input-start})
                                                         @payload)))
 
              ;; content block delta
-             (= t "content_block_delta") (rf (case (:type delta)
-                                               "text_delta"       {:type  :text-delta
-                                                                   :id    (:id @payload)
-                                                                   :delta (:text delta)}
-                                               "input_json_delta" {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:partial_json delta)}))
+             (= t "content_block_delta") (as-> $r$ (if-let [emit (case (:type delta)
+                                                                   "text_delta"       {:type  :text-delta
+                                                                                       :id    (:id @payload)
+                                                                                       :delta (:text delta)}
+                                                                   "thinking_delta"   {:type  :reasoning-delta
+                                                                                       :id    (:id @payload)
+                                                                                       :delta (:thinking delta)}
+                                                                   ;; signature_delta is a cryptographic seal on
+                                                                   ;; the thinking block we don't round-trip; skip.
+                                                                   "signature_delta"  nil
+                                                                   "input_json_delta" {:type           :tool-input-delta
+                                                                                       :toolCallId     (:toolCallId @payload)
+                                                                                       :inputTextDelta (:partial_json delta)})]
+                                                     (rf $r$ emit)
+                                                     $r$))
 
              ;; end of content block
              (= t "content_block_stop") (close!)
@@ -223,10 +234,17 @@
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
+        ;; Anthropic forbids `tool_choice` forced tool use when extended thinking
+        ;; is enabled. When both are requested we fall back to `auto` and rely
+        ;; on the caller's prompt + retry logic to ensure the structured-output
+        ;; tool is actually invoked.
+        schema-tool-choice (if thinking
+                             {:type "auto"}
+                             {:type "tool" :name "structured_output"})
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
@@ -238,11 +256,11 @@
                                                             "auto"     {:type "auto"}
                                                             "required" {:type "any"}))
                     temperature       (assoc :temperature temperature)
-                    schema            (assoc :tool_choice {:type "tool"
-                                                           :name "structured_output"}
+                    schema            (assoc :tool_choice schema-tool-choice
                                              :tools [{:name         "structured_output"
                                                       :description  "Output structured data"
-                                                      :input_schema schema}]))]
+                                                      :input_schema schema}])
+                    thinking          (assoc :thinking thinking))]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)

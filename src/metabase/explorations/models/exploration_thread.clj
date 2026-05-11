@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
+   [clojure.edn :as edn]
    [metabase.models.interface :as mi]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -10,6 +12,31 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defn- transcript-in
+  "EDN-encode the Automatic Insights transcript. EDN over JSON for the same
+  reason as chart_stats: the transcript contains keyword keys, prose-mirror
+  doc trees with string-keyed maps, and nested Clojure data — JSON would
+  mangle the shape."
+  [v]
+  (cond
+    (nil? v)    nil
+    (string? v) v
+    :else       (pr-str v)))
+
+(defn- transcript-out
+  "Decode the EDN blob, recovering nil (with a warning) on parse failure so a
+  malformed transcript can't break a read of the thread."
+  [s]
+  (when (string? s)
+    (try
+      (edn/read-string s)
+      (catch Throwable e
+        (log/warn e "Failed to parse exploration_thread.auto_insights_transcript; returning nil")
+        nil))))
+
+(t2/deftransforms :model/ExplorationThread
+  {:auto_insights_transcript {:in transcript-in :out transcript-out}})
 
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]

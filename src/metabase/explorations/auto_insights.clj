@@ -1,75 +1,58 @@
 (ns metabase.explorations.auto-insights
-  "One-shot LLM-driven Automatic Insights generation for a completed exploration thread.
+  "Two-phase LLM-driven Automatic Insights generation for a completed exploration thread.
 
   Invoked from `metabase.explorations.task.runner` after a thread has reached
-  terminal state. Loads the thread context (user prompt, selected
-  metrics/dimensions/timelines, every `done` query and its pre-computed
-  interestingness scores), pre-filters down to the top-K most question-relevant
-  charts using `contextual_interestingness_score` (LLM-judged against the
-  user's prompt) with a fallback to the deterministic `interestingness_score`,
-  builds a single structured-output prompt, and writes the result into a fresh
-  `Automatic Insights` document — including embedded charts for the
-  LLM-featured selections, prose analysis paragraphs, and suggested next-step
-  exploration directions.
+  terminal state. The pipeline is split into two structured LLM calls so each
+  can specialize:
 
-  This is *not* just summarization — the LLM is asked to ground its analysis
-  in the actual data points, surface the findings most relevant to the user's
-  question, and propose follow-up explorations. The user's manually-created
-  `Findings` document is left untouched; the auto-generated artifact is a
-  separate doc per thread.
+  Phase 1 — Curation (see [[metabase.explorations.auto-insights.phase1]]).
+    Sees a *thin* index of up to 100 pre-ranked charts (id, name, score, plus a
+    one-line summary derived from `chart_stats`). Picks which charts deserve
+    deep analysis (top tier: full data point grounding for citation) and which
+    are awareness-only (model knows they exist but won't cite values).
 
-  No agent / no tool-calling: the inputs are bounded and the contextual
-  interestingness scorer has already done LLM-based question-relevance ranking
-  per chart, so a single structured call is sufficient. Failure is fail-soft —
-  if anything goes wrong the document is left untouched."
+  Phase 2 — Analysis (see [[metabase.explorations.auto-insights.phase2]]).
+    Sees only what Phase 1 selected, with the curation rationale. Top-tier
+    charts get full chart blocks (stats + key-points + verbatim data points);
+    awareness-tier charts get slim blocks (title + summary + key-points). The
+    model writes the research-paper-shaped Automatic Insights document.
+
+  Both phases use extended thinking, both have one repair retry on validation
+  failure, both have their prompt / response / reasoning persisted to the
+  thread's `auto_insights_transcript` column for after-the-fact debugging.
+  If either phase fails validation after repair, the document is replaced
+  with a minimal *error document* that explains the failure — we never
+  silently fall back to a different selection strategy. This is intentional
+  during development: surface the failure so we can fix it.
+
+  The user's manually-created `Findings` document is left untouched; the
+  auto-generated artifact is a separate document per thread.
+
+  This namespace is the orchestrator: [[generate-auto-insights!]] wires Phase 1
+  and Phase 2 together, handles the success / failure / skip branches, writes
+  the resulting `Document`, materializes chart embeds, persists the transcript,
+  and exposes the `debug-*` REPL helpers. Shared chart-rendering and LLM-call
+  infrastructure lives in [[metabase.explorations.auto-insights.common]]."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.explorations.interestingness :as explorations.interestingness]
-   [metabase.interestingness.core :as interestingness]
-   [metabase.metabot.self :as metabot.self]
+   [metabase.explorations.auto-insights.common :as common]
+   [metabase.explorations.auto-insights.phase1 :as phase1]
+   [metabase.explorations.auto-insights.phase2 :as phase2]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.queries.core :as queries]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private model "anthropic/claude-haiku-4-5")
-(def ^:private temperature 0.2)
-(def ^:private max-tokens 4096)
+;;; ----- pool sizing + thread-scoped data loading -----
 
-(def ^:private max-charts-in-prompt
-  "Hard cap on charts included in the LLM prompt. Picked from the top of the
-  contextual / deterministic interestingness ranking."
-  50)
-
-(def ^:private max-featured-charts
-  "Hard cap on charts the rendered Automatic Insights document will embed,
-  regardless of how many the model returns. Keeps the doc readable and bounds
-  card creation."
-  6)
-
-(defn- deserialize-result
-  "Inverse of [[cache.impl/do-with-serialization]] for the runner's
-  single-frame nippy+gzip blob."
-  [^bytes result-bytes]
-  (with-open [is (ByteArrayInputStream. result-bytes)]
-    (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
-      qp-result)))
-
-(defn- chart-rank-score
-  "Sort key for a hydrated query: prefer the LLM-judged contextual score, fall
-  back to the deterministic interestingness, then 0. Higher is better."
-  [q]
-  (or (:contextual_interestingness_score q)
-      (:interestingness_score q)
-      0.0))
+(def ^:private max-charts-in-pool
+  "Hard cap on charts in the Phase-1 curation pool. Picked from the top of the
+  contextual / deterministic interestingness ranking; the rest of the
+  ranked-but-not-pooled charts are unreachable for this run."
+  100)
 
 (defn- load-result-rows
   "Returns `{exploration_query_id {:result_data bytes :chart_stats m}}` for the
@@ -85,157 +68,48 @@
                       :exploration_query_id :result_data :chart_stats]
                      :exploration_query_id [:in query-ids]))))
 
-(def ^:private max-data-points-per-series
-  "Cap on how many (x, y) pairs to dump per series. For longer series we pick
-  evenly-spaced indices so the model still sees the actual shape (start, middle,
-  end + a uniform sample) rather than only stats. Picked so a typical chart
-  block stays well under ~1KB even at the cap."
-  40)
-
-(defn- downsample-pairs
-  "Given parallel `x-values` and `y-values`, return a vector of `[x y]` pairs
-  truncated to at most `n` evenly-spaced indices. Always preserves first and
-  last so trend endpoints are exact."
-  [x-values y-values n]
-  (let [pairs (mapv vector x-values y-values)
-        cnt   (count pairs)]
-    (if (<= cnt n)
-      pairs
-      (let [step    (/ (dec cnt) (double (dec n)))
-            indices (->> (range n)
-                         (mapv #(int (Math/round (* step (double %)))))
-                         distinct
-                         vec)]
-        (mapv pairs indices)))))
-
-(defn- format-pair
-  [[x y]]
-  (str (cond
-         (nil? x)    "null"
-         (number? x) x
-         :else       (str x))
-       "=" (cond
-             (nil? y)    "null"
-             (number? y) y
-             :else       (str y))))
-
-(defn- pct-change
-  "Percent change from `from` to `to`, or nil when undefined (zero base)."
-  [from to]
-  (when (and (number? from) (number? to) (not (zero? from)))
-    (* 100.0 (/ (- to from) (Math/abs (double from))))))
-
-(defn- format-pct
-  [n]
-  (if n
-    (format "%+.1f%%" (double n))
-    "n/a (zero base)"))
-
-(defn- compute-key-points
-  "Derive labeled facts the model commonly needs but tends to miscompute or
-  hallucinate: argmax (peak), argmin (trough), first/last endpoints, mean +
-  count of points above mean. All claims are pre-computed so the model can
-  quote them verbatim instead of doing argmax-over-list arithmetic.
-
-  Returns nil for empty/non-numeric series."
-  [x-values y-values]
-  (let [pairs (filter (fn [[_ y]] (number? y)) (map vector x-values y-values))]
-    (when (seq pairs)
-      (let [ys       (mapv second pairs)
-            n        (count pairs)
-            max-y    (apply max ys)
-            min-y    (apply min ys)
-            peak     (first (filter #(= (second %) max-y) pairs))
-            trough   (first (filter #(= (second %) min-y) pairs))
-            first-pt (first pairs)
-            last-pt  (last pairs)
-            mean     (/ (reduce + 0.0 ys) n)
-            above    (count (filter #(> % mean) ys))]
-        {:peak       peak
-         :trough     trough
-         :first      first-pt
-         :last       last-pt
-         :n          n
-         :mean       mean
-         :above-mean above}))))
-
-(defn- render-key-points-section
-  "Render the per-series key-points block. These are pre-computed answers to
-  the questions the model is most likely to get wrong on its own
-  (argmax/argmin, percent change with small base values, mean comparisons)."
-  [cfg]
-  (let [series  (:series cfg)
-        entries (for [[sname {:keys [x_values y_values]}] series
-                      :let [kp (compute-key-points x_values y_values)]
-                      :when kp]
-                  (let [{:keys [peak trough first last n mean above-mean]} kp
-                        [px pv] peak
-                        [tx tv] trough
-                        [fx fv] first
-                        [lx lv] last
-                        change   (pct-change fv lv)]
-                    (str "- " sname ":\n"
-                         "  - Peak (max y): " pv " at " px "\n"
-                         "  - Trough (min y): " tv " at " tx "\n"
-                         "  - First point: " fv " at " fx "\n"
-                         "  - Last point: " lv " at " lx "\n"
-                         "  - First → Last: " fv " → " lv
-                         " (" (format-pct change) ")\n"
-                         "  - Mean: " (format "%.2f" (double mean))
-                         "; " above-mean " of " n " points are above the mean")))]
-    (when (seq entries)
-      (str "**Key points (pre-computed — quote these verbatim, don't re-derive)**:\n"
-           (str/join "\n" entries)))))
-
-(defn- render-data-points
-  "Render the verbatim (x, y) sequence for each series in `cfg`. Sequences over
-  `max-data-points-per-series` are evenly downsampled with first/last preserved;
-  the header notes when downsampling happened so the model knows it's a sample."
-  [cfg]
-  (let [series (:series cfg)]
-    (when (seq series)
-      (str "**Actual data points (chronological)** — every numeric claim and date in your output MUST appear in this list verbatim:\n"
-           (str/join
-            "\n"
-            (for [[sname {:keys [x_values y_values]}] series
-                  :let [orig-count (count x_values)
-                        pairs      (downsample-pairs x_values y_values max-data-points-per-series)
-                        downsampled? (< (count pairs) orig-count)]]
-              (str "- " sname
-                   (when downsampled?
-                     (str " (downsampled from " orig-count " to " (count pairs)
-                          " evenly-spaced points; first and last preserved)"))
-                   ":\n  "
-                   (str/join " | " (map format-pair pairs)))))))))
-
-(defn- chart-block
-  "Build the per-chart prompt block: name, Markdown chart representation
-  (rendered from the runner-cached deep stats), pre-computed key points, and
-  the verbatim (x, y) data points. The data points are what the model must
-  ground its analysis on — without them it can only see summary stats and
-  tends to confabulate intermediate values that look plausible but don't match
-  the chart. Returns nil when the cached stats are missing (chart-config
-  couldn't be built at execution time) or anything throws."
-  [query result-data chart-stats]
-  (try
-    (when (and result-data chart-stats)
-      (let [qp-result (deserialize-result result-data)
-            cfg       (explorations.interestingness/qp-result->chart-config query qp-result)]
-        (when cfg
-          (let [repr    (interestingness/generate-representation
-                         {:title        (:title cfg)
-                          :display-type (:display_type cfg)
-                          :stats        chart-stats})
-                key-pts (render-key-points-section cfg)
-                points  (render-data-points cfg)
-                extras  (str/join "\n\n" (remove nil? [key-pts points]))]
-            {:exploration-query-id (:id query)
-             :name                 (:name query)
-             :representation       (cond-> repr
-                                     (seq extras) (str "\n\n" extras))}))))
-    (catch Throwable e
-      (log/warnf e "Could not build chart block for ExplorationQuery %d" (:id query))
-      nil)))
+(defn- load-timeline-events
+  "Fetch every non-archived timeline event from each timeline the user selected
+  on this thread, grouped by timeline. The events themselves carry the bulk
+  of the analytical signal — names, descriptions, and timestamps tell the
+  model *what happened* around the time the data changed. Returns a vector of
+  `{:timeline-id :timeline-name :timeline-description :events [...]}` maps,
+  events sorted by timestamp ascending."
+  [thread-id]
+  (let [rows (t2/query
+              {:select   [[:t.id :timeline_id]
+                          [:t.name :timeline_name]
+                          [:t.description :timeline_description]
+                          [:te.id :event_id]
+                          [:te.name :event_name]
+                          [:te.description :event_description]
+                          [:te.timestamp :event_timestamp]
+                          [:te.icon :event_icon]
+                          [:ett.position :position]]
+               :from     [[:exploration_thread_timeline :ett]]
+               :join     [[:timeline :t] [:= :t.id :ett.timeline_id]]
+               :left-join [[:timeline_event :te] [:and
+                                                  [:= :te.timeline_id :t.id]
+                                                  [:= :te.archived false]]]
+               :where    [:= :ett.exploration_thread_id thread-id]
+               :order-by [[:ett.position :asc] [:te.timestamp :asc]]})]
+    (->> rows
+         (group-by (juxt :timeline_id :timeline_name :timeline_description))
+         (sort-by (fn [[[_ _ _] rs]] (:position (first rs))))
+         (mapv (fn [[[tl-id tl-name tl-desc] tl-rows]]
+                 {:timeline-id          tl-id
+                  :timeline-name        tl-name
+                  :timeline-description tl-desc
+                  :events (->> tl-rows
+                               (keep (fn [r]
+                                       (when (:event_id r)
+                                         {:id          (:event_id r)
+                                          :name        (:event_name r)
+                                          :description (:event_description r)
+                                          :timestamp   (.toString ^Object (:event_timestamp r))
+                                          :icon        (:event_icon r)})))
+                               (sort-by :timestamp)
+                               vec)})))))
 
 (defn- selection-context
   "Plain-text recap of metric / dimension / timeline names selected on the
@@ -265,174 +139,16 @@
       (seq dimensions) (conj (str "Dimensions: " (str/join ", " dimensions)))
       (seq timelines)  (conj (str "Timelines:  " (str/join ", " timelines))))))
 
-(defn- build-prompt
-  "Assemble the single user message: rubric → user question → selections →
-  per-chart blocks. The model is told it's seeing a pre-ranked top-K so it can
-  flag what's missing."
-  [{:keys [thread-prompt selections blocks total-chart-count]}]
-  (let [intro (str "You are generating Automatic Insights for a completed Metabase data exploration.\n"
-                   "\n"
-                   "GOAL: Help the user answer their question. The user picked a set of metrics,\n"
-                   "dimensions, and (optionally) timelines, and the system generated one chart per\n"
-                   "(metric × dimension × segment) combination. You see the most question-relevant\n"
-                   "" max-charts-in-prompt " of those charts (out of " total-chart-count
-                   " total), pre-ranked by an upstream relevance scorer. Your job is to surface the\n"
-                   "findings, ground them in the data, and propose meaningful follow-up explorations.\n"
-                   "\n"
-                   "GROUNDING — NON-NEGOTIABLE:\n"
-                   "Each chart block contains a verbatim list of `(x, y)` data points labeled\n"
-                   "**Actual data points (chronological)**. EVERY numeric value, date, label, peak,\n"
-                   "trough, comparison, and percentage you cite MUST come from those lists. Do NOT\n"
-                   "interpolate, extrapolate, or invent values that aren't in the list. If a list\n"
-                   "is downsampled (the header will say so), only cite values that actually appear\n"
-                   "in the sample — do not guess what's between them. If the data doesn't support\n"
-                   "a claim, don't make the claim. A shorter analysis that's correct beats a longer\n"
-                   "one that fabricates.\n"
-                   "\n"
-                   "Before writing each sentence with a number/date in it, find the matching point\n"
-                   "in the data list. If you can't find it, drop the sentence.\n"
-                   "\n"
-                   "DELIVERABLES (JSON, per the supplied schema):\n"
-                   "- summary: 2-5 short paragraphs of analysis. Focus on what the charts collectively\n"
-                   "  reveal about the user's question. Cite specific values, peaks, and trends —\n"
-                   "  but only ones that appear verbatim in the data points lists. Don't describe\n"
-                   "  each chart individually here — that's what featured_charts is for.\n"
-                   "- featured_charts: up to " max-featured-charts " charts most useful for answering\n"
-                   "  the question, ordered by importance. For each: exploration_query_id, why_chosen\n"
-                   "  (1 sentence on why this chart matters for the question), and what_it_shows\n"
-                   "  (1-2 sentences on the actual finding using values from the data points list:\n"
-                   "  peak/trough values with their actual dates, first→last comparison, noteworthy\n"
-                   "  structure). Only include charts that materially advance the analysis.\n"
-                   "- next_steps: 2-5 concrete suggestions for further exploration — additional\n"
-                   "  metrics to add, dimensions to break out by, segments to filter to, or timelines\n"
-                   "  whose events might explain notable moments. Only suggest things plausibly\n"
-                   "  reachable from the current data.\n"
-                   "\n"
-                   "TONE & CALIBRATION (the user can see the charts — tell them what the data MEANS):\n"
-                   "- Lead with the single most important finding. Then supporting context. Then\n"
-                   "  what to do about it.\n"
-                   "- 2-3 sentences for routine patterns. Expand only for genuine surprises.\n"
-                   "- Don't list statistics (mean, std-dev, etc.) at the user — they can read the chart.\n"
-                   "  Use those numbers to support the *insight*, not as the insight itself.\n"
-                   "  GOOD: \"Revenue dropped 42% after the pricing change — investigate Q4 deals.\"\n"
-                   "  BAD:  \"The mean is 45.2, std dev 12.8, trend -15%, with peaks at...\".\n"
-                   "- If a chart has a `**Note**:` warning about small values, high variance, or\n"
-                   "  limited data points, be cautious — small denominators make percentage changes\n"
-                   "  exaggerated and unreliable. Say so explicitly when it applies.\n"
-                   "- If nothing is notable, say so briefly and stop. A null finding is a finding.\n"
-                   "- Connect timeline events to data changes only if the effect is visible in the\n"
-                   "  data points around the event date.\n"
-                   "\n"
-                   "STYLE: Direct, analytical, specific. Avoid hedging language like 'it appears'\n"
-                   "and 'might suggest'. Use plain prose, no bullet points or headings inside the\n"
-                   "summary text — the rendering layer handles structure.\n"
-                   "\n"
-                   "---\n\n")
-        question (if (str/blank? thread-prompt)
-                   "USER QUESTION: (none provided — infer from the metrics/dimensions selected)\n"
-                   (str "USER QUESTION:\n" thread-prompt "\n"))
-        sel-text (if (seq selections)
-                   (str "SELECTIONS:\n" (str/join "\n" selections) "\n")
-                   "")
-        chart-md (str/join
-                  "\n\n---\n\n"
-                  (map-indexed
-                   (fn [i {:keys [exploration-query-id name representation]}]
-                     (str "### Chart #" (inc i) "\n"
-                          "exploration_query_id: " exploration-query-id "\n"
-                          "name: " name "\n\n"
-                          representation))
-                   blocks))]
-    (str intro question "\n" sel-text "\n---\n\nCHARTS:\n\n" chart-md)))
-
-(def ^:private response-schema
-  {:type       "object"
-   :properties {:summary         {:type        "array"
-                                  :items       {:type "string"}
-                                  :description "2-5 short paragraphs of overall analysis."}
-                :featured_charts {:type        "array"
-                                  :description (str "Up to " max-featured-charts
-                                                    " charts most useful for answering the question.")
-                                  :items       {:type       "object"
-                                                :properties {:exploration_query_id {:type "integer"}
-                                                             :why_chosen           {:type "string"}
-                                                             :what_it_shows        {:type "string"}}
-                                                :required   ["exploration_query_id"
-                                                             "why_chosen"
-                                                             "what_it_shows"]}}
-                :next_steps      {:type        "array"
-                                  :items       {:type "string"}
-                                  :description "Concrete suggestions for further exploration."}}
-   :required   ["summary" "featured_charts" "next_steps"]})
-
-;;; -------------------------------------------- prose-mirror rendering --------------------------------------------
-
-(defn- pm-paragraph [text]
-  {:type "paragraph" :content [{:type "text" :text text}]})
-
-(defn- pm-heading [level text]
-  {:type "heading" :attrs {:level level} :content [{:type "text" :text text}]})
-
-(defn- pm-bullet-list [items]
-  {:type    "bulletList"
-   :content (mapv (fn [item]
-                    {:type "listItem"
-                     :content [(pm-paragraph item)]})
-                  items)})
-
-(defn- pm-card-embed [card-id]
-  {:type    "resizeNode"
-   :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}]})
-
-(defn- materialize-chart-card!
-  "Create a real Card in `doc`'s collection for `eq` (an `ExplorationQuery`),
-  associated with the document. Mirrors the `/append` endpoint logic so the
-  embedded chart behaves identically. Caller must establish a current-user
-  binding (via [[metabase.request.core/with-current-user]]) before invoking."
-  [doc eq]
-  (let [src-card (t2/select-one [:model/Card :name :display :visualization_settings]
-                                :id (:card_id eq))]
-    (queries/create-card!
-     {:name                   (or (:name eq) (:name src-card) "Chart")
-      :type                   :question
-      :dataset_query          (:dataset_query eq)
-      :display                (or (some-> (:display eq) keyword)
-                                  (:display src-card)
-                                  :table)
-      :visualization_settings (or (:visualization_settings eq)
-                                  (:visualization_settings src-card)
-                                  {})
-      :collection_id          (:collection_id doc)
-      :document_id            (:id doc)}
-     @api/*current-user*)))
-
-(defn- render-document
-  "Build the prose-mirror doc body from the LLM response. `eq-by-id` maps
-  exploration_query_id → ExplorationQuery row; only ids the LLM actually
-  references get a card materialized."
-  [{:keys [summary featured_charts next_steps]} eq-by-id doc]
-  (let [summary-paragraphs (mapv pm-paragraph (or summary []))
-        featured           (->> (or featured_charts [])
-                                (take max-featured-charts)
-                                (keep (fn [{:keys [exploration_query_id why_chosen what_it_shows]}]
-                                        (when-let [eq (get eq-by-id exploration_query_id)]
-                                          (let [card (materialize-chart-card! doc eq)]
-                                            [(pm-heading 3 (or (:name eq) "Chart"))
-                                             (pm-paragraph (str "Why: " why_chosen))
-                                             (pm-paragraph (str "Finding: " what_it_shows))
-                                             (pm-card-embed (:id card))])))))
-        featured-content   (vec (mapcat identity featured))
-        next-section       (when (seq next_steps)
-                             [(pm-heading 2 "Suggested next steps")
-                              (pm-bullet-list next_steps)])]
-    {:type    "doc"
-     :content (vec (concat [(pm-heading 2 "Summary")]
-                           summary-paragraphs
-                           (when (seq featured-content)
-                             (cons (pm-heading 2 "Most relevant charts") featured-content))
-                           next-section))}))
-
-;;; ---------------------------------------------- main entry point ----------------------------------------------
+(defn- save-transcript!
+  "Persist the debug transcript for a generation run on `exploration_thread`.
+  Failure to save is logged but never thrown — the transcript is purely for
+  debugging and must not break the main flow."
+  [thread-id transcript]
+  (try
+    (t2/update! :model/ExplorationThread thread-id
+                {:auto_insights_transcript transcript})
+    (catch Throwable e
+      (log/warnf e "Failed to save Automatic Insights transcript for thread %d" thread-id))))
 
 (def ^:private auto-doc-name
   "Name for the LLM-generated Automatic Insights document. Distinct from the
@@ -454,20 +170,251 @@
                                     :creator_id            creator-id
                                     :exploration_thread_id thread-id})))
 
+;;; ----- Debug helpers (REPL-friendly accessors for the persisted transcript) -----
+
+(defn debug-transcript
+  "Return the full Automatic Insights transcript for `thread-id`, or nil when
+  no transcript has been written yet. Includes pool info, both phase prompts
+  and attempts, the curation, the final document, and the outcome keyword."
+  [thread-id]
+  (:auto_insights_transcript
+   (t2/select-one [:model/ExplorationThread :id :auto_insights_transcript]
+                  :id thread-id)))
+
+(defn- attempt-reasonings
+  "Extract `{:attempt N :reasoning \"...\"}` entries from an attempts vector,
+  dropping attempts that produced no thinking trace."
+  [attempts]
+  (->> attempts
+       (keep (fn [{:keys [attempt trace]}]
+               (when-let [r (not-empty (:reasoning trace))]
+                 {:attempt attempt :reasoning r})))
+       vec))
+
+(defn debug-reasoning
+  "Return the extended-thinking traces for `thread-id` as a map keyed by phase:
+  `{:phase-1 [{:attempt N :reasoning \"...\"} ...]
+    :phase-2 [...]}`. Each entry includes the model's deliberation for that
+  attempt. Empty vectors when thinking was disabled or no reasoning emitted."
+  [thread-id]
+  (let [t (debug-transcript thread-id)]
+    {:phase-1 (attempt-reasonings (get-in t [:phase-1 :attempts]))
+     :phase-2 (attempt-reasonings (get-in t [:phase-2 :attempts]))}))
+
+(defn debug-prompt
+  "Return both phase prompts: `{:phase-1 \"...\" :phase-2 \"...\"}`. Phase-2 is
+  nil when the run didn't reach Phase 2."
+  [thread-id]
+  (let [t (debug-transcript thread-id)]
+    {:phase-1 (get-in t [:phase-1 :prompt])
+     :phase-2 (get-in t [:phase-2 :prompt])}))
+
+(defn debug-document
+  "Return the ProseMirror document the analyst (Phase 2) produced, pre-chart-
+  materialization. Nil when Phase 2 didn't succeed."
+  [thread-id]
+  (get-in (debug-transcript thread-id) [:phase-2 :final-pm-doc]))
+
+(defn debug-curation
+  "Return the Phase-1 curation map: `{:top_tier [...] :awareness_tier [...]
+  :rationale \"...\"}`. Nil when Phase 1 didn't succeed."
+  [thread-id]
+  (get-in (debug-transcript thread-id) [:phase-1 :curation]))
+
+;;; ----- Reasoning section rendering -----
+
+(defn- reasoning-paragraphs
+  "Split a raw reasoning string on blank lines into prose-mirror paragraph nodes."
+  [reasoning]
+  (->> (str/split reasoning #"\n\s*\n")
+       (map str/trim)
+       (remove str/blank?)
+       (mapv (fn [p]
+               {:type    "paragraph"
+                :content [{:type "text" :text p}]}))))
+
+(defn- reasonings-blocks
+  "Render a vector of `{:attempt N :reasoning \"...\"}` entries as prose-mirror
+  blocks. Single-attempt sequences are rendered flat; multi-attempt sequences
+  use level-4 sub-headings to separate each attempt."
+  [reasonings]
+  (if (= 1 (count reasonings))
+    (reasoning-paragraphs (:reasoning (first reasonings)))
+    (mapcat (fn [{:keys [attempt reasoning]}]
+              (cons {:type    "heading"
+                     :attrs   {:level 4}
+                     :content [{:type "text" :text (str "Attempt " attempt)}]}
+                    (reasoning-paragraphs reasoning)))
+            reasonings)))
+
+(defn- repl-helpers-blocks
+  "Build the prose-mirror block list that documents the REPL helpers a
+  developer can call to dig into this thread's debug info."
+  [thread-id]
+  (let [calls [["debug-transcript" "full transcript — pool, both phase prompts, attempts, curation, final doc, outcome"]
+               ["debug-reasoning"  "extended-thinking traces, grouped by phase"]
+               ["debug-prompt"     "both phase prompts (map with :phase-1 and :phase-2 keys)"]
+               ["debug-curation"   "the Phase-1 curation map (top_tier / awareness_tier / rationale)"]
+               ["debug-document"   "the Phase-2 ProseMirror doc (pre-chart-materialization)"]]]
+    (into [{:type    "heading"
+            :attrs   {:level 3}
+            :content [{:type "text" :text "REPL helpers"}]}
+           {:type    "paragraph"
+            :content [{:type "text"
+                       :text "Run these from a Clojure REPL to inspect this thread's debug info:"}]}]
+          (map (fn [[fn-name doc]]
+                 {:type    "paragraph"
+                  :content [{:type  "text"
+                             :text  (format "(metabase.explorations.auto-insights/%s %d)"
+                                            fn-name thread-id)
+                             :marks [{:type "code"}]}
+                            {:type "text" :text (str " — " doc)}]})
+               calls))))
+
+(defn- append-reasoning-section
+  "Append a `Reasoning` debug section to the end of `pm-doc`. Includes:
+   - Phase-1 (curation) rationale + reasoning attempts
+   - Phase-2 (analysis) reasoning attempts
+   - REPL helpers footer
+  Sub-sections are at heading level 3; per-attempt headings (when >1 attempt
+  in a phase) are level 4. No-op when nothing useful to show."
+  [pm-doc {:keys [phase-1 phase-2 thread-id]}]
+  (let [p1-reasonings (:reasonings phase-1)
+        p2-reasonings (:reasonings phase-2)
+        rationale     (:rationale phase-1)
+        anything? (or (seq p1-reasonings) (seq p2-reasonings) (seq rationale))]
+    (if-not anything?
+      pm-doc
+      (let [intro [{:type    "heading"
+                    :attrs   {:level 2}
+                    :content [{:type "text" :text "Reasoning"}]}
+                   {:type    "paragraph"
+                    :content [{:type  "text"
+                               :text  "Debug — the model's extended-thinking trace used to generate this document."
+                               :marks [{:type "italic"}]}]}]
+            p1-blocks (when (or (seq p1-reasonings) (seq rationale))
+                        (concat
+                         [{:type    "heading"
+                           :attrs   {:level 3}
+                           :content [{:type "text" :text "Phase 1 — Chart curation"}]}]
+                         (when (seq rationale)
+                           [{:type    "paragraph"
+                             :content [{:type  "text"
+                                        :text  "Curator's rationale: "
+                                        :marks [{:type "bold"}]}
+                                       {:type "text" :text rationale}]}])
+                         (reasonings-blocks p1-reasonings)))
+            p2-blocks (when (seq p2-reasonings)
+                        (concat
+                         [{:type    "heading"
+                           :attrs   {:level 3}
+                           :content [{:type "text" :text "Phase 2 — Analysis"}]}]
+                         (reasonings-blocks p2-reasonings)))
+            extra (vec (concat intro p1-blocks p2-blocks (repl-helpers-blocks thread-id)))]
+        (update pm-doc :content (fnil into []) extra)))))
+
+;;; ----- Error document — used when a phase fatally fails validation -----
+
+(defn- error-doc
+  "Build a minimal ProseMirror document explaining why generation failed.
+  Used when Phase 1 or Phase 2 hits validation errors that survived the
+  repair retry. The doc is intentionally diagnostic, not pretty — this is
+  development-time signal that something is wrong with the prompt, schema,
+  or model behavior, and someone should look."
+  [{:keys [phase thread-id final-errors detail]}]
+  (let [phase-label (case phase
+                      :phase-1 "Phase 1 — Chart curation"
+                      :phase-2 "Phase 2 — Analysis"
+                      (str phase))
+        err-items   (mapv (fn [e]
+                            {:type    "listItem"
+                             :content [{:type    "paragraph"
+                                        :content [{:type "text" :text e}]}]})
+                          (or final-errors []))]
+    {:type    "doc"
+     :content (cond-> [{:type    "heading"
+                        :attrs   {:level 2}
+                        :content [{:type "text" :text "Automatic Insights generation failed"}]}
+                       {:type    "paragraph"
+                        :content [{:type "text" :text "The system couldn't generate an analysis for this exploration. The failure happened in "}
+                                  {:type  "text"
+                                   :text  phase-label
+                                   :marks [{:type "bold"}]}
+                                  {:type "text" :text " after a repair retry."}]}
+                       {:type    "heading"
+                        :attrs   {:level 3}
+                        :content [{:type "text" :text "Validation errors"}]}
+                       (if (seq err-items)
+                         {:type "bulletList" :content err-items}
+                         {:type    "paragraph"
+                          :content [{:type "text" :text "(no specific errors captured — see transcript for details)"}]})]
+                detail
+                (conj {:type    "heading"
+                       :attrs   {:level 3}
+                       :content [{:type "text" :text "Details"}]}
+                      {:type    "paragraph"
+                       :content [{:type "text" :text detail}]})
+
+                :always
+                (conj {:type    "heading"
+                       :attrs   {:level 3}
+                       :content [{:type "text" :text "Next steps"}]}
+                      {:type    "paragraph"
+                       :content [{:type "text"
+                                  :text (str "Re-running the exploration may succeed if this was a transient issue. To debug, run "
+                                             (format "(metabase.explorations.auto-insights/debug-transcript %d)" thread-id)
+                                             " in a Clojure REPL — the persisted transcript contains both phase prompts, every LLM response, validation errors, and the extended-thinking trace.")}]}))}))
+
+;;; ----- Main entry point -----
+
+(defn- base-transcript
+  "Common preamble for the debug transcript — call-site metadata that's true
+  regardless of which branch the run takes. Timestamp is stored as an ISO-8601
+  string so the EDN round-trip works without registering custom data readers."
+  [thread-id]
+  {:generated-at      (.toString (java.time.Instant/now))
+   :thread-id         thread-id
+   :phase-1-llm-config phase1/llm-config
+   :phase-2-llm-config phase2/llm-config})
+
+(defn- write-document!
+  "Materialize the PM doc (resolving explorationChart placeholders to real
+  Cards) and persist it as a new Document on `thread-id`. Returns the
+  rendered (post-materialization) PM doc."
+  [{:keys [thread-id pm-doc eq-by-id creator-id]}]
+  (request/with-current-user creator-id
+    (let [doc (create-auto-insights-doc! thread-id creator-id)
+          body (phase2/materialize-chart-embeds pm-doc eq-by-id doc)]
+      (t2/update! :model/Document (:id doc)
+                  {:document     body
+                   :content_type prose-mirror/prose-mirror-content-type})
+      {:document-id (:id doc) :rendered-pm-doc body})))
+
 (defn generate-auto-insights!
-  "One-shot generation of the `Automatic Insights` document for `thread-id`.
-  Always inserts a new doc — the manually-created `Findings` doc is the
-  user's working space and is left untouched. Returns `:ok` on success, a
-  keyword reason on graceful skip, or `nil` on failure (logged but never
-  thrown)."
+  "Two-phase generation of the `Automatic Insights` document for `thread-id`.
+  Always inserts a new document — the manually-created `Findings` doc is the
+  user's working space and is left untouched. The full transcript (both phase
+  prompts, every LLM response, validation errors, extended-thinking traces,
+  the validated document) is persisted to
+  `exploration_thread.auto_insights_transcript` on every outcome (including
+  skips and failures) for after-the-fact debugging — `(debug-transcript
+  <thread-id>)` to inspect.
+
+  If either phase fails validation after a repair retry, the document is
+  replaced with a minimal *error document* that explains the failure.
+  We do not silently fall back to a different selection strategy during
+  development — failures are surfaced so they can be fixed.
+
+  Returns `:ok` on success, a keyword reason on graceful skip
+  (`:skip-no-llm`, `:skip-no-charts`), `:phase-1-failed` /
+  `:phase-2-failed` when the corresponding phase couldn't be repaired, or
+  `nil` on an uncaught throwable (logged but never thrown)."
   [thread-id]
   (try
-    (cond
-      (not (metabot.settings/llm-metabot-configured?))
+    (if-not (metabot.settings/llm-metabot-configured?)
       (do (log/infof "Skipping Automatic Insights for thread %d: LLM not configured" thread-id)
+          (save-transcript! thread-id (assoc (base-transcript thread-id) :outcome :skip-no-llm))
           :skip-no-llm)
-
-      :else
       (let [thread (t2/select-one [:model/ExplorationThread :id :prompt :exploration_id]
                                   :id thread-id)]
         (if (nil? thread)
@@ -480,46 +427,152 @@
                                               :status "done")
                                    :interestingness_score
                                    :contextual_interestingness_score)
-                                  (sort-by chart-rank-score >))
-                top-queries  (vec (take max-charts-in-prompt done-queries))
-                result-rows  (load-result-rows (map :id top-queries))
-                blocks       (vec (keep (fn [q]
+                                  (sort-by common/chart-rank-score >))
+                pool-queries (vec (take max-charts-in-pool done-queries))
+                result-rows  (load-result-rows (map :id pool-queries))
+                prepped      (vec (keep (fn [q]
                                           (let [{:keys [result_data chart_stats]} (get result-rows (:id q))]
-                                            (chart-block q result_data chart_stats)))
-                                        top-queries))]
+                                            (common/prep-chart q result_data chart_stats)))
+                                        pool-queries))
+                prepped-by-id (into {} (map (juxt :exploration-query-id identity)) prepped)
+                pool-ids     (mapv :exploration-query-id prepped)
+                selections   (selection-context thread-id)
+                timelines    (load-timeline-events thread-id)
+                preamble     (assoc (base-transcript thread-id)
+                                    :thread-prompt       (:prompt thread)
+                                    :total-chart-count   (count done-queries)
+                                    :charts-in-pool      (count prepped)
+                                    :pool-chart-ids      pool-ids
+                                    :timelines           timelines)]
             (cond
-              (empty? blocks)
+              (empty? prepped)
               (do (log/infof "No usable chart blocks for thread %d; skipping Automatic Insights" thread-id)
+                  (save-transcript! thread-id (assoc preamble :outcome :skip-no-charts))
                   :skip-no-charts)
 
               :else
-              (let [prompt   (build-prompt {:thread-prompt     (:prompt thread)
-                                            :selections        (selection-context thread-id)
-                                            :blocks            blocks
-                                            :total-chart-count (count done-queries)})
-                    response (metabot.self/call-llm-structured
-                              model
-                              [{:role "user" :content prompt}]
-                              response-schema
-                              temperature
-                              max-tokens
-                              {:request-id (str (random-uuid))
-                               :source     "exploration"
-                               :tag        "exploration-auto-insights"})
-                    eq-by-id (into {} (map (juxt :id identity)) top-queries)]
-                (if-not (map? response)
-                  (do (log/warnf "Automatic Insights for thread %d: malformed LLM response %s"
-                                 thread-id (pr-str response))
-                      nil)
-                  (request/with-current-user (:creator_id exploration)
-                    (let [doc  (create-auto-insights-doc! thread-id (:creator_id exploration))
-                          body (render-document response eq-by-id doc)]
-                      (t2/update! :model/Document (:id doc)
-                                  {:document     body
-                                   :content_type prose-mirror/prose-mirror-content-type})
-                      (log/infof "Wrote Automatic Insights for thread %d to document %d"
-                                 thread-id (:id doc))
-                      :ok)))))))))
+              ;; -------- Phase 1: curation --------
+              (let [curation-prompt (phase1/build-curation-prompt
+                                     {:thread-prompt     (:prompt thread)
+                                      :selections        selections
+                                      :timelines         timelines
+                                      :index-entries     prepped
+                                      :pool-size         (count prepped)
+                                      :total-chart-count (count done-queries)})
+                    p1 (phase1/run-curation! thread-id curation-prompt pool-ids)
+                    p1-transcript {:prompt     curation-prompt
+                                   :attempts   (:attempts p1)
+                                   :outcome    (:outcome p1)
+                                   :curation   (:value p1)
+                                   :final-errors (:final-errors p1)}
+                    p1-reasonings (attempt-reasonings (:attempts p1))]
+                (if (= :failed (:outcome p1))
+                  ;; Phase-1 fatal — write error doc + transcript, do NOT fall back.
+                  (let [err-pm  (error-doc {:phase        :phase-1
+                                            :thread-id    thread-id
+                                            :final-errors (:final-errors p1)
+                                            :detail       "Phase 1 (chart curation) failed validation after a repair retry. No Phase 2 was attempted."})
+                        err-pm+ (append-reasoning-section
+                                 err-pm
+                                 {:phase-1   {:reasonings p1-reasonings
+                                              :rationale  (get-in p1 [:value :rationale])}
+                                  :phase-2   {:reasonings []}
+                                  :thread-id thread-id})
+                        {:keys [document-id rendered-pm-doc]}
+                        (write-document! {:thread-id  thread-id
+                                          :pm-doc     err-pm+
+                                          :eq-by-id   {}
+                                          :creator-id (:creator_id exploration)})]
+                    (save-transcript! thread-id
+                                      (assoc preamble
+                                             :outcome         :phase-1-failed
+                                             :phase-1         p1-transcript
+                                             :document-id     document-id
+                                             :rendered-pm-doc rendered-pm-doc))
+                    (log/warnf "Automatic Insights for thread %d: Phase 1 failed; wrote error doc %d"
+                               thread-id document-id)
+                    :phase-1-failed)
+
+                  ;; -------- Phase 1 OK — run Phase 2 --------
+                  (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
+                        top-prepped       (vec (keep prepped-by-id top_tier))
+                        awareness-prepped (vec (keep prepped-by-id awareness_tier))
+                        analysis-prompt   (phase2/build-analysis-prompt
+                                           {:thread-prompt      (:prompt thread)
+                                            :selections         selections
+                                            :curation-rationale rationale
+                                            :timelines          timelines
+                                            :top-blocks         top-prepped
+                                            :awareness-blocks   awareness-prepped
+                                            :total-chart-count  (count done-queries)
+                                            :pool-size          (count prepped)})
+                        p2 (phase2/run-analysis! thread-id analysis-prompt)
+                        p2-transcript {:prompt       analysis-prompt
+                                       :attempts     (:attempts p2)
+                                       :outcome      (:outcome p2)
+                                       :final-pm-doc (:value p2)
+                                       :final-errors (:final-errors p2)}
+                        p2-reasonings (attempt-reasonings (:attempts p2))
+                        ;; eq-by-id only needs the top-tier ids (awareness can't be embedded — model is told not to cite them)
+                        eq-by-id (into {}
+                                       (map (fn [q]
+                                              [(:id q) (assoc q :computed-display
+                                                              (:display-type (get prepped-by-id (:id q))))]))
+                                       (filter #((set top_tier) (:id %)) pool-queries))]
+                    (if (= :failed (:outcome p2))
+                      ;; Phase 2 fatal — error doc with phase 1 context preserved.
+                      (let [err-pm  (error-doc {:phase        :phase-2
+                                                :thread-id    thread-id
+                                                :final-errors (:final-errors p2)
+                                                :detail       "Phase 2 (analysis) failed validation after a repair retry. Phase 1's curation is in the transcript for reference."})
+                            err-pm+ (append-reasoning-section
+                                     err-pm
+                                     {:phase-1   {:reasonings p1-reasonings
+                                                  :rationale  rationale}
+                                      :phase-2   {:reasonings p2-reasonings}
+                                      :thread-id thread-id})
+                            {:keys [document-id rendered-pm-doc]}
+                            (write-document! {:thread-id  thread-id
+                                              :pm-doc     err-pm+
+                                              :eq-by-id   {}
+                                              :creator-id (:creator_id exploration)})]
+                        (save-transcript! thread-id
+                                          (assoc preamble
+                                                 :outcome         :phase-2-failed
+                                                 :phase-1         p1-transcript
+                                                 :phase-2         p2-transcript
+                                                 :document-id     document-id
+                                                 :rendered-pm-doc rendered-pm-doc))
+                        (log/warnf "Automatic Insights for thread %d: Phase 2 failed; wrote error doc %d"
+                                   thread-id document-id)
+                        :phase-2-failed)
+
+                      ;; -------- Both phases OK — write the real analysis --------
+                      (let [pm-doc  (:value p2)
+                            pm-doc+ (append-reasoning-section
+                                     pm-doc
+                                     {:phase-1   {:reasonings p1-reasonings
+                                                  :rationale  rationale}
+                                      :phase-2   {:reasonings p2-reasonings}
+                                      :thread-id thread-id})
+                            {:keys [document-id rendered-pm-doc]}
+                            (write-document! {:thread-id  thread-id
+                                              :pm-doc     pm-doc+
+                                              :eq-by-id   eq-by-id
+                                              :creator-id (:creator_id exploration)})]
+                        (save-transcript! thread-id
+                                          (assoc preamble
+                                                 :outcome         :ok
+                                                 :phase-1         p1-transcript
+                                                 :phase-2         p2-transcript
+                                                 :document-id     document-id
+                                                 :rendered-pm-doc rendered-pm-doc))
+                        (log/infof "Wrote Automatic Insights for thread %d to document %d"
+                                   thread-id document-id)
+                        :ok))))))))))
     (catch Throwable e
       (log/errorf e "generate-auto-insights! failed for thread %d" thread-id)
+      (save-transcript! thread-id (assoc (base-transcript thread-id)
+                                         :outcome :error
+                                         :error   (.getMessage e)))
       nil)))

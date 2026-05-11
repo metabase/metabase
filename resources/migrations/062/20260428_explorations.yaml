@@ -991,3 +991,18 @@ databaseChangeLog:
                   remarks: JSON-encoded raw stats on the chart
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v62.aitranscript
+      author: nvoxland
+      comment: Capture the LLM transcript used to generate the Automatic Insights document
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: auto_insights_transcript
+                  type: ${text.type}
+                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's Automatic Insights doc. Debug-only — not surfaced to the user.
+                  constraints:
+                    nullable: true

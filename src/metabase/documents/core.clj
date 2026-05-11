@@ -3,6 +3,7 @@
    [metabase.documents.api.document]
    [metabase.documents.prose-mirror]
    [metabase.documents.recent-views]
+   [metabase.documents.validate]
    [potemkin :as p]))
 
 (comment
@@ -13,4 +14,7 @@
  [metabase.documents.api.document
   get-document]
  [metabase.documents.prose-mirror
-  prose-mirror-content-type])
+  prose-mirror-content-type]
+ [metabase.documents.validate
+  validate-prose-mirror
+  valid-prose-mirror?])

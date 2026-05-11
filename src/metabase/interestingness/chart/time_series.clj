@@ -185,6 +185,41 @@
 
 ;;; ------------------------------------------------ Main Entry Point ------------------------------------------------
 
+(defn- argmax-min
+  "Find the indices of the max and min values in `values`, plus the count of
+  points strictly above the mean. Single pass. Returns
+  `{:argmax i :argmin j :above-mean k}` or nil when `values` is empty."
+  [values]
+  (when (seq values)
+    (let [vs (vec values)
+          n  (count vs)
+          mean (/ (reduce + 0.0 vs) n)]
+      (loop [i 1
+             argmax 0
+             argmin 0
+             above (if (> (nth vs 0) mean) 1 0)]
+        (if (>= i n)
+          {:argmax argmax :argmin argmin :above-mean above}
+          (let [v (nth vs i)]
+            (recur (inc i)
+                   (if (> v (nth vs argmax)) i argmax)
+                   (if (< v (nth vs argmin)) i argmin)
+                   (if (> v mean) (inc above) above))))))))
+
+(defn- compute-peak-trough
+  "Locate the peak (max y) and trough (min y) in a time series, together with
+  their x-coordinates (dates), and count how many points sit above the mean.
+  These are pre-computed answers to the questions downstream consumers (the
+  Automatic Insights generator, for instance) need to ground citations — the
+  date of the peak isn't recoverable from the summary's `:min`/`:max` alone."
+  [values dates]
+  (when-let [{:keys [argmax argmin above-mean]} (argmax-min values)]
+    (let [vs (vec values)
+          ds (vec dates)]
+      {:peak           {:x (nth ds argmax) :y (nth vs argmax)}
+       :trough         {:x (nth ds argmin) :y (nth vs argmin)}
+       :above-mean     above-mean})))
+
 (defn- compute-series-stats
   "Compute statistics for a single time series.
 
@@ -198,12 +233,14 @@
         outliers (if is-cumulative
                    (outliers/find-outliers-cumulative values dates)
                    (outliers/find-outliers values dates))
-        basic-stats {:summary (stats.u/compute-summary values)
-                     :time-range (compute-time-range dates)
-                     :data-points (count values)
-                     :trend (compute-trend values)
-                     :is-cumulative is-cumulative
-                     :outliers outliers}]
+        peak-trough (compute-peak-trough values dates)
+        basic-stats (cond-> {:summary (stats.u/compute-summary values)
+                             :time-range (compute-time-range dates)
+                             :data-points (count values)
+                             :trend (compute-trend values)
+                             :is-cumulative is-cumulative
+                             :outliers outliers}
+                      peak-trough (merge peak-trough))]
     (if deep?
       (assoc basic-stats
              :volatility (compute-volatility values)

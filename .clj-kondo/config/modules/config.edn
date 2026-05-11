@@ -989,6 +989,7 @@
            queries
            query-permissions
            query-processor
+           request
            startup
            timeline
            util}
