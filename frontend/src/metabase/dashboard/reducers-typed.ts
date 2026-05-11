@@ -305,10 +305,11 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast to avoid infinite type instantiotion error.
+          const dashboards = state as Record<string, StoreDashboard>;
+          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         state[dashcard.dashboard_id].dashcards.push(dashcard.id);
