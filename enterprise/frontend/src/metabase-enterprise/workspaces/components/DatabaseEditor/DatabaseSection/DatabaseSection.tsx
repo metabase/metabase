@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/common/utils/database";
 import {
   Button,
   Card,
@@ -30,6 +31,12 @@ export function DatabaseSection({
   onDatabaseChange,
   onDatabaseRemove,
 }: DatabaseSectionProps) {
+  const selectedDatabase = availableDatabases.find(
+    (database) => database.id === workspaceDatabase.database_id,
+  );
+  const hasSchemas =
+    selectedDatabase != null && hasFeature(selectedDatabase, "schemas");
+
   const handleDatabaseChange = (newDatabaseId: DatabaseId | undefined) => {
     const newWorkspaceDatabase: WorkspaceDatabaseInfo = {
       ...workspaceDatabase,
@@ -69,7 +76,7 @@ export function DatabaseSection({
             />
           )}
         </Group>
-        {workspaceDatabase.database_id != null && (
+        {workspaceDatabase.database_id != null && hasSchemas && (
           <SchemaMultiSelect
             databaseId={workspaceDatabase.database_id}
             value={workspaceDatabase.input_schemas}

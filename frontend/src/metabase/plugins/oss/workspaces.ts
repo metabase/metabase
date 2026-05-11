@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
+import type { State } from "metabase/redux/store";
 import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
@@ -9,6 +10,7 @@ export type AdminConnectionInfoSectionProps = {
 };
 
 const getDefaultWorkspaces = () => ({
+  canManageWorkspaces: (_state: State): boolean => false,
   getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: ComponentType): ReactNode => null,
   AdminConnectionInfoSection:
