@@ -104,12 +104,7 @@ const PreviewSectionBase = ({
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
-            /**
-             * Make sure internal component state is reset when changing any field settings.
-             * This is because use***Filter hooks cache some parts of state internally on mount
-             * and do not account for all prop changes during their lifecycle.
-             */
-            key={JSON.stringify(field)}
+            key={getFilteringPreviewKey(field)}
             table={table}
           />
         )}
@@ -117,5 +112,16 @@ const PreviewSectionBase = ({
     </Card>
   );
 };
+
+function getFilteringPreviewKey(field: Field) {
+  return [
+    field.id,
+    field.base_type,
+    field.effective_type,
+    field.semantic_type,
+    field.fk_target_field_id,
+    field.visibility_type,
+  ].join(":");
+}
 
 export const PreviewSection = memo(PreviewSectionBase);
