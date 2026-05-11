@@ -11,6 +11,7 @@ import * as Urls from "metabase/urls";
 
 export type WorkspaceHeaderProps = {
   name: string;
+  menu?: ReactNode;
   actions?: ReactNode;
   isNew?: boolean;
   onChangeName: (name: string) => void;
@@ -18,6 +19,7 @@ export type WorkspaceHeaderProps = {
 
 export function WorkspaceHeader({
   name,
+  menu,
   actions,
   isNew,
   onChangeName,
@@ -40,6 +42,7 @@ export function WorkspaceHeader({
           {name}
         </DataStudioBreadcrumbs>
       }
+      menu={menu}
       actions={actions}
       py={0}
     />

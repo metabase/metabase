@@ -46,11 +46,17 @@
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name ms/NonBlankString]])
+   [:name      ms/NonBlankString]
+   ;; Accepted for forward compatibility with the FE create form, but ignored:
+   ;; database wiring still happens through the dedicated sub-endpoints below.
+   [:databases {:optional true} [:maybe :any]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name      {:optional true} ms/NonBlankString]
+   ;; Accepted for forward compatibility with the FE edit form, but ignored:
+   ;; database wiring still happens through the dedicated sub-endpoints below.
+   [:databases {:optional true} [:maybe :any]]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}

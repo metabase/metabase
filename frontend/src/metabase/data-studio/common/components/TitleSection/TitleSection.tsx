@@ -18,7 +18,7 @@ export function TitleSection({
       <Group>
         <Stack flex={1} gap="sm">
           <Title order={4}>{label}</Title>
-          <Text c="text-secondary">{description}</Text>
+          {description != null && <Text c="text-secondary">{description}</Text>}
         </Stack>
       </Group>
       <Card p={0} shadow="none" withBorder>

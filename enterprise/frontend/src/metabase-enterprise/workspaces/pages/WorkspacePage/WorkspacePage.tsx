@@ -17,7 +17,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
-import { DatabaseEditor } from "../../components/DatabaseEditor";
+import { DatabaseSectionList } from "../../components/DatabaseSectionList";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import type { WorkspaceDatabaseInfo } from "../../types";
 import {
@@ -27,6 +27,7 @@ import {
 } from "../../utils";
 
 import { SetupSection } from "./SetupSection";
+import { WorkspaceMenu } from "./WorkspaceMenu";
 
 type WorkspacePageParams = {
   workspaceId: string;
@@ -135,6 +136,7 @@ function WorkspacePageBody({
         <WorkspaceHeader
           name={workspace.name}
           onChangeName={handleNameChange}
+          menu={<WorkspaceMenu workspace={workspace} />}
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}
@@ -147,12 +149,12 @@ function WorkspacePageBody({
           }
         />
         <Stack gap="3.5rem">
-          <SetupSection workspace={workspace} />
-          <DatabaseEditor
+          <DatabaseSectionList
             workspaceDatabases={workspaceDatabases}
             availableDatabases={availableDatabases}
             onDatabasesChange={setWorkspaceDatabases}
           />
+          <SetupSection workspace={workspace} />
         </Stack>
       </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />

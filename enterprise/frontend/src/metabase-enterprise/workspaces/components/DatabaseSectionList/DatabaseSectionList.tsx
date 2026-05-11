@@ -8,17 +8,17 @@ import type { WorkspaceDatabaseInfo } from "../../types";
 import { DatabaseSection } from "./DatabaseSection";
 import { getSelectableDatabases } from "./utils";
 
-export type DatabaseEditorProps = {
+export type DatabaseSectionListProps = {
   workspaceDatabases: WorkspaceDatabaseInfo[];
   availableDatabases: Database[];
   onDatabasesChange: (workspaceDatabases: WorkspaceDatabaseInfo[]) => void;
 };
 
-export function DatabaseEditor({
+export function DatabaseSectionList({
   workspaceDatabases,
   availableDatabases,
   onDatabasesChange,
-}: DatabaseEditorProps) {
+}: DatabaseSectionListProps) {
   const canAddDatabase = workspaceDatabases.length < availableDatabases.length;
 
   const handleDatabaseAdd = () => {

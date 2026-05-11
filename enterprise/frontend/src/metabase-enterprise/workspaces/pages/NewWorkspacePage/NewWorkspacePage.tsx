@@ -16,7 +16,7 @@ import * as Urls from "metabase/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Database } from "metabase-types/api";
 
-import { DatabaseEditor } from "../../components/DatabaseEditor";
+import { DatabaseSectionList } from "../../components/DatabaseSectionList";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import {
   getAvailableDatabases,
@@ -113,7 +113,7 @@ function NewWorkspacePageBody({
           }
         />
         <Stack gap="3.5rem">
-          <DatabaseEditor
+          <DatabaseSectionList
             workspaceDatabases={workspaceDatabases}
             availableDatabases={availableDatabases}
             onDatabasesChange={setWorkspaceDatabases}
