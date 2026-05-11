@@ -1,4 +1,4 @@
-(ns metabase.driver.postgres-test
+(ns ^:mb/driver-tests metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
    [clojure.core.async :as a]
