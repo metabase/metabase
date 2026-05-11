@@ -133,6 +133,41 @@
           (is (false? @posted?)
               "Harbormaster must not be contacted when the premium token is missing"))))))
 
+(deftest feedback-post-returns-502-when-harbormaster-submission-fails-test
+  (testing "MCP feedback surfaces Harbormaster submission failures without pretending the feedback was saved"
+    (let [store-url  "http://hm.example"
+          session-id (mcp.session/create! (mt/user->id :rasta))
+          body       {:feedback          {:message_id (str (random-uuid))
+                                          :positive   true}
+                      :conversation_data {:source "mcp"
+                                          :prompt "show orders"
+                                          :query  "encoded-query"}}]
+      (mt/with-temporary-setting-values [store-api-url store-url]
+        (mt/with-dynamic-fn-redefs
+          [premium-features/premium-embedding-token (constantly "test-fake-token-for-feedback")
+           http/post (fn [& _] (throw (ex-info "Harbormaster unavailable" {})))]
+          (is (=? {:status 502}
+                  (post-mcp-feedback :rasta 502 body session-id))))))))
+
+(deftest feedback-post-rejects-oversized-free-text-test
+  (testing "MCP feedback bounds user-controlled free text before proxying to Harbormaster"
+    (let [session-id (mcp.session/create! (mt/user->id :rasta))
+          too-large  (apply str (repeat 10001 "x"))
+          base-body  {:feedback          {:message_id (str (random-uuid))
+                                          :positive   true}
+                      :conversation_data {:source "mcp"}}
+          posted?    (atom false)]
+      (mt/with-dynamic-fn-redefs
+        [http/post (fn [& _] (reset! posted? true))]
+        (doseq [[path label] [[[:feedback :freeform_feedback] "freeform feedback"]
+                              [[:conversation_data :prompt] "prompt"]
+                              [[:conversation_data :query] "query"]]]
+          (testing label
+            (is (=? {:status 400}
+                    (post-mcp-feedback :rasta 400 (assoc-in base-body path too-large) session-id))))))
+      (is (false? @posted?)
+          "Harbormaster must not be contacted for oversized feedback payloads"))))
+
 (deftest feedback-post-validates-session-header-test
   (testing "MCP feedback validates the MCP session header"
     (let [body {:feedback          {:message_id (str (random-uuid))

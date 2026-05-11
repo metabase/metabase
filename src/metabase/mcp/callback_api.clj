@@ -12,6 +12,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
@@ -28,6 +29,31 @@
              [404 (tru "Invalid or expired session")])
   (api/check (mcp.session/owned-by-user? session-id user-id)
              [404 (tru "Invalid or expired session")]))
+
+(def ^:private feedback-text-max-length
+  10000)
+
+(def ^:private OptionalFeedbackText
+  [:maybe [:string {:max feedback-text-max-length}]])
+
+(defn- rethrow-api-check-exception
+  [e]
+  (when (:status-code (ex-data e))
+    (throw e)))
+
+(defn- submit-mcp-feedback!
+  [body]
+  (let [submitted? (try
+                     (agent-api/submit-mcp-visualization-feedback! body)
+                     (catch clojure.lang.ExceptionInfo e
+                       (rethrow-api-check-exception e)
+                       (log/error e "Failed to submit MCP feedback to Harbormaster")
+                       (api/check false [502 (tru "Could not submit feedback.")]))
+                     (catch Exception e
+                       (log/error e "Failed to submit MCP feedback to Harbormaster")
+                       (api/check false [502 (tru "Could not submit feedback.")])))]
+    (api/check-400 submitted?
+                   "Cannot submit feedback. The license token and/or Store API URL are missing!")))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"
@@ -53,16 +79,15 @@
                         [:message_id        ms/NonBlankString]
                         [:positive          :boolean]
                         [:issue_type        {:optional true} [:maybe :string]]
-                        [:freeform_feedback {:optional true} [:maybe :string]]]]
+                        [:freeform_feedback {:optional true} OptionalFeedbackText]]]
             [:conversation_data [:map
                                  [:source [:= "mcp"]]
-                                 [:prompt {:optional true} [:maybe :string]]
-                                 [:query  {:optional true} [:maybe :string]]]]]
+                                 [:prompt {:optional true} OptionalFeedbackText]
+                                 [:query  {:optional true} OptionalFeedbackText]]]]
    request]
   (let [session-id (mcp-session-id-from-headers request)
         _          (check-session-header! session-id api/*current-user-id*)]
-    (api/check-400 (agent-api/submit-mcp-visualization-feedback! body)
-                   "Cannot submit feedback. The license token and/or Store API URL are missing!"))
+    (submit-mcp-feedback! body))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
