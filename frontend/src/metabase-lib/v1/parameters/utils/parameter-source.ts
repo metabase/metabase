@@ -23,6 +23,10 @@ const getDefaultQueryType = (
   parameter: ParameterWithTemplateTagTarget,
 ): ValuesQueryType => {
   if (parameter.hasVariableTemplateTagTarget) {
+    if (parameter.values_source_type != null) {
+      return "list";
+    }
+
     return "none";
   } else {
     const operator = deriveFieldOperatorFromParameter(parameter);

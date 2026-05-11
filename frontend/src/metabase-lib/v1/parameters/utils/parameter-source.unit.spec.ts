@@ -77,6 +77,18 @@ describe("getQueryType", () => {
     });
     expect(getQueryType(parameter)).toBe("list");
   });
+
+  it("should return list query type by default for SQL parameters with static list values (#72245)", () => {
+    const parameter = createMockUiParameter({
+      hasVariableTemplateTagTarget: true,
+      values_source_type: "static-list",
+      values_source_config: {
+        values: [["New York", "NY"]],
+      },
+    });
+
+    expect(getQueryType(parameter)).toBe("list");
+  });
 });
 
 describe("canListParameterValues", () => {
@@ -141,6 +153,18 @@ describe("canListParameterValues", () => {
       values_source_type: "static-list",
       values_source_config: {
         values: ["A", "B"],
+      },
+    });
+
+    expect(canListParameterValues(parameter)).toBeTruthy();
+  });
+
+  it("should list SQL parameters with static list values (#72245)", () => {
+    const parameter = createMockUiParameter({
+      hasVariableTemplateTagTarget: true,
+      values_source_type: "static-list",
+      values_source_config: {
+        values: [["New York", "NY"]],
       },
     });
 
