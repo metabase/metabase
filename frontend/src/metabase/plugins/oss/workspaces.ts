@@ -9,6 +9,7 @@ export type AdminConnectionInfoSectionProps = {
 };
 
 const getDefaultWorkspaces = () => ({
+  getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: ComponentType): ReactNode => null,
   AdminConnectionInfoSection:
     PluginPlaceholder<AdminConnectionInfoSectionProps>,
