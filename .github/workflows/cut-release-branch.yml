@@ -76,6 +76,34 @@ jobs:
             --body "${{ steps.preflight.outputs.next }}" \
             --repo "${{ github.repository }}"
 
+      - name: Create Bug:v${{ steps.preflight.outputs.next }} label
+        id: label
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const next = '${{ steps.preflight.outputs.next }}';
+            const name = `Bug:v${next}`;
+            const color = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                color,
+                description: `bugs or regressions introduced in v${next}`,
+              });
+              console.log(`Created label ${name} (#${color})`);
+            } catch (err) {
+              if (err.status === 422) {
+                console.log(`Label ${name} already exists — skipping`);
+                return;
+              }
+              throw err;
+            }
+
       - name: Notify Slack
         uses: actions/github-script@v7
         env:
@@ -88,6 +116,7 @@ jobs:
             const next = '${{ steps.preflight.outputs.next }}';
             const sha = '${{ steps.cut.outputs.sha }}';
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
+            const labelFailed = '${{ steps.label.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -100,6 +129,9 @@ jobs:
               bumpFailed
                 ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/${owner}/${repo}/settings/variables/actions|Actions variables>`
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
+              labelFailed
+                ? `:warning: Creating label \`Bug:v${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
+                : null,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
