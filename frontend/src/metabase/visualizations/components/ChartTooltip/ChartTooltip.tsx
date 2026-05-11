@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { Tooltip } from "metabase/common/components/Tooltip";
@@ -45,6 +45,13 @@ export const ChartTooltipContent = ({
  */
 function useStableTooltipTarget(element: Element | undefined | null) {
   const proxyRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      proxyRef.current?.remove();
+      proxyRef.current = null;
+    };
+  }, []);
 
   if (!element || !document.body.contains(element)) {
     return null;

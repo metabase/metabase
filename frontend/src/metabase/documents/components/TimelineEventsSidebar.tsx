@@ -9,7 +9,11 @@ import { useDispatch } from "metabase/redux";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal/NewEventModal";
 import { Box, Loader, Modal, Stack, Text } from "metabase/ui";
 import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
-import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
+import type {
+  CollectionId,
+  TimelineEvent,
+  TimelineEventId,
+} from "metabase-types/api";
 
 import { closeSidebar, updateVizSettings } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
@@ -21,24 +25,31 @@ interface TimelineEventsSidebarProps {
   cardId: number;
   selectedEmbedIndex: number;
   editorInstance?: Editor;
+  collectionId: CollectionId | null;
 }
 
 export function TimelineEventsSidebar({
   cardId,
   selectedEmbedIndex,
   editorInstance,
+  collectionId,
 }: TimelineEventsSidebarProps) {
   const [isShowNewEventModal, setIsShowNewEventModal] = useState(false);
 
   const dispatch = useDispatch();
 
   const {
-    data: timelines = [],
+    data: timelineData = [],
     isLoading,
     isError,
   } = useListTimelinesQuery({
     include: "events",
   });
+
+  const timelines = useMemo(
+    () => timelineData.filter((timeline) => (timeline.events?.length ?? 0) > 0),
+    [timelineData],
+  );
 
   const { card, draftCard, regularDataset } = useCardData({
     id: cardId,
@@ -145,7 +156,7 @@ export function TimelineEventsSidebar({
   return (
     <Box className={S.container}>
       <TimelineSidebar
-        collectionId={null}
+        collectionId={collectionId}
         timelines={timelines}
         visibleTimelineEventIds={visibleTimelineEventIds}
         selectedTimelineEventIds={[]}
@@ -161,7 +172,10 @@ export function TimelineEventsSidebar({
           withCloseButton={false}
           padding="0"
         >
-          <NewEventModal collectionId={null} onClose={handleCloseModal} />
+          <NewEventModal
+            collectionId={collectionId}
+            onClose={handleCloseModal}
+          />
         </Modal>
       )}
     </Box>

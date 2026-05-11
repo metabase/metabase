@@ -39,9 +39,9 @@ export const getSelectedEmbedIndex = createSelector(
   (documents): number | null => documents.selectedEmbedIndex,
 );
 
-export const getSideBarMode = createSelector(
+export const getsidebarMode = createSelector(
   getDocumentsState,
-  (documents) => documents.sideBarMode,
+  (documents) => documents.sidebarMode,
 );
 
 export const getCurrentDocument = createSelector(

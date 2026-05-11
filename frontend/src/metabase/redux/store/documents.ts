@@ -13,7 +13,7 @@ export interface MentionCacheItem {
 
 export interface DocumentsState {
   selectedEmbedIndex: number | null;
-  sideBarMode: "viz-settings" | "timeline-events" | null;
+  sidebarMode: "viz-settings" | "timeline-events" | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
   draftCards: Record<number, Card>;

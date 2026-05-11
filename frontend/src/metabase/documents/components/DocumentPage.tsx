@@ -51,7 +51,7 @@ import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
-  getSideBarMode,
+  getsidebarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -110,7 +110,7 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const sideBarMode = useSelector(getSideBarMode);
+  const sidebarMode = useSelector(getsidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [copyDocument] = useCopyDocumentMutation();
   const [duplicateModalMode, setDuplicateModalMode] = useState<
@@ -293,7 +293,7 @@ export const DocumentPage = ({
         {selectedQuestionId &&
           selectedEmbedIndex !== null &&
           editorInstance &&
-          sideBarMode === "viz-settings" && (
+          sidebarMode === "viz-settings" && (
             <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
@@ -304,7 +304,7 @@ export const DocumentPage = ({
         {selectedQuestionId &&
           selectedEmbedIndex !== null &&
           editorInstance &&
-          sideBarMode === "timeline-events" && (
+          sidebarMode === "timeline-events" && (
             <Box
               className={styles.sidebar}
               data-testid="document-timeline-sidebar"
@@ -313,6 +313,7 @@ export const DocumentPage = ({
                 cardId={selectedQuestionId}
                 selectedEmbedIndex={selectedEmbedIndex}
                 editorInstance={editorInstance}
+                collectionId={documentData?.collection_id ?? null}
               />
             </Box>
           )}
