@@ -4,12 +4,15 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
+import type { Database } from "metabase-types/api";
 
 import type {
   WorkspaceDatabaseInfo,
@@ -17,11 +20,36 @@ import type {
 } from "../../components/WorkspaceEditor";
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 
+import { createRequest } from "./utils";
+
 type NewWorkspacePageProps = {
   route: Route;
 };
 
 export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
+  const { data: databasesResponse, isLoading, error } = useListDatabasesQuery();
+
+  if (isLoading || error != null || databasesResponse == null) {
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <NewWorkspacePageBody
+      availableDatabases={databasesResponse.data}
+      route={route}
+    />
+  );
+}
+
+type NewWorkspacePageBodyProps = {
+  availableDatabases: Database[];
+  route: Route;
+};
+
+function NewWorkspacePageBody({
+  availableDatabases,
+  route,
+}: NewWorkspacePageBodyProps) {
   const initialWorkspace = useMemo(() => getNewWorkspaceInfo(), []);
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const isDirty = useMemo(
@@ -33,22 +61,23 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
-  const handleNameChange = (name: string) => {
-    setWorkspace({ ...workspace, name });
+  const handleNameChange = (newName: string) => {
+    const newWorkspace: WorkspaceInfo = { ...workspace, name: newName };
+    setWorkspace(newWorkspace);
   };
 
-  const handleDatabasesChange = (databases: WorkspaceDatabaseInfo[]) => {
-    setWorkspace({ ...workspace, databases });
+  const handleDatabasesChange = (newDatabases: WorkspaceDatabaseInfo[]) => {
+    const newWorkspace: WorkspaceInfo = {
+      ...workspace,
+      databases: newDatabases,
+    };
+    setWorkspace(newWorkspace);
   };
 
   const handleSave = async () => {
-    const { data: newWorkspace, error } = await createWorkspace({
-      name: workspace.name,
-      databases: workspace.databases.map(({ database_id, input }) => ({
-        database_id,
-        input,
-      })),
-    });
+    const { data: newWorkspace, error } = await createWorkspace(
+      createRequest(workspace),
+    );
 
     if (error || newWorkspace == null) {
       sendErrorToast(t`Failed to create a workspace`);
@@ -66,6 +95,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
     <>
       <WorkspaceEditor
         workspace={workspace}
+        availableDatabases={availableDatabases}
         actions={
           <PaneHeaderActions
             isDirty
@@ -87,7 +117,8 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
 
 function getNewWorkspaceInfo(): WorkspaceInfo {
   return {
+    id: undefined,
     name: t`New workspace`,
-    databases: [],
+    databases: [{ database_id: undefined, input: [] }],
   };
 }

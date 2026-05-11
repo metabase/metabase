@@ -1,15 +1,16 @@
 import type {
-  WorkspaceDatabaseParams,
-  WorkspaceDatabaseStauts,
+  DatabaseId,
+  WorkspaceDatabaseInput,
   WorkspaceId,
 } from "metabase-types/api";
 
-export type WorkspaceDatabaseInfo = WorkspaceDatabaseParams & {
-  status?: WorkspaceDatabaseStauts;
+export type WorkspaceDatabaseInfo = {
+  database_id: DatabaseId | undefined;
+  input: WorkspaceDatabaseInput[];
 };
 
 export type WorkspaceInfo = {
-  id?: WorkspaceId;
+  id: WorkspaceId | undefined;
   name: string;
   databases: WorkspaceDatabaseInfo[];
 };

@@ -3,24 +3,21 @@ import type { UserId, UserInfo } from "./user";
 
 export type WorkspaceId = number;
 
-export type WorkspaceDatabaseStauts =
+export type WorkspaceDatabaseStatus =
   | "unprovisioned"
   | "provisioning"
   | "provisioned"
   | "deprovisioning";
 
 export type WorkspaceDatabaseInput = {
-  db?: string;
-  schema?: string;
+  db: string | null;
+  schema: string | null;
 };
 
-export type WorkspaceDatabaseParams = {
+export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input: WorkspaceDatabaseInput[];
-};
-
-export type WorkspaceDatabase = WorkspaceDatabaseParams & {
-  status: WorkspaceDatabaseStauts;
+  status: WorkspaceDatabaseStatus;
 };
 
 export type Workspace = {
@@ -31,6 +28,11 @@ export type Workspace = {
   creator_id: UserId;
 
   creator?: UserInfo;
+};
+
+export type WorkspaceDatabaseParams = {
+  database_id: DatabaseId;
+  input: WorkspaceDatabaseInput[];
 };
 
 export type CreateWorkspaceRequest = {
