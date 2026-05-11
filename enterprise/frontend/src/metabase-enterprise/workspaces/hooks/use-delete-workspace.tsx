@@ -16,7 +16,7 @@ export function useDeleteWorkspace({ onSuccess }: DeleteWorkspaceOptions = {}) {
 
   const handleDelete = (workspace: Workspace) => {
     show({
-      title: t`Delete ${workspace.name}`,
+      title: t`Delete ${workspace.name}?`,
       message: t`This will deprovision the workspace and remove it permanently.`,
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
