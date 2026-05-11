@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 import type { Database, WorkspaceDatabaseParams } from "metabase-types/api";
 
-import type { WorkspaceDatabaseInfo } from "./types";
+import type { ValidationResult, WorkspaceDatabaseInfo } from "./types";
 
 export function getAvailableDatabases(databases: Database[]): Database[] {
   return databases.filter(
@@ -23,4 +25,22 @@ export function getValidWorkspaceDatabases(
     },
     [],
   );
+}
+
+export function validateWorkspaceDatabases(
+  workspaceDatabases: WorkspaceDatabaseInfo[],
+): ValidationResult {
+  if (workspaceDatabases.length === 0) {
+    return {
+      isValid: false,
+      errorMessage: t`At least one database is required.`,
+    };
+  }
+  if (workspaceDatabases.some((database) => database.database_id == null)) {
+    return {
+      isValid: false,
+      errorMessage: t`Each database must be selected.`,
+    };
+  }
+  return { isValid: true };
 }

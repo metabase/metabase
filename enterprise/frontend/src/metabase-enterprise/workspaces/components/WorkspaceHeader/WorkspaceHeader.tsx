@@ -12,17 +12,26 @@ import * as Urls from "metabase/urls";
 export type WorkspaceHeaderProps = {
   name: string;
   actions?: ReactNode;
+  isNew?: boolean;
   onChangeName: (name: string) => void;
 };
 
 export function WorkspaceHeader({
   name,
   actions,
+  isNew,
   onChangeName,
 }: WorkspaceHeaderProps) {
   return (
     <PaneHeader
-      title={<PaneHeaderInput initialValue={name} onChange={onChangeName} />}
+      title={
+        <PaneHeaderInput
+          initialValue={name}
+          isOptional={isNew}
+          placeholder={isNew ? t`New workspace` : undefined}
+          onChange={onChangeName}
+        />
+      }
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link key="workspace-list" to={Urls.workspaceList()}>
