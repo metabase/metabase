@@ -2995,6 +2995,7 @@
               models
               permissions
               premium-features
+              settings
               task
               util
               enterprise/dependencies
