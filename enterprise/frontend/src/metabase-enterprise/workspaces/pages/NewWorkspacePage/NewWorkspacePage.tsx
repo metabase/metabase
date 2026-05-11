@@ -19,10 +19,7 @@ import type { Database } from "metabase-types/api";
 import { DatabaseEditor } from "../../components/DatabaseEditor";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import type { WorkspaceDatabaseInfo } from "../../types";
-import {
-  getValidWorkspaceDatabases,
-  getWorkspaceDatabasesError,
-} from "../../utils";
+import { getValidWorkspaceDatabases } from "../../utils";
 
 const INITIAL_DATABASES: WorkspaceDatabaseInfo[] = [
   { database_id: undefined, input: [] },
@@ -66,10 +63,6 @@ function NewWorkspacePageBody({
       name !== initialName || !_.isEqual(workspaceDatabases, initialDatabases),
     [name, workspaceDatabases, initialName, initialDatabases],
   );
-  const errorMessage = useMemo(
-    () => getWorkspaceDatabasesError(workspaceDatabases),
-    [workspaceDatabases],
-  );
   const [createWorkspace, { isLoading: isCreating }] =
     useCreateWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -101,8 +94,6 @@ function NewWorkspacePageBody({
           onChangeName={setName}
           actions={
             <PaneHeaderActions
-              errorMessage={errorMessage}
-              isValid={errorMessage == null}
               isDirty
               isSaving={isCreating}
               onSave={handleSave}

@@ -9,6 +9,12 @@ import { EnterpriseApi } from "./api";
 
 export const workspaceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    listWorkspaces: builder.query<Workspace[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/workspace-manager",
+      }),
+    }),
     getWorkspace: builder.query<Workspace, WorkspaceId>({
       query: (id) => ({
         method: "GET",
@@ -33,6 +39,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useListWorkspacesQuery,
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
