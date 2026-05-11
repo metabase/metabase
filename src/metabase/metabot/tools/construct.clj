@@ -161,47 +161,6 @@
                          :result-columns (result-columns-for-query mbql5-query mp)}
      :instructions      (instructions/query-created-instructions-for query-id)}))
 
-(defn- context-for-query
-  [metadata-provider query]
-  (let [query    (lib/query metadata-provider query)
-        table-id (or (lib/primary-source-table-id query)
-                     (some->> (lib/visible-columns query)
-                              (keep :table-id)
-                              first))
-        columns  (->> (concat (lib/visible-columns query)
-                              (lib/filterable-columns query)
-                              (lib/breakoutable-columns query)
-                              (lib/orderable-columns query))
-                      (keep :id)
-                      (filter pos-int?)
-                      distinct
-                      (mapv (fn [id] {:id id})))
-        tables   (->> (lib/visible-columns query)
-                      (keep :table-id)
-                      distinct
-                      (remove #{table-id})
-                      (mapv (fn [id] {:id id})))]
-    (when-not table-id
-      (throw (ex-info "Active MCP view query has no source table"
-                      {:agent-error? true :status-code 400})))
-    {:source-entity       {:model   "table"
-                           :id      table-id
-                           :columns columns}
-     :referenced-entities []
-     :surrounding-tables  tables
-     :source-metadata     query}))
-
-(defn construct-query-from-context-source
-  "Evaluate a `context/source` program against an active view query supplied by MCP."
-  [program encoded-query]
-  (let [query             (-> encoded-query u/decode-base64 json/decode+kw lib-be/normalize-query)
-        metadata-provider (lib-be/application-database-metadata-provider (:database query))
-        context           (context-for-query metadata-provider query)
-        query             (-> program
-                              (agent-lib/evaluate-program metadata-provider context)
-                              lib/prepare-for-serialization)]
-    {:query (-> query json/encode u/encode-base64)}))
-
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 
 (defn- chart-type->keyword

@@ -141,28 +141,6 @@
 (def ^:private tools-accepting-query-handle
   #{"execute_query" "visualize_query"})
 
-(declare text-content error-content)
-
-;;; ---------------------------------------------- Active View Context ---------------------------------------------
-
-(defn- context-source-program?
-  [arguments]
-  (= {:type "context" :ref "source"} (:source arguments)))
-
-(defn- construct-query-from-active-context
-  [session-id arguments]
-  (let [prompt (:prompt arguments)]
-    (cond
-      (str/blank? prompt)
-      (error-content "Provide a non-empty prompt when using the current view as context.")
-
-      :else
-      (if-let [encoded (mcp.session/active-query session-id)]
-        (let [query (agent-api/construct-query-from-context-source (dissoc arguments :prompt) encoded)]
-          (text-content {:query_handle (mcp.session/store-handle! session-id api/*current-user-id*
-                                                                  (:query query) prompt)}))
-        (error-content "No active MCP view context. Call visualize_query first, or use a table/card/dataset/metric source.")))))
-
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
@@ -276,11 +254,8 @@
         body-transform-fn     (when (= tool-name "construct_query")
                                 (make-store-construct-query-result
                                  session-id api/*current-user-id*))]
-    (if (and (= tool-name "construct_query")
-             (context-source-program? remaining-args))
-      (construct-query-from-active-context session-id remaining-args)
-      (invoke-agent-api method api-path token-scopes remaining-args
-                        :body-transform-fn body-transform-fn))))
+    (invoke-agent-api method api-path token-scopes remaining-args
+                      :body-transform-fn body-transform-fn)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.

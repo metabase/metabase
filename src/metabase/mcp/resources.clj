@@ -242,16 +242,13 @@
                       :isError true}
 
                      encoded
-                     (do
-                       (when (and session-id handle)
-                         (mcp.session/mark-handle-active! session-id handle))
-                       {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                     "Do not call execute_query after this; "
-                                                                     "the visualization is the final result.")}]
-                        ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                        ;; include the user's original request when submitting visualization feedback.
-                        :structuredContent (cond-> {:query encoded}
-                                             prompt (assoc :prompt prompt))})
+                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                   "Do not call execute_query after this; "
+                                                                   "the visualization is the final result.")}]
+                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                      ;; include the user's original request when submitting visualization feedback.
+                      :structuredContent (cond-> {:query encoded}
+                                           prompt (assoc :prompt prompt))}
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]

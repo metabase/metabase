@@ -402,9 +402,6 @@
    "IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). "
    "Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, "
    "but the canonical names below always work.\n"
-   "For follow-up requests about the current visible MCP widget/chart, use source "
-   "`{\"type\": \"context\", \"ref\": \"source\"}`. MCP resolves that to the most recently active view "
-   "(the last view created by `visualize_query` or drilled in the widget). `prompt` is required for this context source.\n"
    "\n"
    "## Workflow\n"
    "1. Use `search_entities` / entity-detail tools to find the table/metric/model and its fields.\n"
@@ -418,7 +415,6 @@
    "- `card` — a saved question\n"
    "- `dataset` — a model (model card id)\n"
    "- `metric` — a metric (supplies its own aggregation and time dimension; extra aggregates usually unnecessary)\n"
-   "- `context` with `ref: source` — MCP only; the current active widget/chart query\n"
    "\n"
    "## Top-level operations (applied in order)\n"
    "Each operation is `[\"op\", arg, ...]`:\n"
@@ -534,11 +530,6 @@
   into a continuation token and execution by the QP."
   [program]
   (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
-
-(defn construct-query-from-context-source
-  "Evaluate a `context/source` program against an active view query supplied by MCP."
-  [program encoded-query]
-  (metabot-construct/construct-query-from-context-source program encoded-query))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a structured agent-lib program.

@@ -145,9 +145,7 @@
 ;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
 ;; calls. Each row carries a fresh UUID handle that the iframe (drill-through) or
 ;; agent (construct_query) passes through downstream so the LLM never carries the
-;; encoded query. Construct-query handles can also be marked active when
-;; visualized; this DB-backed active handle powers `context/source` follow-ups
-;; across pod hops and reloads.
+;; encoded query.
 
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the MCP session, and return
@@ -179,27 +177,6 @@
   "Return the encoded query for `handle-id` in `session-id`, or nil if no row exists."
   [session-id handle-id]
   (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id, :mcp_session_id session-id))
-
-(defn mark-handle-active!
-  "Mark an existing construct-query handle as the active context for `session-id`."
-  [session-id handle-id]
-  (t2/update! :model/McpQueryHandle
-              {:id handle-id, :mcp_session_id session-id}
-              {:active_at :%now})
-  nil)
-
-(defn active-query
-  "Return the encoded query for the latest visualized construct-query handle in `session-id`."
-  [session-id]
-  (:encoded_query
-   (t2/query-one {:select   [:encoded_query]
-                  :from     [:mcp_query_handle]
-                  :where    [:and
-                             [:= :mcp_session_id session-id]
-                             [:not= :active_at nil]]
-                  :order-by [[:active_at :desc]
-                             [:created_at :desc]]
-                  :limit    1})))
 
 (defn resolve-query-handle
   "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
