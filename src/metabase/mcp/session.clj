@@ -156,7 +156,11 @@
    When `user-id` is non-nil, materializes the backing `core_session` so cleanup
    happens via cascade when the session row is reaped. When nil — e.g. agent flows
    that don't render an iframe — the row is stored without a `core_session_id` and
-   relies on explicit `delete!` for cleanup."
+   relies on explicit `delete!` for cleanup.
+
+   `prompt` is optional, but should be supplied for construct_query handles so
+   visualize_query can later return both the query and original user prompt to
+   the MCP iframe for feedback submission."
   ([session-id user-id encoded-query]
    (store-handle! session-id user-id encoded-query nil))
   ([session-id user-id encoded-query prompt]

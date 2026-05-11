@@ -248,6 +248,8 @@
                        {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
                                                                      "Do not call execute_query after this; "
                                                                      "the visualization is the final result.")}]
+                        ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                        ;; include the user's original request when submitting visualization feedback.
                         :structuredContent (cond-> {:query encoded}
                                              prompt (assoc :prompt prompt))})
 

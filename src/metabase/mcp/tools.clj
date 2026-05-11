@@ -129,7 +129,8 @@
 (defn- make-store-construct-query-result
   "Build a body-transform fn for construct_query. Stores the base64 payload server-side
    under the calling MCP session and returns {:query_handle uuid} instead of {:query base64},
-   so the LLM carries a short opaque UUID rather than the full base64 string."
+   so the LLM carries a short opaque UUID rather than the full base64 string.
+   Also stores the optional prompt with the handle, used for submitting feedback on visualizations."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
