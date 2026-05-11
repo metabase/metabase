@@ -3,7 +3,7 @@
     "jsx": "react-jsx",
     "target": "esnext",
     "allowSyntheticDefaultImports": true,
-    "module": "commonjs",
+    "module": "preserve",
     "isolatedModules": true,
     "strict": true,
     "moduleResolution": "bundler",
