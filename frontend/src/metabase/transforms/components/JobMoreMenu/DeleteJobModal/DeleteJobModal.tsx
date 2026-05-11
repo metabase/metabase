@@ -22,7 +22,13 @@ export function DeleteJobModal({
   onClose,
 }: DeleteJobModalProps) {
   return (
-    <Modal title={t`Delete this job?`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Delete this job?`}
+      opened
+      padding="xl"
+      onClose={onClose}
+      onClick={(event) => event.stopPropagation()}
+    >
       <FocusTrap.InitialFocus />
       <DeleteJobForm job={job} onDelete={onDelete} onClose={onClose} />
     </Modal>
