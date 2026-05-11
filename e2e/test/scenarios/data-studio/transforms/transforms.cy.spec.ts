@@ -3060,6 +3060,95 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
+  describe("active flag", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/transform-job/active").as(
+        "bulkUpdateJobActive",
+      );
+    });
+
+    it("can disable and re-enable jobs from the list, the detail page, and in bulk", () => {
+      H.createTransformJob({ name: "Job A" });
+      H.createTransformJob({ name: "Job B" });
+
+      visitJobListPage();
+
+      cy.log("disable Job A from the row menu — no navigation");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Disable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      H.undoToast().findByText("Job disabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      getJobRow("Job A").findByText("Disabled").should("be.visible");
+      cy.location("pathname").should("eq", "/data-studio/transforms/jobs");
+
+      cy.log("re-enable Job A from the row menu");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      H.undoToast().findByText("Job enabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      getJobRow("Job A").findByText("Disabled").should("not.exist");
+
+      cy.log("disable Job A from the detail page");
+      getJobRow("Job A").click();
+      H.DataStudio.Jobs.header().icon("ellipsis").click();
+      H.popover().findByText("Disable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      H.undoToast().findByText("Job disabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      H.DataStudio.Jobs.editor().findByText("Disabled").should("be.visible");
+
+      cy.log("re-enable Job A from the detail page");
+      H.DataStudio.Jobs.header().icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      H.DataStudio.Jobs.editor().findByText("Disabled").should("not.exist");
+
+      H.DataStudio.nav().findByRole("link", { name: "Jobs" }).click();
+
+      cy.log("bulk-disable: cancel from the modal does not fire the mutation");
+      openBulkActionsMenu();
+      H.popover().findByText("Disable all").click();
+      H.modal().button("Cancel").click();
+
+      cy.log(
+        "bulk-disable: confirming sends { active: false } and badges all rows",
+      );
+      openBulkActionsMenu();
+      H.popover().findByText("Disable all").click();
+      H.modal().button("Disable all").click();
+      cy.wait("@bulkUpdateJobActive")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      getJobRow("Job A").findByText("Disabled").should("be.visible");
+      getJobRow("Job B").findByText("Disabled").should("be.visible");
+
+      cy.log("mixed state: bulk menu shows both items, then bulk-re-enable");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob");
+      openBulkActionsMenu();
+      H.popover().within(() => {
+        cy.findByText("Disable all").should("be.visible");
+        cy.findByText("Re-enable all").should("be.visible").click();
+      });
+      cy.wait("@bulkUpdateJobActive")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      getJobRow("Job A").findByText("Disabled").should("not.exist");
+      getJobRow("Job B").findByText("Disabled").should("not.exist");
+    });
+  });
+
   describe("default jobs and tags", () => {
     it("should pre-create default jobs and tags", () => {
       const jobNames = ["Hourly job", "Daily job", "Weekly job", "Monthly job"];
@@ -3833,6 +3922,16 @@ function visitTransformListPage() {
 
 function visitJobListPage() {
   return cy.visit("/data-studio/transforms/jobs");
+}
+
+function getJobRow(name: string) {
+  return H.DataStudio.Jobs.list()
+    .findAllByRole("row")
+    .filter(`:contains("${name}")`);
+}
+
+function openBulkActionsMenu() {
+  cy.findByLabelText("More job options").click();
 }
 
 function visitRunListPage() {

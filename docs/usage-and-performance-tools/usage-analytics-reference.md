@@ -571,6 +571,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - comment-delete
 - comment-update
 - create-permission-failure
+- custom-viz-plugin-create
+- custom-viz-plugin-delete
+- custom-viz-plugin-update
 - dashboard-add-cards
 - dashboard-create
 - dashboard-delete

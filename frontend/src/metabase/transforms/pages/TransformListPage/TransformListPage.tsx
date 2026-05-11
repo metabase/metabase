@@ -27,7 +27,6 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -56,7 +55,7 @@ import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
-  getIncrementalWarning,
+  useGetTransformWarnings,
 } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
@@ -140,21 +139,11 @@ export const TransformListPage = ({
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
-  const metadata = useSelector(getMetadata);
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
 
-  const warningsByTransformId = useMemo(() => {
-    const warnings = new Map<number, string>();
-    for (const transform of transforms ?? []) {
-      const warning = getIncrementalWarning(transform, metadata);
-      if (warning) {
-        warnings.set(transform.id, warning);
-      }
-    }
-    return warnings;
-  }, [transforms, metadata]);
+  const warningsByTransformId = useGetTransformWarnings(transforms);
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);

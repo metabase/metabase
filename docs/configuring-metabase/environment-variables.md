@@ -112,6 +112,8 @@ Allowed iframe hosts.
 
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
@@ -387,6 +389,17 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 - [Configuration file name](./config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
+
+### `MB_CUSTOM_VIZ_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-viz-enabled`.
+- [Configuration file name](./config-file.md): `custom-viz-enabled`
+
+Should custom visualizations be enabled for this instance?
 
 ### `MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`
 

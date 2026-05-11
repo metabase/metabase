@@ -31,6 +31,7 @@ import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
 import {
   LEGEND_LABEL_FONT_SIZE,
@@ -69,7 +70,6 @@ import type {
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
-import { DashCardLoadingView } from "./DashCardLoadingView";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";

@@ -31,6 +31,7 @@ jobs:
       run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
+      cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,6 +55,10 @@ jobs:
             // Versions before v59 used yarn, v59 and later use bun
             const BUN_PACKAGE_MANAGER_THRESHOLD = 59;
 
+            // Versions v60 and earlier ship with an older Cypress that only knows --env;
+            // v61 and later use --expose. (See CYPRESS_GREP_FLAG in run-sanity-check.)
+            const CYPRESS_EXPOSE_FLAG_THRESHOLD = 61;
+
             const version = '${{ inputs.version }}';
             const majorVersion = Number(getMajorVersion(version));
             const oldTestToken = majorVersion < MULTIPLE_TEST_TOKEN_THRESHOLD;
@@ -62,6 +67,7 @@ jobs:
               runMode: oldTestToken ? 'prod' : 'e2e',
               metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}',
               packageManager: majorVersion < BUN_PACKAGE_MANAGER_THRESHOLD ? 'yarn' : 'bun',
+              cypressGrepFlag: majorVersion < CYPRESS_EXPOSE_FLAG_THRESHOLD ? '--env' : '--expose',
             });
 
   release-artifact:
@@ -147,6 +153,11 @@ jobs:
       DISPLAY: ""
       MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
       METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
+      # v60 and earlier ship with an older Cypress that only knows --env;
+      # v61 and later use --expose. This workflow always runs from master but
+      # checks out the release branch's e2e code, so we have to pick the flag
+      # the older Cypress understands.
+      CYPRESS_GREP_FLAG: ${{ needs.test-mode-config.outputs.cypress_grep_flag }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
@@ -212,7 +223,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="@smoke+-@EE" \
+            $CYPRESS_GREP_FLAG grepTags="@smoke+-@EE" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important EE Cypress tests as sanity check
@@ -221,7 +232,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="@smoke+-@OSS" \
+            $CYPRESS_GREP_FLAG grepTags="@smoke+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Upload Cypress Artifacts upon failure

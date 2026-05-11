@@ -23,9 +23,8 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { POLLING_INTERVAL } from "../../constants";
-
-import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;
