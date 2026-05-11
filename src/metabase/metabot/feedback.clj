@@ -15,6 +15,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private harbormaster-conn-timeout-ms
+  2000)
+
+(def ^:private harbormaster-socket-timeout-ms
+  5000)
+
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
    Returns the HTTP response on success, or nil if the token or Store API URL is missing."
@@ -23,8 +29,10 @@
         base-url (store-api/store-api-url)]
     (when-not (or (str/blank? token) (str/blank? base-url))
       (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)}))))
+                 {:content-type   :json
+                  :conn-timeout   harbormaster-conn-timeout-ms
+                  :socket-timeout harbormaster-socket-timeout-ms
+                  :body           (json/encode feedback)}))))
 
 (defn harbormaster-payload
   "Build the Harbormaster feedback payload from the request body, the resolved

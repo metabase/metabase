@@ -100,9 +100,12 @@
           [premium-features/premium-embedding-token (constantly fake-token)
            http/post (fn [url opts]
                        (reset! captured {:url  url
+                                         :opts opts
                                          :body (json/decode+kw (:body opts))}))]
           (post-mcp-feedback :rasta 204 body session-id)
           (is (= expected-url (:url @captured)))
+          (is (pos-int? (get-in @captured [:opts :conn-timeout])))
+          (is (pos-int? (get-in @captured [:opts :socket-timeout])))
           (is (= (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id)
                  (get-in @captured [:body :metabot_id])))
           (is (= (:feedback body) (get-in @captured [:body :feedback])))
