@@ -16,17 +16,16 @@ import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
 import { sendAgentRequest } from "./actions";
 import {
   type ConvoPayloadAction,
+  appendAgentTurnAborted,
+  appendAgentTurnErrored,
   convoReducer,
   createConversation,
   getMetabotInitialState,
   getRequestConversation,
-  markCurrentAgentTurnAsAborted,
-  markCurrentAgentTurnAsErrored,
   resetReactionState,
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
-  MetabotAgentTurnError,
   MetabotChatMessage,
   MetabotErrorMessage,
   MetabotToolCall,
@@ -103,11 +102,6 @@ export const metabot = createSlice({
     addAgentErrorMessage: convoReducer(
       (convo, action: ConvoPayloadAction<MetabotErrorMessage>) => {
         convo.errorMessages.push(action.payload);
-      },
-    ),
-    setCurrentAgentTurnError: convoReducer(
-      (convo, action: ConvoPayloadAction<{ error: MetabotAgentTurnError }>) => {
-        markCurrentAgentTurnAsErrored(convo, action.payload.error);
       },
     ),
     addAgentTextDelta: convoReducer(
@@ -363,12 +357,11 @@ export const metabot = createSlice({
       .addCase(sendAgentRequest.rejected, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {
-          convo.pendingMessageExternalId = undefined;
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {
             convo.state = { ...(action.payload?.state ?? {}) };
             convo.history = action.payload?.history?.slice() ?? [];
-            markCurrentAgentTurnAsAborted(convo);
+            appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
               // update history w/ synthetic tool_result entries for each unresolved tool call
               // as having a tool_call without a matching tool_result is invalid
@@ -389,8 +382,11 @@ export const metabot = createSlice({
                 }
               });
             }
+          } else if (action.payload?.type === "stream_error") {
+            appendAgentTurnErrored(convo, action.payload.error);
           }
 
+          convo.pendingMessageExternalId = undefined;
           convo.activeToolCalls = [];
           convo.isProcessing = false;
         }

@@ -249,9 +249,7 @@ describe("metabot > ui", () => {
     await enterChatMessage("Who is your favorite?");
 
     const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(
-      /Anthropic API key expired or invalid/,
-    );
+    expect(lastMessage).toHaveTextContent(/Something went wrong/);
     expect(
       within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
     ).not.toBeInTheDocument();

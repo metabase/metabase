@@ -42,6 +42,7 @@ import {
 import type {
   MetabotAgentDataPartMessage,
   MetabotAgentId,
+  MetabotAgentTurnError,
   MetabotErrorMessage,
   MetabotUserChatMessage,
   SlashCommand,
@@ -54,7 +55,6 @@ export const {
   addAgentErrorMessage,
   addDeveloperMessage,
   addUserMessage,
-  setCurrentAgentTurnError,
   setIsProcessing,
   setNavigateToPath,
   setPendingMessageExternalId,
@@ -323,10 +323,12 @@ export const submitInput = createAsyncThunk<
           );
         }
         const shouldRetry =
-          (result.payload &&
-            "shouldRetry" in result.payload &&
-            (result.payload?.shouldRetry ?? {})) ??
-          false;
+          result.payload?.type === "stream_error"
+            ? true
+            : ((result.payload &&
+                "shouldRetry" in result.payload &&
+                (result.payload?.shouldRetry ?? {})) ??
+              false);
         return {
           prompt: rawPrompt,
           success: false,
@@ -361,7 +363,12 @@ type SendAgentRequestError =
   | ({
       type: "abort";
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
-    } & MetabotAgentResponse);
+    } & MetabotAgentResponse)
+  | {
+      type: "stream_error";
+      conversation_id: string;
+      error: MetabotAgentTurnError;
+    };
 
 type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
@@ -393,6 +400,7 @@ export const sendAgentRequest = createAsyncThunk<
 
     try {
       let state = {};
+      let streamError: MetabotAgentTurnError | undefined;
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -489,13 +497,12 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(toolCallEnd({ ...part, agentId }));
           },
           onError: function handleError(part) {
-            const turnError =
+            streamError =
               typeof part === "string"
                 ? { message: part }
                 : part && typeof part === "object" && "message" in part
                   ? (part as { message: string })
                   : { message: String(part) };
-            dispatch(setCurrentAgentTurnError({ agentId, error: turnError }));
           },
         },
       );
@@ -511,6 +518,14 @@ export const sendAgentRequest = createAsyncThunk<
           // state object comes at the end, so we may not have received it
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
+        });
+      }
+
+      if (streamError) {
+        return rejectWithValue({
+          type: "stream_error",
+          conversation_id: request.conversation_id,
+          error: streamError,
         });
       }
 

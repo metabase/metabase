@@ -12,6 +12,7 @@ import type {
   MetabotConverstationState,
   MetabotState,
 } from "./types";
+import { createMessageId } from "./utils";
 
 export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
@@ -124,45 +125,32 @@ export const convoReducer =
     );
   };
 
-/**
- * Walk back from the most recent message and mark every agent message in the
- * current turn (i.e. since the last user message) as `finished: false`.
- * Mirrors the BE, which persists the assistant row with `finished=false` on
- * user abort so the AgentTurnAlert surfaces the cancellation.
- */
-export const markCurrentAgentTurnAsAborted = (
+export const appendAgentTurnAborted = (
   convo: WritableDraft<MetabotConverstationState>,
 ) => {
-  for (let i = convo.messages.length - 1; i >= 0; i--) {
-    const msg = convo.messages[i];
-    if (msg.role === "user") {
-      return;
-    }
-    if (msg.role === "agent") {
-      msg.finished = false;
-    }
-  }
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "turn_aborted",
+    ...(convo.pendingMessageExternalId
+      ? { externalId: convo.pendingMessageExternalId }
+      : {}),
+  });
 };
 
-/**
- * Walk back from the most recent message and stamp `error` onto every agent
- * message in the current turn. Sibling of `markCurrentAgentTurnAsAborted` —
- * does NOT flip `finished`, since errored turns are considered finished by
- * the BE (only client-aborts set `finished: false`).
- */
-export const markCurrentAgentTurnAsErrored = (
+export const appendAgentTurnErrored = (
   convo: WritableDraft<MetabotConverstationState>,
   error: MetabotAgentTurnError,
 ) => {
-  for (let i = convo.messages.length - 1; i >= 0; i--) {
-    const msg = convo.messages[i];
-    if (msg.role === "user") {
-      return;
-    }
-    if (msg.role === "agent") {
-      msg.error = error;
-    }
-  }
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "turn_errored",
+    error,
+    ...(convo.pendingMessageExternalId
+      ? { externalId: convo.pendingMessageExternalId }
+      : {}),
+  });
 };
 
 export const getMetabotInitialState = (): MetabotState => {

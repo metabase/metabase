@@ -8,6 +8,7 @@ import { t } from "ttag";
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { useMetabotName } from "metabase/metabot/hooks";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentDataPartMessage,
@@ -64,6 +65,8 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
       isUserVisibleDataPartMessage(message),
     )
     .with({ type: "tool_call" }, () => false)
+    .with({ type: "turn_aborted" }, () => true)
+    .with({ type: "turn_errored" }, () => true)
     .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -175,7 +178,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   showFeedbackButtons: boolean;
-  setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
+  setFeedbackMessage: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
 }
@@ -195,62 +198,38 @@ export const AgentMessage = ({
   ...props
 }: AgentMessageProps) => {
   const messageId = message.type === "text" ? (message.externalId ?? "") : "";
-  const canGiveFeedback = !!(
-    showFeedbackButtons &&
-    setFeedbackMessage &&
-    messageId
-  );
-
-  console.log({ message });
+  const canGiveFeedback = !!(showFeedbackButtons && messageId);
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
-      {message.type === "text" && (
-        <AIMarkdown
-          className={Styles.message}
-          onInternalLinkClick={onInternalLinkClick}
-        >
-          {message.message}
-        </AIMarkdown>
-      )}
-      {message.type === "data_part" && (
-        <AgentDataPartMessage
-          message={message}
-          debug={debug}
-          readonly={readonly}
-        />
-      )}
-      {message.type === "tool_call" && (
-        <AgentToolCallMessage message={message} />
-      )}
-      {message.error != null && (
-        <AgentTurnAlert
-          variant="error"
-          message={t`Something went wrong`}
-          debugDetails={debug ? message.error : undefined}
-        />
-      )}
-      {message.error == null && message.finished === false && (
-        <AgentTurnAlert
-          variant="info"
-          message={t`This response could not be fully generated.`}
-          cta={
-            !debug && onRetry ? (
-              <Button
-                variant="default"
-                size="compact-xs"
-                fz="xs"
-                onClick={() => onRetry(message.id)}
-                data-testid="metabot-chat-message-retry"
-              >
-                {t`Retry`}
-              </Button>
-            ) : null
-          }
-        />
-      )}
-      <Flex className={Styles.messageActions}>
-        {!hideActions && (
+      {match(message)
+        .with({ type: "text" }, (m) => (
+          <AIMarkdown
+            className={Styles.message}
+            onInternalLinkClick={onInternalLinkClick}
+          >
+            {m.message}
+          </AIMarkdown>
+        ))
+        .with({ type: "data_part" }, (m) => (
+          <AgentDataPartMessage message={m} debug={debug} readonly={readonly} />
+        ))
+        .with({ type: "tool_call" }, (m) => (
+          <AgentToolCallMessage message={m} />
+        ))
+        .with({ type: "turn_aborted" }, (m) => (
+          <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
+        ))
+        .with({ type: "turn_errored" }, (m) => (
+          <AgentTurnAlert
+            variant="error"
+            message={t`Something went wrong`}
+            debugDetails={debug ? m.error : undefined}
+          />
+        ))
+        .exhaustive()}
+      {!hideActions && (
+        <Flex className={Styles.messageActions}>
           <>
             <Tooltip label={t`Copy`}>
               <ActionIcon
@@ -300,8 +279,8 @@ export const AgentMessage = ({
               </Tooltip>
             )}
           </>
-        )}
-      </Flex>
+        </Flex>
+      )}
     </MessageContainer>
   );
 };
@@ -349,6 +328,37 @@ const AgentTurnAlert = ({
         </Text>
       )}
     </Flex>
+  );
+};
+
+const AbortedTurnAlert = ({
+  messageId,
+  debug,
+  onRetry,
+}: {
+  messageId: string;
+  debug: boolean;
+  onRetry?: (messageId: string) => void;
+}) => {
+  const metabotName = useMetabotName();
+  return (
+    <AgentTurnAlert
+      variant="info"
+      message={t`${metabotName}'s response was interrupted`}
+      cta={
+        !debug && onRetry ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={() => onRetry(messageId)}
+            data-testid="metabot-chat-message-retry"
+          >
+            {t`Retry`}
+          </Button>
+        ) : null
+      }
+    />
   );
 };
 
@@ -498,15 +508,10 @@ export const Messages = ({
     [showFeedbackButtons],
   );
 
-  console.log({ messages, visibleMessages });
-
   return (
     <>
-      {visibleMessages.map((message, index) => {
-        const nextMsgIsAgent = visibleMessages[index + 1]?.role === "agent";
-        const isCurrPrompt = visibleMessages.length === index + 1;
-
-        return message.role === "agent" ? (
+      {visibleMessages.map((message, index) =>
+        message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
@@ -518,11 +523,13 @@ export const Messages = ({
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={
-              message.type === "text" && message.externalId
+              "externalId" in message && message.externalId
                 ? feedbackState.submitted[message.externalId]
                 : undefined
             }
-            hideActions={isDoingScience || nextMsgIsAgent}
+            hideActions={
+              isDoingScience || visibleMessages[index + 1]?.role === "agent"
+            }
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
@@ -530,7 +537,7 @@ export const Messages = ({
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && isCurrPrompt}
+            hideActions={isDoingScience && visibleMessages.length === index + 1}
             onCopy={() => {
               const copyText =
                 message.type === "action"
@@ -539,8 +546,8 @@ export const Messages = ({
               clipboard.copy(copyText);
             }}
           />
-        );
-      })}
+        ),
+      )}
 
       {errorMessages.map((message, index) => (
         <AgentErrorMessage

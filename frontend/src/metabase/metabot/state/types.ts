@@ -24,14 +24,6 @@ export type MetabotAgentTurnError = {
   data?: unknown;
 };
 
-// Set on agent messages by the BE so the FE can distinguish completed turns
-// (`finished: true`, no `error`) from aborted ones (`finished: false`) and
-// errored ones (`error` set).
-type AgentTurnStatus = {
-  finished?: boolean;
-  error?: MetabotAgentTurnError | null;
-};
-
 export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
@@ -47,7 +39,7 @@ export type MetabotUserActionChatMessage = {
   userMessage: string;
 };
 
-export type MetabotAgentTextChatMessage = AgentTurnStatus & {
+export type MetabotAgentTextChatMessage = {
   id: string;
   role: "agent";
   type: "text";
@@ -55,7 +47,7 @@ export type MetabotAgentTextChatMessage = AgentTurnStatus & {
   externalId?: string;
 };
 
-export type MetabotAgentDataPartMessage = AgentTurnStatus & {
+export type MetabotAgentDataPartMessage = {
   id: string;
   role: "agent";
   type: "data_part";
@@ -64,7 +56,7 @@ export type MetabotAgentDataPartMessage = AgentTurnStatus & {
   externalId?: string;
 };
 
-export type MetabotDebugToolCallMessage = AgentTurnStatus & {
+export type MetabotDebugToolCallMessage = {
   id: string;
   role: "agent";
   type: "tool_call";
@@ -75,10 +67,27 @@ export type MetabotDebugToolCallMessage = AgentTurnStatus & {
   is_error?: boolean;
 };
 
+export type MetabotAgentTurnAbortedMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_aborted";
+  externalId?: string;
+};
+
+export type MetabotAgentTurnErroredMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_errored";
+  error: MetabotAgentTurnError;
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
-  | MetabotDebugToolCallMessage;
+  | MetabotDebugToolCallMessage
+  | MetabotAgentTurnAbortedMessage
+  | MetabotAgentTurnErroredMessage;
 
 export type MetabotUserChatMessage =
   | MetabotUserTextChatMessage
