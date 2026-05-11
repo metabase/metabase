@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
@@ -674,7 +673,7 @@
         enable-multiple-db? (some-> database driver.conn/effective-details :enable-multiple-db)
         ;; check for `false?` because legacy clickhouse details don't have this key
         strip-db-name?      (and (false? enable-multiple-db?)
-                                 (database-routing/db-routing-enabled? database)
+                                 (driver-api/db-routing-enabled? database)
                                  (#{:table :field} identifier-type)
                                  (> (count components) 1))]
     (if strip-db-name?
