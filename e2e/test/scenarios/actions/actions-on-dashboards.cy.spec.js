@@ -536,6 +536,11 @@ const MODEL_NAME = "Test Action Model";
               cy.findByText("Update").click();
             });
 
+            cy.wait("@updateAction");
+            // The action editor closes after the update; wait until it is gone
+            // before navigating to the dashboard.
+            cy.findByTestId("action-creator").should("not.exist");
+
             H.visitDashboard("@dashboardId");
 
             cy.findByRole("button", { name: "Update Score" }).click();
@@ -986,6 +991,9 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
+          cy.wait("@updateAction");
+          cy.findByTestId("action-editor-modal").should("not.exist");
+
           getActionParametersInputModal().within(() => {
             cy.findByTestId("modal-header").findByText("New action name");
 
@@ -1029,6 +1037,9 @@ const MODEL_NAME = "Test Action Model";
           actionEditorModal().within(() => {
             cy.button("Update").click();
           });
+
+          cy.wait("@updateAction");
+          cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
             cy.findByLabelText("Timestamp").type("2020-01-01");
@@ -1262,7 +1273,7 @@ describe(
 
         // The action editor closes after the update; wait until only the
         // parameter mapping dialog remains.
-        cy.findByRole("button", { name: "Update" }).should("not.exist");
+        cy.findByTestId("action-creator").should("not.exist");
 
         cy.findByRole("dialog").within(() => {
           cy.findByText("New Score: required");
@@ -1326,6 +1337,8 @@ function createDashboardWithActionButton({
 
         cy.wait("@updateAction");
       });
+
+    cy.findByTestId("action-creator").should("not.exist");
   }
 
   if (idFilter) {
