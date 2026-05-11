@@ -17,6 +17,81 @@
 
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
+(defmulti ^:private fetch-oldest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
+
+(defmethod fetch-oldest-supported-version :default
+  [database db-info]
+  (let [now (java.time.LocalDate/now)
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+        oldest-version (->> all-versions
+                            (mapv (fn [m]
+                                    (-> m
+                                        (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                        (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                            (filter (fn [{:keys [^java.time.LocalDate eol]}]
+                                      (and eol (.isAfter eol now))))
+                            (sort-by :releaseDate)
+                            vec
+                            first
+                            :cycle)]
+    (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
+    oldest-version))
+
+(defmethod fetch-oldest-supported-version :oracle
+  [database db-info]
+  (let [now (java.time.LocalDate/now)
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+        oldest-version (->> all-versions
+                            (mapv (fn [m]
+                                    (-> m
+                                        (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                        (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                            (filter (fn [{:keys [^java.time.LocalDate eol cycle]}]
+                                      (and eol (.isAfter eol now)
+                                           cycle (> (Integer/parseInt cycle) 19))))
+                            (sort-by :releaseDate)
+                            vec
+                            first
+                            :cycle)]
+    oldest-version))
+
+(defmethod fetch-oldest-supported-version :sqlserver
+  [database db-info]
+  (let [now (java.time.LocalDate/now)
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
+        oldest-version (->> all-versions
+                            (mapv (fn [m]
+                                    (-> m
+                                        (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
+                                        (update :eol #(and % (-> % java.time.LocalDate/parse))))))
+                            (filter (fn [{:keys [^java.time.LocalDate eol]}]
+                                      (and eol (.isAfter eol now))))
+                            (filter (fn [{:keys [releaseLabel]}]
+                                      (and releaseLabel (re-matches #"^\d{4}$" releaseLabel))))
+                            (sort-by :releaseLabel)
+                            vec
+                            first
+                            :releaseLabel)]
+    (str oldest-version "-latest")))
+
+(defmethod fetch-oldest-supported-version :clickhouse
+  [database db-info]
+  "23.3")
+
+(defmulti ^:private fetch-latest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
+
+(defmethod fetch-latest-supported-version :default
+  [database db-info]
+  "latest")
+
+(defmethod fetch-latest-supported-version :sqlserver
+  [database db-info]
+  "2022-latest")
+
 (defn- fetch-supported-versions [db-info database]
   (let [now (java.time.LocalDate/now)
         all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
@@ -33,16 +108,10 @@
     (u/debug "supported: \n" (with-out-str (t/table supported)))
     supported))
 
-(defn- fetch-oldest-supported-version [db-info database]
-  (let [versions (fetch-supported-versions db-info database)
-        oldest-version (-> versions first :cycle)]
-    (u/debug "OLDEST VERSION:" oldest-version)
-    oldest-version))
-
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
-    (fetch-oldest-supported-version db-info database)
-    (cond-> version (keyword? version) name)))
+    (fetch-oldest-supported-version database db-info)
+    (fetch-latest-supported-version database db-info)))
 
 ;; Docker stuff:
 
@@ -57,8 +126,7 @@
 
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
@@ -71,8 +139,7 @@
 
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
@@ -81,8 +148,7 @@
 
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
@@ -91,11 +157,38 @@
 
 (defmethod docker-cmd :mongo
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
+  ["docker" "run" "-d"
    "-p" (str port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
+
+(defmethod docker-cmd :clickhouse
+  [_db container-name resolved-version port]
+  ["docker" "compose"
+   "-f" "modules/drivers/clickhouse/docker-compose.yml"
+   "up" "-d"
+   (if (= resolved-version "latest")
+     "clickhouse"
+     "clickhouse_older_version")]) ;; these are defined in modules/drivers/clickhouse/docker-compose.yml
+
+(defmethod docker-cmd :sqlserver
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str port ":1433")
+   "-e" "ACCEPT_EULA=Y"
+   "-e" "SA_PASSWORD=P@ssw0rd"
+   "--name" container-name
+   (str "mcr.microsoft.com/mssql/server:" resolved-version)])
+
+(defmethod docker-cmd :oracle
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str port ":1521")
+   "-e" "ORACLE_PASSWORD=password"
+   "--name" container-name
+   (if (= resolved-version "latest")
+     "gvenzl/oracle-free:latest"
+     (str "gvenzl/oracle-xe:" resolved-version))])
 
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
