@@ -13,6 +13,8 @@
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
+      "echarts/types/src/*": ["./node_modules/echarts/types/src/*"],
+      "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
       "sdk-specific-imports": ["./frontend/src/metabase/utils/noop"],
       "sdk-iframe-embedding-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
