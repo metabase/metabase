@@ -53,7 +53,20 @@ export const actionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
-        body: _.omit(body, "type"), // Changing action type is not supported
+        // Strip server-managed fields that the action editor passes through
+        // from the fetched action. Without this the inline `creator` object
+        // (and other relational fields) reaches the type-specific update
+        // table where the column doesn't exist and the request 500s.
+        body: _.omit(
+          body,
+          "type", // Changing action type is not supported
+          "creator",
+          "created_at",
+          "updated_at",
+          "entity_id",
+          "creator_id",
+          "made_public_by_id",
+        ),
       }),
       invalidatesTags: (action, error) =>
         action
