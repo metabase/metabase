@@ -100,18 +100,16 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
       className={className}
     >
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
-      <Stack className={S.MainStack} gap={0}>
-        <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
+      <Stack className={S.MainStack} gap="0.75rem" p="md" pb="xl">
+        <Flex align="center" gap="sm">
           <UpsellGem size={gemSize} />
           <Title lh={1.25} order={3} className={S.Title}>
             {title}
           </Title>
         </Flex>
         <Stack gap="md">
-          <Text lh="1rem" px="1rem">
-            {children}
-          </Text>
-          <Box mx="md">
+          <Text lh="1rem">{children}</Text>
+          <Box>
             <UpsellCta
               style={buttonStyle}
               onClick={handleClick}
