@@ -133,6 +133,23 @@
             (is (contains? (:body @captured) :submission_time))
             (is (false? (get-in @captured [:body :is_admin])))))))
 
+    (testing "MCP feedback returns 400 when Harbormaster cannot be reached"
+      (mt/with-temporary-setting-values [store-api-url store-url]
+        (let [session-id (mcp.session/create! (mt/user->id :rasta))
+              body       {:feedback          {:message_id (str (random-uuid))
+                                              :positive   true}
+                          :conversation_data {:source "mcp"
+                                              :prompt "show orders"
+                                              :query  "encoded-query"}}
+              posted?    (atom false)]
+          (mt/with-dynamic-fn-redefs
+            [premium-features/premium-embedding-token (constantly nil)
+             http/post (fn [& _] (reset! posted? true))]
+            (is (=? {:status 400}
+                    (post-mcp-feedback :rasta 400 body session-id)))
+            (is (false? @posted?)
+                "Harbormaster must not be contacted when the premium token is missing")))))
+
     (testing "MCP feedback validates the MCP session header"
       (let [body {:feedback          {:message_id (str (random-uuid))
                                       :positive   true}

@@ -13,7 +13,6 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
@@ -66,12 +65,9 @@
         metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
         body       (assoc body :metabot_id metabot-id)]
     (metabot.config/check-metabot-enabled!)
-    (try
-      (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                      (metabot.feedback/mcp-harbormaster-payload body))
-                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
-      (catch Exception e
-        (log/error "Failed to submit MCP feedback to Harbormaster: " (ex-message e)))))
+    (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                    (metabot.feedback/mcp-harbormaster-payload body))
+                   "Cannot submit feedback. The license token and/or Store API URL are missing!"))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

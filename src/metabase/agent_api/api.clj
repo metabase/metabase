@@ -541,7 +541,7 @@
   (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
 
 (defn construct-query-from-context-source
-  "MCP-only prototype path: evaluate a `context/source` program against an active view query."
+  "Evaluate a `context/source` program against an active view query supplied by MCP."
   [program encoded-query]
   (metabot-construct/construct-query-from-context-source program encoded-query))
 

@@ -192,7 +192,7 @@
      :source-metadata     query}))
 
 (defn construct-query-from-context-source
-  "MCP-only prototype path: evaluate a `context/source` program against an active view query."
+  "Evaluate a `context/source` program against an active view query supplied by MCP."
   [program encoded-query]
   (let [query             (-> encoded-query u/decode-base64 json/decode+kw lib-be/normalize-query)
         metadata-provider (lib-be/application-database-metadata-provider (:database query))
