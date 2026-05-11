@@ -16,8 +16,6 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
-// Mirrors the BE `error-part` shape (after JSON decode) — the FE doesn't
-// surface any of these fields directly to end users.
 export type MetabotAgentTurnError = {
   message?: string;
   type?: string;

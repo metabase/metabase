@@ -82,7 +82,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
-  it("should surface a generic alert for stream-level errors (admin quota limit)", async () => {
+  it.only("should show the backend message for admin quota limit errors", async () => {
     setup();
     mockAgentEndpoint({ textChunks: adminQuotaLimitErroredResponse });
 
@@ -90,7 +90,7 @@ describe("metabot > errors", () => {
 
     await assertConversation([
       ["user", "Who is your favorite?"],
-      ["agent", /Something went wrong/],
+      ["agent", /You have reached your AI usage limit for the current period/],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });

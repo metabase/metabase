@@ -224,7 +224,7 @@ export const AgentMessage = ({
         .with({ type: "turn_errored" }, (m) => (
           <AgentTurnAlert
             variant="error"
-            message={t`Something went wrong`}
+            message={m.friendly_message ?? t`Something went wrong`}
             debugDetails={debug ? m.error : undefined}
           />
         ))
@@ -296,45 +296,46 @@ const AgentTurnAlert = ({
   message: string;
   cta?: ReactNode;
   debugDetails?: MetabotAgentTurnError;
-}) => {
-  const iconColor = variant === "error" ? "error" : "text-secondary";
-  const iconName = variant === "error" ? "warning" : "info";
-  return (
-    <Flex
-      direction="column"
-      gap="xs"
-      p="sm"
-      bd={`1px solid var(--mb-color-border)`}
-      bdrs="sm"
-      data-testid="metabot-chat-message-turn-alert"
-      bg={"background-primary"}
-    >
-      <Flex align="center" gap="sm">
-        <Icon name={iconName} c={iconColor} size="1rem" flex="0 0 auto" />
-        <Text c="text-secondary" size="sm" flex="1">
-          {message}
-        </Text>
-        {cta}
-      </Flex>
-      {debugDetails && (
-        <Card
-          bdrs="xs"
-          ml="lg"
-          p="sm"
-          withBorder
-          shadow="none"
-          c="text-secondary"
-          fz="xs"
-          ff="monospace"
-          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-          data-testid="metabot-chat-message-turn-alert-debug"
-        >
-          {JSON.stringify(debugDetails, null, 2)}
-        </Card>
-      )}
+}) => (
+  <Flex
+    direction="column"
+    gap="xs"
+    p="sm"
+    bd={`1px solid var(--mb-color-border)`}
+    bdrs="sm"
+    data-testid="metabot-chat-message-turn-alert"
+    bg={"background-primary"}
+  >
+    <Flex align="center" gap="sm">
+      <Icon
+        name={variant === "error" ? "warning" : "info"}
+        c={variant === "error" ? "error" : "text-secondary"}
+        size="1rem"
+        flex="0 0 auto"
+      />
+      <Text c="text-secondary" size="sm" flex="1">
+        {message}
+      </Text>
+      {cta}
     </Flex>
-  );
-};
+    {debugDetails && (
+      <Card
+        bdrs="xs"
+        ml="lg"
+        p="sm"
+        withBorder
+        shadow="none"
+        c="text-secondary"
+        fz="xs"
+        ff="monospace"
+        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+        data-testid="metabot-chat-message-turn-alert-debug"
+      >
+        {JSON.stringify(debugDetails, null, 2)}
+      </Card>
+    )}
+  </Flex>
+);
 
 const AbortedTurnAlert = ({
   messageId,

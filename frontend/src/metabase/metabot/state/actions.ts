@@ -285,17 +285,11 @@ export const submitInput = createAsyncThunk<
             }),
           );
         }
-        const shouldRetry =
-          result.payload?.type === "stream_error"
-            ? true
-            : ((result.payload &&
-                "shouldRetry" in result.payload &&
-                (result.payload?.shouldRetry ?? {})) ??
-              false);
+
         return {
           prompt: rawPrompt,
           success: false,
-          shouldRetry,
+          shouldRetry: true,
           errorMessage:
             result.payload?.type === "error"
               ? result.payload.errorMessage || undefined
@@ -461,13 +455,13 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(toolCallEnd({ ...part, agentId }));
           },
           onError: function handleError(part) {
-            streamError =
-              part && typeof part === "object" && "message" in part
-                ? part
-                : { message: String(part) };
+            streamError = isMatching({ message: P.string }, part)
+              ? part
+              : { message: String(part) };
           },
         },
       );
+
       if (response.aborted) {
         throw new DOMException("Stream aborted", "AbortError");
       }
@@ -497,8 +491,7 @@ export const sendAgentRequest = createAsyncThunk<
             ...getHistory(getState(), agentId),
             ...(response?.history ?? []),
           ],
-          // state object comes at the end, so we may not have received it
-          // so fallback to the state used when the request was issued
+          // reuse new state if we recieved it
           state: Object.keys(state).length === 0 ? request.state : state,
         });
       }
