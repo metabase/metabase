@@ -75,6 +75,7 @@ const elements = [
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
   createElement({ type: "shared", name: "i18n", enforceOutgoing: true }),
   createElement({ type: "shared", name: "metadata", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "metrics", enforceOutgoing: true }),
   createElement({
     type: "shared",
     name: "metrics-viewer",
