@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]))
 
@@ -24,3 +25,18 @@
                (transforms-base.u/throw-if-db-routing-enabled!
                 {:name "Routing transform"}
                 (mt/db)))))))))
+
+(deftest activate-table-syncs-despite-disable-auto-sync-test
+  (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
+    (testing "output table still calls sync/sync-table! so the new table's fields are populated."
+      (let [calls (atom 0)]
+        (mt/with-temp [:model/Table {table-id :id} {:db_id  (mt/id)
+                                                    :schema nil
+                                                    :name   "disable_auto_sync_target"}]
+          (with-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
+            (mt/with-temporary-setting-values [disable-auto-sync true]
+              (transforms-base.u/activate-table-and-mark-computed!
+               (mt/db)
+               {:type "table" :schema nil :name "disable_auto_sync_target"}))
+            (is (= 1 @calls)
+                "Expected the transform path to run sync/sync-table! exactly once with disable-auto-sync on.")))))))
