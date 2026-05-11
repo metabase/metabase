@@ -265,8 +265,8 @@
 
   The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
   not fire here because the INSERT goes through the raw table keyword
-  (`:metabase_table`) rather than the model. This preserves today's
-  per-table-permission gap; batched-grant work is tracked separately.
+  (`:metabase_table`) rather than the model. Per-table permissions therefore
+  aren't set on insert. TODO: batched-grant fix.
 
   Composes safely inside a larger transaction: Toucan2's `t2/with-transaction`
   joins an outer txn rather than creating a savepoint, so when an outer caller
@@ -422,7 +422,7 @@
   not present in staging, and NULL the `source_fk_target_id` column on
   those rows (and their corresponding `target_fk_target_id` for safety).
   Returns `{:count N :sample [...]}` when at least one row was scrubbed,
-  `{:count 0}` otherwise. The caller is expected to WARN-log on non-zero.
+  `{:count 0}` otherwise.
 
   Why NULL instead of abort: fk_target refs that cross a hidden/archived
   table boundary on the source side (the table is `active=false` or

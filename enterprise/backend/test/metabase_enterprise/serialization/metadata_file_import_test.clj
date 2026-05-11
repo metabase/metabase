@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.metadata-file-import-test
   "End-to-end orchestrator tests for [[metabase-enterprise.serialization.metadata-file-import/import-metadata-file!]].
-  Each test writes a temp JSON or YAML file in the I4 wire format, sets up
+  Each test writes a temp JSON or YAML file in the wire format, sets up
   matching `mt/with-temp` Database/Table/Field rows where needed, runs the
   loader, and asserts on the appdb state.
 

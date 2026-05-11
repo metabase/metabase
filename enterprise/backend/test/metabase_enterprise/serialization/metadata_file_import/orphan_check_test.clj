@@ -70,8 +70,7 @@
 ;;; ============================== orphan fk-target ref ==============================
 
 (deftest orphan-fk-target-ref-is-not-fatal-for-assert-test
-  ;; assert-no-orphan-refs! no longer treats orphan fk-target refs as fatal;
-  ;; that case is handled separately by null-orphan-fk-target-refs!.
+  ;; Handled separately by null-orphan-fk-target-refs!.
   (try
     (p/clear-staging-tables!)
     (insert-staging-fields! [{:source_id 200}

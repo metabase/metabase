@@ -1,6 +1,6 @@
 (ns ^:parallel metabase-enterprise.serialization.metadata-file-import.schemas-test
   "Tests for the Malli schemas validating per-line shapes streamed by the
-  metadata file importer. The schemas describe the I4 wire format
+  metadata file importer. The schemas describe the wire format
   (source-side integer IDs); each row's `:id` is an integer, and cross-row
   references (`:db_id`, `:table_id`, `:parent_id`, `:fk_target_field_id`)
   are integers pointing at another row's `:id` in the same file.
@@ -15,8 +15,7 @@
 
 (defn- al
   "Build a `java.util.ArrayList` from `xs` — mimics what Jackson hands the
-  importer for JSON arrays. Used by the `:nfc_path` tests since nfc_path is
-  the one remaining list-shaped field in the wire format."
+  importer for JSON arrays."
   [xs]
   (java.util.ArrayList. ^java.util.List xs))
 
