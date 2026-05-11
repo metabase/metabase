@@ -3,6 +3,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import {
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
 import { Tables } from "metabase/entities/tables";
@@ -15,7 +19,6 @@ import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
-import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { Database, Group, GroupsPermissions } from "metabase-types/api";
 
