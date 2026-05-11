@@ -153,19 +153,26 @@
 
 (defn- maybe-read
   [reader]
-  (let [rows (try
-               ;; Read the whole CSV at once so quoted fields can span multiple
-               ;; physical lines per RFC 4180. Forcing the lazy seq with `vec`
-               ;; ensures parse errors surface inside this try, while the reader
-               ;; is still open.
-               (vec (csv/read-csv reader))
-               (catch Exception e
-                 (let [error-message (tru "Error parsing CSV: {0}" (.getMessage ^Exception e))]
-                   (throw (ex-info error-message
-                                   {:status-code http-status-unprocessable
-                                    :errors [error-message]}
-                                   e)))))]
-    (import-translations! rows)))
+  ;; Consume the lazy seq one row at a time and count successfully-parsed rows
+  ;; so a parse error can name the failing row. Reading via `csv/read-csv`
+  ;; (rather than line-by-line) lets quoted fields span multiple physical
+  ;; lines per RFC 4180; the reported row number is the logical row, which is
+  ;; what the user authored.
+  (let [rows (volatile! [])]
+    (try
+      (doseq [row (csv/read-csv reader)]
+        (vswap! rows conj row))
+      (catch Exception e
+        (let [row-no (inc (count @rows))
+              error-message (tru "Error parsing CSV at row {0}: {1}"
+                                 row-no
+                                 (.getMessage ^Exception e))]
+          (throw (ex-info error-message
+                          {:status-code http-status-unprocessable
+                           :errors [error-message]
+                           :row row-no}
+                          e)))))
+    (import-translations! @rows)))
 
 (defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."

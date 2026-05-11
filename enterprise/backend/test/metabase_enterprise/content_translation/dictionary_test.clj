@@ -112,7 +112,7 @@
     (testing "Reads CSV with invalid header row and throws informative error"
       (let [file (.getBytes "Language,String,\"Translation\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Error parsing CSV.*unexpected character.*X"
+             Exception #"Error parsing CSV at row 1.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))
     (testing "Reads CSV with invalid header name and throws informative error"
       (let [file (.getBytes "Loca,String,Translation\nes-mx,hello,hola")] ; bad header
@@ -122,7 +122,13 @@
     (testing "Reads CSV with invalid data row and throws informative error"
       (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Error parsing CSV.*unexpected character.*X"
+             Exception #"Error parsing CSV at row 3.*unexpected character.*X"
+             (dictionary/read-and-import-csv! file)))))
+    (testing "Parse-error row number counts logical rows, not physical lines (a quoted multi-line row counts as 1)"
+      ;; Header (row 1) + a 2-physical-line quoted row (row 2) + a broken row (row 3) → error should name row 3.
+      (let [file (.getBytes "Language,String,Translation\nde,\"line one\nline two\",Titel\nde,Vendor,\"Anbieter\"X")]
+        (is (thrown-with-msg?
+             Exception #"Error parsing CSV at row 3.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))))
 
 (deftest read-and-import-csv-with-and-without-header-test
