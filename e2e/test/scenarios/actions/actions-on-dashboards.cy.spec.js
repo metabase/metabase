@@ -1260,6 +1260,10 @@ describe(
 
         cy.wait("@updateAction");
 
+        // The action editor closes after the update; wait until only the
+        // parameter mapping dialog remains.
+        cy.findByRole("button", { name: "Update" }).should("not.exist");
+
         cy.findByRole("dialog").within(() => {
           cy.findByText("New Score: required");
           cy.findByRole("button", { name: "Done" }).should("be.disabled");
