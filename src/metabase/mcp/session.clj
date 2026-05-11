@@ -16,10 +16,15 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
+   [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.models.mcp-view-context]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -28,6 +33,10 @@
    (javax.crypto.spec SecretKeySpec)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private active-view-context-window-seconds
+  "How recently an MCP iframe must have heartbeated to be treated as visible."
+  30)
 
 ;;; ---------------------------------------------- Key Derivation -------------------------------------------------
 
@@ -171,6 +180,87 @@
   [handle-id]
   (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id))
 
+;;; --------------------------------------------- View Context Store ----------------------------------------------
+;; DB-backed store for compact MCP iframe context. Each iframe owns one row per
+;; MCP session via view_instance_id. Raw encoded queries are replaced with
+;; mcp_query_handle UUIDs before storage so context reads stay compact.
+
+(defn- replace-encoded-query-with-handle
+  [session-id user-id form]
+  (walk/postwalk
+   (fn [value]
+     (if (map? value)
+       (let [encoded-query (or (:encodedQuery value) (get value "encodedQuery"))]
+         (if (and (string? encoded-query) (not (str/blank? encoded-query)))
+           (-> value
+               (dissoc :encodedQuery "encodedQuery")
+               (assoc :query_handle (store-handle! session-id user-id encoded-query)))
+           value))
+       value))
+   form))
+
+(defn upsert-view-context!
+  "Store compact context for one MCP iframe view instance.
+
+  Replaces any :encodedQuery payloads with :query_handle UUIDs before writing.
+  Returns the stored context map."
+  [session-id user-id context]
+  (when-not (owned-by-user? session-id user-id)
+    (throw (ex-info "Invalid or expired session" {:session-id session-id})))
+  (let [view-instance-id (or (:viewInstanceId context) (get context "viewInstanceId"))
+        core-session-id  (:id (get-or-create-embedding-session! session-id user-id))
+        stored-context  (replace-encoded-query-with-handle session-id user-id context)
+        context-json    (json/encode stored-context)
+        existing        (t2/select-one :model/McpViewContext
+                                       :mcp_session_id session-id
+                                       :view_instance_id view-instance-id)]
+    (if existing
+      (t2/update! :model/McpViewContext (:id existing) {:context_json context-json})
+      (t2/insert! :model/McpViewContext
+                  {:id               (str (UUID/randomUUID))
+                   :mcp_session_id   session-id
+                   :core_session_id  core-session-id
+                   :view_instance_id view-instance-id
+                   :context_json     context-json}))
+    stored-context))
+
+(defn read-view-contexts
+  "Return compact iframe contexts for `session-id`, newest first.
+
+  `updated_at` acts as a lightweight iframe heartbeat. This keeps old contexts
+  from sticking around when a host keeps the MCP session alive but does not call
+  the iframe teardown callback."
+  [session-id limit]
+  (let [active-cutoff (h2x/add-interval-honeysql-form (app-db/db-type)
+                                                      :%now
+                                                      (- active-view-context-window-seconds)
+                                                      :second)]
+    (->> (t2/select :model/McpViewContext
+                    :mcp_session_id session-id
+                    :updated_at [:>= active-cutoff]
+                    {:order-by [[:updated_at :desc]]
+                     :limit    limit})
+         (mapv (comp json/decode+kw :context_json)))))
+
+(defn touch-view-context!
+  "Refresh one iframe view context heartbeat for `session-id` and `view-instance-id`."
+  [session-id user-id view-instance-id]
+  (when-not (owned-by-user? session-id user-id)
+    (throw (ex-info "Invalid or expired session" {:session-id session-id})))
+  (t2/update! :model/McpViewContext
+              {:mcp_session_id session-id
+               :view_instance_id view-instance-id}
+              {:updated_at :%now}))
+
+(defn delete-view-context!
+  "Delete one iframe view context for `session-id` and `view-instance-id`."
+  [session-id user-id view-instance-id]
+  (when-not (owned-by-user? session-id user-id)
+    (throw (ex-info "Invalid or expired session" {:session-id session-id})))
+  (t2/delete! :model/McpViewContext
+              :mcp_session_id session-id
+              :view_instance_id view-instance-id))
+
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)
    and any associated query handles. Scoped to `user-id` so that one user cannot
@@ -186,4 +276,5 @@
                :where       [:and
                              [:= :key_hashed key-hashed]
                              [:= :user_id user-id]]})
+    (t2/delete! :model/McpViewContext :mcp_session_id session-id)
     (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))

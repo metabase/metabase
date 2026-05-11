@@ -71,9 +71,8 @@
 
 ;; The registry holds two indexes:
 ;;   `:uri->resource` — URI is unique, one resource (iframe) per URI
-;;   `:tools`         — keyed by tool name, which is also unique. Multiple tools may
-;;                      target the same resource via :_meta.ui.resourceUri (the iframe
-;;                      doesn't care which tool delivered the payload).
+;;   `:tools`         — keyed by tool name, which is also unique. UI tools carry
+;;                      :_meta.ui.resourceUri; plain tools do not render a widget.
 ;; Both maps overwrite on re-registration so REPL reload is idempotent.
 (defonce ^:private registry
   (atom {:key->uri      {}

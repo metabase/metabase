@@ -6,7 +6,9 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -126,6 +128,90 @@
           handle     (mcp.session/store-handle! session-id user-id "payload")
           _          (mcp.session/delete! session-id user-id)]
       (is (nil? (mcp.session/read-handle handle))))))
+
+(deftest upsert-view-context-replaces-existing-test
+  (testing "upserting the same view instance replaces context instead of creating duplicate rows"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          context    {:viewInstanceId "view-1"
+                      :activeViewRole "drill"
+                      :visibleViews   [{:viewId       "drill"
+                                        :role         "drill"
+                                        :active       true
+                                        :name         "Drill result"
+                                        :display      "table"
+                                        :encodedQuery "first"}]}]
+      (let [stored (mcp.session/upsert-view-context! session-id user-id context)
+            handle (get-in stored [:visibleViews 0 :query_handle])]
+        (is (some? (parse-uuid handle)))
+        (is (= "first" (mcp.session/read-handle handle)))
+        (is (nil? (get-in stored [:visibleViews 0 :encodedQuery])))
+        (is (= 1 (t2/count :model/McpViewContext :mcp_session_id session-id))))
+      (let [stored (mcp.session/upsert-view-context! session-id user-id
+                                                     (assoc-in context [:visibleViews 0 :encodedQuery] "second"))
+            handle (get-in stored [:visibleViews 0 :query_handle])]
+        (is (= "second" (mcp.session/read-handle handle)))
+        (is (= 1 (t2/count :model/McpViewContext :mcp_session_id session-id)))
+        (is (= "Drill result" (get-in (first (mcp.session/read-view-contexts session-id 5))
+                                      [:visibleViews 0 :name])))))))
+
+(deftest view-context-cascades-with-core-session-test
+  (testing "deleting the backing core_session cascades to view contexts"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)]
+      (mcp.session/upsert-view-context! session-id user-id
+                                        {:viewInstanceId "view-1"
+                                         :visibleViews   []})
+      (is (= 1 (t2/count :model/McpViewContext :mcp_session_id session-id)))
+      (t2/delete! :core_session :key_hashed (derived-hash session-id))
+      (is (zero? (t2/count :model/McpViewContext :mcp_session_id session-id))))))
+
+(deftest delete-removes-view-contexts-test
+  (testing "delete! removes stored view contexts for the session"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)]
+      (mcp.session/upsert-view-context! session-id user-id
+                                        {:viewInstanceId "view-1"
+                                         :visibleViews   []})
+      (mcp.session/delete! session-id user-id)
+      (is (empty? (mcp.session/read-view-contexts session-id 5))))))
+
+(deftest view-contexts-are-isolated-by-mcp-session-test
+  (testing "read-view-contexts only returns contexts for the requested MCP session"
+    (let [user-id    (mt/user->id :crowberto)
+          session-a  (mcp.session/create! user-id)
+          session-b  (mcp.session/create! user-id)]
+      (mcp.session/upsert-view-context! session-a user-id
+                                        {:viewInstanceId "view-a"
+                                         :visibleViews   [{:name "A"}]})
+      (mcp.session/upsert-view-context! session-b user-id
+                                        {:viewInstanceId "view-b"
+                                         :visibleViews   [{:name "B"}]})
+      (is (= ["A"] (mapv #(get-in % [:visibleViews 0 :name])
+                         (mcp.session/read-view-contexts session-a 5))))
+      (is (= ["B"] (mapv #(get-in % [:visibleViews 0 :name])
+                         (mcp.session/read-view-contexts session-b 5)))))))
+
+(deftest read-view-contexts-only-returns-recently-touched-contexts-test
+  (testing "old iframe contexts are ignored until they heartbeat again"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)]
+      (mcp.session/upsert-view-context! session-id user-id
+                                        {:viewInstanceId "old-view"
+                                         :visibleViews   [{:name "Old"}]})
+      (mcp.session/upsert-view-context! session-id user-id
+                                        {:viewInstanceId "live-view"
+                                         :visibleViews   [{:name "Live"}]})
+      (t2/update! :model/McpViewContext
+                  {:mcp_session_id session-id
+                   :view_instance_id "old-view"}
+                  {:updated_at (OffsetDateTime/parse "2000-01-01T00:00:00Z")})
+      (is (= ["Live"] (mapv #(get-in % [:visibleViews 0 :name])
+                            (mcp.session/read-view-contexts session-id 5))))
+      (mcp.session/touch-view-context! session-id user-id "old-view")
+      (is (= #{"Old" "Live"}
+             (set (map #(get-in % [:visibleViews 0 :name])
+                       (mcp.session/read-view-contexts session-id 5))))))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"

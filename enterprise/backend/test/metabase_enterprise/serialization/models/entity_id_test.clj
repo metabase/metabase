@@ -61,6 +61,7 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/McpQueryHandle
+    :model/McpViewContext
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback

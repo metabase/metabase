@@ -13,6 +13,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
+(def ^:private max-view-contexts 5)
+
 (defn- mcp-session-id-from-headers
   [request]
   (get-in request [:headers "mcp-session-id"]))
@@ -40,6 +42,54 @@
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id*)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+
+(def ^:private view-context-schema
+  [:map
+   [:viewInstanceId ms/NonBlankString]
+   [:activeViewRole {:optional true} [:maybe ms/NonBlankString]]
+   [:visibleViews {:optional true} [:maybe [:sequential [:map-of [:or :keyword :string] :any]]]]
+   [:recentViews {:optional true} [:maybe [:sequential [:map-of [:or :keyword :string] :any]]]]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/context"
+  "Store compact view context for one MCP iframe. Drill query payloads are
+   converted to server-side query handles before persistence so follow-up NLQ
+   can reference visible Metabase views without putting raw MBQL into model
+   context."
+  [_route-params
+   _query-params
+   body :- view-context-schema
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id*)
+    (let [context (mcp.session/upsert-view-context! session-id api/*current-user-id* body)]
+      {:context  context
+       :contexts (mcp.session/read-view-contexts session-id max-view-contexts)})))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/context/:view-instance-id"
+  "Remove compact view context for one MCP iframe during MCP app teardown."
+  [{:keys [view-instance-id]} :- [:map [:view-instance-id ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id*)
+    (mcp.session/delete-view-context! session-id api/*current-user-id* view-instance-id)
+    {:ok true}))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/context/:view-instance-id/touch"
+  "Refresh one MCP iframe view context heartbeat and return currently active
+   contexts for the session."
+  [{:keys [view-instance-id]} :- [:map [:view-instance-id ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id*)
+    (mcp.session/touch-view-context! session-id api/*current-user-id* view-instance-id)
+    {:contexts (mcp.session/read-view-contexts session-id max-view-contexts)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "Iframe-callback routes mounted at `/api/embed-mcp`. MCP-feature gated; auth is

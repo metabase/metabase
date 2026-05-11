@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 interface McpAppState {
   query: string | null;
   hostContext: McpUiHostContext | null;
+  hostVersion: ReturnType<App["getHostVersion"]> | null;
   app: App | null;
 }
 
@@ -33,6 +34,9 @@ function applyHostContext(ctx: McpUiHostContext) {
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
+  const [hostVersion, setHostVersion] = useState<ReturnType<
+    App["getHostVersion"]
+  > | null>(null);
 
   const { app } = useApp({
     appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
@@ -68,6 +72,8 @@ export function useMcpApp(): McpAppState {
   // Read host context once connected and apply styles immediately
   useEffect(() => {
     if (app) {
+      setHostVersion(app.getHostVersion() ?? null);
+
       const context = app.getHostContext();
 
       if (context) {
@@ -77,5 +83,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, hostContext, app };
+  return { query, hostContext, hostVersion, app };
 }

@@ -57,6 +57,7 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
+    :model/McpViewContext                    metabase.mcp.models.mcp-view-context
     :model/Measure                           metabase.measures.models.measure
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation

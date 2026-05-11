@@ -18,6 +18,7 @@ import {
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { utf8_to_b64 } from "metabase/utils/encoding";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -26,6 +27,14 @@ import type { Card } from "metabase-types/api";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import {
+  type McpStoredViewContextPayload,
+  type McpViewContextPayload,
+  type McpViewContextView,
+  deleteMcpViewContext,
+  storeMcpViewContext,
+  touchMcpViewContext,
+} from "./api";
 import { useMcpApp } from "./hooks/useMcpApp";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
@@ -38,9 +47,15 @@ const DRILLED_QUESTION_HEIGHT = 220;
 const DRILLED_QUESTION_TITLE_HEIGHT = 40;
 const DRILLED_QUESTION_VERTICAL_SPACE = 24;
 const MAX_RECENT_VIEWS = 5;
+const VIEW_CONTEXT_HEARTBEAT_INTERVAL_MS = 10_000;
 type DrillThroughHandler = NonNullable<SdkQuestionProps["onDrillThrough"]>;
 type McpViewRole = "main" | "drill";
 type McpViewContext = ReturnType<typeof getVisibleViewContext>;
+type McpGlobalConfig = {
+  instanceUrl: string;
+  sessionToken: string;
+  mcpSessionId?: string;
+};
 
 function getViewName(card: Card, fallback: string) {
   return card.name ?? card.display ?? fallback;
@@ -76,6 +91,32 @@ function getVisibleViewContext({
   };
 }
 
+function createViewInstanceId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+function hashStringToUuid(value: string) {
+  let hash = 0;
+
+  for (let i = 0; i < value.length; i++) {
+    hash = Math.imul(31, hash) + value.charCodeAt(i);
+  }
+
+  const hex = Math.abs(hash).toString(16).padStart(32, "0").slice(0, 32);
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(
+    12,
+    16,
+  )}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function getToolCallViewInstanceId(hostContext: unknown) {
+  const toolCallId = (hostContext as { toolInfo?: { id?: unknown } } | null)
+    ?.toolInfo?.id;
+
+  return toolCallId == null ? null : hashStringToUuid(String(toolCallId));
+}
+
 function removeVolatileQueryKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(removeVolatileQueryKeys);
@@ -96,71 +137,121 @@ function getViewContextKey(view: McpViewContext) {
   return `${view.role}:${JSON.stringify(removeVolatileQueryKeys(view.datasetQuery))}`;
 }
 
-function getModelContextMarkdown({
-  recentViews,
-  visibleViews,
-}: {
-  recentViews: McpViewContext[];
-  visibleViews: McpViewContext[];
-}) {
-  const activeView =
-    visibleViews.find((view) => view.active) ?? visibleViews[0];
-  const activeDrillCardJson = activeView?.drillCard
-    ? JSON.stringify(activeView.drillCard, null, 2)
-    : null;
-
-  return `---
-event: metabase-visible-views-changed
-visible-view-count: ${visibleViews.length}
-recent-view-count: ${recentViews.length}
-recent-view-limit: ${MAX_RECENT_VIEWS}
-active-view-role: ${activeView?.role ?? "none"}
-active-view-name: ${activeView?.name ?? "none"}
----
-
-The user is viewing ${visibleViews.length} Metabase MCP App view${
-    visibleViews.length === 1 ? "" : "s"
-  } in this app iframe.
-
-Visible views:
-${visibleViews
-  .map(
-    (view, index) =>
-      `${index + 1}. ${view.active ? "ACTIVE " : ""}${view.role} view: ${
-        view.name
-      } (${view.display ?? "unknown"} visualization)`,
-  )
-  .join("\n")}
-
-Recent views available for disambiguation (most recent first, limited to ${
-    MAX_RECENT_VIEWS
-  }):
-${recentViews
-  .map(
-    (view, index) =>
-      `${index + 1}. ${view.role} view: ${view.name} (${
-        view.display ?? "unknown"
-      } visualization)`,
-  )
-  .join("\n")}
-${
-  activeDrillCardJson
-    ? `
-Active drill nextCard:
-\`\`\`json
-${activeDrillCardJson}
-\`\`\`
-`
-    : ""
+function getServerViewContext(view: McpViewContext): McpViewContextView {
+  return {
+    viewId: view.role,
+    role: view.role,
+    active: view.active,
+    name: view.name,
+    display: view.display,
+    nextCard: view.drillCard,
+    encodedQuery:
+      view.role === "drill"
+        ? utf8_to_b64(JSON.stringify(view.datasetQuery))
+        : undefined,
+  };
 }
 
+function getStoredLocalContext(
+  context: McpViewContextPayload,
+): McpStoredViewContextPayload {
+  return {
+    ...context,
+    visibleViews: context.visibleViews.map(({ encodedQuery, ...view }) => view),
+    recentViews: context.recentViews.map(({ encodedQuery, ...view }) => view),
+  };
+}
+
+function isClaudeHost(hostVersion: { name?: string } | null | undefined) {
+  return hostVersion?.name?.toLowerCase().includes("claude") ?? false;
+}
+
+function getContextLabel(context: McpStoredViewContextPayload) {
+  const activeView =
+    context.visibleViews.find((view) => view.active) ?? context.visibleViews[0];
+
+  return `${activeView?.role ?? context.activeViewRole} view: ${
+    activeView?.name ?? "unknown"
+  } (${activeView?.display ?? "unknown"} visualization)`;
+}
+
+function getDrillNextCardSections(contexts: McpStoredViewContextPayload[]) {
+  const drillViews = contexts.flatMap((context, contextIndex) =>
+    context.visibleViews
+      .filter((view) => view.role === "drill" && view.nextCard)
+      .map((view, drillIndex) => ({
+        label: `${contextIndex + 1}.${drillIndex + 1}. ${
+          view.active ? "ACTIVE " : ""
+        }${view.role} view from iframe ${context.viewInstanceId}: ${
+          view.name
+        } (${view.display ?? "unknown"} visualization)${
+          view.query_handle ? `, query_handle: ${view.query_handle}` : ""
+        }`,
+        nextCard: view.nextCard,
+      })),
+  );
+
+  if (drillViews.length === 0) {
+    return "";
+  }
+
+  return `\n\nDrill nextCards for follow-up NLQ:
+${drillViews
+  .map(
+    ({ label, nextCard }) => `${label}
+\`\`\`json
+${JSON.stringify(nextCard, null, 2)}
+\`\`\``,
+  )
+  .join("\n\n")}`;
+}
+
+function getModelContextHint({
+  contexts,
+  maxRecentViews,
+}: {
+  contexts: McpStoredViewContextPayload[];
+  maxRecentViews: number;
+}) {
+  return `---
+event: metabase-view-context-available
+context-count: ${contexts.length}
+recent-view-limit: ${maxRecentViews}
+---
+
+The user is viewing Metabase MCP App visualizations. This widget context is the authoritative current Metabase context for follow-up natural language questions.
+
+Active iframe contexts:
+${contexts
+  .map(
+    (context, index) =>
+      `${index + 1}. iframe ${context.viewInstanceId}: ${getContextLabel(
+        context,
+      )}`,
+  )
+  .join("\n")}
+
+Visible views and drill handles:
+${contexts
+  .flatMap((context, contextIndex) =>
+    context.visibleViews.map(
+      (view, viewIndex) =>
+        `${contextIndex + 1}.${viewIndex + 1}. ${
+          view.active ? "ACTIVE " : ""
+        }${view.role} view: ${view.name} (${
+          view.display ?? "unknown"
+        } visualization)${
+          view.query_handle ? `, query_handle: ${view.query_handle}` : ""
+        }`,
+    ),
+  )
+  .join("\n")}${getDrillNextCardSections(contexts)}
+
 Natural language query guidance:
-- When the user says "this", "that", "the current view", "the drilled result", or asks a follow-up without naming another chart, treat the ACTIVE view as the current analytical context.
-- When constructing a follow-up query from a drill result, use the active drill nextCard as the authoritative current query state, including its source, filters, aggregations, breakouts, joins, and selected fields.
-- Use recentViews only for disambiguation and continuity; do not treat older recent views as active unless the user clearly refers to them.
-- If multiple visible or recent views could match the user's wording, ask a brief clarifying question about which chart/view they mean instead of guessing.
-- If both the main view and drilled view are relevant, preserve the main view as background context but prefer the active drilled view for ambiguous follow-ups.
-- If the user explicitly refers to the original/main chart, use the main view instead of the active drill view.`;
+- When the user says "this", "that", "the current view", "the drilled table", or "the drilled result", prefer the ACTIVE drill view if one exists.
+- Use drill nextCards as the current analytical context when constructing follow-up queries from a drilled result.
+- Pass query_handle to visualize_query when the user wants to show or continue from a drilled result.
+- If multiple visible or recent views could match the user's wording, ask which chart/view they mean before constructing a query.`;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -171,16 +262,19 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, hostContext, app } = useMcpApp();
+  const { query, hostContext, hostVersion, app } = useMcpApp();
   const [drilledCard, setDrilledCard] = useState<Card | null>(null);
   const [recentViews, setRecentViews] = useState<McpViewContext[]>([]);
+  const fallbackViewInstanceId = useMemo(() => createViewInstanceId(), []);
+  const viewInstanceId =
+    getToolCallViewInstanceId(hostContext) ?? fallbackViewInstanceId;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { instanceUrl = "", sessionToken = "" } =
-    (window.metabaseConfig as {
-      instanceUrl: string;
-      sessionToken: string;
-    }) ?? {};
+  const {
+    instanceUrl = "",
+    sessionToken = "",
+    mcpSessionId = "",
+  } = (window.metabaseConfig as McpGlobalConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -282,41 +376,130 @@ export function McpUiAppRoute() {
     });
   }, [isReady, visibleViews]);
 
+  const updateWidgetContext = useCallback(
+    (contexts: McpStoredViewContextPayload[]) => {
+      app
+        ?.updateModelContext({
+          content: [
+            {
+              type: "text",
+              text: getModelContextHint({
+                contexts,
+                maxRecentViews: MAX_RECENT_VIEWS,
+              }),
+            },
+          ],
+          structuredContent: {
+            event: "metabase-view-context-available",
+            contexts,
+            contextCount: contexts.length,
+            maxRecentViews: MAX_RECENT_VIEWS,
+            ambiguityPolicy:
+              "Use active drill query_handle values for follow-up NLQ about visible Metabase views. Ask which chart/view the user means when context is ambiguous.",
+          },
+        })
+        .catch(() => {
+          // The visual prototype should still work if the host declines context updates.
+        });
+    },
+    [app],
+  );
+
   useEffect(() => {
     if (!app || !isReady || visibleViews.length === 0) {
       return;
     }
 
-    app
-      .updateModelContext({
-        content: [
-          {
-            type: "text",
-            text: getModelContextMarkdown({ recentViews, visibleViews }),
-          },
-        ],
-        structuredContent: {
-          event: "metabase-visible-views-changed",
-          activeDrillCard: drilledCard
-            ? {
-                name: drilledCard.name,
-                display: drilledCard.display,
-                dataset_query: drilledCard.dataset_query,
-                visualization_settings: drilledCard.visualization_settings,
-              }
-            : undefined,
-          activeViewRole: drilledCard ? "drill" : "main",
-          maxRecentViews: MAX_RECENT_VIEWS,
-          recentViews,
-          visibleViews,
-          ambiguityPolicy:
-            "If multiple visible or recent Metabase views could match the user's wording, ask which chart/view they mean before constructing a query.",
-        },
+    const context: McpViewContextPayload = {
+      viewInstanceId,
+      activeViewRole: drilledCard ? "drill" : "main",
+      visibleViews: visibleViews.map(getServerViewContext),
+      recentViews: recentViews.map(getServerViewContext),
+    };
+
+    if (mcpSessionId) {
+      storeMcpViewContext({
+        instanceUrl,
+        sessionToken,
+        mcpSessionId,
+        context,
       })
-      .catch(() => {
-        // The visual prototype should still work if the host declines context updates.
+        .then(({ context, contexts }) => {
+          updateWidgetContext(isClaudeHost(hostVersion) ? contexts : [context]);
+        })
+        .catch(() => {
+          updateWidgetContext([getStoredLocalContext(context)]);
+          // Keep the visual prototype working even if the server-side context write fails.
+        });
+    } else {
+      updateWidgetContext([getStoredLocalContext(context)]);
+    }
+  }, [
+    app,
+    drilledCard,
+    hostVersion,
+    instanceUrl,
+    isReady,
+    mcpSessionId,
+    recentViews,
+    sessionToken,
+    updateWidgetContext,
+    viewInstanceId,
+    visibleViews,
+  ]);
+
+  useEffect(() => {
+    if (!app || !isReady || !instanceUrl || !sessionToken || !mcpSessionId) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      touchMcpViewContext({
+        instanceUrl,
+        sessionToken,
+        mcpSessionId,
+        viewInstanceId,
+      })
+        .then(({ contexts }) => {
+          updateWidgetContext(
+            isClaudeHost(hostVersion) ? contexts : contexts.slice(0, 1),
+          );
+        })
+        .catch(() => {
+          // The visual prototype should still work if the heartbeat fails.
+        });
+    }, VIEW_CONTEXT_HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [
+    app,
+    hostVersion,
+    instanceUrl,
+    isReady,
+    mcpSessionId,
+    sessionToken,
+    updateWidgetContext,
+    viewInstanceId,
+  ]);
+
+  useEffect(() => {
+    if (!app || !instanceUrl || !sessionToken || !mcpSessionId) {
+      return;
+    }
+
+    app.onteardown = async () => {
+      await deleteMcpViewContext({
+        instanceUrl,
+        sessionToken,
+        mcpSessionId,
+        viewInstanceId,
       });
-  }, [app, drilledCard, isReady, recentViews, visibleViews]);
+
+      return {};
+    };
+  }, [app, instanceUrl, mcpSessionId, sessionToken, viewInstanceId]);
 
   const sendResizeRequest = useCallback(() => {
     if (!app) {

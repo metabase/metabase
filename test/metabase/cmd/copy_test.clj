@@ -39,6 +39,7 @@
     :model/Dependency
     :model/DependencyStatus
     :model/McpQueryHandle
+    :model/McpViewContext
     :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
