@@ -36,7 +36,131 @@ const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const MAIN_QUESTION_HEIGHT = 500;
 const DRILLED_QUESTION_HEIGHT = 220;
 const DRILLED_QUESTION_VERTICAL_SPACE = 24;
+const MAX_RECENT_VIEWS = 5;
 type DrillThroughHandler = NonNullable<SdkQuestionProps["onDrillThrough"]>;
+type McpViewRole = "main" | "drill";
+type McpViewContext = ReturnType<typeof getVisibleViewContext>;
+
+function getViewName(card: Card, fallback: string) {
+  return card.name ?? card.display ?? fallback;
+}
+
+function getVisibleViewContext({
+  card,
+  role,
+  active,
+}: {
+  card: Card;
+  role: McpViewRole;
+  active: boolean;
+}) {
+  return {
+    role,
+    active,
+    name: getViewName(
+      card,
+      role === "main" ? "Original question" : "Drill result",
+    ),
+    display: card.display,
+    datasetQuery: card.dataset_query,
+    drillCard:
+      role === "drill"
+        ? {
+            name: card.name,
+            display: card.display,
+            dataset_query: card.dataset_query,
+            visualization_settings: card.visualization_settings,
+          }
+        : undefined,
+  };
+}
+
+function removeVolatileQueryKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(removeVolatileQueryKeys);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "lib/uuid")
+        .map(([key, value]) => [key, removeVolatileQueryKeys(value)]),
+    );
+  }
+
+  return value;
+}
+
+function getViewContextKey(view: McpViewContext) {
+  return `${view.role}:${JSON.stringify(removeVolatileQueryKeys(view.datasetQuery))}`;
+}
+
+function getModelContextMarkdown({
+  recentViews,
+  visibleViews,
+}: {
+  recentViews: McpViewContext[];
+  visibleViews: McpViewContext[];
+}) {
+  const activeView =
+    visibleViews.find((view) => view.active) ?? visibleViews[0];
+  const activeDrillCardJson = activeView?.drillCard
+    ? JSON.stringify(activeView.drillCard, null, 2)
+    : null;
+
+  return `---
+event: metabase-visible-views-changed
+visible-view-count: ${visibleViews.length}
+recent-view-count: ${recentViews.length}
+recent-view-limit: ${MAX_RECENT_VIEWS}
+active-view-role: ${activeView?.role ?? "none"}
+active-view-name: ${activeView?.name ?? "none"}
+---
+
+The user is viewing ${visibleViews.length} Metabase MCP App view${
+    visibleViews.length === 1 ? "" : "s"
+  } in this app iframe.
+
+Visible views:
+${visibleViews
+  .map(
+    (view, index) =>
+      `${index + 1}. ${view.active ? "ACTIVE " : ""}${view.role} view: ${
+        view.name
+      } (${view.display ?? "unknown"} visualization)`,
+  )
+  .join("\n")}
+
+Recent views available for disambiguation (most recent first, limited to ${
+    MAX_RECENT_VIEWS
+  }):
+${recentViews
+  .map(
+    (view, index) =>
+      `${index + 1}. ${view.role} view: ${view.name} (${
+        view.display ?? "unknown"
+      } visualization)`,
+  )
+  .join("\n")}
+${
+  activeDrillCardJson
+    ? `
+Active drill nextCard:
+\`\`\`json
+${activeDrillCardJson}
+\`\`\`
+`
+    : ""
+}
+
+Natural language query guidance:
+- When the user says "this", "that", "the current view", "the drilled result", or asks a follow-up without naming another chart, treat the ACTIVE view as the current analytical context.
+- When constructing a follow-up query from a drill result, use the active drill nextCard as the authoritative current query state, including its source, filters, aggregations, breakouts, joins, and selected fields.
+- Use recentViews only for disambiguation and continuity; do not treat older recent views as active unless the user clearly refers to them.
+- If multiple visible or recent views could match the user's wording, ask a brief clarifying question about which chart/view they mean instead of guessing.
+- If both the main view and drilled view are relevant, preserve the main view as background context but prefer the active drilled view for ambiguous follow-ups.
+- If the user explicitly refers to the original/main chart, use the main view instead of the active drill view.`;
+}
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
 const SimpleLoader = () => (
@@ -48,6 +172,7 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { query, hostContext, app } = useMcpApp();
   const [drilledCard, setDrilledCard] = useState<Card | null>(null);
+  const [recentViews, setRecentViews] = useState<McpViewContext[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { instanceUrl = "", sessionToken = "" } =
@@ -76,38 +201,14 @@ export function McpUiAppRoute() {
 
   useEffect(() => {
     setDrilledCard(null);
+    setRecentViews([]);
   }, [query]);
 
   const handleDrillThrough = useCallback<DrillThroughHandler>(
-    async ({ drillName, nextCard }) => {
+    async ({ nextCard }) => {
       setDrilledCard(nextCard);
-
-      try {
-        await app?.updateModelContext({
-          content: [
-            {
-              type: "text",
-              text: `---
-event: metabase-drill-through
-drill-name: ${drillName ?? "unknown"}
-card-name: ${nextCard.name ?? "Untitled question"}
----
-
-The user drilled into the Metabase visualization. The app is showing the drill result below the original visualization, while the original question remains unchanged.`,
-            },
-          ],
-          structuredContent: {
-            event: "metabase-drill-through",
-            drillName,
-            cardName: nextCard.name,
-            datasetQuery: nextCard.dataset_query,
-          },
-        });
-      } catch {
-        // The visual prototype should still work if the host declines context updates.
-      }
     },
-    [app],
+    [],
   );
 
   const getStaticClickActionMode = useCallback<ClickActionModeGetter>(
@@ -137,6 +238,84 @@ The user drilled into the Metabase visualization. The app is showing the drill r
     isSettingsReady &&
     deserializedCard
   );
+
+  const visibleViews = useMemo<McpViewContext[]>(() => {
+    if (!deserializedCard) {
+      return [];
+    }
+
+    return [
+      getVisibleViewContext({
+        card: deserializedCard,
+        role: "main",
+        active: !drilledCard,
+      }),
+      ...(drilledCard
+        ? [
+            getVisibleViewContext({
+              card: drilledCard,
+              role: "drill" as const,
+              active: true,
+            }),
+          ]
+        : []),
+    ];
+  }, [deserializedCard, drilledCard]);
+
+  useEffect(() => {
+    const activeView = visibleViews.find((view) => view.active);
+
+    if (!isReady || !activeView) {
+      return;
+    }
+
+    setRecentViews((previousViews) => {
+      const activeViewKey = getViewContextKey(activeView);
+
+      return [
+        activeView,
+        ...previousViews.filter(
+          (view) => getViewContextKey(view) !== activeViewKey,
+        ),
+      ].slice(0, MAX_RECENT_VIEWS);
+    });
+  }, [isReady, visibleViews]);
+
+  useEffect(() => {
+    if (!app || !isReady || visibleViews.length === 0) {
+      return;
+    }
+
+    app
+      .updateModelContext({
+        content: [
+          {
+            type: "text",
+            text: getModelContextMarkdown({ recentViews, visibleViews }),
+          },
+        ],
+        structuredContent: {
+          event: "metabase-visible-views-changed",
+          activeDrillCard: drilledCard
+            ? {
+                name: drilledCard.name,
+                display: drilledCard.display,
+                dataset_query: drilledCard.dataset_query,
+                visualization_settings: drilledCard.visualization_settings,
+              }
+            : undefined,
+          activeViewRole: drilledCard ? "drill" : "main",
+          maxRecentViews: MAX_RECENT_VIEWS,
+          recentViews,
+          visibleViews,
+          ambiguityPolicy:
+            "If multiple visible or recent Metabase views could match the user's wording, ask which chart/view they mean before constructing a query.",
+        },
+      })
+      .catch(() => {
+        // The visual prototype should still work if the host declines context updates.
+      });
+  }, [app, drilledCard, isReady, recentViews, visibleViews]);
 
   const sendResizeRequest = useCallback(() => {
     if (!app) {
