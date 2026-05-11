@@ -13,6 +13,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/redux";
@@ -66,6 +67,7 @@ const mapStateToProps = (state: State) => ({
 function ActionCreator({ model, onSubmit, onClose, route }: Props) {
   const [createAction] = useCreateActionMutation();
   const [updateAction] = useUpdateActionMutation();
+  const [sendToast] = useToast();
   const {
     action,
     formSettings,
@@ -97,25 +99,33 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
       return; // only query action creation is supported now
     }
 
-    const createdAction = await createAction({
-      ...action,
-      ...values,
-      visualization_settings: formSettings,
-    } as WritebackQueryAction).unwrap();
+    try {
+      const createdAction = await createAction({
+        ...action,
+        ...values,
+        visualization_settings: formSettings,
+      } as WritebackQueryAction).unwrap();
 
-    // Sync the editor state with data from save modal form
-    handleActionChange(values);
+      // Sync the editor state with data from save modal form
+      handleActionChange(values);
 
-    setShowSaveModal(false);
-    onSubmit?.(createdAction);
+      setShowSaveModal(false);
+      onSubmit?.(createdAction);
 
-    scheduleCallback(() => {
-      onClose?.();
-    });
+      scheduleCallback(() => {
+        onClose?.();
+      });
+    } catch (_error) {
+      sendToast({ icon: "warning", message: t`Failed to create action` });
+    }
   };
 
   const handleUpdate = async () => {
-    if (isSavedAction(action)) {
+    if (!isSavedAction(action)) {
+      return;
+    }
+
+    try {
       const updatedAction = await updateAction({
         ...action,
         model_id: model?.id(),
@@ -127,6 +137,8 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
       scheduleCallback(() => {
         onClose?.();
       });
+    } catch (_error) {
+      sendToast({ icon: "warning", message: t`Failed to update action` });
     }
   };
 
@@ -138,7 +150,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
     if (isNew) {
       showSaveModal();
     } else {
-      handleUpdate();
+      void handleUpdate();
     }
   };
 
