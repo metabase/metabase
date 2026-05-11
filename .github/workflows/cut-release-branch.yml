@@ -150,6 +150,8 @@ jobs:
 
             const shaLink = `<https://github.com/${owner}/${repo}/commit/${sha}|${sha.slice(0, 7)}>`;
             const team = mentionSlackTeam('releasemanagers');
+            const embedding = mentionSlackTeam('embedding-devs');
+            const embeddingChecklist = 'https://www.notion.so/metabase/Embedding-Checklist-What-to-do-after-cutting-a-new-release-branch-20269354c90180808329eab86e59f20d';
 
             const notes = [
               bumpFailed
@@ -166,7 +168,11 @@ jobs:
                 : null,
             ].filter(Boolean).join('\n');
 
-            const message = `:evergreen_tree: Cut new release branch *${branch}* at ${shaLink} ${team}\n${notes}`;
+            const message = [
+              `:evergreen_tree: Cut new release branch *${branch}* at ${shaLink} ${team}`,
+              notes,
+              `${embedding} please run the <${embeddingChecklist}|Embedding Checklist>.`,
+            ].filter(Boolean).join('\n');
 
             await sendSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
