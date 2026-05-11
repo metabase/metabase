@@ -1232,7 +1232,9 @@
               audit-app
               channel
               collections
+              collections-rest
               config
+              dashboards-rest
               documents
               driver
               interestingness
@@ -1247,6 +1249,8 @@
               permissions
               premium-features
               pulse
+              queries
+              query-permissions
               query-processor
               request
               search

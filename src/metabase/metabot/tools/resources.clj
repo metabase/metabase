@@ -16,9 +16,11 @@
   - metabase://metric/{id}/dimensions - Metric with dimensions
   - metabase://metric/{id}/dimensions/{dimension_id} - Specific dimension details
   - metabase://transform/{id} - Transform details
-  - metabase://dashboard/{id} - Dashboard details"
+  - metabase://dashboard/{id} - Dashboard details
+  - metabase://collection/{id} - Collection details (name, description, authority level, can_write)"
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -26,7 +28,8 @@
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,14 +191,33 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
+(defn- fetch-collection-resource
+  "Fetch collection resource. Returns a slim map of fields the LLM needs to confirm
+  it has the right collection before mutating it (name, description, location,
+  authority level) plus `can_write` so the LLM can avoid attempting to save into
+  a read-only collection."
+  [{:keys [resource-id sub-resource]}]
+  (when sub-resource
+    (throw (ex-info (str "Collections do not support sub-resources. Got: " sub-resource)
+                    {:resource-id resource-id :sub-resource sub-resource})))
+  (if-let [coll (t2/select-one [:model/Collection :id :name :description :location :authority_level :type]
+                               (parse-long resource-id))]
+    (do (api/read-check coll)
+        {:structured-output (-> coll
+                                (t2/hydrate :can_write)
+                                (assoc :type :collection
+                                       :result-type :entity))})
+    {:status-code 404 :output "collection not found"}))
+
 (def ^:private resource-handlers
   "Map of resource type to handler function."
-  {"table"     fetch-table-resource
-   "model"     fetch-model-or-card-resource
-   "question"  fetch-model-or-card-resource
-   "metric"    fetch-metric-resource
-   "transform" fetch-transform-resource
-   "dashboard" fetch-dashboard-resource})
+  {"table"      fetch-table-resource
+   "model"      fetch-model-or-card-resource
+   "question"   fetch-model-or-card-resource
+   "metric"     fetch-metric-resource
+   "transform"  fetch-transform-resource
+   "dashboard"  fetch-dashboard-resource
+   "collection" fetch-collection-resource})
 
 (defn- fetch-single-uri
   "Fetch a single URI and return formatted content.
@@ -297,7 +319,8 @@
   - metabase://model/{id}/fields/{field_id} - Get specific field details
   - metabase://metric/{id}/dimensions - Get metric dimensions
   - metabase://transform/{id} - Get transform details
-  - metabase://dashboard/{id} - Get dashboard details"
+  - metabase://dashboard/{id} - Get dashboard details
+  - metabase://collection/{id} - Get collection details"
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try

@@ -139,7 +139,7 @@
                    [:page [:enum "sql_editor"]]
                    [:database_id :int]]
                   [:map {:closed true}
-                   [:entity_type [:enum "table" "model" "question" "metric" "dashboard"]]
+                   [:entity_type [:enum "table" "model" "question" "metric" "dashboard" "collection"]]
                    [:entity_id :int]]
                   [:map {:closed true}
                    [:query_id :string]]

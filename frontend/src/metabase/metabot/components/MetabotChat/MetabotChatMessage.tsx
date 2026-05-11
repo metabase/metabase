@@ -42,6 +42,8 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "code_edit" }, () => true)
     .with({ type: "adhoc_viz" }, () => false)
     .with({ type: "static_viz" }, () => false)
+    // Cache-invalidation hint; consumed silently by the action dispatcher.
+    .with({ type: "entity_changed" }, () => false)
     .exhaustive();
 
 const isUserVisibleDataPartMessage = (

@@ -358,6 +358,35 @@
    body :- [:map [:name :string]]]
   {:id id :name (:name body)})
 
+;; 7. PUT with multi-intent vector :tool and per-intent :fields allowlists
+(api.macros/defendpoint :put "/v1/test-multi/:id"
+  "Update a multi-intent test resource."
+  {:tool [{:name        "rename_multi"
+           :description "Rename or describe a multi-intent resource."
+           :fields      [:name :description]}
+          {:name        "move_multi"
+           :description "Move a multi-intent resource."
+           :fields      [:parent_id]}]}
+  [{:keys [id]} :- [:map [:id :int]]
+   _query
+   #_{:clj-kondo/ignore [:unused-binding]}
+   body :- [:map
+            [:name        {:optional true} [:maybe :string]]
+            [:description {:optional true} [:maybe :string]]
+            [:parent_id   {:optional true} [:maybe :int]]
+            [:archived    {:optional true} [:maybe :boolean]]]]
+  {:id id})
+
+;; 8. PUT with single-map :tool that uses :feature gating
+(api.macros/defendpoint :post "/v1/test-feature"
+  "Feature-gated test endpoint."
+  {:tool {:name        "feature_gated"
+          :description "Stub gated tool."
+          :feature     :test-feature
+          :annotations {:read-only? true}}}
+  [_route _query body :- [:map [:x :string]]]
+  body)
+
 (deftest ^:parallel check-tool-uniqueness-test
   (testing "No duplicates — no exception"
     (is (nil? (tools-manifest/check-tool-uniqueness
@@ -383,7 +412,8 @@
   (let [manifest (test-manifest)]
     (is (= "https://json-schema.org/draft/2020-12/schema" (:$schema manifest)))
     (is (= "1.0.0" (:version manifest)))
-    (is (= 6 (count (:tools manifest))))
+    (is (= 9 (count (:tools manifest)))
+        "6 single-tool endpoints + 2 from the vector :tool endpoint + 1 feature-gated")
     (is (= (mapv :name (:tools manifest))
            (sort (mapv :name (:tools manifest))))
         "tools should be sorted by name")
@@ -486,3 +516,67 @@
                                         :name    {:type "string"}}
                            :required   [:id :name]}}
          (test-tool "test_resource"))))
+
+(deftest ^:parallel vector-tool-emits-multiple-entries-test
+  (testing "vector :tool emits one manifest entry per element"
+    (is (some? (test-tool "rename_multi")))
+    (is (some? (test-tool "move_multi"))))
+  (testing "each entry shares the underlying endpoint"
+    (let [path (get-in (test-tool "rename_multi") [:endpoint :path])]
+      (is (= path (get-in (test-tool "move_multi") [:endpoint :path]))
+          "both entries should point at PUT /api/test/v1/test-multi/{id}"))))
+
+(deftest ^:parallel fields-allowlist-narrows-input-schema-test
+  (testing ":fields restricts the body schema to the chosen subset"
+    (let [rename     (test-tool "rename_multi")
+          move       (test-tool "move_multi")
+          rename-keys (set (keys (get-in rename [:inputSchema :properties])))
+          move-keys   (set (keys (get-in move   [:inputSchema :properties])))]
+      ;; rename: id (route) + name + description
+      (is (= #{:id :name :description} rename-keys))
+      (is (not (contains? rename-keys :parent_id)))
+      (is (not (contains? rename-keys :archived)))
+      ;; move: id (route) + parent_id
+      (is (= #{:id :parent_id} move-keys))
+      (is (not (contains? move-keys :name)))
+      (is (not (contains? move-keys :archived))))))
+
+(deftest ^:parallel fields-references-unknown-key-throws-test
+  (testing "Manifest build fails when :fields names a key not in the body schema"
+    (let [form {:method   :put
+                :route    {:path "/v1/test/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}
+                           :body  {:schema [:map
+                                            [:name {:optional true} [:maybe :string]]]}}
+                :metadata {:tool {:name   "bad_fields"
+                                  :fields [:name :nope]}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"unknown keys.*:nope"
+           (tools-manifest/endpoint->tool-definition "/api/test" {:form form}))))))
+
+(deftest ^:parallel fields-on-non-map-body-schema-throws-test
+  (testing "Manifest build fails when :fields is used on an :or body schema"
+    (let [form {:method   :put
+                :route    {:path "/v1/test"}
+                :params   {:body {:schema [:or
+                                           [:map [:a :int]]
+                                           [:map [:b :string]]]}}
+                :metadata {:tool {:name   "bad_fields_or"
+                                  :fields [:a]}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"body schema is not a :map"
+           (tools-manifest/endpoint->tool-definition "/api/test" {:form form}))))))
+
+(deftest ^:parallel feature-flag-flows-into-manifest-entry-test
+  (testing "When :tool declares :feature, the manifest entry surfaces it as a top-level :feature"
+    (is (= :test-feature (:feature (test-tool "feature_gated"))))))
+
+(deftest ^:parallel single-map-tool-back-compat-test
+  (testing "A bare map :tool continues to work — it is treated as a one-element vector"
+    (is (some? (test-tool "test_get_thing"))
+        "the single-map :tool case from earlier tests still produces a manifest entry")))

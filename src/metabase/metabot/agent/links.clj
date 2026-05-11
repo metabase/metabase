@@ -20,11 +20,12 @@
 
 (def ^:private link-type-paths
   "Map of metabase:// link types to their URL paths."
-  {"model"     "/model"
-   "metric"    "/metric"
-   "dashboard" "/dashboard"
-   "question"  "/question"
-   "transform" "/data-studio/transforms"})
+  {"model"      "/model"
+   "metric"     "/metric"
+   "dashboard"  "/dashboard"
+   "question"   "/question"
+   "transform"  "/data-studio/transforms"
+   "collection" "/collection"})
 
 ;;; Query/Chart URL Generation
 
@@ -144,6 +145,7 @@
   - metabase://dashboard/{id} - Links to dashboards
   - metabase://table/{id} - Links to tables (as questions)
   - metabase://transform/{id} - Links to transforms
+  - metabase://collection/{id} - Links to collections
 
   Returns the resolved URL or nil if resolution fails."
   [uri queries-state charts-state]

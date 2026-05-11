@@ -581,6 +581,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
+  {:scope "agent:card:create"
+   :tool  {:name        "copy_card"
+           :description (str "Duplicate a saved card. The copy keeps the original's query, "
+                             "visualization, and collection, and is named `Copy of <original>`. "
+                             "Use `update_card` to rename it or `move_card` to relocate it after.")}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
@@ -745,6 +750,22 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
+  {:scope "agent:card:update"
+   :tool  [{:name        "update_card"
+            :description (str "Rename a saved card, update its description, or change "
+                              "its display type. Does not modify the underlying query "
+                              "or visualization settings.")
+            :fields      [:name :description :display]}
+           {:name        "move_card"
+            :description (str "Move a saved card to a different collection. Pass "
+                              "`collection_id: null` to move it to the root collection.")
+            :fields      [:collection_id]}
+           {:name        "archive_card"
+            :description (str "Move a saved card to the Trash (`archived: true`) or restore "
+                              "it from the Trash (`archived: false`). Trashed cards remain in "
+                              "their original collection record but are hidden from listings "
+                              "until restored. Confirm with the user before archiving.")
+            :fields      [:archived]}]}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map

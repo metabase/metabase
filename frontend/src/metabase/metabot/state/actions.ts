@@ -3,20 +3,30 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import type { EntityChangedValue } from "metabase/api/ai-streaming/schemas";
+import { idTag, listTag } from "metabase/api/tags";
+import { fetchDashboard } from "metabase/dashboard/actions";
+import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import {
+  setIsNativeEditorOpen,
+  softReloadCard,
+} from "metabase/query_builder/actions";
+import { getCard } from "metabase/query_builder/selectors";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import type {
+  DashboardId,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -378,6 +388,106 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+// Map an `entity_changed` data part value to the RTK Query tags that should be
+// invalidated. Mirrors the tag sets used by the corresponding `cardApi` /
+// `collectionApi` mutations (see `metabase/api/card.ts` and
+// `metabase/api/collection.ts`).
+const tagsForEntityChange = (value: EntityChangedValue) => {
+  switch (value.entity_type) {
+    case "card":
+      return [
+        listTag("card"),
+        idTag("card", value.id),
+        idTag("table", `card__${value.id}`),
+        listTag("revision"),
+        listTag("table"),
+        // For moves to root, `collection_id` is null; key on "root" so the
+        // root-collection items list also refreshes. Match cardApi.updateCard.
+        ...(value.collection_id !== undefined
+          ? [idTag("collection", value.collection_id ?? "root")]
+          : []),
+      ];
+    case "collection":
+      return [
+        listTag("collection"),
+        idTag("collection", value.id),
+        ...(value.parent_id !== undefined
+          ? [idTag("collection", value.parent_id ?? "root")]
+          : []),
+      ];
+    case "dashboard":
+      return [
+        listTag("dashboard"),
+        idTag("dashboard", value.id),
+        // Mirror dashboardApi.updateDashboard, which invalidates revisions
+        // because PUT /api/dashboard/:id creates a new revision.
+        listTag("revision"),
+        // For moves to root, `collection_id` is null; key on "root" so the
+        // root-collection items list also refreshes.
+        ...(value.collection_id !== undefined
+          ? [idTag("collection", value.collection_id ?? "root")]
+          : []),
+        // Public-link tools toggle the dashboard's public_uuid, which the
+        // public-dashboard list/lookup caches mirror.
+        ...(value.public_link_changed
+          ? [listTag("public-dashboard"), idTag("public-dashboard", value.id)]
+          : []),
+      ];
+    default:
+      return [];
+  }
+};
+
+// Decide whether the QB needs to soft-reload its card after an `entity_changed`
+// data part. Returns the QB card id to reload, or null. We reload when:
+//   - a card changed and the QB is viewing it (rename/display/move)
+//   - a collection changed and the QB is viewing a card inside that collection
+//     (the card holds an inline `collection` map; renames make it stale)
+const qbCardIdNeedingReload = (
+  state: State,
+  value: EntityChangedValue,
+): number | null => {
+  const card = getCard(state);
+  if (!card) {
+    return null;
+  }
+  if (value.entity_type === "card" && card.id === value.id) {
+    return card.id;
+  }
+  if (value.entity_type === "collection" && card.collection_id === value.id) {
+    return card.id;
+  }
+  return null;
+};
+
+// The dashboard view holds its own snapshot in `state.dashboard.dashboards[id]`
+// — RTK Query tag invalidation alone won't refresh it (see the comment in
+// `dashboard/actions/trash.ts`). When Metabot mutates the dashboard the user
+// is currently viewing, we have to re-dispatch `fetchDashboard` ourselves.
+// Returns the dashboard id to reload, or null. We reload when:
+//   - the changed dashboard is the one being viewed
+//   - the open dashboard's parent collection changed (its breadcrumb / inline
+//     collection metadata is stale)
+const dashboardIdNeedingReload = (
+  state: State,
+  value: EntityChangedValue,
+): DashboardId | null => {
+  const openDashboardId = getDashboardId(state);
+  if (openDashboardId == null) {
+    return null;
+  }
+  if (value.entity_type === "dashboard" && openDashboardId === value.id) {
+    return openDashboardId;
+  }
+  if (value.entity_type === "collection") {
+    const dashboard = getDashboard(state);
+    if (dashboard?.collection_id === value.id) {
+      return openDashboardId;
+    }
+  }
+  return null;
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
@@ -467,6 +577,30 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "static_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "entity_changed" }, (part) => {
+                const tags = tagsForEntityChange(part.value);
+                if (tags.length > 0) {
+                  dispatch(Api.util.invalidateTags(tags));
+                }
+                const state = getState();
+                if (qbCardIdNeedingReload(state, part.value) != null) {
+                  dispatch(softReloadCard() as unknown as UnknownAction);
+                }
+                const dashIdToReload = dashboardIdNeedingReload(
+                  state,
+                  part.value,
+                );
+                if (dashIdToReload != null) {
+                  dispatch(
+                    fetchDashboard({
+                      dashId: dashIdToReload,
+                      queryParams: {},
+                      options: { preserveParameters: true },
+                    }) as unknown as UnknownAction,
+                  );
+                }
                 pushDataPart({ type: "data_part", part });
               })
               .exhaustive();

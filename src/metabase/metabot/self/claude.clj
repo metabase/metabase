@@ -170,19 +170,28 @@
 
 ;;; Tool definition format
 
+(defn- json-schema?
+  "True if `schema` is a pre-built JSON Schema object (e.g. produced by the defendpoint
+  tools manifest), as opposed to a Malli `[:=> [:cat …] …]` form."
+  [schema]
+  (and (map? schema) (= (:type schema) "object")))
+
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
   [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                    ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
+  (let [doc          (if (str/starts-with? (or doc "") "Inputs: ")
+                       ;; strip that stuff we're appending in mu/defn
+                       (second (str/split doc #"\n\n  " 2))
+                       doc)
+        input-schema (if (json-schema? schema)
+                       schema
+                       (let [[_:=> [_:cat params] _out] schema
+                             params (schema/filter-schema-by-features params)]
+                         (mjs/transform params {:additionalProperties false})))]
     {:name         (or tool-name "unknown")
      :description  doc
-     :input_schema (mjs/transform params {:additionalProperties false})}))
+     :input_schema input-schema}))
 
 (defn- anthropic-errors [res]
   (let [status    (long (:status res 0))

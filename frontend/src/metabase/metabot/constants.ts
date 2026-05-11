@@ -144,4 +144,64 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_tables() {
     return t`Searching database tables`;
   },
+  get list_collections() {
+    return t`Browsing collections`;
+  },
+  get get_collection() {
+    return t`Reading collection details`;
+  },
+  get list_collection_items() {
+    return t`Listing collection contents`;
+  },
+  get create_collection() {
+    return t`Creating a collection`;
+  },
+  get save_card() {
+    return t`Saving the question`;
+  },
+  get update_collection() {
+    return t`Updating the collection`;
+  },
+  get move_collection() {
+    return t`Moving the collection`;
+  },
+  get update_card() {
+    return t`Updating the question`;
+  },
+  get move_card() {
+    return t`Moving the question`;
+  },
+  get archive_card() {
+    return t`Archiving the question`;
+  },
+  get copy_card() {
+    return t`Duplicating the question`;
+  },
+  get archive_collection() {
+    return t`Archiving the collection`;
+  },
+  get verify_card() {
+    return t`Updating verification status`;
+  },
+  get create_dashboard() {
+    return t`Creating a dashboard`;
+  },
+  get update_dashboard() {
+    return t`Updating the dashboard`;
+  },
+  get move_dashboard() {
+    return t`Moving the dashboard`;
+  },
+  get archive_dashboard() {
+    return t`Archiving the dashboard`;
+  },
+  get copy_dashboard() {
+    return t`Duplicating the dashboard`;
+  },
+  get create_dashboard_public_link() {
+    return t`Creating a public link`;
+  },
+  get delete_dashboard_public_link() {
+    return t`Removing the public link`;
+  },
 };

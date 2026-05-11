@@ -214,15 +214,55 @@
       (when (:properties jss)
         (select-keys jss [:properties :required])))))
 
+(defn- map-schema-keys
+  "Return the set of declared keys for a malli `:map` schema, or nil for non-map schemas."
+  [body-schema]
+  (when (and body-schema (= :map (mc/type body-schema)))
+    (into #{} (map first) (mc/children body-schema))))
+
+(defn- narrow-body-schema
+  "If `fields` is non-empty, reduce the body schema's `:map` entries to that set,
+  preserving each entry's optionality, child schema, and any `:tool/description`
+  annotation. Returns the schema unchanged if it isn't a `:map` or `fields` is nil."
+  [body-schema fields]
+  (if (and (seq fields) (some? body-schema) (= :map (mc/type body-schema)))
+    (let [allow    (set fields)
+          filtered (filterv (fn [child] (contains? allow (first child)))
+                            (mc/children body-schema))]
+      (mc/into-schema :map (mc/properties body-schema) filtered (mc/options body-schema)))
+    body-schema))
+
+(defn- assert-fields-exist!
+  "Throw at manifest-build time if a `:fields` entry references a key not present in
+  the underlying body schema. Catches typos and cross-PR drift on JVM start, not at
+  the LLM call."
+  [tool-name fields body-schema]
+  (when (seq fields)
+    (when-not (and body-schema (= :map (mc/type body-schema)))
+      (throw (ex-info (str "Tool " tool-name
+                           " uses :fields but the body schema is not a :map.")
+                      {:tool tool-name :body-schema-type (some-> body-schema mc/type)})))
+    (let [available (map-schema-keys body-schema)
+          missing   (remove available fields)]
+      (when (seq missing)
+        (throw (ex-info (str "Tool " tool-name " :fields references unknown keys: "
+                             (pr-str (vec missing)) ". Available: "
+                             (pr-str (vec (sort-by name available))))
+                        {:tool tool-name :missing missing :available available}))))))
+
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
   the full JSON Schema is used directly. If route/query/body share a property name,
-  later sources (body > query > route) take precedence."
-  [form]
+  later sources (body > query > route) take precedence.
+
+  When `tool-md` declares `:fields`, the body schema's properties are narrowed to that
+  allowlist before JSON Schema generation."
+  [form tool-md]
   (let [route-parts (schema->properties-and-required (get-in form [:params :route :schema]))
         query-parts (schema->properties-and-required (get-in form [:params :query :schema]))
-        body-schema (get-in form [:params :body :schema])
+        body-schema (some-> (get-in form [:params :body :schema])
+                            (narrow-body-schema (:fields tool-md)))
         body-parts  (schema->properties-and-required body-schema)
         ;; If the body schema doesn't yield properties (e.g. :or), use its full JSON Schema
         body-full   (when (and body-schema (nil? body-parts))
@@ -273,49 +313,78 @@
                       {:tool tool-name :annotations annotations})))))
 
 (defn endpoint->tool-definition
-  "Convert a single endpoint info + prefix to a tool definition map."
-  [prefix {:keys [form]}]
-  (let [method         (:method form)
-        route-path     (get-in form [:route :path])
-        tool-md        (get-in form [:metadata :tool])
-        tool-name      (:name tool-md)
-        _              (assert (string? tool-name) "Tool :name must be a string")
-        explicit-title (:title tool-md)
-        inferred-title (name->title tool-name)
-        _              (when (= explicit-title inferred-title)
-                         (throw (ex-info (str "Tool " tool-name " has redundant :title "
-                                              (pr-str explicit-title)
-                                              " — matches the title we'd infer from the name.")
-                                         {:tool tool-name :title explicit-title})))
-        description    (or (:description tool-md)
-                           (:docstr form))
-        full-path      (str prefix (route-path->endpoint-path route-path))
-        input-schema   (merge-input-schemas form)
-        resp-schema    (response-schema->json-schema (:response-schema form))
-        inferred       (infer-annotations method (:annotations tool-md))
-        annotations    (:annotations inferred)
-        _              (when (:contradictory? inferred)
-                         (throw (ex-info (str "Tool " tool-name
-                                              " is marked both read-only and destructive — these can't both be true.")
-                                         {:tool tool-name :method method})))
-        _              (when (seq (:redundant inferred))
-                         (throw (ex-info (str "Tool " tool-name
-                                              " has redundant :annotations matching defaults: "
-                                              (pr-str (:redundant inferred)))
-                                         {:tool tool-name :method method :redundant (:redundant inferred)})))
-        _              (assert-claude-connector-compliant! tool-name annotations)
-        task-support   (:task-support tool-md)
-        scope          (get-in form [:metadata :scope])]
-    (cond-> {:name        tool-name
-             :title       (or explicit-title inferred-title)
-             :description description
-             :endpoint    {:method (u/upper-case-en (name method))
-                           :path   full-path}}
-      input-schema      (assoc :inputSchema input-schema)
-      resp-schema       (assoc :responseSchema resp-schema)
-      (seq annotations) (assoc :annotations annotations)
-      task-support      (assoc :execution {:taskSupport (name task-support)})
-      (string? scope)   (assoc :scope scope))))
+  "Convert a single endpoint + prefix to a tool definition map.
+
+  When the endpoint's `:tool` metadata is a vector, callers should use
+  [[endpoint->tool-definitions]] instead — this 2-arity form expects a single
+  `:tool` map and asserts on the vector form."
+  ([prefix endpoint]
+   (let [tool-md (get-in endpoint [:form :metadata :tool])]
+     (when (vector? tool-md)
+       (throw (ex-info (str "endpoint->tool-definition called on an endpoint with a vector :tool — "
+                            "use endpoint->tool-definitions instead.")
+                       {:path (get-in endpoint [:form :route :path])})))
+     (endpoint->tool-definition prefix endpoint tool-md)))
+  ([prefix {:keys [form]} tool-md]
+   (let [method         (:method form)
+         route-path     (get-in form [:route :path])
+         tool-name      (:name tool-md)
+         _              (assert (string? tool-name) "Tool :name must be a string")
+         explicit-title (:title tool-md)
+         inferred-title (name->title tool-name)
+         _              (when (= explicit-title inferred-title)
+                          (throw (ex-info (str "Tool " tool-name " has redundant :title "
+                                               (pr-str explicit-title)
+                                               " — matches the title we'd infer from the name.")
+                                          {:tool tool-name :title explicit-title})))
+         description    (or (:description tool-md)
+                            (:docstr form))
+         full-path      (str prefix (route-path->endpoint-path route-path))
+         _              (assert-fields-exist! tool-name (:fields tool-md)
+                                              (get-in form [:params :body :schema]))
+         input-schema   (merge-input-schemas form tool-md)
+         resp-schema    (response-schema->json-schema (:response-schema form))
+         inferred       (infer-annotations method (:annotations tool-md))
+         annotations    (:annotations inferred)
+         _              (when (:contradictory? inferred)
+                          (throw (ex-info (str "Tool " tool-name
+                                               " is marked both read-only and destructive — these can't both be true.")
+                                          {:tool tool-name :method method})))
+         _              (when (seq (:redundant inferred))
+                          (throw (ex-info (str "Tool " tool-name
+                                               " has redundant :annotations matching defaults: "
+                                               (pr-str (:redundant inferred)))
+                                          {:tool tool-name :method method :redundant (:redundant inferred)})))
+         _              (assert-claude-connector-compliant! tool-name annotations)
+         task-support   (:task-support tool-md)
+         scope          (get-in form [:metadata :scope])
+         feature        (:feature tool-md)]
+     (cond-> {:name        tool-name
+              :title       (or explicit-title inferred-title)
+              :description description
+              :endpoint    {:method (u/upper-case-en (name method))
+                            :path   full-path}}
+       input-schema       (assoc :inputSchema input-schema)
+       resp-schema        (assoc :responseSchema resp-schema)
+       (seq annotations)  (assoc :annotations annotations)
+       task-support       (assoc :execution {:taskSupport (name task-support)})
+       (string? scope)    (assoc :scope scope)
+       (some? feature)    (assoc :feature feature)))))
+
+(defn endpoint->tool-definitions
+  "Return a vector of tool definition maps for an endpoint. If the endpoint's
+  `:tool` metadata is a vector, emits one entry per element; if it is a single map,
+  emits a one-element vector preserving today's behaviour. Returns an empty vector
+  when no `:tool` metadata is present."
+  [prefix endpoint]
+  (let [tool-md (get-in endpoint [:form :metadata :tool])
+        entries (cond
+                  (vector? tool-md) tool-md
+                  (map? tool-md)    [tool-md]
+                  :else             [])]
+    (mapv (fn [single-tool-md]
+            (endpoint->tool-definition prefix endpoint single-tool-md))
+          entries)))
 
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each
@@ -344,9 +413,10 @@
   [namespace-prefixes]
   (let [tools (into []
                     (mapcat (fn [[ns-sym prefix]]
-                              (for [[_k endpoint] (api.macros/ns-routes ns-sym)
-                                    :when (get-in endpoint [:form :metadata :tool])]
-                                (endpoint->tool-definition prefix endpoint))))
+                              (mapcat (fn [[_k endpoint]]
+                                        (when (get-in endpoint [:form :metadata :tool])
+                                          (endpoint->tool-definitions prefix endpoint)))
+                                      (api.macros/ns-routes ns-sym))))
                     namespace-prefixes)]
     (check-tool-uniqueness tools)
     {:$schema "https://json-schema.org/draft/2020-12/schema"

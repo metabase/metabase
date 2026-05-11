@@ -3465,3 +3465,76 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+;;; ----------------------------------------------------------------------------
+;;; q / depth additions on GET /api/collection/:id/items
+;;;
+;;; Direct-handler tests so we can pinpoint regressions inside
+;;; collection-children-recursive and the :name-substring plumbing without going
+;;; through the metabot bridge layer.
+;;; ----------------------------------------------------------------------------
+
+(deftest collection-items-q-applies-at-sql-level-test
+  (testing "GET /api/collection/:id/items?q=…"
+    (testing "case-insensitive substring filter narrows the result set"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card       _    {:collection_id (u/the-id coll) :name "Q1 Revenue"}
+                     :model/Card       _    {:collection_id (u/the-id coll) :name "Q2 Revenue"}
+                     :model/Card       _    {:collection_id (u/the-id coll) :name "Customers"}]
+        (let [names (->> (mt/user-http-request :crowberto :get 200
+                                               (str "collection/" (u/the-id coll) "/items")
+                                               :q "REVENUE")
+                         :data
+                         (map :name)
+                         set)]
+          (is (contains? names "Q1 Revenue"))
+          (is (contains? names "Q2 Revenue"))
+          (is (not (contains? names "Customers"))))))))
+
+(deftest collection-items-depth-bounded-by-location-test
+  (testing "GET /api/collection/:id/items?depth=…"
+    (testing "depth=1 includes level-1 children but not level-2 grandchildren"
+      (mt/with-temp [:model/Collection root  {:name "Depth Bound Root"}
+                     :model/Collection child {:name     "Depth Bound Child"
+                                              :location (collection/children-location root)}
+                     :model/Collection gc    {:name     "Depth Bound Grandchild"
+                                              :location (collection/children-location child)}
+                     :model/Card       _ {:collection_id (u/the-id root)  :name "Depth Bound Root Card"}
+                     :model/Card       _ {:collection_id (u/the-id child) :name "Depth Bound Child Card"}
+                     :model/Card       _ {:collection_id (u/the-id gc)    :name "Depth Bound Grandchild Card"}]
+        (let [names (->> (mt/user-http-request :crowberto :get 200
+                                               (str "collection/" (u/the-id root) "/items")
+                                               :depth "1")
+                         :data
+                         (map :name)
+                         set)]
+          (is (contains? names "Depth Bound Root Card"))
+          (is (contains? names "Depth Bound Child Card"))
+          (is (not (contains? names "Depth Bound Grandchild Card"))
+              "depth=1 stops at the immediate children"))))))
+
+(deftest collection-items-depth-respects-permissions-test
+  (testing "GET /api/collection/:id/items?depth=… does not leak items from collections the user can't read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection root        {:name "Perm Root"}
+                     :model/Collection visible     {:name     "Perm Visible Child"
+                                                    :location (collection/children-location root)}
+                     :model/Collection restricted  {:name     "Perm Restricted Child"
+                                                    :location (collection/children-location root)}
+                     :model/Card       _           {:collection_id (u/the-id visible)
+                                                    :name          "Perm Visible Card"}
+                     :model/Card       _           {:collection_id (u/the-id restricted)
+                                                    :name          "Perm Restricted Card"}]
+        ;; Grant Rasta read on root + visible only, not on restricted.
+        (perms/grant-collection-read-permissions! (perms/all-users-group) root)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) visible)
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted)
+        (let [names (->> (mt/user-http-request :rasta :get 200
+                                               (str "collection/" (u/the-id root) "/items")
+                                               :depth "1")
+                         :data
+                         (map :name)
+                         set)]
+          (is (contains? names "Perm Visible Card"))
+          (is (not (contains? names "Perm Restricted Card"))
+              "items from collections the user cannot read must not leak through the recursive walk"))))))
