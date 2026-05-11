@@ -17,6 +17,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
+  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -39,9 +40,9 @@ import {
   trackDocumentUnsavedChangesWarningDisplayed,
 } from "../analytics";
 import {
-  openVizSettingsSidebar,
   resetDocuments,
   setChildTargetId,
+  setDocumentHost,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
 } from "../documents.slice";
@@ -50,6 +51,7 @@ import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
+  getSidebarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -58,6 +60,7 @@ import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
+import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 
 export const DocumentPage = ({
   params,
@@ -99,6 +102,7 @@ export const DocumentPage = ({
     handleSave,
     handleUpdate,
     handleChange,
+    handleQuestionSelect,
   } = useDocumentEditor({
     documentId,
   });
@@ -107,12 +111,14 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const sidebarMode = useSelector(getSidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [copyDocument] = useCopyDocumentMutation();
   const [duplicateModalMode, setDuplicateModalMode] = useState<
     "duplicate" | "leave" | null
   >(null);
 
+  useListTimelinesQuery({ include: "events" }); // warm the cache for the timeline sidebar
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
   });
@@ -124,6 +130,10 @@ export const DocumentPage = ({
       ({ type, item_id }) => type === "document" && item_id === documentId,
     ),
   );
+
+  useEffect(() => {
+    dispatch(setDocumentHost("standalone"));
+  }, [dispatch]);
 
   useEffect(() => {
     if (error) {
@@ -181,52 +191,6 @@ export const DocumentPage = ({
   const focusEditorBody = useCallback(() => {
     editorInstance?.commands.focus("start");
   }, [editorInstance]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
-      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
-        event.preventDefault();
-        if (!hasUnsavedChanges() || !canWrite) {
-          return;
-        }
-
-        if (isNewDocument) {
-          setCollectionPickerMode("save");
-        } else {
-          handleSave();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [
-    hasUnsavedChanges,
-    handleSave,
-    isNewDocument,
-    setCollectionPickerMode,
-    canWrite,
-  ]);
-
-  const handleQuestionSelect = useCallback(
-    (cardId: number | null, embedIndex?: number | null) => {
-      if (
-        cardId !== null &&
-        embedIndex !== null &&
-        embedIndex !== undefined &&
-        embedIndex >= 0 &&
-        selectedEmbedIndex !== null
-      ) {
-        // Only update the selected embed index if the sidebar is already open
-        dispatch(openVizSettingsSidebar({ embedIndex }));
-      }
-    },
-    [dispatch, selectedEmbedIndex],
-  );
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
@@ -287,11 +251,28 @@ export const DocumentPage = ({
 
         {selectedQuestionId &&
           selectedEmbedIndex !== null &&
-          editorInstance && (
+          editorInstance &&
+          sidebarMode === "viz-settings" && (
             <Box className={styles.sidebar} data-testid="document-card-sidebar">
               <EmbedQuestionSettingsSidebar
                 cardId={selectedQuestionId}
                 editorInstance={editorInstance}
+              />
+            </Box>
+          )}
+        {selectedQuestionId &&
+          selectedEmbedIndex !== null &&
+          editorInstance &&
+          sidebarMode === "timeline-events" && (
+            <Box
+              className={styles.sidebar}
+              data-testid="document-timeline-sidebar"
+            >
+              <TimelineEventsSidebar
+                cardId={selectedQuestionId}
+                selectedEmbedIndex={selectedEmbedIndex}
+                editorInstance={editorInstance}
+                collectionId={documentData?.collection_id ?? null}
               />
             </Box>
           )}

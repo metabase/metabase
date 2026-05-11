@@ -14,12 +14,14 @@ import type {
   DocumentId,
   ExplorationQuery,
   ExplorationThread,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 interface GroupDocumentMenuProps {
   queries: ExplorationQuery[];
   explorationThread: ExplorationThread;
   display?: CardDisplayType;
+  vizSettings?: VisualizationSettings;
 }
 
 /**
@@ -32,6 +34,7 @@ export function GroupDocumentMenu({
   queries,
   explorationThread,
   display,
+  vizSettings,
 }: GroupDocumentMenuProps) {
   const [opened, setOpened] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState<ExplorationQuery | null>(
@@ -66,6 +69,7 @@ export function GroupDocumentMenu({
         documentId,
         exploration_query_id: query.id,
         display,
+        visualization_settings: vizSettings,
       });
       if (error) {
         sendToast({
@@ -93,7 +97,14 @@ export function GroupDocumentMenu({
         icon: "document",
       });
     },
-    [appendChartToDocument, sendToast, explorationThread, handleClose, display],
+    [
+      appendChartToDocument,
+      sendToast,
+      explorationThread,
+      handleClose,
+      display,
+      vizSettings,
+    ],
   );
 
   const handleCreateAndAppend = useCallback(

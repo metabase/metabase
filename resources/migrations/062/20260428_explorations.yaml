@@ -57,6 +57,19 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the user archived this exploration itself; false when it became archived because a parent collection was archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_position
+                  type: int
+                  remarks: Ordering of pinned items within a collection; null = not pinned
+                  constraints:
+                    nullable: true
+              - column:
                   name: entity_id
                   type: char(21)
                   remarks: NanoID for serdes

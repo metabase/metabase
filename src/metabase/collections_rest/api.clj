@@ -295,6 +295,7 @@
   #{"card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
+    "exploration"
     "metric"
     "collection"
     "dashboard"
@@ -440,6 +441,40 @@
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
+
+(defmethod ^:private post-process-collection-children :exploration
+  [_ _ collection rows]
+  (t2/hydrate (for [exploration rows]
+                (-> (t2/instance :model/Exploration exploration)
+                    (assoc :location (or (when collection
+                                           (collection/children-location collection))
+                                         "/"))
+                    (update :archived api/bit->boolean)
+                    (update :archived_directly api/bit->boolean)))
+              :can_write :can_restore :can_delete))
+
+(defmethod collection-children-query :exploration
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select [:exploration.id
+                :exploration.name
+                :exploration.description
+                :exploration.entity_id
+                :exploration.collection_id
+                :exploration.collection_position
+                :exploration.archived
+                :exploration.archived_directly
+                [(h2x/literal "exploration") :model]]
+       :from [[:exploration :exploration]]
+       :where [:and
+               (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
+               (if (collection/is-trash? collection)
+                 [:= :exploration.archived_directly true]
+                 [:and
+                  [:= :exploration.collection_id (:id collection)]
+                  [:= :exploration.archived_directly false]])
+               [:= :exploration.archived (boolean archived?)]
+               [:= :exploration.is_published true]]}
+      (sql.helpers/where (pinned-state->clause pinned-state :exploration.collection_position))))
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
@@ -928,17 +963,18 @@
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
-    :collection :model/Collection
-    :card       :model/Card
-    :dataset    :model/Card
-    :metric     :model/Card
-    :dashboard  :model/Dashboard
-    :document   :model/Document
-    :pulse      :model/Pulse
-    :snippet    :model/NativeQuerySnippet
-    :table      :model/Table
-    :timeline   :model/Timeline
-    :transform  :model/Transform))
+    :collection  :model/Collection
+    :card        :model/Card
+    :dataset     :model/Card
+    :metric      :model/Card
+    :dashboard   :model/Dashboard
+    :document    :model/Document
+    :exploration :model/Exploration
+    :pulse       :model/Pulse
+    :snippet     :model/NativeQuerySnippet
+    :table       :model/Table
+    :timeline    :model/Timeline
+    :transform   :model/Transform))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -1128,7 +1164,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                                       ;; Tables in collections are an EE feature (library)
                                       (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty

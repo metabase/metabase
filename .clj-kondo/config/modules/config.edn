@@ -990,6 +990,7 @@
            query-permissions
            query-processor
            request
+           search
            startup
            timeline
            util}

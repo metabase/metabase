@@ -14,18 +14,21 @@ import type {
   DocumentId,
   ExplorationQuery,
   ExplorationThread,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 interface DocumentMenuProps {
   explorationQuery: ExplorationQuery;
   explorationThread: ExplorationThread;
   display?: CardDisplayType;
+  vizSettings?: VisualizationSettings;
 }
 
 export function DocumentMenu({
   explorationQuery,
   explorationThread,
   display,
+  vizSettings,
 }: DocumentMenuProps) {
   const [appendChartToDocument] = useAppendChartToDocumentMutation();
   const [createExplorationDocument] = useCreateExplorationDocumentMutation();
@@ -38,6 +41,7 @@ export function DocumentMenu({
         documentId,
         exploration_query_id: explorationQuery.id,
         display,
+        visualization_settings: vizSettings,
       });
       if (error) {
         sendToast({
@@ -71,6 +75,7 @@ export function DocumentMenu({
       explorationThread,
       explorationQuery.id,
       display,
+      vizSettings,
     ],
   );
 

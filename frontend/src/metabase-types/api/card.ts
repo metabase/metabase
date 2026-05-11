@@ -30,6 +30,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
+import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { PieRow, SmartScalarComparison } from "./visualization-settings";
@@ -310,6 +311,10 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings | undefined>;
 
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Timeline events settings
+  "timeline.selected_timeline_ids"?: TimelineId[];
+  "timeline.excluded_timeline_event_ids"?: TimelineEventId[];
 
   // Scatter plot settings
   "scatter.bubble"?: string; // col name

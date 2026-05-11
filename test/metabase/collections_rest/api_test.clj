@@ -3465,3 +3465,105 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+(defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
+  (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))
+       (filter #(= "exploration" (:model %)))))
+
+(deftest published-explorations-appear-in-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (testing "published explorations appear, unpublished do not"
+      (mt/with-temp [:model/User        owner {}
+                     :model/Collection  coll  {}
+                     :model/Exploration pub   {:name          "Published Expl"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)
+                                               :is_published  true}
+                     :model/Exploration _priv {:name          "Private Expl"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)
+                                               :is_published  false}]
+        (let [items (exploration-items-in (:id coll))]
+          (is (= [{:id (:id pub) :name "Published Expl" :model "exploration"}]
+                 (map #(select-keys % [:id :name :model]) items))))))
+    (testing "?model=exploration filters to only explorations"
+      (mt/with-temp [:model/User        owner {}
+                     :model/Collection  coll  {}
+                     :model/Card        _card {:collection_id (:id coll)}
+                     :model/Exploration pub   {:name          "Just me"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)
+                                               :is_published  true}]
+        (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                 (str "collection/" (:id coll) "/items?models=exploration")))]
+          (is (= [{:id (:id pub) :model "exploration"}]
+                 (map #(select-keys % [:id :model]) items))))))))
+
+(deftest published-exploration-respects-collection-perms-test
+  (testing "Users without read on the exploration's collection don't see it in /items"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {:name "Locked"}
+                   :model/Exploration pub   {:name          "Hidden"
+                                             :creator_id    (:id owner)
+                                             :collection_id (:id coll)
+                                             :is_published  true}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+      (testing "rasta cannot see the exploration"
+        (let [resp (mt/user-http-request :rasta :get (str "collection/" (:id coll) "/items"))]
+          ;; Either the collection itself is forbidden (403) or the items list omits the exploration.
+          (cond
+            (= 403 (:status-code resp)) (is true)
+            :else (is (not (some #(= (:id pub) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
+      (testing "after granting read, the exploration appears"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        (let [items (exploration-items-in (:id coll) :user :rasta)]
+          (is (some #(= (:id pub) (:id %)) items)))))))
+
+(deftest exploration-trash-and-archive-directly-test
+  (testing "Directly-archived published exploration appears in /collection/trash/items"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration e     {:name              "Tossed"
+                                             :creator_id        (:id owner)
+                                             :collection_id     (:id coll)
+                                             :is_published      true
+                                             :archived          true
+                                             :archived_directly true}]
+      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                    (format "collection/%d/items" (collection/trash-collection-id))))
+                       (filter #(= "exploration" (:model %))))]
+        (is (some #(= (:id e) (:id %)) items)))))
+  (testing "Cascade-archived (archived=true, archived_directly=false) does not appear in trash"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration e     {:name              "Cascade"
+                                             :creator_id        (:id owner)
+                                             :collection_id     (:id coll)
+                                             :is_published      true
+                                             :archived          true
+                                             :archived_directly false}]
+      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                    (format "collection/%d/items" (collection/trash-collection-id))))
+                       (filter #(= "exploration" (:model %))))]
+        (is (not (some #(= (:id e) (:id %)) items)))))))
+
+(deftest exploration-pinning-test
+  (testing "explorations with collection_position appear under ?pinned_state=is_pinned"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration pinned   {:name                "Pinned"
+                                                :creator_id          (:id owner)
+                                                :collection_id       (:id coll)
+                                                :is_published        true
+                                                :collection_position 1}
+                   :model/Exploration unpinned {:name          "Unpinned"
+                                                :creator_id    (:id owner)
+                                                :collection_id (:id coll)
+                                                :is_published  true}]
+      (let [pinned-items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                           (str "collection/" (:id coll) "/items?pinned_state=is_pinned")))
+                              (filter #(= "exploration" (:model %)))
+                              (map :id)
+                              set)]
+        (is (contains? pinned-items (:id pinned)))
+        (is (not (contains? pinned-items (:id unpinned))))))))

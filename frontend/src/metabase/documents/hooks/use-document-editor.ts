@@ -41,8 +41,13 @@ import {
   clearDraftCards,
   setCurrentDocument,
   setHasUnsavedChanges,
+  updateSelectedEmbedIndex,
 } from "../documents.slice";
-import { getDraftCards, getHasUnsavedChanges } from "../selectors";
+import {
+  getDraftCards,
+  getHasUnsavedChanges,
+  getSelectedEmbedIndex,
+} from "../selectors";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -81,6 +86,10 @@ interface UseDocumentEditorResult {
     collection_id?: CollectionId | null;
     archived?: boolean;
   }) => Promise<void>;
+  handleQuestionSelect: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
 }
 
 export function useDocumentEditor({
@@ -91,6 +100,7 @@ export function useDocumentEditor({
 
   const draftCards = useSelector(getDraftCards);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -150,9 +160,18 @@ export function useDocumentEditor({
     return hasUnsavedChanges();
   });
 
-  // Reset dirty state when document content loads from API
+  // Track the "settled" editor content as the baseline for dirty checking.
+  // When TipTap processes loaded content it applies default attributes (height,
+  // minHeight, _id) and schema corrections (trailing paragraph). We capture the
+  // editor's output after it settles and compare against that, not the raw API JSON.
+  const settledContentRef = useRef<JSONContent | null>(null);
+  const isSettlingRef = useRef(true);
+  const settlingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (documentContent && !isNewDocument) {
+      isSettlingRef.current = true;
+      settledContentRef.current = null;
       dispatch(setHasUnsavedChanges(false));
     }
   }, [dispatch, documentContent, isNewDocument]);
@@ -206,15 +225,29 @@ export function useDocumentEditor({
         return;
       }
 
-      // Compare current content with original content
-      const currentContent = content;
-      const originalContent = documentContent;
+      // While the editor is settling (applying defaults, schema corrections),
+      // capture each intermediate output as the baseline without marking dirty.
+      // A short timer ensures we wait for multi-step settling (e.g. trailing
+      // paragraph added in a subsequent transaction).
+      if (isSettlingRef.current) {
+        settledContentRef.current = content;
+        if (settlingTimerRef.current) {
+          clearTimeout(settlingTimerRef.current);
+        }
+        settlingTimerRef.current = setTimeout(() => {
+          isSettlingRef.current = false;
+          settlingTimerRef.current = null;
+        }, 100);
+        dispatch(setHasUnsavedChanges(false));
+        return;
+      }
 
-      // For existing documents, compare with original content
-      const hasChanges = !_.isEqual(currentContent, originalContent);
-      dispatch(setHasUnsavedChanges(hasChanges));
+      const baseline = settledContentRef.current;
+      if (baseline) {
+        dispatch(setHasUnsavedChanges(!_.isEqual(content, baseline)));
+      }
     },
-    [dispatch, editorInstance, documentContent, isNewDocument],
+    [dispatch, editorInstance, isNewDocument],
   );
 
   const handleSave = useCallback(
@@ -310,6 +343,36 @@ export function useDocumentEditor({
     ],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+        event.preventDefault();
+        if (!hasUnsavedChanges() || !canWrite) {
+          return;
+        }
+
+        if (isNewDocument) {
+          setCollectionPickerMode("save");
+        } else {
+          handleSave();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    hasUnsavedChanges,
+    handleSave,
+    isNewDocument,
+    setCollectionPickerMode,
+    canWrite,
+  ]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -319,6 +382,22 @@ export function useDocumentEditor({
       setCollectionPickerMode(null);
     }
   };
+
+  const handleQuestionSelect = useCallback(
+    (cardId: number | null, embedIndex?: number | null) => {
+      if (
+        cardId !== null &&
+        embedIndex !== null &&
+        embedIndex !== undefined &&
+        embedIndex >= 0 &&
+        selectedEmbedIndex !== null
+      ) {
+        // Only update the selected embed index if the sidebar is already open
+        dispatch(updateSelectedEmbedIndex(embedIndex));
+      }
+    },
+    [dispatch, selectedEmbedIndex],
+  );
 
   return {
     editorInstance,
@@ -344,5 +423,6 @@ export function useDocumentEditor({
     handleChange,
     handleSave,
     handleUpdate,
+    handleQuestionSelect,
   };
 }

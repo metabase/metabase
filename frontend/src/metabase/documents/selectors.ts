@@ -39,6 +39,11 @@ export const getSelectedEmbedIndex = createSelector(
   (documents): number | null => documents.selectedEmbedIndex,
 );
 
+export const getSidebarMode = createSelector(
+  getDocumentsState,
+  (documents) => documents.sidebarMode,
+);
+
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument || null,
@@ -94,4 +99,9 @@ export const getHasUnsavedChanges = createSelector(
 export const getIsHistorySidebarOpen = createSelector(
   getDocumentsState,
   (documents) => documents.isHistorySidebarOpen,
+);
+
+export const getDocumentHost = createSelector(
+  getDocumentsState,
+  (documents) => documents.documentHost,
 );

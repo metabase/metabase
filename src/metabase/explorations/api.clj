@@ -52,12 +52,15 @@
         (api/write-check collection/root-collection)))))
 
 (defn- attach-thread-groups [thread]
-  (assoc thread :groups (explorations.groups/auto-groups (:queries thread))))
+  (let [card-names (into {} (keep (fn [{:keys [card_id card]}]
+                                    (when-let [n (:name card)] [card_id n])))
+                         (:metrics thread))]
+    (assoc thread :groups (explorations.groups/auto-groups (:queries thread) card-names))))
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator
-                  [:threads :metrics :dimensions :timelines :queries :documents])
+                  [:threads [:metrics :card] :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))))
 
 (defn- find-dimension-target
@@ -66,6 +69,18 @@
   (some #(when (= (:dimension_id %) dimension-id)
            (:target %))
         dimension-mappings))
+
+(defn- exploration-query-dim-label
+  "Display label for a dimension inside an ExplorationQuery `name`. When `ambiguous?` and the dim
+  has a known group, prefixes with the group's display name and the canonical ` → ` separator
+  (matches `metabase.lib.display-name/separator`). Otherwise falls back to the dim's display name
+  (or id when missing)."
+  [dim ambiguous?]
+  (let [dn       (or (:display_name dim) (:dimension_id dim))
+        group-dn (some-> dim :group :display_name)]
+    (if (and ambiguous? (not (str/blank? group-dn)))
+      (str group-dn " → " dn)
+      dn)))
 
 (defn- dim-type-isa?
   "True if the dim's snapshot effective_type or semantic_type derives from `parent`. Snapshot
@@ -162,7 +177,9 @@
   segmented rows snapshot the segment as a `:segment` filter clause inside `dataset_query`."
   [thread-id metrics dimensions]
   (when (and (seq metrics) (seq dimensions))
-    (let [cards    (t2/select-pk->fn identity [:model/Card :id :name :database_id :dataset_query :card_schema]
+    (let [cards    (t2/select-pk->fn identity
+                                     [:model/Card :id :name :database_id :dataset_query
+                                      :card_schema :dimensions]
                                      :id [:in (distinct (map :card_id metrics))])
           ;; TODO: we should probably check this earlier - i.e. you shouldn't be able to pick dimensions/metrics from
           ;; routed DBs.
@@ -172,26 +189,37 @@
                               [id {:mp       mp
                                    :segments (lib/available-segments (lib/query mp (:dataset_query card)))}]))
           rows     (for [metric metrics
-                         dim    dimensions
-                         :let  [dim-id (:dimension_id dim)
-                                card   (get cards (:card_id metric))
-                                target (find-dimension-target dim-id (:dimension_mappings metric))]
-                         :when (and card target)
+                         :let  [card (get cards (:card_id metric))]
+                         :when card
                          :let  [{:keys [mp segments]} (get card-ctx (:card_id metric))
-                                base (build-snapshot-mbql mp (:dataset_query card) target dim)]
+                                dim-by-id  (into {} (map (juxt :id identity)) (:dimensions card))
+                                applicable (for [dim dimensions
+                                                 :let [dim-id (:dimension_id dim)
+                                                       target (find-dimension-target
+                                                               dim-id (:dimension_mappings metric))
+                                                       group  (:group (get dim-by-id dim-id))]
+                                                 :when target]
+                                             {:dim    (cond-> dim group (assoc :group group))
+                                              :target target})
+                                name-counts (frequencies (keep #(get-in % [:dim :display_name])
+                                                               applicable))]
+                         {:keys [dim target]} applicable
+                         :let  [ambiguous? (> (get name-counts (:display_name dim) 0) 1)
+                                dim-label  (exploration-query-dim-label dim ambiguous?)
+                                base       (build-snapshot-mbql mp (:dataset_query card) target dim)]
                          seg   (cons nil segments)]
                      {:exploration_thread_id thread-id
                       :card_id               (:card_id metric)
                       :segment_id            (:id seg)
-                      :dimension_id          dim-id
+                      :dimension_id          (:dimension_id dim)
                       :name                  (if seg
                                                (tru "{0} by {1} ({2})"
                                                     (:name card)
-                                                    (or (:display_name dim) dim-id)
+                                                    dim-label
                                                     (:name seg))
                                                (tru "{0} by {1}"
                                                     (:name card)
-                                                    (or (:display_name dim) dim-id)))
+                                                    dim-label))
                       :dataset_query         (cond-> base
                                                seg (lib/filter seg))
                       :status                "pending"})]
@@ -244,14 +272,18 @@
   "Schema for an auto-derived group bundling related queries on a single thread.
    `:query_ids` references queries that exist on the same thread. `:parent_group_id`
    references another group's `:id` within the same `:groups` list (nil = top
-   level); the shape is nestable but currently we only generate flat groups. Type is
-   just `auto` for now but will allow for user-defined groups at some point down the road.
+   level). Type is just `auto` for now but will allow for user-defined groups at some
+   point down the road.
+
    `:display_type` tells the FE how to render the group:
      - `\"singleton\"` — exactly one query; sidebar shows it as a single row
      - `\"page\"`      — multiple queries to render together on one page when opened
      - `\"sidebar\"`   — group expands/collapses inline as a dropdown in the sidebar
-   The (card, dim) heuristic emits `\"singleton\"`/`\"page\"` only; `\"sidebar\"` is
-   reserved for future heuristics."
+
+   The current heuristic emits a two-level tree: one `\"sidebar\"` group per metric
+   (top level, `:parent_group_id = nil`, `:query_ids = []` — its queries live on the
+   linked children below) and the existing `(card, dim)` `\"singleton\"`/`\"page\"`
+   leaves as children pointing at their metric via `:parent_group_id`."
   [:map
    [:id              :string]
    [:parent_group_id [:maybe :string]]
@@ -449,11 +481,12 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
-  (let [existing (get-exploration-or-404 id)]
+  (let [existing (get-exploration-or-404 id)
+        updates' (api/updates-with-archived-directly existing updates)]
     (api/write-check existing)
-    (check-publish-perms! existing updates)
-    (when (seq updates)
-      (t2/update! :model/Exploration id updates))
+    (check-publish-perms! existing updates')
+    (when (seq updates')
+      (t2/update! :model/Exploration id updates'))
     (hydrate-exploration (t2/select-one :model/Exploration :id id))))
 
 (def ^:private query-summary-columns
@@ -566,9 +599,10 @@
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [exploration_query_id display]} :- [:map
-                                              [:exploration_query_id ms/PositiveInt]
-                                              [:display {:optional true} [:maybe :string]]]]
+   {:keys [exploration_query_id display visualization_settings]} :- [:map
+                                                                     [:exploration_query_id ms/PositiveInt]
+                                                                     [:display {:optional true} [:maybe :string]]
+                                                                     [:visualization_settings {:optional true} [:maybe ms/Map]]]]
   (write-check-thread thread-id)
   (let [doc        (get-thread-document-or-404 thread-id document-id)
         eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
@@ -580,7 +614,7 @@
                      :type                   :question
                      :dataset_query          (:dataset_query eq)
                      :display                (or (some-> display keyword) (some-> (:display eq) keyword) (:display src-card) :table)
-                     :visualization_settings (or (:visualization_settings eq) (:visualization_settings src-card) {})
+                     :visualization_settings (or visualization_settings (:visualization_settings eq) (:visualization_settings src-card) {})
                      :collection_id          (:collection_id doc)
                      :document_id            (:id doc)}
                     @api/*current-user*)

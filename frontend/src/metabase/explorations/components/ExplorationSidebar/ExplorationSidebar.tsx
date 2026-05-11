@@ -344,7 +344,7 @@ export function ExplorationSidebar({
   );
 
   return (
-    <Stack h="100%" w="20%" flex="none" gap="lg" pt="3rem">
+    <Stack h="100%" w="20%" flex="none" gap="lg" pt="3rem" mr="2rem">
       <Text size="xl" fw="bold">
         {exploration.name}
       </Text>

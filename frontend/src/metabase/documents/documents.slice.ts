@@ -8,6 +8,7 @@ import _ from "underscore";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   CardEmbedRef,
+  DocumentHost,
   DocumentsState,
   MentionCacheItem,
 } from "metabase/redux/store/documents";
@@ -32,6 +33,7 @@ export const loadMetadataForDocumentCard = createAsyncThunk(
 
 export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
+  sidebarMode: null,
   cardEmbeds: [],
   currentDocument: null,
   draftCards: {},
@@ -41,17 +43,29 @@ export const initialState: DocumentsState = {
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
   isHistorySidebarOpen: false,
+  documentHost: "standalone",
 };
 
 const documentsSlice = createSlice({
   name: "documents",
   initialState,
   reducers: {
+    updateSelectedEmbedIndex: (state, action: PayloadAction<number>) => {
+      state.selectedEmbedIndex = action.payload;
+    },
     openVizSettingsSidebar: (
       state,
       action: PayloadAction<{ embedIndex: number }>,
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
+      state.sidebarMode = "viz-settings";
+    },
+    openTimelineEventsSidebar: (
+      state,
+      action: PayloadAction<{ embedIndex: number }>,
+    ) => {
+      state.selectedEmbedIndex = action.payload.embedIndex;
+      state.sidebarMode = "timeline-events";
     },
     updateVizSettings: (
       state,
@@ -79,6 +93,7 @@ const documentsSlice = createSlice({
     },
     closeSidebar: (state) => {
       state.selectedEmbedIndex = null;
+      state.sidebarMode = null;
     },
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
@@ -133,11 +148,16 @@ const documentsSlice = createSlice({
     setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.isHistorySidebarOpen = action.payload;
     },
+    setDocumentHost: (state, action: PayloadAction<DocumentHost>) => {
+      state.documentHost = action.payload;
+    },
   },
 });
 
 export const {
+  updateSelectedEmbedIndex,
   openVizSettingsSidebar,
+  openTimelineEventsSidebar,
   updateVizSettings,
   updateVisualizationType,
   closeSidebar,
@@ -152,6 +172,7 @@ export const {
   setHoveredChildTargetId,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
+  setDocumentHost,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

@@ -5,11 +5,10 @@ import { t } from "ttag";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
-import type Question from "metabase-lib/v1/Question";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
-  question: Question;
+  collectionId: CollectionId | null | undefined;
   timelines: Timeline[];
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
@@ -23,7 +22,7 @@ export interface TimelineSidebarProps {
 }
 
 export const TimelineSidebar = ({
-  question,
+  collectionId,
   timelines,
   visibleTimelineEventIds,
   selectedTimelineEventIds,
@@ -68,7 +67,7 @@ export const TimelineSidebar = ({
     <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
       <TimelinePanel
         timelines={timelines}
-        collectionId={question.collectionId()}
+        collectionId={collectionId}
         visibleEventIds={visibleTimelineEventIds}
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}
