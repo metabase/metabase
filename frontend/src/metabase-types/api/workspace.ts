@@ -9,14 +9,9 @@ export type WorkspaceDatabaseStatus =
   | "provisioned"
   | "deprovisioning";
 
-export type WorkspaceDatabaseInput = {
-  db: string | null;
-  schema: string | null;
-};
-
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
-  input: WorkspaceDatabaseInput[];
+  input_schemas: string[];
   status: WorkspaceDatabaseStatus;
 };
 
@@ -32,7 +27,7 @@ export type Workspace = {
 
 export type WorkspaceDatabaseParams = {
   database_id: DatabaseId;
-  input: WorkspaceDatabaseInput[];
+  input_schemas: string[];
 };
 
 export type CreateWorkspaceRequest = {

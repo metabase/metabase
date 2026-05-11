@@ -1,8 +1,8 @@
-import type { DatabaseId, WorkspaceDatabaseInput } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
 export type WorkspaceDatabaseInfo = {
   database_id: DatabaseId | undefined;
-  input: WorkspaceDatabaseInput[];
+  input_schemas: string[];
 };
 
 export type ValidationResult = {

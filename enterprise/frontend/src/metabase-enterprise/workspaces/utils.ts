@@ -17,9 +17,9 @@ export function getValidWorkspaceDatabases(
   workspaceDatabases: WorkspaceDatabaseInfo[],
 ): WorkspaceDatabaseParams[] {
   return workspaceDatabases.reduce<WorkspaceDatabaseParams[]>(
-    (result, { database_id, input }) => {
+    (result, { database_id, input_schemas }) => {
       if (database_id != null) {
-        result.push({ database_id, input });
+        result.push({ database_id, input_schemas });
       }
       return result;
     },

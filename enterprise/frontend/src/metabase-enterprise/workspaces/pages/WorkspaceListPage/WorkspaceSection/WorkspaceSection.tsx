@@ -86,14 +86,11 @@ function DatabaseSection({
   );
   const databaseLabel =
     database?.name ?? t`Database ${workspaceDatabase.database_id}`;
-  const schemas = workspaceDatabase.input
-    .map((input) => input.schema)
-    .filter((schema): schema is string => schema != null);
 
   return (
     <Group gap="sm" wrap="wrap">
       <Text fw="bold">{databaseLabel}</Text>
-      {schemas.map((schema) => (
+      {workspaceDatabase.input_schemas.map((schema) => (
         <Pill key={schema}>{schema}</Pill>
       ))}
     </Group>

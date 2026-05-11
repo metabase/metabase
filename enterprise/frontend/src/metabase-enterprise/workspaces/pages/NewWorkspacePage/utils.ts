@@ -12,7 +12,7 @@ export function getInitialWorkspaceDatabases(
   availableDatabases: Database[],
 ): WorkspaceDatabaseInfo[] {
   if (availableDatabases.length === 1) {
-    return [{ database_id: availableDatabases[0].id, input: [] }];
+    return [{ database_id: availableDatabases[0].id, input_schemas: [] }];
   }
   return [];
 }

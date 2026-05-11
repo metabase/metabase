@@ -34,7 +34,7 @@ export function DatabaseSection({
     const newWorkspaceDatabase: WorkspaceDatabaseInfo = {
       ...workspaceDatabase,
       database_id: newDatabaseId,
-      input: [],
+      input_schemas: [],
     };
     onDatabaseChange(newWorkspaceDatabase);
   };
@@ -42,18 +42,10 @@ export function DatabaseSection({
   const handleSchemasChange = (newSchemas: string[]) => {
     const newWorkspaceDatabase: WorkspaceDatabaseInfo = {
       ...workspaceDatabase,
-      input: newSchemas.map((schema) => ({ db: null, schema })),
+      input_schemas: newSchemas,
     };
     onDatabaseChange(newWorkspaceDatabase);
   };
-
-  const selectedSchemas = useMemo(
-    () =>
-      workspaceDatabase.input
-        .map((input) => input.schema)
-        .filter((schema) => schema != null),
-    [workspaceDatabase.input],
-  );
 
   return (
     <Card p="lg" shadow="none" withBorder>
@@ -80,7 +72,7 @@ export function DatabaseSection({
         {workspaceDatabase.database_id != null && (
           <SchemaMultiSelect
             databaseId={workspaceDatabase.database_id}
-            value={selectedSchemas}
+            value={workspaceDatabase.input_schemas}
             onChange={handleSchemasChange}
           />
         )}

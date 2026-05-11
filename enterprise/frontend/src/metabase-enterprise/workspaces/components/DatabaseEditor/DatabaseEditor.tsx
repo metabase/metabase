@@ -23,7 +23,7 @@ export function DatabaseEditor({
 
   const handleDatabaseAdd = () => {
     const newWorkspaceDatabases = [...workspaceDatabases];
-    newWorkspaceDatabases.push({ database_id: undefined, input: [] });
+    newWorkspaceDatabases.push({ database_id: undefined, input_schemas: [] });
     onDatabasesChange(newWorkspaceDatabases);
   };
 
