@@ -38,6 +38,16 @@
   :getter     (fn []
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
+(defsetting locked-meters
+  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  :encryption :no
+  :type       :json
+  :visibility :internal
+  :audit      :never
+  :export?    false
+  :default    {}
+  :doc        false)
+
 ;;; TODO - rename this to premium-features-token?
 (defsetting premium-embedding-token
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
