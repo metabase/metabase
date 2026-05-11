@@ -54,7 +54,7 @@ export const DatasetEditorSettingsSidebar = ({
       <Stack gap="sm">
         <Text size="md">{t`What should the default view of this data be?`}</Text>
         <Stack gap="sm">
-          <SegmentedControl
+          <SegmentedControl<CardDisplayType>
             data={[
               { value: "table", label: t`Table` },
               { value: "list", label: t`List` },
