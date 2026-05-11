@@ -112,18 +112,18 @@
 (deftest ^:parallel with-dynamic-fn-redefs-non-function
   (testing "It is an error to redefine a non-function"
     (is (thrown-with-msg?
-         AssertionError
+         clojure.lang.ExceptionInfo
          #"Cannot proxy non-functions"
          (mt/with-dynamic-fn-redefs [not-a-function 5]
            (is (= 5 not-a-function))))))
   (testing "Redefining keywords or collections is likely to surprise you, so we don't allow it"
     (is (thrown-with-msg?
-         AssertionError
+         clojure.lang.ExceptionInfo
          #"Cannot proxy keywords"
          (mt/with-dynamic-fn-redefs [accidentally-a-function :not-much]
            (is (= :not-much accidentally-a-function)))))
     (is (thrown-with-msg?
-         AssertionError
+         clojure.lang.ExceptionInfo
          #"Cannot proxy collections"
          (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
            (is (= [:butter-cup] also-accidentally-a-function)))))))
@@ -135,7 +135,7 @@
 (deftest ^:parallel with-dynamic-fn-redefs-multimethod-test
   (testing "Cannot proxy a multimethod — patching its root would pollute dispatch for other threads"
     (is (thrown-with-msg?
-         AssertionError
+         clojure.lang.ExceptionInfo
          #"Cannot proxy multimethods"
          (mt/with-dynamic-fn-redefs [a-multimethod (constantly :redefined)]
            (a-multimethod "hi"))))))

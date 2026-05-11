@@ -32,16 +32,22 @@
   (or (::original (meta a-var)) @a-var))
 
 (defn- var->proxy
-  "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call."
+  "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call.
+   Uses unconditional throws (not `assert`) so the safety checks fire even when `*assert*` is false."
   [a-var]
-  (assert (ifn? @a-var) "Cannot proxy non-functions")
-  (assert (not (keyword? @a-var)) "Cannot proxy keywords")
-  (assert (not (coll? @a-var)) "Cannot proxy collections")
-  (assert (not (instance? MultiFn @a-var))
-          (str "Cannot proxy multimethods: " a-var ". "
-               "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
-               "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
-               "with a dedicated test dispatch value instead."))
+  (let [v @a-var]
+    (when-not (ifn? v)
+      (throw (ex-info (str "Cannot proxy non-functions: " a-var) {:var a-var, :value v})))
+    (when (keyword? v)
+      (throw (ex-info (str "Cannot proxy keywords: " a-var) {:var a-var, :value v})))
+    (when (coll? v)
+      (throw (ex-info (str "Cannot proxy collections: " a-var) {:var a-var, :value v})))
+    (when (instance? MultiFn v)
+      (throw (ex-info (str "Cannot proxy multimethods: " a-var ". "
+                           "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
+                           "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
+                           "with a dedicated test dispatch value instead.")
+                      {:var a-var}))))
   (fn [& args]
     (let [depth (get *proxy-depths* a-var 0)]
       (when (> depth max-proxy-depth)

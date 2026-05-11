@@ -379,16 +379,17 @@
             ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
             ;; and sync-target! to skip driver calls but still return the target table
             ;; so complete-execution! can set transform_id on it. execute-base! is a multimethod,
-            ;; so this has to use with-redefs (with-dynamic-fn-redefs refuses to proxy multimethods).
-            (with-redefs
-             [transforms-base.i/execute-base!        (constantly {:status :succeeded})
-              transforms-base.u/sync-target!         (fn [_target _database]
-                                                       (t2/select-one :model/Table table-id))
-              transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
-                                                       (run-fn (a/promise-chan) nil))]
-              (transforms.execute/execute! transform {:run-method :manual})
-              (is (= transform-id
-                     (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
+            ;; so it needs with-redefs (with-dynamic-fn-redefs refuses to proxy multimethods);
+            ;; the plain fns go through with-dynamic-fn-redefs to keep them thread-local.
+            (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
+              (mt/with-dynamic-fn-redefs
+                [transforms-base.u/sync-target!         (fn [_target _database]
+                                                          (t2/select-one :model/Table table-id))
+                 transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                          (run-fn (a/promise-chan) nil))]
+                (transforms.execute/execute! transform {:run-method :manual})
+                (is (= transform-id
+                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
