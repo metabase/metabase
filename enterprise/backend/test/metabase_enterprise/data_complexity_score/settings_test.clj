@@ -3,8 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase.premium-features.settings :as premium-features.settings]
-   [metabase.test :as mt]
-   [metabase.test.util :as tu]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,7 +19,7 @@
            ["DB=false beats staging default" true    "true"      nil         "false"  false]
            ["env beats DB"                   true    "true"      "false"     "true"   false]]]
     (testing label
-      (tu/with-temporary-raw-setting-values [data-complexity-scoring-enabled db-value]
+      (mt/with-temporary-raw-setting-values [data-complexity-scoring-enabled db-value]
         (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly hosted?)]
           (mt/with-temp-env-var-value! [mb-store-use-staging               staging-env
                                         mb-data-complexity-scoring-enabled scoring-env]
