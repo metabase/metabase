@@ -9,11 +9,11 @@
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,7 +40,7 @@
 ;;; I guess we probably want this to work on join conditions as well as normal stage filters.
 (defn- auto-parse-filter-values-in-clause
   [_query _path-type _path clause]
-  (lib.util.match/match-lite clause
+  (match/match-one clause
     [:value
      (:and opts {:effective-type (et :guard (and et (not (isa? et :type/Text))))})
      (v :guard string?)]
