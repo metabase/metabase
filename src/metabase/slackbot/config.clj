@@ -21,11 +21,7 @@
                          :messages_tab_read_only_enabled false}
               :bot_user {:display_name "Metabot"
                          :always_online false}
-              :assistant_view {:assistant_description "Your AI-powered data assistant"}
-              :slash_commands [{:command "/metabot"
-                                :url (str base-url "/api/metabot/slack/commands")
-                                :description "Issue a Metabot command"
-                                :should_escape false}]}
+              :assistant_view {:assistant_description "Your AI-powered data assistant"}}
    :oauth_config {:redirect_urls [(str base-url "/auth/sso/slack-connect/callback")]
                   :scopes {:bot ["app_mentions:read"
                                  "assistant:write"
