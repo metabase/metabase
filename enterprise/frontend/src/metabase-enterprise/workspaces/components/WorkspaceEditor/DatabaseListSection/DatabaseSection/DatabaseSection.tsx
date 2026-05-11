@@ -13,11 +13,12 @@ import {
 } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-import type { WorkspaceDatabaseInfo } from "../../types";
+import type { WorkspaceDatabaseInfo } from "../../../../types";
 
 export type DatabaseSectionProps = {
   database: WorkspaceDatabaseInfo;
   availableDatabases: Database[];
+  canRemove: boolean;
   onDatabaseChange: (database: WorkspaceDatabaseInfo) => void;
   onDatabaseRemove: () => void;
 };
@@ -25,6 +26,7 @@ export type DatabaseSectionProps = {
 export function DatabaseSection({
   database,
   availableDatabases,
+  canRemove,
   onDatabaseChange,
   onDatabaseRemove,
 }: DatabaseSectionProps) {
@@ -67,11 +69,13 @@ export function DatabaseSection({
             value={database.database_id}
             onChange={handleDatabaseChange}
           />
-          <Button
-            aria-label={t`Remove database`}
-            leftSection={<Icon name="trash" />}
-            onClick={onDatabaseRemove}
-          />
+          {canRemove && (
+            <Button
+              aria-label={t`Remove database`}
+              leftSection={<Icon name="trash" />}
+              onClick={onDatabaseRemove}
+            />
+          )}
         </Group>
         {database.database_id != null && (
           <SchemaMultiSelect

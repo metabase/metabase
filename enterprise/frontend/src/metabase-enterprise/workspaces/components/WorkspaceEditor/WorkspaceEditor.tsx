@@ -4,10 +4,11 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { Stack } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
+import type { WorkspaceDatabaseInfo, WorkspaceInfo } from "../../types";
+
 import { DatabaseListSection } from "./DatabaseListSection";
 import { SetupSection } from "./SetupSection";
 import { WorkspaceHeader } from "./WorkspaceHeader";
-import type { WorkspaceDatabaseInfo, WorkspaceInfo } from "./types";
 
 export type WorkspaceEditorProps = {
   workspace: WorkspaceInfo;

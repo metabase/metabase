@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Box, Button, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-import type { WorkspaceDatabaseInfo, WorkspaceInfo } from "../types";
+import type { WorkspaceDatabaseInfo, WorkspaceInfo } from "../../../types";
 
 import { DatabaseSection } from "./DatabaseSection";
 
@@ -55,6 +55,7 @@ export function DatabaseListSection({
             key={index}
             database={database}
             availableDatabases={availableDatabases}
+            canRemove={databases.length > 1}
             onDatabaseChange={(newDatabase) =>
               handleDatabaseChange(newDatabase, index)
             }

@@ -3,7 +3,7 @@ import type {
   WorkspaceDatabaseParams,
 } from "metabase-types/api";
 
-import type { WorkspaceInfo } from "../../components/WorkspaceEditor";
+import type { WorkspaceInfo } from "../../types";
 
 export function createRequest(
   workspace: WorkspaceInfo,

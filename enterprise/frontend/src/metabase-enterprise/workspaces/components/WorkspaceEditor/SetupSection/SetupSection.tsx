@@ -1,4 +1,4 @@
-import type { WorkspaceInfo } from "../types";
+import type { WorkspaceInfo } from "../../../types";
 
 export type SetupSectionProps = {
   workspace: WorkspaceInfo;

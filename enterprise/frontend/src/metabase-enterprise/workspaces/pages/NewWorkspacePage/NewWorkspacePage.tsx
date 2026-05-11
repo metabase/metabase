@@ -14,11 +14,9 @@ import * as Urls from "metabase/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Database } from "metabase-types/api";
 
-import type {
-  WorkspaceDatabaseInfo,
-  WorkspaceInfo,
-} from "../../components/WorkspaceEditor";
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
+import type { WorkspaceDatabaseInfo, WorkspaceInfo } from "../../types";
+import { getWorkspaceErrorMessage } from "../../utils";
 
 import { createRequest } from "./utils";
 
@@ -55,6 +53,10 @@ function NewWorkspacePageBody({
   const isDirty = useMemo(
     () => !_.isEqual(workspace, initialWorkspace),
     [workspace, initialWorkspace],
+  );
+  const errorMessage = useMemo(
+    () => getWorkspaceErrorMessage(workspace),
+    [workspace],
   );
   const [createWorkspace, { isLoading: isCreating }] =
     useCreateWorkspaceMutation();
@@ -98,6 +100,8 @@ function NewWorkspacePageBody({
         availableDatabases={availableDatabases}
         actions={
           <PaneHeaderActions
+            errorMessage={errorMessage}
+            isValid={errorMessage == null}
             isDirty
             isSaving={isCreating}
             onSave={handleSave}

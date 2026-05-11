@@ -9,7 +9,7 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/urls";
 
-import type { WorkspaceInfo } from "../types";
+import type { WorkspaceInfo } from "../../../types";
 
 export type WorkspaceHeaderProps = {
   workspace: WorkspaceInfo;
