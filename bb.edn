@@ -126,11 +126,13 @@
   start-db
   {:doc "Start a db on a default port in docker"
    :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
-              ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
+              ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]
+              ["./bin/mage start-db postgres latest --port 5555" "start postgres on a custom port"]]
    :requires [[mage.start-db :as start-db]]
    :arg-schema [:tuple
                 [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle]
                 [:enum :oldest :latest]]
+   :options [["-p" "--port PORT" "Override the default host port for the container" :parse-fn Integer/parseInt]]
    :db-info      {:postgres   {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
                   :mysql      {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
                   :mariadb    {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
@@ -142,7 +144,7 @@
    :usage-fn start-db/usage
    :task (task!
           (let [[db version] (:arguments parsed)]
-            (start-db/start-db (:db-info (current-task)) db version)))}
+            (start-db/start-db (:db-info (current-task)) db version (:options parsed))))}
 
   nrepl
   {:doc "Starts the babashka nrepl: helpful for mage development"

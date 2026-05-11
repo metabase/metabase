@@ -226,21 +226,24 @@
 
 (defn start-db
   "Starts a db type + version in docker."
-  [db-info db version]
-  (let [port             (get-in db-info [db :ports version])
-        db               (keyword db)
-        version          (cond-> version (string? version) keyword)
-        resolved-version (resolve-version db-info db version)]
-    (u/debug "PORT:" port)
-    (cond (not (contains? db-info db))
-          (do
-            (println (c/red "Invalid DB: " (name db)))
-            (println (usage {:db-info db-info})))
+  ([db-info db version]
+   (start-db db-info db version nil))
+  ([db-info db version opts]
+   (let [default-port     (get-in db-info [db :ports version])
+         port             (or (:port opts) default-port)
+         db               (keyword db)
+         version          (cond-> version (string? version) keyword)
+         resolved-version (resolve-version db-info db version)]
+     (u/debug "PORT:" port)
+     (cond (not (contains? db-info db))
+           (do
+             (println (c/red "Invalid DB: " (name db)))
+             (println (usage {:db-info db-info})))
 
-          (not (integer? port))
-          (do
-            (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
-            (println (usage {:db-info db-info})))
+           (not (integer? port))
+           (do
+             (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
+             (println (usage {:db-info db-info})))
 
-          :else
-          (start-db! db version resolved-version port))))
+           :else
+           (start-db! db version resolved-version port)))))
