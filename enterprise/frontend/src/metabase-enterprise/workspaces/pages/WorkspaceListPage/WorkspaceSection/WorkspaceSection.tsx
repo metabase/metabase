@@ -96,8 +96,8 @@ function DatabaseSection({
     database?.name ?? t`Database ${workspaceDatabase.database_id}`;
 
   return (
-    <Group gap="sm" wrap="wrap">
-      <Text fw="bold">{databaseLabel}</Text>
+    <Group gap="sm" wrap="nowrap">
+      <Text>{databaseLabel}</Text>
       {workspaceDatabase.input_schemas.map((schema) => (
         <Pill key={schema}>{schema}</Pill>
       ))}
