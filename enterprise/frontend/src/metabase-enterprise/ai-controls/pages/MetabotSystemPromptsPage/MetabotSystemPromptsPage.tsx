@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Text, Textarea } from "metabase/ui";
+import { Textarea } from "metabase/ui";
 import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
@@ -30,28 +27,22 @@ function SystemPromptPage(props: SystemPromptPageProps) {
   return (
     <SettingsPageWrapper
       title={title}
-      mt="sm"
-      h="calc(100dvh - 8rem)"
-      style={{ overflow: "hidden" }}
+      description={description}
+      className={S.wrapper}
     >
-      <SettingsSection h="100%" mih={0} stackProps={{ h: "100%" }}>
-        <Text c="text-secondary" size="md">
-          {description}
-        </Text>
-        <Textarea
-          aria-label={title}
-          autosize={false}
-          classNames={{
-            root: S.textareaRoot,
-            wrapper: S.textareaWrapper,
-            input: S.textareaInput,
-          }}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onBlur={handleBlur}
-          placeholder={getPlaceholder()}
-          value={inputValue || ""}
-        />
-      </SettingsSection>
+      <Textarea
+        aria-label={title}
+        autosize={false}
+        classNames={{
+          root: S.textareaRoot,
+          wrapper: S.textareaWrapper,
+          input: S.textareaInput,
+        }}
+        onBlur={handleBlur}
+        onChange={(e) => handleInputChange(e.target.value)}
+        placeholder={getPlaceholder()}
+        value={inputValue || ""}
+      />
     </SettingsPageWrapper>
   );
 }
