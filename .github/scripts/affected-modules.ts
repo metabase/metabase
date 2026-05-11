@@ -1,22 +1,35 @@
+export type ModuleDef = { type: string; pattern: string };
+export type Rule = { from: string[]; allow: string[] };
+
+type ModuleNode = { type: string; regex: RegExp };
+
+export type ModuleGraph = {
+  nodes: ModuleNode[];
+  dependents: Map<string, Set<string>>;
+};
+
 /**
  * Compiles a glob pattern to an anchored RegExp.
  */
-function globToRegex(glob) {
-  const escapeSegment = (seg) =>
+export function globToRegex(glob: string): RegExp {
+  const escapeSegment = (seg: string) =>
     seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*");
   const body = glob.split("**").map(escapeSegment).join(".*");
   return new RegExp(`^${body}$`);
 }
 
-function buildModuleGraph(elements, rules) {
-  const compiledElements = elements.map((el) => ({
+export function buildModuleGraph(
+  elements: ModuleDef[],
+  rules: Rule[],
+): ModuleGraph {
+  const nodes = elements.map((el) => ({
     type: el.type,
     regex: globToRegex(el.pattern),
   }));
 
   const allTypes = elements.map((e) => e.type);
 
-  function expandPattern(pattern) {
+  function expandPattern(pattern: string): string[] {
     if (pattern === "*") {
       return [...allTypes];
     }
@@ -29,28 +42,33 @@ function buildModuleGraph(elements, rules) {
 
   // dependents.get(M) is the set of modules that depend on M
   // i.e. modules that are affected when M changes
-  const dependents = new Map(allTypes.map((type) => [type, new Set()]));
+  const dependents = new Map<string, Set<string>>(
+    allTypes.map((type) => [type, new Set()]),
+  );
   for (const rule of rules) {
     const fromTypes = rule.from.flatMap(expandPattern);
     const allowTypes = rule.allow.flatMap(expandPattern);
     for (const target of allowTypes) {
       for (const importer of fromTypes) {
         if (importer !== target) {
-          dependents.get(target).add(importer);
+          dependents.get(target)?.add(importer);
         }
       }
     }
   }
 
-  return { elements: compiledElements, dependents };
+  return { nodes, dependents };
 }
 
 /**
  * Returns the module type that owns the given file.
  * First match wins, so element ordering matters for nested patterns.
  */
-function mapFileToModule(moduleGraph, path) {
-  for (const el of moduleGraph.elements) {
+export function mapFileToModule(
+  moduleGraph: ModuleGraph,
+  path: string,
+): string | null {
+  for (const el of moduleGraph.nodes) {
     if (el.regex.test(path)) {
       return el.type;
     }
@@ -61,8 +79,11 @@ function mapFileToModule(moduleGraph, path) {
 /**
  * Returns the set of module types containing any of the changed files.
  */
-function getChangedModules(moduleGraph, changedFiles) {
-  const direct = new Set();
+export function getChangedModules(
+  moduleGraph: ModuleGraph,
+  changedFiles: string[],
+): Set<string> {
+  const direct = new Set<string>();
   for (const file of changedFiles) {
     const module = mapFileToModule(moduleGraph, file);
     if (module) {
@@ -75,12 +96,15 @@ function getChangedModules(moduleGraph, changedFiles) {
 /**
  * Returns the changed modules and all modules that directly or indirectly depend on them
  */
-function getAffectedModules(moduleGraph, changedFiles) {
+export function getAffectedModules(
+  moduleGraph: ModuleGraph,
+  changedFiles: string[],
+): Set<string> {
   const direct = getChangedModules(moduleGraph, changedFiles);
   const affected = new Set(direct);
   const queue = [...direct];
   while (queue.length > 0) {
-    const module = queue.shift();
+    const module = queue.shift()!;
     for (const dep of moduleGraph.dependents.get(module) ?? []) {
       if (!affected.has(dep)) {
         affected.add(dep);
@@ -90,11 +114,3 @@ function getAffectedModules(moduleGraph, changedFiles) {
   }
   return affected;
 }
-
-module.exports = {
-  globToRegex,
-  buildModuleGraph,
-  mapFileToModule,
-  getChangedModules,
-  getAffectedModules,
-};

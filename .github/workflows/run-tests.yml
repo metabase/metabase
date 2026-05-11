@@ -44,6 +44,7 @@ jobs:
       e2e_tests_to_run: ${{ steps.compute.outputs.e2e_tests_to_run }}
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - name: Test which files changed
         uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
@@ -58,7 +59,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changes.outputs.all_changed_files }}
         run: |
-          OUTPUT=$(node .github/scripts/create-test-plan.js)
+          OUTPUT=$(bun .github/scripts/create-test-plan.ts)
           echo "$OUTPUT" | jq '.stats'
           echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> $GITHUB_OUTPUT
           echo "unit_tests_to_run=$(echo "$OUTPUT" | jq -c '.unit_tests_to_run')" >> $GITHUB_OUTPUT

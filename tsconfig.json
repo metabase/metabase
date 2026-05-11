@@ -30,7 +30,8 @@
     "frontend/build/**/*",
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
-    "enterprise/frontend/test/**/*"
+    "enterprise/frontend/test/**/*",
+    ".github/scripts/**/*"
   ],
   "exclude": [
     "node_modules",

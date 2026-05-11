@@ -3,13 +3,33 @@
 // Mirrors the relevant subset of `.github/file-paths.yaml`'s frontend_specs
 // and frontend_loki_ci entries — keep both in sync.
 
-const {
+import {
+  type ModuleDef,
+  type ModuleGraph,
+  type Rule,
   buildModuleGraph,
   getAffectedModules,
   getChangedModules,
   globToRegex,
   mapFileToModule,
-} = require("./affected-modules");
+} from "./affected-modules";
+
+export type TestSuiteDef = {
+  statsPrefix: string;
+  infraPatterns: string[];
+  runAllTests?: boolean;
+};
+
+type TestSuite = TestSuiteDef & {
+  infraRegexes: RegExp[];
+};
+
+export type TestPlan = {
+  stats: Record<string, number | string[]>;
+  unit_tests_to_run: string[];
+  loki_stories_to_run: string[];
+  e2e_tests_to_run: string[];
+};
 
 const SHARED_INFRA = [
   "babel.config.json",
@@ -20,7 +40,7 @@ const SHARED_INFRA = [
   ".github/workflows/run-tests.yml",
 ];
 
-const TEST_SUITES = {
+export const TEST_SUITES: Record<string, TestSuiteDef> = {
   unit: {
     statsPrefix: "unit_tests",
     infraPatterns: [
@@ -50,15 +70,21 @@ const TEST_SUITES = {
   },
 };
 
-function createTestPlan({
+export function createTestPlan({
   elements,
   rules,
   testSuites: testSuiteDefs,
   changedFiles,
   testFilesBySuite,
-}) {
+}: {
+  elements: ModuleDef[];
+  rules: Rule[];
+  testSuites: Record<string, TestSuiteDef>;
+  changedFiles: string[];
+  testFilesBySuite: Record<string, string[]>;
+}): TestPlan {
   const moduleGraph = buildModuleGraph(elements, rules);
-  const testSuites = Object.fromEntries(
+  const testSuites: Record<string, TestSuite> = Object.fromEntries(
     Object.entries(testSuiteDefs).map(([name, testSuite]) => [
       name,
       { ...testSuite, infraRegexes: testSuite.infraPatterns.map(globToRegex) },
@@ -68,8 +94,8 @@ function createTestPlan({
   const changedModules = getChangedModules(moduleGraph, changedFiles);
   const affectedModules = getAffectedModules(moduleGraph, changedFiles);
 
-  const affectedTests = {};
-  const stats = {
+  const affectedTests: Record<string, string[]> = {};
+  const stats: Record<string, number | string[]> = {
     modules_changed: changedModules.size,
     modules_affected: affectedModules.size,
     affected_modules: [...affectedModules].sort(),
@@ -103,12 +129,12 @@ function createTestPlan({
  * Runs the full suite when infra files changed or if `runAllTests` flag is set,
  * otherwise runs the tests based on affected-modules.
  */
-function createTestPlanForSuite(
-  moduleGraph,
-  testSuite,
-  changedFiles,
-  allTestFiles,
-) {
+export function createTestPlanForSuite(
+  moduleGraph: ModuleGraph,
+  testSuite: TestSuite,
+  changedFiles: string[],
+  allTestFiles: string[],
+): string[] {
   const infraTouched = changedFiles.some((changedFile) =>
     testSuite.infraRegexes.some((infraRegex) => infraRegex.test(changedFile)),
   );
@@ -122,16 +148,13 @@ function createTestPlanForSuite(
 /**
  * Filters the test-file list down to tests whose owning module is affected.
  */
-function filterAffectedTests(moduleGraph, affected, testFiles) {
+export function filterAffectedTests(
+  moduleGraph: ModuleGraph,
+  affected: Set<string>,
+  testFiles: string[],
+): string[] {
   return testFiles.filter((file) => {
     const module = mapFileToModule(moduleGraph, file);
     return module !== null && affected.has(module);
   });
 }
-
-module.exports = {
-  TEST_SUITES,
-  createTestPlan,
-  createTestPlanForSuite,
-  filterAffectedTests,
-};

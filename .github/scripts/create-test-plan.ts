@@ -1,10 +1,10 @@
 // Changed files come from dorny/paths-filter's `all_changed_files` output
 
-const { execFileSync } = require("node:child_process");
+import { execFileSync } from "node:child_process";
 
-const { elements, rules } = require("../../frontend/lint/module-boundaries");
+import { elements, rules } from "../../frontend/lint/module-boundaries";
 
-const { TEST_SUITES, createTestPlan } = require("./affected-tests");
+import { TEST_SUITES, createTestPlan } from "./affected-tests";
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -35,7 +35,7 @@ const E2E_GLOBS = [
   "e2e/test/scenarios/**/*.cy.spec.tsx",
 ];
 
-function listFiles(globs) {
+function listFiles(globs: string[]): string[] {
   return execFileSync("git", ["ls-files", "--", ...globs], { encoding: "utf8" })
     .split("\n")
     .map((line) => line.trim())
@@ -59,4 +59,4 @@ const testPlan = createTestPlan({
   },
 });
 
-console.log(JSON.stringify(testPlan));
+process.stdout.write(JSON.stringify(testPlan) + "\n");
