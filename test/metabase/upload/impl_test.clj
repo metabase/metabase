@@ -721,29 +721,30 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
-          (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload.db/current-database (constantly (mt/db))]
-            (let [transpose  (fn [m] (apply mapv vector m))
-                  [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
-                                                  ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
-                                                  ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
-                                                  ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
-                                                  ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
-                                                  ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
-                                                  ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
-                                                  ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]
-                                                  ["2022-01-01T12:00:00+0730"  "2022-01-01T04:30:00Z"]])]
-              (testing "Fields exists after sync"
-                (with-upload-table!
-                  [table (create-from-csv-and-sync-with-defaults!
-                          :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
-                  (testing "Check the offset datetime column the correct base_type"
-                    (is (=? :type/DateTimeWithLocalTZ
-                            (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
-                  (let [position (column-position table "offset_datetime")
-                        values   (map #(nth % position) (rows-for-table table))]
-                    (is (= expected
-                           values))))))))))))
+          ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
+          (with-redefs [driver/db-default-timezone (constantly "Z")]
+            (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+              (let [transpose  (fn [m] (apply mapv vector m))
+                    [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
+                                                    ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
+                                                    ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
+                                                    ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
+                                                    ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
+                                                    ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
+                                                    ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
+                                                    ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]
+                                                    ["2022-01-01T12:00:00+0730"  "2022-01-01T04:30:00Z"]])]
+                (testing "Fields exists after sync"
+                  (with-upload-table!
+                    [table (create-from-csv-and-sync-with-defaults!
+                            :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
+                    (testing "Check the offset datetime column the correct base_type"
+                      (is (=? :type/DateTimeWithLocalTZ
+                              (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                    (let [position (column-position table "offset_datetime")
+                          values   (map #(nth % position) (rows-for-table table))]
+                      (is (= expected
+                             values)))))))))))))
 
 (deftest create-from-csv-boolean-test
   (testing "Upload a CSV file"
@@ -1620,30 +1621,31 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload.db/current-database (constantly (mt/db))]
-                (with-upload-table!
-                  [table (create-upload-table!
-                          {:col->upload-type (columns-with-auto-pk
-                                              (ordered-map/ordered-map
-                                               :biginteger      int-type
-                                               :float           float-type
-                                               :text            vchar-type
-                                               :boolean         bool-type
-                                               :date            date-type
-                                               :datetime        datetime-type))
-                           :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00"]]})]
-                  (let [csv-rows ["biginteger,float,text,boolean,date,datetime"
-                                  "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02"]
-                        file  (csv-file-with csv-rows)]
-                    (is (some? (update-csv! action {:file file, :table-id (:id table)})))
-                    (testing "Check the data was uploaded into the table correctly"
-                      (is (= (set (updated-contents
-                                   action
-                                   [[1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
-                                   [[2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z"]]))
-                             (set (rows-for-table table)))))
-                    (io/delete-file file)))))))))))
+              ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
+              (with-redefs [driver/db-default-timezone (constantly "Z")]
+                (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+                  (with-upload-table!
+                    [table (create-upload-table!
+                            {:col->upload-type (columns-with-auto-pk
+                                                (ordered-map/ordered-map
+                                                 :biginteger      int-type
+                                                 :float           float-type
+                                                 :text            vchar-type
+                                                 :boolean         bool-type
+                                                 :date            date-type
+                                                 :datetime        datetime-type))
+                             :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00"]]})]
+                    (let [csv-rows ["biginteger,float,text,boolean,date,datetime"
+                                    "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02"]
+                          file  (csv-file-with csv-rows)]
+                      (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+                      (testing "Check the data was uploaded into the table correctly"
+                        (is (= (set (updated-contents
+                                     action
+                                     [[1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
+                                     [[2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z"]]))
+                               (set (rows-for-table table)))))
+                      (io/delete-file file))))))))))))
 
 (deftest update-offset-datetime-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1652,26 +1654,27 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
-              (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload.db/current-database (constantly (mt/db))]
-                (with-upload-table!
-                  [table (create-upload-table!
-                          {:col->upload-type (columns-with-auto-pk
-                                              (ordered-map/ordered-map :offset_datetime offset-dt-type))
-                           :rows []})]
-                  (let [csv-rows ["offset_datetime"
-                                  "2020-02-02T02:02:02+02:00"]
-                        file  (csv-file-with csv-rows (mt/random-name))]
-                    (is (some? (update-csv! action {:file file, :table-id (:id table)})))
-                    (testing "Check the data was uploaded into the table correctly"
-                      (is (= (set (updated-contents
-                                   action
-                                   []
-                                   [[(if (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
-                                       "2020-02-02T00:02:02Z"
-                                       "2020-02-02T02:02:02+02:00")]]))
-                             (set (rows-for-table table)))))
-                    (io/delete-file file)))))))))))
+              ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
+              (with-redefs [driver/db-default-timezone (constantly "Z")]
+                (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+                  (with-upload-table!
+                    [table (create-upload-table!
+                            {:col->upload-type (columns-with-auto-pk
+                                                (ordered-map/ordered-map :offset_datetime offset-dt-type))
+                             :rows []})]
+                    (let [csv-rows ["offset_datetime"
+                                    "2020-02-02T02:02:02+02:00"]
+                          file  (csv-file-with csv-rows (mt/random-name))]
+                      (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+                      (testing "Check the data was uploaded into the table correctly"
+                        (is (= (set (updated-contents
+                                     action
+                                     []
+                                     [[(if (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
+                                         "2020-02-02T00:02:02Z"
+                                         "2020-02-02T02:02:02+02:00")]]))
+                               (set (rows-for-table table)))))
+                      (io/delete-file file))))))))))))
 
 (deftest update-no-rows-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
