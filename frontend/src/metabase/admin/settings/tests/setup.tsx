@@ -76,6 +76,10 @@ export const ossRoutes: RouteMap = {
     testPattern: /Make Metabase look like you/i,
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
+  remoteSync: {
+    path: "/remote-sync",
+    testPattern: /Manage your Metabase content in Git/i,
+  },
 };
 
 export const enterpriseRoutes: RouteMap = {
@@ -85,7 +89,6 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
-  remoteSync: { path: "/remote-sync", testPattern: /Set up remote sync/i },
 };
 
 export const upsellRoutes: RouteMap = {
