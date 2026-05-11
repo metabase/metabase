@@ -997,12 +997,6 @@ export function combineEntities(entities: Entity[]): CombinedEntities {
     }
   }
 
-  for (const name of RETIRED_ENTITY_NAMES) {
-    if (!(name in reducersMap)) {
-      reducersMap[name] = handleEntities(/^metabase\/entities\//, name);
-    }
-  }
-
   const combinedRequestsReducer = (
     state: RequestsStateTree = {},
     action: { type: string },
