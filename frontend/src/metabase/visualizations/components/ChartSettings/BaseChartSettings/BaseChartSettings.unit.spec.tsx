@@ -132,7 +132,7 @@ describe("ChartSettings", () => {
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
 
-  it("should put unsectioned widgets into the first section by sort priority, not insertion order", () => {
+  it("should put unsectioned widgets into the first section by priority, not insertion order", () => {
     // matches the scalar shape: a non-priority section is registered before a
     // priority section. The unsectioned widget should land in Formatting, not
     // in the first-inserted "Conditional colors".
@@ -145,6 +145,7 @@ describe("ChartSettings", () => {
       initial: { section: "Formatting" },
     });
 
+    // Formatting tab is active, so unsectioned + Formatting widget should be visible
     expect(
       screen.getByText("Unsectioned", { exact: false }),
     ).toBeInTheDocument();
@@ -154,5 +155,12 @@ describe("ChartSettings", () => {
     expect(
       screen.queryByText("InColors", { exact: false }),
     ).not.toBeInTheDocument();
+
+    // switch to Conditional colors and verify the unsectioned widget does not follow
+    fireEvent.click(screen.getByText("Conditional colors"));
+    expect(
+      screen.queryByText("Unsectioned", { exact: false }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("InColors", { exact: false })).toBeInTheDocument();
   });
 });
