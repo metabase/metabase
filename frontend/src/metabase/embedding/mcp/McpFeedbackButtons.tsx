@@ -109,7 +109,7 @@ export function McpFeedbackButtons({
           data-testid="mcp-feedback-thumbs-up"
           icon="thumbs_up"
           hasBeenClicked={submitted === "positive"}
-          disabled={!!submitted}
+          disabled={isSubmitting}
           onClick={() => setModalData({ positive: true })}
         />
       </Tooltip>
@@ -119,7 +119,7 @@ export function McpFeedbackButtons({
           data-testid="mcp-feedback-thumbs-down"
           icon="thumbs_down"
           hasBeenClicked={submitted === "negative"}
-          disabled={!!submitted}
+          disabled={isSubmitting}
           onClick={() => setModalData({ positive: false })}
         />
       </Tooltip>

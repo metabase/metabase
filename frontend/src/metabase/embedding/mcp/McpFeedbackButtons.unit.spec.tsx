@@ -2,27 +2,42 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { findRequests } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 
 import { McpFeedbackButtons } from "./McpFeedbackButtons";
+
+const POSITIVE_FEEDBACK_MESSAGE_ID = "00000000-0000-4000-8000-000000000001";
+const NEGATIVE_FEEDBACK_MESSAGE_ID = "00000000-0000-4000-8000-000000000002";
 
 describe("McpFeedbackButtons", () => {
   beforeEach(() => {
     jest
       .spyOn(crypto, "randomUUID")
-      .mockReturnValue("00000000-0000-4000-8000-000000000000");
+      .mockReturnValueOnce(POSITIVE_FEEDBACK_MESSAGE_ID)
+      .mockReturnValueOnce(NEGATIVE_FEEDBACK_MESSAGE_ID);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("submits MCP feedback to the embed callback endpoint", async () => {
+  const findFeedbackRequests = async () => {
+    await fetchMock.callHistory.flush();
+
+    return fetchMock.callHistory.calls("path:/api/embed-mcp/feedback", {
+      method: "POST",
+    });
+  };
+
+  const getRequestBody = (
+    request: ReturnType<typeof fetchMock.callHistory.calls>[number],
+  ) => JSON.parse(request.options.body?.toString() ?? "{}");
+
+  it("submits separate MCP feedback events to the feedback endpoint", async () => {
     const user = userEvent.setup();
     const instanceUrl = "http://localhost:3000";
 
-    fetchMock.post(`${instanceUrl}/api/embed-mcp/feedback`, 204);
+    fetchMock.post("path:/api/embed-mcp/feedback", 204);
 
     renderWithProviders(
       <McpFeedbackButtons
@@ -43,19 +58,40 @@ describe("McpFeedbackButtons", () => {
 
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    await waitFor(async () => {
-      expect(await findRequests("POST")).toHaveLength(1);
-    });
+    await waitFor(async () =>
+      expect(await findFeedbackRequests()).toHaveLength(1),
+    );
 
-    const [request] = await findRequests("POST");
+    const [request] = await findFeedbackRequests();
 
     expect(request.url).toBe(`${instanceUrl}/api/embed-mcp/feedback`);
 
-    expect(request.body).toEqual({
+    expect(getRequestBody(request)).toEqual({
       feedback: {
         positive: true,
-        message_id: "00000000-0000-4000-8000-000000000000",
+        message_id: POSITIVE_FEEDBACK_MESSAGE_ID,
         freeform_feedback: "Useful chart",
+      },
+      conversation_data: {
+        source: "mcp",
+        prompt: "show me orders",
+        query: "encoded-query",
+      },
+    });
+
+    await user.click(screen.getByTestId("mcp-feedback-thumbs-down"));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(async () =>
+      expect(await findFeedbackRequests()).toHaveLength(2),
+    );
+
+    const [, secondRequest] = await findFeedbackRequests();
+
+    expect(getRequestBody(secondRequest)).toEqual({
+      feedback: {
+        positive: false,
+        message_id: NEGATIVE_FEEDBACK_MESSAGE_ID,
       },
       conversation_data: {
         source: "mcp",
