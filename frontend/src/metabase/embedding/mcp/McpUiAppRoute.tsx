@@ -35,6 +35,7 @@ const store = getSdkStore();
 const DEFAULT_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
 const MAIN_QUESTION_HEIGHT = 500;
 const DRILLED_QUESTION_HEIGHT = 220;
+const DRILLED_QUESTION_TITLE_HEIGHT = 40;
 const DRILLED_QUESTION_VERTICAL_SPACE = 24;
 const MAX_RECENT_VIEWS = 5;
 type DrillThroughHandler = NonNullable<SdkQuestionProps["onDrillThrough"]>;
@@ -333,7 +334,9 @@ export function McpUiAppRoute() {
     const fallbackHeight =
       MAIN_QUESTION_HEIGHT +
       (drilledCard
-        ? DRILLED_QUESTION_HEIGHT + DRILLED_QUESTION_VERTICAL_SPACE
+        ? DRILLED_QUESTION_HEIGHT +
+          DRILLED_QUESTION_TITLE_HEIGHT +
+          DRILLED_QUESTION_VERTICAL_SPACE
         : 0);
     const width = Math.ceil(window.innerWidth);
     const height = Math.ceil(
@@ -431,6 +434,7 @@ export function McpUiAppRoute() {
             </Flex>
           </SdkQuestion>
         </Box>
+
         {drilledCard && (
           <Box px="xs" pb="lg">
             <SdkQuestion
@@ -441,6 +445,10 @@ export function McpUiAppRoute() {
               getClickActionMode={getStaticClickActionMode}
               navigateToNewCard={null}
             >
+              <Box px="lg" style={{ flexShrink: 0 }}>
+                <McpQuestionTitle compact stripTemporalBucket={false} />
+              </Box>
+
               <SdkQuestion.QuestionVisualization
                 height={drilledVisualizationHeight}
               />
