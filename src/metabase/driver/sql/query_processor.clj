@@ -729,10 +729,10 @@
 (defn- literal-text-value?
   [clause]
   (literal-text-value?*
-   (driver-api/match-lite clause
-                          [tag (opts :guard :lib/uuid) value] ;; mbql5
-                          [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
-                          _ clause)))
+   (driver-api/match-one clause
+     [tag (opts :guard :lib/uuid) value] ;; mbql5
+     [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
+     _ clause)))
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
@@ -1098,15 +1098,15 @@
 
 (defn- remapped-order-by? [order-by]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-   (driver-api/match-lite order-by
-                          [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
-                          [_dir [_ _name opts]] opts)))
+   (driver-api/match-one order-by
+     [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
+     [_dir [_ _name opts]] opts)))
 
 (defn- remapped-breakout? [breakout]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-   (driver-api/match-lite breakout
-                          [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
-                          [_ _name opts] opts)))
+   (driver-api/match-one breakout
+     [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
+     [_ _name opts] opts)))
 
 (defmulti breakout-options-index
   "Returns the index of options in a breakout clause."
@@ -1256,9 +1256,9 @@
   (driver-api/is-clause? :interval expr))
 
 (defn- normalize-interval [interval]
-  (driver-api/match-lite interval
-                         [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
-                         _ interval))
+  (driver-api/match-one interval
+    [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
+    _ interval))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
@@ -1518,10 +1518,10 @@
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
   ([driver                                                :- :keyword
     clause :- vector?]
-   (let [[clause-type id-or-name opts] (driver-api/match-lite clause
-                                                              [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
-                                                              [clause-type id-or-name opts]
-                                                              _ clause)
+   (let [[clause-type id-or-name opts] (driver-api/match-one clause
+                                         [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
+                                         [clause-type id-or-name opts]
+                                         _ clause)
          desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
                            ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
@@ -1770,9 +1770,9 @@
 
 (defn- uuid-field?
   [x]
-  (let [[opts field-id] (driver-api/match-lite x
-                                               [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
-                                               [:field field-id opts] [opts field-id])]
+  (let [[opts field-id] (driver-api/match-one x
+                          [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
+                          [:field field-id opts] [opts field-id])]
     (and (driver-api/mbql-clause? x)
          (isa? (or (:effective-type opts)
                    (when (pos-int? field-id)
