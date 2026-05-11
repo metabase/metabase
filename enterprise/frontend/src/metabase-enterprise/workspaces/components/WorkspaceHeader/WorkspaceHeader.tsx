@@ -9,33 +9,26 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/urls";
 
-import type { WorkspaceInfo } from "../../../types";
-
 export type WorkspaceHeaderProps = {
-  workspace: WorkspaceInfo;
+  name: string;
   actions?: ReactNode;
   onChangeName: (name: string) => void;
 };
 
 export function WorkspaceHeader({
-  workspace,
+  name,
   actions,
   onChangeName,
 }: WorkspaceHeaderProps) {
   return (
     <PaneHeader
-      title={
-        <PaneHeaderInput
-          initialValue={workspace.name}
-          onChange={onChangeName}
-        />
-      }
+      title={<PaneHeaderInput initialValue={name} onChange={onChangeName} />}
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link key="workspace-list" to={Urls.workspaceList()}>
             {t`Workspaces`}
           </Link>
-          {workspace.name}
+          {name}
         </DataStudioBreadcrumbs>
       }
       actions={actions}

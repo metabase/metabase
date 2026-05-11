@@ -13,46 +13,46 @@ import {
 } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-import type { WorkspaceDatabaseInfo } from "../../../../types";
+import type { WorkspaceDatabaseInfo } from "../../../types";
 
 export type DatabaseSectionProps = {
-  database: WorkspaceDatabaseInfo;
+  workspaceDatabase: WorkspaceDatabaseInfo;
   availableDatabases: Database[];
   canRemove: boolean;
-  onDatabaseChange: (database: WorkspaceDatabaseInfo) => void;
+  onDatabaseChange: (workspaceDatabase: WorkspaceDatabaseInfo) => void;
   onDatabaseRemove: () => void;
 };
 
 export function DatabaseSection({
-  database,
+  workspaceDatabase,
   availableDatabases,
   canRemove,
   onDatabaseChange,
   onDatabaseRemove,
 }: DatabaseSectionProps) {
   const handleDatabaseChange = (newDatabaseId: DatabaseId | undefined) => {
-    const newDatabase: WorkspaceDatabaseInfo = {
-      ...database,
+    const newWorkspaceDatabase: WorkspaceDatabaseInfo = {
+      ...workspaceDatabase,
       database_id: newDatabaseId,
       input: [],
     };
-    onDatabaseChange(newDatabase);
+    onDatabaseChange(newWorkspaceDatabase);
   };
 
   const handleSchemasChange = (newSchemas: string[]) => {
-    const newDatabase: WorkspaceDatabaseInfo = {
-      ...database,
+    const newWorkspaceDatabase: WorkspaceDatabaseInfo = {
+      ...workspaceDatabase,
       input: newSchemas.map((schema) => ({ db: null, schema })),
     };
-    onDatabaseChange(newDatabase);
+    onDatabaseChange(newWorkspaceDatabase);
   };
 
   const selectedSchemas = useMemo(
     () =>
-      database.input
+      workspaceDatabase.input
         .map((input) => input.schema)
         .filter((schema) => schema != null),
-    [database.input],
+    [workspaceDatabase.input],
   );
 
   return (
@@ -66,7 +66,7 @@ export function DatabaseSection({
         >
           <DatabaseSelect
             databases={availableDatabases}
-            value={database.database_id}
+            value={workspaceDatabase.database_id}
             onChange={handleDatabaseChange}
           />
           {canRemove && (
@@ -77,9 +77,9 @@ export function DatabaseSection({
             />
           )}
         </Group>
-        {database.database_id != null && (
+        {workspaceDatabase.database_id != null && (
           <SchemaMultiSelect
-            databaseId={database.database_id}
+            databaseId={workspaceDatabase.database_id}
             value={selectedSchemas}
             onChange={handleSchemasChange}
           />

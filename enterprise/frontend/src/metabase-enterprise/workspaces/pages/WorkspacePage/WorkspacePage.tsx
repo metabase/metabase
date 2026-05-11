@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,11 +9,13 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
-import type { Database } from "metabase-types/api";
+import {
+  useGetWorkspaceQuery,
+  useUpdateWorkspaceMutation,
+} from "metabase-enterprise/api";
+import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
 import { DatabaseEditor } from "../../components/DatabaseEditor";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
@@ -24,93 +25,128 @@ import {
   getWorkspaceDatabasesError,
 } from "../../utils";
 
-const INITIAL_DATABASES: WorkspaceDatabaseInfo[] = [
-  { database_id: undefined, input: [] },
-];
+import { SetupSection } from "./SetupSection";
 
-type NewWorkspacePageProps = {
+type WorkspacePageParams = {
+  workspaceId: string;
+};
+
+type WorkspacePageProps = {
+  params: WorkspacePageParams;
   route: Route;
 };
 
-export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
-  const { data: databasesResponse, isLoading, error } = useListDatabasesQuery();
+export function WorkspacePage({ params, route }: WorkspacePageProps) {
+  const workspaceId = Urls.extractEntityId(params.workspaceId);
 
-  if (isLoading || error != null || databasesResponse == null) {
+  const {
+    data: workspace,
+    isLoading: isLoadingWorkspace,
+    error: workspaceError,
+  } = useGetWorkspaceQuery(workspaceId as WorkspaceId, {
+    skip: workspaceId == null,
+  });
+
+  const {
+    data: databasesResponse,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
+
+  const isLoading = isLoadingWorkspace || isLoadingDatabases;
+  const error = workspaceError ?? databasesError;
+
+  if (
+    isLoading ||
+    error != null ||
+    workspace == null ||
+    databasesResponse == null
+  ) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <NewWorkspacePageBody
+    <WorkspacePageBody
+      workspace={workspace}
       availableDatabases={databasesResponse.data}
       route={route}
     />
   );
 }
 
-type NewWorkspacePageBodyProps = {
+type WorkspacePageBodyProps = {
+  workspace: Workspace;
   availableDatabases: Database[];
   route: Route;
 };
 
-function NewWorkspacePageBody({
+function WorkspacePageBody({
+  workspace,
   availableDatabases,
   route,
-}: NewWorkspacePageBodyProps) {
-  const initialName = t`New workspace`;
-  const initialDatabases = INITIAL_DATABASES;
-  const [name, setName] = useState(initialName);
-  const [workspaceDatabases, setWorkspaceDatabases] =
-    useState(initialDatabases);
+}: WorkspacePageBodyProps) {
+  const [workspaceDatabases, setWorkspaceDatabases] = useState<
+    WorkspaceDatabaseInfo[]
+  >(workspace.databases);
   const isDirty = useMemo(
-    () =>
-      name !== initialName || !_.isEqual(workspaceDatabases, initialDatabases),
-    [name, workspaceDatabases, initialName, initialDatabases],
+    () => !_.isEqual(workspaceDatabases, workspace.databases),
+    [workspaceDatabases, workspace.databases],
   );
   const errorMessage = useMemo(
     () => getWorkspaceDatabasesError(workspaceDatabases),
     [workspaceDatabases],
   );
-  const [createWorkspace, { isLoading: isCreating }] =
-    useCreateWorkspaceMutation();
+  const [updateWorkspace, { isLoading: isSaving }] =
+    useUpdateWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+
+  const handleNameChange = async (newName: string) => {
+    const { error } = await updateWorkspace({
+      id: workspace.id,
+      name: newName,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace name`);
+    } else {
+      sendSuccessToast(t`Workspace name updated`);
+    }
+  };
 
   const handleSave = async () => {
-    const { data: newWorkspace, error } = await createWorkspace({
-      name,
+    const { error } = await updateWorkspace({
+      id: workspace.id,
       databases: getValidWorkspaceDatabases(workspaceDatabases),
     });
-
-    if (error || newWorkspace == null) {
-      sendErrorToast(t`Failed to create a workspace`);
+    if (error) {
+      sendErrorToast(t`Failed to update workspace`);
     } else {
-      sendSuccessToast(t`New workspace created`);
-      dispatch(push(Urls.workspace(newWorkspace.id)));
+      sendSuccessToast(t`Workspace updated`);
     }
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.workspaceList()));
+    setWorkspaceDatabases(workspace.databases);
   };
 
   return (
     <>
       <PageContainer data-testid="workspace-editor" gap="2.5rem">
         <WorkspaceHeader
-          name={name}
-          onChangeName={setName}
+          name={workspace.name}
+          onChangeName={handleNameChange}
           actions={
             <PaneHeaderActions
               errorMessage={errorMessage}
               isValid={errorMessage == null}
-              isDirty
-              isSaving={isCreating}
+              isDirty={isDirty}
+              isSaving={isSaving}
               onSave={handleSave}
               onCancel={handleCancel}
             />
           }
         />
         <Stack gap="3.5rem">
+          <SetupSection workspace={workspace} />
           <DatabaseEditor
             workspaceDatabases={workspaceDatabases}
             availableDatabases={availableDatabases}
@@ -118,10 +154,7 @@ function NewWorkspacePageBody({
           />
         </Stack>
       </PageContainer>
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={isDirty && !isCreating}
-      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
     </>
   );
 }

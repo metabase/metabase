@@ -39,3 +39,9 @@ export type CreateWorkspaceRequest = {
   name: string;
   databases: WorkspaceDatabaseParams[];
 };
+
+export type UpdateWorkspaceRequest = {
+  id: WorkspaceId;
+  name?: string;
+  databases?: WorkspaceDatabaseParams[];
+};
