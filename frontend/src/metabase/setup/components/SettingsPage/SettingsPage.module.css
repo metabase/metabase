@@ -3,6 +3,10 @@
   min-height: 100vh;
 }
 
+:global(main):has(> .Page) {
+  background-color: var(--mb-color-background-secondary);
+}
+
 .PageHeader {
   margin-bottom: 4rem;
   padding: 1rem;
