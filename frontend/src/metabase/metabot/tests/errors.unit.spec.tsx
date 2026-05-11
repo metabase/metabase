@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { screen } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
@@ -60,6 +61,9 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", METABOT_ERR_MSG.locked],
     ]);
+    expect(
+      screen.getByRole("button", { name: "Use a different AI provider" }),
+    ).toBeInTheDocument();
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
@@ -82,7 +86,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
-  it.only("should show the backend message for admin quota limit errors", async () => {
+  it("should show the backend message for admin quota limit errors", async () => {
     setup();
     mockAgentEndpoint({ textChunks: adminQuotaLimitErroredResponse });
 

@@ -9,6 +9,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
   MetabotMessage,
+  MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -92,6 +93,17 @@ export const useMetabot = (): UseMetabotResult => {
     [agent.messages, finalNavigateToIds, authConfig],
   );
 
+  const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
+    () =>
+      agent.messages
+        .filter((m) => m.role === "agent" && m.type === "turn_errored")
+        .map(
+          (m) =>
+            m.display ?? { type: "message", message: "Something went wrong" },
+        ),
+    [agent.messages],
+  );
+
   return {
     submitMessage,
     retryMessage,
@@ -99,7 +111,7 @@ export const useMetabot = (): UseMetabotResult => {
     resetConversation,
 
     messages,
-    errorMessages: agent.errorMessages,
+    errorMessages,
     isProcessing: agent.isDoingScience,
 
     CurrentChart,

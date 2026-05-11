@@ -143,11 +143,6 @@ export const getFinalNavigateToMessageIdsPerTurn = createSelector(
     ),
 );
 
-export const getAgentErrorMessages = createSelector(
-  getMetabotConversation,
-  (convo) => convo.errorMessages,
-);
-
 // if the message id provided is an agent id the first user message
 // that precedes it will be returned. if a user message id is provided
 // that exact message will be returned.
@@ -171,13 +166,13 @@ export const getUserPromptForMessageId = createSelector(
 );
 
 export const getMessageIdToRewind = createSelector(
-  [getAgentErrorMessages, getMessages],
-  (errors, messages) => {
+  [getMessages],
+  (messages) => {
     const lastMessage = messages.at(-1);
     if (lastMessage?.type === "turn_errored") {
       return messages.findLast((m) => m.role === "user")?.id;
     }
-    return errors.length > 0 ? lastMessage?.id : undefined;
+    return undefined;
   },
 );
 

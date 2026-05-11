@@ -41,8 +41,8 @@ import {
 import type {
   MetabotAgentDataPartMessage,
   MetabotAgentId,
+  MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
-  MetabotErrorMessage,
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
@@ -51,7 +51,6 @@ import { createMessageId, parseSlashCommand } from "./utils";
 export const {
   addAgentTextDelta,
   addAgentMessage,
-  addAgentErrorMessage,
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
@@ -72,38 +71,58 @@ export const {
   removeSuggestedCodeEdit,
 } = metabot.actions;
 
+type HandledResponseError = {
+  error: MetabotAgentTurnError;
+  display: MetabotAgentTurnDisplayError;
+};
+
 const handleResponseError = (
   error: unknown,
   metabotName: string,
-): MetabotErrorMessage => {
+): HandledResponseError => {
   return match(error)
     .with(
       { message: P.string.startsWith("Response status: 401") },
       { status: 401 },
       () => ({
-        type: "alert" as const,
-        message: METABOT_ERR_MSG.unauthenticated(metabotName),
+        error: { type: "unauthenticated" },
+        display: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.unauthenticated(metabotName),
+        },
       }),
     )
     .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
-      type: "locked" as const,
-      message: METABOT_ERR_MSG.locked,
+      error: { type: "metabase_ai_managed_locked" },
+      display: { type: "locked" as const, message: METABOT_ERR_MSG.locked },
     }))
     .with({ status: P.number, message: P.string }, ({ message }) => ({
-      type: "message" as const,
-      message: METABOT_ERR_MSG.format(message),
+      error: { type: "http_error", message },
+      display: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(message),
+      },
     }))
     .with(
       { "error-code": "ai_usage_limit_reached", message: P.string },
-      ({ message }) => ({ type: "message" as const, message }),
+      ({ message }) => ({
+        error: { type: "ai_usage_limit_reached", message },
+        display: { type: "message" as const, message },
+      }),
     )
     .with(P.string, (err) => ({
-      type: "message" as const,
-      message: METABOT_ERR_MSG.format(err),
+      error: { type: "http_error", message: err },
+      display: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(err),
+      },
     }))
     .otherwise(() => ({
-      type: "message" as const,
-      message: METABOT_ERR_MSG.default,
+      error: { type: "unknown" },
+      display: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.default,
+      },
     }));
 };
 
@@ -185,14 +204,14 @@ export type MetabotPromptSubmissionResult =
       prompt: string;
       success: false;
       shouldRetry: false;
-      errorMessage?: MetabotErrorMessage;
+      error?: MetabotAgentTurnDisplayError;
       data?: void;
     }
   | {
       prompt: string;
       success: false;
       shouldRetry: true;
-      errorMessage?: MetabotErrorMessage;
+      error?: MetabotAgentTurnDisplayError;
       data?: void;
     };
 
@@ -206,7 +225,10 @@ export const submitInput = createAsyncThunk<
   }
 >(
   "metabase/metabot/submitInput",
-  async (payload, { dispatch, getState, signal }) => {
+  async (
+    payload,
+    { dispatch, getState, signal },
+  ): Promise<MetabotPromptSubmissionResult> => {
     const state = getState();
     const { agentId, message: rawPrompt, profile, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
@@ -277,22 +299,13 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
-        if (result.payload?.type === "error") {
-          dispatch(
-            stopProcessingAndNotify({
-              agentId,
-              message: result.payload?.errorMessage,
-            }),
-          );
-        }
-
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: true,
-          errorMessage:
+          error:
             result.payload?.type === "error"
-              ? result.payload.errorMessage || undefined
+              ? result.payload.display
               : undefined,
         };
       }
@@ -306,26 +319,24 @@ export const submitInput = createAsyncThunk<
         prompt,
         success: false,
         shouldRetry: true,
-        errorMessage: {
-          type: "message",
-          message: METABOT_ERR_MSG.default,
-        },
+        error: { type: "message", message: METABOT_ERR_MSG.default },
       };
     }
   },
 );
 
 type SendAgentRequestError =
-  | { type: "error"; shouldRetry: boolean; errorMessage: MetabotErrorMessage }
+  | {
+      type: "error";
+      conversation_id: string;
+      shouldRetry: boolean;
+      error: MetabotAgentTurnError;
+      display?: MetabotAgentTurnDisplayError;
+    }
   | ({
       type: "abort";
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
-    } & MetabotAgentResponse)
-  | {
-      type: "stream_error";
-      conversation_id: string;
-      error: MetabotAgentTurnError;
-    };
+    } & MetabotAgentResponse);
 
 type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
@@ -467,10 +478,18 @@ export const sendAgentRequest = createAsyncThunk<
       }
 
       if (streamError) {
+        const display = match(streamError)
+          .with(
+            { "error-code": "ai_usage_limit_reached", message: P.string },
+            ({ message }) => ({ type: "message" as const, message }),
+          )
+          .otherwise(() => undefined);
         return rejectWithValue({
-          type: "stream_error",
+          type: "error",
           conversation_id: request.conversation_id,
+          shouldRetry: true,
           error: streamError,
+          display,
         });
       }
 
@@ -496,13 +515,16 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
+      const handled = handleResponseError(
+        error,
+        getSetting(getState(), "metabot-name") || "Metabot",
+      );
       return rejectWithValue({
         type: "error" as const,
+        conversation_id: request.conversation_id,
         shouldRetry: true,
-        errorMessage: handleResponseError(
-          error,
-          getSetting(getState(), "metabot-name") || "Metabot",
-        ),
+        error: handled.error,
+        display: handled.display,
       });
     }
   },
@@ -601,24 +623,3 @@ export const resetConversation = createAsyncThunk(
     dispatch(metabot.actions.resetConversation(payload));
   },
 );
-
-export const stopProcessingAndNotify =
-  (payload: {
-    agentId: MetabotAgentId;
-    message?: MetabotErrorMessage | false | undefined;
-  }) =>
-  (dispatch: Dispatch) => {
-    dispatch(setIsProcessing({ agentId: payload.agentId, processing: false }));
-    if (payload.message !== false) {
-      const message = payload.message ?? {
-        type: "message",
-        message: METABOT_ERR_MSG.default,
-      };
-      dispatch(
-        addAgentErrorMessage({
-          agentId: payload.agentId,
-          ...message,
-        }),
-      );
-    }
-  };

@@ -127,7 +127,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={chatMessages}
-              errorMessages={[]}
               isDoingScience={false}
               debug
               readonly

@@ -16,7 +16,6 @@ import type {
   MetabotAgentTurnError,
   MetabotChatMessage,
   MetabotDataPart,
-  MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase/metabot/state";
 import {
@@ -179,7 +178,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   showFeedbackButtons: boolean;
-  setFeedbackMessage: (data: { messageId: string; positive: boolean }) => void;
+  setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
 }
@@ -199,7 +198,11 @@ export const AgentMessage = ({
   ...props
 }: AgentMessageProps) => {
   const messageId = message.type === "text" ? (message.externalId ?? "") : "";
-  const canGiveFeedback = !!(showFeedbackButtons && messageId);
+  const canGiveFeedback = !!(
+    showFeedbackButtons &&
+    setFeedbackMessage &&
+    messageId
+  );
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -224,7 +227,12 @@ export const AgentMessage = ({
         .with({ type: "turn_errored" }, (m) => (
           <AgentTurnAlert
             variant="error"
-            message={m.friendly_message ?? t`Something went wrong`}
+            message={m.display?.message ?? t`Something went wrong`}
+            cta={
+              m.error.type === "metabase_ai_managed_locked" ? (
+                <MetabotManagedProviderLimitActions inline />
+              ) : undefined
+            }
             debugDetails={debug ? m.error : undefined}
           />
         ))
@@ -368,46 +376,6 @@ const AbortedTurnAlert = ({
   );
 };
 
-export const AgentErrorMessage = ({
-  message,
-  className,
-  ...props
-}: FlexProps & {
-  message: MetabotErrorMessage;
-}) => {
-  return (
-    <MessageContainer chatRole="agent" {...props}>
-      {match(message.type)
-        .with("alert", () => (
-          <Flex gap="sm">
-            <Icon
-              name="warning"
-              c="error"
-              size="1rem"
-              mt="2px"
-              flex="0 0 auto"
-            />
-            <Text c="error" className={Styles.message}>
-              {message.message}
-            </Text>
-          </Flex>
-        ))
-        .with("locked", () => (
-          <Flex direction="column" gap="md" flex={1}>
-            <Text className={Styles.message}>
-              {t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`}
-            </Text>
-            <MetabotManagedProviderLimitActions />
-          </Flex>
-        ))
-        .with("message", () => (
-          <Text className={Styles.message}>{message.message}</Text>
-        ))
-        .exhaustive()}
-    </MessageContainer>
-  );
-};
-
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
   messageId: string,
@@ -438,7 +406,6 @@ export const getFullAgentReply = (
 
 export const Messages = ({
   messages,
-  errorMessages,
   onRetryMessage,
   isDoingScience,
   debug,
@@ -447,7 +414,6 @@ export const Messages = ({
   onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   debug: boolean;
@@ -553,14 +519,6 @@ export const Messages = ({
           />
         );
       })}
-
-      {errorMessages.map((message, index) => (
-        <AgentErrorMessage
-          key={"err-" + index}
-          data-testid="metabot-chat-message"
-          message={message}
-        />
-      ))}
 
       {feedbackState.modal && (
         <MetabotFeedbackModal

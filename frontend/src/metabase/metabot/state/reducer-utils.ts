@@ -8,6 +8,7 @@ import { uuid } from "metabase/utils/uuid";
 
 import type {
   MetabotAgentId,
+  MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
   MetabotConverstationState,
   MetabotState,
@@ -60,7 +61,6 @@ export const createConversation = (
   return {
     isProcessing: false,
     messages: [],
-    errorMessages: [],
     visible: false,
     history: [],
     state: {},
@@ -141,12 +141,14 @@ export const appendAgentTurnAborted = (
 export const appendAgentTurnErrored = (
   convo: WritableDraft<MetabotConverstationState>,
   error: MetabotAgentTurnError,
+  display?: MetabotAgentTurnDisplayError,
 ) => {
   convo.messages.push({
     id: createMessageId(),
     role: "agent",
     type: "turn_errored",
     error,
+    ...(display ? { display } : {}),
     ...(convo.pendingMessageExternalId
       ? { externalId: convo.pendingMessageExternalId }
       : {}),

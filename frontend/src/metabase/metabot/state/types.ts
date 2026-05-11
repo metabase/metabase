@@ -72,11 +72,17 @@ export type MetabotAgentTurnAbortedMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentTurnDisplayError = {
+  type: "alert" | "locked" | "message";
+  message: string;
+};
+
 export type MetabotAgentTurnErroredMessage = {
   id: string;
   role: "agent";
   type: "turn_errored";
   error: MetabotAgentTurnError;
+  display?: MetabotAgentTurnDisplayError;
   externalId?: string;
 };
 
@@ -98,16 +104,6 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
-export type MetabotErrorMessage =
-  | {
-      type: "message" | "alert";
-      message: string;
-    }
-  | {
-      type: "locked";
-      message: string;
-    };
-
 export type MetabotToolCall = {
   id: string;
   name: string;
@@ -127,7 +123,6 @@ export interface MetabotConverstationState {
   conversationId: string;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
   visible: boolean;
   history: MetabotHistory;
   state: any;

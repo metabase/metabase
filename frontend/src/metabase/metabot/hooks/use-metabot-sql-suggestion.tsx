@@ -6,7 +6,7 @@ import {
   METABOT_PROFILE_OVERRIDES,
 } from "metabase/metabot/constants";
 import {
-  type MetabotErrorMessage,
+  type MetabotAgentTurnDisplayError,
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
@@ -47,7 +47,7 @@ export function useMetabotSQLSuggestion({
 }: UseMetabotSQLSuggestionOptions) {
   const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
 
-  const [error, setError] = useState<MetabotErrorMessage>();
+  const [error, setError] = useState<MetabotAgentTurnDisplayError>();
 
   const dispatch = useDispatch();
   const source = useSelector((state) =>
@@ -69,16 +69,14 @@ export function useMetabotSQLSuggestion({
       });
 
       const nextError =
-        isFulfilled(action) &&
-        !action.payload.success &&
-        action.payload.errorMessage;
+        isFulfilled(action) && !action.payload.success && action.payload.error;
 
       if (
         isRejected(action) ||
         (isFulfilled(action) && !action.payload?.success) ||
         !responseHasCodeEdit(action)
       ) {
-        const error = nextError || {
+        const error: MetabotAgentTurnDisplayError = nextError || {
           type: "message",
           message: METABOT_ERR_MSG.default,
         };
