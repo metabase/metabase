@@ -15,7 +15,9 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
@@ -63,6 +65,18 @@
   [{:keys [structured-output output status-code]}]
   (or structured-output
       (api/check false [(or status-code 404) (or output "Not found.")])))
+
+(defn submit-mcp-visualization-feedback!
+  "Submit MCP Apps visualization feedback to Harbormaster.
+
+  MCP Apps do not create `metabot_message` rows, so this intentionally skips
+  local feedback persistence and forwards the MCP visualization context."
+  [body]
+  (let [metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
+        body       (assoc body :metabot_id metabot-id)]
+    (metabot.config/check-metabot-enabled!)
+    (metabot.feedback/submit-to-harbormaster!
+     (metabot.feedback/mcp-harbormaster-payload body))))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 

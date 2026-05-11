@@ -6,12 +6,11 @@
    have to special-case non-protocol routes."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
-   [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -61,12 +60,8 @@
                                  [:query  {:optional true} [:maybe :string]]]]]
    request]
   (let [session-id (mcp-session-id-from-headers request)
-        _          (check-session-header! session-id api/*current-user-id*)
-        metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
-        body       (assoc body :metabot_id metabot-id)]
-    (metabot.config/check-metabot-enabled!)
-    (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                    (metabot.feedback/mcp-harbormaster-payload body))
+        _          (check-session-header! session-id api/*current-user-id*)]
+    (api/check-400 (agent-api/submit-mcp-visualization-feedback! body)
                    "Cannot submit feedback. The license token and/or Store API URL are missing!"))
   api/generic-204-no-content)
 
