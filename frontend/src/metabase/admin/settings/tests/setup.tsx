@@ -85,6 +85,7 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
+  remoteSync: { path: "/remote-sync", testPattern: /Set up remote sync/i },
 };
 
 export const upsellRoutes: RouteMap = {
@@ -154,6 +155,14 @@ export const setup = async ({
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
+  fetchMock.get("path:/api/ee/remote-sync/dirty", {
+    data: [],
+    metadata: {
+      changed_collections: {},
+      is_dirty: false,
+      has_removed_items: false,
+    },
+  });
 
   const user = createMockUser({
     is_superuser: isAdmin,
