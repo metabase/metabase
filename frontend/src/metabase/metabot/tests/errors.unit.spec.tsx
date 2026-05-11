@@ -9,6 +9,7 @@ import {
   enterChatMessage,
   erroredResponse,
   input,
+  lastReqBody,
   mockAgentEndpoint,
   resetChatButton,
   setup,
@@ -144,5 +145,35 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);
+  });
+
+  it("should rewind the failed turn (UI and history) when retrying after a stream-level error", async () => {
+    setup();
+    mockAgentEndpoint({ textChunks: erroredResponse });
+
+    await enterChatMessage("first prompt");
+    await assertConversation([
+      ["user", "first prompt"],
+      ["agent", /Something went wrong/],
+    ]);
+
+    const retrySpy = mockAgentEndpoint({
+      textChunks: whoIsYourFavoriteResponse,
+    });
+    await enterChatMessage("retry prompt");
+
+    // the failed user prompt and the turn_errored alert are gone; only the
+    // retry exchange remains visible.
+    await assertConversation([
+      ["user", "retry prompt"],
+      ["agent", "You, but don't tell anyone."],
+    ]);
+
+    // and the retry request to the BE doesn't carry the failed user prompt.
+    const retryBody = await lastReqBody(retrySpy);
+    expect(retryBody.message).toBe("retry prompt");
+    expect(retryBody.history).not.toContainEqual(
+      expect.objectContaining({ role: "user", content: "first prompt" }),
+    );
   });
 });

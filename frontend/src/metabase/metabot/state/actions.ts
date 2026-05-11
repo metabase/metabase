@@ -1,6 +1,6 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import { P, match } from "ts-pattern";
+import { P, isMatching, match } from "ts-pattern";
 import _ from "underscore";
 
 import {
@@ -29,13 +29,12 @@ import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
 
 import { metabot } from "./reducer";
 import {
-  getAgentErrorMessages,
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
   getHistory,
   getIsProcessing,
-  getLastMessage,
+  getMessageIdToRewind,
   getMetabotConversation,
   getUserPromptForMessageId,
 } from "./selectors";
@@ -73,73 +72,38 @@ export const {
   removeSuggestedCodeEdit,
 } = metabot.actions;
 
-type PromptErrorOutcome =
-  | {
-      errorMessage: MetabotErrorMessage;
-      shouldRetry: boolean;
-    }
-  | {
-      errorMessage: false;
-      shouldRetry: boolean;
-    };
-
 const handleResponseError = (
   error: unknown,
   metabotName: string,
-): PromptErrorOutcome => {
+): MetabotErrorMessage => {
   return match(error)
-    .with({ name: "AbortError" }, () => ({
-      errorMessage: false as const,
-      shouldRetry: false,
-    }))
     .with(
       { message: P.string.startsWith("Response status: 401") },
       { status: 401 },
       () => ({
-        errorMessage: {
-          type: "alert" as const,
-          message: METABOT_ERR_MSG.unauthenticated(metabotName),
-        },
-        shouldRetry: true,
+        type: "alert" as const,
+        message: METABOT_ERR_MSG.unauthenticated(metabotName),
       }),
     )
     .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
-      errorMessage: {
-        type: "locked" as const,
-        message: METABOT_ERR_MSG.locked,
-      },
-      shouldRetry: true,
+      type: "locked" as const,
+      message: METABOT_ERR_MSG.locked,
     }))
     .with({ status: P.number, message: P.string }, ({ message }) => ({
-      errorMessage: {
-        type: "message" as const,
-        message: METABOT_ERR_MSG.format(message),
-      },
-      shouldRetry: true,
+      type: "message" as const,
+      message: METABOT_ERR_MSG.format(message),
     }))
     .with(
       { "error-code": "ai_usage_limit_reached", message: P.string },
-      ({ message }) => ({
-        errorMessage: {
-          type: "message" as const,
-          message,
-        },
-        shouldRetry: true,
-      }),
+      ({ message }) => ({ type: "message" as const, message }),
     )
     .with(P.string, (err) => ({
-      errorMessage: {
-        type: "message" as const,
-        message: METABOT_ERR_MSG.format(err),
-      },
-      shouldRetry: true,
+      type: "message" as const,
+      message: METABOT_ERR_MSG.format(err),
     }))
     .otherwise(() => ({
-      errorMessage: {
-        type: "message" as const,
-        message: METABOT_ERR_MSG.default,
-      },
-      shouldRetry: true,
+      type: "message" as const,
+      message: METABOT_ERR_MSG.default,
     }));
 };
 
@@ -260,14 +224,13 @@ export const submitInput = createAsyncThunk<
         return { prompt, success: false, shouldRetry: false };
       }
 
-      // if there were from the last prompt, remove the last prompt from the history
-      const errors = getAgentErrorMessages(state, agentId);
-      const lastMessageId = getLastMessage(state, agentId)?.id;
-      if (errors.length > 0 && lastMessageId) {
+      // if the last prompt failed, rewind the conversation back to before it
+      const rewindToMessageId = getMessageIdToRewind(state, agentId);
+      if (rewindToMessageId) {
         dispatch(
           rewindConversation({
             agentId,
-            messageId: lastMessageId,
+            messageId: rewindToMessageId,
           }),
         );
       }
@@ -359,7 +322,7 @@ export const submitInput = createAsyncThunk<
 );
 
 type SendAgentRequestError =
-  | ({ type: "error" } & PromptErrorOutcome)
+  | { type: "error"; shouldRetry: boolean; errorMessage: MetabotErrorMessage }
   | ({
       type: "abort";
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
@@ -398,10 +361,11 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, ...request } = payload;
 
+    let state = {};
+    let response: ProcessedChatResponse | undefined;
     try {
-      let state = {};
       let streamError: MetabotAgentTurnError | undefined;
-      const response = await aiStreamingQuery(
+      response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
@@ -498,27 +462,14 @@ export const sendAgentRequest = createAsyncThunk<
           },
           onError: function handleError(part) {
             streamError =
-              typeof part === "string"
-                ? { message: part }
-                : part && typeof part === "object" && "message" in part
-                  ? (part as { message: string })
-                  : { message: String(part) };
+              part && typeof part === "object" && "message" in part
+                ? part
+                : { message: String(part) };
           },
         },
       );
-
       if (response.aborted) {
-        return rejectWithValue({
-          type: "abort",
-          conversation_id: request.conversation_id,
-          unresolved_tool_calls: response.toolCalls.filter(
-            (tc) => tc.state === "call",
-          ),
-          history: [...getHistory(getState(), agentId), ...response.history],
-          // state object comes at the end, so we may not have received it
-          // so fallback to the state used when the request was issued
-          state: Object.keys(state).length === 0 ? request.state : state,
-        });
+        throw new DOMException("Stream aborted", "AbortError");
       }
 
       if (streamError) {
@@ -536,10 +487,26 @@ export const sendAgentRequest = createAsyncThunk<
         processedResponse: response,
       });
     } catch (error) {
-      console.error(error);
+      if (isMatching({ name: "AbortError" }, error)) {
+        return rejectWithValue({
+          type: "abort",
+          conversation_id: request.conversation_id,
+          unresolved_tool_calls:
+            response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
+          history: [
+            ...getHistory(getState(), agentId),
+            ...(response?.history ?? []),
+          ],
+          // state object comes at the end, so we may not have received it
+          // so fallback to the state used when the request was issued
+          state: Object.keys(state).length === 0 ? request.state : state,
+        });
+      }
+
       return rejectWithValue({
-        type: "error",
-        ...handleResponseError(
+        type: "error" as const,
+        shouldRetry: true,
+        errorMessage: handleResponseError(
           error,
           getSetting(getState(), "metabot-name") || "Metabot",
         ),

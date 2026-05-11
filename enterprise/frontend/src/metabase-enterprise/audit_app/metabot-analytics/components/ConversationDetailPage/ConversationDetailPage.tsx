@@ -57,11 +57,10 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   });
 
   const chatMessages = useMemo(() => {
-    const isSlack =
-      conversation?.profile_id === "slackbot" ||
-      conversation?.profile_id === "slack";
     return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
-      isSlack,
+      isSlack:
+        conversation?.profile_id === "slackbot" ||
+        conversation?.profile_id === "slack",
     });
   }, [conversation]);
 

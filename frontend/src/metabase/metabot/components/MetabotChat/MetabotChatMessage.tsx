@@ -22,6 +22,7 @@ import type {
 import {
   ActionIcon,
   Button,
+  Card,
   Flex,
   type FlexProps,
   Icon,
@@ -302,7 +303,6 @@ const AgentTurnAlert = ({
     <Flex
       direction="column"
       gap="xs"
-      mt="sm"
       p="sm"
       bd={`1px solid var(--mb-color-border)`}
       bdrs="sm"
@@ -317,15 +317,20 @@ const AgentTurnAlert = ({
         {cta}
       </Flex>
       {debugDetails && (
-        <Text
+        <Card
+          bdrs="xs"
+          ml="lg"
+          p="sm"
+          withBorder
+          shadow="none"
           c="text-secondary"
-          size="xs"
+          fz="xs"
           ff="monospace"
           style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
           data-testid="metabot-chat-message-turn-alert-debug"
         >
           {JSON.stringify(debugDetails, null, 2)}
-        </Text>
+        </Card>
       )}
     </Flex>
   );

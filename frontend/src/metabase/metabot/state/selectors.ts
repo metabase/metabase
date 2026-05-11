@@ -170,6 +170,17 @@ export const getUserPromptForMessageId = createSelector(
   },
 );
 
+export const getMessageIdToRewind = createSelector(
+  [getAgentErrorMessages, getMessages],
+  (errors, messages) => {
+    const lastMessage = messages.at(-1);
+    if (lastMessage?.type === "turn_errored") {
+      return messages.findLast((m) => m.role === "user")?.id;
+    }
+    return errors.length > 0 ? lastMessage?.id : undefined;
+  },
+);
+
 export const getIsProcessing = createSelector(
   getMetabotConversation,
   (convo) => convo.isProcessing,
