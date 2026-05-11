@@ -23,6 +23,6 @@
    (merge
     {:source-paths (filterv (fn [^File f]
                               (and (= "test" (.getName f))
-                                   (not (re-find #"(?:^|/)\.clj-kondo/" (.getPath f)))))
+                                   (not= ".clj-kondo" (some-> (.getParentFile f) .getName))))
                             (common/source-paths))}
     options)))
