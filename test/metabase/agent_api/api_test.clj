@@ -266,6 +266,14 @@
         (is (= (mt/id) (lib/database-id decoded)))
         (is (= (mt/id :orders) (lib/primary-source-table-id decoded))))))
 
+  (testing "Does not require prompt"
+    (let [table-id (mt/id :orders)
+          response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                         {:source     {:type "table" :id table-id}
+                                          :operations []})]
+      (is (string? (:query response)) "Response should contain a query string")
+      (is (not (contains? response :prompt)) "Response should only echo prompt when supplied")))
+
   (testing "Respects explicit limit operation"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"

@@ -3,19 +3,19 @@
 Construct a Metabase MBQL query from a structured program. The body is the program itself — no envelope — shaped:
 
 ```
-{"prompt": "<user's exact original message>", "source": {...}, "operations": [...]}
+{"source": {...}, "operations": [...]}
 ```
 
-When the `prompt` field is available, pass the user's original message as-is; do not summarize, rewrite, or infer a different prompt.
+The `prompt` field is optional for Agent API callers. MCP clients should include it whenever they have the user's message; pass the original message as-is and do not summarize, rewrite, or infer a different prompt.
 
-In MCP, this returns `{"query_handle": "<uuid>"}` — pass the handle to `execute_query` or `visualize_query` as `query_handle`. The HTTP Agent API response still contains `{"query": "<base64>", "prompt": "<original prompt>"}`.
+In MCP, this returns `{"query_handle": "<uuid>"}` — pass the handle to `execute_query` or `visualize_query` as `query_handle`. The HTTP Agent API response contains `{"query": "<base64>"}` and echoes `prompt` only when supplied.
 
 IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `/v1/metric/{id}`). Do not invent IDs. The backend repairs minor mistakes (aliases, casing, over-wrapping) before validation, but the canonical names below always work.
 
 ## Workflow
 
 1. Use `search` and the entity-detail tools (`get_table`, `get_metric`) to find the table/metric/model and its fields.
-2. Call `construct_query` with the program and, when available, the user's original `prompt`. In MCP, you get back `{"query_handle": "<uuid>"}`.
+2. Call `construct_query` with the program. Include the user's original `prompt` whenever available. In MCP, you get back `{"query_handle": "<uuid>"}`.
 3. Pass that handle to `execute_query` or `visualize_query` as `query_handle`.
 
 Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.
@@ -74,8 +74,7 @@ Examples: `["count"]`, `["sum", ["field", 302]]`, `["count-where", ["=", ["field
 Top 5 customers by revenue:
 
 ```
-{"prompt": "Top 5 customers by revenue",
- "source": {"type": "table", "id": 42},
+{"source": {"type": "table", "id": 42},
  "operations": [["aggregate", ["sum", ["field", 302]]],
                 ["breakout", ["field", 101]],
                 ["order-by", ["aggregation-ref", 0], "desc"],
@@ -85,8 +84,7 @@ Top 5 customers by revenue:
 Monthly revenue from a metric (metric supplies the aggregation):
 
 ```
-{"prompt": "Monthly revenue",
- "source": {"type": "metric", "id": 10},
+{"source": {"type": "metric", "id": 10},
  "operations": [["breakout", ["with-temporal-bucket", ["field", 305], "month"]],
                 ["order-by", ["with-temporal-bucket", ["field", 305], "month"], "asc"]]}
 ```
@@ -94,8 +92,7 @@ Monthly revenue from a metric (metric supplies the aggregation):
 Filter on an aggregated value (requires `append-stage`):
 
 ```
-{"prompt": "Customers with revenue over 1000",
- "source": {"type": "table", "id": 42},
+{"source": {"type": "table", "id": 42},
  "operations": [["aggregate", ["sum", ["field", 302]]],
                 ["breakout", ["field", 101]],
                 ["append-stage"],
@@ -105,8 +102,7 @@ Filter on an aggregated value (requires `append-stage`):
 Named expression referenced later:
 
 ```
-{"prompt": "Total discount",
- "source": {"type": "table", "id": 42},
+{"source": {"type": "table", "id": 42},
  "operations": [["expression", "Discount", ["-", ["field", 302], ["field", 303]]],
                 ["aggregate", ["sum", ["expression-ref", "Discount"]]]]}
 ```
@@ -114,8 +110,7 @@ Named expression referenced later:
 Previous-period comparison with `offset` (stay in the SAME stage — do NOT add `append-stage`):
 
 ```
-{"prompt": "Monthly revenue compared with the previous month",
- "source": {"type": "table", "id": 42},
+{"source": {"type": "table", "id": 42},
  "operations": [["aggregate", ["sum", ["field", 302]]],
                 ["aggregate", ["offset", ["sum", ["field", 302]], -1]],
                 ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]]}
