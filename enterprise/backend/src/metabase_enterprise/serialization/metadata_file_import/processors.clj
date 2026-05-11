@@ -1,53 +1,57 @@
 (ns metabase-enterprise.serialization.metadata-file-import.processors
-  "Pure batch processors for the metadata file importer.
+  "SQL building blocks for the metadata file importer's drain-then-merge flow.
 
-  Each `process-*!` function takes a batch of `[line-num row]` tuples,
-  validates every row up front, runs the bulk SQL once per batch, and returns
-  an `eduction` that emits one result map per input row in input order.
+  Three groups of functions:
 
-  The eduction shape lets callers compose with `reduce` / `transduce` without
-  ever materializing a full per-batch result vector. The eager work (validation,
-  SELECT, INSERT, UPDATE, DELETE) runs at call time so re-iteration is safe and
-  validation errors surface immediately rather than at consumption time.
+    - **Databases** ([[process-databases!]]): per-batch in-Clojure match by
+      natural key (name, engine). No live writes; returns matched/no-match
+      result maps for the orchestrator to aggregate.
+    - **Drain** ([[drain-tables-batch!]] / [[drain-fields-batch!]]): per-batch
+      handlers writing wire rows into `metabase_table_import` /
+      `metabase_field_import` verbatim — source-side integer IDs go into
+      `source_*_id` staging columns.
+    - **Pre-flight** ([[assert-no-orphan-refs!]]) and **depth tagging**
+      ([[compute-staging-depth!]]): post-drain validation and graph-walk.
+      Together they make the strict-consistency assumption load-bearing —
+      orphan refs become hard errors, cycles are caught, and the merge can
+      iterate by depth without fallback paths.
+    - **Merge** (atomic, designed to compose under one outer
+      `t2/with-transaction`): [[resolve-target-table-ids-in-staging!]],
+      [[merge-tables!]], [[resolve-target-table-ids-for-fields-in-staging!]],
+      then [[merge-fields-by-depth!]] which loops the per-depth helpers
+      (`fill-target-parent-ids-at-depth!`,
+      `fill-target-fk-target-ids-at-depth!`,
+      `resolve-target-field-ids-at-depth!`, `update-matched-fields-at-depth!`,
+      `insert-new-fields-at-depth!`).
 
-  Errors propagate as `ex-info` with `:kind`, `:line`, and `:source-id`
-  attribution so the loader can produce useful boot-time error messages."
+  Driver-blind: every SQL statement goes through `t2/query` with a HoneySQL
+  map; correlated subqueries instead of `UPDATE … FROM` for cross-dialect
+  portability.
+
+  Errors propagate as `ex-info` with `:kind` for typed failure handling
+  (`:invalid_input`, `:file_incomplete`, `:cycle_in_field_graph`,
+  `:depth_tagging_cap_exceeded`)."
   (:require
    [malli.error :as me]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
+   [metabase.app-db.core :as mdb]
    [metabase.models.humanization :as humanization]
-   [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang ExceptionInfo)
-   (java.sql SQLException)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def import-batch-size
-  "Row batch size shared by all processors."
-  500)
+  "Row batch size shared by all processors. Tuned at 250 against the
+  real-stats benchmark (~234K-field dump): the cost per row is minimized
+  here because larger batches make the per-batch INSERT super-linear (the
+  WAL/index overhead grows with batch size against a filling staging
+  table) and smaller batches start paying parser/handler-dispatch overhead
+  that swamps the per-row savings."
+  250)
 
-;;; ============================== Error utilities ==============================
-
-(defn- unique-violation?
-  "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2 via
-  SQLState `\"23505\"` (SQL:2003 standard) and MySQL/MariaDB via SQLState `\"23000\"` + vendor
-  error code 1062."
-  [^Throwable e]
-  (loop [^Throwable cause e]
-    (cond
-      (nil? cause) false
-      (instance? SQLException cause)
-      (let [sql-ex ^SQLException cause]
-        (or (case (.getSQLState sql-ex)
-              "23505" true
-              "23000" (= 1062 (.getErrorCode sql-ex))
-              false)
-            (recur (.getCause cause))))
-      :else (recur (.getCause cause)))))
+;;; ============================== Validation ==============================
 
 (defn- validate-line!
   "Validate `line` against the registered Malli `schema-ref`. Succeeds silently when valid
@@ -56,28 +60,73 @@
   [schema-ref line-num line extras]
   (when-not (mr/validate schema-ref line)
     (let [humanized (me/humanize (mr/explain schema-ref line))]
-      (throw (ex-info (format "invalid_input: %s" (name schema-ref))
+      (throw (ex-info (format "Invalid %s row on line %d" (name schema-ref) line-num)
                       (merge extras
                              {:kind   :invalid_input
                               :line   line-num
                               :detail (pr-str humanized)}))))))
 
-(defn- wrap-row-error
-  "Tag an exception from a per-row processor with `:line` and `echo-extras` so the caller can
-  attribute the failure to a specific row. An already-classified `ExceptionInfo` (one whose
-  ex-data carries `:kind`) passes through unchanged — it carries its own attribution from the
-  throw site. Unrecognized exceptions get classified as `:unique_violation` (SQLState match) or
-  `:server_error`."
-  [^Throwable e line-num echo-extras]
-  (let [data (when (instance? ExceptionInfo e) (ex-data e))]
-    (if (:kind data)
-      e
-      (ex-info (.getMessage e)
-               (merge echo-extras
-                      {:kind   (if (unique-violation? e) :unique_violation :server_error)
-                       :line   line-num
-                       :detail (.getMessage e)})
-               e))))
+;;; ============================== Staging tables ==============================
+
+(defn clear-staging-tables!
+  "Empty `metabase_table_import` and `metabase_field_import`. Called by
+  [[with-staging-tables]] on entry and on exit (try/finally) so a crashed
+  prior attempt cannot leak rows into the next run.
+
+  Uses `TRUNCATE` rather than `DELETE` so that running the importer
+  multiple times in one process lifetime doesn't accumulate dead tuples
+  in staging (DELETE leaves dead rows in the heap and indexes until the
+  next autovacuum, which won't run mid-import). HoneySQL's `:truncate`
+  compiles to `TRUNCATE TABLE …` on PG, H2, and MySQL.
+
+  Called outside any outer transaction (the entry call runs before the
+  merge's `t2/with-transaction`, and the exit call is in `finally` after
+  the txn has closed), so MySQL's implicit commit on TRUNCATE is fine."
+  []
+  (t2/query {:truncate :metabase_table_import})
+  (t2/query {:truncate :metabase_field_import}))
+
+(defn analyze-staging-tables!
+  "Refresh planner statistics on `metabase_table_import` and
+  `metabase_field_import` after drain, before any of the staging-driven
+  UPDATEs (orphan check, depth tagging, per-depth resolves, the merge
+  itself). Without this, PG's planner has zero rows-and-distribution
+  knowledge of staging — autovacuum's stats refresh won't fire mid-
+  import — and selectivity defaults can drive plan choices that scan
+  far more pages than the actual selectivity would.
+
+  Driver-conditional: there's no portable HoneySQL form for ANALYZE,
+  and the syntax differs (`ANALYZE name` on PG, `ANALYZE TABLE name`
+  on MySQL, `ANALYZE` whole-DB on H2). H2 dev/test only, and analyzing
+  the full H2 DB is cheap; MySQL is documented but we don't benchmark
+  there. PG is where the win matters in practice."
+  []
+  (case (mdb/db-type)
+    :postgres
+    (do (t2/query "ANALYZE metabase_table_import")
+        (t2/query "ANALYZE metabase_field_import"))
+    :mysql
+    (do (t2/query "ANALYZE TABLE metabase_table_import")
+        (t2/query "ANALYZE TABLE metabase_field_import"))
+    :h2
+    (t2/query "ANALYZE")))
+
+(defmacro with-staging-tables
+  "Run `body` with the staging tables pre-cleared, and clear them again on exit.
+
+  The exit clear is a `finally` so a thrown exception from the body still
+  wipes staging — both branches of the contract matter:
+
+    - **Entry clear** ensures the body sees an empty staging area regardless
+      of any leftover rows from a crashed prior attempt.
+    - **Exit clear** ensures we leak nothing to the next attempt, whether the
+      body returned normally or threw.
+
+  The body's exception is re-raised after the finally runs."
+  [& body]
+  `(do (clear-staging-tables!)
+       (try ~@body
+            (finally (clear-staging-tables!)))))
 
 ;;; ============================== databases (batch) ==============================
 
@@ -116,553 +165,614 @@
   "Process a batch of database rows. Returns an eduction of result maps.
 
   Result shapes:
-    `{:source-id <db-name> :target-id M :status :matched}`
-    `{:source-id <db-name> :status :no-match :line L :detail S}`
+    `{:source-id <int> :name <string> :target-id <int> :status :matched}`
+    `{:source-id <int> :name <string> :status :no-match :line L :detail S}`
 
-  `:source-id` is the row's `:name` (its portable database id).
+  `:source-id` is the wire row's `:id` (the source appdb's database id, an integer).
 
   Validation failures throw; lookup misses produce `:no-match` results
   (non-fatal)."
   [batch]
   (doseq [[ln line] batch]
-    (validate-line! ::schemas/database-info ln line {:source-id (:name line)}))
+    (validate-line! ::schemas/database-info ln line {:source-id (:id line)}))
   (let [match-idx (match-databases-batch (mapv second batch))]
     (eduction
-     (map (fn [[ln {:keys [name engine]}]]
+     (map (fn [[ln {:keys [id name engine]}]]
             (if-let [target (match-idx [name (engine-name engine)])]
-              {:source-id name :target-id target :status :matched}
-              {:source-id name
+              {:source-id id :name name :target-id target :status :matched}
+              {:source-id id :name name
                :status    :no-match
                :line      ln
                :detail    (format "No database with name=%s engine=%s"
                                   (pr-str name) (pr-str (engine-name engine)))})))
      batch)))
 
-;;; ============================== tables (batch) ==============================
+;;; ============================== tables — drain + merge ==============================
 
-(defn- resolve-db-ids-batch
-  "Resolve each portable `:db_id` (database name, a string) in `lines` to a target
-  integer database id. Returns `{db-name → target-int-id}`, omitting names with no
-  matching target row. One batched SELECT per call."
-  [lines]
-  (let [names (into #{} (keep :db_id) lines)]
-    (if (empty? names)
-      {}
-      (into {}
-            (map (fn [{:keys [id name]}] [name id]))
-            (t2/select [:model/Database :id :name]
-                       {:where [:in :name names]})))))
+(defn drain-tables-batch!
+  "Per-batch handler for `:tables`: validate each row, denormalize `db_name`
+  from the in-memory `databases-by-source-id` map (built by the databases
+  handler), and bulk-insert into `metabase_table_import`. Suitable as a
+  callback for `parsers/stream-keyed-arrays!` once partial-applied with
+  `databases-by-source-id`."
+  [databases-by-source-id batch]
+  (doseq [[ln line] batch]
+    (validate-line! ::schemas/table-info ln line {:source-id (:id line)}))
+  (when (seq batch)
+    (let [rows (mapv (fn [[_ {:keys [id db_id schema name description]}]]
+                       {:source_id    id
+                        :source_db_id db_id
+                        :db_name      (get databases-by-source-id db_id)
+                        :schema       schema
+                        :name         name
+                        :description  description
+                        :display_name (humanization/name->human-readable-name name)})
+                     batch)]
+      (t2/insert! :metabase_table_import rows))))
 
-(defn- match-tables-batch
-  "Look up every existing target Table matching any of the (target-db-id,
-  schema, name) triples in `lines`, scoped to
-  `active=true AND is_defective_duplicate=false`. Returns
-  `{[db-id schema name] → existing-id}` for matching rows."
-  [lines]
-  (let [triples (into #{} (map (juxt :db_id :schema :name)) lines)
-        db-ids  (into #{} (keep :db_id) lines)
-        names   (into #{} (keep :name) lines)]
-    (if (or (empty? db-ids) (empty? names))
-      {}
-      ;; Over-include via `(db_id IN ..., name IN ...)` then intersect in
-      ;; Clojure — keeps nil schemas correct without per-DBMS IS-NULL gymnastics.
-      (let [rows (t2/select [:model/Table :id :db_id :schema :name]
-                            {:where [:and
-                                     [:= :active true]
-                                     [:= :is_defective_duplicate false]
-                                     [:in :db_id db-ids]
-                                     [:in :name names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id db_id schema name]}] [[db_id schema name] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
+(defn resolve-target-table-ids-in-staging!
+  "Set `metabase_table_import.target_id` to the int id of the matching
+  `metabase_table` row for every staging row whose match key resolves. The
+  match key is `(db_name, schema, name)` against `(d.name, t.schema, t.name)`,
+  restricted to active, non-defective live rows.
 
-(defn- new-table-row
-  "Row for inserting into `:metabase_table` via the raw table keyword, deliberately
-  bypassing `:model/Table`'s `define-after-insert` hook → `set-new-table-permissions!`.
-  That hook acquires `with-db-scoped-permissions-lock` per table; on a bulk insert of
-  ~1700+ tables in one transaction it exhausts Postgres' `max_locks_per_transaction`.
+  Lets [[merge-tables!]]'s UPDATE key on a single column instead of repeating
+  the 2-table-join match in each correlated subquery. Rows that do not match
+  keep `target_id` NULL — `merge-tables!`'s INSERT picks up exactly those
+  rows. Inactive matches are deliberately not resolved so a re-import after
+  a deactivation creates a fresh active row.
 
-  This is **safe on a fresh appdb** whose Database row carries default DB-level
-  permissions, but **not safe** against an appdb where any group has gone
-  table-granular on the target Database — those tables would silently lack their
-  per-table permission rows. TODO: batched-grant fix.
+  Idempotent — running again with the same staging contents produces the
+  same assignments. Uses a correlated subquery in SET so it serializes
+  portably across PG / H2 / MySQL via `t2/query`."
+  []
+  (t2/query
+   {:update :metabase_table_import
+    :set    {:target_id
+             {:select [:t.id]
+              :from   [[:metabase_table :t]]
+              :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
+              :where  [:and
+                       [:= :metabase_table_import.db_name :d.name]
+                       [:= [:coalesce :t.schema [:inline ""]]
+                        [:coalesce :metabase_table_import.schema [:inline ""]]]
+                       [:= :t.name :metabase_table_import.name]
+                       [:= :t.is_defective_duplicate [:inline false]]
+                       [:= :t.active [:inline true]]]}}}))
 
-  Replicates the non-permission defaults `:model/Table`'s `define-before-insert`
-  applies (`display_name`, `data_layer`). `field_order` falls back to the column
-  default `'database'`."
-  [{:keys [db_id name schema description]}]
-  (let [now (mi/now)]
-    (cond-> {:db_id               db_id
-             :name                name
-             :schema              schema
-             :display_name        (humanization/name->human-readable-name name)
-             :data_layer          "internal"
-             :active              true
-             :initial_sync_status "complete"
-             :created_at          now
-             :updated_at          now}
-      (some? description) (assoc :description description))))
+(defn merge-tables!
+  "Merge `metabase_table_import` into `metabase_table` atomically.
 
-(defn- patch-matched-tables!
-  "When source carries a non-nil `:description`, write it to the matched target."
-  [target-lines match-idx]
-  (doseq [{:keys [db_id schema name description]} target-lines
-          :when (and (contains? match-idx [db_id schema name])
-                     (some? description))]
-    (t2/update! :model/Table (get match-idx [db_id schema name])
-                {:description description})))
+  Two SQL statements wrapped in a single `t2/with-transaction`:
 
-(defn- bulk-insert-unmatched-tables!
-  "Bulk-insert every `target-line` whose `(db_id, schema, name)` triple is absent
-  from `match-idx`. Returns `{[db-id schema name] → new-id}` for the inserted rows
-  so callers can resolve target ids in input order."
-  [target-lines match-idx]
-  (let [unmatched   (filterv (fn [{:keys [db_id schema name]}]
-                               (not (contains? match-idx [db_id schema name])))
-                             target-lines)
-        insert-rows (mapv new-table-row unmatched)
-        new-ids     (when (seq insert-rows)
-                      (t2/insert-returning-pks! :metabase_table insert-rows))]
-    (zipmap (map (juxt :db_id :schema :name) unmatched) new-ids)))
+    1. **UPDATE** rows whose `target_id` resolved (i.e., a matching active
+       live row exists). Clobbers `description` from staging, bumps
+       `updated_at`. Each SET column is a single-key lookup on
+       `staging.target_id`.
+    2. **INSERT** rows whose `target_id` is NULL — no active live row
+       matched. Sets `active=true` and `data_layer='internal'`; lets column
+       defaults handle `field_order`, `initial_sync_status`, etc.
 
-(defn- portable-table-id
-  "The portable id for a row in `process-tables!` — `[db-name schema-or-nil name]`."
-  [{:keys [db_id schema name]}]
-  [db_id schema name])
+  Order matters: UPDATE first so on a clean-schema import the UPDATE matches
+  nothing (fast no-op) and the INSERT writes each row exactly once.
 
-(defn process-tables!
-  "Process a batch of table rows. Returns an eduction of result maps.
+  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have run.
+  Without that, every staging row's `target_id` is NULL — you'd get correct
+  INSERTs but no clobber.
 
-  Result shapes:
-    `{:source-id [db-name schema name] :target-id M :status :matched}`
-    `{:source-id [db-name schema name] :target-id M :status :inserted}`
-    `{:source-id [db-name schema name] :status :no-target-db :line L :detail S}`
+  The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
+  source DB has no target appdb match are silently dropped.
 
-  `:source-id` is the row's `[db_id schema name]` triple (its portable table id).
+  The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
+  not fire here because the INSERT goes through the raw table keyword
+  (`:metabase_table`) rather than the model. This preserves today's
+  per-table-permission gap; batched-grant work is tracked separately.
 
-  Matched rows: source `:description` overwrites target. No other writes on
-  matched rows."
+  Composes safely inside a larger transaction: Toucan2's `t2/with-transaction`
+  joins an outer txn rather than creating a savepoint, so when an outer caller
+  wraps several merge steps in one txn, this function's inner txn participates
+  in the outer's all-or-nothing semantics."
+  []
+  (t2/with-transaction [_]
+    ;; UPDATE matched rows first (clobber description, bump updated_at).
+    ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
+    ;; description actually differs (NULL-safe via COALESCE-with-empty-
+    ;; string), so a re-import with identical description is a true no-op
+    ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
+    ;; in the predicate (otherwise the UPDATE would always fire,
+    ;; defeating the optimization).
+    (t2/query
+     {:update :metabase_table
+      :set    {:description {:select [:it.description]
+                             :from   [[:metabase_table_import :it]]
+                             :where  [:= :it.target_id :metabase_table.id]}
+               :updated_at :%now}
+      :where  [:and
+               [:= :metabase_table.is_defective_duplicate [:inline false]]
+               [:= :metabase_table.active [:inline true]]
+               [:exists {:select [[[:inline 1]]]
+                         :from   [[:metabase_table_import :it]]
+                         :where  [:and
+                                  [:= :it.target_id :metabase_table.id]
+                                  [:!= [:coalesce :metabase_table.description [:inline ""]]
+                                   [:coalesce :it.description             [:inline ""]]]]}]]})
+    ;; INSERT rows with no matching live row (target_id IS NULL)
+    (t2/query
+     {:insert-into
+      [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
+                         :active :show_in_getting_started :is_defective_duplicate
+                         :created_at :updated_at]]
+       {:select [:d.id :it.schema :it.name :it.description :it.display_name
+                 [[:inline "internal"]]
+                 [[:inline true]] [[:inline false]] [[:inline false]]
+                 :%now :%now]
+        :from   [[:metabase_table_import :it]]
+        :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
+        :where  [:= :it.target_id nil]}]})))
+
+;;; ============================== fields — drain + merge ==============================
+
+(defn- encode-path-or-nil
+  "Encode an `:nfc_path` coll as a JSON string, matching the
+  `metabase_field.nfc_path` storage convention. NULL for empty/nil;
+  JSON-encoded array string otherwise."
+  [coll]
+  (when (seq coll) (json/encode (vec coll))))
+
+(defn drain-fields-batch!
+  "Per-batch handler for `:fields`: validate each row, then bulk-insert into
+  `metabase_field_import`. Wire integer ids (`:id`, `:table_id`, `:parent_id`,
+  `:fk_target_field_id`) go into the matching `source_*_id` columns verbatim;
+  resolution to target ids happens later in the merge phase."
   [batch]
   (doseq [[ln line] batch]
-    (validate-line! ::schemas/table-info ln line {:source-id (portable-table-id line)}))
-  (let [db-id-map    (resolve-db-ids-batch (mapv second batch))
-        target-lines (into []
-                           (keep (fn [[_ln {src-db :db_id :as line}]]
-                                   (when-let [tgt (get db-id-map src-db)]
-                                     (assoc line :db_id tgt))))
-                           batch)
-        match-idx    (match-tables-batch target-lines)]
-    (patch-matched-tables! target-lines match-idx)
-    (let [id-by-nat (bulk-insert-unmatched-tables! target-lines match-idx)]
-      (eduction
-       (map (fn [[ln {src-db :db_id :keys [schema name] :as line}]]
-              (let [src-id (portable-table-id line)]
-                (if-let [tgt-db (get db-id-map src-db)]
-                  (if-let [existing (get match-idx [tgt-db schema name])]
-                    {:source-id src-id :target-id existing :status :matched}
-                    {:source-id src-id :target-id (get id-by-nat [tgt-db schema name])
-                     :status :inserted})
-                  {:source-id src-id :status :no-target-db :line ln
-                   :detail   (format "No target database with name=%s"
-                                     (pr-str src-db))}))))
-       batch))))
+    (validate-line! ::schemas/field-info ln line {:source-id (:id line)}))
+  (when (seq batch)
+    (let [rows (mapv (fn [[_ {:keys [id table_id parent_id fk_target_field_id
+                                     name base_type database_type
+                                     effective_type semantic_type coercion_strategy
+                                     description nfc_path]}]]
+                       {:source_id           id
+                        :source_table_id     table_id
+                        :source_parent_id    parent_id
+                        :source_fk_target_id fk_target_field_id
+                        :name                name
+                        :base_type           base_type
+                        :database_type       database_type
+                        :effective_type      effective_type
+                        :semantic_type       semantic_type
+                        :coercion_strategy   coercion_strategy
+                        :description         description
+                        :nfc_path            (encode-path-or-nil nfc_path)})
+                     batch)]
+      (t2/insert! :metabase_field_import rows))))
 
-;;; ==================== fields (batch) ====================
+;;; ============================== Pre-flight orphan check ==============================
 
-(def ^:private stub-base-type
-  "Sentinel `:base_type` for stub field rows. Distinguishes import-inserted
-  placeholders from real rows when scanning for unfilled stubs at end-of-import."
-  "type/*")
+(def ^:private orphan-sample-cap
+  "How many orphan rows to surface in the error data when bailing out. Enough
+  to give the operator a starting point for tracing back to the source file
+  without ballooning the exception payload."
+  10)
 
-(def ^:private stub-database-type
-  "Sentinel `:database_type` for stub field rows."
-  "__stub__")
+(defn- orphan-not-exists-predicate
+  "WHERE-clause fragment matching rows whose `column-key` (a `:source_*_id`
+  column) is non-null but doesn't reference any other staging row's
+  `source_id`. Uses correlated NOT EXISTS rather than NOT IN — at 9M+
+  rows PG cannot plan `NOT IN (subquery)` well (NULL-semantics force
+  full-materialization of the inner set) and the query effectively
+  never terminates. NOT EXISTS resolves to a proper anti-join via the
+  PK index on `source_id`, O(N log N) instead of O(N²)."
+  [column-key]
+  ;; Inner subquery aliased as `:s` so the unqualified column-key in
+  ;; the inner WHERE has to qualify to the outer table — both tables
+  ;; have `source_parent_id` / `source_fk_target_id`.
+  (let [outer-col (keyword (str "metabase_field_import." (name column-key)))]
+    [:and
+     [:not= column-key nil]
+     [:not [:exists
+            {:select [[[:inline 1]]]
+             :from   [[:metabase_field_import :s]]
+             :where  [:= :s.source_id outer-col]}]]]))
 
-(defn stub-row?
-  "True if `row` is a placeholder stub. Checks `:database_type` (not `:base_type`,
-  which goes through the model's keyword transform on read)."
-  [{:keys [database_type]}]
-  (= stub-database-type database_type))
+(defn- orphan-count
+  "Number of `metabase_field_import` rows whose `column-key` (a `:source_*_id`
+  column) is non-null but doesn't reference any other row's `source_id`."
+  [column-key]
+  (t2/count :metabase_field_import {:where (orphan-not-exists-predicate column-key)}))
 
-(defn- portable-field-id-vec
-  "Wire `:id` normalized to a Clojure vector. The export emits `:id` directly;
-  the importer reads it verbatim and only normalizes container type so it can
-  be used as a hash-map key (Jackson's ArrayList and Clojure's PersistentVector
-  hash differently past the array-map size threshold)."
-  [{:keys [id]}]
-  (vec id))
+(defn- orphan-sample
+  "Up to `orphan-sample-cap` `[source_id, <column-key>]` pairs for orphan rows."
+  [column-key]
+  (t2/query
+   {:select [:source_id column-key]
+    :from   [:metabase_field_import]
+    :where  (orphan-not-exists-predicate column-key)
+    :limit  orphan-sample-cap}))
 
-(defn- resolve-table-ids-batch
-  "Resolve each distinct portable `:table_id` triple in `lines` to a target
-  integer table id. Returns `{[db-name schema-or-nil table-name] → target-id}`
-  with vector keys."
-  [lines]
-  (let [triples   (into #{} (keep (fn [{:keys [table_id]}] (some-> table_id vec))) lines)
-        db-names  (into #{} (map #(get % 0)) triples)
-        tbl-names (into #{} (map #(get % 2)) triples)]
-    (if (empty? triples)
-      {}
-      (let [rows (t2/query {:select [[:t.id :id] [:t.schema :schema]
-                                     [:t.name :tbl-name] [:d.name :db-name]]
-                            :from   [[:metabase_table :t]]
-                            :join   [[:metabase_database :d] [:= :t.db_id :d.id]]
-                            :where  [:and
-                                     [:= :t.active true]
-                                     [:= :t.is_defective_duplicate false]
-                                     [:in :d.name db-names]
-                                     [:in :t.name tbl-names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id schema tbl-name db-name]}]
-                           [[db-name schema tbl-name] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
+(defn assert-no-orphan-refs!
+  "Pre-flight check after drain: every staging field row's `source_parent_id`
+  must reference another staging row's `source_id`. Throws `ex-info` with
+  `:kind :file_incomplete` and a sample of orphan rows in the error data
+  when any orphan parent ref exists.
 
-(defn- decode-nfc-path
-  "Decode `metabase_field.nfc_path` (JSON-encoded string or NULL) to a Clojure
-  vector or nil."
-  [s]
-  (some-> s json/decode vec))
+  Orphan `source_fk_target_id` refs are *not* fatal — they're handled
+  separately by [[null-orphan-fk-target-refs!]], which NULLs them and lets
+  the loader emit a WARN. Foreign-key target refs are informational (used
+  for join discovery and drill-through); a missing target degrades to
+  'no fk relationship known' rather than blocking the import. Parent refs
+  are structural — a field claiming to be a child of a missing field can't
+  be positioned, so the file is genuinely incomplete.
 
-(defn- encode-nfc-path
-  "Encode a parent-ancestry path vector for storage in `metabase_field.nfc_path`.
-  Returns the JSON-encoded string for non-empty paths, nil for empty/nil — root
-  fields and depth-1 stubs have NULL `nfc_path`."
-  [anc-path]
-  (when (seq anc-path)
-    (json/encode anc-path)))
+  This is the cheap one-shot check that makes the strict-consistency
+  invariant load-bearing for parent_id — orphan parents are hard errors,
+  and the depth-walk merge can rely on every parent reference being
+  resolvable within staging."
+  []
+  (let [parent-count (orphan-count :source_parent_id)]
+    (when (pos? parent-count)
+      (throw (ex-info (format "metadata-file-import: file is incomplete — %d orphan parent ref(s)"
+                              parent-count)
+                      {:kind                   :file_incomplete
+                       :orphan-parent-count    parent-count
+                       :orphan-parent-sample   (orphan-sample :source_parent_id)})))))
 
-(defn- resolve-parent-ids-batch
-  "Resolve each portable field id in `parent-vecs` to a target integer field id.
-  Returns `{parent-vec → target-int-id}` (vector keys), omitting parents not
-  found on the target.
+(defn null-orphan-fk-target-refs!
+  "Find staging rows whose `source_fk_target_id` points at a `source_id`
+  not present in staging, and NULL the `source_fk_target_id` column on
+  those rows (and their corresponding `target_fk_target_id` for safety).
+  Returns `{:count N :sample [...]}` when at least one row was scrubbed,
+  `{:count 0}` otherwise. The caller is expected to WARN-log on non-zero.
 
-  Input vecs may be any storage shape; reconstruction branches per the shape,
-  mirroring [[metabase-enterprise.serialization.metadata/external-field-id]]:
+  Why NULL instead of abort: fk_target refs that cross a hidden/archived
+  table boundary on the source side (the table is `active=false` or
+  `visibility_type='hidden'`) survive in `metabase_field` but get filtered
+  out by the export's table-visibility join. The exported file then contains
+  fk_target refs whose targets aren't emitted — a real-data shape we observe
+  in production appdbs. Treating these as fatal would block legitimate
+  imports; treating them as no-fk is the lossless choice for the importer."
+  []
+  (let [n (orphan-count :source_fk_target_id)]
+    (if (zero? n)
+      {:count 0}
+      (let [sample (orphan-sample :source_fk_target_id)]
+        (t2/query
+         {:update :metabase_field_import
+          :set    {:source_fk_target_id nil
+                   :target_fk_target_id nil}
+          :where  (orphan-not-exists-predicate :source_fk_target_id)})
+        {:count n :sample sample}))))
 
-    - storage `parent_id` non-NULL: `[db schema table & nfc-path & leaf-name]`
-    - storage `parent_id` NULL, `nfc_path` non-empty: `[db schema table & nfc-path]`
-    - both NULL: `[db schema table leaf-name]`
+;;; ============================== Depth tagging ==============================
 
-  Resolves stubs from prior batches (matched on natural key, not on `active`)."
-  [parent-vecs]
-  (let [parents   (into #{} (map vec) parent-vecs)
-        ;; Probe by `(db, table)` only — `:f.name` would miss JSON-unfolded
-        ;; leaves whose storage `name` differs from anything in the wire id.
-        db-names  (into #{} (map #(get % 0)) parents)
-        tbl-names (into #{} (map #(get % 2)) parents)]
-    (if (empty? parents)
-      {}
-      (let [rows (t2/query {:select [[:f.id :id] [:f.name :leaf-name] [:f.nfc_path :nfc-path]
-                                     [:f.parent_id :parent-id]
-                                     [:t.schema :schema] [:t.name :tbl-name] [:d.name :db-name]]
-                            :from   [[:metabase_field :f]]
-                            :join   [[:metabase_table :t]    [:= :f.table_id :t.id]
-                                     [:metabase_database :d] [:= :t.db_id :d.id]]
-                            :where  [:and
-                                     [:= :f.is_defective_duplicate false]
-                                     [:= :t.active true]
-                                     [:= :t.is_defective_duplicate false]
-                                     [:in :d.name db-names]
-                                     [:in :t.name tbl-names]]})]
-        (into {}
-              (keep (fn [{:keys [id db-name schema tbl-name leaf-name nfc-path parent-id]}]
-                      (let [anc (decode-nfc-path nfc-path)
-                            pv  (cond
-                                  ;; storage parent_id non-NULL
-                                  (some? parent-id)
-                                  (-> [db-name schema tbl-name]
-                                      (into (or anc []))
-                                      (conj leaf-name))
-                                  ;; storage parent_id NULL, nfc_path non-empty —
-                                  ;; full path including the leaf
-                                  (seq anc)
-                                  (into [db-name schema tbl-name] anc)
-                                  ;; both NULL
-                                  :else
-                                  [db-name schema tbl-name leaf-name])]
-                        (when (contains? parents pv)
-                          [pv id]))))
-              rows)))))
+(def depth-iteration-cap
+  "Sentinel cap on the depth-tagging fixpoint loop. Real Metabase data has
+  parent chains ≤ 3 deep; in practice convergence is 2-4 rounds. The cap is a
+  safety belt — if a workload ever exceeds it, the algorithm itself is the
+  bug, not the data. Hitting the cap throws `:cycle_in_field_graph` with the
+  un-tagged sample for diagnostics."
+  50)
 
-(defn- new-stub-field-row
-  "Row map for inserting a placeholder stub field — marker fields
-  `database_type=\"__stub__\"` + `base_type=\"type/*\"` + `active=false`."
-  [target-table-id parent-vec resolved-parent-id]
-  (let [pv         (vec parent-vec)
-        leaf-name  (peek pv)
-        ;; `nfc-path` for the parent storage row = the parent's `:id` minus the
-        ;; `[db schema table]` prefix and the leaf name. Empty for flat-root
-        ;; parents (length-4 :id), non-empty for middle parents.
-        anc-path   (not-empty (subvec pv 3 (dec (count pv))))
-        now        (mi/now)]
-    {:table_id               target-table-id
-     :name                   leaf-name
-     :nfc_path               (encode-nfc-path anc-path)
-     :parent_id              resolved-parent-id
-     :base_type              stub-base-type
-     :database_type          stub-database-type
-     :active                 false
-     :is_defective_duplicate false
-     :fk_target_field_id     nil
-     :created_at             now
-     :updated_at             now}))
+(defn- mark-roots-at-depth-zero!
+  "Tag every staging row with no parent and no fk_target ref as `depth = 0`.
+  Bootstraps the iteration."
+  []
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:depth 0}
+    :where  [:and
+             [:= :source_parent_id nil]
+             [:= :source_fk_target_id nil]]}))
 
-(defn- ensure-ancestors!
-  "Walk up the parent chain from `parent-vec` until hitting an existing ancestor
-  (in `cache!` or via natural-key SELECT) or reaching the table root. Insert
-  placeholder stub rows depth-first for every missing ancestor on the way back
-  down. Returns the int id of the immediate parent (real or just-inserted stub).
-  `cache!` is a `volatile!` `{portable-vec → int}` updated in place.
+(defn- mark-rows-at-depth!
+  "Tag every still-untagged staging row whose `source_parent_id` and
+  `source_fk_target_id` (when non-NULL) reference rows that already have
+  `depth < d`."
+  [d]
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:depth d}
+    :where  [:and
+             [:= :metabase_field_import.depth nil]
+             [:or
+              [:= :metabase_field_import.source_parent_id nil]
+              [:exists {:select [[[:inline 1]]]
+                        :from   [[:metabase_field_import :p]]
+                        :where  [:and
+                                 [:= :p.source_id :metabase_field_import.source_parent_id]
+                                 [:not= :p.depth nil]
+                                 [:< :p.depth d]]}]]
+             [:or
+              [:= :metabase_field_import.source_fk_target_id nil]
+              [:exists {:select [[[:inline 1]]]
+                        :from   [[:metabase_field_import :f]]
+                        :where  [:and
+                                 [:= :f.source_id :metabase_field_import.source_fk_target_id]
+                                 [:not= :f.depth nil]
+                                 [:< :f.depth d]]}]]]}))
 
-  Future optimization: bulk-insert per depth level."
-  [parent-vec target-table-id cache!]
-  (letfn [(reduce-down [parent-int-id missing]
-            ;; missing was built leaf-side-first; reverse for root-first inserts
-            (reduce (fn [pid stub-pid]
-                      (let [stub-row (new-stub-field-row target-table-id stub-pid pid)
-                            stub-id  (first (t2/insert-returning-pks! :model/Field [stub-row]))]
-                        (vswap! cache! assoc stub-pid stub-id)
-                        stub-id))
-                    parent-int-id
-                    (rseq missing)))]
-    (loop [pid (vec parent-vec), missing []]
-      (if-let [hit (get @cache! pid)]
-        (reduce-down hit missing)
-        (let [resolved (resolve-parent-ids-batch [pid])]
-          (if-let [hit (get resolved pid)]
-            (do (vswap! cache! assoc pid hit)
-                (reduce-down hit missing))
-            (if (= 4 (count pid))
-              ;; root-level stub — no further ancestor exists
-              (let [stub-row (new-stub-field-row target-table-id pid nil)
-                    stub-id  (first (t2/insert-returning-pks! :model/Field [stub-row]))]
-                (vswap! cache! assoc pid stub-id)
-                (reduce-down stub-id missing))
-              ;; recurse on the parent of pid
-              (recur (vec (butlast pid)) (conj missing pid)))))))))
+(defn- untagged-staging-row-count
+  "Number of `metabase_field_import` rows still at `depth IS NULL`. Used as
+  the convergence signal in `compute-staging-depth!`."
+  []
+  (t2/count :metabase_field_import :depth nil))
 
-(defn- match-fields-batch
-  "Look up every existing target Field matching any (target-table-id, name,
-  target-parent-id) triple in `lines`. Returns
-  `{[table-id name parent-id] → existing-id}`.
+(defn- untagged-staging-row-sample
+  "Up to `orphan-sample-cap` un-tagged rows for cycle-error diagnostics."
+  []
+  (t2/query
+   {:select [:source_id :source_parent_id :source_fk_target_id]
+    :from   [:metabase_field_import]
+    :where  [:= :depth nil]
+    :limit  orphan-sample-cap}))
 
-  Scoped to `is_defective_duplicate=false`; `active` is not filtered (stubs
-  included)."
-  [lines]
-  (let [triples (into #{} (map (juxt :table_id :name :parent_id)) lines)
-        tbl-ids (into #{} (keep :table_id) lines)
-        names   (into #{} (keep :name) lines)]
-    (if (or (empty? tbl-ids) (empty? names))
-      {}
-      (let [rows (t2/select [:model/Field :id :table_id :name :parent_id]
-                            {:where [:and
-                                     [:= :is_defective_duplicate false]
-                                     [:in :table_id tbl-ids]
-                                     [:in :name names]]})]
-        (into {}
-              (comp (map (fn [{:keys [id table_id name parent_id]}]
-                           [[table_id name parent_id] id]))
-                    (filter (fn [[triple _]] (contains? triples triple))))
-              rows)))))
+(defn compute-staging-depth!
+  "Tag every `metabase_field_import` row with a non-NULL `depth` value. depth=0
+  is roots (no parent, no fk_target ref). depth d is rows whose deps are all
+  already at depth < d. Iterates until convergence (no rows untagged) or a
+  no-progress round (which signals a cycle in the file's reference graph).
 
-(defn- field-clobber
-  "Payload that overwrites a matched field row. Excludes `parent_id` — the
-  natural-key match already fixes it on the matched row. `fk_target_field_id`
-  is set by [[process-fields-fk-resolve!]]. Sets `active=true` to flip stubs
-  to live."
-  [{:keys [base_type database_type description semantic_type effective_type coercion_strategy]}]
-  (cond-> {:active true}
-    (some? base_type)         (assoc :base_type base_type)
-    (some? database_type)     (assoc :database_type database_type)
-    (some? description)       (assoc :description description)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
+  Throws `:cycle_in_field_graph` if any rows remain untagged after the loop
+  exits — the strict-consistency invariant from `assert-no-orphan-refs!`
+  guarantees this can only happen via a cycle (e.g., X.parent_id = Y AND
+  Y.parent_id = X).
 
-(defn- new-field-row
-  "Insert payload for a real field. Caller has already resolved
-  `resolved-parent-id` and `store-nfc-path`. `fk_target_field_id` starts
-  NULL — set by [[process-fields-fk-resolve!]]."
-  [{:keys [name base_type database_type description effective_type
-           semantic_type coercion_strategy]}
-   target-table-id
-   resolved-parent-id
-   store-nfc-path]
-  (cond-> {:table_id               target-table-id
-           :name                   name
-           :base_type              base_type
-           :nfc_path               (encode-nfc-path store-nfc-path)
-           :parent_id              resolved-parent-id
-           :fk_target_field_id     nil
-           :is_defective_duplicate false
-           :active                 true}
-    (some? database_type)     (assoc :database_type database_type)
-    (some? description)       (assoc :description description)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
+  Pre-condition: [[assert-no-orphan-refs!]] must have run successfully. Without
+  the strict-consistency guarantee, the cycle vs. orphan distinction breaks
+  down (a row whose parent doesn't exist in the file would also be untagged,
+  but for a different reason).
 
-(defn- field-match-key
-  [{:keys [target-table-id resolved-parent row]}]
-  [target-table-id (:name row) resolved-parent])
+  Returns the maximum depth currently in staging (queried after tagging
+  completes). This is idempotent — re-running on already-tagged staging
+  returns the same max depth. Useful for the depth-walk merge to know how
+  many levels to iterate."
+  []
+  (mark-roots-at-depth-zero!)
+  (loop [d 1]
+    (let [before (untagged-staging-row-count)]
+      (cond
+        (zero? before)
+        nil
 
-(defn- classify-fields-batch
-  "Resolve `:target-table-id`, `:resolved-parent`, and `:store-nfc-path` for
-  each row. Returns `[{:line :row :target-table-id :resolved-parent :store-nfc-path}]`,
-  preserving input order. Drops rows whose `:table_id` doesn't resolve."
-  [batch table-id-map parent-cache!]
-  (into []
-        (keep (fn [[ln line]]
-                (when-let [tgt-tbl (get table-id-map (vec (:table_id line)))]
-                  (let [parent-vec      (some-> (:parent_id line) vec)
-                        resolved-parent (when parent-vec
-                                          (or (get @parent-cache! parent-vec)
-                                              (ensure-ancestors! parent-vec tgt-tbl parent-cache!)))
-                        store-nfc-path  (some-> (:nfc_path line) vec)]
-                    {:line             ln
-                     :row              line
-                     :target-table-id  tgt-tbl
-                     :resolved-parent  resolved-parent
-                     :store-nfc-path   store-nfc-path}))))
-        batch))
+        (>= d depth-iteration-cap)
+        (throw (ex-info (format "metadata-file-import: depth-tagging exceeded cap of %d iterations" depth-iteration-cap)
+                        {:kind                  :depth_tagging_cap_exceeded
+                         :iterations            d
+                         :remaining-rows-count  before
+                         :remaining-rows-sample (untagged-staging-row-sample)}))
 
-(defn- clobber-matched-fields!
-  "Overwrites each matched target field with the [[field-clobber]] payload.
-  Stubs and real-row re-imports go through the same path."
-  [in-rows match-idx]
-  (doseq [{:as in-row :keys [row]} in-rows
-          :let [match-key (field-match-key in-row)
-                payload   (field-clobber row)]
-          :when (contains? match-idx match-key)]
-    (t2/update! :model/Field (get match-idx match-key) payload)))
+        :else
+        (do
+          (mark-rows-at-depth! d)
+          (let [after (untagged-staging-row-count)]
+            (if (= before after)
+              (throw (ex-info (format "metadata-file-import: %d staging row(s) could not be tagged with depth — cycle in file's parent/fk_target reference graph"
+                                      after)
+                              {:kind                  :cycle_in_field_graph
+                               :remaining-rows-count  after
+                               :iterations            d
+                               :remaining-rows-sample (untagged-staging-row-sample)}))
+              (recur (inc d))))))))
+  (or (:max (first (t2/query {:select [[[:max :depth] :max]]
+                              :from   [:metabase_field_import]})))
+      0))
 
-(defn- bulk-insert-unmatched-fields!
-  "Bulk-INSERT every classified row that doesn't match an existing target field.
-  Returns `{[target-table-id name resolved-parent] → new-id}`."
-  [in-rows match-idx]
-  (let [unmatched   (filterv (fn [in-row] (not (contains? match-idx (field-match-key in-row))))
-                             in-rows)
-        insert-rows (mapv (fn [{:keys [target-table-id resolved-parent store-nfc-path row]}]
-                            (new-field-row row target-table-id resolved-parent store-nfc-path))
-                          unmatched)
-        new-ids     (when (seq insert-rows)
-                      (t2/insert-returning-pks! :model/Field insert-rows))]
-    (zipmap (map field-match-key unmatched) new-ids)))
+;;; ============================== Per-depth field merge ==============================
 
-(defn process-fields!
-  "Process a batch of `[line-num row]` field tuples. Match-or-insert against
-  the target appdb (overwrites matched rows; stubs absent parents). Returns
-  an eduction of result maps:
+(def ^:private field-clobber-cols
+  "Columns clobbered on UPDATE in [[update-matched-fields-at-depth!]]. The
+  matched-row payload is overwritten regardless of whether values changed
+  (this import is an alternate sync). `parent_id` and `fk_target_field_id`
+  are not clobbered: they're part of the natural-key match (`parent_id`) or
+  inherent to the matched row already (`fk_target_field_id` — clobbered by
+  the FK-fill path below)."
+  [:base_type :database_type :description
+   :effective_type :semantic_type :coercion_strategy :nfc_path])
 
-    `{:source-id <portable-field-id> :target-id M :status :matched}`
-    `{:source-id <portable-field-id> :target-id M :status :inserted}`
-    `{:source-id <portable-field-id> :status :no-target-table :line L :detail S}`
+(defn- target-id-clobber-subquery
+  "Correlated subquery for a single clobber column. The match is a single
+  indexed lookup on `staging.target_id` (the per-depth resolve populates
+  it just before this UPDATE fires)."
+  [col]
+  {:select [(keyword (str "fi." (name col)))]
+   :from   [[:metabase_field_import :fi]]
+   :where  [:= :fi.target_id :metabase_field.id]})
 
-  `:source-id` is the row's portable field id (a vector ending with the
-  field's leaf name)."
-  [batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/field-info ln line {:source-id (portable-field-id-vec line)}))
-  (let [lines         (mapv second batch)
-        table-id-map  (resolve-table-ids-batch lines)
-        parent-vecs   (into #{}
-                            (keep (fn [line] (some-> (:parent_id line) vec)))
-                            lines)
-        parent-cache! (volatile! (resolve-parent-ids-batch parent-vecs))
-        in-rows       (classify-fields-batch batch table-id-map parent-cache!)
-        match-idx     (match-fields-batch
-                       (mapv (fn [{:keys [target-table-id resolved-parent row]}]
-                               {:table_id  target-table-id
-                                :name      (:name row)
-                                :parent_id resolved-parent})
-                             in-rows))]
-    (clobber-matched-fields! in-rows match-idx)
-    (let [id-by-key (bulk-insert-unmatched-fields! in-rows match-idx)
-          ;; line-number → classified record (some lines may have been filtered out).
-          by-line   (into {} (map (juxt :line identity)) in-rows)]
-      (eduction
-       (map (fn [[ln line]]
-              (let [src-id (portable-field-id-vec line)]
-                (if-let [classified (get by-line ln)]
-                  (let [match-key (field-match-key classified)]
-                    (if-let [existing (get match-idx match-key)]
-                      {:source-id src-id :target-id existing :status :matched}
-                      {:source-id src-id :target-id (get id-by-key match-key)
-                       :status :inserted}))
-                  {:source-id src-id :status :no-target-table :line ln
-                   :detail   (format "No target table with portable id=%s"
-                                     (pr-str (vec (:table_id line))))}))))
-       batch))))
+(def ^:private field-payload-changed-predicate
+  "OR-block over the clobber-payload columns plus `active`. Used by the
+  skip-if-unchanged check on the merge UPDATE: if every observable column
+  already matches staging, no UPDATE fires (no dead tuple). Coalesce-with-
+  empty-string is the portable NULL-safe equivalent of `IS DISTINCT FROM`
+  (PG-only). For `effective_type` we coalesce against `base_type` on both
+  sides because the export omits `:effective_type` when it equals
+  `:base_type` and the application universally treats `effective_type IS
+  NULL` as 'use base_type'. `active` is checked against TRUE since SET sets
+  it to TRUE always."
+  [[:!= [:coalesce :metabase_field.base_type         [:inline ""]]   [:coalesce :fi.base_type         [:inline ""]]]
+   [:!= [:coalesce :metabase_field.database_type     [:inline ""]]   [:coalesce :fi.database_type     [:inline ""]]]
+   [:!= [:coalesce :metabase_field.description       [:inline ""]]   [:coalesce :fi.description       [:inline ""]]]
+   [:!= [:coalesce :metabase_field.effective_type    :metabase_field.base_type]
+    [:coalesce :fi.effective_type                :fi.base_type]]
+   [:!= [:coalesce :metabase_field.semantic_type     [:inline ""]]   [:coalesce :fi.semantic_type     [:inline ""]]]
+   [:!= [:coalesce :metabase_field.coercion_strategy [:inline ""]]   [:coalesce :fi.coercion_strategy [:inline ""]]]
+   [:!= [:coalesce :metabase_field.nfc_path          [:inline ""]]   [:coalesce :fi.nfc_path          [:inline ""]]]
+   [:!= :metabase_field.active                       [:inline true]]])
 
-;;; ==================== fields (batch) — fk resolve ====================
+(defn resolve-target-table-ids-for-fields-in-staging!
+  "Populate `metabase_field_import.target_table_id` by joining through
+  `metabase_table_import.source_id → metabase_table_import.target_id`.
 
-(defn- finalize-batch!
-  "Run a single `UPDATE metabase_field` that sets `fk_target_field_id` for every
-  `[target-id resolved-fk-target-id]` pair in `tuples`. Returns the affected-row
-  count."
-  [tuples]
-  (let [case-expr (-> (reduce (fn [c [id fk]]
-                                (-> c (conj [:= :id id]) (conj fk)))
-                              [:case]
-                              tuples)
-                      (conj :else :fk_target_field_id))
-        ids       (mapv first tuples)]
-    (first (t2/query {:update :metabase_field
-                      :set    {:fk_target_field_id case-expr}
-                      :where  [:in :id ids]}))))
+  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have been
+  called *twice* — once before [[merge-tables!]] (for the UPDATE/INSERT
+  decision) and once after (to capture INSERT-assigned ids back into table
+  staging). Without the second call, table rows that were just inserted
+  have `target_id IS NULL` in table staging, and the field rows that
+  reference them would get `target_table_id IS NULL`.
 
-(defn process-fields-fk-resolve!
-  "Process a batch of `[line-num row]` field tuples, writing `:fk_target_field_id`
-  on rows that have one. By the time this runs, every referenced field (own row
-  or fk target) exists in the appdb as a real or stub row, so a resolve miss is
-  treated as a corrupt file (hard-fail).
+  Field rows whose source table has no target (orphan-source-database
+  case) keep `target_table_id NULL` and are silently skipped by both the
+  resolve and the merge."
+  []
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:target_table_id
+             {:select [:ti.target_id]
+              :from   [[:metabase_table_import :ti]]
+              :where  [:= :ti.source_id :metabase_field_import.source_table_id]}}}))
 
-  Result shapes:
-    `{:source-id <portable-field-id> :target-id M :status :updated}` (rows with fk-target)
-    `{:source-id <portable-field-id> :status :no-fk}`                 (rows without)"
-  [batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/field-info ln line {:source-id (portable-field-id-vec line)}))
-  (let [fk-rows (filterv (fn [[_ line]] (some? (:fk_target_field_id line))) batch)]
-    (if (empty? fk-rows)
-      (eduction
-       (map (fn [[_ln line]] {:source-id (portable-field-id-vec line) :status :no-fk}))
-       batch)
-      (let [own-vecs  (mapv (fn [[_ line]] (portable-field-id-vec line)) fk-rows)
-            fk-vecs   (mapv (fn [[_ line]] (vec (:fk_target_field_id line))) fk-rows)
-            all-vecs  (into #{} (concat own-vecs fk-vecs))
-            id-by-vec (resolve-parent-ids-batch all-vecs)
-            tuples
-            (mapv (fn [[ln _line] own-vec fk-vec]
-                    (let [own-id (get id-by-vec own-vec)
-                          fk-id  (get id-by-vec fk-vec)]
-                      (when-not own-id
-                        (throw (ex-info "fk-resolve: row's own portable id not found in target appdb"
-                                        {:kind :not_found :line ln :source-id own-vec
-                                         :detail (format "Row not found in target appdb: %s"
-                                                         (pr-str own-vec))})))
-                      (when-not fk-id
-                        (throw (ex-info "fk-resolve: fk_target_field_id portable id not found in target appdb"
-                                        {:kind :not_found :line ln :source-id own-vec
-                                         :detail (format "FK target not found in target appdb: %s"
-                                                         (pr-str fk-vec))})))
-                      [own-id fk-id]))
-                  fk-rows
-                  own-vecs
-                  fk-vecs)
-            affected (try (finalize-batch! tuples)
-                          (catch Throwable e
-                            (throw (wrap-row-error e nil nil))))]
-        (when (not= affected (count fk-rows))
-          (throw (ex-info "fk-resolve UPDATE affected fewer rows than the fk-row batch"
-                          {:kind   :server_error
-                           :detail (format "updated=%d fk-rows=%d" affected (count fk-rows))})))
-        (let [own-by-line (zipmap (mapv first fk-rows) (mapv first tuples))]
-          (eduction
-           (map (fn [[ln line]]
-                  (let [src-id (portable-field-id-vec line)]
-                    (if-let [own-id (get own-by-line ln)]
-                      {:source-id src-id :target-id own-id :status :updated}
-                      {:source-id src-id :status :no-fk}))))
-           batch))))))
+(defn fill-target-parent-ids-at-depth!
+  "Populate `target_parent_id` for depth-`d` staging rows by self-joining
+  staging on `source_parent_id → source_id` and reading the parent's
+  `target_id`. Pre-condition: all prior-depth staging rows have `target_id`
+  resolved (the depth walk processes lower depths first, so this is
+  guaranteed when called in order)."
+  [d]
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:target_parent_id
+             {:select [:p.target_id]
+              :from   [[:metabase_field_import :p]]
+              :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
+    :where  [:and
+             [:= :metabase_field_import.depth d]
+             [:not= :metabase_field_import.source_parent_id nil]]}))
+
+(defn fill-target-fk-target-ids-at-depth!
+  "Populate `target_fk_target_id` for depth-`d` staging rows by self-joining
+  staging on `source_fk_target_id → source_id`."
+  [d]
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:target_fk_target_id
+             {:select [:f.target_id]
+              :from   [[:metabase_field_import :f]]
+              :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
+    :where  [:and
+             [:= :metabase_field_import.depth d]
+             [:not= :metabase_field_import.source_fk_target_id nil]]}))
+
+(defn resolve-target-field-ids-at-depth!
+  "Set `target_id` for depth-`d` staging rows by natural-key match against
+  `metabase_field`. Matches by `(target_table_id, name, target_parent_id)`
+  with NULL-safe parent comparison (a staging row with no parent matches
+  only against `metabase_field.parent_id IS NULL`). Skips defective
+  duplicates on the target side.
+
+  Run twice per depth — once before the UPDATE/INSERT step (to identify
+  matches for the clobber path) and once after (to capture INSERT ids so
+  higher-depth rows can find them as parents/FK targets)."
+  [d]
+  (t2/query
+   {:update :metabase_field_import
+    :set    {:target_id
+             {:select [:f.id]
+              :from   [[:metabase_field :f]]
+              :where  [:and
+                       [:= :f.table_id :metabase_field_import.target_table_id]
+                       [:= :f.name :metabase_field_import.name]
+                       [:or
+                        [:and [:= :metabase_field_import.target_parent_id nil]
+                         [:= :f.parent_id nil]]
+                        [:= :f.parent_id :metabase_field_import.target_parent_id]]
+                       [:= :f.is_defective_duplicate [:inline false]]]}}
+    :where  [:and
+             [:= :metabase_field_import.depth d]
+             [:= :metabase_field_import.target_id nil]]}))
+
+(defn update-matched-fields-at-depth!
+  "Clobber-update `metabase_field` from staging rows at depth `d` whose
+  `target_id` is set (i.e., natural-key matched a live row). Each SET column
+  is a single-key lookup on `staging.target_id`. Skip-if-unchanged: the
+  EXISTS subquery additionally requires that at least one observable column
+  differs — a re-import with identical payload is a true no-op.
+
+  The `IN` predicate scopes the outer walk of `metabase_field` to just the
+  ~staging-row-count IDs at depth `d` rather than a full-table scan. Without
+  it, PG's planner starts from `metabase_field` and probes staging per row —
+  fine on a small appdb, but on an appdb with millions of unrelated field
+  rows the global scan dominates."
+  [d]
+  (t2/query
+   {:update :metabase_field
+    :set    (-> (into {} (map (fn [c] [c (target-id-clobber-subquery c)])) field-clobber-cols)
+                (assoc :active     [:inline true]
+                       :updated_at :%now))
+    :where  [:and
+             [:= :metabase_field.is_defective_duplicate [:inline false]]
+             [:in :metabase_field.id {:select [:target_id]
+                                      :from   [:metabase_field_import]
+                                      :where  [:and
+                                               [:= :depth d]
+                                               [:not= :target_id nil]]}]
+             [:exists {:select [[[:inline 1]]]
+                       :from   [[:metabase_field_import :fi]]
+                       :where  [:and
+                                [:= :fi.target_id :metabase_field.id]
+                                [:= :fi.depth d]
+                                (into [:or] field-payload-changed-predicate)]}]]}))
+
+(defn insert-new-fields-at-depth!
+  "INSERT `metabase_field` for depth-`d` staging rows that didn't match a
+  live row (`target_id IS NULL`). The new row's `parent_id` and
+  `fk_target_field_id` come from staging's `target_parent_id` /
+  `target_fk_target_id` — populated earlier in this depth's iteration.
+
+  Rows whose `target_table_id IS NULL` (source table didn't match target)
+  are silently dropped. Rows whose `source_parent_id IS NOT NULL` but
+  `target_parent_id IS NULL` are also dropped — that's the case where the
+  parent field's table didn't match target, cascading the orphan downward."
+  [d]
+  (t2/query
+   {:insert-into
+    [[:metabase_field [:table_id :name :base_type :database_type :description
+                       :effective_type :semantic_type :coercion_strategy
+                       :nfc_path :parent_id :fk_target_field_id
+                       :is_defective_duplicate :active :created_at :updated_at]]
+     {:select [:fi.target_table_id :fi.name :fi.base_type :fi.database_type :fi.description
+               :fi.effective_type :fi.semantic_type :fi.coercion_strategy
+               :fi.nfc_path :fi.target_parent_id :fi.target_fk_target_id
+               [[:inline false]] [[:inline true]] :%now :%now]
+      :from   [[:metabase_field_import :fi]]
+      :where  [:and
+               [:= :fi.depth d]
+               [:= :fi.target_id nil]
+               [:not= :fi.target_table_id nil]
+               [:or
+                [:= :fi.source_parent_id nil]
+                [:not= :fi.target_parent_id nil]]
+               [:or
+                [:= :fi.source_fk_target_id nil]
+                [:not= :fi.target_fk_target_id nil]]]}]}))
+
+(defn merge-fields-by-depth!
+  "Walk staging from depth 0 to max-depth, merging each level's fields into
+  `metabase_field` before moving to the next. Each level:
+
+    1. Fill `target_parent_id` from already-resolved staging rows.
+    2. Fill `target_fk_target_id` from already-resolved staging rows.
+    3. Resolve `target_id` via natural-key match against `metabase_field`.
+    4. UPDATE matched rows (clobber payload with skip-if-unchanged).
+    5. INSERT unmatched rows (parent_id / fk_target_field_id already
+       populated from steps 1 and 2).
+    6. Re-resolve `target_id` to capture the INSERT ids so higher-depth
+       rows can find these as parents or FK targets.
+
+  Pre-conditions: [[compute-staging-depth!]] has populated `depth` and
+  [[resolve-target-table-ids-for-fields-in-staging!]] has populated
+  `target_table_id`.
+
+  Composes inside an outer `t2/with-transaction` — Toucan2 joins the outer
+  txn so all depths are atomic together."
+  []
+  (let [max-d (or (:max (first (t2/query {:select [[[:max :depth] :max]]
+                                          :from   [:metabase_field_import]})))
+                  0)]
+    (t2/with-transaction [_]
+      (doseq [d (range (inc max-d))]
+        (fill-target-parent-ids-at-depth! d)
+        (fill-target-fk-target-ids-at-depth! d)
+        (resolve-target-field-ids-at-depth! d)
+        (update-matched-fields-at-depth! d)
+        (insert-new-fields-at-depth! d)
+        (resolve-target-field-ids-at-depth! d)))))
+
