@@ -168,10 +168,7 @@
     `{:source-id <int> :name <string> :target-id <int> :status :matched}`
     `{:source-id <int> :name <string> :status :no-match :line L :detail S}`
 
-  `:source-id` is the wire row's `:id` (the source appdb's database id, an
-  integer). `:name` is also surfaced so the caller can build a
-  `source-id → name` map for the tables/fields handlers' `db_name`
-  denormalization.
+  `:source-id` is the wire row's `:id` (the source appdb's database id, an integer).
 
   Validation failures throw; lookup misses produce `:no-match` results
   (non-fatal)."

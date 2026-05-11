@@ -20,8 +20,7 @@
 ;;; ============================== with-staging-tables ==============================
 
 (defn- count-staging
-  "Total row count across both staging tables. Used by macro tests to assert
-  the entry/exit wipes."
+  "Total row count across both staging tables."
   []
   (+ (t2/count :metabase_table_import)
      (t2/count :metabase_field_import)))
