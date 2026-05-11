@@ -692,17 +692,3 @@
 
 (comment
   (workspace-full-e2e-test))
-
-; Start of dev workflow
-; Case 1:
-; In canonical schema, No transforms exist, no transform output tables exist
-; Start dev workflow, create transform, create transform output table in isolation schema, finish development, push to production
-; Case 2:
-; In canonical schema, transform exists, transform output table exists
-; Start dev workflow, modify transform, create tranform output table in isolation schema, finish dev, push to prod
-; Case 3:
-; In canonical schema, no transforms exist, no output tables exist
-; Start dev workflow, create transform, create transform output table. Asshole coworker starts dev concurrently, uses your same output table name, creates that table in canonical schema.
-; Case 4:
-; In canonical schema, transform exists, output table exists
-; Start dev workflow, modify transform, create tx output table in iso schema. Tranform output table gets deleted in canonical schema.
