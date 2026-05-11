@@ -132,11 +132,12 @@ function SchemaMultiSelect({
   const { data: schemas = [] } = useListDatabaseSchemasQuery({
     id: databaseId,
   });
+  const isAllSelected = schemas.length > 0 && value.length === schemas.length;
 
   return (
     <MultiSelect
       label={t`Schemas to include`}
-      placeholder={t`Pick schemas`}
+      placeholder={isAllSelected ? t`All schemas selected` : t`Pick schemas`}
       data={schemas}
       value={value}
       onChange={onChange}

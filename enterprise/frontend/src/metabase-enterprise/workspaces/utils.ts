@@ -1,6 +1,15 @@
-import type { WorkspaceDatabaseParams } from "metabase-types/api";
+import type { Database, WorkspaceDatabaseParams } from "metabase-types/api";
 
 import type { WorkspaceDatabaseInfo } from "./types";
+
+export function getAvailableDatabases(databases: Database[]): Database[] {
+  return databases.filter(
+    (database) =>
+      database.features?.includes("workspace") &&
+      !database.is_sample &&
+      !database.is_audit,
+  );
+}
 
 export function getValidWorkspaceDatabases(
   workspaceDatabases: WorkspaceDatabaseInfo[],

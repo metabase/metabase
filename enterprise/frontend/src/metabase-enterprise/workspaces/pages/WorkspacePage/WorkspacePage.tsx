@@ -20,7 +20,7 @@ import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 import { DatabaseEditor } from "../../components/DatabaseEditor";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import type { WorkspaceDatabaseInfo } from "../../types";
-import { getValidWorkspaceDatabases } from "../../utils";
+import { getAvailableDatabases, getValidWorkspaceDatabases } from "../../utils";
 
 import { SetupSection } from "./SetupSection";
 
@@ -65,7 +65,7 @@ export function WorkspacePage({ params, route }: WorkspacePageProps) {
   return (
     <WorkspacePageBody
       workspace={workspace}
-      availableDatabases={databasesResponse.data}
+      availableDatabases={getAvailableDatabases(databasesResponse.data)}
       route={route}
     />
   );

@@ -18,12 +18,9 @@ import type { Database } from "metabase-types/api";
 
 import { DatabaseEditor } from "../../components/DatabaseEditor";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
-import type { WorkspaceDatabaseInfo } from "../../types";
-import { getValidWorkspaceDatabases } from "../../utils";
+import { getAvailableDatabases, getValidWorkspaceDatabases } from "../../utils";
 
-const INITIAL_DATABASES: WorkspaceDatabaseInfo[] = [
-  { database_id: undefined, input: [] },
-];
+import { getInitialName, getInitialWorkspaceDatabases } from "./utils";
 
 type NewWorkspacePageProps = {
   route: Route;
@@ -38,7 +35,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
 
   return (
     <NewWorkspacePageBody
-      availableDatabases={databasesResponse.data}
+      availableDatabases={getAvailableDatabases(databasesResponse.data)}
       route={route}
     />
   );
@@ -53,8 +50,11 @@ function NewWorkspacePageBody({
   availableDatabases,
   route,
 }: NewWorkspacePageBodyProps) {
-  const initialName = t`New workspace`;
-  const initialDatabases = INITIAL_DATABASES;
+  const initialName = getInitialName();
+  const initialDatabases = useMemo(
+    () => getInitialWorkspaceDatabases(availableDatabases),
+    [availableDatabases],
+  );
   const [name, setName] = useState(initialName);
   const [workspaceDatabases, setWorkspaceDatabases] =
     useState(initialDatabases);

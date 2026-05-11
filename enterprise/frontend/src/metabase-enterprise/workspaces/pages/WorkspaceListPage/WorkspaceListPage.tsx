@@ -6,10 +6,12 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Button, Icon, Stack } from "metabase/ui";
+import { Button, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
+
+import { getAvailableDatabases } from "../../utils";
 
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceSection } from "./WorkspaceSection";
@@ -38,6 +40,9 @@ export function WorkspaceListPage() {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const availableDatabases = getAvailableDatabases(databasesResponse.data);
+  const hasAvailableDatabases = availableDatabases.length > 0;
+
   return (
     <PageContainer data-testid="workspace-list">
       <PaneHeader
@@ -45,18 +50,31 @@ export function WorkspaceListPage() {
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={
-          <Button
-            component={Link}
-            to={Urls.newWorkspace()}
-            aria-label={t`Add workspace`}
-            leftSection={<Icon name="add" />}
-          />
+          <Tooltip
+            label={t`There are no databases that support workspaces.`}
+            disabled={hasAvailableDatabases}
+          >
+            {hasAvailableDatabases ? (
+              <Button
+                component={Link}
+                to={Urls.newWorkspace()}
+                aria-label={t`Add workspace`}
+                leftSection={<Icon name="add" />}
+              />
+            ) : (
+              <Button
+                disabled
+                aria-label={t`Add workspace`}
+                leftSection={<Icon name="add" />}
+              />
+            )}
+          </Tooltip>
         }
         py={0}
       />
       <WorkspaceListPageBody
         workspaces={workspaces}
-        availableDatabases={databasesResponse.data}
+        availableDatabases={availableDatabases}
       />
     </PageContainer>
   );

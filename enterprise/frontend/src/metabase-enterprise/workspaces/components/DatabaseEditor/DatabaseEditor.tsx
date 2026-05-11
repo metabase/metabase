@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
-import { Box, Button, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Stack, Text, Title, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 import type { WorkspaceDatabaseInfo } from "../../types";
 
 import { DatabaseSection } from "./DatabaseSection";
+import { getSelectableDatabases } from "./utils";
 
 export type DatabaseEditorProps = {
   workspaceDatabases: WorkspaceDatabaseInfo[];
@@ -18,6 +19,8 @@ export function DatabaseEditor({
   availableDatabases,
   onDatabasesChange,
 }: DatabaseEditorProps) {
+  const canAddDatabase = workspaceDatabases.length < availableDatabases.length;
+
   const handleDatabaseAdd = () => {
     const newWorkspaceDatabases = [...workspaceDatabases];
     newWorkspaceDatabases.push({ database_id: undefined, input: [] });
@@ -52,7 +55,11 @@ export function DatabaseEditor({
           <DatabaseSection
             key={index}
             workspaceDatabase={workspaceDatabase}
-            availableDatabases={availableDatabases}
+            availableDatabases={getSelectableDatabases(
+              availableDatabases,
+              workspaceDatabases,
+              workspaceDatabase,
+            )}
             canRemove={workspaceDatabases.length > 1}
             onDatabaseChange={(newWorkspaceDatabase) =>
               handleDatabaseChange(newWorkspaceDatabase, index)
@@ -62,11 +69,16 @@ export function DatabaseEditor({
         ))}
       </Stack>
       <Box>
-        <Button onClick={handleDatabaseAdd}>
-          {workspaceDatabases.length === 0
-            ? t`Add database`
-            : t`Add another database`}
-        </Button>
+        <Tooltip
+          label={t`There are no more databases available.`}
+          disabled={canAddDatabase}
+        >
+          <Button disabled={!canAddDatabase} onClick={handleDatabaseAdd}>
+            {workspaceDatabases.length === 0
+              ? t`Add database`
+              : t`Add another database`}
+          </Button>
+        </Tooltip>
       </Box>
     </Stack>
   );
