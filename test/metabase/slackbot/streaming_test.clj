@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -257,6 +258,103 @@
                       (doseq [opts @store-opts]
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
+
+(deftest slackbot-streaming-computes-slack-permalink-on-thread-start-test
+  (testing "BOT-1413: thread-start computes the Slack permalink and passes it to store-message!"
+    (tu/with-slackbot-setup
+      (let [event-body         tu/base-dm-event
+            permalink          "https://example.slack.com/archives/C123/p1234567890000001"
+            store-message-opts (atom [])
+            permalink-calls    (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            ;; Redef the streaming wrapper directly (rather than the slackbot.api
+            ;; var that `requiring-resolve` reaches transitively) so the test does
+            ;; not depend on the resolve-then-redef interleaving across the async
+            ;; event-handler thread boundary.
+            (with-redefs [slackbot.streaming/conversation-permalink (fn [channel ts]
+                                                                      (swap! permalink-calls conj [channel ts])
+                                                                      permalink)
+                          metabot.persistence/store-message! (fn [_ _ _ & {:as opts}]
+                                                               (swap! store-message-opts conj opts)
+                                                               nil)
+                          metabot.persistence/store-native-parts! (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000}))
+            (testing "conversation-permalink was called once with the request's (channel, ts)"
+              (is (= 1 (count @permalink-calls)))
+              (is (= ["C123" "1234567890.000001"] (first @permalink-calls))))
+            (testing "store-message! received the resolved permalink"
+              (is (=? [{:slack-permalink permalink}] @store-message-opts)))))))))
+
+(deftest slackbot-streaming-skips-permalink-when-cached-test
+  (testing "BOT-1413: follow-up turns skip the Slack permalink call when the column is already populated"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (tu/with-slackbot-setup
+        (let [event-body      tu/base-dm-event
+              conversation-id (#'slackbot.streaming/slack-thread->conversation-id
+                               "T123" "C123" "1234567890.000001")
+              permalink-calls (atom [])]
+          (tu/with-slackbot-mocks
+            {:ai-text "Hello!"}
+            (fn [{:keys [stop-stream-calls]}]
+              ;; The tu/with-slackbot-mocks auth-test mock returns the body directly
+              ;; (no :body wrapper), so the conversation-id computation below would
+              ;; resolve with team-id=nil. Override it to match the real shape so
+              ;; the pre-seeded conversation row has the same id as the one the
+              ;; streaming flow computes.
+              (with-redefs [slackbot.client/auth-test
+                            (constantly {:body {:ok true :user_id "UBOT123" :team_id "T123"}})
+                            slackbot.streaming/conversation-permalink
+                            (fn [channel ts]
+                              (swap! permalink-calls conj [channel ts])
+                              "should-not-be-used")
+                            metabot.persistence/store-native-parts! (fn [& _] nil)]
+                ;; Pre-seed a conversation with the permalink already cached. We do
+                ;; this inside with-redefs so the conversation-id matches what the
+                ;; flow computes via the now-corrected auth-test mock.
+                (t2/insert! :model/MetabotConversation
+                            {:id                conversation-id
+                             :user_id           (mt/user->id :rasta)
+                             :slack_team_id     "T123"
+                             :slack_channel_id  "C123"
+                             :slack_thread_ts   "1234567890.000001"
+                             :slack_permalink   "https://example.slack.com/archives/C123/p-existing"})
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})
+                (is (zero? (count @permalink-calls))
+                    "no Slack call when the conversation row already has a permalink")))))))))
+
+(deftest slackbot-streaming-tolerates-permalink-failure-test
+  (testing "BOT-1413: a Slack failure during precompute leaves slack-permalink nil but does not break the thread"
+    (tu/with-slackbot-setup
+      (let [event-body         tu/base-dm-event
+            store-message-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (with-redefs [slackbot.streaming/conversation-permalink (fn [& _] nil)
+                          metabot.persistence/store-message! (fn [_ _ _ & {:as opts}]
+                                                               (swap! store-message-opts conj opts)
+                                                               nil)
+                          metabot.persistence/store-native-parts! (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000}))
+            (testing "store-message! is called with :slack-permalink nil"
+              (is (=? [{:slack-permalink nil}] @store-message-opts)))))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"

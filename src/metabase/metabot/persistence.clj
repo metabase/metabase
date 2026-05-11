@@ -94,10 +94,11 @@
      `:embedding_path`, `:user_agent`, `:sanitized_user_agent`, `:ip_address`).
      Nil when the retention flag is off; individual keys recorded on first
      insert only. Slack persistence never passes this — slack rows stay NULL.
-  - `:slack-msg-id`, `:channel-id`, `:slack-team-id`, `:slack-thread-ts` — slack
-     metadata. `:slack-team-id`/`:channel-id`/`:slack-thread-ts` land on the
-     conversation row on first insert only; `:slack-msg-id`/`:channel-id` land on
-     the message row.
+  - `:slack-msg-id`, `:channel-id`, `:slack-team-id`, `:slack-thread-ts`,
+     `:slack-permalink` — slack metadata.
+     `:slack-team-id`/`:channel-id`/`:slack-thread-ts`/`:slack-permalink` land on
+     the conversation row on first insert only; `:slack-msg-id`/`:channel-id`
+     land on the message row.
   - `:user-id` — when set, recorded on the message row (slackbot uses this to
      record the invoking Metabase user).
   - `:external-id` — message external id used by feedback; generated if omitted.
@@ -106,7 +107,7 @@
   Returns the inserted `MetabotMessage` primary key."
   [conversation-id profile-id parts
    & {:keys [hostname pii-info external-id
-             slack-msg-id channel-id slack-team-id slack-thread-ts
+             slack-msg-id channel-id slack-team-id slack-thread-ts slack-permalink
              user-id ai-proxy?]}]
   (let [state-part  (u/seek #(and (= :data (:type %))
                                   (= "state" (:data-type %)))
@@ -154,7 +155,9 @@
                                     (and channel-id (nil? (:slack_channel_id existing)))
                                     (assoc :slack_channel_id channel-id)
                                     (and slack-thread-ts (nil? (:slack_thread_ts existing)))
-                                    (assoc :slack_thread_ts slack-thread-ts))))
+                                    (assoc :slack_thread_ts slack-thread-ts)
+                                    (and slack-permalink (nil? (:slack_permalink existing)))
+                                    (assoc :slack_permalink slack-permalink))))
       (t2/insert-returning-pk! :model/MetabotMessage
                                (cond-> {:conversation_id conversation-id
                                         :data            content
@@ -172,7 +175,8 @@
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables."
-  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id slack-team-id slack-thread-ts user-id ai-proxy?]}]
+  [conversation-id profile-id messages
+   & {:keys [slack-msg-id channel-id slack-team-id slack-thread-ts slack-permalink user-id ai-proxy?]}]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -195,7 +199,9 @@
                                   (and channel-id (nil? (:slack_channel_id existing)))
                                   (assoc :slack_channel_id channel-id)
                                   (and slack-thread-ts (nil? (:slack_thread_ts existing)))
-                                  (assoc :slack_thread_ts slack-thread-ts))))
+                                  (assoc :slack_thread_ts slack-thread-ts)
+                                  (and slack-permalink (nil? (:slack_permalink existing)))
+                                  (assoc :slack_permalink slack-permalink))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert-returning-pk! :model/MetabotMessage
                              (cond-> {:conversation_id conversation-id

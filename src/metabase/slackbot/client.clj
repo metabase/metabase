@@ -19,6 +19,17 @@
   "Socket (read) timeout for streaming API calls (start/append/stop)."
   5000)
 
+(def ^:private default-connection-timeout-ms
+  "Default TCP connection timeout for one-shot Slack API calls. Bounds worst-case
+   latency when Slack is slow to accept connections."
+  2000)
+
+(def ^:private default-socket-timeout-ms
+  "Default socket (read) timeout for one-shot Slack API calls. Bounds worst-case
+   latency for endpoints (e.g. chat.getPermalink) that the admin UI may transitively
+   depend on."
+  3000)
+
 (def SlackClient
   "Malli schema for a Slack client."
   [:map {:closed true}
@@ -26,10 +37,14 @@
 
 (defn- slack-get
   "GET from slack."
-  [client endpoint params]
+  [client endpoint params & {:keys [socket-timeout connection-timeout]
+                             :or   {socket-timeout     default-socket-timeout-ms
+                                    connection-timeout default-connection-timeout-ms}}]
   (let [response (http/get (str "https://slack.com/api" endpoint)
-                           {:headers      {"Authorization" (str "Bearer " (:token client))}
-                            :query-params params})]
+                           {:headers            {"Authorization" (str "Bearer " (:token client))}
+                            :query-params       params
+                            :connection-timeout connection-timeout
+                            :socket-timeout     socket-timeout})]
     {:body (json/decode (:body response) true)
      :headers (:headers response)}))
 

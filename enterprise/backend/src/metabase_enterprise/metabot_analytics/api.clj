@@ -108,6 +108,7 @@
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]
    [:profile_id      [:maybe :string]]
    [:slack_permalink [:maybe :string]]
+   [:slack_originated :boolean]
    [:chat_messages   [:sequential :map]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
@@ -118,6 +119,10 @@
    [:user_agent           [:maybe :string]]
    [:sanitized_user_agent [:maybe :string]]
    [:feedback             [:sequential ConversationFeedback]]])
+
+(def ^:private SlackPermalinkResponse
+  "Schema for the lazy-fill Slack permalink response."
+  [:map [:slack_permalink [:maybe :string]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."
@@ -153,6 +158,15 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)
   (analytics.conversations/fetch-conversation-detail id))
+
+(api.macros/defendpoint :get "/conversations/:id/slack-permalink" :- SlackPermalinkResponse
+  "Return a cached Slack permalink for the conversation, computing it on first
+   call when Slack thread metadata is present. Off the detail endpoint's hot
+   path so we never block conversation rendering on a Slack API round-trip
+   (BOT-1413)."
+  [{:keys [id]} :- ConversationIdParams]
+  (api/check-superuser)
+  (analytics.conversations/fetch-or-compute-slack-permalink id))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 

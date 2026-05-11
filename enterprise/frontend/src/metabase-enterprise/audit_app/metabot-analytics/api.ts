@@ -6,6 +6,7 @@ import type {
   ConversationsRequest,
   ConversationsResponse,
   DataComplexityScoresResponse,
+  SlackPermalinkResponse,
 } from "./types";
 
 export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
@@ -24,6 +25,15 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/metabot-analytics/conversations/${id}`,
+      }),
+    }),
+    getMetabotConversationSlackPermalink: builder.query<
+      SlackPermalinkResponse,
+      string
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/metabot-analytics/conversations/${id}/slack-permalink`,
       }),
     }),
     getDataComplexityScores: builder.query<DataComplexityScoresResponse, void>({
@@ -51,6 +61,7 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
 export const {
   useListMetabotConversationsQuery,
   useGetMetabotConversationQuery,
+  useGetMetabotConversationSlackPermalinkQuery,
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
 } = metabotAnalyticsApi;

@@ -201,6 +201,63 @@
           (is (= "C-FIRST" (:slack_channel_id conversation)))
           (is (= "1700000000.000001" (:slack_thread_ts conversation))))))))
 
+(deftest store-message-persists-slack-permalink-on-first-insert-test
+  (testing "store-message! lands :slack-permalink on the conversation row on first insert"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            permalink       "https://example.slack.com/archives/C123/p1712785577123456"]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/store-message!
+           conversation-id "slackbot" [{:role "user" :content "hello"}]
+           :slack-team-id "T123"
+           :channel-id "C123"
+           :slack-thread-ts "1700000000.000001"
+           :slack-permalink permalink))
+        (is (= permalink
+               (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id)))))))
+
+(deftest store-message-does-not-overwrite-existing-slack-permalink-test
+  (testing "a follow-up store-message! with a different permalink does not overwrite the cached value"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            first-permalink  "https://example.slack.com/archives/C123/p1700000000000001"
+            second-permalink "https://example.slack.com/archives/C123/p1700000000999999"]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/store-message!
+           conversation-id "slackbot" [{:role "user" :content "first"}]
+           :slack-team-id "T123" :channel-id "C123"
+           :slack-thread-ts "1700000000.000001"
+           :slack-permalink first-permalink)
+          (metabot-persistence/store-message!
+           conversation-id "slackbot" [{:role "user" :content "second"}]
+           :slack-team-id "T123" :channel-id "C123"
+           :slack-thread-ts "1700000000.000001"
+           :slack-permalink second-permalink))
+        (is (= first-permalink
+               (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id)))))))
+
+(deftest store-native-parts-persists-slack-permalink-on-first-insert-test
+  (testing "store-native-parts! lands :slack-permalink on the conversation row on first insert and refuses to overwrite later"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))
+            first-permalink  "https://example.slack.com/archives/C123/p1700000000000001"
+            second-permalink "https://example.slack.com/archives/C123/p1700000000999999"]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/store-native-parts!
+           conversation-id "metabot-1" [{:type :text :text "first"}]
+           :slack-team-id "T123" :channel-id "C123"
+           :slack-thread-ts "1700000000.000001"
+           :slack-permalink first-permalink))
+        (is (= first-permalink
+               (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id)))
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/store-native-parts!
+           conversation-id "metabot-1" [{:type :text :text "second"}]
+           :slack-permalink second-permalink))
+        (is (= first-permalink
+               (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id))
+            "later writes don't clobber the cached permalink")))))
+
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
