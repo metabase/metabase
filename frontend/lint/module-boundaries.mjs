@@ -41,6 +41,7 @@ const elements = [
     type: "basic",
     name: "mlv1",
     pattern: "frontend/src/metabase-lib/v1/**",
+    enforceOutgoing: true,
   }),
   createElement({
     type: "lib",
@@ -67,6 +68,7 @@ const elements = [
   createElement({ type: "shared", name: "data-grid", enforceOutgoing: true }),
   createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "detail-view", enforceOutgoing: true }),
   createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
@@ -83,6 +85,7 @@ const elements = [
   createElement({ type: "shared", name: "questions", enforceOutgoing: true }),
   createElement({ type: "shared", name: "router", enforceOutgoing: true }),
   createElement({ type: "shared", name: "search", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "setup", enforceOutgoing: true }),
   createElement({ type: "shared", name: "status", enforceOutgoing: true }),
   createElement({
     type: "shared",
@@ -90,6 +93,8 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "shared", name: "timelines", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "transforms", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "urls", enforceOutgoing: true }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
@@ -106,6 +111,12 @@ const elements = [
     type: "shared",
     name: "types",
     pattern: "frontend/src/types/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "custom-viz",
+    pattern: "enterprise/frontend/src/custom-viz/**",
     enforceOutgoing: true,
   }),
   createElement({
