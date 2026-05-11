@@ -277,8 +277,7 @@ export type MetabotSourceFeedback = {
 /**
  * Feedback payload for MCP Apps visualization results.
  *
- * MCP Apps do not create a persisted Metabot message row, so this payload uses
- * the dedicated MCP feedback endpoint and sends the prompt/query context needed
+ * Sends the prompt and query context needed for Harbormaster
  * to understand the generated visualization.
  */
 export type McpAppsFeedback = {

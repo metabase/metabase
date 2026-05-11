@@ -10,7 +10,13 @@ import { useEffect, useState } from "react";
 
 interface McpAppState {
   query: string | null;
+
+  /**
+   * Original user prompt that triggered this visualization, retrieved
+   * from `construct_query`, e.g. "visualize orders with Metabase".
+   */
   prompt: string | null;
+
   hostContext: McpUiHostContext | null;
   app: App | null;
 }
