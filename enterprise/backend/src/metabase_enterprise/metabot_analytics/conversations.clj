@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
@@ -144,7 +145,7 @@
              (assoc row
                     :search_count (analytics.queries/count-tool-invocations msgs "search")
                     :query_count  (analytics.queries/count-tool-invocations
-                                   msgs analytics.queries/new-query-tool-names))))
+                                   msgs metabot.tools/query-generation-tool-names))))
          rows)))
 
 (defn list-conversations
@@ -231,7 +232,7 @@
        :queries         (analytics.queries/messages->generated-queries messages)
        :search_count    (analytics.queries/count-tool-invocations messages "search")
        :query_count     (analytics.queries/count-tool-invocations
-                         messages analytics.queries/new-query-tool-names)
+                         messages metabot.tools/query-generation-tool-names)
        :ip_address           (:ip_address conversation)
        :embedding_hostname   (:embedding_hostname conversation)
        :embedding_path       (:embedding_path conversation)

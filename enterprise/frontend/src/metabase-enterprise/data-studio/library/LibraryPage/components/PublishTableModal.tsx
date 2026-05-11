@@ -7,7 +7,7 @@ import {
   type OmniPickerTableItem,
 } from "metabase/common/components/Pickers";
 
-import { PublishTablesModal } from "../components/PublishTablesModal";
+import { PublishTablesModal } from "../../components/PublishTablesModal";
 
 interface PublishTableModalProps {
   opened: boolean;

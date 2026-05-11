@@ -6,6 +6,7 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionNamespace,
+  CollectionType,
   DashboardId,
   DatabaseId,
   Measure,
@@ -90,8 +91,11 @@ export type OmniPickerCollectionItem = Pick<
   | "type"
   | "database_id"
   | "effective_location"
+  | "is_library_root"
 > & {
   id: CollectionItem["id"] | CollectionId;
+  sourceCollectionId?: CollectionItem["id"] | CollectionId;
+  childTypeFilter?: NonNullable<CollectionType>;
   collection?:
     | (Pick<Collection, "id" | "name" | "authority_level"> & {
         namespace?: CollectionNamespace;

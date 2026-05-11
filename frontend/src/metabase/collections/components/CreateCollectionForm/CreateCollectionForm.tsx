@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { t } from "ttag";
@@ -15,6 +15,7 @@ import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type {
+  EntityPickerOptions,
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
@@ -24,7 +25,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
@@ -43,14 +44,18 @@ export interface CreateCollectionProperties {
   name: string;
   description: string | null;
   parent_id: Collection["id"] | null;
+  namespace?: CollectionNamespace;
 }
 
 export interface CreateCollectionFormOwnProps {
   collectionId?: Collection["id"]; // can be used by `getInitialCollectionId`
+  initialCollectionId?: Collection["id"];
   onSubmit: (collection: CreateCollectionProperties) => void;
   onCancel?: () => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   showCollectionPicker?: boolean;
+  pickerOptions?: EntityPickerOptions;
+  namespaces?: CollectionNamespace[];
   showAuthorityLevelPicker?: boolean;
 }
 
@@ -70,19 +75,24 @@ const mapDispatchToProps = {
 
 function CreateCollectionForm({
   collectionId,
+  initialCollectionId: explicitInitialCollectionId,
   location,
   params,
   onSubmit,
   onCancel,
   filterPersonalCollections,
   showCollectionPicker = true,
+  pickerOptions,
+  namespaces,
   showAuthorityLevelPicker = true,
 }: Props) {
-  const initialCollectionId = useInitialCollectionId({
+  const defaultInitialCollectionId = useInitialCollectionId({
     collectionId,
     location,
     params,
   });
+  const initialCollectionId =
+    explicitInitialCollectionId ?? defaultInitialCollectionId;
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
@@ -98,11 +108,27 @@ function CreateCollectionForm({
   const [selectedParentCollection, setSelectedParentCollection] =
     useState<OmniPickerItem | null>(null);
 
+  const handleSubmit = useCallback(
+    (values: CreateCollectionProperties) => {
+      const parentCollection = selectedParentCollection ?? initialCollection;
+      const namespace =
+        parentCollection && "namespace" in parentCollection
+          ? parentCollection.namespace
+          : namespaces?.[0];
+
+      onSubmit({
+        ...values,
+        namespace: namespace ?? undefined,
+      });
+    },
+    [initialCollection, namespaces, onSubmit, selectedParentCollection],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={COLLECTION_SCHEMA}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ dirty }) => {
         const parentCollection = selectedParentCollection ?? initialCollection;
@@ -130,18 +156,22 @@ function CreateCollectionForm({
             />
             {showCollectionPicker && (
               <FormCollectionPicker
-                name="parent_id"
-                title={t`Collection it's saved in`}
-                filterPersonalCollections={filterPersonalCollections}
+                collectionPickerModalProps={{
+                  options: pickerOptions,
+                  namespaces,
+                }}
                 entityType="collection"
-                onCollectionSelect={setSelectedParentCollection}
+                filterPersonalCollections={filterPersonalCollections}
                 mb="1rem"
+                name="parent_id"
+                onCollectionSelect={setSelectedParentCollection}
+                title={t`Collection it's saved in`}
               />
             )}
             {showAuthorityLevelPicker && !isParentTenantCollection && (
               <FormAuthorityLevelField />
             )}
-            <FormFooter>
+            <FormFooter mt="lg">
               <FormErrorMessage inline />
               <Flex style={{ flexShrink: 1 }} justify="flex-end" gap="sm">
                 {!!onCancel && (

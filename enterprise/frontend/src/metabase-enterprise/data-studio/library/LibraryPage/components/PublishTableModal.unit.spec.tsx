@@ -1,15 +1,25 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupLibraryEndpoints,
   setupPublishTablesEndpoint,
   setupTableSelectionInfoEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { BulkTableSelectionInfo } from "metabase-types/api";
 import {
   createMockBulkTableInfo,
   createMockBulkTableSelectionInfo,
+  createMockCollection,
+  createMockCollectionItem,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { PublishTableModal } from "./PublishTableModal";
@@ -59,6 +69,35 @@ function setup({
 }: SetupOpts = {}) {
   const onClose = jest.fn();
   const onPublished = jest.fn();
+  const dataCollection = createMockCollection({
+    id: 10,
+    name: "Data",
+    type: "library-data",
+  });
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    }),
+  });
+
+  setupEnterpriseOnlyPlugin("library");
+  setupLibraryEndpoints(true);
+  setupCollectionItemsEndpoint({
+    collection: { id: 6464 },
+    collectionItems: [
+      createMockCollectionItem({
+        id: dataCollection.id as number,
+        name: dataCollection.name,
+        model: "collection",
+        type: dataCollection.type,
+        can_write: true,
+        location: "/6464/",
+        here: ["table", "collection"],
+        below: ["table", "collection"],
+      }),
+    ],
+  });
+  setupCollectionByIdEndpoint({ collections: [dataCollection] });
 
   setupTableSelectionInfoEndpoint(selectionInfo);
   setupPublishTablesEndpoint();
@@ -69,9 +108,10 @@ function setup({
       onClose={onClose}
       onPublished={onPublished}
     />,
+    { storeInitialState: state },
   );
 
-  return { onClose, onPublished };
+  return { dataCollection, onClose, onPublished };
 }
 
 describe("PublishTableModal", () => {
@@ -81,11 +121,20 @@ describe("PublishTableModal", () => {
   });
 
   it("should show the publish confirmation modal after selecting a table and call onClose and onPublished on publish", async () => {
-    const { onClose, onPublished } = setup();
+    const { dataCollection, onClose, onPublished } = setup();
     await userEvent.click(screen.getByText("Select Orders"));
     expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
+    expect(await screen.findByText("Publish to")).toBeInTheDocument();
+    expect(await screen.findByText("Data")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Publish this table"));
     await waitFor(() => expect(onPublished).toHaveBeenCalled());
+    const request = fetchMock.callHistory.lastCall(
+      "path:/api/ee/data-studio/table/publish-tables",
+    )?.request;
+    expect(await request?.json()).toEqual({
+      table_ids: [1],
+      collection_id: dataCollection.id,
+    });
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -112,8 +161,8 @@ describe("PublishTableModal", () => {
     expect(
       await screen.findByText("Publish Orders and the tables it depends on?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(await screen.findByText("Products")).toBeInTheDocument();
+    expect(await screen.findByText("People")).toBeInTheDocument();
   });
 
   it("should return to picker when publish modal is closed", async () => {
@@ -121,7 +170,7 @@ describe("PublishTableModal", () => {
     await userEvent.click(screen.getByText("Select Orders"));
     expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Cancel"));
+    await userEvent.click(await screen.findByText("Cancel"));
     expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
   });
 

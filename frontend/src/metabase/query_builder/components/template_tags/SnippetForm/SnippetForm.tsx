@@ -119,7 +119,7 @@ function SnippetFormInner({
               )}
               <FormErrorMessage inline />
             </Flex>
-            <Flex align="center" justify="center" gap="sm">
+            <Flex align="center" justify="center" gap="sm" mt="md">
               {!!onCancel && (
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
               )}

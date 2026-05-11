@@ -3,7 +3,6 @@ import {
   isRootTrashCollection,
   isSyncedCollection,
 } from "metabase/collections/utils";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -39,13 +38,15 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  switch (getLibraryCollectionType(collection.type)) {
-    case "root":
-      return { name: "repository" };
-    case "data":
-      return { name: "table" };
-    case "metrics":
-      return { name: "metric" };
+  if (collection.is_library_root) {
+    switch (collection.type) {
+      case "library":
+        return { name: "repository" };
+      case "library-data":
+        return { name: "table" };
+      case "library-metrics":
+        return { name: "metric" };
+    }
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
@@ -75,6 +76,7 @@ export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
   schemaName?: string;
+  nonNavigable?: boolean;
 }
 
 export function buildCollectionTree(

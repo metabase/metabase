@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 
+import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured";
 import {
   MetabotCustomizationPage,
   MetabotCustomizationUpsellPage,
@@ -18,7 +19,7 @@ import { MetabotUsageLimitsPage } from "./pages/MetabotUsageLimitsPage";
 
 export function getAiControlsRoutes() {
   return (
-    <>
+    <Route component={RequireMetabotConfigured}>
       <Route
         key="ai-feature-access"
         path=":metabotId/usage-controls/ai-feature-access"
@@ -49,7 +50,7 @@ export function getAiControlsRoutes() {
         path=":metabotId/system-prompts/sql-generation"
         component={SqlGenerationPromptPage}
       />
-    </>
+    </Route>
   );
 }
 
