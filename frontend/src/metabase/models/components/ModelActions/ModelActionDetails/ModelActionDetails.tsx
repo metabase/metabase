@@ -51,7 +51,11 @@ function ModelActionDetails({ model, databases }: Props) {
     "model-id": model.id(),
   });
   const [deleteAction] = useDeleteActionMutation();
-  const onEnableImplicitActions = useEnableImplicitActionsForModel(model.id());
+  const enableImplicitActions = useEnableImplicitActionsForModel(model.id());
+  const onEnableImplicitActions = useCallback(
+    () => enableImplicitActions(),
+    [enableImplicitActions],
+  );
   const onDeleteAction = useCallback(
     (action: WritebackAction) => deleteAction(action.id),
     [deleteAction],
