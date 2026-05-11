@@ -605,7 +605,13 @@
   `target_id` is set (i.e., natural-key matched a live row). Each SET column
   is a single-key lookup on `staging.target_id`. Skip-if-unchanged: the
   EXISTS subquery additionally requires that at least one observable column
-  differs — a re-import with identical payload is a true no-op."
+  differs — a re-import with identical payload is a true no-op.
+
+  The `IN` predicate scopes the outer walk of `metabase_field` to just the
+  ~staging-row-count IDs at depth `d` rather than a full-table scan. Without
+  it, PG's planner starts from `metabase_field` and probes staging per row —
+  fine on a small appdb, but on an appdb with millions of unrelated field
+  rows the global scan dominates."
   [d]
   (t2/query
    {:update :metabase_field
@@ -614,6 +620,11 @@
                        :updated_at :%now))
     :where  [:and
              [:= :metabase_field.is_defective_duplicate [:inline false]]
+             [:in :metabase_field.id {:select [:target_id]
+                                      :from   [:metabase_field_import]
+                                      :where  [:and
+                                               [:= :depth d]
+                                               [:not= :target_id nil]]}]
              [:exists {:select [[[:inline 1]]]
                        :from   [[:metabase_field_import :fi]]
                        :where  [:and
