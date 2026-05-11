@@ -105,7 +105,7 @@ jobs:
                 : null,
             ].filter(Boolean).join('\n');
 
-            const message = `:tree_evergreen: Cut new release branch *${branch}* at ${shaLink} ${team}\n${notes}`;
+            const message = `:evergreen_tree: Cut new release branch *${branch}* at ${shaLink} ${team}\n${notes}`;
 
             await sendSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
