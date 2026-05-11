@@ -41,29 +41,37 @@ describe("AI Controls > Metabot access and customization", () => {
         cy.findByText("Other tools").should("be.visible");
       });
 
-      // Admins row should be locked/checked
+      // Admins row checkboxes should be always checked and disabled
       cy.findByRole("row", { name: /Administrators permissions/ }).within(
         () => {
           cy.findByRole("switch").should("be.checked").and("be.disabled");
         },
       );
 
-      // All Users row should have the metabot switch checked (default is yes)
       cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
-        // Toggle the metabot AI features switch off
+        // Toggle the metabot AI features switch off (default is checked)
         cy.findByRole("switch").should("be.checked").click({ force: true });
-      });
 
-      // Wait for the debounced PUT request to complete
-      cy.wait("@updatePermissions")
-        .its("response.statusCode")
-        .should("eq", 200);
+        cy.wait("@updatePermissions")
+          .its("response.statusCode")
+          .should("eq", 200);
 
-      // Verify sub-permission checkboxes are now disabled after disabling metabot
-      cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
+        // Check that the switch is off and all checkboxes are unchecked
         cy.findByRole("switch").should("not.be.checked");
         cy.findAllByRole("checkbox").each(($checkbox) => {
-          cy.wrap($checkbox).should("be.disabled");
+          cy.wrap($checkbox).should("not.be.checked");
+        });
+
+        // Toggle the metabot AI features switch on again
+        cy.findByRole("switch").click({ force: true });
+
+        cy.wait("@updatePermissions")
+          .its("response.statusCode")
+          .should("eq", 200);
+
+        // When metabot permission is toggled on, all tools should be enabled by default
+        cy.findAllByRole("checkbox").each(($checkbox) => {
+          cy.wrap($checkbox).should("be.checked");
         });
       });
     });
@@ -116,7 +124,7 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("heading", { name: "Customization", level: 1 }).should(
         "be.visible",
       );
-      cy.findByLabelText("Metabot's name")
+      cy.findByLabelText("AI agent's name")
         .should("be.visible")
         .clear()
         .type("HAL 9000");
@@ -126,7 +134,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // Reload and verify persistence
       cy.reload();
-      cy.findByLabelText("Metabot's name").should("have.value", "HAL 9000");
+      cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
     });
 
     it("should upload a custom Metabot icon and show the illustrations section", () => {
@@ -134,7 +142,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.visit("/admin/metabot/1/customization");
 
-      H.main().findByText("Metabot's icon").should("be.visible");
+      H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
         "be.visible",
       );
@@ -211,9 +219,9 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByTestId("metabot-empty-chat-info")
         .find("svg")
         .should("not.exist");
-      // But the hint text should still be visible
+      // But the hint text should still be visible, with the no-illustration copy
       cy.findByTestId("metabot-empty-chat-info")
-        .findByText(/I can help you/)
+        .findByText(/Explore your metrics and models with AI/)
         .should("be.visible");
     });
 
@@ -254,11 +262,11 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.visit("/admin/metabot/1/system-prompts/metabot-chat");
 
       cy.findByRole("heading", {
-        name: "Metabot chat prompt instructions",
+        name: "AI chat prompt instructions",
         level: 1,
       }).should("be.visible");
 
-      cy.findByRole("textbox", { name: /Metabot chat prompt instructions/ })
+      cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
         .should("be.visible")
         .click()
         .type("Be concise and helpful.");
@@ -268,7 +276,7 @@ describe("AI Controls > Metabot access and customization", () => {
       // Reload and verify persistence
       cy.reload();
       cy.findByRole("textbox", {
-        name: /Metabot chat prompt instructions/,
+        name: /AI chat prompt instructions/,
       }).should("contain.value", "Be concise and helpful.");
     });
 
@@ -356,7 +364,7 @@ describe("AI controls > AI usage limits", () => {
       });
 
       // Type an instance limit value
-      cy.findByLabelText(/Total weekly instance limit/).type("500");
+      cy.findByLabelText("Total weekly instance message limit").type("500");
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: 500 });
       });
@@ -382,7 +390,7 @@ describe("AI controls > AI usage limits", () => {
       cy.wait("@getInstanceLimit");
 
       cy.findByRole("textbox", {
-        name: /Total monthly instance limit/,
+        name: "Total monthly instance token limit",
       }).clear();
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: null });
@@ -655,9 +663,7 @@ describe("AI Controls > Tenant usage limits", () => {
     cy.findByTestId("tenant-limits-tab")
       .findByText("Test Corp")
       .should("be.visible");
-    cy.findByLabelText(
-      "Max total monthly tokens for Test Corp (millions)",
-    ).type("10");
+    cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
     cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
   });
 

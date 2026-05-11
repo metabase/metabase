@@ -7,6 +7,7 @@ import createCachedSelector from "re-reselect";
 import type React from "react";
 import _ from "underscore";
 
+import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { PLUGIN_ENTITIES } from "metabase/plugins";
 import { combineReducers, compose, withAction } from "metabase/redux";
 import {
@@ -20,17 +21,12 @@ import {
 } from "metabase/redux/requests";
 import type { Dispatch, EntitiesState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import { delay } from "metabase/utils/promise";
 
 // backend returns model = "card" instead of "question"
 export const entityTypeForModel = (model: string): string => {
   if (model === "card" || model === "dataset" || model === "metric") {
     return "questions";
-  }
-  if (model === "indexed-entity") {
-    // handle non-standard plural 🙃
-    return "indexedEntities";
   }
   return `${model}s`;
 };
@@ -107,7 +103,6 @@ export type EntitySelectors = {
   getFetched: EntitySelector;
   getError: EntitySelector;
   getListMetadata: EntitySelector;
-  getInitialCollectionId: EntitySelector;
   getExpandedCollectionsById: EntitySelector;
 };
 
@@ -205,9 +200,6 @@ export type Entity = {
   // Selectors
   selectors: EntitySelectors;
 
-  // Per-entity object accessors. Each entity defines these with its own object type.
-  objectSelectors: Record<string, (object: any, ...args: any[]) => any>;
-
   // Reducers
   reducer?: EntitiesReducer;
   reducers: Record<string, EntitiesReducer | Reducer<Record<string, unknown>>>;
@@ -221,7 +213,7 @@ export type Entity = {
   writableProperties?: string[];
 
   // Wrap entity object with bound selectors/actions. The wrapper preserves the
-  // input's properties and adds the entity's bound objectSelectors/objectActions
+  // input's properties and adds the entity's bound objectActions
   // (e.g. `getName()`, `getIcon()`). Each entity defines its own object methods,
   // so we return `any` to allow consumers to use any wrapper-provided method.
   wrapEntity: (object: any, dispatch?: AnyDispatch | null) => any;
@@ -277,7 +269,6 @@ type EntityDef = {
   createSelectors?: (
     defaultSelectors: Partial<EntitySelectors>,
   ) => Partial<EntitySelectors>;
-  objectSelectors?: Partial<Entity["objectSelectors"]>;
   // Reducers in entity defs typically destructure `{ type, payload }` from the action
   // and accept any payload shape, so we type the action loosely here.
 
@@ -802,22 +793,6 @@ export function createEntity(def: EntityDef): Entity {
     ...(def.createSelectors ? def.createSelectors(defaultSelectors) : {}),
   } as EntitySelectors;
 
-  entity.objectSelectors = {
-    getName(object: EntityObject) {
-      return object.name;
-    },
-    getIcon(_object: EntityObject) {
-      return { name: "unknown" };
-    },
-    getColor(_object: EntityObject): string | undefined {
-      return undefined;
-    },
-    getCollection(object: EntityObject) {
-      return object.collection;
-    },
-    ...(def.objectSelectors || {}),
-  };
-
   // REDUCERS
 
   entity.reducers = {};
@@ -907,17 +882,6 @@ export function createEntity(def: EntityDef): Entity {
       ) {
         Object.assign(this, object);
         this._dispatch = dispatch;
-      }
-    }
-    // object selectors
-    for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
-      if (method) {
-        EntityWrapper.prototype[methodName] = function (
-          this: EntityWrapper,
-          ...args: unknown[]
-        ) {
-          return method(this, ...args);
-        };
       }
     }
     // object actions

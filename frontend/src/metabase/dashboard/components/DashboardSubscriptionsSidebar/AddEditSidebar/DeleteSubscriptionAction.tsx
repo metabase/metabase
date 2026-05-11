@@ -4,14 +4,20 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
+import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import CS from "metabase/css/core/index.css";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
 import type { Channel } from "metabase-types/api";
 
 function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
-  return pulse.channels.map((c: Channel, index: number) =>
-    c.channel_type === "email" ? (
+  const { scheduleOptionNames } = getScheduleStrings();
+  return pulse.channels.map((c: Channel, index: number) => {
+    const scheduleTypeLabel = c.schedule_type
+      ? scheduleOptionNames[c.schedule_type]
+      : "";
+
+    return c.channel_type === "email" ? (
       <span key={index}>
         {jt`This dashboard will no longer be emailed to ${(
           <strong key="msg">
@@ -19,7 +25,7 @@ function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
               c.recipients?.length || 0,
             )}
           </strong>
-        )} ${<strong key="type">{c.schedule_type}</strong>}`}
+        )} ${<strong key="type">{scheduleTypeLabel}</strong>}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (
@@ -27,7 +33,7 @@ function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
         {jt`Slack channel ${(
           <strong key="msg">{c.details && c.details.channel}</strong>
         )} will no longer get this dashboard ${(
-          <strong key="type">{c.schedule_type}</strong>
+          <strong key="type">{scheduleTypeLabel}</strong>
         )}`}
         .
       </span>
@@ -36,12 +42,12 @@ function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
         {jt`Channel ${(
           <strong key="msg">{c.channel_type}</strong>
         )} will no longer receive this dashboard ${(
-          <strong key="type">{c.schedule_type}</strong>
+          <strong key="type">{scheduleTypeLabel}</strong>
         )}`}
         .
       </span>
-    ),
-  );
+    );
+  });
 }
 
 interface DeleteSubscriptionActionProps {

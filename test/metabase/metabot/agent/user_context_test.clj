@@ -249,6 +249,11 @@
   (testing "returns empty string when no recent views"
     (let [context {}
           result (user-context/format-recent-views context)]
+      (is (= "" result))))
+
+  (testing "returns empty string when recent views is an empty vector (e.g. after verified-only filter)"
+    (let [context {:user_recently_viewed []}
+          result (user-context/format-recent-views context)]
       (is (= "" result)))))
 
 (deftest format-current-user-info-test

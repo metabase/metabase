@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { ParametersSettings } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
+import { getLockedPreviewParameters } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
-import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
-import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";

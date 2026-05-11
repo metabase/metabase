@@ -2,7 +2,6 @@
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -691,11 +690,14 @@
     (condp #(isa? %2 %1) (or effective-type base-type)
       ;; When we are dealing with a uuid type we should try to convert to a real UUID
       ;; If that fails,, we will add a fallback cast to "text"
-      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
-                   (try
-                     (UUID/fromString value)
-                     (catch IllegalArgumentException _
-                       (h2x/with-type-info value {:database-type "varchar"}))))
+      :type/UUID (cond
+                   (instance? UUID value) value
+                   (= "" value)           nil ; support is-empty/non-empty checks
+                   (string? value)        (try
+                                            (UUID/fromString value)
+                                            (catch IllegalArgumentException _
+                                              (h2x/with-type-info value {:database-type "varchar"})))
+                   :else                  value)
       (->honeysql driver value))))
 
 (defn- literal-text-value?
@@ -769,28 +771,28 @@
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
       (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
-    (u/prog1 (match [base-type coercion-strategy]
-               [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+    (u/prog1 (cond
+               (and (isa? base-type :type/Number) (isa? coercion-strategy :Coercion/UNIXTime->Temporal))
                (unix-timestamp->honeysql driver
                                          (semantic-type->unix-timestamp-unit coercion-strategy)
                                          honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Temporal)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Temporal))
                (cast-temporal-string driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+               (and (isa? base-type :type/*) (isa? coercion-strategy :Coercion/Bytes->Temporal))
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
+               (and (isa? base-type :type/DateTime) (isa? coercion-strategy :Coercion/DateTime->Date))
                (->date driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Float)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Float))
                (->float driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Integer)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Integer))
                (->integer driver honeysql-form)
 
-               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (and (= base-type :type/Float) (isa? coercion-strategy :Coercion/Float->Integer))
                (->integer driver honeysql-form)
 
                :else honeysql-form)
@@ -1352,7 +1354,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-lite (nth (:aggregation *inner-query*) index)
+  (driver-api/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
@@ -1539,7 +1541,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace-lite
+   (driver-api/replace
      form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
@@ -1807,7 +1809,7 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-lite args
+    (if-let [field-arg (driver-api/match-one args
                          [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause

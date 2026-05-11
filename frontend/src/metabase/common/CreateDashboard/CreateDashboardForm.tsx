@@ -5,12 +5,12 @@ import * as Yup from "yup";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
 } from "metabase/common/utils/dashboard";
-import { Collections } from "metabase/entities/collections";
 import {
   Form,
   FormErrorMessage,
@@ -19,7 +19,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { useSelector } from "metabase/redux";
 import { Button, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -50,7 +49,7 @@ export interface CreateDashboardProperties {
   /**
    * @internal
    */
-  collection_id: CollectionId;
+  collection_id: CollectionId | null;
 }
 
 export interface CreateDashboardFormOwnProps {
@@ -66,9 +65,7 @@ export function CreateDashboardForm({
   onCreate,
   onCancel,
 }: CreateDashboardFormOwnProps) {
-  const initialCollectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, { collectionId }),
-  );
+  const initialCollectionId = useInitialCollectionId({ collectionId });
 
   // When passing `"root"` it will be resolved to `null`
   const hasTargetCollection = targetCollection !== undefined;

@@ -1,6 +1,7 @@
 import type { Tag } from "./types";
 import {
   filterOutNonSupportedPrereleaseIdentifier,
+  findNextMinorVersion,
   findNextPatchVersion,
   getBuildRequirements,
   getDotXs,
@@ -661,6 +662,33 @@ describe("version-helpers", () => {
       expect(() => findNextPatchVersion("v0.75.f")).toThrow();
       expect(() => findNextPatchVersion("v0.75.1.f")).toThrow();
       expect(() => findNextPatchVersion("v0.75.1.2.f")).toThrow();
+    });
+  });
+
+  describe("findNextMinorVersion", () => {
+    it.each([
+      ["v1.50.0", "v0.50.1"],
+      ["v0.50.0", "v0.50.1"],
+      ["v1.50.1", "v0.50.2"],
+      ["v0.50.9", "v0.50.10"],
+      ["v1.50.99", "v0.50.100"],
+      ["v1.23.0", "v0.23.1"],
+    ])("%s -> %s", (input, expected) => {
+      expect(findNextMinorVersion(input)).toBe(expected);
+    });
+
+    it("should throw an error for invalid versions", () => {
+      expect(() => findNextMinorVersion("foo")).toThrow();
+      expect(() => findNextMinorVersion("v2.75")).toThrow();
+      expect(() => findNextMinorVersion("v0.75.0-gamma")).toThrow();
+      expect(() => findNextMinorVersion("v0.75")).toThrow();
+      expect(() => findNextMinorVersion("v0.75.f")).toThrow();
+    });
+
+    it("should throw for pre-release versions (auto-minor only runs post-gold)", () => {
+      expect(() => findNextMinorVersion("v0.50.1-beta")).toThrow();
+      expect(() => findNextMinorVersion("v1.50.0-RC")).toThrow();
+      expect(() => findNextMinorVersion("v0.50.2-alpha")).toThrow();
     });
   });
 

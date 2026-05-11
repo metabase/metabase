@@ -26,7 +26,7 @@ import {
   getColumnName,
   getDescription,
   getInputLabel,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -166,7 +166,10 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                               placeholder={placeholder}
                               value={inputValue}
                               onChange={(value) => handleChange(tenant, value)}
-                              classNames={{ input: S.LimitInput }}
+                              classNames={{
+                                wrapper: S.LimitInputWrapper,
+                                section: S.InputUnitSection,
+                              }}
                               error={
                                 isOverInstanceLimit
                                   ? t`Can't be higher than the instance limit`
@@ -179,10 +182,12 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                                 limitType,
                                 limitPeriod,
                               )}
-                              suffix={getMaxUsageInputSuffix(
+                              rightSection={getMaxUsageInputUnit(
                                 limitType,
                                 localLimitsMap?.[tenant.id],
                               )}
+                              rightSectionWidth="auto"
+                              rightSectionPointerEvents="none"
                             />
                           </td>
                         </tr>

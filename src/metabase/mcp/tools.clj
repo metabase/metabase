@@ -5,11 +5,10 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
-   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -36,30 +35,19 @@
     (generate-manifest)
     @manifest-delay))
 
-(defn- scope-matches?
-  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
-   - nil token-scopes → always matches (internal callers)
-   - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → only matches nil or unrestricted token-scopes
-   - Delegates wildcard/exact matching to [[api-scope/scope-matches?]]"
-  [token-scopes tool-scope]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::scope/unrestricted)
-      (when (and (some? tool-scope)
-                 (api-scope/scope-matches? token-scopes tool-scope))
-        true)))
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
   (let [{:keys [tools]} (manifest)]
     (into []
-          (comp (filter #(scope-matches? token-scopes (:scope %)))
+          (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       {:name        (:name tool)
-                        :description (:description tool)
-                        :inputSchema (:inputSchema tool)})))
+                       (cond-> {:name        (:name tool)
+                                :title       (:title tool)
+                                :description (:description tool)
+                                :inputSchema (:inputSchema tool)}
+                         (:annotations tool) (assoc :annotations (:annotations tool))))))
           tools)))
 
 (defn- build-tool-index
@@ -96,9 +84,13 @@
    returns `:specific-errors`/`:errors` for schema-validation 400s (see
    [[metabase.api.macros/decode-and-validate-params]]) and `:message`/`:error` for
    other failures — surfacing the validation detail turns \"Invalid body\" into an
-   actionable message for MCP clients."
+   actionable message for MCP clients. String bodies (e.g. 404 \"Not found.\") are
+   surfaced as the message rather than collapsed to a bare \"Agent API error: <status>\"."
   [response]
-  (let [{msg :message :keys [specific-errors errors error]} (:body response)
+  (let [body                                              (:body response)
+        body-map                                          (when (map? body) body)
+        body-str                                          (when (and (string? body) (not (str/blank? body))) body)
+        {msg :message :keys [specific-errors errors error]} body-map
         detail (cond
                  (seq specific-errors) (format-validation-detail specific-errors)
                  (seq errors)          (format-validation-detail errors))]
@@ -107,6 +99,7 @@
       detail           detail
       msg              msg
       error            error
+      body-str         body-str
       :else            (str "Agent API error: " (:status response)))))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------

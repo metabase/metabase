@@ -6,8 +6,8 @@ import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckB
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import type { IconName } from "metabase/ui";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting";
 import Settings from "metabase/utils/settings";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

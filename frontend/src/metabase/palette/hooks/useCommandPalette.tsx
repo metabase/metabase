@@ -4,14 +4,13 @@ import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { getCollection } from "metabase/collections/utils";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Search } from "metabase/entities/search";
-import { PLUGIN_CACHING } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -21,14 +20,13 @@ import {
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { modelToUrl } from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
-import * as Urls from "metabase/utils/urls";
-import { modelToUrl } from "metabase/utils/urls";
 import {
+  type RecentCollectionItem,
   type RecentItem,
-  isRecentCollectionItem,
   isRecentTableItem,
 } from "metabase-types/api";
 
@@ -43,7 +41,7 @@ export const useCommandPalette = ({
   disabled: boolean;
   locationQuery: Query;
 }) => {
-  const dispatch = useDispatch();
+  const getIcon = useGetIcon();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
@@ -102,7 +100,6 @@ export const useCommandPalette = ({
     }
   }, [isVisible, refetchRecents, disabled]);
 
-  const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
 
   const docsAction = useMemo<PaletteAction[]>(() => {
@@ -181,13 +178,13 @@ export const useCommandPalette = ({
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
         return searchResults.data.map((result, index) => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          const icon = getIcon(wrappedResult);
+          const icon = getIcon(result);
           return {
             id: `search-result-${result.model}-${result.id}`,
             name: result.name,
             subtitle: result.description || "",
             icon: icon.name,
+            iconUrl: icon.iconUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -205,9 +202,9 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: modelToUrl(wrappedResult),
+              href: modelToUrl(result),
               iconColor: icon.color,
-              subtext: getSearchResultSubtext(wrappedResult),
+              subtext: getSearchResultSubtext(result),
             },
           };
         });
@@ -226,7 +223,6 @@ export const useCommandPalette = ({
     return [];
   }, [
     disabled,
-    dispatch,
     debouncedSearchText,
     searchQuery,
     isSearchLoading,
@@ -235,6 +231,7 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
+    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -251,6 +248,7 @@ export const useCommandPalette = ({
           id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
           name: getName(item),
           icon: icon.name,
+          iconUrl: icon.iconUrl,
           section: "recent",
           perform: () => {},
           extra: {
@@ -264,36 +262,12 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems]);
+  }, [disabled, recentItems, getIcon]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
     hasQuery,
   ]);
-
-  const adminActions = useMemo<PaletteAction[]>(() => {
-    if (disabled) {
-      return [];
-    }
-
-    // Subpaths - i.e. paths to items within the main Admin tabs - are needed
-    // in the command palette but are not part of the main list of admin paths
-    const adminSubpaths = isAdmin
-      ? getPerformanceAdminPaths(PLUGIN_CACHING.getTabMetadata())
-      : [];
-
-    const paths = [...adminPaths, ...adminSubpaths];
-    return paths.map((adminPath) => ({
-      id: `admin-page-${adminPath.key}`,
-      name: `${adminPath.name}`,
-      icon: "gear",
-      perform: () => {},
-      section: "admin",
-      extra: {
-        href: adminPath.path,
-      },
-    }));
-  }, [disabled, isAdmin, adminPaths]);
 
   const settingsActions = useMemo<PaletteAction[]>(() => {
     if (disabled || !canUserAccessSettings) {
@@ -324,8 +298,7 @@ export const useCommandPalette = ({
       }));
   }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
-  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
-    adminActions,
+  useRegisterActions(hasQuery ? settingsActions : [], [
     settingsActions,
     hasQuery,
   ]);
@@ -381,7 +354,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     );
   } else {
     return (
-      <SubtitleText>{wrappedSearchResult.getCollection?.()?.name}</SubtitleText>
+      <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>
     );
   }
 };
@@ -430,3 +403,8 @@ const SubtitleText = ({ children }: PropsWithChildren) => (
     {children}
   </Text>
 );
+
+const isRecentCollectionItem = (
+  item: OmniPickerItem,
+): item is RecentCollectionItem =>
+  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);

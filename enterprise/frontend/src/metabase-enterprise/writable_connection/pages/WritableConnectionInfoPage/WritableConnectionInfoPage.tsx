@@ -15,7 +15,7 @@ import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";
 
 const FORM_CONFIG: DatabaseFormConfig = {

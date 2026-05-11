@@ -78,19 +78,22 @@ const SWC_LOADER = {
 
 class OnScriptError {
   apply(/** @type {import("webpack").Compiler} */ compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (/** @type {import("webpack").Compilation} */ compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
-        "OnScriptError",
-        (data, cb) => {
-          // Manipulate the content
-          data.assetTags.scripts.forEach((script) => {
-            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
-          });
-          // Tell webpack to move on
-          cb(null, data);
-        },
-      );
-    });
+    compiler.hooks.compilation.tap(
+      "OnScriptError",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+          "OnScriptError",
+          (data, cb) => {
+            // Manipulate the content
+            data.assetTags.scripts.forEach((script) => {
+              script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+            });
+            // Tell webpack to move on
+            cb(null, data);
+          },
+        );
+      },
+    );
   }
 }
 
@@ -115,7 +118,6 @@ const config = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -387,11 +389,16 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
+  if (!process.env.DISABLE_BUILD_NOTIFICATIONS) {
+    config.plugins.push(
+      new WebpackNotifierPlugin({
+        excludeWarnings: true,
+        skipFirstNotification: true,
+      }),
+    );
+  }
+
   config.plugins.push(
-    new WebpackNotifierPlugin({
-      excludeWarnings: true,
-      skipFirstNotification: true,
-    }),
     new CssVarsDeclarationPlugin({
       frontendSrcPath: __dirname + "/frontend/src",
       rootPath: __dirname,

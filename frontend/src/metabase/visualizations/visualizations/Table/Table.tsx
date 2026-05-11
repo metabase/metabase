@@ -5,9 +5,13 @@ import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
+import { getSubpathSafeUrl } from "metabase/urls";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import {
+  trackTableFreezeColumnsEnabled,
+  trackTableFreezeRowsEnabled,
+} from "metabase/visualizations/analytics";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
 import {
@@ -140,6 +144,11 @@ export class Table extends Component<TableProps, TableState> {
       getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
         _isPivoted(series, settings),
       readDependencies: ["table.pivot"],
+      onUpdate: (value: boolean) => {
+        if (value) {
+          trackTableFreezeColumnsEnabled();
+        }
+      },
     },
     "table.freeze_columns_count": {
       get section() {
@@ -170,6 +179,11 @@ export class Table extends Component<TableProps, TableState> {
       getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
         _isPivoted(series, settings),
       readDependencies: ["table.pivot"],
+      onUpdate: (value: boolean) => {
+        if (value) {
+          trackTableFreezeRowsEnabled();
+        }
+      },
     },
     "table.freeze_rows_count": {
       get section() {

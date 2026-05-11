@@ -3,10 +3,10 @@ import { t } from "ttag";
 import { useListCardsQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
@@ -17,6 +17,7 @@ type ModelUsageDetailsProps = {
 };
 
 export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
+  const getIcon = useGetIcon();
   const {
     data: cards = [],
     error,
@@ -54,7 +55,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
       {filtered.map((card) => {
         return (
           <Link
-            to={Urls.question(card)}
+            to={Urls.card(card)}
             aria-label={card.name}
             variant="brand"
             key={card.id}

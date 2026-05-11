@@ -1,0 +1,15 @@
+name: id
+active: true
+table_id:
+- Sample Database
+- PUBLIC
+- orders
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: orders
+  model: Table
+- id: id
+  model: Field

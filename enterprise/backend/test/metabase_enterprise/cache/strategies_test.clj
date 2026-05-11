@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
    [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.test :as qp]
@@ -181,3 +182,50 @@
                 (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
                   (is (=? {:type :ttl :multiplier 200}
                           (:cache-strategy q))))))))))))
+
+(deftest dashboard-caching-with-parameterized-native-query-test
+  ;; Regression test for https://github.com/metabase/metabase/issues/45412
+  ;; Dashboard-level caching should work with parameterized native queries:
+  ;; same params → cache hit, different params → cache miss.
+  (mt/with-empty-h2-app-db!
+    (mt/with-premium-features #{:cache-granular-controls}
+      (let [native-query (-> (lib/native-query (mt/metadata-provider) "SELECT {{num}} AS result")
+                             (lib/with-template-tags {"num" {:id           "abc123"
+                                                             :name         "num"
+                                                             :display-name "Number"
+                                                             :type         :number}}))]
+        (mt/with-temp [:model/Card          card      {:dataset_query native-query}
+                       :model/Dashboard     dashboard {}
+                       :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                                       :card_id      (:id card)
+                                                       :parameter_mappings
+                                                       [{:parameter_id "num_param"
+                                                         :card_id      (:id card)
+                                                         :target       [:variable [:template-tag "num"]]}]}
+                       :model/CacheConfig   _         {:model    "dashboard"
+                                                       :model_id (:id dashboard)
+                                                       :strategy :duration
+                                                       :config   {:duration 1
+                                                                  :unit     "hours"}}]
+          (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+            (mt/with-clock #t "2024-02-13T10:00:00Z"
+              (are [param-val cache-details] (let [params [{:id     "num_param"
+                                                            :type   :number
+                                                            :target [:variable [:template-tag "num"]]
+                                                            :value  param-val}]
+                                                   query-result (-> (#'qp.card/query-for-card card params {} {}
+                                                                                              {:dashboard-id (:id dashboard)
+                                                                                               :dashcard-id  (:id dashcard)})
+                                                                    (qp/process-query))]
+                                               (= [[param-val]] (mt/rows query-result))
+                                               (is (=? cache-details (:cache/details query-result))))
+                ;; first run is not cached
+                42 {:stored true, :hash some?}
+                ;; second run with same param is cached
+                42 {:cached true, :updated_at some?, :hash some?}
+                ;; different param is not cached
+                99 {:stored true, :hash some?}
+                ;; second run with param is cached
+                99 {:cached true, :updated_at some?, :hash some?}
+                ;; original param is still cached
+                42 {:cached true, :updated_at some?, :hash some?}))))))))

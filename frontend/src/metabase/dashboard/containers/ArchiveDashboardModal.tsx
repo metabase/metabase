@@ -8,7 +8,7 @@ import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { Collections } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
 type OwnProps = {

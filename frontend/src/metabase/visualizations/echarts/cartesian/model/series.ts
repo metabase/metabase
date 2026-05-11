@@ -1,6 +1,5 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatValue } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { isEmpty } from "metabase/utils/validate";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
@@ -22,6 +21,7 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
