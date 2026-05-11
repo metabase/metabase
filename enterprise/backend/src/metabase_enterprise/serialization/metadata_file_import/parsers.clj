@@ -45,8 +45,7 @@
   per-key handlers. `handlers` is a map of keyword → fn-of-batch (each batch
   is a vector of `[line-num row]` tuples, up to `batch-size`). Format is
   auto-detected from the extension; arrays for keys not in `handlers` are
-  skipped without materialization. Replaces the N-file-passes pattern of
-  calling `stream-array-batches!` once per known key."
+  skipped without materialization."
   [^File file batch-size handlers]
   (let [parser-fn (case (detect-format file)
                     :json json/stream-keyed-arrays!

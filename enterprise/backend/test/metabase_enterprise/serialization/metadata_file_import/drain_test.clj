@@ -89,15 +89,15 @@
       ;; Flat field — no parent, no FK, no nfc_path
       [{:id 1000 :table_id 100 :name "id"
         :base_type "type/Integer" :database_type "int"}
-       ;; Convention A parent
+       ;; Dictionary parent
        {:id 1001 :table_id 100 :name "data"
         :base_type "type/Dictionary" :database_type "json"}
-       ;; Convention A child — parent_id + nfc_path
+       ;; nested leaf — parent_id + nfc_path
        {:id 1002 :table_id 100 :name "value"
         :base_type "type/Text" :database_type "text"
         :parent_id 1001
         :nfc_path ["data" "value"]}
-       ;; Convention B leaf — nfc_path only, no parent_id
+       ;; unfolded leaf — nfc_path only, no parent_id
        {:id 1003 :table_id 100 :name "embedded → leaf"
         :base_type "type/Text" :database_type "text"
         :nfc_path ["embedded" "leaf"]}
@@ -121,15 +121,15 @@
           (is (nil? (:source_parent_id r)))
           (is (nil? (:source_fk_target_id r)))
           (is (nil? (:nfc_path r)))))
-      (testing "Convention A parent has no parent_id and no nfc_path"
+      (testing "Dictionary parent row has no parent_id and no nfc_path"
         (let [r (by-id 1001)]
           (is (nil? (:source_parent_id r)))
           (is (nil? (:nfc_path r)))))
-      (testing "Convention A child carries source_parent_id pointing at the parent's source_id"
+      (testing "nested leaf carries source_parent_id pointing at the parent's source_id"
         (let [r (by-id 1002)]
           (is (= 1001 (:source_parent_id r)))
           (is (= ["data" "value"] (json/decode (:nfc_path r))))))
-      (testing "Convention B leaf has nfc_path but no source_parent_id"
+      (testing "unfolded leaf has nfc_path but no source_parent_id"
         (let [r (by-id 1003)]
           (is (nil? (:source_parent_id r)))
           (is (= ["embedded" "leaf"] (json/decode (:nfc_path r))))))

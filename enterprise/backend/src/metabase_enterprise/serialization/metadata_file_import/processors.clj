@@ -34,6 +34,7 @@
   (:require
    [malli.error :as me]
    [metabase-enterprise.serialization.metadata-file-import.schemas :as schemas]
+   [metabase.app-db.core :as mdb]
    [metabase.models.humanization :as humanization]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -42,8 +43,13 @@
 (set! *warn-on-reflection* true)
 
 (def import-batch-size
-  "Row batch size shared by all processors."
-  500)
+  "Row batch size shared by all processors. Tuned at 250 against the
+  real-stats benchmark (~234K-field dump): the cost per row is minimized
+  here because larger batches make the per-batch INSERT super-linear (the
+  WAL/index overhead grows with batch size against a filling staging
+  table) and smaller batches start paying parser/handler-dispatch overhead
+  that swamps the per-row savings."
+  250)
 
 ;;; ============================== Validation ==============================
 
@@ -54,7 +60,7 @@
   [schema-ref line-num line extras]
   (when-not (mr/validate schema-ref line)
     (let [humanized (me/humanize (mr/explain schema-ref line))]
-      (throw (ex-info (format "invalid_input: %s" (name schema-ref))
+      (throw (ex-info (format "Invalid %s row on line %d" (name schema-ref) line-num)
                       (merge extras
                              {:kind   :invalid_input
                               :line   line-num
@@ -63,15 +69,47 @@
 ;;; ============================== Staging tables ==============================
 
 (defn clear-staging-tables!
-  "Delete every row from `metabase_table_import` and `metabase_field_import`.
-  Called by [[with-staging-tables]] on entry and on exit (try/finally) so a
-  crashed prior attempt cannot leak rows into the next run.
+  "Empty `metabase_table_import` and `metabase_field_import`. Called by
+  [[with-staging-tables]] on entry and on exit (try/finally) so a crashed
+  prior attempt cannot leak rows into the next run.
 
-  Goes through `t2/query` with a HoneySQL `:delete-from` map — t2 picks the
-  right dialect-specific shape; no driver dispatch needed."
+  Uses `TRUNCATE` rather than `DELETE` so that running the importer
+  multiple times in one process lifetime doesn't accumulate dead tuples
+  in staging (DELETE leaves dead rows in the heap and indexes until the
+  next autovacuum, which won't run mid-import). HoneySQL's `:truncate`
+  compiles to `TRUNCATE TABLE …` on PG, H2, and MySQL.
+
+  Called outside any outer transaction (the entry call runs before the
+  merge's `t2/with-transaction`, and the exit call is in `finally` after
+  the txn has closed), so MySQL's implicit commit on TRUNCATE is fine."
   []
-  (t2/query {:delete-from :metabase_table_import})
-  (t2/query {:delete-from :metabase_field_import}))
+  (t2/query {:truncate :metabase_table_import})
+  (t2/query {:truncate :metabase_field_import}))
+
+(defn analyze-staging-tables!
+  "Refresh planner statistics on `metabase_table_import` and
+  `metabase_field_import` after drain, before any of the staging-driven
+  UPDATEs (orphan check, depth tagging, per-depth resolves, the merge
+  itself). Without this, PG's planner has zero rows-and-distribution
+  knowledge of staging — autovacuum's stats refresh won't fire mid-
+  import — and selectivity defaults can drive plan choices that scan
+  far more pages than the actual selectivity would.
+
+  Driver-conditional: there's no portable HoneySQL form for ANALYZE,
+  and the syntax differs (`ANALYZE name` on PG, `ANALYZE TABLE name`
+  on MySQL, `ANALYZE` whole-DB on H2). H2 dev/test only, and analyzing
+  the full H2 DB is cheap; MySQL is documented but we don't benchmark
+  there. PG is where the win matters in practice."
+  []
+  (case (mdb/db-type)
+    :postgres
+    (do (t2/query "ANALYZE metabase_table_import")
+        (t2/query "ANALYZE metabase_field_import"))
+    :mysql
+    (do (t2/query "ANALYZE TABLE metabase_table_import")
+        (t2/query "ANALYZE TABLE metabase_field_import"))
+    :h2
+    (t2/query "ANALYZE")))
 
 (defmacro with-staging-tables
   "Run `body` with the staging tables pre-cleared, and clear them again on exit.
@@ -278,9 +316,9 @@
 ;;; ============================== fields — drain + merge ==============================
 
 (defn- encode-path-or-nil
-  "Encode a path coll (e.g., a wire `:nfc_path` or the middle of a portable id)
-  as a JSON string, matching `metabase_field.nfc_path` storage convention. NULL
-  for empty/nil; JSON-encoded array string otherwise."
+  "Encode an `:nfc_path` coll as a JSON string, matching the
+  `metabase_field.nfc_path` storage convention. NULL for empty/nil;
+  JSON-encoded array string otherwise."
   [coll]
   (when (seq coll) (json/encode (vec coll))))
 
@@ -320,15 +358,31 @@
   without ballooning the exception payload."
   10)
 
+(defn- orphan-not-exists-predicate
+  "WHERE-clause fragment matching rows whose `column-key` (a `:source_*_id`
+  column) is non-null but doesn't reference any other staging row's
+  `source_id`. Uses correlated NOT EXISTS rather than NOT IN — at 9M+
+  rows PG cannot plan `NOT IN (subquery)` well (NULL-semantics force
+  full-materialization of the inner set) and the query effectively
+  never terminates. NOT EXISTS resolves to a proper anti-join via the
+  PK index on `source_id`, O(N log N) instead of O(N²)."
+  [column-key]
+  ;; Inner subquery aliased as `:s` so the unqualified column-key in
+  ;; the inner WHERE has to qualify to the outer table — both tables
+  ;; have `source_parent_id` / `source_fk_target_id`.
+  (let [outer-col (keyword (str "metabase_field_import." (name column-key)))]
+    [:and
+     [:not= column-key nil]
+     [:not [:exists
+            {:select [[[:inline 1]]]
+             :from   [[:metabase_field_import :s]]
+             :where  [:= :s.source_id outer-col]}]]]))
+
 (defn- orphan-count
   "Number of `metabase_field_import` rows whose `column-key` (a `:source_*_id`
   column) is non-null but doesn't reference any other row's `source_id`."
   [column-key]
-  (t2/count :metabase_field_import
-            {:where [:and
-                     [:not= column-key nil]
-                     [:not-in column-key
-                      {:select [:source_id] :from [:metabase_field_import]}]]}))
+  (t2/count :metabase_field_import {:where (orphan-not-exists-predicate column-key)}))
 
 (defn- orphan-sample
   "Up to `orphan-sample-cap` `[source_id, <column-key>]` pairs for orphan rows."
@@ -336,33 +390,61 @@
   (t2/query
    {:select [:source_id column-key]
     :from   [:metabase_field_import]
-    :where  [:and
-             [:not= column-key nil]
-             [:not-in column-key
-              {:select [:source_id] :from [:metabase_field_import]}]]
+    :where  (orphan-not-exists-predicate column-key)
     :limit  orphan-sample-cap}))
 
 (defn assert-no-orphan-refs!
   "Pre-flight check after drain: every staging field row's `source_parent_id`
-  and `source_fk_target_id` must reference another staging row's `source_id`.
-  Throws `ex-info` with `:kind :file_incomplete` and a sample of orphan rows
-  in the error data when any orphan exists.
+  must reference another staging row's `source_id`. Throws `ex-info` with
+  `:kind :file_incomplete` and a sample of orphan rows in the error data
+  when any orphan parent ref exists.
+
+  Orphan `source_fk_target_id` refs are *not* fatal — they're handled
+  separately by [[null-orphan-fk-target-refs!]], which NULLs them and lets
+  the loader emit a WARN. Foreign-key target refs are informational (used
+  for join discovery and drill-through); a missing target degrades to
+  'no fk relationship known' rather than blocking the import. Parent refs
+  are structural — a field claiming to be a child of a missing field can't
+  be positioned, so the file is genuinely incomplete.
 
   This is the cheap one-shot check that makes the strict-consistency
-  invariant load-bearing — orphans are hard errors, not warnings, and the
-  depth-walk merge can rely on every cross-row reference being resolvable
-  within staging."
+  invariant load-bearing for parent_id — orphan parents are hard errors,
+  and the depth-walk merge can rely on every parent reference being
+  resolvable within staging."
   []
-  (let [parent-count (orphan-count :source_parent_id)
-        fk-count     (orphan-count :source_fk_target_id)]
-    (when (or (pos? parent-count) (pos? fk-count))
-      (throw (ex-info (format "metadata-file-import: file is incomplete — %d orphan parent ref(s), %d orphan fk-target ref(s)"
-                              parent-count fk-count)
+  (let [parent-count (orphan-count :source_parent_id)]
+    (when (pos? parent-count)
+      (throw (ex-info (format "metadata-file-import: file is incomplete — %d orphan parent ref(s)"
+                              parent-count)
                       {:kind                   :file_incomplete
                        :orphan-parent-count    parent-count
-                       :orphan-fk-target-count fk-count
-                       :orphan-parent-sample   (when (pos? parent-count) (orphan-sample :source_parent_id))
-                       :orphan-fk-target-sample (when (pos? fk-count) (orphan-sample :source_fk_target_id))})))))
+                       :orphan-parent-sample   (orphan-sample :source_parent_id)})))))
+
+(defn null-orphan-fk-target-refs!
+  "Find staging rows whose `source_fk_target_id` points at a `source_id`
+  not present in staging, and NULL the `source_fk_target_id` column on
+  those rows (and their corresponding `target_fk_target_id` for safety).
+  Returns `{:count N :sample [...]}` when at least one row was scrubbed,
+  `{:count 0}` otherwise. The caller is expected to WARN-log on non-zero.
+
+  Why NULL instead of abort: fk_target refs that cross a hidden/archived
+  table boundary on the source side (the table is `active=false` or
+  `visibility_type='hidden'`) survive in `metabase_field` but get filtered
+  out by the export's table-visibility join. The exported file then contains
+  fk_target refs whose targets aren't emitted — a real-data shape we observe
+  in production appdbs. Treating these as fatal would block legitimate
+  imports; treating them as no-fk is the lossless choice for the importer."
+  []
+  (let [n (orphan-count :source_fk_target_id)]
+    (if (zero? n)
+      {:count 0}
+      (let [sample (orphan-sample :source_fk_target_id)]
+        (t2/query
+         {:update :metabase_field_import
+          :set    {:source_fk_target_id nil
+                   :target_fk_target_id nil}
+          :where  (orphan-not-exists-predicate :source_fk_target_id)})
+        {:count n :sample sample}))))
 
 ;;; ============================== Depth tagging ==============================
 
@@ -532,7 +614,7 @@
 
   Field rows whose source table has no target (orphan-source-database
   case) keep `target_table_id NULL` and are silently skipped by both the
-  resolve and the merge — same behavior as Iteration 3."
+  resolve and the merge."
   []
   (t2/query
    {:update :metabase_field_import

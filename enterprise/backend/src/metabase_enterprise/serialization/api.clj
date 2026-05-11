@@ -373,9 +373,8 @@
                     {:status-code 415}))
 
     :else
-    ;; The loader walks the file across four passes (databases → tables → fields → fk-resolve),
-    ;; so the body is spooled to disk before the import runs. Spooling is chunked; JVM heap
-    ;; never holds more than one buffer at a time.
+    ;; `import-metadata-file!` takes a File, so spool the request body to disk first.
+    ;; Spooling is chunked; JVM heap never holds more than one buffer at a time.
     (let [tmp (spool-to-temp-file! body)]
       (try
         (metadata-file-import/import-metadata-file! tmp)

@@ -165,8 +165,15 @@
     (processors/with-staging-tables
       ;; --- drain + database matching (single pass over the file) ---
       (let [matched-target-db-ids (drain-and-match-databases! m-file)]
-        ;; --- pre-flight: every cross-row ref must resolve within the file ---
+        ;; --- analyze: feed the planner real selectivity for downstream UPDATEs ---
+        (processors/analyze-staging-tables!)
+        ;; --- pre-flight: every parent ref must resolve within the file ---
         (processors/assert-no-orphan-refs!)
+        ;; --- pre-flight: NULL orphan fk-target refs (informational, not fatal) ---
+        (let [{:keys [count sample]} (processors/null-orphan-fk-target-refs!)]
+          (when (pos? count)
+            (log/warnf "metadata-file-import: %d orphan fk_target_field_id ref(s) NULLed (target not present in file); sample=%s"
+                       count (pr-str sample))))
         ;; --- depth tagging: assign 0..max-depth, detect cycles ---
         (processors/compute-staging-depth!)
         ;; --- table resolve round 1: matched-vs-insert decision for merge-tables! ---

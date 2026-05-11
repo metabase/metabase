@@ -100,13 +100,13 @@
         "row with parent at depth 1 and fk_target at depth 2 lands at depth 3")
     (finally (p/clear-staging-tables!))))
 
-;;; ============================== Convention B leaves ==============================
+;;; ============================== unfolded leaves ==============================
 
-(deftest convention-b-leaves-are-roots-test
+(deftest unfolded-leaves-are-roots-test
   (try
     (p/clear-staging-tables!)
-    ;; Conv-B leaves have no source_parent_id (the leaf isn't materialized
-    ;; as a separate parent storage row), so they're roots.
+    ;; Leaves with no source_parent_id (the leaf isn't materialized as a
+    ;; separate parent storage row) are roots.
     (insert-staging-fields! [{:source_id 50}
                              {:source_id 51}])
     (is (= 0 (p/compute-staging-depth!)))

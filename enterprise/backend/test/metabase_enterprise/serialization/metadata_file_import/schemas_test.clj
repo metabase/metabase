@@ -79,7 +79,7 @@
                       :base_type "type/Integer" :database_type "integer"}))))
 
 (deftest field-info-accepts-row-with-parent-id-and-nfc-path-test
-  (testing "Convention A child: both :parent_id and :nfc_path set"
+  (testing "nested leaf: both :parent_id and :nfc_path set"
     (is (mr/validate ::schemas/field-info
                      {:id 1002 :table_id 100 :name "zip"
                       :base_type "type/Text" :database_type "text"
@@ -93,7 +93,7 @@
                     :fk_target_field_id 2000})))
 
 (deftest field-info-accepts-row-with-nfc-path-and-no-parent-id-test
-  (testing "Convention B leaf: :nfc_path set, no :parent_id (no parent storage row exists)"
+  (testing "unfolded leaf: :nfc_path set, no :parent_id (no parent storage row exists)"
     (is (mr/validate ::schemas/field-info
                      {:id 1004 :table_id 100 :name "payload → address → zip"
                       :base_type "type/Text" :database_type "text"

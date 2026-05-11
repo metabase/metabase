@@ -1,9 +1,13 @@
 (ns metabase-enterprise.serialization.metadata-file-import.orphan-check-test
-  "Tests for `assert-no-orphan-refs!` — the pre-flight check that runs after
-  drain and before the depth-walk merge. The strict-consistency assumption
-  says every cross-row reference (`source_parent_id`, `source_fk_target_id`)
-  must point at a row that's also in the file; orphan refs are hard errors,
-  not warnings."
+  "Tests for the pre-flight orphan handling that runs after drain and before
+  the depth-walk merge. Asymmetric by ref kind:
+
+    - `source_parent_id` orphans → fatal (`assert-no-orphan-refs!` throws
+      `:file_incomplete`). A field claiming a non-present parent has no
+      structurally valid position.
+    - `source_fk_target_id` orphans → lossy (`null-orphan-fk-target-refs!`
+      NULLs the ref and returns the count for the caller to WARN-log).
+      A missing fk target degrades cleanly to 'no fk relationship known'."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as p]
@@ -57,35 +61,70 @@
       (is (some? thrown) "should have thrown")
       (is (= :file_incomplete (:kind (ex-data thrown))))
       (is (= 1 (:orphan-parent-count (ex-data thrown))))
-      (is (= 0 (:orphan-fk-target-count (ex-data thrown))))
       (is (= [{:source_id 101 :source_parent_id 999}]
              (:orphan-parent-sample (ex-data thrown))))
-      (is (nil? (:orphan-fk-target-sample (ex-data thrown))))
       (testing "error message includes the count"
         (is (re-find #"1 orphan parent" (ex-message thrown)))))
     (finally (p/clear-staging-tables!))))
 
 ;;; ============================== orphan fk-target ref ==============================
 
-(deftest single-orphan-fk-target-ref-throws-test
+(deftest orphan-fk-target-ref-is-not-fatal-for-assert-test
+  ;; assert-no-orphan-refs! no longer treats orphan fk-target refs as fatal;
+  ;; that case is handled separately by null-orphan-fk-target-refs!.
   (try
     (p/clear-staging-tables!)
     (insert-staging-fields! [{:source_id 200}
                              {:source_id 201 :source_fk_target_id 9999}])
-    (let [thrown (try (p/assert-no-orphan-refs!) nil
-                      (catch clojure.lang.ExceptionInfo e e))]
-      (is (some? thrown))
-      (is (= :file_incomplete (:kind (ex-data thrown))))
-      (is (= 0 (:orphan-parent-count (ex-data thrown))))
-      (is (= 1 (:orphan-fk-target-count (ex-data thrown))))
+    (is (nil? (p/assert-no-orphan-refs!))
+        "orphan fk-target alone should not throw")
+    (finally (p/clear-staging-tables!))))
+
+(deftest orphan-fk-target-ref-gets-nulled-test
+  (try
+    (p/clear-staging-tables!)
+    (insert-staging-fields! [{:source_id 200}
+                             {:source_id 201 :source_fk_target_id 9999}])
+    (let [result (p/null-orphan-fk-target-refs!)]
+      (is (= 1 (:count result)))
       (is (= [{:source_id 201 :source_fk_target_id 9999}]
-             (:orphan-fk-target-sample (ex-data thrown))))
-      (is (nil? (:orphan-parent-sample (ex-data thrown)))))
+             (:sample result))))
+    (testing "the orphan ref is NULL'd in staging"
+      (is (= [{:source_id 201 :source_fk_target_id nil}]
+             (t2/query
+              {:select [:source_id :source_fk_target_id]
+               :from   [:metabase_field_import]
+               :where  [:= :source_id 201]})))
+      (testing "the non-orphan row is untouched"
+        (is (= [{:source_id 200 :source_fk_target_id nil}]
+               (t2/query
+                {:select [:source_id :source_fk_target_id]
+                 :from   [:metabase_field_import]
+                 :where  [:= :source_id 200]})))))
+    (finally (p/clear-staging-tables!))))
+
+(deftest valid-fk-target-ref-survives-null-pass-test
+  ;; null-orphan-fk-target-refs! must not touch rows whose fk target IS
+  ;; present in staging.
+  (try
+    (p/clear-staging-tables!)
+    (insert-staging-fields! [{:source_id 210}
+                             {:source_id 211 :source_fk_target_id 210}])
+    (let [result (p/null-orphan-fk-target-refs!)]
+      (is (= 0 (:count result)))
+      (is (nil? (:sample result))))
+    (is (= [{:source_id 211 :source_fk_target_id 210}]
+           (t2/query
+            {:select [:source_id :source_fk_target_id]
+             :from   [:metabase_field_import]
+             :where  [:= :source_id 211]})))
     (finally (p/clear-staging-tables!))))
 
 ;;; ============================== both kinds of orphan ==============================
 
-(deftest both-orphan-types-surface-in-one-throw-test
+(deftest both-orphan-types-handled-asymmetrically-test
+  ;; Orphan parent still throws; orphan fk-target is handled by the separate
+  ;; null-pass. The throw happens before the null-pass would run.
   (try
     (p/clear-staging-tables!)
     (insert-staging-fields! [{:source_id 300}
@@ -93,12 +132,10 @@
                              {:source_id 302 :source_fk_target_id 9002}])
     (let [thrown (try (p/assert-no-orphan-refs!) nil
                       (catch clojure.lang.ExceptionInfo e e))]
-      (is (some? thrown))
+      (is (some? thrown) "assert-no-orphan-refs! should still throw on parent orphan")
       (is (= :file_incomplete (:kind (ex-data thrown))))
       (is (= 1 (:orphan-parent-count (ex-data thrown))))
-      (is (= 1 (:orphan-fk-target-count (ex-data thrown))))
-      (is (seq (:orphan-parent-sample (ex-data thrown))))
-      (is (seq (:orphan-fk-target-sample (ex-data thrown)))))
+      (is (seq (:orphan-parent-sample (ex-data thrown)))))
     (finally (p/clear-staging-tables!))))
 
 ;;; ============================== sample truncation ==============================

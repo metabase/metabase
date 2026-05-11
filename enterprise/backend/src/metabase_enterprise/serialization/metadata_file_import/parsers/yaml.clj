@@ -196,8 +196,7 @@
   `batch-size`). Other top-level keys are skipped. `line-num` is 1-indexed
   per sequence and continues across batch boundaries within a sequence.
 
-  Mirrors the JSON parser's `stream-keyed-arrays!`: collapses N separate file
-  passes (one per known key) into a single walk. Throws `:bad_shape` if the
+  Mirrors the JSON parser's `stream-keyed-arrays!`. Throws `:bad_shape` if the
   document doesn't begin with a mapping or if a known key's value isn't a
   sequence. Missing keys are silently OK."
   [^Reader reader batch-size handlers]

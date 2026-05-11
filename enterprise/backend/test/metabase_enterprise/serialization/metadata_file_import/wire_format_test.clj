@@ -25,9 +25,9 @@
 (defmacro ^:private with-tiny-fixture!
   "Bind a hand-built fixture covering each wire-format field shape:
     - flat root field (no parent, no nfc_path, no FK)
-    - Convention A parent (Dictionary type, has children pointing at it)
-    - Convention A child (parent_id + nfc_path)
-    - Convention B leaf (nfc_path only, no parent_id)
+    - Dictionary parent (has children pointing at it)
+    - nested leaf (parent_id + nfc_path)
+    - unfolded leaf (nfc_path only, no parent_id)
     - FK source (fk_target_field_id pointing at another table's field)
     - FK target (referenced from another field via fk_target_field_id)
 
@@ -40,11 +40,11 @@
         :model/Table    {~table2 :id}         {:db_id ~db :schema "PUBLIC" :name "accounts"}
         :model/Field    _flat#                {:table_id ~table1 :name "user_id" :base_type :type/Integer}
         :model/Field    {parent-id# :id}      {:table_id ~table1 :name "data" :base_type :type/Dictionary}
-        :model/Field    _conv-a-child#        {:table_id  ~table1 :name "value"
+        :model/Field    _nested-leaf#         {:table_id  ~table1 :name "value"
                                                :base_type :type/Text
                                                :parent_id parent-id#
                                                :nfc_path  ["data" "value"]}
-        :model/Field    _conv-b-leaf#         {:table_id  ~table1 :name "embedded → leaf"
+        :model/Field    _unfolded-leaf#       {:table_id  ~table1 :name "embedded → leaf"
                                                :base_type :type/Text
                                                :nfc_path  ["embedded" "leaf"]}
         :model/Field    {target-id# :id}      {:table_id ~table2 :name "id" :base_type :type/Integer}
@@ -105,9 +105,9 @@
   (mt/with-premium-features #{:serialization}
     (with-tiny-fixture! [db-id _t1 _t2]
       (let [{:keys [fields]} (export-fixture db-id)]
-        (testing "exactly one Convention A child (parent_id + nfc_path)"
+        (testing "exactly one nested leaf (parent_id + nfc_path)"
           (is (= 1 (count (filter #(and (:parent_id %) (:nfc_path %)) fields)))))
-        (testing "exactly one Convention B leaf (nfc_path without parent_id)"
+        (testing "exactly one unfolded leaf (nfc_path without parent_id)"
           (is (= 1 (count (filter #(and (:nfc_path %) (not (:parent_id %))) fields)))))
         (testing "exactly one FK source (fk_target_field_id present)"
           (is (= 1 (count (filter :fk_target_field_id fields)))))

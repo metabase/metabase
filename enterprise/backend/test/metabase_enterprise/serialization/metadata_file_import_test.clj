@@ -206,14 +206,14 @@
         (is (zero? (t2/count :model/Table :db_id tgt-db :name "t"))
             "the table that merge-tables! 'inserted' was rolled back")))))
 
-;;; ============================== Convention coverage ==============================
+;;; ============================== field-shape coverage ==============================
 
-(deftest convention-b-leaf-imports-correctly-test
-  (testing "a Convention B JSON-unfolded leaf (nfc_path set, no parent_id) imports
-            as a leaf field with nfc_path preserved and parent_id NULL"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "conv-b-db" :engine :postgres}]
+(deftest unfolded-leaf-imports-correctly-test
+  (testing "an unfolded leaf (nfc_path set, no parent_id) imports as a leaf field
+            with nfc_path preserved and parent_id NULL"
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "unfolded-leaf-db" :engine :postgres}]
       (let [meta-file (json-file
-                       {:databases [{:id 7 :name "conv-b-db" :engine "postgres"}]
+                       {:databases [{:id 7 :name "unfolded-leaf-db" :engine "postgres"}]
                         :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
                         :fields    [{:id 1000 :table_id 100 :name "data.user.zip"
                                      :base_type "type/Text" :database_type "text"

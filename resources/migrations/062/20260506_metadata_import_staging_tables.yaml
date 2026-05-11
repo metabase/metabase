@@ -23,7 +23,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-05-08T00:00:00
       author: galdre
-      comment: Create metabase_table_import staging table (I4 wire-format schema)
+      comment: Create metabase_table_import staging table
       changes:
         - createTable:
             tableName: metabase_table_import
@@ -87,7 +87,7 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-05-08T00:00:01
       author: galdre
-      comment: Create metabase_field_import staging table (I4 wire-format schema)
+      comment: Create metabase_field_import staging table
       changes:
         - createTable:
             tableName: metabase_field_import

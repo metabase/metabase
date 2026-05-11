@@ -93,10 +93,9 @@
   `batch-size`). Other top-level keys are skipped. `line-num` is 1-indexed
   per array and continues across batch boundaries within an array.
 
-  Collapses what would be N separate file passes (one per known key) into a
-  single walk of the document. Throws `:bad_shape` if the document doesn't
-  begin with an object or if a known key's value isn't an array. Missing
-  keys (in `handlers` but not in the document) are silently OK."
+  Throws `:bad_shape` if the document doesn't begin with an object or if a
+  known key's value isn't an array. Missing keys (in `handlers` but not in
+  the document) are silently OK."
   [^Reader reader batch-size handlers]
   (with-open [parser (.createParser (.getFactory object-mapper) reader)]
     (let [t (.nextToken parser)]
