@@ -66,7 +66,7 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
   large = false,
   onClick,
   buttonStyle,
-  ...props
+  ...cardProps
 }: UpsellCardProps) => {
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: buttonLink ?? UPGRADE_URL,
@@ -96,7 +96,7 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
       data-testid="upsell-card"
       w={fullWidth ? "100%" : "auto"}
       maw={normalizedMaxWidth}
-      {...props}
+      {...cardProps}
       className={className}
     >
       {illustrationSrc && <Image src={illustrationSrc} w="100%" />}
