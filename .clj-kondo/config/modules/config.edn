@@ -1118,7 +1118,7 @@
                     :model/Transform}}
 
   lib-metric
-  {:team "UX West"
+  {:team "Querying Platform"
    :api  #{metabase.lib-metric.core
            metabase.lib-metric.schema}
    :uses #{lib
