@@ -171,17 +171,16 @@
       (t2/insert! :metabase_table_import rows))))
 
 (defn resolve-target-table-ids-in-staging!
-  "Set `metabase_table_import.target_table_id` to the int id of the matching
+  "Set `metabase_table_import.target_id` to the int id of the matching
   `metabase_table` row for every staging row whose match key resolves. The
-  match key is `(db_name, table_schema, table_name)` against `(d.name,
-  t.schema, t.name)`, restricted to active, non-defective live rows.
+  match key is `(db_name, schema, name)` against `(d.name, t.schema, t.name)`,
+  restricted to active, non-defective live rows.
 
-  Lets `merge-tables!`'s UPDATE key on a single column instead of repeating
-  the 2-table-join match in each correlated subquery. Rows that do not
-  match keep `target_table_id` NULL — `merge-tables!`'s INSERT picks up
-  exactly those rows. Inactive matches are deliberately not resolved so a
-  re-import after a deactivation creates a fresh active row (existing
-  behavior preserved from the pre-target_table_id implementation).
+  Lets [[merge-tables!]]'s UPDATE key on a single column instead of repeating
+  the 2-table-join match in each correlated subquery. Rows that do not match
+  keep `target_id` NULL — `merge-tables!`'s INSERT picks up exactly those
+  rows. Inactive matches are deliberately not resolved so a re-import after
+  a deactivation creates a fresh active row.
 
   Idempotent — running again with the same staging contents produces the
   same assignments. Uses a correlated subquery in SET so it serializes
@@ -189,15 +188,15 @@
   []
   (t2/query
    {:update :metabase_table_import
-    :set    {:target_table_id
+    :set    {:target_id
              {:select [:t.id]
               :from   [[:metabase_table :t]]
               :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where  [:and
                        [:= :metabase_table_import.db_name :d.name]
                        [:= [:coalesce :t.schema [:inline ""]]
-                        [:coalesce :metabase_table_import.table_schema [:inline ""]]]
-                       [:= :t.name :metabase_table_import.table_name]
+                        [:coalesce :metabase_table_import.schema [:inline ""]]]
+                       [:= :t.name :metabase_table_import.name]
                        [:= :t.is_defective_duplicate [:inline false]]
                        [:= :t.active [:inline true]]]}}}))
 
@@ -206,25 +205,23 @@
 
   Two SQL statements wrapped in a single `t2/with-transaction`:
 
-    1. **UPDATE** rows whose `target_table_id` resolved (i.e., a matching
-       active live row exists). Clobbers `description` from staging, bumps
+    1. **UPDATE** rows whose `target_id` resolved (i.e., a matching active
+       live row exists). Clobbers `description` from staging, bumps
        `updated_at`. Each SET column is a single-key lookup on
-       `staging.target_table_id`.
-    2. **INSERT** rows whose `target_table_id` is NULL — no active live row
+       `staging.target_id`.
+    2. **INSERT** rows whose `target_id` is NULL — no active live row
        matched. Sets `active=true` and `data_layer='internal'`; lets column
        defaults handle `field_order`, `initial_sync_status`, etc.
 
   Order matters: UPDATE first so on a clean-schema import the UPDATE matches
   nothing (fast no-op) and the INSERT writes each row exactly once.
 
-  Pre-condition: `resolve-target-table-ids-in-staging!` must have run (the
-  orchestrator does this just before calling this fn). Without that, every
-  staging row's `target_table_id` is NULL — you'd get correct INSERTs but
-  no clobber.
+  Pre-condition: [[resolve-target-table-ids-in-staging!]] must have run.
+  Without that, every staging row's `target_id` is NULL — you'd get correct
+  INSERTs but no clobber.
 
   The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
-  source DB has no target are silently dropped — the orphan-warn pass emits
-  the operator-facing log line.
+  source DB has no target appdb match are silently dropped.
 
   The `set-new-table-permissions!` `:after-insert` hook on `:model/Table` does
   not fire here because the INSERT goes through the raw table keyword
@@ -248,7 +245,7 @@
      {:update :metabase_table
       :set    {:description {:select [:it.description]
                              :from   [[:metabase_table_import :it]]
-                             :where  [:= :it.target_table_id :metabase_table.id]}
+                             :where  [:= :it.target_id :metabase_table.id]}
                :updated_at :%now}
       :where  [:and
                [:= :metabase_table.is_defective_duplicate [:inline false]]
@@ -256,22 +253,22 @@
                [:exists {:select [[[:inline 1]]]
                          :from   [[:metabase_table_import :it]]
                          :where  [:and
-                                  [:= :it.target_table_id :metabase_table.id]
+                                  [:= :it.target_id :metabase_table.id]
                                   [:!= [:coalesce :metabase_table.description [:inline ""]]
                                    [:coalesce :it.description             [:inline ""]]]]}]]})
-    ;; INSERT rows with no matching live row (target_table_id IS NULL)
+    ;; INSERT rows with no matching live row (target_id IS NULL)
     (t2/query
      {:insert-into
       [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
                          :active :show_in_getting_started :is_defective_duplicate
                          :created_at :updated_at]]
-       {:select [:d.id :it.table_schema :it.table_name :it.description :it.display_name
+       {:select [:d.id :it.schema :it.name :it.description :it.display_name
                  [[:inline "internal"]]
                  [[:inline true]] [[:inline false]] [[:inline false]]
                  :%now :%now]
-        :from [[:metabase_table_import :it]]
-        :join [[:metabase_database :d] [:= :d.name :it.db_name]]
-        :where [:= :it.target_table_id nil]}]})))
+        :from   [[:metabase_table_import :it]]
+        :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
+        :where  [:= :it.target_id nil]}]})))
 
 ;;; ============================== fields — drain + merge ==============================
 
