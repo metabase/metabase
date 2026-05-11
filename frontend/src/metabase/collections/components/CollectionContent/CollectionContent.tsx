@@ -4,13 +4,11 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useGetCollectionQuery,
+  useListBookmarksQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  useBookmarkListQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
@@ -30,7 +28,7 @@ export function CollectionContent({
 }: {
   collectionId: CollectionId;
 }) {
-  const { data: bookmarks, error: bookmarksError } = useBookmarkListQuery();
+  const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
   const { data: databases, error: databasesError } = useDatabaseListQuery();
 
   const { data: collections, error: collectionsError } =
