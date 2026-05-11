@@ -104,19 +104,28 @@
       (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
       (is (some? (parse-uuid h2)))
       (is (not= h1 h2) "successive calls must produce distinct handles")
-      (is (= "first"  (mcp.session/read-handle h1)))
-      (is (= "second" (mcp.session/read-handle h2)))
-      (is (nil? (mcp.session/read-handle (str (random-uuid))))
+      (is (= "first"  (mcp.session/read-handle session-id h1)))
+      (is (= "second" (mcp.session/read-handle session-id h2)))
+      (is (nil? (mcp.session/read-handle session-id (str (random-uuid))))
           "read-handle returns nil for unknown handles"))))
+
+(deftest read-handle-is-scoped-to-session-test
+  (testing "read-handle does not resolve handles from another MCP session"
+    (let [user-id         (mt/user->id :crowberto)
+          owner-session   (mcp.session/create! user-id)
+          other-session   (mcp.session/create! user-id)
+          handle          (mcp.session/store-handle! owner-session user-id "payload")]
+      (is (= "payload" (mcp.session/read-handle owner-session handle)))
+      (is (nil? (mcp.session/read-handle other-session handle))))))
 
 (deftest store-handle-cascades-with-core-session-test
   (testing "deleting the backing core_session cascades to its handles"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           handle     (mcp.session/store-handle! session-id user-id "payload")]
-      (is (= "payload" (mcp.session/read-handle handle)))
+      (is (= "payload" (mcp.session/read-handle session-id handle)))
       (t2/delete! :core_session :key_hashed (derived-hash session-id))
-      (is (nil? (mcp.session/read-handle handle))
+      (is (nil? (mcp.session/read-handle session-id handle))
           "cascade should reap the handle when the core_session row goes"))))
 
 (deftest delete-removes-handles-test
@@ -125,7 +134,7 @@
           session-id (mcp.session/create! user-id)
           handle     (mcp.session/store-handle! session-id user-id "payload")
           _          (mcp.session/delete! session-id user-id)]
-      (is (nil? (mcp.session/read-handle handle))))))
+      (is (nil? (mcp.session/read-handle session-id handle))))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"

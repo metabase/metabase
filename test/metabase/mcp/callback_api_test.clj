@@ -32,7 +32,7 @@
       (is (=? {:status 200
                :body   {:handle parse-uuid}}
               response))
-      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle handle))))))
+      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle session-id handle))))))
 
 (deftest drills-post-validates-session-header-test
   (testing "missing Mcp-Session-Id header returns 400"

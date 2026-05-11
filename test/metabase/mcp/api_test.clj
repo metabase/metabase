@@ -554,7 +554,7 @@
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle (:query_handle construct-data))})
+                                             :query (mcp.session/read-handle session-id (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})]
@@ -614,6 +614,26 @@
                :row_count 2
                :data      {:rows (fn [rows] (= 2 (count rows)))}}
               execute-data))))
+
+  (testing "construct_query with context source requires a non-empty prompt"
+    (let [[session-id _] (initialize!)
+          initial-data   (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          _              (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle initial-data)}})
+                                      {"mcp-session-id" session-id})
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "construct_query"
+                                                        :arguments {:source     {:type "context" :ref "source"}
+                                                                    :operations [["limit" 2]]}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "non-empty prompt")}]}}}
+              response))))
 
   (testing "render_drill_through does not replace the construct_query context"
     (let [user-id        (mt/user->id :crowberto)
@@ -692,7 +712,21 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id}))))))
+                           {"mcp-session-id" session-id})))))
+
+  (testing "render_drill_through does not resolve a handle from another session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [attacker-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "No drill-through found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" attacker-session}))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"
@@ -749,7 +783,37 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id}))))))
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query does not resolve a query_handle from another session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [attacker-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" attacker-session})))))
+
+  (testing "execute_query does not resolve a query_handle from another session"
+    (let [[owner-session _]    (initialize!)
+          [attacker-session _] (initialize!)
+          construct-data       (call-tool owner-session "construct_query"
+                                          {:source     {:type "table" :id (mt/id :orders)}
+                                           :operations [["limit" 5]]
+                                           :prompt     "show 5 orders"})
+          response             (mcp-request (jsonrpc-request "tools/call"
+                                                             {:name      "execute_query"
+                                                              :arguments {:query_handle (:query_handle construct-data)}})
+                                            {"mcp-session-id" attacker-session})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              response)))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 

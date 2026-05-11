@@ -1,22 +1,15 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useSubmitMcpMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
-import { Form, FormProvider } from "metabase/forms";
-import { FormSelect } from "metabase/forms/components/FormSelect";
-import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import type { IconName } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+
 import {
-  ActionIcon,
-  Button,
-  Group,
-  Icon,
-  Modal,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+  McpFeedbackModal,
+  type McpFeedbackModalValues,
+} from "./McpFeedbackModal";
+import { submitMcpFeedback } from "./api";
 
 interface FeedbackButtonProps {
   disabled: boolean;
@@ -48,99 +41,17 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
   },
 );
 
-interface McpFeedbackModalProps {
-  positive: boolean;
-  onClose: () => void;
-  onSubmit: (values: {
-    issue_type?: string;
-    freeform_feedback: string;
-  }) => void;
-}
-
-function McpFeedbackModal({
-  positive,
-  onClose,
-  onSubmit,
-}: McpFeedbackModalProps) {
-  return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="md"
-      title={t`Visualization feedback`}
-      data-testid="mcp-feedback-modal"
-    >
-      <FormProvider
-        initialValues={{
-          issue_type: positive ? undefined : "",
-          freeform_feedback: "",
-        }}
-        onSubmit={onSubmit}
-      >
-        <Form>
-          <Stack gap="md">
-            {!positive && (
-              <Stack gap="xs">
-                <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
-                <FormSelect
-                  name="issue_type"
-                  placeholder={t`Select issue type`}
-                  data={[
-                    { label: t`Incorrect data`, value: "incorrect-data" },
-                    {
-                      label: t`Wrong visualization`,
-                      value: "wrong-visualization",
-                    },
-                    {
-                      label: t`Did not follow request`,
-                      value: "did-not-follow-request",
-                    },
-                    { label: t`Other`, value: "other" },
-                  ]}
-                />
-              </Stack>
-            )}
-            <Stack gap="xs">
-              <Text>
-                {positive
-                  ? t`Any details that you'd like to share? (optional)`
-                  : t`What could be improved? (optional)`}
-              </Text>
-              <FormTextarea
-                name="freeform_feedback"
-                placeholder={
-                  positive
-                    ? t`Tell us what you liked!`
-                    : t`What could be improved about this result?`
-                }
-                minRows={4}
-                maxRows={10}
-                resize="vertical"
-                autosize
-              />
-            </Stack>
-            <Group justify="flex-end" gap="md" mt="md">
-              <Button variant="subtle" onClick={onClose}>
-                {t`Cancel`}
-              </Button>
-              <Button variant="filled" type="submit">
-                {t`Submit`}
-              </Button>
-            </Group>
-          </Stack>
-        </Form>
-      </FormProvider>
-    </Modal>
-  );
-}
-
 interface McpFeedbackButtonsProps {
+  instanceUrl: string;
+  sessionToken: string;
   mcpSessionId: string;
   prompt: string | null;
   query: string | null;
 }
 
 export function McpFeedbackButtons({
+  instanceUrl,
+  sessionToken,
   mcpSessionId,
   prompt,
   query,
@@ -151,14 +62,16 @@ export function McpFeedbackButtons({
   const [modalData, setModalData] = useState<{ positive: boolean } | null>(
     null,
   );
-  const [submitMcpMetabotFeedback] = useSubmitMcpMetabotFeedbackMutation();
   const [sendToast] = useToast();
 
-  const handleFeedback = async (values: {
-    positive: boolean;
-    issue_type?: string;
-    freeform_feedback: string;
-  }) => {
+  useEffect(() => {
+    setSubmitted(null);
+    setModalData(null);
+  }, [prompt, query]);
+
+  const handleFeedback = async (
+    values: McpFeedbackModalValues & { positive: boolean },
+  ) => {
     const payload = {
       feedback: {
         positive: values.positive,
@@ -170,7 +83,12 @@ export function McpFeedbackButtons({
     } as const;
 
     try {
-      await submitMcpMetabotFeedback({ mcpSessionId, payload }).unwrap();
+      await submitMcpFeedback({
+        instanceUrl,
+        sessionToken,
+        mcpSessionId,
+        payload,
+      });
       sendToast({ icon: "check", message: t`Feedback submitted` });
       setSubmitted(values.positive ? "positive" : "negative");
       setModalData(null);

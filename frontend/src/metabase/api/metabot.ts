@@ -9,7 +9,6 @@ import type {
   MetabotSettingsResponse,
   MetabotSlackSettings,
   MetabotSourceFeedback,
-  SubmitMcpMetabotFeedbackRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -132,19 +131,6 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
-    submitMcpMetabotFeedback: builder.mutation<
-      void,
-      SubmitMcpMetabotFeedbackRequest
-    >({
-      query: ({ mcpSessionId, payload }) => ({
-        method: "POST",
-        url: "/api/embed-mcp/feedback",
-        headers: {
-          "Mcp-Session-Id": mcpSessionId,
-        },
-        body: payload,
-      }),
-    }),
     updateMetabotSlackSettings: builder.mutation<
       { ok: boolean },
       MetabotSlackSettings
@@ -180,7 +166,6 @@ export const {
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
-  useSubmitMcpMetabotFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
   useGetUserMetabotPermissionsQuery,
 } = metabotApi;

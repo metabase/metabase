@@ -172,9 +172,9 @@
      handle-id)))
 
 (defn read-handle
-  "Return the encoded query for `handle-id`, or nil if no row exists."
-  [handle-id]
-  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id))
+  "Return the encoded query for `handle-id` in `session-id`, or nil if no row exists."
+  [session-id handle-id]
+  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id, :mcp_session_id session-id))
 
 (defn mark-handle-active!
   "Mark an existing construct-query handle as the active context for `session-id`."
@@ -200,8 +200,8 @@
 (defn resolve-query-handle
   "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
    Used by visualize_query and execute_query to resolve construct_query handles."
-  [handle-id]
-  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id)]
+  [session-id handle-id]
+  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
     (select-keys row [:encoded_query :prompt])))
 
 (defn delete!

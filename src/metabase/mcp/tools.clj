@@ -109,17 +109,17 @@
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
    it too — but log a warning so we can track how often this antipattern fires.
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
-  [tool-name arguments]
+  [session-id tool-name arguments]
   (cond
     (:query_handle arguments)
-    (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle (:query_handle arguments))]
+    (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query_handle arguments))]
       (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
       ::handle-not-found)
 
     (mcp.session/valid-id? (:query arguments))
     (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                    tool-name)
-        (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle (:query arguments))]
+        (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query arguments))]
           (assoc arguments :query encoded_query)
           ::handle-not-found))
 
@@ -150,11 +150,17 @@
 
 (defn- construct-query-from-active-context
   [session-id arguments]
-  (if-let [encoded (mcp.session/active-query session-id)]
-    (let [query (agent-api/construct-query-from-context-source (dissoc arguments :prompt) encoded)]
-      (text-content {:query_handle (mcp.session/store-handle! session-id api/*current-user-id*
-                                                              (:query query) (:prompt arguments))}))
-    (error-content "No active MCP view context. Call visualize_query first, or use a table/card/dataset/metric source.")))
+  (let [prompt (:prompt arguments)]
+    (cond
+      (str/blank? prompt)
+      (error-content "Provide a non-empty prompt when using the current view as context.")
+
+      :else
+      (if-let [encoded (mcp.session/active-query session-id)]
+        (let [query (agent-api/construct-query-from-context-source (dissoc arguments :prompt) encoded)]
+          (text-content {:query_handle (mcp.session/store-handle! session-id api/*current-user-id*
+                                                                  (:query query) prompt)}))
+        (error-content "No active MCP view context. Call visualize_query first, or use a table/card/dataset/metric source.")))))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -291,7 +297,7 @@
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
         (let [arguments (if (tools-accepting-query-handle tool-name)
-                          (resolve-query-arg tool-name arguments)
+                          (resolve-query-arg session-id tool-name arguments)
                           arguments)]
           (if (= arguments ::handle-not-found)
             (error-content "Query handle not found. The query may have expired — try running construct_query again.")

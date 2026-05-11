@@ -134,6 +134,8 @@ export function McpUiAppRoute() {
 
             <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
               <McpFeedbackButtons
+                instanceUrl={instanceUrl}
+                sessionToken={sessionToken}
                 mcpSessionId={mcpSessionId}
                 prompt={prompt}
                 query={query}

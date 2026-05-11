@@ -66,8 +66,6 @@ export function useMcpApp(): McpAppState {
         if (query) {
           setQuery(query);
           setPrompt(prompt ?? null);
-        } else if (prompt) {
-          setPrompt(prompt);
         }
       };
     },

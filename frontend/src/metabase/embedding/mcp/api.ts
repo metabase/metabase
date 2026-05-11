@@ -1,5 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
+import type { McpMetabotFeedback } from "metabase-types/api";
+
 type StoreDrillQueryRequest = {
   instanceUrl: string;
   sessionToken: string;
@@ -9,6 +11,13 @@ type StoreDrillQueryRequest = {
 
 type StoreDrillQueryResponse = {
   handle: string;
+};
+
+type SubmitMcpFeedbackRequest = {
+  instanceUrl: string;
+  sessionToken: string;
+  mcpSessionId: string;
+  payload: McpMetabotFeedback;
 };
 
 /**
@@ -42,4 +51,28 @@ export async function storeDrillQuery({
   }
 
   return response.json();
+}
+
+export async function submitMcpFeedback({
+  instanceUrl,
+  sessionToken,
+  mcpSessionId,
+  payload,
+}: SubmitMcpFeedbackRequest): Promise<void> {
+  const response = await fetch(`${instanceUrl}/api/embed-mcp/feedback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Metabase-Client": "mcp-apps",
+      "X-Metabase-Session": sessionToken,
+      "Mcp-Session-Id": mcpSessionId,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `submitMcpFeedback failed: ${response.status} ${response.statusText}`,
+    );
+  }
 }
