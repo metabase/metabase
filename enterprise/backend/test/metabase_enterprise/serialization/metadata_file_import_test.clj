@@ -1,13 +1,10 @@
 (ns metabase-enterprise.serialization.metadata-file-import-test
   "End-to-end orchestrator tests for [[metabase-enterprise.serialization.metadata-file-import/import-metadata-file!]].
-  Each test writes a temp JSON or YAML file in the I4 wire format, sets up
+  Each test writes a temp JSON or YAML file in the wire format, sets up
   matching `mt/with-temp` Database/Table/Field rows where needed, runs the
-  loader, and asserts on the appdb state.
-
-  File contents use **integer source IDs**: every wire row carries an `:id`
-  from the source appdb; cross-row references (`db_id`, `table_id`,
-  `parent_id`, `fk_target_field_id`) point at those source IDs within the
-  same file."
+  loader, and asserts on the appdb state. See
+  [[metabase-enterprise.serialization.metadata-file-import.schemas]] for the
+  wire-format primer."
   (:require
    [clj-yaml.core :as yaml]
    [clojure.test :refer :all]
@@ -196,7 +193,7 @@
                         :fields    [{:id 1000 :table_id 100 :name "x"
                                      :base_type "type/Integer" :database_type "int"}]})]
         ;; Inject a throw into merge-fields-by-depth! — runs after merge-tables! has
-        ;; written to metabase_table. The whole txn should roll back.
+        ;; written to metabase_table.
         (with-redefs [processors/merge-fields-by-depth!
                       (fn [] (throw (ex-info "boom mid-merge" {:kind ::injected})))]
           (let [thrown (try (loader/import-metadata-file! meta-file) nil

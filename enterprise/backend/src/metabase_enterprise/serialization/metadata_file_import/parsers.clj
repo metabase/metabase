@@ -1,9 +1,7 @@
 (ns metabase-enterprise.serialization.metadata-file-import.parsers
   "File-extension-based format dispatcher for the metadata file importer.
   Detects format from the path's lowercased suffix (`.json` / `.yaml` / `.yml`)
-  and delegates to the matching per-format parser. Manages the file lifecycle
-  (FileInputStream + UTF-8 InputStreamReader) so per-format parsers only see
-  a `Reader`."
+  and delegates to the matching per-format parser."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.serialization.metadata-file-import.parsers.json :as json]

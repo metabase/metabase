@@ -1,4 +1,4 @@
-## Staging tables for the metadata file importer (GHY-3517).
+## Staging tables for the metadata file importer.
 ##
 ## Two scratch tables drained into during an import, then merged into
 ## metabase_table / metabase_field inside a single short transaction so

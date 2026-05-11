@@ -338,7 +338,7 @@
 (defn- spool-to-temp-file!
   "Stream `is` to a freshly-created temp file in 64 KB chunks. Returns the
   `File`. If streaming fails the temp file is removed before the throw
-  propagates; otherwise the caller owns cleanup."
+  propagates."
   ^File [^InputStream is]
   (let [tmp (File/createTempFile "metadata-import-" ".json")]
     (try
@@ -374,7 +374,6 @@
 
     :else
     ;; `import-metadata-file!` takes a File, so spool the request body to disk first.
-    ;; Spooling is chunked; JVM heap never holds more than one buffer at a time.
     (let [tmp (spool-to-temp-file! body)]
       (try
         (metadata-file-import/import-metadata-file! tmp)
