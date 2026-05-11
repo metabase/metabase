@@ -773,7 +773,7 @@ describe(
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
           cy.findByText(
-            /Error executing Action:.*Invalid impersonated native query\. Must be a single select statement\./,
+            "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
             // GraalVM cold start can take >4s, so use a longer timeout
             { timeout: 30000 },
           );
