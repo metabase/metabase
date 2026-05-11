@@ -53,9 +53,17 @@ interface LeafletTilePinMapProps extends LeafletMapProps {
   } | null;
 }
 
+// Narrow `this.context` to the EmbeddingEntityContext value type via
+// declaration merging. We can't use a `declare context: …` class field here
+// because babel's `@babel/preset-typescript` doesn't enable
+// `allowDeclareFields` and would treat it as a syntax error in the SDK bundle
+// build.
+export interface LeafletTilePinMap {
+  context: ContextType<typeof EmbeddingEntityContext>;
+}
+
 export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
   static contextType = EmbeddingEntityContext;
-  declare context: ContextType<typeof EmbeddingEntityContext>;
 
   pinTileLayer: L.TileLayer | null = null;
 
