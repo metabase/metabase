@@ -36,9 +36,7 @@
 
 (defn- delete-conversations!
   [conversation-ids]
-  (let [conversation-ids (vec conversation-ids)]
-    (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
-    (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
+  (t2/delete! :model/MetabotConversation {:where [:in :id (vec conversation-ids)]}))
 
 (defn- insert-feedback!
   [{:keys [message-id user-id positive issue-type freeform created-at updated-at]}]
