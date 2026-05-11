@@ -1,5 +1,5 @@
 import type { IconName } from "metabase/ui";
-import type { Transform, TransformOwner } from "metabase-types/api";
+import type { Collection, Transform, TransformOwner } from "metabase-types/api";
 
 export type TreeNodeType = "folder" | "transform" | "library";
 
@@ -14,7 +14,7 @@ export type TreeNode = {
   owner_email?: string | null;
   children?: TreeNode[];
   transformId?: number;
-  collectionId?: number;
+  collection?: Collection;
   url?: string;
   source_readable?: boolean;
   warningTooltip?: string;
@@ -22,8 +22,8 @@ export type TreeNode = {
 
 export function isCollectionNode(
   node: TreeNode,
-): node is TreeNode & { collectionId: number } {
-  return node.nodeType === "folder" && typeof node.collectionId === "number";
+): node is TreeNode & { collection: Collection } {
+  return node.nodeType === "folder" && typeof node.collection?.id === "number";
 }
 
 export function getCollectionNodeId(collectionId: number): string {

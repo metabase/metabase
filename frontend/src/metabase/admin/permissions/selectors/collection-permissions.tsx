@@ -196,7 +196,7 @@ const getFolder = (state: State, props: CollectionIdProps) => {
   const folderId = getCurrentCollectionId(state, props);
   const folders = SnippetCollections.selectors.getList(state);
 
-  return folders.find((folder: Collection) => folder.id === folderId);
+  return folders?.find((folder: Collection) => folder.id === folderId);
 };
 
 export const getCollectionEntity = (state: State, props: CollectionIdProps) => {
