@@ -128,7 +128,6 @@ jobs:
       skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
       skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
-      unit-tests-to-run: ${{ needs.create-test-plan.outputs.unit_tests_to_run || '' }}
 
   e2e-tests:
     needs: [create-test-plan, uberjar]

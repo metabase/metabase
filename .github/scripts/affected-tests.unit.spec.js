@@ -1,7 +1,8 @@
+const { buildModuleGraph, globToRegex } = require("./affected-modules");
 const {
-  computeAffectedTests,
   createTestPlan,
   createTestPlanForSuite,
+  filterAffectedTests,
 } = require("./affected-tests");
 
 const ELEMENTS = [
@@ -17,7 +18,7 @@ const RULES = [
   { from: ["feature/*"], allow: ["lib/*"] },
 ];
 
-const TEST_SUITES = {
+const TEST_SUITE_DEFS = {
   unit: {
     statsPrefix: "unit_tests",
     infraPatterns: ["jest.config.js", "src/test/**"],
@@ -42,42 +43,43 @@ const UNIT_FILES = [
 const LOKI_FILES = ["src/foo/Foo.stories.tsx", "src/bar/Bar.stories.tsx"];
 const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 
-const config = computeAffectedTests({
-  elements: ELEMENTS,
-  rules: RULES,
-  suites: TEST_SUITES,
-});
+const moduleGraph = buildModuleGraph(ELEMENTS, RULES);
+const testSuites = Object.fromEntries(
+  Object.entries(TEST_SUITE_DEFS).map(([name, testSuite]) => [
+    name,
+    { ...testSuite, infraRegexes: testSuite.infraPatterns.map(globToRegex) },
+  ]),
+);
 
 describe("createTestPlanForSuite", () => {
   it("should run all tests when an infra pattern matches", () => {
     const result = createTestPlanForSuite(
-      config,
-      "unit",
+      moduleGraph,
+      testSuites.unit,
       ["jest.config.js"],
       UNIT_FILES,
     );
-    expect(result.run).toEqual(UNIT_FILES);
-    expect(result.total).toBe(UNIT_FILES.length);
+    expect(result).toEqual(UNIT_FILES);
   });
 
   it("should run all tests when a deeper infra pattern matches via **", () => {
     const result = createTestPlanForSuite(
-      config,
-      "unit",
+      moduleGraph,
+      testSuites.unit,
       ["src/test/setup-env.ts"],
       UNIT_FILES,
     );
-    expect(result.run).toEqual(UNIT_FILES);
+    expect(result).toEqual(UNIT_FILES);
   });
 
   it("should fall back to module-affected selection when no infra matches", () => {
     const result = createTestPlanForSuite(
-      config,
-      "unit",
+      moduleGraph,
+      testSuites.unit,
       ["src/foo/x.ts"],
       UNIT_FILES,
     );
-    expect(result.run.sort()).toEqual([
+    expect(result.sort()).toEqual([
       "src/foo/bar.unit.spec.ts",
       "src/foo/foo.unit.spec.ts",
     ]);
@@ -85,47 +87,60 @@ describe("createTestPlanForSuite", () => {
 
   it("should return nothing when no infra matches and no file maps to a module", () => {
     const result = createTestPlanForSuite(
-      config,
-      "unit",
+      moduleGraph,
+      testSuites.unit,
       ["docs/foo.md"],
       UNIT_FILES,
     );
-    expect(result.run).toEqual([]);
+    expect(result).toEqual([]);
   });
 
   it("should use each suite's own infra patterns", () => {
     const lokiInfra = createTestPlanForSuite(
-      config,
-      "loki",
+      moduleGraph,
+      testSuites.loki,
       [".storybook/main.ts"],
       LOKI_FILES,
     );
-    expect(lokiInfra.run).toEqual(LOKI_FILES);
+    expect(lokiInfra).toEqual(LOKI_FILES);
 
     const lokiOther = createTestPlanForSuite(
-      config,
-      "loki",
+      moduleGraph,
+      testSuites.loki,
       ["jest.config.js"],
       LOKI_FILES,
     );
-    expect(lokiOther.run).toEqual([]);
+    expect(lokiOther).toEqual([]);
   });
 
   it("should run all tests for runAllTests suites regardless of diff", () => {
     expect(
-      createTestPlanForSuite(config, "e2e", ["docs/foo.md"], E2E_FILES).run,
+      createTestPlanForSuite(
+        moduleGraph,
+        testSuites.e2e,
+        ["docs/foo.md"],
+        E2E_FILES,
+      ),
     ).toEqual(E2E_FILES);
     expect(
-      createTestPlanForSuite(config, "e2e", ["src/foo/x.ts"], E2E_FILES).run,
+      createTestPlanForSuite(
+        moduleGraph,
+        testSuites.e2e,
+        ["src/foo/x.ts"],
+        E2E_FILES,
+      ),
     ).toEqual(E2E_FILES);
   });
 });
 
 describe("createTestPlan", () => {
   it("should return run lists and stats together", () => {
-    const result = createTestPlan(config, {
+    const result = createTestPlan({
+      elements: ELEMENTS,
+      rules: RULES,
+      testSuites: TEST_SUITE_DEFS,
       changedFiles: ["src/foo/x.ts"],
-      suiteFiles: {
+      testFilesBySuite: {
         unit: UNIT_FILES,
         loki: LOKI_FILES,
         e2e: E2E_FILES,
@@ -156,9 +171,12 @@ describe("createTestPlan", () => {
   });
 
   it("should run all tests for the suite when its infra files change", () => {
-    const result = createTestPlan(config, {
+    const result = createTestPlan({
+      elements: ELEMENTS,
+      rules: RULES,
+      testSuites: TEST_SUITE_DEFS,
       changedFiles: ["jest.config.js"],
-      suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
     });
     expect(result.stats.unit_tests_to_run).toBe(UNIT_FILES.length);
     expect(result.stats.unit_tests_to_skip).toBe(0);
@@ -167,13 +185,32 @@ describe("createTestPlan", () => {
   });
 
   it("should not run anything when changes don't touch any module or infra", () => {
-    const result = createTestPlan(config, {
+    const result = createTestPlan({
+      elements: ELEMENTS,
+      rules: RULES,
+      testSuites: TEST_SUITE_DEFS,
       changedFiles: ["docs/foo.md"],
-      suiteFiles: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+      testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
     });
     expect(result.stats.unit_tests_to_run).toBe(0);
     expect(result.stats.loki_stories_to_run).toBe(0);
     // e2e is runAllTests, so it still reports run = total.
     expect(result.stats.e2e_tests_to_run).toBe(E2E_FILES.length);
+  });
+});
+
+describe("filterAffectedTests", () => {
+  it("should keep only tests inside affected modules", () => {
+    const affected = new Set(["feature/foo", "lib/utils"]);
+    const tests = [
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
+      "src/bar/bar.unit.spec.ts",
+      "docs/unrelated.unit.spec.ts",
+    ];
+    expect(filterAffectedTests(moduleGraph, affected, tests)).toEqual([
+      "src/foo/foo.unit.spec.ts",
+      "src/utils/colors.unit.spec.ts",
+    ]);
   });
 });

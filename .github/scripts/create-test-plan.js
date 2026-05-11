@@ -4,13 +4,7 @@ const { execFileSync } = require("node:child_process");
 
 const { elements, rules } = require("../../frontend/lint/module-boundaries");
 
-const {
-  TEST_SUITES,
-  computeAffectedTests,
-  createTestPlan,
-} = require("./affected-tests");
-
-const config = computeAffectedTests({ elements, rules, suites: TEST_SUITES });
+const { TEST_SUITES, createTestPlan } = require("./affected-tests");
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -41,10 +35,10 @@ const E2E_GLOBS = [
   "e2e/test/scenarios/**/*.cy.spec.tsx",
 ];
 
-function gitLines(args) {
-  return execFileSync("git", args, { encoding: "utf8" })
+function listFiles(globs) {
+  return execFileSync("git", ["ls-files", "--", ...globs], { encoding: "utf8" })
     .split("\n")
-    .map((s) => s.trim())
+    .map((line) => line.trim())
     .filter(Boolean);
 }
 
@@ -53,13 +47,16 @@ const changedFiles = (process.env.CHANGED_FILES ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const result = createTestPlan(config, {
+const testPlan = createTestPlan({
+  elements,
+  rules,
+  testSuites: TEST_SUITES,
   changedFiles,
-  suiteFiles: {
-    unit: gitLines(["ls-files", "--", ...UNIT_GLOBS]),
-    loki: gitLines(["ls-files", "--", ...STORY_GLOBS]),
-    e2e: gitLines(["ls-files", "--", ...E2E_GLOBS]),
+  testFilesBySuite: {
+    unit: listFiles(UNIT_GLOBS),
+    loki: listFiles(STORY_GLOBS),
+    e2e: listFiles(E2E_GLOBS),
   },
 });
 
-console.log(JSON.stringify(result));
+console.log(JSON.stringify(testPlan));

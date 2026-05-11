@@ -12,12 +12,6 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
-      # JSON array of unit-test paths produced by create-test-plan in
-      # run-tests.yml. Currently unused — will drive Jest --testPathPatterns
-      # once module-boundary violations reach zero.
-      unit-tests-to-run:
-        type: string
-        default: ""
   workflow_dispatch:
     inputs:
       skip:
