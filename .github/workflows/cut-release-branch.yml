@@ -104,6 +104,31 @@ jobs:
               throw err;
             }
 
+      - name: Create 0.${{ steps.preflight.outputs.next }} milestone
+        id: milestone
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            const next = '${{ steps.preflight.outputs.next }}';
+            const title = `0.${next}`;
+
+            try {
+              await github.rest.issues.createMilestone({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+              });
+              console.log(`Created milestone ${title}`);
+            } catch (err) {
+              if (err.status === 422) {
+                console.log(`Milestone ${title} already exists — skipping`);
+                return;
+              }
+              throw err;
+            }
+
       - name: Notify Slack
         uses: actions/github-script@v7
         env:
@@ -117,6 +142,7 @@ jobs:
             const sha = '${{ steps.cut.outputs.sha }}';
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
             const labelFailed = '${{ steps.label.outcome }}' === 'failure';
+            const milestoneFailed = '${{ steps.milestone.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -131,6 +157,9 @@ jobs:
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
               labelFailed
                 ? `:warning: Creating label \`Bug:v${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
+                : null,
+              milestoneFailed
+                ? `:warning: Creating milestone \`0.${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/milestones/new|New milestone>`
                 : null,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
