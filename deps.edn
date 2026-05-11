@@ -57,7 +57,7 @@
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
+                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
   com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
@@ -112,7 +112,7 @@
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.datasketches/datasketches-java     ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
-  {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
+                                                {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.5"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.5"}              ; pinned: must match httpcore5 version
@@ -665,27 +665,8 @@
   ;;
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
   :eastwood/test
-  {:exec-fn   metabase.linters.eastwood/eastwood
-   :exec-args {:source-paths ["test"
-                              "enterprise/backend/test"
-                              "modules/drivers/athena/test"
-                              "modules/drivers/bigquery-cloud-sdk/test"
-                              "modules/drivers/clickhouse/test"
-                              "modules/drivers/databricks/test"
-                              "modules/drivers/druid/test"
-                              "modules/drivers/druid-jdbc/test"
-                              "modules/drivers/hive-like/test"
-                              "modules/drivers/mongo/test"
-                              "modules/drivers/oracle/test"
-                              "modules/drivers/presto-jdbc/test"
-                              "modules/drivers/redshift/test"
-                              "modules/drivers/snowflake/test"
-                              "modules/drivers/sparksql/test"
-                              "modules/drivers/sqlite/test"
-                              "modules/drivers/sqlserver/test"
-                              "modules/drivers/starburst/test"
-                              "modules/drivers/vertica/test"]
-               :linters      [:reflection]
+  {:exec-fn   metabase.linters.eastwood/eastwood-tests
+   :exec-args {:linters      [:reflection]
                :exclude-namespaces
                [;; byte/1 dispatch value trips up Eastwood's reader
                 metabase.test.http-client
