@@ -1,12 +1,13 @@
 (ns metabase-enterprise.serialization.metadata-file-import-test
-  "Tests for the boot-time file loader. Each test writes a temp JSON or YAML
-  file, sets up matching `mt/with-temp` Database/Table/Field rows where
-  needed, runs the loader, and asserts on the appdb state. Tests target the
-  post-loader appdb directly — no env-var path is exercised here except in
-  the few tests that explicitly bind `*env*`.
+  "End-to-end orchestrator tests for [[metabase-enterprise.serialization.metadata-file-import/import-metadata-file!]].
+  Each test writes a temp JSON or YAML file in the I4 wire format, sets up
+  matching `mt/with-temp` Database/Table/Field rows where needed, runs the
+  loader, and asserts on the appdb state.
 
-  File contents use the **portable-id wire format**: identifiers are natural
-  keys, never source-instance integer ids."
+  File contents use **integer source IDs**: every wire row carries an `:id`
+  from the source appdb; cross-row references (`db_id`, `table_id`,
+  `parent_id`, `fk_target_field_id`) point at those source IDs within the
+  same file."
   (:require
    [clj-yaml.core :as yaml]
    [clojure.test :refer :all]
@@ -43,19 +44,14 @@
     (mt/with-temp [:model/Database {tgt-db :id} {:name "happy-path-db" :engine :postgres
                                                  :initial_sync_status "incomplete"}]
       (let [meta-file (json-file
-                       {:databases [{:name "happy-path-db" :engine "postgres"}]
-                        :tables    [{:db_id "happy-path-db" :schema "public" :name "orders"}]
-                        :fields    [{:id ["happy-path-db" "public" "orders" "id"]
-                                     :table_id ["happy-path-db" "public" "orders"] :name "id"
+                       {:databases [{:id 7 :name "happy-path-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "orders"}]
+                        :fields    [{:id 1000 :table_id 100 :name "id"
                                      :base_type "type/Integer" :database_type "integer"}
-                                    {:id ["happy-path-db" "public" "orders" "address"]
-                                     :table_id ["happy-path-db" "public" "orders"] :name "address"
+                                    {:id 1001 :table_id 100 :name "address"
                                      :base_type "type/Structured" :database_type "json"}
-                                    {:id ["happy-path-db" "public" "orders" "address" "zip"]
-                                     :table_id ["happy-path-db" "public" "orders"]
-                                     :parent_id ["happy-path-db" "public" "orders" "address"]
-                                     :nfc_path ["address"]
-                                     :name "zip"
+                                    {:id 1002 :table_id 100 :name "zip"
+                                     :parent_id 1001 :nfc_path ["address"]
                                      :base_type "type/Text" :database_type "text"}]})]
         (loader/import-metadata-file! meta-file)
         (testing "the matched Database's initial_sync_status was flipped to complete"
@@ -75,162 +71,172 @@
             (is (nil? (:parent_id root)))
             (is (nil? (:parent_id addr)))
             (is (= (:id addr) (:parent_id zip))
-                "the nested field's parent_id is the address field's target id")))))))
+                "the nested field's parent_id is the address field's target id")
+            (is (= ["address"] (:nfc_path zip)))))))))
 
 (deftest end-to-end-happy-path-with-yaml-file-test
   (testing "the same flow works for YAML files via the format dispatcher"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "happy-path-yaml-db" :engine :postgres}]
       (let [meta-file (yaml-file
-                       {:databases [{:name "happy-path-yaml-db" :engine "postgres"}]
-                        :tables    [{:db_id "happy-path-yaml-db" :schema "public" :name "orders"}]
-                        :fields    [{:id ["happy-path-yaml-db" "public" "orders" "id"]
-                                     :table_id ["happy-path-yaml-db" "public" "orders"]
-                                     :name "id"
+                       {:databases [{:id 7 :name "happy-path-yaml-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "orders"}]
+                        :fields    [{:id 1000 :table_id 100 :name "id"
                                      :base_type "type/Integer" :database_type "integer"}]})]
         (loader/import-metadata-file! meta-file)
-        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "orders"))]
-          (is (some? (t2/select-one :model/Field :table_id tbl-id :name "id"))))))))
+        (let [tbl (t2/select-one :model/Table :db_id tgt-db :name "orders")]
+          (is (some? tbl))
+          (is (= "id" (:name (t2/select-one :model/Field :table_id (:id tbl) :name "id")))))))))
 
 ;;; ============================== No-match skipping ==============================
 
 (deftest unmatched-source-database-skips-its-tables-and-fields-test
-  (testing "unmatched source database: WARN logged, dependent tables/fields silently skipped"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "matched-db" :engine :postgres}]
-      (let [meta-file (json-file
-                       {:databases [{:name "matched-db"     :engine "postgres"}
-                                    {:name "unmatched-db-x" :engine "h2"}]
-                        :tables    [{:db_id "matched-db"     :schema "public" :name "kept"}
-                                    {:db_id "unmatched-db-x" :schema "public" :name "skipped"}]
-                        :fields    [{:id ["matched-db" "public" "kept" "kept-fld"]
-                                     :table_id ["matched-db" "public" "kept"]
-                                     :name "kept-fld"
-                                     :base_type "type/Text" :database_type "text"}
-                                    {:id ["unmatched-db-x" "public" "skipped" "skipped-fld"]
-                                     :table_id ["unmatched-db-x" "public" "skipped"]
-                                     :name "skipped-fld"
-                                     :base_type "type/Text" :database_type "text"}]})]
-        (loader/import-metadata-file! meta-file)
-        (let [kept-tbl    (t2/select-one :model/Table :db_id tgt-db :name "kept")
-              skipped-tbl (t2/select-one :model/Table :name "skipped")]
-          (is (some? kept-tbl) "the matched-db's table is inserted")
-          (is (nil? skipped-tbl)
-              "the unmatched-db's table is NOT inserted (no target db to attach it to)")
-          (is (some? (t2/select-one :model/Field :table_id (:id kept-tbl) :name "kept-fld")))
-          (is (nil? (t2/select-one :model/Field :name "skipped-fld"))))))))
+  (testing "a source database with no (name, engine) match in target: WARN logged,
+            its tables/fields are silently dropped during merge"
+    (let [meta-file (json-file
+                     {:databases [{:id 7 :name "no-such-db" :engine "postgres"}]
+                      :tables    [{:id 100 :db_id 7 :schema "public" :name "ghost"}]
+                      :fields    [{:id 1000 :table_id 100 :name "x"
+                                   :base_type "type/Integer" :database_type "int"}]})]
+      (loader/import-metadata-file! meta-file)
+      (is (zero? (t2/count :model/Table :name "ghost"))
+          "no metabase_table row was created for the unmatched-DB's table")
+      (is (zero? (t2/count :model/Field :name "x"))
+          "no metabase_field row either"))))
 
-;;; ============================== fk-resolve ==============================
+;;; ============================== FK resolution ==============================
 
 (deftest fk-target-field-id-resolved-after-import-test
-  (testing "after import, a field's fk_target_field_id resolves to the referenced field's int id"
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "fk-db" :engine :postgres}]
+  (testing "two tables, one with a field that has fk_target_field_id pointing at the
+            other table's id field — after import, target appdb's fk_target_field_id
+            points at the correctly-resolved target field id"
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "fk-test-db" :engine :postgres}]
       (let [meta-file (json-file
-                       {:databases [{:name "fk-db" :engine "postgres"}]
-                        :tables    [{:db_id "fk-db" :schema "public" :name "users"}]
-                        :fields    [{:id ["fk-db" "public" "users" "id"]
-                                     :table_id ["fk-db" "public" "users"] :name "id"
+                       {:databases [{:id 7 :name "fk-test-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "users"}
+                                    {:id 101 :db_id 7 :schema "public" :name "orders"}]
+                        :fields    [{:id 1000 :table_id 100 :name "id"
                                      :base_type "type/Integer" :database_type "integer"}
-                                    {:id ["fk-db" "public" "users" "user_id"]
-                                     :table_id ["fk-db" "public" "users"] :name "user_id"
-                                     :fk_target_field_id ["fk-db" "public" "users" "id"]
-                                     :base_type "type/Integer" :database_type "integer"}]})]
+                                    {:id 1001 :table_id 101 :name "user_id"
+                                     :base_type "type/Integer" :database_type "integer"
+                                     :fk_target_field_id 1000}]})]
         (loader/import-metadata-file! meta-file)
-        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "users"))
-              id-fld (t2/select-one :model/Field :table_id tbl-id :name "id")
-              ref    (t2/select-one :model/Field :table_id tbl-id :name "user_id")]
-          (is (= (:id id-fld) (:fk_target_field_id ref))
-              "the referencing field's fk_target_field_id resolves to the id field's target id"))))))
+        (let [users-tbl   (:id (t2/select-one :model/Table :db_id tgt-db :name "users"))
+              orders-tbl  (:id (t2/select-one :model/Table :db_id tgt-db :name "orders"))
+              users-id    (:id (t2/select-one :model/Field :table_id users-tbl :name "id"))
+              orders-fk   (t2/select-one :model/Field :table_id orders-tbl :name "user_id")]
+          (is (= users-id (:fk_target_field_id orders-fk))
+              "orders.user_id's fk_target_field_id is users.id's resolved target id"))))))
 
 ;;; ============================== Idempotence ==============================
 
 (deftest re-import-is-idempotent-test
-  (testing "running the loader twice on the same file leaves the appdb in the same shape
-            as after one run — no duplicate tables / fields, all matched on the second run"
+  (testing "running the same file twice produces the same final appdb state
+            — no duplicate rows, no error"
     (mt/with-temp [:model/Database {tgt-db :id} {:name "idem-db" :engine :postgres}]
       (let [meta-file (json-file
-                       {:databases [{:name "idem-db" :engine "postgres"}]
-                        :tables    [{:db_id "idem-db" :schema "public" :name "users"}]
-                        :fields    [{:id ["idem-db" "public" "users" "id"]
-                                     :table_id ["idem-db" "public" "users"] :name "id"
-                                     :base_type "type/Integer" :database_type "integer"}]})]
+                       {:databases [{:id 7 :name "idem-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
+                        :fields    [{:id 1000 :table_id 100 :name "x"
+                                     :base_type "type/Integer" :database_type "int"
+                                     :description "v1"}]})]
         (loader/import-metadata-file! meta-file)
-        (let [tables-after-1 (t2/count :model/Table :db_id tgt-db)
-              fields-after-1 (count (t2/select :model/Field
-                                               :table_id [:in (map :id (t2/select :model/Table
-                                                                                  :db_id tgt-db))]))]
-          (loader/import-metadata-file! meta-file)
-          (is (= tables-after-1 (t2/count :model/Table :db_id tgt-db))
-              "no duplicate tables")
-          (is (= fields-after-1
-                 (count (t2/select :model/Field
-                                   :table_id [:in (map :id (t2/select :model/Table
-                                                                      :db_id tgt-db))])))
-              "no duplicate fields"))))))
+        (loader/import-metadata-file! meta-file)
+        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "t"))]
+          (is (= 1 (t2/count :model/Table :db_id tgt-db :name "t")))
+          (is (= 1 (t2/count :model/Field :table_id tbl-id :name "x")))
+          (is (= "v1" (:description (t2/select-one :model/Field :table_id tbl-id :name "x")))))))))
 
-;;; ============================== Atomicity ==============================
+;;; ============================== Pre-flight orphan bail ==============================
 
-(deftest atomic-import-fk-corruption-rolls-back-everything-test
-  (testing "the headline atomicity guarantee: when the merge txn aborts mid-flight
-            (here via a corrupt :fk_target_field_id pointing at a nonexistent target),
-            NO live-data writes persist — no new tables, no new fields, no stubs,
-            no sync_status flip. Either the whole import lands or none of it does."
-    (mt/with-temp [:model/Database {tgt-db :id} {:name "atom-fk-db"
-                                                 :engine :postgres
-                                                 :initial_sync_status "incomplete"}]
-      (let [tables-before (set (map :id (t2/select [:model/Table :id] :db_id tgt-db)))
-            fields-before (set (map :id (t2/select :model/Field
-                                                   :table_id [:in {:select [:id]
-                                                                   :from [:metabase_table]
-                                                                   :where [:= :db_id tgt-db]}])))
-            meta-file     (json-file
-                           {:databases [{:name "atom-fk-db" :engine "postgres"}]
-                            :tables    [{:db_id "atom-fk-db" :schema "public" :name "orders"}]
-                            :fields    [{:id ["atom-fk-db" "public" "orders" "id"]
-                                         :table_id ["atom-fk-db" "public" "orders"]
-                                         :name "id"
-                                         :base_type "type/Integer"
-                                         :database_type "integer"}
-                                        ;; This field's :fk_target_field_id points at a row
-                                        ;; that doesn't exist anywhere → corrupt-file signal,
-                                        ;; should hard-fail :fk_target_unresolved and roll back.
-                                        {:id ["atom-fk-db" "public" "orders" "uid"]
-                                         :table_id ["atom-fk-db" "public" "orders"]
-                                         :name "uid"
-                                         :fk_target_field_id ["atom-fk-db" "public" "no-such-table" "no-such-field"]
-                                         :base_type "type/Integer"
-                                         :database_type "integer"}]})
-            thrown        (atom nil)]
-        (try
-          (loader/import-metadata-file! meta-file)
-          (catch clojure.lang.ExceptionInfo e
-            (reset! thrown e)))
-        (testing "import threw :fk_target_unresolved"
-          (is (some? @thrown))
-          (is (= :fk_target_unresolved (:kind (ex-data @thrown)))))
-        (testing "appdb is unchanged after the rollback"
-          (is (= tables-before (set (map :id (t2/select [:model/Table :id] :db_id tgt-db))))
-              "no new tables in metabase_table")
-          (is (= fields-before (set (map :id (t2/select :model/Field
-                                                        :table_id [:in {:select [:id]
-                                                                        :from [:metabase_table]
-                                                                        :where [:= :db_id tgt-db]}]))))
-              "no new fields in metabase_field")
-          (is (= "incomplete" (:initial_sync_status (t2/select-one :model/Database :id tgt-db)))
-              "initial_sync_status NOT flipped to complete"))))))
+(deftest pre-flight-orphan-bail-test
+  (testing "a file whose field references a parent_id not in the same file is rejected
+            with :file_incomplete; no live writes happen"
+    (mt/with-temp [:model/Database {} {:name "orphan-bail-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "orphan-bail-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
+                        :fields    [{:id 1000 :table_id 100 :name "x"
+                                     :base_type "type/Integer" :database_type "int"
+                                     :parent_id 9999}]})]      ; bad ref — no such source_id in file
+        (let [thrown (try (loader/import-metadata-file! meta-file) nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+          (is (some? thrown))
+          (is (= :file_incomplete (:kind (ex-data thrown))))
+          (is (zero? (t2/count :model/Table :name "t"))
+              "no live writes happened — pre-flight ran before any txn"))))))
+
+(deftest cycle-bail-test
+  (testing "a file with a cycle in source_parent_id is rejected with
+            :cycle_in_field_graph; no live writes happen"
+    (mt/with-temp [:model/Database {} {:name "cycle-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "cycle-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
+                        :fields    [{:id 1000 :table_id 100 :name "a"
+                                     :base_type "type/Integer" :database_type "int"
+                                     :parent_id 1001}
+                                    {:id 1001 :table_id 100 :name "b"
+                                     :base_type "type/Integer" :database_type "int"
+                                     :parent_id 1000}]})]
+        (let [thrown (try (loader/import-metadata-file! meta-file) nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+          (is (some? thrown))
+          (is (= :cycle_in_field_graph (:kind (ex-data thrown))))
+          (is (zero? (t2/count :model/Table :name "t"))))))))
+
+;;; ============================== Atomic rollback ==============================
+
+(deftest atomic-rollback-on-mid-merge-throw-test
+  (testing "if anything inside the merge transaction throws, all live writes are rolled
+            back — neither tables nor fields land in the appdb"
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "rollback-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "rollback-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
+                        :fields    [{:id 1000 :table_id 100 :name "x"
+                                     :base_type "type/Integer" :database_type "int"}]})]
+        ;; Inject a throw into merge-fields-by-depth! — runs after merge-tables! has
+        ;; written to metabase_table. The whole txn should roll back.
+        (with-redefs [processors/merge-fields-by-depth!
+                      (fn [] (throw (ex-info "boom mid-merge" {:kind ::injected})))]
+          (let [thrown (try (loader/import-metadata-file! meta-file) nil
+                            (catch clojure.lang.ExceptionInfo e e))]
+            (is (some? thrown))
+            (is (= ::injected (:kind (ex-data thrown))))))
+        (is (zero? (t2/count :model/Table :db_id tgt-db :name "t"))
+            "the table that merge-tables! 'inserted' was rolled back")))))
+
+;;; ============================== Convention coverage ==============================
+
+(deftest convention-b-leaf-imports-correctly-test
+  (testing "a Convention B JSON-unfolded leaf (nfc_path set, no parent_id) imports
+            as a leaf field with nfc_path preserved and parent_id NULL"
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "conv-b-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "conv-b-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "t"}]
+                        :fields    [{:id 1000 :table_id 100 :name "data.user.zip"
+                                     :base_type "type/Text" :database_type "text"
+                                     :nfc_path ["data" "user" "zip"]}]})]
+        (loader/import-metadata-file! meta-file)
+        (let [tbl-id (:id (t2/select-one :model/Table :db_id tgt-db :name "t"))
+              leaf   (t2/select-one :model/Field :table_id tbl-id :name "data.user.zip")]
+          (is (some? leaf))
+          (is (nil? (:parent_id leaf)))
+          (is (= ["data" "user" "zip"] (:nfc_path leaf))))))))
 
 ;;; ============================== initialize-from-env! ==============================
 
 (deftest initialize-from-env-no-vars-set-is-noop-test
-  (testing "with MB_TABLE_METADATA_PATH not set, the loader
-            returns :ok without doing any work"
+  (testing "initialize-from-env! silently returns :ok when no MB_TABLE_METADATA_PATH is set"
     (binding [loader/*env* {}]
       (is (= :ok (loader/initialize-from-env!))))))
 
 (deftest initialize-from-env-missing-file-hard-fails-test
-  (testing "if MB_TABLE_METADATA_PATH points at a file that doesn't exist, the loader
-            hard-fails before doing any DB work"
-    (binding [loader/*env* {:mb-table-metadata-path "/tmp/this-path-does-not-exist-xyz.json"}]
-      (try
-        (loader/initialize-from-env!)
-        (is false "should have thrown")
-        (catch clojure.lang.ExceptionInfo e
-          (is (= :file_not_found (:kind (ex-data e)))))))))
+  (testing "initialize-from-env! throws :file_not_found when the path is set but the
+            file doesn't exist"
+    (binding [loader/*env* {:mb-table-metadata-path "/nope/this/path/does/not/exist.json"}]
+      (let [thrown (try (loader/initialize-from-env!) nil
+                        (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? thrown))
+        (is (= :file_not_found (:kind (ex-data thrown))))))))
