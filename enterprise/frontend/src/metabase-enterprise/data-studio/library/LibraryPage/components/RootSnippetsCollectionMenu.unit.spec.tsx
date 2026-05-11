@@ -1,12 +1,22 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupCollectionPermissionsGraphEndpoint,
+  setupCollectionsEndpoints,
+  setupGroupsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
 import { dataStudioArchivedSnippets } from "metabase/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 
@@ -15,24 +25,28 @@ interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
 
-const setPermissionsCollectionId = jest.fn();
+const collection = createMockCollection({ id: "root", name: "SQL Snippets" });
 
 const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
+      "token-features": createMockTokenFeatures({ snippet_collections: true }),
     }),
     currentUser: createMockUser({ is_superuser: isSuperuser }),
   });
+  setupEnterpriseOnlyPlugin("snippets");
+  setupCollectionsEndpoints({ collections: [collection] });
+  setupGroupsEndpoint([]);
+  setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+
   return renderWithProviders(
     <>
       <Route
         path="/"
         component={() => (
-          <RootSnippetsCollectionMenu
-            setPermissionsCollectionId={setPermissionsCollectionId}
-          />
+          <RootSnippetsCollectionMenu collectionId={collection.id} />
         )}
       />
       <Route
@@ -92,7 +106,7 @@ describe("RootSnippetsCollectionMenu", () => {
       ).toBeInTheDocument();
     });
 
-    it("calls setPermissionsCollectionId on click", async () => {
+    it("shows permissions modal on click", async () => {
       setup();
       await userEvent.click(
         screen.getByRole("button", { name: "Snippet collection options" }),
@@ -100,7 +114,11 @@ describe("RootSnippetsCollectionMenu", () => {
       await userEvent.click(
         screen.getByRole("menuitem", { name: /Change permissions/ }),
       );
-      expect(setPermissionsCollectionId).toHaveBeenCalledWith("root");
+      expect(
+        await within(screen.getByRole("dialog")).findByRole("heading", {
+          name: /Permissions for SQL Snippets/,
+        }),
+      ).toBeInTheDocument();
     });
   });
 
