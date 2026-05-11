@@ -566,9 +566,10 @@
                                        [:thread-id   ms/PositiveInt]
                                        [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [exploration_query_id display]} :- [:map
-                                              [:exploration_query_id ms/PositiveInt]
-                                              [:display {:optional true} [:maybe :string]]]]
+   {:keys [exploration_query_id display visualization_settings]} :- [:map
+                                                                     [:exploration_query_id ms/PositiveInt]
+                                                                     [:display {:optional true} [:maybe :string]]
+                                                                     [:visualization_settings {:optional true} [:maybe ms/Map]]]]
   (write-check-thread thread-id)
   (let [doc        (get-thread-document-or-404 thread-id document-id)
         eq         (api/check-404 (t2/select-one :model/ExplorationQuery :id exploration_query_id))
@@ -580,7 +581,7 @@
                      :type                   :question
                      :dataset_query          (:dataset_query eq)
                      :display                (or (some-> display keyword) (some-> (:display eq) keyword) (:display src-card) :table)
-                     :visualization_settings (or (:visualization_settings eq) (:visualization_settings src-card) {})
+                     :visualization_settings (or visualization_settings (:visualization_settings eq) (:visualization_settings src-card) {})
                      :collection_id          (:collection_id doc)
                      :document_id            (:id doc)}
                     @api/*current-user*)

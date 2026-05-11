@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { Group, Text } from "metabase/ui";
 import type {
   CardDisplayType,
@@ -5,6 +7,7 @@ import type {
   ExplorationThread,
   Timeline,
   TimelineId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { DocumentMenu } from "./DocumentMenu";
@@ -55,6 +58,15 @@ export function ExplorationVisualizationHeader({
     explorationQuery &&
     explorationThread;
 
+  const vizSettings: VisualizationSettings = useMemo(() => {
+    if (selectedTimelineId) {
+      return {
+        "timeline.selected_timeline_ids": [selectedTimelineId],
+      };
+    }
+    return {};
+  }, [selectedTimelineId]);
+
   return (
     <Group h="2rem" justify="space-between">
       <Text fw="bold" size="lg">
@@ -78,6 +90,7 @@ export function ExplorationVisualizationHeader({
             queries={groupQueries}
             explorationThread={explorationThread}
             display={display}
+            vizSettings={vizSettings}
           />
         )}
         {showSingleDocumentMenu && (
@@ -85,6 +98,7 @@ export function ExplorationVisualizationHeader({
             explorationQuery={explorationQuery}
             explorationThread={explorationThread}
             display={display}
+            vizSettings={vizSettings}
           />
         )}
       </Group>

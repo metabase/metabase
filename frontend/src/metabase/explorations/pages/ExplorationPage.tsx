@@ -1,12 +1,9 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
-import {
-  skipToken,
-  useGetExplorationQuery,
-  useListTimelinesQuery,
-} from "metabase/api";
+import { useGetExplorationQuery, useListTimelinesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
 import { Box, Group } from "metabase/ui";
@@ -52,7 +49,9 @@ interface ExplorationPageProps {
     id: string;
     entityType?: "query" | "document" | "group";
     entityId?: string;
+    childTargetId?: string;
   };
+  route: Route;
   location: Location<ExplorationPageQuery>;
   children?: React.ReactNode;
 }
@@ -134,6 +133,7 @@ export type SelectedEntityId =
 
 export function ExplorationPage({
   params,
+  route,
   location,
   children,
 }: ExplorationPageProps) {
@@ -172,19 +172,9 @@ export function ExplorationPage({
     setShouldPoll(hasUnsettledQueries(exploration));
   }, [exploration]);
 
-  const explorationHasTimelines = useMemo(() => {
-    return exploration?.threads?.some(
-      (thread) => (thread.timelines?.length ?? 0) > 0,
-    );
-  }, [exploration]);
-
-  const { data: allTimelines = [] } = useListTimelinesQuery(
-    explorationHasTimelines
-      ? {
-          include: "events",
-        }
-      : skipToken,
-  );
+  const { data: allTimelines = [] } = useListTimelinesQuery({
+    include: "events",
+  });
 
   const allTimelinesById: Map<TimelineId, Timeline> = useMemo(() => {
     return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
@@ -409,6 +399,8 @@ export function ExplorationPage({
     [dispatch, location.pathname, location.search],
   );
 
+  const isCommentsSidebarOpen = Boolean(children);
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -425,7 +417,7 @@ export function ExplorationPage({
       bg="background-secondary"
       align="flex-start"
       wrap="nowrap"
-      gap="xl"
+      gap={0}
       data-test-id="exploration-page"
     >
       <ExplorationSidebar
@@ -464,9 +456,14 @@ export function ExplorationPage({
         />
       )}
       {selectedDocument && (
-        <ExplorationDocumentComponent document={selectedDocument} />
+        <ExplorationDocumentComponent
+          document={selectedDocument}
+          isCommentsSidebarOpen={isCommentsSidebarOpen}
+          childTargetId={params.childTargetId}
+          route={route}
+        />
       )}
-      <Box bg="background-primary">{children}</Box>
+      {isCommentsSidebarOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );
 }

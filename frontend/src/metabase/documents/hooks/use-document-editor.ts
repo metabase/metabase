@@ -41,8 +41,13 @@ import {
   clearDraftCards,
   setCurrentDocument,
   setHasUnsavedChanges,
+  updateSelectedEmbedIndex,
 } from "../documents.slice";
-import { getDraftCards, getHasUnsavedChanges } from "../selectors";
+import {
+  getDraftCards,
+  getHasUnsavedChanges,
+  getSelectedEmbedIndex,
+} from "../selectors";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -81,6 +86,10 @@ interface UseDocumentEditorResult {
     collection_id?: CollectionId | null;
     archived?: boolean;
   }) => Promise<void>;
+  handleQuestionSelect: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
 }
 
 export function useDocumentEditor({
@@ -91,6 +100,7 @@ export function useDocumentEditor({
 
   const draftCards = useSelector(getDraftCards);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -333,6 +343,36 @@ export function useDocumentEditor({
     ],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+        event.preventDefault();
+        if (!hasUnsavedChanges() || !canWrite) {
+          return;
+        }
+
+        if (isNewDocument) {
+          setCollectionPickerMode("save");
+        } else {
+          handleSave();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    hasUnsavedChanges,
+    handleSave,
+    isNewDocument,
+    setCollectionPickerMode,
+    canWrite,
+  ]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -342,6 +382,22 @@ export function useDocumentEditor({
       setCollectionPickerMode(null);
     }
   };
+
+  const handleQuestionSelect = useCallback(
+    (cardId: number | null, embedIndex?: number | null) => {
+      if (
+        cardId !== null &&
+        embedIndex !== null &&
+        embedIndex !== undefined &&
+        embedIndex >= 0 &&
+        selectedEmbedIndex !== null
+      ) {
+        // Only update the selected embed index if the sidebar is already open
+        dispatch(updateSelectedEmbedIndex(embedIndex));
+      }
+    },
+    [dispatch, selectedEmbedIndex],
+  );
 
   return {
     editorInstance,
@@ -367,5 +423,6 @@ export function useDocumentEditor({
     handleChange,
     handleSave,
     handleUpdate,
+    handleQuestionSelect,
   };
 }

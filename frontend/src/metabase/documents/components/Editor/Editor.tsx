@@ -86,7 +86,10 @@ export interface EditorProps {
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
   onChange?: (content: JSONContent) => void;
-  onQuestionSelect?: (cardId: number | null) => void;
+  onQuestionSelect?: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */

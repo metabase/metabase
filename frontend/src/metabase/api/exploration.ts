@@ -10,6 +10,7 @@ import type {
   ExplorationThreadId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -77,6 +78,7 @@ export const explorationApi = Api.injectEndpoints({
         documentId: DocumentId;
         exploration_query_id: ExplorationQueryId;
         display?: CardDisplayType;
+        visualization_settings?: VisualizationSettings;
       }
     >({
       query: ({ threadId, documentId, ...body }) => ({

@@ -42,16 +42,16 @@ import {
 import {
   resetDocuments,
   setChildTargetId,
+  setDocumentHost,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
-  updateSelectedEmbedIndex,
 } from "../documents.slice";
 import { useDocumentEditor } from "../hooks/use-document-editor";
 import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
-  getsidebarMode,
+  getSidebarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -102,6 +102,7 @@ export const DocumentPage = ({
     handleSave,
     handleUpdate,
     handleChange,
+    handleQuestionSelect,
   } = useDocumentEditor({
     documentId,
   });
@@ -110,7 +111,7 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const sidebarMode = useSelector(getsidebarMode);
+  const sidebarMode = useSelector(getSidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [copyDocument] = useCopyDocumentMutation();
   const [duplicateModalMode, setDuplicateModalMode] = useState<
@@ -129,6 +130,10 @@ export const DocumentPage = ({
       ({ type, item_id }) => type === "document" && item_id === documentId,
     ),
   );
+
+  useEffect(() => {
+    dispatch(setDocumentHost("standalone"));
+  }, [dispatch]);
 
   useEffect(() => {
     if (error) {
@@ -186,52 +191,6 @@ export const DocumentPage = ({
   const focusEditorBody = useCallback(() => {
     editorInstance?.commands.focus("start");
   }, [editorInstance]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
-      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
-        event.preventDefault();
-        if (!hasUnsavedChanges() || !canWrite) {
-          return;
-        }
-
-        if (isNewDocument) {
-          setCollectionPickerMode("save");
-        } else {
-          handleSave();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [
-    hasUnsavedChanges,
-    handleSave,
-    isNewDocument,
-    setCollectionPickerMode,
-    canWrite,
-  ]);
-
-  const handleQuestionSelect = useCallback(
-    (cardId: number | null, embedIndex?: number | null) => {
-      if (
-        cardId !== null &&
-        embedIndex !== null &&
-        embedIndex !== undefined &&
-        embedIndex >= 0 &&
-        selectedEmbedIndex !== null
-      ) {
-        // Only update the selected embed index if the sidebar is already open
-        dispatch(updateSelectedEmbedIndex(embedIndex));
-      }
-    },
-    [dispatch, selectedEmbedIndex],
-  );
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 

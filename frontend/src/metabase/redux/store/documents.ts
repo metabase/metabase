@@ -1,5 +1,7 @@
 import type { Card, Document } from "metabase-types/api";
 
+export type DocumentHost = "standalone" | "exploration";
+
 export interface CardEmbedRef {
   id: number;
   name?: string;
@@ -23,4 +25,5 @@ export interface DocumentsState {
   hoveredChildTargetId: string | undefined;
   hasUnsavedChanges: boolean;
   isHistorySidebarOpen: boolean;
+  documentHost: DocumentHost;
 }
