@@ -1085,8 +1085,7 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util}
    :uses #{config
            graph
            legacy-mbql
@@ -2488,6 +2487,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be
@@ -3313,7 +3313,6 @@
            lib
            logger
            models
-           permissions
            plugins
            premium-features
            search

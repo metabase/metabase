@@ -11,9 +11,7 @@
 (deftest collection-items-table-test
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items"
-      (mt/with-temp [:model/Collection collection                         {}
-                     :model/Card       _                                  {:collection_id (u/the-id collection)
-                                                                           :name          "a-card"}
+      (mt/with-temp [:model/Collection collection                         {:type          "library-data"}
                      :model/Table      {table-id :id :as table}           {:collection_id (u/the-id collection)
                                                                            :is_published  true}
                      :model/Table      {root-table-id :id :as root-table} {:is_published  true}]
@@ -54,7 +52,7 @@
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items - published tables require view-data plus query access"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Collection collection {}
+        (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      {table-id :id :as table} {:collection_id (u/the-id collection)
                                                                    :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
@@ -93,7 +91,7 @@
                   "User with both collection and data permissions should see published tables"))))))
     (testing "GET /api/collection/:id/items - without collection read permission, user should NOT see published table"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Collection collection {}
+        (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      table {:collection_id (u/the-id collection)
                                                 :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]

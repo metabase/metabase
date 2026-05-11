@@ -2,7 +2,6 @@
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -731,9 +730,9 @@
   [clause]
   (literal-text-value?*
    (driver-api/match-lite clause
-     [tag (opts :guard :lib/uuid) value] ;; mbql5
-     [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
-     _ clause)))
+                          [tag (opts :guard :lib/uuid) value] ;; mbql5
+                          [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
+                          _ clause)))
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
@@ -806,28 +805,28 @@
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
       (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
-    (u/prog1 (match [base-type coercion-strategy]
-               [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+    (u/prog1 (cond
+               (and (isa? base-type :type/Number) (isa? coercion-strategy :Coercion/UNIXTime->Temporal))
                (unix-timestamp->honeysql driver
                                          (semantic-type->unix-timestamp-unit coercion-strategy)
                                          honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Temporal)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Temporal))
                (cast-temporal-string driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+               (and (isa? base-type :type/*) (isa? coercion-strategy :Coercion/Bytes->Temporal))
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
+               (and (isa? base-type :type/DateTime) (isa? coercion-strategy :Coercion/DateTime->Date))
                (->date driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Float)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Float))
                (->float driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Integer)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Integer))
                (->integer driver honeysql-form)
 
-               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (and (= base-type :type/Float) (isa? coercion-strategy :Coercion/Float->Integer))
                (->integer driver honeysql-form)
 
                :else honeysql-form)
@@ -1100,14 +1099,14 @@
 (defn- remapped-order-by? [order-by]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
    (driver-api/match-lite order-by
-     [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
-     [_dir [_ _name opts]] opts)))
+                          [_dir (_opts :guard :lib/uuid) [_ (opts :guard :lib/uuid) _name]] opts ;; mbql5
+                          [_dir [_ _name opts]] opts)))
 
 (defn- remapped-breakout? [breakout]
   (driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
    (driver-api/match-lite breakout
-     [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
-     [_ _name opts] opts)))
+                          [_ (opts :guard :lib/uuid) _name] opts ;; mbql5
+                          [_ _name opts] opts)))
 
 (defmulti breakout-options-index
   "Returns the index of options in a breakout clause."
@@ -1258,8 +1257,8 @@
 
 (defn- normalize-interval [interval]
   (driver-api/match-lite interval
-    [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
-    _ interval))
+                         [tag (_opts :guard :lib/uuid) amount unit] [tag amount unit] ;; mbql5
+                         _ interval))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
@@ -1417,7 +1416,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-lite (nth (:aggregation *inner-query*) index)
+  (driver-api/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
@@ -1520,9 +1519,9 @@
   ([driver                                                :- :keyword
     clause :- vector?]
    (let [[clause-type id-or-name opts] (driver-api/match-lite clause
-                                         [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
-                                         [clause-type id-or-name opts]
-                                         _ clause)
+                                                              [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
+                                                              [clause-type id-or-name opts]
+                                                              _ clause)
          desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
                            ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
@@ -1622,7 +1621,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace-lite form
+   (driver-api/replace form
      [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
      [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
@@ -1772,8 +1771,8 @@
 (defn- uuid-field?
   [x]
   (let [[opts field-id] (driver-api/match-lite x
-                          [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
-                          [:field field-id opts] [opts field-id])]
+                                               [:field (opts :guard :lib/uuid) field-id] [opts field-id]  ;; mbql5
+                                               [:field field-id opts] [opts field-id])]
     (and (driver-api/mbql-clause? x)
          (isa? (or (:effective-type opts)
                    (when (pos-int? field-id)
@@ -1902,7 +1901,7 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-lite args
+    (if-let [field-arg (driver-api/match-one args
                          [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause
@@ -1912,7 +1911,7 @@
 (defn- unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (driver-api/match-lite maybe-value-form
+  (driver-api/match-one maybe-value-form
     [:value (opts :guard :lib/uuid) x & _] x ;; mbql5
     [:value x & _] x
     _              maybe-value-form))

@@ -81,9 +81,5 @@ export { Tables as tables } from "./tables";
 export { Fields as fields } from "./fields";
 export { Segments as segments } from "./segments";
 export { Measures as measures } from "./measures";
-export { Metrics as metrics } from "./metrics";
 
-export { Search as search } from "./search";
 export { Snippets as snippets } from "./snippets";
-
-export { entityCompatibleQuery, combineEntities } from "./utils";

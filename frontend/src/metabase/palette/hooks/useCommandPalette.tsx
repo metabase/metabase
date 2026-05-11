@@ -9,9 +9,8 @@ import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Search } from "metabase/entities/search";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -43,7 +42,6 @@ export const useCommandPalette = ({
   locationQuery: Query;
 }) => {
   const getIcon = useGetIcon();
-  const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
@@ -180,8 +178,7 @@ export const useCommandPalette = ({
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
         return searchResults.data.map((result, index) => {
-          const wrappedResult = Search.wrapEntity(result, dispatch);
-          const icon = getIcon(wrappedResult);
+          const icon = getIcon(result);
           return {
             id: `search-result-${result.model}-${result.id}`,
             name: result.name,
@@ -205,9 +202,9 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: modelToUrl(wrappedResult),
+              href: modelToUrl(result),
               iconColor: icon.color,
-              subtext: getSearchResultSubtext(wrappedResult),
+              subtext: getSearchResultSubtext(result),
             },
           };
         });
@@ -226,7 +223,6 @@ export const useCommandPalette = ({
     return [];
   }, [
     disabled,
-    dispatch,
     debouncedSearchText,
     searchQuery,
     isSearchLoading,
