@@ -60,7 +60,7 @@
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator
-                  [:threads :metrics :dimensions :timelines :queries :documents])
+                  [:threads [:metrics :card] :dimensions :timelines :queries :documents])
       (update :threads #(some->> % (mapv attach-thread-groups)))))
 
 (defn- find-dimension-target
