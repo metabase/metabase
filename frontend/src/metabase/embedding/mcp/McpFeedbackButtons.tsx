@@ -62,11 +62,13 @@ export function McpFeedbackButtons({
   const [modalData, setModalData] = useState<{ positive: boolean } | null>(
     null,
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendToast] = useToast();
 
   useEffect(() => {
     setSubmitted(null);
     setModalData(null);
+    setIsSubmitting(false);
   }, [prompt, query]);
 
   const handleFeedback = async (
@@ -83,6 +85,7 @@ export function McpFeedbackButtons({
     } as const;
 
     try {
+      setIsSubmitting(true);
       await submitMcpFeedback({
         instanceUrl,
         sessionToken,
@@ -94,6 +97,8 @@ export function McpFeedbackButtons({
       setModalData(null);
     } catch {
       sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -121,6 +126,7 @@ export function McpFeedbackButtons({
 
       {modalData && (
         <McpFeedbackModal
+          isSubmitting={isSubmitting}
           positive={modalData.positive}
           onClose={() => setModalData(null)}
           onSubmit={(values) =>

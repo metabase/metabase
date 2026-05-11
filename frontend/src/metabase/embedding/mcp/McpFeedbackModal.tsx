@@ -11,12 +11,14 @@ export interface McpFeedbackModalValues {
 }
 
 interface McpFeedbackModalProps {
+  isSubmitting: boolean;
   positive: boolean;
   onClose: () => void;
   onSubmit: (values: McpFeedbackModalValues) => void;
 }
 
 export function McpFeedbackModal({
+  isSubmitting,
   positive,
   onClose,
   onSubmit,
@@ -59,12 +61,14 @@ export function McpFeedbackModal({
                 />
               </Stack>
             )}
+
             <Stack gap="xs">
               <Text>
                 {positive
                   ? t`Any details that you'd like to share? (optional)`
                   : t`What could be improved? (optional)`}
               </Text>
+
               <FormTextarea
                 name="freeform_feedback"
                 placeholder={
@@ -78,11 +82,17 @@ export function McpFeedbackModal({
                 autosize
               />
             </Stack>
+
             <Group justify="flex-end" gap="md" mt="md">
-              <Button variant="subtle" onClick={onClose}>
+              <Button
+                variant="subtle"
+                disabled={isSubmitting}
+                onClick={onClose}
+              >
                 {t`Cancel`}
               </Button>
-              <Button variant="filled" type="submit">
+
+              <Button variant="filled" type="submit" loading={isSubmitting}>
                 {t`Submit`}
               </Button>
             </Group>
