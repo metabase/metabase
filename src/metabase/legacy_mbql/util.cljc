@@ -13,11 +13,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some mapv every? not-empty get-in #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
@@ -84,7 +84,7 @@
 (defn- combine-compound-filters-of-type
   {:deprecated "0.57.0"}
   [compound-type subclauses]
-  (mapcat #(lib.util.match/match-lite %
+  (mapcat #(match/match-one %
              [#{compound-type} & args] args
              _                         [%])
           subclauses))
@@ -160,7 +160,7 @@
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   {:deprecated "0.57.0"}
   [m]
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
     [:and
      [:between lat-field lat-min lat-max]
@@ -170,7 +170,7 @@
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   {:deprecated "0.57.0"}
   [m]
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
@@ -194,7 +194,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:is-empty clause]
     (if (emptyable? clause)
       [:or [:= clause nil] [:= clause ""]]
@@ -210,7 +210,7 @@
   {:deprecated "0.57.0"}
   [m unit]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
 
@@ -223,7 +223,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:time-interval field-or-expression n unit] (&recur [:time-interval field-or-expression n unit nil])
 
     ;; replace current/last/next with corresponding value of n and recur
@@ -275,7 +275,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite
+  (match/replace
     m
     [:relative-time-interval col value bucket offset-value offset-bucket]
     (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
@@ -298,7 +298,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite
+  (match/replace
     m
     [:during col value unit]
     (let [col-default-bucket (cond-> col
@@ -315,7 +315,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:if & args]
     (into [:case] args)))
 
@@ -324,7 +324,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:in & args]
     (into [:=] args)
 
@@ -340,7 +340,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
@@ -359,7 +359,7 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
                         [:= field x]))
@@ -383,12 +383,12 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [clause field & (args :guard (some #{[:relative-datetime :current]} args))]
-    (let [temporal-unit (or (lib.util.match/match-lite field
+    (let [temporal-unit (or (match/match-one field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
-      (into [clause field] (lib.util.match/replace-lite args
+      (into [clause field] (match/replace args
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
@@ -420,14 +420,14 @@
   {:deprecated "0.57.0"}
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite m
+  (match/replace m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
 (defn- desugar-divide-with-extra-args
   {:deprecated "0.57.0"}
   [expression]
-  (lib.util.match/replace-lite expression
+  (match/replace expression
     [:/ x y z & more]
     (&recur (into [:/ [:/ x y]] (cons z more)))))
 
@@ -451,7 +451,7 @@
   {:deprecated "0.57.0"}
   [expression]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib.util.match/replace-lite expression
+  (match/replace expression
     [:month-name column]
     (&recur (temporal-case-expression column :month-of-year 12))
     [:quarter-name column]
@@ -721,7 +721,7 @@
   (not-empty
    (into #{}
          (comp cat (filter some?))
-         (lib.util.match/match-many coll
+         (match/match-many coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
 

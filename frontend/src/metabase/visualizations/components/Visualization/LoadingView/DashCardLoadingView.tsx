@@ -6,9 +6,10 @@ import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, HoverCard, Icon, Text, Transition } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
-import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { CardDisplayType } from "metabase-types/api";
+
+import type { LoadingViewProps } from "./LoadingView";
 
 export const DashCardLoadingView = ({
   isSlow,
