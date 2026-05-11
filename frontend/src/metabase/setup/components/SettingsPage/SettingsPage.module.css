@@ -1,7 +1,17 @@
+.Page {
+  background-color: var(--mb-color-background-secondary);
+  min-height: 100vh;
+}
+
+:global(main):has(> .Page) {
+  background-color: var(--mb-color-background-secondary);
+}
+
 .PageHeader {
   margin-bottom: 4rem;
   padding: 1rem;
   border-bottom: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
 }
 
 .Decoy {
