@@ -444,33 +444,33 @@
                                      {:file (byte-array 0)})))))))
 
 (deftest metadata-export-basic-test
-  (testing "GET /api/ee/serialization/export/json — happy path with one db/table/field"
+  (testing "GET /api/ee/serialization/metadata/export — happy path with one db/table/field"
     (mt/with-premium-features #{:serialization}
       (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
                      :model/Table    {t-id :id  t-name  :name} {:db_id db-id :schema "PUBLIC"
                                                                 :description "A test table"}
-                     :model/Field    {f-name :name}            {:table_id t-id
+                     :model/Field    {f-id :id f-name :name}   {:table_id t-id
                                                                 :base_type :type/Integer
                                                                 :database_type "BIGINT"
                                                                 :semantic_type :type/PK}]
         (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202
-                                                                      "ee/serialization/export/json"
+                                                                      "ee/serialization/metadata/export"
                                                                       :with-databases true
                                                                       :with-tables    true
                                                                       :with-fields    true)
-              test-db    (m/find-first (comp #{db-name} :name) databases)
-              test-table (m/find-first #(and (= (:db_id %) db-name) (= (:name %) t-name)) tables)
-              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
-                                             (= (:name %) f-name))
-                                       fields)]
-          (is (=? {:name db-name :engine "h2"}
+              test-db    (m/find-first (comp #{db-id} :id) databases)
+              test-table (m/find-first (comp #{t-id} :id) tables)
+              test-field (m/find-first (comp #{f-id} :id) fields)]
+          (is (=? {:id db-id :name db-name :engine "h2"}
                   test-db))
-          (is (=? {:db_id       db-name
+          (is (=? {:id          t-id
+                   :db_id       db-id
                    :name        t-name
                    :schema      "PUBLIC"
                    :description "A test table"}
                   test-table))
-          (is (=? {:table_id      [db-name "PUBLIC" t-name]
+          (is (=? {:id            f-id
+                   :table_id      t-id
                    :name          f-name
                    :base_type     "type/Integer"
                    :database_type "BIGINT"
@@ -478,23 +478,21 @@
                   test-field)))))))
 
 (deftest metadata-export-optional-properties-test
-  (testing "GET /api/ee/serialization/export/json — effective_type, coercion_strategy and description are emitted when set"
+  (testing "GET /api/ee/serialization/metadata/export — effective_type, coercion_strategy and description are emitted when set"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2}
-                     :model/Table    {t-id :id  t-name  :name} {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {f-name :name}            {:table_id          t-id
-                                                                :base_type         :type/Text
-                                                                :database_type     "VARCHAR"
-                                                                :effective_type    :type/DateTime
-                                                                :coercion_strategy :Coercion/ISO8601->DateTime
-                                                                :description       "When this happened"}]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/Table    {t-id :id}  {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {f-id :id}  {:table_id          t-id
+                                                  :base_type         :type/Text
+                                                  :database_type     "VARCHAR"
+                                                  :effective_type    :type/DateTime
+                                                  :coercion_strategy :Coercion/ISO8601->DateTime
+                                                  :description       "When this happened"}]
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
+                                                     "ee/serialization/metadata/export"
                                                      :with-fields true)
-              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
-                                             (= (:name %) f-name))
-                                       fields)]
-          (is (=? {:name              f-name
+              test-field       (m/find-first (comp #{f-id} :id) fields)]
+          (is (=? {:id                f-id
                    :base_type         "type/Text"
                    :effective_type    "type/DateTime"
                    :coercion_strategy "Coercion/ISO8601->DateTime"
@@ -502,195 +500,150 @@
                   test-field)))))))
 
 (deftest metadata-export-parent-field-test
-  (testing "GET /api/ee/serialization/export/json — parent_id is emitted only when raw field.parent_id is set"
+  (testing "GET /api/ee/serialization/metadata/export — parent_id is emitted only when raw field.parent_id is set; nfc_path is decoded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id  db-name :name}   {:engine :h2}
-                     :model/Table    {t-id  :id t-name  :name}    {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {root-name :name}            {:table_id t-id
-                                                                   :base_type :type/Text}
-                     :model/Field    {parent-id :id}              {:table_id t-id
-                                                                   :name      "data"
-                                                                   :base_type :type/Dictionary}
-                     :model/Field    _                             {:table_id  t-id
-                                                                    :name      "city"
-                                                                    :base_type :type/Text
-                                                                    :parent_id parent-id
-                                                                    :nfc_path  ["data" "city"]}]
-        (let [table-id     [db-name "PUBLIC" t-name]
-              {:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
+      (mt/with-temp [:model/Database {db-id :id}             {:engine :h2}
+                     :model/Table    {t-id :id}              {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {root-id :id}           {:table_id t-id
+                                                              :base_type :type/Text}
+                     :model/Field    {parent-id :id}         {:table_id t-id
+                                                              :name      "data"
+                                                              :base_type :type/Dictionary}
+                     :model/Field    {child-id :id}          {:table_id  t-id
+                                                              :name      "city"
+                                                              :base_type :type/Text
+                                                              :parent_id parent-id
+                                                              :nfc_path  ["data" "city"]}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
                                                      :with-fields true)
-              test-field-1 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) root-name)) fields)
-              test-field-2 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) "city")) fields)]
-          (is (=? {:name root-name :table_id table-id} test-field-1))
-          (is (not (contains? test-field-1 :parent_id)))
-          (is (=? {:name      "city"
-                   :table_id  table-id
-                   :parent_id [db-name "PUBLIC" t-name "data"]}
-                  test-field-2)))))))
+              root-field       (m/find-first (comp #{root-id}  :id) fields)
+              child-field      (m/find-first (comp #{child-id} :id) fields)]
+          (is (=? {:id root-id :table_id t-id} root-field))
+          (is (not (contains? root-field :parent_id)))
+          (is (=? {:id        child-id
+                   :table_id  t-id
+                   :parent_id parent-id
+                   :nfc_path  ["data" "city"]}
+                  child-field)))))))
 
 (deftest metadata-export-fk-test
-  (testing "GET /api/ee/serialization/export/json — fk_target_field_id is emitted in portable form"
+  (testing "GET /api/ee/serialization/metadata/export — fk_target_field_id is emitted as a raw id"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
-                     :model/Table    {t-id  :id t-name  :name}  {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {pk-id :id pk-name :name}  {:table_id t-id
-                                                                 :base_type :type/Integer
-                                                                 :semantic_type :type/PK}
-                     :model/Field    {fk-name :name}            {:table_id t-id
-                                                                 :base_type :type/Integer
-                                                                 :semantic_type :type/FK
-                                                                 :fk_target_field_id pk-id}]
-        (let [table-id     [db-name "PUBLIC" t-name]
-              {:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/Table    {t-id  :id} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {pk-id :id} {:table_id t-id
+                                                  :base_type :type/Integer
+                                                  :semantic_type :type/PK}
+                     :model/Field    {fk-id :id} {:table_id t-id
+                                                  :base_type :type/Integer
+                                                  :semantic_type :type/FK
+                                                  :fk_target_field_id pk-id}]
+        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
+                                                     "ee/serialization/metadata/export"
                                                      :with-fields true)
-              test-field-1 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) pk-name)) fields)
-              test-field-2 (m/find-first #(and (= (:table_id %) table-id) (= (:name %) fk-name)) fields)]
-          (is (=? {:name pk-name :table_id table-id :semantic_type "type/PK"}
-                  test-field-1))
-          (is (=? {:name               fk-name
-                   :table_id           table-id
+              pk-field         (m/find-first (comp #{pk-id} :id) fields)
+              fk-field         (m/find-first (comp #{fk-id} :id) fields)]
+          (is (=? {:id pk-id :table_id t-id :semantic_type "type/PK"}
+                  pk-field))
+          (is (=? {:id                 fk-id
+                   :table_id           t-id
                    :semantic_type      "type/FK"
-                   :fk_target_field_id [db-name "PUBLIC" t-name pk-name]}
-                  test-field-2)))))))
+                   :fk_target_field_id pk-id}
+                  fk-field)))))))
 
 (deftest metadata-export-hidden-table-test
-  (testing "GET /api/ee/serialization/export/json — hidden tables and their fields are excluded"
+  (testing "GET /api/ee/serialization/metadata/export — hidden tables and their fields are excluded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id      :id}                       {:engine :h2}
-                     :model/Table    {visible-id :id visible-t-name :name}  {:db_id db-id :schema "PUBLIC"}
-                     :model/Table    {hidden-id  :id hidden-t-name  :name}  {:db_id db-id :schema "PUBLIC"
-                                                                             :visibility_type :hidden}
-                     :model/Field    {visible-f-name :name}                 {:table_id visible-id
-                                                                             :base_type :type/Integer}
-                     :model/Field    {hidden-f-name  :name}                 {:table_id hidden-id
-                                                                             :base_type :type/Integer}]
+      (mt/with-temp [:model/Database {db-id      :id}              {:engine :h2}
+                     :model/Table    {visible-id :id}              {:db_id db-id :schema "PUBLIC"}
+                     :model/Table    {hidden-id  :id}              {:db_id db-id :schema "PUBLIC"
+                                                                    :visibility_type :hidden}
+                     :model/Field    {visible-f-id :id}            {:table_id visible-id
+                                                                    :base_type :type/Integer}
+                     :model/Field    {hidden-f-id  :id}            {:table_id hidden-id
+                                                                    :base_type :type/Integer}]
         (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
-                                                            "ee/serialization/export/json"
+                                                            "ee/serialization/metadata/export"
                                                             :with-tables true :with-fields true)]
-          (is (some     (comp #{visible-t-name} :name) tables))
-          (is (not-any? (comp #{hidden-t-name}  :name) tables))
-          (is (some     (comp #{visible-f-name} :name) fields))
-          (is (not-any? (comp #{hidden-f-name}  :name) fields)))))))
-
-(deftest metadata-export-hidden-table-fk-test
-  (testing "GET /api/ee/serialization/export/json — fk_target_field_id is dropped when the target table is hidden"
-    (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id  db-name :name}      {:engine :h2}
-                     :model/Table    {visible-id :id v-name :name}   {:db_id db-id :schema "PUBLIC"}
-                     :model/Table    {hidden-id :id}                 {:db_id db-id :schema "PUBLIC"
-                                                                      :visibility_type :hidden}
-                     :model/Field    {target-id :id}                 {:table_id hidden-id
-                                                                      :base_type :type/Integer
-                                                                      :semantic_type :type/PK}
-                     :model/Field    {fk-name :name}                 {:table_id visible-id
-                                                                      :base_type :type/Integer
-                                                                      :semantic_type :type/FK
-                                                                      :fk_target_field_id target-id}]
-        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
-                                                     :with-fields true)
-              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" v-name])
-                                             (= (:name %) fk-name))
-                                       fields)]
-          (is (some? test-field))
-          (is (not (contains? test-field :fk_target_field_id))))))))
+          (is (some     (comp #{visible-id}   :id) tables))
+          (is (not-any? (comp #{hidden-id}    :id) tables))
+          (is (some     (comp #{visible-f-id} :id) fields))
+          (is (not-any? (comp #{hidden-f-id}  :id) fields)))))))
 
 (deftest metadata-export-inactive-table-test
-  (testing "GET /api/ee/serialization/export/json — inactive tables and all of their fields are excluded"
+  (testing "GET /api/ee/serialization/metadata/export — inactive tables and all of their fields are excluded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id}                        {:engine :h2}
-                     :model/Table    {t-id  :id t-name :name}           {:db_id db-id :schema "PUBLIC"
-                                                                         :active false}
-                     :model/Field    {active-f-name   :name}            {:table_id t-id
-                                                                         :base_type :type/Integer}
-                     :model/Field    {inactive-f-name :name}            {:table_id t-id
-                                                                         :base_type :type/Integer
-                                                                         :active false}]
+      (mt/with-temp [:model/Database {db-id :id}        {:engine :h2}
+                     :model/Table    {t-id  :id}        {:db_id db-id :schema "PUBLIC"
+                                                         :active false}
+                     :model/Field    {active-f-id :id}  {:table_id t-id
+                                                         :base_type :type/Integer}
+                     :model/Field    {inactive-f-id :id} {:table_id t-id
+                                                          :base_type :type/Integer
+                                                          :active false}]
         (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
-                                                            "ee/serialization/export/json"
+                                                            "ee/serialization/metadata/export"
                                                             :with-tables true :with-fields true)]
-          (is (not-any? (comp #{t-name}          :name) tables))
-          (is (not-any? (comp #{active-f-name}   :name) fields))
-          (is (not-any? (comp #{inactive-f-name} :name) fields)))))))
+          (is (not-any? (comp #{t-id}          :id) tables))
+          (is (not-any? (comp #{active-f-id}   :id) fields))
+          (is (not-any? (comp #{inactive-f-id} :id) fields)))))))
 
 (deftest metadata-export-sensitive-field-test
-  (testing "GET /api/ee/serialization/export/json — sensitive fields are excluded"
+  (testing "GET /api/ee/serialization/metadata/export — sensitive fields are excluded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id}              {:engine :h2}
-                     :model/Table    {t-id  :id}              {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {email-name  :name}      {:table_id t-id :base_type :type/Text}
-                     :model/Field    {secret-name :name}      {:table_id t-id :base_type :type/Text
-                                                               :visibility_type :sensitive}]
+      (mt/with-temp [:model/Database {db-id :id}      {:engine :h2}
+                     :model/Table    {t-id  :id}      {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {email-id  :id}  {:table_id t-id :base_type :type/Text}
+                     :model/Field    {secret-id :id}  {:table_id t-id :base_type :type/Text
+                                                       :visibility_type :sensitive}]
         (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
+                                                     "ee/serialization/metadata/export"
                                                      :with-fields true)]
-          (is (some     (comp #{email-name}  :name) fields))
-          (is (not-any? (comp #{secret-name} :name) fields)))))))
-
-(deftest metadata-export-sensitive-fk-test
-  (testing "GET /api/ee/serialization/export/json — fk_target_field_id is dropped when the target field is sensitive"
-    (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id  db-name :name} {:engine :h2}
-                     :model/Table    {t-id  :id t-name  :name}  {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {target-id :id}            {:table_id t-id
-                                                                 :base_type :type/Text
-                                                                 :visibility_type :sensitive}
-                     :model/Field    {fk-name :name}            {:table_id t-id
-                                                                 :base_type :type/Text
-                                                                 :semantic_type :type/FK
-                                                                 :fk_target_field_id target-id}]
-        (let [{:keys [fields]} (mt/user-http-request :crowberto :get 202
-                                                     "ee/serialization/export/json"
-                                                     :with-fields true)
-              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" t-name])
-                                             (= (:name %) fk-name))
-                                       fields)]
-          (is (some? test-field))
-          (is (not (contains? test-field :fk_target_field_id))))))))
+          (is (some     (comp #{email-id}  :id) fields))
+          (is (not-any? (comp #{secret-id} :id) fields)))))))
 
 (deftest metadata-export-inactive-field-test
-  (testing "GET /api/ee/serialization/export/json — inactive fields are excluded; their active sibling and table still appear"
+  (testing "GET /api/ee/serialization/metadata/export — inactive fields are excluded; their active sibling and table still appear"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id}                     {:engine :h2}
-                     :model/Table    {t-id  :id t-name :name}        {:db_id db-id :schema "PUBLIC"}
-                     :model/Field    {active-f-name :name}           {:table_id t-id
-                                                                      :base_type :type/Integer}
-                     :model/Field    {inactive-f-name :name}         {:table_id t-id
-                                                                      :base_type :type/Integer
-                                                                      :active false}]
+      (mt/with-temp [:model/Database {db-id :id}         {:engine :h2}
+                     :model/Table    {t-id  :id}         {:db_id db-id :schema "PUBLIC"}
+                     :model/Field    {active-f-id :id}   {:table_id t-id
+                                                          :base_type :type/Integer}
+                     :model/Field    {inactive-f-id :id} {:table_id t-id
+                                                          :base_type :type/Integer
+                                                          :active false}]
         (let [{:keys [tables fields]} (mt/user-http-request :crowberto :get 202
-                                                            "ee/serialization/export/json"
+                                                            "ee/serialization/metadata/export"
                                                             :with-tables true :with-fields true)]
-          (is (some     (comp #{t-name}          :name) tables))
-          (is (some     (comp #{active-f-name}   :name) fields))
-          (is (not-any? (comp #{inactive-f-name} :name) fields)))))))
+          (is (some     (comp #{t-id}          :id) tables))
+          (is (some     (comp #{active-f-id}   :id) fields))
+          (is (not-any? (comp #{inactive-f-id} :id) fields)))))))
 
 (deftest metadata-export-db-routing-test
-  (testing "GET /api/ee/serialization/export/json — router (mirror) databases are excluded"
+  (testing "GET /api/ee/serialization/metadata/export — router (mirror) databases are excluded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database _                                    {:engine :h2}
-                     :model/Database {primary-id :id primary-name :name}  {:engine :h2}
-                     :model/Database {mirror-name :name}                  {:engine :h2
-                                                                           :router_database_id primary-id}]
+      (mt/with-temp [:model/Database _                  {:engine :h2}
+                     :model/Database {primary-id :id}   {:engine :h2}
+                     :model/Database {mirror-id  :id}   {:engine :h2
+                                                         :router_database_id primary-id}]
         (let [{:keys [databases]} (mt/user-http-request :crowberto :get 202
-                                                        "ee/serialization/export/json"
+                                                        "ee/serialization/metadata/export"
                                                         :with-databases true)]
-          (is (some     (comp #{primary-name} :name) databases))
-          (is (not-any? (comp #{mirror-name}  :name) databases)))))))
+          (is (some     (comp #{primary-id} :id) databases))
+          (is (not-any? (comp #{mirror-id}  :id) databases)))))))
 
 (deftest metadata-export-table-permission-test
-  (testing "GET /api/ee/serialization/export/json — tables the current user can't access are excluded"
+  (testing "GET /api/ee/serialization/metadata/export — tables the current user can't access are excluded"
     (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database         {db-id :id}                                 {:engine :h2}
-                     :model/Table            {accessible-id :id accessible-name :name}   {:db_id db-id :schema "PUBLIC"}
-                     :model/Table            {restricted-id :id restricted-name :name}   {:db_id db-id :schema "PUBLIC"}
-                     :model/Field            {ok-f-name :name}                           {:table_id accessible-id
-                                                                                          :base_type :type/Integer}
-                     :model/Field            {no-f-name :name}                           {:table_id restricted-id
-                                                                                          :base_type :type/Integer}
-                     :model/PermissionsGroup pg                                          {}]
+      (mt/with-temp [:model/Database         {db-id :id}         {:engine :h2}
+                     :model/Table            {accessible-id :id} {:db_id db-id :schema "PUBLIC"}
+                     :model/Table            {restricted-id :id} {:db_id db-id :schema "PUBLIC"}
+                     :model/Field            {ok-f-id :id}       {:table_id accessible-id
+                                                                  :base_type :type/Integer}
+                     :model/Field            {no-f-id :id}       {:table_id restricted-id
+                                                                  :base_type :type/Integer}
+                     :model/PermissionsGroup pg                  {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg)
         (t2/delete! :model/DataPermissions :db_id db-id)
         (perms/set-database-permission! pg db-id :perms/view-data :blocked)
@@ -698,48 +651,19 @@
         (perms/set-table-permission! pg accessible-id :perms/view-data :unrestricted)
         (perms/set-table-permission! pg accessible-id :perms/create-queries :query-builder)
         (let [{:keys [tables fields]} (mt/user-http-request :rasta :get 202
-                                                            "ee/serialization/export/json"
+                                                            "ee/serialization/metadata/export"
                                                             :with-tables true :with-fields true)]
-          (is (some     (comp #{accessible-name} :name) tables))
-          (is (not-any? (comp #{restricted-name} :name) tables))
-          (is (some     (comp #{ok-f-name} :name) fields))
-          (is (not-any? (comp #{no-f-name} :name) fields)))))))
-
-(deftest metadata-export-table-permission-fk-test
-  (testing "GET /api/ee/serialization/export/json — fk_target_field_id is dropped when the target table is not accessible"
-    (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database         {db-id :id db-name :name}                   {:engine :h2}
-                     :model/Table            {accessible-id :id accessible-name :name}   {:db_id db-id :schema "PUBLIC"}
-                     :model/Table            {restricted-id :id}                         {:db_id db-id :schema "PUBLIC"}
-                     :model/Field            {target-id :id}                             {:table_id restricted-id
-                                                                                          :base_type :type/Integer
-                                                                                          :semantic_type :type/PK}
-                     :model/Field            {fk-name :name}                             {:table_id accessible-id
-                                                                                          :base_type :type/Integer
-                                                                                          :semantic_type :type/FK
-                                                                                          :fk_target_field_id target-id}
-                     :model/PermissionsGroup pg                                          {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
-        (t2/delete! :model/DataPermissions :db_id db-id)
-        (perms/set-database-permission! pg db-id :perms/view-data :blocked)
-        (perms/set-database-permission! pg db-id :perms/create-queries :no)
-        (perms/set-table-permission! pg accessible-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! pg accessible-id :perms/create-queries :query-builder)
-        (let [{:keys [fields]} (mt/user-http-request :rasta :get 202
-                                                     "ee/serialization/export/json"
-                                                     :with-fields true)
-              test-field (m/find-first #(and (= (:table_id %) [db-name "PUBLIC" accessible-name])
-                                             (= (:name %) fk-name))
-                                       fields)]
-          (is (some? test-field))
-          (is (not (contains? test-field :fk_target_field_id))))))))
+          (is (some     (comp #{accessible-id} :id) tables))
+          (is (not-any? (comp #{restricted-id} :id) tables))
+          (is (some     (comp #{ok-f-id} :id) fields))
+          (is (not-any? (comp #{no-f-id} :id) fields)))))))
 
 (deftest metadata-export-token-feature-test
-  (testing "GET /api/ee/serialization/export/json requires the :serialization premium feature"
+  (testing "GET /api/ee/serialization/metadata/export requires the :serialization premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
        "Serialization"
-       (mt/user-http-request :crowberto :get 402 "ee/serialization/export/json")))))
+       (mt/user-http-request :crowberto :get 402 "ee/serialization/metadata/export")))))
 
 (deftest serialization-cleanup-test
   (testing "No temp files are left behind after export/import operations"

@@ -72,7 +72,7 @@
 
 (deftest untgz-max-uncompressed-bytes-test
   (testing "untgz aborts when total uncompressed bytes exceed :max-uncompressed-bytes"
-    (let [content (.getBytes (apply str (repeat 1024 \a)) "UTF-8")
+    (let [content (.getBytes ^String (apply str (repeat 1024 \a)) "UTF-8")
           archive (create-multi-entry-tgz 10 content) ;; 10 KiB total uncompressed
           out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
                     .mkdirs)]

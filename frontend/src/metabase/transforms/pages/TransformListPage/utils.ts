@@ -1,6 +1,9 @@
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/entities/collections/utils";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -44,6 +47,53 @@ export function getIncrementalWarning(
   }
 
   return undefined;
+}
+
+function areTransformWarningsEqual(
+  a: Map<number, string>,
+  b: Map<number, string>,
+): boolean {
+  if (a.size !== b.size) {
+    return false;
+  }
+  for (const [key, value] of a) {
+    if (b.get(key) !== value) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function useGetTransformWarnings(transforms: Transform[] | undefined) {
+  const metadata = useSelector(getMetadata);
+  const computedWarningsByTransformId = useMemo(() => {
+    const warnings = new Map<number, string>();
+    for (const transform of transforms ?? []) {
+      const warning = getIncrementalWarning(transform, metadata);
+      if (warning) {
+        warnings.set(transform.id, warning);
+      }
+    }
+    return warnings;
+  }, [transforms, metadata]);
+
+  // Reuse the previous Map reference when the content is unchanged so that
+  // `columnDefs` (and therefore the TanStack TreeTable's column model) stays
+  // stable across `metadata` reference churn. Without this, fetching a single
+  // collection (e.g. opening the edit-collection modal) recomputes `metadata`,
+  // which propagates a new column reference, remounts row cells, and tears
+  // down any modal that lives inside `CollectionRowMenu`.
+  const warningsRef = useRef(computedWarningsByTransformId);
+  if (
+    warningsRef.current !== computedWarningsByTransformId &&
+    !areTransformWarningsEqual(
+      warningsRef.current,
+      computedWarningsByTransformId,
+    )
+  ) {
+    warningsRef.current = computedWarningsByTransformId;
+  }
+  return warningsRef.current;
 }
 
 export function buildTreeData(

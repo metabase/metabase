@@ -171,20 +171,21 @@
                                  :type   :category
                                  :target $price
                                  :value  "4"}]})]
-      (testing "PII retention enabled -> parameters populated"
-        (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
-          (with-query-execution! [qe query]
-            (process-userland-query query)
-            (is (=? {:parameterized true
-                     :parameters    some?}
-                    (qe))))))
-      (testing "PII retention disabled -> parameters nil, parameterized still set"
-        (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
-          (with-query-execution! [qe query]
-            (process-userland-query query)
-            (is (=? {:parameterized true
-                     :parameters    nil}
-                    (qe)))))))))
+      (mt/with-premium-features #{:audit-app}
+        (testing "PII retention enabled -> parameters populated"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    some?}
+                      (qe))))))
+        (testing "PII retention disabled -> parameters nil, parameterized still set"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    nil}
+                      (qe))))))))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 

@@ -75,10 +75,10 @@
     (invoke-helper! runtime path 'field args)))
 
 (defn ensure-query-result!
-  "Assert that structured evaluation produced a pMBQL query."
+  "Assert that structured evaluation produced a MBQL 5 query."
   [result]
   (when-not (mbql/query? result)
-    (throw (ex-info "Structured program evaluation must return a pMBQL query map."
+    (throw (ex-info "Structured program evaluation must return a MBQL 5 query map."
                     {:result-type (type result)
                      :result      result})))
   result)
