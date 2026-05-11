@@ -14,6 +14,9 @@
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
       "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-specific-imports": ["./frontend/src/metabase/utils/noop"],
+      "sdk-iframe-embedding-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "sdk-iframe-embedding-script-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
       "custom-viz": ["./enterprise/frontend/src/custom-viz/src/index.ts"]
     },
     "plugins": [
