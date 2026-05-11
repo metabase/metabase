@@ -25,7 +25,7 @@ type SystemPromptPageProps = {
 function SystemPromptPage(props: SystemPromptPageProps) {
   const { title, description, settingKey } = props;
   const { handleInputChange, handleBlur, inputValue } =
-    useAdminSettingWithBlurInput<string | null>(settingKey);
+    useAdminSettingWithBlurInput(settingKey);
 
   return (
     <SettingsPageWrapper title={title} mt="sm">

@@ -4,7 +4,7 @@ import { useAdminSetting } from "metabase/api/utils";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import type {
   EnterpriseSettingKey,
-  EnterpriseSettingValue,
+  EnterpriseSettings,
 } from "metabase-types/api";
 
 /**
@@ -12,20 +12,21 @@ import type {
  * For text settings whose saves shouldn't be debounced (e.g. Metabot system
  * prompts, where each save changes LLM behavior and the audit log).
  *
- * Dirty check uses `===`, so `T` should be a primitive.
+ * Dirty check uses `===` - safe for primitive setting values only.
  */
-export function useAdminSettingWithBlurInput<T>(
-  settingName: EnterpriseSettingKey,
+export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
+  settingName: K,
 ) {
   const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  const [inputValue, setInputValue] = useState<T>(settingValue as T);
-  const lastSavedRef = useRef<T | undefined>(undefined);
+  const [inputValue, setInputValue] =
+    useState<EnterpriseSettings[K]>(settingValue);
+  const lastSavedRef = useRef<EnterpriseSettings[K] | undefined>(undefined);
 
   // `lastSavedRef.current === undefined` is the "not yet initialized" sentinel.
   useEffect(() => {
     if (lastSavedRef.current === undefined && settingValue !== undefined) {
-      setInputValue(settingValue as T);
-      lastSavedRef.current = settingValue as T;
+      setInputValue(settingValue);
+      lastSavedRef.current = settingValue;
     }
   }, [settingValue]);
 
@@ -38,7 +39,7 @@ export function useAdminSettingWithBlurInput<T>(
     lastSavedRef.current = inputValue;
     updateSetting({
       key: settingName,
-      value: inputValue as EnterpriseSettingValue<typeof settingName>,
+      value: inputValue,
     });
   }, [isDirty, inputValue, settingName, updateSetting]);
 
@@ -51,10 +52,6 @@ export function useAdminSettingWithBlurInput<T>(
 
   // Browsers won't wait for async saves during unload, so prompt the user.
   useBeforeUnload(isDirty);
-
-  const handleInputChange = useCallback((newValue: T) => {
-    setInputValue(newValue);
-  }, []);
 
   const handleBlur = useCallback(() => {
     saveRef.current();
@@ -69,7 +66,7 @@ export function useAdminSettingWithBlurInput<T>(
 
   return {
     inputValue,
-    handleInputChange,
+    handleInputChange: setInputValue,
     handleBlur,
   };
 }
