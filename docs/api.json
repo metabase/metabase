@@ -2164,14 +2164,37 @@
         },
         "required" : [ "min", "fixed" ]
       },
-      "metabase-enterprise.serialization.schema.database-info" : {
+      "metabase-enterprise.serialization.schema.export-metadata-response" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-database"
+            }
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-field"
+            }
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-table"
+            }
+          }
+        }
+      },
+      "metabase-enterprise.serialization.schema.exported-database" : {
         "type" : "object",
         "properties" : {
           "engine" : {
             "type" : "string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-database-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
           },
           "name" : {
             "type" : "string"
@@ -2179,32 +2202,14 @@
         },
         "required" : [ "id", "name", "engine" ]
       },
-      "metabase-enterprise.serialization.schema.external-database-id" : {
-        "type" : "string"
-      },
-      "metabase-enterprise.serialization.schema.external-field-id" : { },
-      "metabase-enterprise.serialization.schema.external-table-id" : {
-        "type" : "array",
-        "prefixItems" : [ {
-          "type" : "string"
-        }, {
-          "oneOf" : [ {
-            "type" : "string"
-          }, {
-            "type" : "null"
-          } ]
-        }, {
-          "type" : "string"
-        } ]
-      },
-      "metabase-enterprise.serialization.schema.field-info" : {
+      "metabase-enterprise.serialization.schema.exported-field" : {
         "type" : "object",
         "properties" : {
           "base_type" : {
             "type" : "string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
           "coercion_strategy" : {
             "type" : "string"
@@ -2216,7 +2221,7 @@
             "type" : "string"
           },
           "table_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-table-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
           },
           "nfc_path" : {
             "type" : "array",
@@ -2228,7 +2233,7 @@
             "type" : "string"
           },
           "parent_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           },
           "database_type" : {
             "type" : "string"
@@ -2237,45 +2242,22 @@
             "type" : "string"
           },
           "fk_target_field_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-field-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
           }
         },
         "required" : [ "id", "table_id", "name", "base_type" ]
       },
-      "metabase-enterprise.serialization.schema.metadata-export-response" : {
-        "type" : "object",
-        "properties" : {
-          "databases" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.database-info"
-            }
-          },
-          "fields" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.field-info"
-            }
-          },
-          "tables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.table-info"
-            }
-          }
-        }
-      },
-      "metabase-enterprise.serialization.schema.table-info" : {
+      "metabase-enterprise.serialization.schema.exported-table" : {
         "type" : "object",
         "properties" : {
           "db_id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-database-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
           },
           "description" : {
             "type" : "string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.external-table-id"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
           },
           "name" : {
             "type" : "string"
@@ -17024,6 +17006,26 @@
                     "type" : "string",
                     "minLength" : 1
                   },
+                  "size" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "size_x" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "size_y" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        }
+                      },
+                      "required" : [ "size_x", "size_y" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "parameters" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
@@ -24977,6 +24979,973 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/custom-viz-plugin" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin",
+        "summary" : "POST /api/ee/custom-viz-plugin",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin",
+        "summary" : "GET /api/ee/custom-viz-plugin",
+        "description" : "List all registered custom visualization plugins.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "updated_at" : { },
+                      "status" : {
+                        "type" : "string",
+                        "enum" : [ "active", "error" ]
+                      },
+                      "error_message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "identifier" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "dev_only" : {
+                        "type" : "boolean"
+                      },
+                      "created_at" : { },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metabase_version" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/dev" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin-dev",
+        "summary" : "POST /api/ee/custom-viz-plugin/dev",
+        "description" : "Register a dev-only custom visualization plugin from a local dev server.\n   No bundle upload is required — files are served from the dev server URL.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "identifier" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/list" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-list",
+        "summary" : "GET /api/ee/custom-viz-plugin/list",
+        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with incompatible Metabase version requirements are excluded.\n   Dev-only plugins are excluded when dev mode is disabled.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bundle_url" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "identifier" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "identifier", "display_name", "bundle_url" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}" : {
+      "delete" : {
+        "operationId" : "delete-api-ee-custom-viz-plugin-id",
+        "summary" : "DELETE /api/ee/custom-viz-plugin/{id}",
+        "description" : "Remove a custom visualization plugin and evict its on-disk cache.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}",
+        "description" : "Update a custom visualization plugin. Currently only `enabled` may be toggled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "enabled" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/asset" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
+        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/bundle" : {
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id-bundle",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/bundle",
+        "description" : "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in\n   the same format as the `POST /` endpoint. The manifest's `name` field must\n   match the plugin's existing `identifier`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "object",
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ]
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-bundle",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/bundle",
+        "description" : "Serve the JS bundle for a plugin from the on-disk cache.\n   Returns application/javascript with ETag and Cache-Control headers.\n   In dev mode, proxies from `dev_bundle_url` if set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-sse" : {
+      "get" : {
+        "operationId" : "get-api-ee-custom-viz-plugin-id-dev-sse",
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/dev-sse",
+        "description" : "Proxy Server-Sent Events from the plugin's dev server.\n   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.\n   This avoids the need for a CSP exception for the dev server origin.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-url" : {
+      "put" : {
+        "operationId" : "put-api-ee-custom-viz-plugin-id-dev-url",
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/dev-url",
+        "description" : "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).\n   The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.\n   Persisted to the database so it survives server restarts.\n   Requires custom viz plugin dev mode to be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "dev_bundle_url" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/refresh" : {
+      "post" : {
+        "operationId" : "post-api-ee-custom-viz-plugin-id-refresh",
+        "summary" : "POST /api/ee/custom-viz-plugin/{id}/refresh",
+        "description" : "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded\n   plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle\n   to `/:id/bundle`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "active", "error" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "identifier" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
     "/api/ee/data-complexity-score/complexity" : {
       "get" : {
         "operationId" : "get-api-ee-data-complexity-score-complexity",
@@ -29930,7 +30899,7 @@
       "get" : {
         "operationId" : "get-api-ee-serialization-metadata-export",
         "summary" : "GET /api/ee/serialization/metadata/export",
-        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user, with all references emitted in serdes-portable form (database names, table\n  `[db schema name]` tuples, field `[db schema table name | nfc-path...]` tuples).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
+        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user. References between rows are emitted as raw numeric ids (`db_id`,\n  `table_id`, `parent_id`, `fk_target_field_id`).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
         "parameters" : [ {
           "in" : "query",
           "name" : "with-databases",
@@ -29974,7 +30943,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.metadata-export-response"
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
                 }
               }
             }
