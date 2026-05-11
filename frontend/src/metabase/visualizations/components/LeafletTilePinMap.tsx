@@ -55,7 +55,7 @@ interface LeafletTilePinMapProps extends LeafletMapProps {
 
 export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
   static contextType = EmbeddingEntityContext;
-  context!: ContextType<typeof EmbeddingEntityContext>;
+  declare context: ContextType<typeof EmbeddingEntityContext>;
 
   pinTileLayer: L.TileLayer | null = null;
 
