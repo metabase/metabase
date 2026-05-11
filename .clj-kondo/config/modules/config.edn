@@ -2538,7 +2538,7 @@
                     :model/Table}}
 
   warehouses
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
@@ -2563,7 +2563,7 @@
                     :model/User}}
 
   warehouses-rest
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase.warehouses-rest.api}
    :uses #{analytics
            api
