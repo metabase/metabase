@@ -274,23 +274,44 @@ export type MetabotSourceFeedback = {
   positive: boolean;
 };
 
-export type McpMetabotFeedback = {
+/**
+ * Feedback payload for MCP Apps visualization results.
+ *
+ * MCP Apps do not create a persisted Metabot message row, so this payload uses
+ * the dedicated MCP feedback endpoint and sends the prompt/query context needed
+ * to understand the generated visualization.
+ */
+export type McpAppsFeedback = {
+  /** User's rating and optional comments about the generated visualization. */
   feedback: {
-    message_id: string;
     positive: boolean;
+
+    /** Client-generated id for feedback submission. */
+    message_id: string;
+
+    /** Optional category for negative feedback. */
     issue_type?: string;
+
+    /** Optional free-form user feedback text. */
     freeform_feedback?: string;
   };
+
+  /** MCP-specific context that Harbormaster needs to evaluate the result. */
   conversation_data: {
+    /** Identifies this submission as coming from the MCP Apps flow. */
     source: "mcp";
+
+    /** User prompt that produced the visualization, when available. */
     prompt: string | null;
+
+    /** Query text or structured query snapshot for the result, when available. */
     query: string | null;
   };
 };
 
-export type SubmitMcpMetabotFeedbackRequest = {
+export type SubmitMcpAppsFeedbackRequest = {
   mcpSessionId: string;
-  payload: McpMetabotFeedback;
+  payload: McpAppsFeedback;
 };
 
 /* Metabot v3 - Entity Types */

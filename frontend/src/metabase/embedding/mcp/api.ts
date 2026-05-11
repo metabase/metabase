@@ -1,6 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
-import type { McpMetabotFeedback } from "metabase-types/api";
+import type { McpAppsFeedback } from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
@@ -17,7 +17,7 @@ type SubmitMcpFeedbackRequest = {
   instanceUrl: string;
   sessionToken: string;
   mcpSessionId: string;
-  payload: McpMetabotFeedback;
+  payload: McpAppsFeedback;
 };
 
 /**
