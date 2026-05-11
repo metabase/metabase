@@ -32,10 +32,14 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.reconcile]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defonce ^{:dynamic true
            :doc "The single workspace loaded into this instance from `config.yml`, or nil
@@ -221,6 +225,10 @@
       (provisioning/deprovision-single! (:id wsd)))
     (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
     (workspace/get-workspace workspace-id)))
+
+(p/import-vars
+ [metabase-enterprise.workspaces.reconcile
+  reconcile-workspace-databases!])
 
 (defn delete-workspace!
   "Deprovision all databases (blocking), then delete the workspace."

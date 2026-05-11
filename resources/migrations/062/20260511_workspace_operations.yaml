@@ -1,0 +1,196 @@
+## workspace_database_operation + workspace_database_operation_step tables
+## for tracking provisioning operations and their individual steps.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+  - changeSet:
+      id: v62.2026-05-11T12:00:00
+      author: dan
+      comment: Create workspace_database_operation table for tracking high-level provisioning operations
+      changes:
+        - createTable:
+            tableName: workspace_database_operation
+            remarks: Tracks each high-level provisioning operation (add, remove, modify) on a workspace database
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_database_id
+                  type: int
+                  remarks: The workspace_database this operation targets (nullable — set null on delete to preserve audit trail)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The database this operation targets (denormalized for audit trail when workspace_database is deleted)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: op_type
+                  type: varchar(20)
+                  remarks: "High-level operation type: add, remove, modify"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_input
+                  type: ${text.type}
+                  remarks: JSON-encoded desired input namespaces at time of request (nullable for remove ops)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: User who initiated this operation
+                  constraints:
+                    nullable: true
+              - column:
+                  name: initiated_at
+                  type: ${timestamp_type}
+                  remarks: When this operation was initiated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: When this operation completed (null while in progress)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: pending
+                  remarks: "Operation status: pending, in-progress, success, error"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:01
+      author: dan
+      comment: FK workspace_database_operation.workspace_database_id -> workspace_database.id (set null on delete to preserve audit trail)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database_operation
+            baseColumnNames: workspace_database_id
+            referencedTableName: workspace_database
+            referencedColumnNames: id
+            constraintName: fk_wsd_operation_workspace_database_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:02
+      author: dan
+      comment: FK workspace_database_operation.initiated_by -> core_user.id (set null on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database_operation
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_wsd_operation_initiated_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:03
+      author: dan
+      comment: Index workspace_database_operation.workspace_database_id for lookups
+      changes:
+        - createIndex:
+            tableName: workspace_database_operation
+            indexName: idx_wsd_operation_workspace_database_id
+            columns:
+              - column:
+                  name: workspace_database_id
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:04
+      author: dan
+      comment: Create workspace_database_operation_step table for tracking primitive provisioning steps
+      changes:
+        - createTable:
+            tableName: workspace_database_operation_step
+            remarks: Tracks each primitive step within a provisioning operation
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: operation_id
+                  type: int
+                  remarks: The parent operation this step belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: op
+                  type: varchar(40)
+                  remarks: "Primitive operation: op/deprovision, op/update-input, op/provision, op/insert-row, op/delete-row"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  remarks: Ordering within the operation (0-based)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When this step started executing (null if not yet started)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: When this step completed (null while in progress or not started)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: pending
+                  remarks: "Step status: pending, in-progress, success, error, skipped"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: Error message on failure (null on success)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:05
+      author: dan
+      comment: FK workspace_database_operation_step.operation_id -> workspace_database_operation.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database_operation_step
+            baseColumnNames: operation_id
+            referencedTableName: workspace_database_operation
+            referencedColumnNames: id
+            constraintName: fk_wsd_operation_step_operation_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v62.2026-05-11T12:00:06
+      author: dan
+      comment: Index workspace_database_operation_step.operation_id for lookups
+      changes:
+        - createIndex:
+            tableName: workspace_database_operation_step
+            indexName: idx_wsd_operation_step_operation_id
+            columns:
+              - column:
+                  name: operation_id

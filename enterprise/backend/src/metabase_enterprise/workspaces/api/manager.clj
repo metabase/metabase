@@ -35,22 +35,20 @@
    [:fn {:error/message "namespace must populate at least one of :db or :schema"}
     (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
 
-(def ^:private AddDatabaseParams
+(def ^:private DatabaseEntry
   [:map {:closed true}
    [:database_id ms/PositiveInt]
    [:input       [:sequential {:min 1} TableNamespaceParam]]])
 
-(def ^:private UpdateDatabaseParams
-  [:map {:closed true}
-   [:input [:sequential {:min 1} TableNamespaceParam]]])
-
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name ms/NonBlankString]])
+   [:name      ms/NonBlankString]
+   [:databases {:optional true} [:sequential DatabaseEntry]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name      {:optional true} ms/NonBlankString]
+   [:databases {:optional true} [:sequential DatabaseEntry]]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
@@ -118,23 +116,53 @@
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
-(api.macros/defendpoint :post "/" :- WorkspaceResponse
-  "Create a new Workspace (name only, no databases)."
+(api.macros/defendpoint :post "/"
+  "Create a new Workspace, optionally with databases to provision."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+  (let [ws (ws/create-workspace!
+            (assoc params :creator_id api/*current-user-id*))]
+    (if (seq (:databases params))
+      (try
+        (present-workspace (ws/reconcile-workspace-databases! ws (:databases params) api/*current-user-id*))
+        (catch Exception e
+          (if (= 207 (:status-code (ex-data e)))
+            {:status  207
+             :body    (-> (ex-data e)
+                          (update :workspace present-workspace))}
+            (throw e))))
+      (present-workspace ws))))
 
-(api.macros/defendpoint :put "/:id" :- WorkspaceResponse
-  "Update a workspace's name."
+(api.macros/defendpoint :put "/:id"
+  "Update a workspace. Accepts `:name` and/or `:databases`.
+
+   When `:databases` is supplied, the workspace's database list is diffed against
+   the desired state:
+   - databases in the payload but not currently present → added and provisioned
+   - databases currently present but absent from the payload → deprovisioned and removed
+   - databases in both but with changed `:input` → deprovisioned, updated, and reprovisioned
+   - databases in both with unchanged `:input` → left alone
+
+   Each database operation is independent — partial failures leave affected rows
+   with their real status (e.g. `:unprovisioned` if provisioning failed).
+   Returns 207 with error details when some operations fail."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
-  (api/write-check :model/Workspace id)
-  (when (:name params)
-    (t2/update! :model/Workspace :id id {:name (:name params)}))
-  (present-workspace (api/check-404 (ws/get-workspace id))))
+  (let [ws (api/check-404 (ws/get-workspace id))]
+    (api/write-check ws)
+    (when (:name params)
+      (t2/update! :model/Workspace :id id {:name (:name params)}))
+    (if (contains? params :databases)
+      (try
+        (present-workspace (ws/reconcile-workspace-databases! ws (:databases params) api/*current-user-id*))
+        (catch Exception e
+          (if (= 207 (:status-code (ex-data e)))
+            {:status  207
+             :body    (-> (ex-data e)
+                          (update :workspace present-workspace))}
+            (throw e))))
+      (present-workspace (ws/get-workspace id)))))
 
 (api.macros/defendpoint :delete "/:id"
   :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
@@ -143,39 +171,6 @@
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
   {:id id :deleted true})
-
-;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
-
-(api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
-  "Add a database to a workspace and provision it immediately (blocking)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   params :- AddDatabaseParams]
-  (api/create-check :model/WorkspaceDatabase params)
-  (present-workspace
-   (ws/add-database! id (:database_id params) (:input params))))
-
-(api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
-  "Update a database's input namespaces. Deprovisions the old config and reprovisions
-   with the new one (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]
-   _query-params
-   params :- UpdateDatabaseParams]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/update-database! id db-id (:input params))))
-
-(api.macros/defendpoint :delete "/:id/database/:db-id"
-  :- WorkspaceResponse
-  "Deprovision and remove a database from a workspace (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/remove-database! id db-id)))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
