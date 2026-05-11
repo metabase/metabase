@@ -1,20 +1,18 @@
-import { useCallback, useMemo } from "react";
+import { type KeyboardEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  useGetCollectionQuery,
-  useUpdateCollectionMutation,
-} from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import { useUpdateCollectionMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
 } from "metabase/collections/schemas";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type { EntityType } from "metabase/collections/utils";
+import type {
+  EntityPickerOptions,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
-import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -24,35 +22,34 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 
-type EditTransformCollectionModalProps = {
-  collectionId: number;
+type EditCollectionModalProps = {
+  collection: Collection | CollectionItem;
   onClose: () => void;
-  onSave?: () => void;
+  onSave?: (details: {
+    previousParentId: CollectionId | null;
+    newParentId: CollectionId | null;
+  }) => void;
 };
 
-export function EditTransformCollectionModal({
-  collectionId,
-  onClose,
-  onSave,
-}: EditTransformCollectionModalProps) {
-  const [sendToast] = useToast();
+const isCollectionItem = (
+  collection: Collection | CollectionItem,
+): collection is CollectionItem => {
+  return "collection_id" in collection;
+};
+
+export function EditCollectionModal(props: EditCollectionModalProps) {
+  const { collection, onClose, onSave } = props;
   const [updateCollection] = useUpdateCollectionMutation();
-
-  const {
-    data: collection,
-    isLoading,
-    error,
-  } = useGetCollectionQuery({
-    id: collectionId,
-    namespace: "transforms",
-  });
-
   const initialValues = useMemo<CollectionFormValues>(() => {
-    if (!collection) {
-      return COLLECTION_FORM_SCHEMA.getDefault();
-    }
-    const parentId = collection.parent_id;
+    const parentId = isCollectionItem(collection)
+      ? collection.collection_id
+      : collection.parent_id;
     return {
       name: collection.name ?? "",
       description: collection.description ?? null,
@@ -62,53 +59,35 @@ export function EditTransformCollectionModal({
 
   const handleSubmit = useCallback(
     async (values: CollectionFormValues) => {
-      try {
-        await updateCollection({
-          id: collectionId,
-          name: values.name,
-          description: values.description ?? undefined,
-          parent_id: values.parent_id,
-        }).unwrap();
-        onSave?.();
-        onClose();
-      } catch (err) {
-        sendToast({
-          message: getErrorMessage(err, t`Failed to update collection`),
-          icon: "warning",
-        });
-      }
+      await updateCollection({
+        id: collection.id,
+        name: values.name,
+        description: values.description ?? undefined,
+        parent_id: values.parent_id,
+      }).unwrap();
+      onSave?.({
+        previousParentId: initialValues.parent_id,
+        newParentId: values.parent_id,
+      });
+      onClose();
     },
-    [collectionId, updateCollection, onSave, onClose, sendToast],
+    [collection.id, initialValues.parent_id, updateCollection, onSave, onClose],
   );
 
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem) =>
-      isItemInCollectionOrItsDescendants(item, collectionId),
-    [collectionId],
+      isItemInCollectionOrItsDescendants(item, collection.id),
+    [collection.id],
   );
 
   const stopPropagation = useCallback(
-    (e: React.KeyboardEvent) => e.stopPropagation(),
+    (e: KeyboardEvent) => e.stopPropagation(),
     [],
   );
 
-  if (isLoading || error) {
-    return (
-      <Modal
-        title={t`Edit collection`}
-        opened
-        onClose={onClose}
-        padding="xl"
-        onKeyDown={stopPropagation}
-      >
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Modal>
-    );
-  }
-
   return (
     <Modal
-      title={t`Editing ${collection?.name}`}
+      title={t`Editing ${collection.name}`}
       opened
       onClose={onClose}
       padding="xl"
@@ -138,9 +117,14 @@ export function EditTransformCollectionModal({
               <FormCollectionPicker
                 name="parent_id"
                 title={t`Parent collection`}
+                entityType={getPickerEntityType(collection.type)}
                 collectionPickerModalProps={{
+                  options: pickerOptions,
                   isDisabledItem: shouldDisableItem,
-                  namespaces: ["transforms"],
+                  namespaces: collection.namespace
+                    ? [collection.namespace]
+                    : [],
+                  disableRecentLogging: true,
                 }}
               />
               <Group justify="flex-end">
@@ -159,3 +143,27 @@ export function EditTransformCollectionModal({
     </Modal>
   );
 }
+
+function getPickerEntityType(
+  collectionType: Collection["type"] | CollectionItem["type"],
+): EntityType | undefined {
+  if (collectionType === "library-data") {
+    return "table";
+  }
+
+  if (collectionType === "library-metrics") {
+    return "metric";
+  }
+
+  return undefined;
+}
+
+const pickerOptions: EntityPickerOptions = {
+  hasLibrary: true,
+  hasRootCollection: false,
+  hasPersonalCollections: false,
+  hasRecents: false,
+  hasSearch: false,
+  hasConfirmButtons: true,
+  canCreateCollections: true,
+};

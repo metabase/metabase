@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,16 +7,21 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { dataStudioArchivedSnippets } from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { SnippetCollectionPermissionsModal } from "metabase-enterprise/snippets/components/SnippetCollectionPermissionsModal";
 import type { CollectionId } from "metabase-types/api";
 
+type RootSnippetsCollectionMenu = {
+  collectionId: CollectionId;
+};
+
 export const RootSnippetsCollectionMenu = ({
-  setPermissionsCollectionId,
-}: {
-  setPermissionsCollectionId: (id: CollectionId) => void;
-}) => {
+  collectionId,
+}: RootSnippetsCollectionMenu) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const isReadOnly = remoteSyncReadOnly || !isAdmin;
+  const [showPermissionsModal, { toggle: togglePermissionsModal }] =
+    useDisclosure(false);
 
   const optionsLabel = t`Snippet collection options`;
 
@@ -38,7 +44,7 @@ export const RootSnippetsCollectionMenu = ({
             leftSection={<FixedSizeIcon name="lock" />}
             onClick={(e) => {
               e.stopPropagation();
-              setPermissionsCollectionId("root");
+              togglePermissionsModal();
             }}
           >
             {t`Change permissions`}
@@ -52,6 +58,12 @@ export const RootSnippetsCollectionMenu = ({
           {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
+      {showPermissionsModal && (
+        <SnippetCollectionPermissionsModal
+          collectionId={collectionId}
+          onClose={togglePermissionsModal}
+        />
+      )}
     </Menu>
   );
 };
