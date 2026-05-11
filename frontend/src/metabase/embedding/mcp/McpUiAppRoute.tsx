@@ -18,6 +18,9 @@ import {
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { Box, Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type { Card } from "metabase-types/api";
 
 import { McpQueryBar } from "./McpQueryBar";
@@ -107,8 +110,12 @@ The user drilled into the Metabase visualization. The app is showing the drill r
     [app],
   );
 
-  const ignoreDrillThrough = useCallback<DrillThroughHandler>(
-    async () => undefined,
+  const getStaticClickActionMode = useCallback<ClickActionModeGetter>(
+    ({ question }) =>
+      getEmbeddingMode({
+        question,
+        queryMode: EmbeddingSdkStaticMode,
+      }),
     [],
   );
 
@@ -252,7 +259,8 @@ The user drilled into the Metabase visualization. The app is showing the drill r
               isSaveEnabled={false}
               withEditorButton={false}
               withChartTypeSelector={false}
-              onDrillThrough={ignoreDrillThrough}
+              getClickActionMode={getStaticClickActionMode}
+              navigateToNewCard={null}
             >
               <SdkQuestion.QuestionVisualization
                 height={drilledVisualizationHeight}
