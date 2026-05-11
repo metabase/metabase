@@ -308,9 +308,9 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-;;; ----------------------------------- GET /api/ee/serialization/metadata/export ------------------------------------
+;;; ----------------------------------- POST /api/ee/serialization/metadata/export -----------------------------------
 
-(api.macros/defendpoint :get "/metadata/export"
+(api.macros/defendpoint :post "/metadata/export"
   :- (sr/streaming-response-schema ::schema/export-metadata-response)
   "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
   current user. References between rows are emitted as raw numeric ids (`db_id`,
