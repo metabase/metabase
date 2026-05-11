@@ -91,11 +91,7 @@ function MainNavbarContainer({
   const isTenantUser = useSelector(getIsTenantUser);
   const dispatch = useDispatch();
 
-  const { data: unorderedBookmarks = [] } = useListBookmarksQuery();
-  const bookmarks = useMemo(
-    () => _.sortBy(unorderedBookmarks, (bookmark) => bookmark.index),
-    [unorderedBookmarks],
-  );
+  const { data: bookmarks = [] } = useListBookmarksQuery();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
 
   const {
