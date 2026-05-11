@@ -774,6 +774,8 @@ describe(
 
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            // GraalVM cold start can take >4s, so use a longer timeout
+            { timeout: 30000 },
           );
         });
 
