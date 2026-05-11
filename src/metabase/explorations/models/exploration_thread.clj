@@ -30,9 +30,11 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadMetric
-                         :exploration_thread_id [:in (map :id threads)]
-                         {:order-by [[:position :asc] [:id :asc]]}))
+              (t2/hydrate
+               (t2/select :model/ExplorationThreadMetric
+                          :exploration_thread_id [:in (map :id threads)]
+                          {:order-by [[:position :asc] [:id :asc]]})
+               :card))
    :id
    {:default []}))
 
