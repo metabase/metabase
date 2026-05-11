@@ -74,7 +74,6 @@ export { SnippetCollections as snippetCollections } from "./snippet-collections"
 export { Dashboards as dashboards } from "./dashboards";
 export { Questions as questions } from "./questions";
 
-export { Bookmarks as bookmarks } from "./bookmarks";
 export { Databases as databases } from "./databases";
 export { Schemas as schemas } from "./schemas";
 export { Tables as tables } from "./tables";
