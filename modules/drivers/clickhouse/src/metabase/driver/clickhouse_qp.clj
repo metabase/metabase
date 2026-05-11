@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
@@ -668,12 +669,14 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse ::h2x/identifier]
   [_driver [_identifier identifier-type components :as identifier]]
-  (let [enable-multiple-db? (-> (driver-api/metadata-provider)
-                                driver-api/database
-                                driver.conn/effective-details
-                                :enable-multiple-db)]
-    (if (and (false? enable-multiple-db?)
-             (#{:table :field} identifier-type)
-             (> (count components) 1))
+  (let [database            (when (driver-api/initialized?)
+                              (driver-api/database (driver-api/metadata-provider)))
+        enable-multiple-db? (some-> database driver.conn/effective-details :enable-multiple-db)
+        ;; check for `false?` because legacy clickhouse details don't have this key
+        strip-db-name?      (and (false? enable-multiple-db?)
+                                 (database-routing/db-routing-enabled? database)
+                                 (#{:table :field} identifier-type)
+                                 (> (count components) 1))]
+    (if strip-db-name?
       (apply h2x/identifier identifier-type (rest components))
       identifier)))
