@@ -12,34 +12,12 @@ import {
 import { submitMcpFeedback } from "./api";
 
 interface FeedbackButtonProps {
+  "data-testid": string;
   disabled: boolean;
   icon: IconName;
   onClick: () => void;
   hasBeenClicked: boolean;
 }
-
-const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
-  function FeedbackButton(
-    { disabled, icon, onClick, hasBeenClicked, ...props },
-    ref,
-  ) {
-    return (
-      <ActionIcon
-        onClick={onClick}
-        disabled={disabled}
-        h="sm"
-        {...props}
-        ref={ref}
-      >
-        <Icon
-          name={icon}
-          size="1rem"
-          c={hasBeenClicked ? "brand" : "currentColor"}
-        />
-      </ActionIcon>
-    );
-  },
-);
 
 interface McpFeedbackButtonsProps {
   instanceUrl: string;
@@ -49,6 +27,8 @@ interface McpFeedbackButtonsProps {
   query: string | null;
 }
 
+type FeedbackChoice = "positive" | "negative";
+
 export function McpFeedbackButtons({
   instanceUrl,
   sessionToken,
@@ -56,18 +36,20 @@ export function McpFeedbackButtons({
   prompt,
   query,
 }: McpFeedbackButtonsProps) {
-  const [submitted, setSubmitted] = useState<"positive" | "negative" | null>(
-    null,
-  );
-  const [modalData, setModalData] = useState<{ positive: boolean } | null>(
-    null,
-  );
+  const [selectedFeedback, setSelectedFeedback] =
+    useState<FeedbackChoice | null>(null);
+
+  // Used for icon highlighting based on last submitted feedback
+  const [submittedFeedback, setSubmittedFeedback] =
+    useState<FeedbackChoice | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [sendToast] = useToast();
 
   useEffect(() => {
-    setSubmitted(null);
-    setModalData(null);
+    setSubmittedFeedback(null);
+    setSelectedFeedback(null);
     setIsSubmitting(false);
   }, [prompt, query]);
 
@@ -86,15 +68,17 @@ export function McpFeedbackButtons({
 
     try {
       setIsSubmitting(true);
+
       await submitMcpFeedback({
         instanceUrl,
         sessionToken,
         mcpSessionId,
         payload,
       });
+
       sendToast({ icon: "check", message: t`Feedback submitted` });
-      setSubmitted(values.positive ? "positive" : "negative");
-      setModalData(null);
+      setSubmittedFeedback(values.positive ? "positive" : "negative");
+      setSelectedFeedback(null);
     } catch {
       sendToast({ icon: "warning", message: t`Failed to submit feedback` });
     } finally {
@@ -108,9 +92,9 @@ export function McpFeedbackButtons({
         <FeedbackButton
           data-testid="mcp-feedback-thumbs-up"
           icon="thumbs_up"
-          hasBeenClicked={submitted === "positive"}
+          hasBeenClicked={submittedFeedback === "positive"}
           disabled={isSubmitting}
-          onClick={() => setModalData({ positive: true })}
+          onClick={() => setSelectedFeedback("positive")}
         />
       </Tooltip>
 
@@ -118,22 +102,48 @@ export function McpFeedbackButtons({
         <FeedbackButton
           data-testid="mcp-feedback-thumbs-down"
           icon="thumbs_down"
-          hasBeenClicked={submitted === "negative"}
+          hasBeenClicked={submittedFeedback === "negative"}
           disabled={isSubmitting}
-          onClick={() => setModalData({ positive: false })}
+          onClick={() => setSelectedFeedback("negative")}
         />
       </Tooltip>
 
-      {modalData && (
+      {selectedFeedback != null && (
         <McpFeedbackModal
           isSubmitting={isSubmitting}
-          positive={modalData.positive}
-          onClose={() => setModalData(null)}
+          positive={selectedFeedback === "positive"}
+          onClose={() => setSelectedFeedback(null)}
           onSubmit={(values) =>
-            handleFeedback({ positive: modalData.positive, ...values })
+            handleFeedback({
+              positive: selectedFeedback === "positive",
+              ...values,
+            })
           }
         />
       )}
     </>
   );
 }
+
+const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
+  function FeedbackButton(
+    { "data-testid": dataTestId, disabled, icon, onClick, hasBeenClicked },
+    ref,
+  ) {
+    return (
+      <ActionIcon
+        data-testid={dataTestId}
+        onClick={onClick}
+        disabled={disabled}
+        h="sm"
+        ref={ref}
+      >
+        <Icon
+          name={icon}
+          size="1rem"
+          c={hasBeenClicked ? "brand" : "currentColor"}
+        />
+      </ActionIcon>
+    );
+  },
+);
