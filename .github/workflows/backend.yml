@@ -74,9 +74,13 @@ jobs:
           # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
+          # Test roots we lint: core, EE, and each driver module's test tree.
+          # The :eastwood/test alias declares matching :source-paths so any namespace
+          # we name here is reachable.
           FILES=$(git diff --name-only --diff-filter=AM "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
-                       'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc')
+                       'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
 
           if [ -z "$FILES" ]; then
             echo "No backend test files changed; skipping lint."
@@ -91,7 +95,7 @@ jobs:
             exit 1
           fi
 
-          NS=$(sed -E 's#^(test/|enterprise/backend/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
                  | sort -u \
                  | paste -sd' ' -)
           echo "Changed test namespaces: $NS"
