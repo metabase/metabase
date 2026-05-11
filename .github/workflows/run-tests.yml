@@ -21,7 +21,7 @@ permissions:
 jobs:
   create-test-plan:
     if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
-    name: Compute test plan
+    name: Create test plan
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -52,7 +52,7 @@ jobs:
           # comma separated list of files
           list-files: csv
           filters: .github/file-paths.yaml
-      - name: Compute module-affected test selection
+      - name: Create test plan
         id: compute
         if: ${{ github.event_name == 'pull_request' }}
         env:
@@ -75,7 +75,7 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Upload test selection stats
+      - name: Upload affected tests stats
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

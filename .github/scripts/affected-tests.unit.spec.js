@@ -72,7 +72,7 @@ describe("createTestPlanForSuite", () => {
     expect(result).toEqual(UNIT_FILES);
   });
 
-  it("should fall back to module-affected selection when no infra matches", () => {
+  it("should fall back to affected-tests filtering when no infra matches", () => {
     const result = createTestPlanForSuite(
       moduleGraph,
       testSuites.unit,
