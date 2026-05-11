@@ -13,8 +13,9 @@ IMPORTANT: field IDs must come from entity-detail endpoints (`/v1/table/{id}`, `
 ## Workflow
 
 1. Use `search` and the entity-detail tools (`get_table`, `get_metric`) to find the table/metric/model and its fields.
-2. Call `construct_query` with the program. You get back `{"query": "<base64>"}`.
-3. Pass that string to `execute_query`.
+2. MUST read the MCP widget context before calling `construct_query` if the user refers to a visible Metabase view using words like `this`, `that`, `based on this`, `current chart`, `current table`, `drilled result`, or asks to continue from a chart/table already shown, then use its active view / drill nextCard as the source context. If multiple widget views could match, ask the user which one they mean instead of guessing.
+3. Call `construct_query` with the program. You get back `{"query": "<base64>"}`.
+4. Pass that string to `execute_query`.
 
 Never embed IDs you did not read from a metadata endpoint — invented IDs will fail at execution.
 
