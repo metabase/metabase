@@ -4,6 +4,8 @@
    [metabase.linters.common :as common])
   (:import (java.io File)))
 
+(set! *warn-on-reflection* true)
+
 (defn eastwood
   "Entrypoint for running Eastwood from the CLI. Adds some programatically-determined config options. See comments in
   `deps.edn` for usage instructions."
