@@ -625,10 +625,11 @@
        driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :value]
-  [_ [_ {:keys [base-type effective-type database-type]} raw-value]]
-  (sql.qp/->honeysql :postgres [:value raw-value {:base_type      base-type
-                                                  :effective_type effective-type
-                                                  :database_type  database-type}]))
+  [driver [_ {:keys [base-type effective-type database-type]} raw-value]]
+  ((get-method sql.qp/->honeysql [:postgres :value])
+   driver [:value raw-value {:base_type      base-type
+                             :effective_type effective-type
+                             :database_type  database-type}]))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
