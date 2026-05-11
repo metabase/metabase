@@ -40,8 +40,8 @@
   (assert (not (instance? MultiFn @a-var))
           (str "Cannot proxy multimethods: " a-var ". "
                "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
-               "dispatch and pollutes the JVM for other tests. Use methodical/add-primary-method "
-               "or a dedicated test dispatch value instead."))
+               "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
+               "with a dedicated test dispatch value instead."))
   (fn [& args]
     (let [depth (get *proxy-depths* a-var 0)]
       (when (> depth max-proxy-depth)
