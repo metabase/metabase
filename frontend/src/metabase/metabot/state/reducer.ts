@@ -21,10 +21,12 @@ import {
   getMetabotInitialState,
   getRequestConversation,
   markCurrentAgentTurnAsAborted,
+  markCurrentAgentTurnAsErrored,
   resetReactionState,
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentTurnError,
   MetabotChatMessage,
   MetabotErrorMessage,
   MetabotToolCall,
@@ -101,6 +103,11 @@ export const metabot = createSlice({
     addAgentErrorMessage: convoReducer(
       (convo, action: ConvoPayloadAction<MetabotErrorMessage>) => {
         convo.errorMessages.push(action.payload);
+      },
+    ),
+    setCurrentAgentTurnError: convoReducer(
+      (convo, action: ConvoPayloadAction<{ error: MetabotAgentTurnError }>) => {
+        markCurrentAgentTurnAsErrored(convo, action.payload.error);
       },
     ),
     addAgentTextDelta: convoReducer(

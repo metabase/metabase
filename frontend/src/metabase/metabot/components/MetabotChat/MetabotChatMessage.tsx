@@ -12,6 +12,7 @@ import type {
   MetabotAgentChatMessage,
   MetabotAgentDataPartMessage,
   MetabotAgentTextChatMessage,
+  MetabotAgentTurnError,
   MetabotChatMessage,
   MetabotDataPart,
   MetabotErrorMessage,
@@ -200,6 +201,8 @@ export const AgentMessage = ({
     messageId
   );
 
+  console.log({ message });
+
   return (
     <MessageContainer chatRole={message.role} {...props}>
       {message.type === "text" && (
@@ -221,7 +224,11 @@ export const AgentMessage = ({
         <AgentToolCallMessage message={message} />
       )}
       {message.error != null && (
-        <AgentTurnAlert variant="error" message={message.error} />
+        <AgentTurnAlert
+          variant="error"
+          message={t`Something went wrong`}
+          debugDetails={debug ? message.error : undefined}
+        />
       )}
       {message.error == null && message.finished === false && (
         <AgentTurnAlert
@@ -303,17 +310,19 @@ const AgentTurnAlert = ({
   variant,
   message,
   cta,
+  debugDetails,
 }: {
   variant: "error" | "info";
   message: string;
   cta?: ReactNode;
+  debugDetails?: MetabotAgentTurnError;
 }) => {
   const iconColor = variant === "error" ? "error" : "text-secondary";
   const iconName = variant === "error" ? "warning" : "info";
   return (
     <Flex
-      align="center"
-      gap="sm"
+      direction="column"
+      gap="xs"
       mt="sm"
       p="sm"
       bd={`1px solid var(--mb-color-border)`}
@@ -321,11 +330,24 @@ const AgentTurnAlert = ({
       data-testid="metabot-chat-message-turn-alert"
       bg={"background-primary"}
     >
-      <Icon name={iconName} c={iconColor} size="1rem" flex="0 0 auto" />
-      <Text c="text-secondary" size="sm" flex="1">
-        {message}
-      </Text>
-      {cta}
+      <Flex align="center" gap="sm">
+        <Icon name={iconName} c={iconColor} size="1rem" flex="0 0 auto" />
+        <Text c="text-secondary" size="sm" flex="1">
+          {message}
+        </Text>
+        {cta}
+      </Flex>
+      {debugDetails && (
+        <Text
+          c="text-secondary"
+          size="xs"
+          ff="monospace"
+          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+          data-testid="metabot-chat-message-turn-alert-debug"
+        >
+          {JSON.stringify(debugDetails, null, 2)}
+        </Text>
+      )}
     </Flex>
   );
 };
@@ -476,10 +498,15 @@ export const Messages = ({
     [showFeedbackButtons],
   );
 
+  console.log({ messages, visibleMessages });
+
   return (
     <>
-      {visibleMessages.map((message, index) =>
-        message.role === "agent" ? (
+      {visibleMessages.map((message, index) => {
+        const nextMsgIsAgent = visibleMessages[index + 1]?.role === "agent";
+        const isCurrPrompt = visibleMessages.length === index + 1;
+
+        return message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
@@ -495,9 +522,7 @@ export const Messages = ({
                 ? feedbackState.submitted[message.externalId]
                 : undefined
             }
-            hideActions={
-              isDoingScience || visibleMessages[index + 1]?.role === "agent"
-            }
+            hideActions={isDoingScience || nextMsgIsAgent}
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
@@ -505,7 +530,7 @@ export const Messages = ({
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && visibleMessages.length === index + 1}
+            hideActions={isDoingScience && isCurrPrompt}
             onCopy={() => {
               const copyText =
                 message.type === "action"
@@ -514,8 +539,8 @@ export const Messages = ({
               clipboard.copy(copyText);
             }}
           />
-        ),
-      )}
+        );
+      })}
 
       {errorMessages.map((message, index) => (
         <AgentErrorMessage

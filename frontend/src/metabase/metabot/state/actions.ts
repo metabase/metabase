@@ -54,6 +54,7 @@ export const {
   addAgentErrorMessage,
   addDeveloperMessage,
   addUserMessage,
+  setCurrentAgentTurnError,
   setIsProcessing,
   setNavigateToPath,
   setPendingMessageExternalId,
@@ -392,7 +393,6 @@ export const sendAgentRequest = createAsyncThunk<
 
     try {
       let state = {};
-      let error: unknown = undefined;
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -489,14 +489,16 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(toolCallEnd({ ...part, agentId }));
           },
           onError: function handleError(part) {
-            error = part;
+            const turnError =
+              typeof part === "string"
+                ? { message: part }
+                : part && typeof part === "object" && "message" in part
+                  ? (part as { message: string })
+                  : { message: String(part) };
+            dispatch(setCurrentAgentTurnError({ agentId, error: turnError }));
           },
         },
       );
-
-      if (error) {
-        throw error;
-      }
 
       if (response.aborted) {
         return rejectWithValue({

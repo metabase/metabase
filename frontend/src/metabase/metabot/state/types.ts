@@ -16,12 +16,20 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
+// Mirrors the BE `error-part` shape (after JSON decode) — the FE doesn't
+// surface any of these fields directly to end users.
+export type MetabotAgentTurnError = {
+  message?: string;
+  type?: string;
+  data?: unknown;
+};
+
 // Set on agent messages by the BE so the FE can distinguish completed turns
 // (`finished: true`, no `error`) from aborted ones (`finished: false`) and
-// errored ones (`error` set, admin endpoint only).
+// errored ones (`error` set).
 type AgentTurnStatus = {
   finished?: boolean;
-  error?: string | null;
+  error?: MetabotAgentTurnError | null;
 };
 
 export type MetabotUserTextChatMessage = {

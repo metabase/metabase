@@ -30,6 +30,6 @@ databaseChangeLog:
               - column:
                   name: error
                   type: ${text.type}
-                  remarks: Error message recorded when an assistant agent run threw. NULL for healthy or aborted turns.
+                  remarks: JSON-encoded error payload from the agent's error stream part (message/type/data). NULL for healthy or aborted turns.
                   constraints:
                     nullable: true

@@ -183,8 +183,7 @@
                     ;; Cancel wins over error: if the client tore down the
                     ;; connection, the agent's downstream rf throws are a
                     ;; consequence of the abort, not a separate failure.
-                    error-msg      (when-not canceled?*
-                                     (some-> error-part :error :message))]
+                    error-data     (when-not canceled?* (:error error-part))]
                 (when canceled?*
                   (log/info "User aborted metabot agent request"
                             {:conversation-id conversation-id
@@ -195,7 +194,7 @@
                            {:conversation-id conversation-id
                             :external-id     external-id
                             :canceled?       canceled?*
-                            :errored?        (some? error-msg)
+                            :errored?        (some? error-data)
                             :parts-count     (count combined-parts)})
                 (metabot.persistence/store-native-parts!
                  conversation-id profile-id combined-parts
@@ -203,7 +202,7 @@
                  :pii-info    pii-info
                  :external-id external-id
                  :finished?   (not canceled?*)
-                 :error       error-msg))
+                 :error       error-data))
               (catch Exception e
                 (log/error e "Failed to persist native agent parts"
                            {:conversation-id conversation-id

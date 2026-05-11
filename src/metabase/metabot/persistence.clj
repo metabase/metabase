@@ -103,9 +103,10 @@
   - `:external-id` — message external id used by feedback; generated if omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
   - `:finished?` — boolean (default true). False only for client-aborted turns.
-  - `:error` — string error message when the agent run threw; written to the
-     `error` column. Persisted partial parts are kept as-is so the audit page
-     can inspect what the agent emitted before the failure.
+  - `:error` — anything JSON-serializable describing the failure. Written
+     verbatim (after `json/encode`) to the `error` column. Persisted partial
+     parts are kept as-is so the audit page can inspect what the agent emitted
+     before the failure.
 
   Returns the inserted `MetabotMessage` primary key."
   [conversation-id profile-id parts
@@ -175,7 +176,7 @@
                                                               (reduce + 0))
                                         :ai_proxied      (boolean ai-proxy?)
                                         :finished        (boolean finished?)
-                                        :error           error}
+                                        :error           (some-> error json/encode)}
                                  channel-id   (assoc :channel_id channel-id)
                                  slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                  user-id      (assoc :user_id user-id))))))
@@ -301,17 +302,28 @@
               msg))
           chat-messages)))
 
+(defn- decode-error
+  "JSON-decode a row's `:error` column value (a string written by
+  `store-native-parts!`). Falls back to the raw value if it's already non-string
+  or fails to parse, so legacy rows and surprises don't crash the read path."
+  [error]
+  (if (string? error)
+    (try (json/decode+kw error)
+         (catch Exception _ error))
+    error))
+
 (defn- annotate-agent-messages
   "Stamp `:finished` and (when present) `:error` from the parent row onto every
   agent-role chat message produced from it. The fields land on `MetabotChatMessage`s
   so the FE can decide whether to surface a retry alert / 'excluded' badge."
   [chat-messages {:keys [finished error]}]
-  (mapv (fn [m]
-          (if (= "agent" (:role m))
-            (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
-              (some? error) (assoc :error error))
-            m))
-        chat-messages))
+  (let [decoded-error (some-> error decode-error)]
+    (mapv (fn [m]
+            (if (= "agent" (:role m))
+              (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
+                (some? decoded-error) (assoc :error decoded-error))
+              m))
+          chat-messages)))
 
 (defn- empty-agent-placeholder
   "Stub chat message for an assistant row whose `:data` produced no chat messages
@@ -324,26 +336,6 @@
            :message ""}
     external_id (assoc :externalId external_id)))
 
-(defn- error-block-message
-  "Pull the human-readable error message out of a legacy `:error` data block, if
-  any. Older assistant rows persisted the agent's `error-part` inside `:data`
-  before we added the dedicated `error` column."
-  [{:keys [data]}]
-  (some-> (u/seek #(= "error" (:type %)) data)
-          :error
-          :message))
-
-(defn- hoist-legacy-error
-  "Backfill a row's `:error` from any error block in `:data` so historical rows
-  surface the same failure signal as rows persisted with the dedicated column."
-  [message]
-  (if (and (= :assistant (:role message))
-           (nil? (:error message)))
-    (if-let [legacy (error-block-message message)]
-      (assoc message :error legacy)
-      message)
-    message))
-
 (defn message->chat-messages
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
    Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
@@ -351,8 +343,7 @@
    `:finished false` get a synthetic empty text message so the FE has something
    to render the alert on."
   [message]
-  (let [message      (hoist-legacy-error message)
-        blocks       (or (:data message) [])
+  (let [blocks       (or (:data message) [])
         external-id  (:external_id message)
         chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)
         merged       (merge-tool-results chat-msgs blocks)
@@ -365,11 +356,9 @@
     (annotate-agent-messages with-stub message)))
 
 (defn- errored-agent-row?
-  "Errored assistant turns store an explanatory message in the `error` column
-  (or, for legacy rows, in an `:error` block inside `:data`)."
   [m]
   (and (= :assistant (:role m))
-       (some? (:error (hoist-legacy-error m)))))
+       (some? (:error m))))
 
 (defn- drop-errored-pairs
   "Strip errored assistant rows and the user prompt that triggered them from a

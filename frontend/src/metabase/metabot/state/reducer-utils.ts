@@ -8,6 +8,7 @@ import { uuid } from "metabase/utils/uuid";
 
 import type {
   MetabotAgentId,
+  MetabotAgentTurnError,
   MetabotConverstationState,
   MetabotState,
 } from "./types";
@@ -139,6 +140,27 @@ export const markCurrentAgentTurnAsAborted = (
     }
     if (msg.role === "agent") {
       msg.finished = false;
+    }
+  }
+};
+
+/**
+ * Walk back from the most recent message and stamp `error` onto every agent
+ * message in the current turn. Sibling of `markCurrentAgentTurnAsAborted` —
+ * does NOT flip `finished`, since errored turns are considered finished by
+ * the BE (only client-aborts set `finished: false`).
+ */
+export const markCurrentAgentTurnAsErrored = (
+  convo: WritableDraft<MetabotConverstationState>,
+  error: MetabotAgentTurnError,
+) => {
+  for (let i = convo.messages.length - 1; i >= 0; i--) {
+    const msg = convo.messages[i];
+    if (msg.role === "user") {
+      return;
+    }
+    if (msg.role === "agent") {
+      msg.error = error;
     }
   }
 };
