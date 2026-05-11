@@ -281,7 +281,21 @@
     (let [[msg] (metabot-persistence/message->chat-messages
                  {:role :user :data [{:role "user" :content "hi"}]})]
       (is (not (contains? msg :finished)))
-      (is (not (contains? msg :error))))))
+      (is (not (contains? msg :error)))))
+  (testing "multi-block assistant rows: only the last agent message is annotated"
+    (let [result (metabot-persistence/message->chat-messages
+                  {:role :assistant :finished false
+                   :error (json/encode {:message "boom"})
+                   :data [{:type "text" :text "first" :id "b1"}
+                          {:type "tool-input" :id "call-1" :function "search"}
+                          {:type "text" :text "last" :id "b2"}]})]
+      (is (= 3 (count result)))
+      (is (not (contains? (first result) :finished)))
+      (is (not (contains? (first result) :error)))
+      (is (not (contains? (second result) :finished)))
+      (is (not (contains? (second result) :error)))
+      (is (false? (:finished (last result))))
+      (is (= {:message "boom"} (:error (last result)))))))
 
 (deftest messages->chat-messages-drops-errored-pairs-by-default-test
   (testing "errored assistant rows and the user prompt that triggered them are removed"

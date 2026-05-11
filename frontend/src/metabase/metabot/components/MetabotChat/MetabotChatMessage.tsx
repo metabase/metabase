@@ -510,8 +510,9 @@ export const Messages = ({
 
   return (
     <>
-      {visibleMessages.map((message, index) =>
-        message.role === "agent" ? (
+      {visibleMessages.map((message, index) => {
+        const next = visibleMessages[index + 1];
+        return message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
@@ -527,9 +528,7 @@ export const Messages = ({
                 ? feedbackState.submitted[message.externalId]
                 : undefined
             }
-            hideActions={
-              isDoingScience || visibleMessages[index + 1]?.role === "agent"
-            }
+            hideActions={next?.role === "agent" || (isDoingScience && !next)}
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
@@ -546,8 +545,8 @@ export const Messages = ({
               clipboard.copy(copyText);
             }}
           />
-        ),
-      )}
+        );
+      })}
 
       {errorMessages.map((message, index) => (
         <AgentErrorMessage

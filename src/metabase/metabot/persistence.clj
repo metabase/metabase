@@ -313,17 +313,21 @@
     error))
 
 (defn- annotate-agent-messages
-  "Stamp `:finished` and (when present) `:error` from the parent row onto every
-  agent-role chat message produced from it. The fields land on `MetabotChatMessage`s
-  so the FE can decide whether to surface a retry alert / 'excluded' badge."
+  "Stamp `:finished` and (when present) `:error` from the parent row onto the
+  *last* agent-role chat message produced from it. The annotation describes the
+  row's outcome, so it belongs on a single message — the FE expands it into a
+  trailing `turn_aborted` / `turn_errored` chat message."
   [chat-messages {:keys [finished error]}]
-  (let [decoded-error (some-> error decode-error)]
-    (mapv (fn [m]
-            (if (= "agent" (:role m))
-              (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
-                (some? decoded-error) (assoc :error decoded-error))
-              m))
-          chat-messages)))
+  (let [decoded-error  (some-> error decode-error)
+        last-agent-idx (->> chat-messages
+                            (keep-indexed (fn [i m] (when (= "agent" (:role m)) i)))
+                            last)]
+    (if (nil? last-agent-idx)
+      chat-messages
+      (update (vec chat-messages) last-agent-idx
+              (fn [m]
+                (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
+                  (some? decoded-error) (assoc :error decoded-error)))))))
 
 (defn- empty-agent-placeholder
   "Stub chat message for an assistant row whose `:data` produced no chat messages

@@ -103,7 +103,7 @@
 }
 
 .messageContainerAgent + .messageContainerAgent {
-  margin-top: var(--mantine-spacing-sm);
+  margin-top: var(--mantine-spacing-md);
 }
 
 .promptSuggestionsContainer {
