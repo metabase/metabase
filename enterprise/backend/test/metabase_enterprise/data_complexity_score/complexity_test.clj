@@ -100,6 +100,24 @@
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
               (#'complexity/score-catalog es nil))))))
 
+(deftest ^:parallel score-from-entities-metabot-fallback-test
+  (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"
+    (let [library  []
+          universe [(entity :name "orders") (entity :name "widgets")]]
+      (testing "nil metabot-entities → :metabot reuses the :universe score and :meta flags the fallback"
+        (let [result (complexity/score-from-entities library universe nil {})]
+          (is (= :universe-fallback (get-in result [:meta :metabot-source]))
+              "benchmark consumers need this marker to tell an approximated :metabot apart from a real one")
+          (is (= (:universe result) (:metabot result))
+              "fallback path must copy :universe verbatim — no second scoring pass")))
+      (testing "non-nil metabot-entities → :metabot is scored separately and the marker is absent"
+        (let [result (complexity/score-from-entities library universe nil
+                                                     {:metabot-entities [(entity :name "orders")]})]
+          (is (nil? (get-in result [:meta :metabot-source]))
+              "real metabot score must not be stamped with the fallback marker")
+          (is (not= (:universe result) (:metabot result))
+              "pre-check: the metabot vector is smaller than universe so the scores should differ"))))))
+
 (deftest ^:parallel synonym-scoring-test
   (testing "cosine similarity above threshold flags a synonym pair"
     (let [es       [(entity :name "customers") (entity :name "clients")]
@@ -774,6 +792,31 @@
           (is (seq events) "sanity: events were emitted")
           (is (every? #(= expected-model (get-in % ["parameters" "embedding_model"])) events))
           (is (every? #(= "names_split"  (get-in % ["parameters" "text_variant"])) events)))))))
+
+(deftest ^:sequential emit-snowplow-batch-id-test
+  (testing "scoring stamps every event with a UUID batch_id, constant within a pass and fresh between passes"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")]
+                                               :universe [(entity :name "orders")]
+                                               :metabot  [(entity :name "orders")]})]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (letfn [(drain-and-check-pass! []
+                  (let [events     (complexity-events!)
+                        batch-ids  (set (map #(get % "batch_id") events))
+                        catalogs   (frequencies (map #(get % "catalog") events))
+                        event-keys (set (map (juxt #(get % "catalog") #(get % "key")) events))]
+                    ;; 1 grand total + 2 group totals + 5 leaves = 8 events per catalog.
+                    (is (= {"library" 8 "universe" 8 "metabot" 8} catalogs))
+                    (is (= (count events) (count event-keys)))
+                    (is (= 1 (count batch-ids)))
+                    (is (every? parse-uuid batch-ids))
+                    (first batch-ids)))]
+          (complexity/complexity-scores :embedder nil)
+          (let [batch-1 (drain-and-check-pass!)]
+            (complexity/complexity-scores :embedder nil)
+            (let [batch-2 (drain-and-check-pass!)]
+              (is (not= batch-1 batch-2)))))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"

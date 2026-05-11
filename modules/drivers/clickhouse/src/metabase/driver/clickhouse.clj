@@ -314,18 +314,35 @@
     (clickhouse-version/is-at-least? 24 4 db)
     false))
 
-(defmethod driver.sql/set-role-statement :clickhouse
-  [_ role]
-  (let [default-role (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed (fn [r]
-                          (if (or (re-matches #"\".*\"" r) (= role default-role))
-                            r
-                            (format "\"%s\"" r)))
-        quoted-role (->> (str/split role #",")
-                         (map quote-if-needed)
-                         (str/join ","))
-        statement   (format "SET ROLE %s" quoted-role)]
-    statement))
+(defmethod sql-jdbc/set-role-statement :clickhouse
+  [_driver _conn role]
+  ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
+  (let [default-role         (driver.sql/default-database-role :clickhouse nil)
+        quote-if-needed      (fn [role]
+                               (if (or (and (str/starts-with? role "\"")
+                                            (str/ends-with? role "\""))
+                                       (= role default-role))
+                                 role
+                                 (str \" role \")))
+        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
+        quoted-role          (->> (str/split role #",")
+                                  (map quote-if-needed)
+                                  (map escape-double-quotes)
+                                  (str/join ","))]
+    (format "SET ROLE %s" quoted-role)))
+
+(defmethod driver/set-role! :clickhouse
+  [driver ^Connection conn role]
+  (let [sql (sql-jdbc/set-role-statement driver conn role)]
+    ;; there seems to be something weird going on with ClickHouse when using `next.jdbc/execute!` in the default impl
+    ;; to set the role (I'm guessing it's a `PreparedStatement` versus `Statement` issue? So just fall back to doing
+    ;; it this way
+    (when-not (string? sql)
+      (throw (UnsupportedOperationException.
+              "The Clickhouse implementation of metabase.driver/set-role! does not support parameterized statements")))
+    (with-open [stmt (.createStatement ^Connection conn)]
+      (.execute stmt ^String sql))))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

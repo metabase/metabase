@@ -39,7 +39,7 @@
   ;;
 
   ;; TODO (cam): most of these either have a ton of things that need to be fixed or cause issues
-  ;; with [[metabase.lib.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
+  ;; with [[metabase.util.match/match]] and friends -- we need to write a custom hook for those macros so Kondo
   ;; can understand them.
 
   #_:docstring-leading-trailing-whitespace
@@ -231,10 +231,9 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match
-                                    metabase.lib.util.match/match-lite
-                                    metabase.lib.util.match/match-many
-                                    metabase.lib.util.match/replace-lite]}                    ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.util.match/match-one
+                                    metabase.util.match/match-many
+                                    metabase.util.match/replace]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -250,20 +249,15 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.lib.util.match/match)
-    (metabase.lib.util.match/match-one)
-    (metabase.lib.util.match/match-lite)
-    (metabase.lib.util.match/match-many)
-    (metabase.lib.util.match/replace)
-    (metabase.lib.util.match/replace-in)
-    (metabase.lib.util.match/replace-lite)
+    (metabase.util.match/match-one)
+    (metabase.util.match/match-many)
+    (metabase.util.match/replace-in)
+    (metabase.util.match/replace)
     (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
-    (metabase.driver-api.core/match-lite)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
     (metabase.driver-api.core/replace-in)
-    (metabase.driver-api.core/replace-lite)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
     (metabase.util/prog1 [<>])
@@ -315,9 +309,6 @@
    metabase.lib.convert/->legacy-MBQL                 {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.core/->legacy-MBQL                    {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   metabase.lib.util.match/match                      {:message "Use lib.util.match/match-many instead of lib.util.match/match."}
-   metabase.lib.util.match/match-one                  {:message "Use lib.util.match/match-lite instead of lib.util.match/match-one."}
-   metabase.lib.util.match/replace                    {:message "Use lib.util.match/replace-lite instead of lib.util.match/replace."}
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
@@ -351,7 +342,6 @@
     clj-time.coerce                           time.coerce
     clj-time.format                           time.format
     clojure.core.async                        a
-    clojure.core.match                        clojure.core.match
     clojure.data                              data
     clojure.math.combinatorics                math.combo
     clojure.pprint                            pprint

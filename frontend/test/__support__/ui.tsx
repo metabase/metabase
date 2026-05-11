@@ -20,6 +20,7 @@ import _ from "underscore";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
+import { PUT } from "metabase/api/legacy-client";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
@@ -34,7 +35,6 @@ import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import { PUT } from "metabase/utils/api";
 import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";

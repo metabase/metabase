@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
    [metabase-enterprise.sso.settings :as ee-sso-settings]
-   [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
 (defn- select-sso-backend
@@ -24,8 +23,7 @@
   [req]
   (let [enabled-count (count (filter identity
                                      [(ee-sso-settings/saml-enabled)
-                                      (ee-sso-settings/jwt-enabled-and-configured)
-                                      (sso-settings/slack-connect-enabled)]))]
+                                      (ee-sso-settings/jwt-enabled-and-configured)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
       (> enabled-count 1) (select-sso-backend req)
@@ -33,7 +31,6 @@
       ;; Single SSO method enabled
       (ee-sso-settings/saml-enabled) :saml
       (ee-sso-settings/jwt-enabled-and-configured)  :jwt
-      (sso-settings/slack-connect-enabled)  :slack-connect
 
       ;; No SSO method enabled
       :else nil)))

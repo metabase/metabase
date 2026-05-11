@@ -1,17 +1,25 @@
 (ns metabase-enterprise.data-complexity-score.settings
   "Settings for the data-complexity-score module."
   (:require
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting data-complexity-scoring-enabled
   (deferred-tru "Run the scheduled Data Complexity Score job (one node per cluster, daily).")
   :encryption :no
   :visibility :admin
-  :default    false
   :type       :boolean
   :export?    false
-  :doc        false)
+  :doc        false
+  :getter     (fn []
+                (u/or-with some?
+                  (setting/get-value-of-type :boolean :data-complexity-scoring-enabled)
+                  ;; Defaults to true on Metabase Cloud staging hosts and false elsewhere.
+                  (boolean (and (premium-features/is-hosted?)
+                                (config/config-bool :mb-store-use-staging))))))
 
 (defsetting data-complexity-scoring-last-fingerprint
   (deferred-tru "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations.")
@@ -34,11 +42,8 @@
 (defsetting data-complexity-scoring-use-search-index-embedder
   (deferred-tru
    (str "Source the synonym-axis embeddings from the active semantic-search pgvector index "
-        "instead of calling the synonym-axis embedder configured below. The default (off) is "
-        "the better-calibrated signal — see "
-        "https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb "
-        "— but the search-index path does not require ai-service to be reachable, which is "
-        "useful for instances where it is not deployed."))
+        "instead of calling the synonym-axis embedder configured below. This saves us doing "
+        "additional calculations, but the results seem less reliable."))
   :encryption :no
   :visibility :admin
   :default    false
@@ -57,10 +62,7 @@
 
 (defsetting data-complexity-scoring-synonym-embedding-model
   (deferred-tru
-   (str "Model name passed to the synonym-axis embedding provider. Defaults to "
-        "sentence-transformers/all-MiniLM-L6-v2 — an STS-trained Sentence-Transformers model "
-        "calibrated against names-split preprocessing at threshold 0.80. See the synonym "
-        "calibration analysis before swapping this."))
+   "Model name passed to the synonym-axis embedding provider.")
   :encryption :no
   :visibility :admin
   :default    "sentence-transformers/all-MiniLM-L6-v2"

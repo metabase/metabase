@@ -527,6 +527,10 @@ export const DocumentPage = ({
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
             entityType="document"
+            value={{
+              id: documentData?.collection_id ?? "root",
+              model: "collection",
+            }}
             onChange={(collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));

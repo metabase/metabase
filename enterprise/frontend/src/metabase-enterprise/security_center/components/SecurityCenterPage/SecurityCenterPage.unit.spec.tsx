@@ -14,7 +14,7 @@ import * as advisoriesHook from "../../hooks/use-security-advisories";
 
 import { SecurityCenterPage } from "./SecurityCenterPage";
 
-jest.mock("metabase/common/components/AdminLayout/AdminSettingsLayout", () => ({
+jest.mock("metabase/admin/components/AdminLayout/AdminSettingsLayout", () => ({
   AdminSettingsLayout: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),

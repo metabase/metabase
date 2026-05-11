@@ -1,47 +1,51 @@
-import type { ComponentProps } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  useGetTimelineEventQuery,
+  useUpdateTimelineEventMutation,
+} from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import type { TimelineEvent } from "metabase-types/api";
 
-interface EditEventModalProps {
+interface EditEventModalContainerProps {
   eventId: number;
   onClose?: () => void;
 }
 
-const timelineEventProps = {
-  id: (state: State, props: EditEventModalProps) => props.eventId,
-  entityAlias: "event",
-};
-
-const mapStateToProps = (state: State, { onClose }: EditEventModalProps) => ({
-  onSubmitSuccess: onClose,
-  onArchiveSuccess: onClose,
-  onCancel: onClose,
-});
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (event: TimelineEvent) => {
-    await dispatch(TimelineEvents.actions.update(event));
-    dispatch(addUndo({ message: t`Updated event` }));
-  },
-});
-
-function EditEventModalContainer(props: ComponentProps<typeof EditEventModal>) {
+function EditEventModalContainer({
+  eventId,
+  onClose,
+}: EditEventModalContainerProps) {
+  const dispatch = useDispatch();
   const archive = useSetArchive();
+  const { data: event } = useGetTimelineEventQuery(eventId);
+  const [updateTimelineEvent] = useUpdateTimelineEventMutation();
+
+  if (!event) {
+    return null;
+  }
+
+  const onSubmit = async (event: TimelineEvent) => {
+    await updateTimelineEvent(event).unwrap();
+    dispatch(addUndo({ message: t`Updated event` }));
+  };
+
   const onArchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
-  return <EditEventModal {...props} onArchive={onArchive} />;
+
+  return (
+    <EditEventModal
+      event={event}
+      onSubmit={onSubmit}
+      onSubmitSuccess={onClose}
+      onArchive={onArchive}
+      onArchiveSuccess={onClose}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  TimelineEvents.load(timelineEventProps),
-  connect(mapStateToProps, mapDispatchToProps),
-)(EditEventModalContainer);
+export default EditEventModalContainer;

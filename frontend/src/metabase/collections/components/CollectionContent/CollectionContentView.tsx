@@ -38,7 +38,6 @@ import {
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
-import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/redux";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -93,11 +92,7 @@ export const CollectionContentView = ({
       sort_direction: "asc",
     });
 
-  const list = useMemo(
-    () =>
-      pinnedItemsData?.data.map((item) => Search.wrapEntity(item, dispatch)),
-    [pinnedItemsData, dispatch],
-  );
+  const list = pinnedItemsData?.data;
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,

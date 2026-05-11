@@ -41,6 +41,7 @@ const elements = [
     type: "basic",
     name: "mlv1",
     pattern: "frontend/src/metabase-lib/v1/**",
+    enforceOutgoing: true,
   }),
   createElement({
     type: "lib",
@@ -53,6 +54,7 @@ const elements = [
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api", enforceOutgoing: true }),
   // shared
+  createElement({ type: "shared", name: "embedding" }),
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "palette", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
@@ -64,7 +66,10 @@ const elements = [
   createElement({ type: "shared", name: "collections", enforceOutgoing: true }),
   createElement({ type: "shared", name: "comments", enforceOutgoing: true }),
   createElement({ type: "shared", name: "data-grid", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "detail-view", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
@@ -80,6 +85,7 @@ const elements = [
   createElement({ type: "shared", name: "questions", enforceOutgoing: true }),
   createElement({ type: "shared", name: "router", enforceOutgoing: true }),
   createElement({ type: "shared", name: "search", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "setup", enforceOutgoing: true }),
   createElement({ type: "shared", name: "status", enforceOutgoing: true }),
   createElement({
     type: "shared",
@@ -87,6 +93,8 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "shared", name: "timelines", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "transforms", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "urls", enforceOutgoing: true }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
@@ -103,6 +111,12 @@ const elements = [
     type: "shared",
     name: "types",
     pattern: "frontend/src/types/**",
+    enforceOutgoing: true,
+  }),
+  createElement({
+    type: "shared",
+    name: "custom-viz",
+    pattern: "enterprise/frontend/src/custom-viz/**",
     enforceOutgoing: true,
   }),
   createElement({
@@ -125,6 +139,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
+  createElement({ type: "feature", name: "public", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
@@ -146,6 +161,7 @@ const elements = [
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.jsx",
     "frontend/src/metabase/routes-embed.tsx",
+    "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
@@ -199,6 +215,11 @@ const rules = [
     from: ["feature/enterprise"],
     allow: ["feature/*"],
     message: "Enterprise module can import from all feature modules",
+  },
+  {
+    from: ["feature/public"],
+    allow: ["feature/*"],
+    message: "Public module can import from all feature modules",
   },
   {
     from: ["app/*"],

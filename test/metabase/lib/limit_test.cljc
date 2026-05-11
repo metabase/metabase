@@ -114,8 +114,8 @@
       10)))
 
 (deftest ^:parallel max-rows-limit-test-6
-  (testing "if both `:limit` and `:page` are set (not sure makes sense), return the smaller of the two"
-    (are [query expected] (= expected (lib/max-rows-limit query))
+  (testing "if both `:limit` and `:page` are set page should be preferred over limit"
+    (are [query expected] (= expected (lib/max-rows-limit (lib/normalize query)))
       {:database     1
        :lib/type     :mbql/query
        :lib/metadata meta/metadata-provider
@@ -132,7 +132,7 @@
                        :source-table 1
                        :limit        5
                        :page         {:page 1, :items 10}}]}
-      5)))
+      10)))
 
 (deftest ^:parallel max-rows-limit-test-7
   (testing "if nothing is set return `nil`"

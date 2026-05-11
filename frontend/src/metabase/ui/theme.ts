@@ -147,7 +147,7 @@ export const getThemeOverrides = (
       },
     },
   },
-  fontFamily: "var(--mb-default-font-family), sans-serif",
+  fontFamily: "var(--mb-default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
   components: {
     ...accordionOverrides,

@@ -21,6 +21,7 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotCodeEditorBufferContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
@@ -365,6 +366,18 @@ type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
 };
 
+const findCodeEditBuffer = (
+  context: MetabotChatContext,
+  bufferId: string,
+): MetabotCodeEditorBufferContext | undefined => {
+  const viewedBuffers = context.user_is_viewing.flatMap((item) =>
+    item.type === "code_editor" ? item.buffers : [],
+  );
+  const buffers = [...viewedBuffers, ...(context.code_editor?.buffers ?? [])];
+
+  return buffers.find((buffer) => buffer.id === bufferId);
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
@@ -380,7 +393,6 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
-
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -393,7 +405,10 @@ export const sendAgentRequest = createAsyncThunk<
         {
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
-              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
+              message: Omit<
+                MetabotAgentDataPartMessage,
+                "id" | "role" | "externalId"
+              >,
             ) => dispatch(addAgentMessage({ ...message, agentId }));
 
             match(part)
@@ -408,7 +423,16 @@ export const sendAgentRequest = createAsyncThunk<
                 if (part.value.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
-                pushDataPart({ type: "data_part", part });
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: {
+                    codeEditBuffer: findCodeEditBuffer(
+                      request.context,
+                      part.value.buffer_id,
+                    ),
+                  },
+                });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));

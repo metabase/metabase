@@ -556,7 +556,46 @@
              (mt/client :post 401 "metabot/feedback"
                         {:metabot_id 1
                          :message_id "x"
-                         :positive   true}))))))
+                         :positive   true}))))
+    (testing "/source-feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/source-feedback"
+                        {:metabot_id  1
+                         :message_id  "x"
+                         :source_id   1
+                         :source_type "table"
+                         :positive    true}))))))
+
+(deftest source-feedback-returns-no-content-test
+  (testing "POST /metabot/source-feedback returns 204 after persisting feedback"
+    (let [conversation-id (str (random-uuid))
+          external-id     (str (random-uuid))
+          user-id         (mt/user->id :rasta)]
+      (try
+        (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+        (let [message-id (first (t2/insert-returning-pks!
+                                 :model/MetabotMessage
+                                 {:conversation_id conversation-id
+                                  :role            "assistant"
+                                  :profile_id      "gpt-x"
+                                  :external_id     external-id
+                                  :total_tokens    5
+                                  :data            [{:type "text" :text "hi"}]}))]
+          (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
+                                          {:metabot_id  1
+                                           :message_id  external-id
+                                           :source_id   42
+                                           :source_type "table"
+                                           :positive    true})))
+          (is (some? (t2/select-one :model/MetabotSourceFeedback
+                                    :message_id  message-id
+                                    :user_id     user-id
+                                    :source_id   42
+                                    :source_type "table"))))
+        (finally
+          (t2/delete! :model/MetabotSourceFeedback :user_id user-id :source_id 42 :source_type "table")
+          (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+          (t2/delete! :model/MetabotConversation :id conversation-id))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
@@ -886,8 +925,7 @@
                                 :conversation_id (str (random-uuid))
                                 :state           {}
                                 :debug           false}
-                               nil
-                               nil)
+                               {:origin nil :referer nil :user-agent nil :ip-address nil})
         (testing "metabot-id is included in the arguments"
           (is (some? (:metabot-id @captured-args))
               "metabot-id should not be nil")
@@ -907,78 +945,164 @@
                           :state           {}
                           :debug           false})
           ip-for       (fn [conversation-id]
-                         (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))]
+                         (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
+          info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                     api/native-agent-streaming-request    (constantly nil)]
-        (mt/with-test-user :rasta
-          (testing "first writer wins: initial call captures the IP, later calls do not overwrite it"
-            (let [conversation-id (str (random-uuid))]
-              (api/streaming-request (request-body conversation-id) "1.2.3.4" nil)
-              (is (= "1.2.3.4" (ip-for conversation-id)))
-              (api/streaming-request (request-body conversation-id) "5.6.7.8" nil)
-              (is (= "1.2.3.4" (ip-for conversation-id)))))
-          (testing "null IP on pre-feature rows is backfilled on next call"
-            (let [conversation-id (str (random-uuid))]
-              (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
-              (api/streaming-request (request-body conversation-id) "9.9.9.9" nil)
-              (is (= "9.9.9.9" (ip-for conversation-id))))))))))
+        (mt/with-premium-features #{:audit-app}
+          (mt/with-test-user :rasta
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+              (testing "first writer wins: initial call captures the IP, later calls do not overwrite it"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id) (info-with-ip "1.2.3.4"))
+                  (is (= "1.2.3.4" (ip-for conversation-id)))
+                  (api/streaming-request (request-body conversation-id) (info-with-ip "5.6.7.8"))
+                  (is (= "1.2.3.4" (ip-for conversation-id)))))
+              (testing "null IP on pre-feature rows is backfilled on next call"
+                (let [conversation-id (str (random-uuid))]
+                  (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
+                  (api/streaming-request (request-body conversation-id) (info-with-ip "9.9.9.9"))
+                  (is (= "9.9.9.9" (ip-for conversation-id))))))
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+              (testing "ip_address is NOT recorded when analytics-pii-retention-enabled is off"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id) (info-with-ip "1.2.3.4"))
+                  (is (nil? (ip-for conversation-id))))))))))))
 
-(deftest streaming-request-embed-url-test
+(deftest streaming-request-embedding-fields-test
   (mt/with-model-cleanup [:model/MetabotMessage
                           [:model/MetabotConversation :created_at]]
-    (let [request-body  (fn [conversation-id]
-                          {:metabot_id      metabot.config/embedded-metabot-id
-                           :profile_id      nil
-                           :message         "hi"
-                           :context         {}
-                           :history         []
-                           :conversation_id conversation-id
-                           :state           {}
-                           :debug           false})
-          embed-url-for (fn [conversation-id]
-                          (:embed_url (t2/select-one :model/MetabotConversation :id conversation-id)))]
+    (let [request-body (fn [conversation-id]
+                         {:metabot_id      metabot.config/embedded-metabot-id
+                          :profile_id      nil
+                          :message         "hi"
+                          :context         {}
+                          :history         []
+                          :conversation_id conversation-id
+                          :state           {}
+                          :debug           false})
+          info-with    (fn [embed-referrer]
+                         {:origin     embed-referrer
+                          :referer    embed-referrer
+                          :user-agent nil
+                          :ip-address nil})
+          convo-for    (fn [conversation-id]
+                         (t2/select-one :model/MetabotConversation :id conversation-id))]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                     api/native-agent-streaming-request    (constantly nil)]
-        (mt/with-test-user :rasta
-          (testing "first writer wins: initial call captures the Referer, later calls do not overwrite it"
-            (let [conversation-id (str (random-uuid))]
-              (api/streaming-request (request-body conversation-id) nil "https://host.example.com/page")
-              (is (= "https://host.example.com/page" (embed-url-for conversation-id)))
-              (api/streaming-request (request-body conversation-id) nil "https://other.example.com/other")
-              (is (= "https://host.example.com/page" (embed-url-for conversation-id)))))
-          (testing "null embed_url on pre-feature rows is backfilled on next call"
-            (let [conversation-id (str (random-uuid))]
-              (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
-              (api/streaming-request (request-body conversation-id) nil "https://host.example.com/backfilled")
-              (is (= "https://host.example.com/backfilled" (embed-url-for conversation-id)))))
-          (testing "missing Referer leaves embed_url null"
-            (let [conversation-id (str (random-uuid))]
-              (api/streaming-request (request-body conversation-id) nil nil)
-              (is (nil? (embed-url-for conversation-id))))))))))
+        (mt/with-premium-features #{:audit-app}
+          (mt/with-test-user :rasta
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+              (testing "flag on: hostname AND path are recorded"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id)
+                                         (info-with "https://customer.example.com/dashboard"))
+                  (let [convo (convo-for conversation-id)]
+                    (is (= "customer.example.com" (:embedding_hostname convo)))
+                    (is (= "/dashboard"           (:embedding_path     convo))))))
+              (testing "first writer wins: hostname is not overwritten on later calls"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id)
+                                         (info-with "https://host.example.com/page"))
+                  (api/streaming-request (request-body conversation-id)
+                                         (info-with "https://other.example.com/other"))
+                  (let [convo (convo-for conversation-id)]
+                    (is (= "host.example.com" (:embedding_hostname convo)))
+                    (is (= "/page"            (:embedding_path     convo))))))
+              (testing "missing embed referrer leaves both columns null"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id) (info-with nil))
+                  (let [convo (convo-for conversation-id)]
+                    (is (nil? (:embedding_hostname convo)))
+                    (is (nil? (:embedding_path     convo)))))))
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+              (testing "flag off: hostname IS still recorded (ungated), path is NOT"
+                (let [conversation-id (str (random-uuid))]
+                  (api/streaming-request (request-body conversation-id)
+                                         (info-with "https://customer.example.com/dashboard"))
+                  (let [convo (convo-for conversation-id)]
+                    (is (= "customer.example.com" (:embedding_hostname convo)))
+                    (is (nil?                     (:embedding_path     convo)))))))))))))
 
-(deftest agent-streaming-endpoint-captures-referer-test
-  (testing "POST /metabot/agent-streaming captures the Referer header as embed_url"
-    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
-      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-        (with-redefs [openrouter/openrouter (fn [_]
-                                              (mut/mock-llm-response
-                                               [{:type :start :id "msg-1"}
-                                                {:type :text :text "hi"}
-                                                {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
-                                                 :model "test-model" :id    "msg-1"}]))]
-          (mt/with-model-cleanup [:model/MetabotMessage
-                                  [:model/MetabotConversation :created_at]]
-            (let [conversation-id (str (random-uuid))
-                  referer         "https://customer.example.com/dashboard"]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    {:request-options {:headers {"referer" referer}}}
-                                    {:message         "hello"
-                                     :context         {}
-                                     :conversation_id conversation-id
-                                     :history         []
-                                     :state           {}})
-              (is (= referer
-                     (:embed_url (t2/select-one :model/MetabotConversation :id conversation-id)))))))))))
+(deftest agent-streaming-endpoint-captures-embed-referrer-test
+  (testing "POST /metabot/agent-streaming captures x-metabase-embed-referrer as embedding_hostname/embedding_path"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (with-redefs [openrouter/openrouter (fn [_]
+                                                (mut/mock-llm-response
+                                                 [{:type :start :id "msg-1"}
+                                                  {:type :text :text "hi"}
+                                                  {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
+                                                   :model "test-model" :id    "msg-1"}]))]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (testing "flag on: hostname AND path are recorded"
+                (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+                  (let [conversation-id (str (random-uuid))
+                        embed-referrer  "https://customer.example.com/dashboard"]
+                    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                          {:request-options {:headers {"x-metabase-embed-referrer" embed-referrer}}}
+                                          {:message         "hello"
+                                           :context         {}
+                                           :conversation_id conversation-id
+                                           :history         []
+                                           :state           {}})
+                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                      (is (= "customer.example.com" (:embedding_hostname convo)))
+                      (is (= "/dashboard"           (:embedding_path     convo)))))))
+              (testing "flag off: hostname recorded (ungated), path NOT recorded"
+                (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+                  (let [conversation-id (str (random-uuid))
+                        embed-referrer  "https://customer.example.com/dashboard"]
+                    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                          {:request-options {:headers {"x-metabase-embed-referrer" embed-referrer}}}
+                                          {:message         "hello"
+                                           :context         {}
+                                           :conversation_id conversation-id
+                                           :history         []
+                                           :state           {}})
+                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                      (is (= "customer.example.com" (:embedding_hostname convo)))
+                      (is (nil?                     (:embedding_path     convo)))))))
+              (testing "standard Referer header (no x-metabase-embed-referrer) leaves both columns null"
+                (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+                  (let [conversation-id (str (random-uuid))]
+                    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                          {:request-options {:headers {"referer" "https://customer.example.com/dashboard"}}}
+                                          {:message         "hello"
+                                           :context         {}
+                                           :conversation_id conversation-id
+                                           :history         []
+                                           :state           {}})
+                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                      (is (nil? (:embedding_hostname convo)))
+                      (is (nil? (:embedding_path     convo)))))))
+              (testing "user-agent recorded only when flag is on"
+                (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+                  (let [conversation-id (str (random-uuid))]
+                    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                          {:request-options {:headers {"user-agent" "Mozilla/5.0 (TestAgent)"}}}
+                                          {:message         "hello"
+                                           :context         {}
+                                           :conversation_id conversation-id
+                                           :history         []
+                                           :state           {}})
+                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                      (is (= "Mozilla/5.0 (TestAgent)" (:user_agent convo)))
+                      (is (some? (:sanitized_user_agent convo))))))
+                (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+                  (let [conversation-id (str (random-uuid))]
+                    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                          {:request-options {:headers {"user-agent" "Mozilla/5.0 (TestAgent)"}}}
+                                          {:message         "hello"
+                                           :context         {}
+                                           :conversation_id conversation-id
+                                           :history         []
+                                           :state           {}})
+                    (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
+                      (is (nil? (:user_agent           convo)))
+                      (is (nil? (:sanitized_user_agent convo))))))))))))))
 
 (deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider

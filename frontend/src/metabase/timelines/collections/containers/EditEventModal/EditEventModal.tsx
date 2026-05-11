@@ -1,61 +1,69 @@
-import type { ComponentProps } from "react";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
+import {
+  skipToken,
+  useGetTimelineEventQuery,
+  useGetTimelineQuery,
+  useUpdateTimelineEventMutation,
+} from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
-import { connect, useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import { useDispatch } from "metabase/redux";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
 
-interface EditEventModalProps {
-  params: ModalParams;
-}
+function EditEventModalContainer({ params }: ModalComponentProps) {
+  const dispatch = useDispatch();
+  const archive = useSetArchive();
+  const timelineId = Urls.extractEntityId(params.timelineId);
+  const eventId = Urls.extractEntityId(params.timelineEventId);
+  const {
+    data: timeline,
+    isLoading: isTimelineLoading,
+    error: timelineError,
+  } = useGetTimelineQuery(
+    timelineId != null ? { id: timelineId, include: "events" } : skipToken,
+  );
+  const {
+    data: event,
+    isLoading: isEventLoading,
+    error: eventError,
+  } = useGetTimelineEventQuery(eventId ?? skipToken);
+  const [updateTimelineEvent] = useUpdateTimelineEventMutation();
 
-const timelineProps = {
-  id: (state: State, props: EditEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
-
-const timelineEventProps = {
-  id: (state: State, props: EditEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
-  entityAlias: "event",
-  LoadingAndErrorWrapper,
-};
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
-    await dispatch(TimelineEvents.actions.update(event));
+  const onSubmit = async (event: TimelineEvent, timeline?: Timeline) => {
+    await updateTimelineEvent(event).unwrap();
     if (timeline) {
       dispatch(push(Urls.timelineInCollection(timeline)));
     }
-  },
-});
+  };
 
-function EditEventModalContainer(props: ComponentProps<typeof EditEventModal>) {
-  const archive = useSetArchive();
-  const dispatch = useDispatch();
   const onArchive = async (event: TimelineEvent, timeline?: Timeline) => {
     await archive({ id: event.id, model: "timeline-event" }, true);
     if (timeline) {
       dispatch(push(Urls.timelineInCollection(timeline)));
     }
   };
-  return <EditEventModal {...props} onArchive={onArchive} />;
+
+  const isLoading = isTimelineLoading || isEventLoading;
+  const error = timelineError ?? eventError;
+
+  if (isLoading || error || !event) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <EditEventModal
+      event={event}
+      timeline={timeline}
+      onSubmit={onSubmit}
+      onArchive={onArchive}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.load(timelineProps),
-  TimelineEvents.load(timelineEventProps),
-  connect(null, mapDispatchToProps),
-)(EditEventModalContainer);
+export default EditEventModalContainer;

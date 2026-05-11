@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -18,6 +17,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys]])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
@@ -227,7 +227,7 @@
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
-  (lib.util.match/match-lite clause
+  (match/match-one clause
     ;; two literals
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
     (let [x-type (lib.schema.expression/type-of-resolved x)
@@ -282,7 +282,7 @@
 (defn unwrap-value-literal
   "Extract value literal from `:value` form or returns form as is if not a `:value` form."
   [maybe-value-form]
-  (lib.util.match/match-lite maybe-value-form
+  (match/match-one maybe-value-form
     [:value x & _] x
     _              maybe-value-form))
 

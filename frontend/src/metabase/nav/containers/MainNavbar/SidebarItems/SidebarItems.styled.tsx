@@ -128,6 +128,11 @@ export const FullWidthLink = styled(Link)`
   }
 `;
 
+export const FullWidthContainer = styled.div`
+  ${itemContentStyle}
+  cursor: pointer;
+`;
+
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
 const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 

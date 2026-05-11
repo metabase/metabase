@@ -290,14 +290,14 @@
   (testing "POST /api/metric/dataset with metric + measure arithmetic"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-def      (-> (lib/query mp table-metadata)
+          mbql5-def      (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Card    metric  {:name          "Test Metric"
                                              :type          :metric
                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
                      :model/Measure measure {:name       "Test Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-def}]
+                                             :definition mbql5-def}]
         (mt/with-full-data-perms-for-all-users!
           ;; Sync dimensions for both metric and measure
           (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
