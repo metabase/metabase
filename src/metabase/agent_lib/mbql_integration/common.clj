@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (defn query?
-  "Return true when `value` is a normalized pMBQL query map.
+  "Return true when `value` is a normalized MBQL 5 query map.
 
   Agent-lib needs to distinguish queries from metadata maps, columns, and test
   sentinels, but it should not inspect `:lib/type` directly. This helper keeps
@@ -26,7 +26,7 @@
        (= :mbql/query (lib/normalized-query-type value))))
 
 (defn extract-field-ids
-  "Return the set of field ids referenced anywhere inside a pMBQL form.
+  "Return the set of field ids referenced anywhere inside a MBQL 5 form.
 
   Agent-lib compares expressions, aggregations, breakouts, and columns
   semantically. The canonical lib helper already knows how to walk MBQL safely,

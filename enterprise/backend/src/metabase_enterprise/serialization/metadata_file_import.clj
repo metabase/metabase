@@ -2,30 +2,49 @@
   "Boot-time loader that streams a metadata file into the appdb, populating
   `:model/Database` (matched, never created), `:model/Table`, and `:model/Field`.
 
-  The loader is a thin orchestrator over three building blocks:
+  Composes three building blocks:
 
-    - [[metabase-enterprise.serialization.metadata-file-import.parsers]] streams batches
-      of `[line-num row]` tuples from the file (JSON or YAML, dispatched by
-      extension).
-    - [[metabase-enterprise.serialization.metadata-file-import.processors]] runs the
-      per-batch SQL — validate, match, insert, update, upsert. Each processor
-      self-resolves cross-table references via batched natural-key SELECTs; the
-      loader carries no id-map state.
-    - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines the
-      per-row Malli schemas, shared with the parsers' callers.
+    - [[metabase-enterprise.serialization.metadata-file-import.parsers]] streams
+      batches of `[line-num row]` tuples from the file (JSON or YAML, dispatched
+      by extension).
+    - [[metabase-enterprise.serialization.metadata-file-import.processors]] provides
+      the per-batch and per-depth SQL building blocks: database matching, drain,
+      pre-flight orphan check, depth tagging, table merge, and the per-depth
+      field-merge functions.
+    - [[metabase-enterprise.serialization.metadata-file-import.schemas]] defines
+      the per-row Malli schemas, shared with the parsers' callers.
 
-  The loader runs four passes:
+  The loader's flow:
 
-    1. databases — match by `(name, engine)`, never create. Unmatched source
-       databases produce WARN logs (non-fatal).
-    2. tables — match-or-insert by `(target-db-id, schema, name)`.
-    3. fields — match-or-insert with on-the-fly stubs for missing parents.
-    4. fk-resolve — walk fields again to set `fk_target_field_id`.
+    1. **Drain** (single pass over the file): match `:databases` against the
+       live appdb (matched-by-name-and-engine, never created); drain `:tables`
+       and `:fields` into staging. Unmatched source databases produce WARN
+       logs (non-fatal); their tables/fields are silently dropped during
+       merge (the merge JOINs through `metabase_database` on `db_name`).
+    2. **Pre-flight orphan check** ([[processors/assert-no-orphan-refs!]]):
+       any cross-row reference (`source_parent_id`, `source_fk_target_id`)
+       not satisfiable within the file is a hard error (`:file_incomplete`)
+       — no live writes have happened, the throw rolls back nothing.
+    3. **Depth tagging** ([[processors/compute-staging-depth!]]): walks
+       staging into depth levels (root = 0, children/FK-source rows take
+       `max(deps) + 1`). Cycles surface here as `:cycle_in_field_graph`.
+    4. **Table-resolve round 1**: assign `target_id` to staging table rows
+       that already exist in the appdb — keys the table merge's UPDATE/INSERT
+       split.
+    5. **Merge** (single `t2/with-transaction` wrapping every live-data write):
+       table merge, table-resolve round 2 (capture INSERT-assigned ids),
+       copy table target ids onto field staging, depth-walk field merge
+       (per-depth resolves + UPDATE + INSERT), `initial_sync_status` flip.
+       Either all of this commits or none does; a throw mid-merge rolls back
+       everything.
 
-  After all four passes complete: a `warn-on-unfilled-stubs!` self-check scans
-  the matched databases for stubs that never got filled; operator gets a
-  structured WARN line. Then `initial_sync_status` is flipped to `\"complete\"`
-  on every matched target Database so the UI surfaces tables immediately."
+  Strict-consistency invariants enforced by the pre-flight + depth-tagging
+  steps mean the merge loop has no orphan-handling code paths. The whole
+  merge is set-based SQL, one statement per phase per depth level.
+
+  `with-staging-tables` clears the staging tables on entry and on exit
+  (try/finally), so a crashed prior attempt cannot leak rows into the next
+  run."
   (:require
    [clojure.string :as str]
    [environ.core :as env]
@@ -67,119 +86,69 @@
                       {:kind :file_not_readable, :path path})))
     f))
 
-;;; ============================== databases ==============================
+;;; ============================== drain + database matching ==============================
 
-(defn- load-databases!
-  "Stream the `databases` array, run [[processors/process-databases!]] per
-  batch. Returns a set of `target-db-id`s (the appdb integer ids of every
-  source database that matched). Unmatched source databases are logged WARN;
-  non-fatal."
+(defn- process-databases-batch!
+  "Per-batch handler for `:databases`. For each result from
+  [[processors/process-databases!]]:
+
+    - Record `source-id → name` in `databases-by-source-id` (used by the
+      tables handler to denormalize `db_name` on staging rows). Populated
+      for both matched and no-match cases so unmatched-DB tables still get
+      a non-NULL `db_name` and can be silently dropped at merge time via
+      the orphan-table-skip path.
+    - For matched: conj target-db-id onto `matched-ids`.
+    - For no-match: WARN log."
+  [matched-ids databases-by-source-id batch]
+  (reduce (fn [_ result]
+            (vswap! databases-by-source-id assoc (:source-id result) (:name result))
+            (case (:status result)
+              :matched
+              (vswap! matched-ids conj (:target-id result))
+
+              :no-match
+              (log/warnf "metadata-file-import: skipped source database %s (no matching target): %s"
+                         (pr-str (:name result)) (:detail result)))
+            nil)
+          nil
+          (processors/process-databases! batch)))
+
+(defn- drain-and-match-databases!
+  "Single-pass walk of the metadata file: match `:databases` against the live
+  appdb, drain `:tables` and `:fields` into staging. Returns the set of
+  matched target-db-ids.
+
+  The tables handler closes over `databases-by-source-id` to denormalize
+  `db_name` at drain time. The wire format's top-level key order doesn't
+  matter for matched-ids correctness; if `:tables` appears before
+  `:databases` (perverse but legal), the map is partially populated when
+  tables drain runs — table rows from that case end up with `db_name=NULL`
+  and get silently dropped at merge time (orphan-table-skip)."
   [^File file]
-  (let [matched-ids (volatile! #{})]
-    (parsers/stream-array-batches!
-     file :databases processors/import-batch-size
-     (fn [batch]
-       (reduce (fn [_ result]
-                 (case (:status result)
-                   :matched
-                   (vswap! matched-ids conj (:target-id result))
-
-                   :no-match
-                   (log/warnf "metadata-file-import: skipped source database %s (no matching target): %s"
-                              (pr-str (:source-id result)) (:detail result)))
-                 nil)
-               nil
-               (processors/process-databases! batch))))
+  (let [matched-ids            (volatile! #{})
+        databases-by-source-id (volatile! {})]
+    (parsers/stream-keyed-arrays!
+     file processors/import-batch-size
+     {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
+      :tables    (fn [batch] (processors/drain-tables-batch! @databases-by-source-id batch))
+      :fields    processors/drain-fields-batch!})
     @matched-ids))
-
-;;; ============================== tables ==============================
-
-(defn- load-tables!
-  "Stream the tables array; rows whose source `:db_id` (db name) doesn't match
-  any target are logged and skipped."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :tables processors/import-batch-size
-   (fn [batch]
-     (reduce (fn [_ result]
-               (case (:status result)
-                 (:matched :inserted) nil
-
-                 :no-target-db
-                 (log/warnf "metadata-file-import: skipped table %s (no matching database): %s"
-                            (pr-str (:source-id result)) (:detail result)))
-               nil)
-             nil
-             (processors/process-tables! batch)))))
-
-;;; ============================== fields ==============================
-
-(defn- load-fields!
-  "Stream the fields array; missing parents are stubbed on the fly so the file
-  order doesn't matter."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :fields processors/import-batch-size
-   (fn [batch]
-     (reduce (fn [_ result]
-               (case (:status result)
-                 (:matched :inserted) nil
-
-                 :no-target-table
-                 (log/warnf "metadata-file-import: skipped field %s (no matching table): %s"
-                            (pr-str (:source-id result)) (:detail result)))
-               nil)
-             nil
-             (processors/process-fields! batch)))))
-
-;;; ============================== fk-resolve ==============================
-
-(defn- resolve-field-fks!
-  "Walk the fields array again to set `fk_target_field_id` on rows that have one."
-  [^File file]
-  (parsers/stream-array-batches!
-   file :fields processors/import-batch-size
-   (fn [batch]
-     (run! identity (processors/process-fields-fk-resolve! batch)))))
-
-;;; ============================== Unfilled-stubs scan ==============================
-
-(def ^:private ^:const unfilled-stubs-sample-cap
-  "Maximum number of unfilled stubs reported in the WARN line."
-  50)
-
-(defn- warn-on-unfilled-stubs!
-  "Self-check: scan target appdb for rows still carrying the stub sentinel,
-  bounded to the matched-target-db-ids so pre-existing stubs from unrelated
-  imports don't pollute this run's report. Emits a structured WARN line."
-  [matched-target-db-ids]
-  (when (seq matched-target-db-ids)
-    (let [stubs (t2/select [:model/Field :id :name :table_id :nfc_path]
-                           {:where [:and
-                                    [:= :database_type "__stub__"]
-                                    [:in :table_id {:select [:id]
-                                                    :from   [:metabase_table]
-                                                    :where  [:in :db_id (vec matched-target-db-ids)]}]]
-                            :limit unfilled-stubs-sample-cap})]
-      (when (seq stubs)
-        (log/warnf
-         "metadata-file-import: %d unfilled stub field(s) remain after import (sample up to %d): %s"
-         (count stubs)
-         unfilled-stubs-sample-cap
-         (pr-str (mapv (fn [{:keys [id name table_id nfc_path]}]
-                         {:id id :name name :table_id table_id :nfc_path nfc_path})
-                       stubs)))))))
 
 ;;; ============================== Top-level orchestration ==============================
 
 (defn- mark-databases-sync-complete!
   "Flip every matched target Database's `initial_sync_status` to `\"complete\"`
-  so the UI surfaces tables immediately. Without this, the UI stays in the
-  `Setting up...` state for matched databases."
+  so the UI surfaces tables immediately.
+
+  Writes via raw `:metabase_database` to bypass `:model/Database`'s
+  `:after-update` hook, which would schedule per-database Quartz sync
+  triggers — undesirable here, since the whole point of metadata-file-import
+  is to skip warehouse sync. App startup re-registers triggers."
   [matched-target-db-ids]
   (when (seq matched-target-db-ids)
-    (t2/update! :model/Database :id [:in (vec matched-target-db-ids)]
-                {:initial_sync_status "complete"})))
+    (t2/query {:update :metabase_database
+               :set    {:initial_sync_status "complete"}
+               :where  [:in :id (vec matched-target-db-ids)]})))
 
 (defn import-metadata-file!
   "Run the full metadata import pipeline against the given file.
@@ -187,19 +156,40 @@
   `metadata-file` — `java.io.File` or path-string for the metadata file
                     (databases / tables / fields).
 
-  Returns `:ok` on success; throws on hard-fail conditions."
+  Returns `:ok` on success; throws on hard-fail conditions (file not
+  readable, file incomplete, cycle in reference graph, mid-merge errors)."
   [metadata-file]
-  (let [^File m-file              (if (instance? File metadata-file)
-                                    metadata-file
-                                    (File. ^String metadata-file))
-        matched-target-db-ids     (load-databases! m-file)]
-    (load-tables! m-file)
-    (load-fields! m-file)
-    (resolve-field-fks! m-file)
-    (warn-on-unfilled-stubs! matched-target-db-ids)
-    (mark-databases-sync-complete! matched-target-db-ids)
-    (log/infof "metadata-file-import: complete (matched-databases=%d)"
-               (count matched-target-db-ids))
+  (let [^File m-file (if (instance? File metadata-file)
+                       metadata-file
+                       (File. ^String metadata-file))]
+    (processors/with-staging-tables
+      ;; --- drain + database matching (single pass over the file) ---
+      (let [matched-target-db-ids (drain-and-match-databases! m-file)]
+        ;; --- analyze: feed the planner real selectivity for downstream UPDATEs ---
+        (processors/analyze-staging-tables!)
+        ;; --- pre-flight: every parent ref must resolve within the file ---
+        (processors/assert-no-orphan-refs!)
+        ;; --- pre-flight: NULL orphan fk-target refs (informational, not fatal) ---
+        (let [{:keys [count sample]} (processors/null-orphan-fk-target-refs!)]
+          (when (pos? count)
+            (log/warnf "metadata-file-import: %d orphan fk_target_field_id ref(s) NULLed (target not present in file); sample=%s"
+                       count (pr-str sample))))
+        ;; --- depth tagging: assign 0..max-depth, detect cycles ---
+        (processors/compute-staging-depth!)
+        ;; --- table resolve round 1: matched-vs-insert decision for merge-tables! ---
+        (processors/resolve-target-table-ids-in-staging!)
+        ;; --- merge (one txn — every live-data write all-or-nothing) ---
+        (t2/with-transaction [_]
+          (processors/merge-tables!)
+          ;; round 2 captures INSERT-assigned ids back into table staging
+          (processors/resolve-target-table-ids-in-staging!)
+          ;; copy target-table-ids from table staging onto field staging
+          (processors/resolve-target-table-ids-for-fields-in-staging!)
+          ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
+          (processors/merge-fields-by-depth!)
+          (mark-databases-sync-complete! matched-target-db-ids))
+        (log/infof "metadata-file-import: complete (matched-databases=%d)"
+                   (count matched-target-db-ids))))
     :ok))
 
 (defn initialize-from-env!
