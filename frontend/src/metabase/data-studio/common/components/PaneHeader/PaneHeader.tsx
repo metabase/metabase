@@ -14,11 +14,11 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Stack,
   type StackProps,
   Tooltip,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";

@@ -1,7 +1,7 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
@@ -24,6 +24,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  IconName,
   RawSeries,
   RowValue,
   RowValues,

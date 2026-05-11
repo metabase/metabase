@@ -1735,8 +1735,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     eye_filled: { component: eye_component, source: eye_source },
   };
 
-export type { IconName };
-
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
 
 export const isValidIconName = (name: unknown): name is IconName =>
