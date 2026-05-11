@@ -55,7 +55,6 @@ interface LeafletTilePinMapProps extends LeafletMapProps {
 
 export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
   static contextType = EmbeddingEntityContext;
-  // @ts-expect-error - see: https://linear.app/metabase/issue/GDGT-1891/migrate-babel-config-to-allowdeclarefields
   context!: ContextType<typeof EmbeddingEntityContext>;
 
   pinTileLayer: L.TileLayer | null = null;
