@@ -973,7 +973,7 @@ type CombinedEntities = {
  * another entity's normalizr schema (e.g. measures inside a table's
  * `query_metadata` response).
  */
-const RETIRED_ENTITY_NAMES = ["metrics"];
+const RETIRED_ENTITY_NAMES = ["metrics", "segments"];
 
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};

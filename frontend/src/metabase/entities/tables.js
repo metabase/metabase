@@ -17,7 +17,6 @@ import {
 } from "metabase/api";
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
-import { Segments } from "metabase/entities/segments";
 import {
   compose,
   createThunkAction,
@@ -308,31 +307,6 @@ export const Tables = createEntity({
         ...state,
         [virtualTableId]: convertSavedQuestionToVirtualTable(card),
       };
-    }
-
-    if (type === Segments.actionTypes.CREATE) {
-      const { table_id: tableId, id: segmentId } = payload.segment;
-      const table = state[tableId];
-      if (table) {
-        return {
-          ...state,
-          [tableId]: { ...table, segments: [segmentId, ...table.segments] },
-        };
-      }
-    }
-
-    if (type === Segments.actionTypes.UPDATE && !error) {
-      const { table_id: tableId, archived, id: segmentId } = payload.segment;
-      const table = state[tableId];
-      if (archived && table && table.segments) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            segments: table.segments.filter((id) => id !== segmentId),
-          },
-        };
-      }
     }
 
     if (type === UPDATE_TABLE_FIELD_ORDER) {
