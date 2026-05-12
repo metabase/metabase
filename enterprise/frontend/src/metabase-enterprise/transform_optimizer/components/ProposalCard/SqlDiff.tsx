@@ -64,6 +64,8 @@ function prefixLines(text: string, kind: Segment["kind"]): string {
   const lines = text.split("\n");
   // The last element after split is "" when text ends with "\n"; preserve it.
   return lines
-    .map((line, i) => (i === lines.length - 1 && line === "" ? "" : marker + line))
+    .map((line, i) =>
+      i === lines.length - 1 && line === "" ? "" : marker + line,
+    )
     .join("\n");
 }

@@ -63,7 +63,10 @@ export function DefragLoader() {
     return () => window.clearInterval(id);
   }, []);
 
-  const headIdx = Math.max(0, state.grid.findIndex((cell) => cell === "free"));
+  const headIdx = Math.max(
+    0,
+    state.grid.findIndex((cell) => cell === "free"),
+  );
   const compacted = headIdx < 0 ? TOTAL : headIdx;
   const percent = Math.min(99, Math.round((compacted / TOTAL) * 100));
 

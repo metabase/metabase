@@ -60,7 +60,9 @@ export function useOptimizerStream({ transformId }: Options): Controls {
   // `{data, error}` shape, which is independent of the tag set.
   const cachedResult = useSelector((state) =>
     optimizerApi.endpoints.optimize.select(args)(
-      state as Parameters<ReturnType<typeof optimizerApi.endpoints.optimize.select>>[0],
+      state as Parameters<
+        ReturnType<typeof optimizerApi.endpoints.optimize.select>
+      >[0],
     ),
   );
   const [hasRequested, setHasRequested] = useState<boolean>(
@@ -154,8 +156,7 @@ function projectState(
       status: "error",
       error: {
         message:
-          (result.error && result.error.message) ||
-          "Optimizer request failed.",
+          (result.error && result.error.message) || "Optimizer request failed.",
         retryable: true,
       },
     };

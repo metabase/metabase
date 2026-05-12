@@ -19,11 +19,7 @@ const STROKE = 10;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function OptimizationDegreeDial({
-  status,
-  score,
-  errorMessage,
-}: Props) {
+export function OptimizationDegreeDial({ status, score, errorMessage }: Props) {
   if (status === "streaming" && score == null) {
     return <DefragLoader />;
   }

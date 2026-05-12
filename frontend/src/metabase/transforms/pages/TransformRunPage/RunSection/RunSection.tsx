@@ -10,7 +10,10 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORM_OPTIMIZER } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TRANSFORM_OPTIMIZER,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";

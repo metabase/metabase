@@ -61,8 +61,7 @@ export function formatRunDuration(
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   if (minutes < 60) {
-    return c("Run duration in minutes and seconds")
-      .t`${minutes}m ${seconds}s`;
+    return c("Run duration in minutes and seconds").t`${minutes}m ${seconds}s`;
   }
   const hours = Math.floor(minutes / 60);
   const remMinutes = minutes % 60;

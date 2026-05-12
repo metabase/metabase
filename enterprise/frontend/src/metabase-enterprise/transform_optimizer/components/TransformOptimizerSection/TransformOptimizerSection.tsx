@@ -4,7 +4,16 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import { Alert, Box, Button, Divider, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Alert,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
@@ -339,14 +348,8 @@ function getNativeSql(transform: Transform): string | null {
  * silently accept the rewrite alongside, which is not what the user
  * asked for.
  */
-function topoOrderForAccept(
-  target: Proposal,
-  available: Proposal[],
-): string[] {
-  if (
-    target.kind === "index" &&
-    target.ddl_statement?.target === "source-db"
-  ) {
+function topoOrderForAccept(target: Proposal, available: Proposal[]): string[] {
+  if (target.kind === "index" && target.ddl_statement?.target === "source-db") {
     return [target.id];
   }
 

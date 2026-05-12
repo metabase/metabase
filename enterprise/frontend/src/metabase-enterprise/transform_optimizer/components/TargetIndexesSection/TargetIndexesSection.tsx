@@ -35,13 +35,8 @@ type Props = {
 };
 
 export function TargetIndexesSection({ transform, readOnly }: Props) {
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-    isFetching,
-  } = useListTargetIndexesQuery({ transformId: transform.id });
+  const { data, isLoading, error, refetch, isFetching } =
+    useListTargetIndexesQuery({ transformId: transform.id });
   const [dropIndex, dropResult] = useDropTargetIndexMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -233,9 +228,7 @@ function IndexRow({
             {t`Drop`}
           </Button>
         ) : (
-          <Tooltip
-            label={t`You don't have permission to drop indexes here.`}
-          >
+          <Tooltip label={t`You don't have permission to drop indexes here.`}>
             <span>
               <Button color="error" variant="subtle" size="xs" disabled>
                 {t`Drop`}

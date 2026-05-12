@@ -22,8 +22,18 @@ import S from "./ProposalCard.module.css";
 import { SqlDiff } from "./SqlDiff";
 
 type Action =
-  | { kind: "accept"; busy?: boolean; disabled?: boolean; disabledReason?: string }
-  | { kind: "verify"; busy?: boolean; disabled?: boolean; disabledReason?: string }
+  | {
+      kind: "accept";
+      busy?: boolean;
+      disabled?: boolean;
+      disabledReason?: string;
+    }
+  | {
+      kind: "verify";
+      busy?: boolean;
+      disabled?: boolean;
+      disabledReason?: string;
+    }
   | { kind: "dismiss" };
 
 type Props = {
@@ -82,9 +92,7 @@ export function ProposalCard({
         {proposal.body && (
           <Box>
             <Text fz="sm" c="text-secondary" mb={4}>
-              {currentSql
-                ? t`Proposed changes`
-                : t`Proposed transform`}
+              {currentSql ? t`Proposed changes` : t`Proposed transform`}
             </Text>
             {currentSql ? (
               <SqlDiff before={currentSql} after={proposal.body} />
@@ -125,11 +133,7 @@ export function ProposalCard({
 
 function SeverityBadge({ severity }: { severity: ProposalSeverity }) {
   return (
-    <Badge
-      className={S[`severity_${severity}`]}
-      variant="light"
-      radius="sm"
-    >
+    <Badge className={S[`severity_${severity}`]} variant="light" radius="sm">
       {severityLabel(severity)}
     </Badge>
   );
