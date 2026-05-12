@@ -289,7 +289,7 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
       });
   });
 
-  it("does not fire a redundant `manual-change` after `initial-state` when the seed equals the resolved values", () => {
+  it("fires `onSqlParametersChange` only once on mount when the controlled `sqlParameters` already match the resolved initial state", () => {
     const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
 
     mountInteractiveQuestion({
@@ -303,6 +303,41 @@ describe("scenarios > embedding-sdk > sdk-question > controlled SQL parameters",
     cy.wait(500);
 
     cy.get("@onSqlParametersChange").should("have.been.calledOnce");
+  });
+
+  it("does not emit `manual-change` when the user re-selects the same widget value", () => {
+    const onSqlParametersChange = cy.spy().as("onSqlParametersChange");
+
+    mountInteractiveQuestion({
+      sqlParameters: { state: "AR" },
+      onSqlParametersChange,
+      children: childrenLayout,
+    });
+
+    cy.wait("@cardQuery");
+    cy.get("@onSqlParametersChange").should("have.been.calledOnce");
+
+    // First selection — fires `manual-change`.
+    findParameterWidget("State").click();
+    cy.findByTestId("parameter-value-dropdown").within(() => {
+      cy.findByText("AR").click();
+      cy.findByText("NY").click();
+      cy.findByText("Update filter").click();
+    });
+    cy.wait("@cardQuery");
+
+    cy.get("@onSqlParametersChange").should("have.been.calledTwice");
+
+    // Re-select the same option — should be a no-op for the listener
+    // since applied values didn't change.
+    findParameterWidget("State").click();
+    cy.findByTestId("parameter-value-dropdown").within(() => {
+      cy.findByText("Update filter").click();
+    });
+
+    cy.wait(500);
+
+    cy.get("@onSqlParametersChange").should("have.been.calledTwice");
   });
 
   it("clears a single parameter when its value is set to null", () => {
