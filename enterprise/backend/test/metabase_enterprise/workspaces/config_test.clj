@@ -90,6 +90,28 @@
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
 
+(deftest build-workspace-config-bigquery-emits-dataset-filters-test
+  (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
+    (testing "BigQuery emits :dataset-filters-* (not :schema-filters-*); BQ's list-datasets reads dataset-filters"
+      (mt/with-temp [:model/Database {db-id :id}
+                     {:name "BQ" :engine :bigquery-cloud-sdk
+                      :details {:project-id "metabase-prod"}}
+                     :model/Workspace {ws-id :id} {:name       "bq-ws"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details {}
+                      :output_namespace "ws_alice"
+                      :input_schemas    ["core" "warehouse"]
+                      :status           :provisioned}]
+        (let [details (-> (config/build-workspace-config ws-id) :config :databases first :details)]
+          (is (= "inclusion" (:dataset-filters-type details)))
+          (is (= "core,warehouse" (:dataset-filters-patterns details)))
+          (is (nil? (:schema-filters-type details))
+              "BigQuery must NOT emit :schema-filters-* — those wire into describe-database which BQ doesn't use")
+          (is (nil? (:schema-filters-patterns details))))))))
+
 (deftest build-workspace-config-rejects-non-provisioned-test
   (testing "Any non-:provisioned WorkspaceDatabase causes a 409"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Mixed"

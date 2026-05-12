@@ -34,6 +34,18 @@
    | BigQuery                            | project     | dataset      | table      |
    | Mongo                               | \"\"        | \"\"         | collection |
 
+
+  config yml dbs:
+  - analytics
+
+  conn string: mysql:jdbc@.../analytics
+
+  is there a db driver, imagine pg driver that let u connect to multiple dbs, then u would have
+  3 segments in the path: db.schema.table
+
+  in 1 mb_db_row: u can get access to multiple logical databases (db column)
+  
+  
    ClickHouse calls its top level a \"database\" but it lives at AST `:schema` because
    that's where it appears in compiled SQL (`db.table`). The slot name follows the AST
    position, not what the warehouse vendor calls the level.

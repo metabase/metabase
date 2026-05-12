@@ -104,7 +104,7 @@
     (cond-> {}
       (:db components)     (assoc :db (:db positions))
       (:schema components) (assoc :schema schema)
-      ;; No-schema drivers (MySQL): the namespace name lands in the db slot.
+         ;; No-schema drivers (MySQL): the namespace name lands in the db slot.
       (and (:db components) (not (:schema components)))
       (assoc :db schema))))
 

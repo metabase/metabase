@@ -14,9 +14,11 @@
    app-db `Table` rows nor `describe-database` should ever surface the
    isolation schema.
 
-   BigQuery is excluded for now: its DDL setup goes through the BigQuery API,
-   not JDBC, so the `jdbc/execute!`-based table seeding here doesn't apply to
-   it. A BigQuery e2e variant is a separate follow-up."
+   Driver branches: JDBC drivers (Postgres/MySQL/SQL Server/Snowflake/Redshift/
+   ClickHouse) seed tables via `jdbc/execute!` and probe via `jdbc/query` against
+   an `admin-spec` JDBC db-spec. BigQuery uses the BigQuery Java API via
+   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` — same deftest body,
+   parallel `bq-*` helpers, dispatched at call sites on `admin-driver`."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -46,11 +48,20 @@
   []
   (subs (str (random-uuid)) 0 8))
 
-(def workspaces-supported-dwh-drivers
-  "Drivers whose workspace setup goes through the JDBC + SQL DDL path. BigQuery is
-   omitted because its setup uses the BigQuery API, not JDBC DDL; a BigQuery e2e
-   variant is filed separately."
-  #{:postgres :sqlserver :clickhouse :mysql :redshift :snowflake})
+;; BQ helpers live under `modules/drivers/bigquery-cloud-sdk/test/` and aren't
+;; on the enterprise test classpath by default. Lazy-load at call time so the
+;; rest of this ns (and other-driver test runs) don't require the BQ test sources.
+(defn- bq-util
+  "Resolve `sym` (an unqualified symbol) in `metabase.driver.bigquery-cloud-sdk.workspace-test-util`,
+   requiring the ns on first call. Throws if the BQ driver test classpath isn't loaded."
+  [sym]
+  (requiring-resolve (symbol "metabase.driver.bigquery-cloud-sdk.workspace-test-util" (name sym))))
+
+(def workspaces-supported-drivers
+  "Drivers covered by the full e2e. JDBC drivers go through `jdbc/execute!`+
+   `jdbc/query`; `:bigquery-cloud-sdk` goes through the BQ Java API via
+   `bq.util`. Each helper below dispatches on driver."
+  #{:postgres :sqlserver :clickhouse :mysql :redshift :snowflake :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
   "True when the driver emits `db.schema.table` (Snowflake / SQL Server / BigQuery).
@@ -67,54 +78,71 @@
   [_driver _admin-details main-schema]
   main-schema)
 
+;;; -------------------- driver-branched helpers --------------------
+;;;
+;;; `admin-warehouse` is polymorphic: a JDBC db-spec map for JDBC drivers, a
+;;; `BigQuery` Java client for `:bigquery-cloud-sdk`. Helpers dispatch on
+;;; `driver` and pick the right access path. The deftest body stays
+;;; driver-agnostic.
+
+(defn- admin-warehouse
+  "Build whatever `admin-warehouse` value the rest of the helpers need for
+   this driver."
+  [driver admin-details]
+  (case driver
+    :bigquery-cloud-sdk ((bq-util 'admin-client) admin-details)
+    (sql-jdbc.conn/connection-details->spec driver admin-details)))
+
 (defn- qualified-table-sql
   "Return the dialect-correct schema-qualified table reference for a native SQL
-   string, e.g. `\"PUBLIC\".\"VENUES\"` on Postgres, `[dbo].[venues]` on SQL Server.
-
-   For 3-slot drivers (Snowflake, SQL Server) the connection's bound database
-   already serves as the outer qualifier, so a `schema.table` reference resolves
-   correctly without needing to inject a third part here."
-  [driver schema table]
-  (sql.u/quote-name driver :table schema table))
+   string, e.g. `\"PUBLIC\".\"VENUES\"` on Postgres, `` `project.dataset.table` ``
+   on BigQuery."
+  [driver admin-details schema table]
+  (case driver
+    :bigquery-cloud-sdk (format "`%s.%s.%s`"
+                                ((bq-util 'project-id) admin-details) schema table)
+    (sql.u/quote-name driver :table schema table)))
 
 (defn- create-source-table!
-  "Driver-aware CREATE TABLE + INSERT for the e2e source table. Uses
-   `sql.tx/field-base-type->sql-type` for column types so we don't hand-write
-   per-driver type names."
-  [driver admin-spec schema table]
-  (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
-        text-type (sql.tx/field-base-type->sql-type driver :type/Text)
-        qual      (qualified-table-sql driver schema table)]
-    (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
-    (jdbc/execute! admin-spec [(format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)])))
+  "Driver-aware CREATE TABLE + INSERT for the e2e source table."
+  [driver admin-warehouse admin-details schema table]
+  (case driver
+    :bigquery-cloud-sdk
+    (let [qual (qualified-table-sql driver admin-details schema table)]
+      ((bq-util 'execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
+      ((bq-util 'execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)))
+
+    (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
+          text-type (sql.tx/field-base-type->sql-type driver :type/Text)
+          qual      (qualified-table-sql driver admin-details schema table)]
+      (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
+      (jdbc/execute! admin-warehouse [(format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)]))))
 
 (defn- create-output-table!
-  "Pre-create the canonical *output* target with `rows` (each `[id v]`). Same
-   driver-aware DDL as `create-source-table!`. Used by the canonical-table-protection
-   test to seed `main_schema.tgt-name` with distinct rows before the workspace
-   transform writes to that same name (which gets redirected to iso.<derived>)."
-  [driver admin-spec schema table rows]
-  (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
-        text-type (sql.tx/field-base-type->sql-type driver :type/Text)
-        qual      (qualified-table-sql driver schema table)
-        values    (str/join ", " (map (fn [[id v]] (format "(%d, '%s')" id v)) rows))]
-    (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
-    (jdbc/execute! admin-spec [(format "INSERT INTO %s (id, v) VALUES %s" qual values)])))
+  "Pre-create the canonical *output* target with `rows` (each `[id v]`). Used
+   by the canonical-table-protection test to seed `main_schema.tgt-name` with
+   distinct rows before the workspace transform writes to that same name."
+  [driver admin-warehouse admin-details schema table rows]
+  (let [values (str/join ", " (map (fn [[id v]] (format "(%d, '%s')" id v)) rows))
+        qual   (qualified-table-sql driver admin-details schema table)]
+    (case driver
+      :bigquery-cloud-sdk
+      (do
+        ((bq-util 'execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
+        ((bq-util 'execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES %s" qual values)))
+
+      (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
+            text-type (sql.tx/field-base-type->sql-type driver :type/Text)]
+        (jdbc/execute! admin-warehouse [(format "CREATE TABLE %s (id %s, v %s)" qual int-type text-type)])
+        (jdbc/execute! admin-warehouse [(format "INSERT INTO %s (id, v) VALUES %s" qual values)])))))
 
 (defn- canonical-schema-name
   "Pick the warehouse \"schema\" (in this test's vocabulary) the canonical input
    tables will live in for this driver.
 
-   Schema-having drivers (Postgres / Redshift / SQL Server / Snowflake / ClickHouse)
-   get a freshly-created per-run schema so concurrent runs don't collide on
-   table names.
-
-   MySQL has no notion of schema-within-database — its \"schemas\" are databases,
-   and the connection is bound to one of them. The workspace YAML contract
-   already encodes this: `input: [{schema: <bound-db-name>}]`. So on MySQL we
-   reuse the connection's bound database (`(:db admin-details)`) as the
-   canonical input \"schema\". Concurrency-isolation falls to the per-run
-   table-name suffix instead."
+   Schema-having JDBC drivers + BigQuery get a freshly-created per-run schema /
+   dataset. MySQL has no schema-within-database — reuse the bound database;
+   concurrency-isolation falls to the per-run table-name suffix."
   [driver run-id admin-details]
   (case driver
     :mysql (:db admin-details)
@@ -122,45 +150,84 @@
 
 (defn- table-row-schema-value
   "Translate the warehouse \"schema\" name to the value Metabase stores in
-   `:model/Table.schema` for this driver. MySQL reports no schema at all
-   (`(database-supports? :mysql :schemas)` is `false`), so synced Table
-   rows have `:schema nil` regardless of what database they live in. Other
-   drivers store the schema name verbatim."
+   `:model/Table.schema` for this driver. MySQL reports no schema at all so
+   synced Table rows have `:schema nil`. Other drivers store the schema name
+   verbatim."
   [driver schema]
   (if (= :mysql driver) nil schema))
 
 (defn- create-canonical-schema!
-  "Create the canonical schema, except on MySQL where `canonical-schema-name`
-   returns the connection's already-existing bound database — there's nothing
-   to create, and `CREATE DATABASE` would either be redundant or steal a name
-   shared with other tests."
-  [driver admin-spec schema]
-  (when-not (= :mysql driver)
-    (jdbc/execute! admin-spec [(format "CREATE SCHEMA %s"
-                                       (sql.u/quote-name driver :schema schema))])))
+  "Create the canonical schema/dataset, except on MySQL (the bound database
+   already exists)."
+  [driver admin-warehouse admin-details schema]
+  (case driver
+    :mysql              nil
+    :bigquery-cloud-sdk ((bq-util 'create-dataset!) admin-warehouse
+                                                    ((bq-util 'project-id) admin-details)
+                                                    schema)
+    (jdbc/execute! admin-warehouse [(format "CREATE SCHEMA %s"
+                                            (sql.u/quote-name driver :schema schema))])))
 
 (defn- drop-canonical-schema!
-  "Driver-aware schema teardown for the e2e test's `finally` cleanup.
-
-   Postgres / Redshift / SQL Server / Snowflake / ClickHouse: drop the per-run
-   schema. `CASCADE` is load-bearing for Postgres-family because the test has
-   created tables inside.
-
-   MySQL: don't drop the bound database (it's the shared test-data DB used by
-   other tests). Drop only the two per-run tables we created."
-  [driver admin-spec schema src-name tgt-name]
+  "Driver-aware schema/dataset teardown for the e2e test's `finally` cleanup."
+  [driver admin-warehouse admin-details schema src-name tgt-name]
   (case driver
     :mysql (doseq [t [src-name tgt-name]]
-             (try (jdbc/execute! admin-spec
+             (try (jdbc/execute! admin-warehouse
                                  [(format "DROP TABLE IF EXISTS %s"
-                                          (qualified-table-sql driver schema t))])
+                                          (qualified-table-sql driver admin-details schema t))])
                   (catch Throwable _ nil)))
-    :clickhouse (jdbc/execute! admin-spec
+    :clickhouse (jdbc/execute! admin-warehouse
                                [(format "DROP DATABASE IF EXISTS %s"
                                         (sql.u/quote-name driver :schema schema))])
-    (jdbc/execute! admin-spec
+    :bigquery-cloud-sdk (try ((bq-util 'drop-dataset!) admin-warehouse
+                                                       ((bq-util 'project-id) admin-details)
+                                                       schema)
+                             (catch Throwable _ nil))
+    (jdbc/execute! admin-warehouse
                    [(format "DROP SCHEMA IF EXISTS %s CASCADE"
                             (sql.u/quote-name driver :schema schema))])))
+
+(defn- list-warehouse-tables-in-schema
+  "Return the set of table names currently in `schema` on the warehouse. Used by
+   the post-test `describe-database` assertions to confirm tables in the iso
+   schema don't bleed into app-db Table rows on MySQL (where `:model/Table.schema`
+   is null and we can't compare on schema directly)."
+  [driver admin-warehouse admin-details schema]
+  (case driver
+    :bigquery-cloud-sdk (->> ((bq-util 'list-tables) admin-warehouse
+                                                     ((bq-util 'project-id) admin-details)
+                                                     schema)
+                             (map :table)
+                             set)
+    (->> (jdbc/query admin-warehouse
+                     ["SELECT table_name FROM information_schema.tables WHERE table_schema = ?"
+                      schema])
+         (map :table_name)
+         set)))
+
+(defn- read-canonical-rows
+  "Read all rows from `(schema.table)` on the warehouse via admin perms,
+   returning a set of `[id v]` vectors. Used by the canonical-table-protection
+   assertion."
+  [driver admin-warehouse admin-details schema table]
+  (case driver
+    :bigquery-cloud-sdk
+    (->> ((bq-util 'query) admin-warehouse
+                           (format "SELECT id, v FROM %s ORDER BY id"
+                                   (qualified-table-sql driver admin-details schema table)))
+         (map (fn [{:keys [id v]}] [(Long/parseLong id) v]))
+         set)
+
+    (->> (jdbc/query admin-warehouse
+                     [(format "SELECT id, v FROM %s ORDER BY id"
+                              (qualified-table-sql driver admin-details schema table))])
+         (map (fn [row]
+                (let [vs (vals row)]
+                  (assert (= 2 (count vs))
+                          "expected 2 columns from canonical select")
+                  (vec vs))))
+         set)))
 
 ;; `^:synchronized` because `ws/workspace-instance-config` is a process-wide atom;
 ;; running concurrently with other workspace-mode tests would cross-pollute.
@@ -177,8 +244,9 @@
       thunk)
     (thunk)))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
-  (mt/test-drivers workspaces-supported-dwh-drivers
+  (mt/test-drivers workspaces-supported-drivers
     (mt/with-premium-features #{:workspaces}
       (with-redshift-describe-filter-disabled
         (fn []
@@ -186,7 +254,7 @@
             (let [admin-driver driver/*driver*
                   admin-db (mt/db)
                   admin-details (:details admin-db)
-                  admin-spec (sql-jdbc.conn/connection-details->spec admin-driver admin-details)
+                  admin-spec (admin-warehouse admin-driver admin-details)
                   run-id (random-suffix)
               ;; All identifiers carry `run-id` — we share a single test DB across
               ;; runs, so any leftover state from a failed run has to be
@@ -202,15 +270,19 @@
             ;; Schema-creation: most workspace-supported drivers accept `CREATE SCHEMA "<name>"`,
             ;; but MySQL "schemas" are databases — see `canonical-schema-name` for why we
             ;; reuse the bound database there instead of creating a fresh one.
-                (create-canonical-schema! admin-driver admin-spec main-schema)
-                (create-source-table! admin-driver admin-spec main-schema src-name)
+                (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+                (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
             ;; Diagnostic: confirm the source table exists in the warehouse before we
             ;; lean on Metabase sync to surface it. If this fails, the problem is in
             ;; the test-side DDL, not workspace code.
-                (let [warehouse-tables (jdbc/query admin-spec
-                                                   [(format "SELECT 1 FROM %s LIMIT 1"
-                                                            (qualified-table-sql admin-driver main-schema src-name))])]
-                  (is (= 1 (count warehouse-tables))
+                (let [warehouse-tables (case admin-driver
+                                         :bigquery-cloud-sdk ((bq-util 'list-tables) admin-spec
+                                                                                     ((bq-util 'project-id) admin-details)
+                                                                                     main-schema)
+                                         (jdbc/query admin-spec
+                                                     [(format "SELECT 1 FROM %s LIMIT 1"
+                                                              (qualified-table-sql admin-driver admin-details main-schema src-name))]))]
+                  (is (>= (count warehouse-tables) 1)
                       (str "warehouse source table " main-schema "." src-name " is not queryable")))
             ;; --- Setup: pre-existing canonical OUTPUT table with distinct rows ---------
             ;; The workspace transform writes to canonical {schema main-schema, name output-table-name}.
@@ -219,7 +291,7 @@
             ;; transform's output (via remap), and (b) the canonical warehouse table itself
             ;; was never mutated by the transform - the workspace transform only wrote to
             ;; iso.<derived>, leaving the canonical contents intact.
-                (create-output-table! admin-driver admin-spec main-schema output-table-name
+                (create-output-table! admin-driver admin-spec admin-details main-schema output-table-name
                                       [[99 "pre-existing"] [98 "still-pre-existing"]])
             ;; --- Setup: a Metabase Database row attached to the warehouse with admin
             ;; creds. The config-loader path (below) will rewrite its `:details` with
@@ -436,6 +508,7 @@
                                                                   :type     :native
                                                                   :native   {:query (format "SELECT * FROM %s"
                                                                                             (qualified-table-sql admin-driver
+                                                                                                                 admin-details
                                                                                                                  isolation-schema
                                                                                                                  to_table_name))}}}]
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
@@ -462,6 +535,7 @@
                                                                   :type     :native
                                                                   :native   {:query (format "SELECT * FROM %s"
                                                                                             (qualified-table-sql admin-driver
+                                                                                                                 admin-details
                                                                                                                  main-schema
                                                                                                                  output-table-name))}}}]
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
@@ -478,19 +552,9 @@
                             ;; must NOT have mutated the canonical warehouse table. Probe it directly via
                             ;; `admin-spec` (bypasses the QP and workspace mode entirely).
                                 (testing "the workspace transform does not mutate the canonical warehouse table"
-                              ;; jdbc/query returns column names as keywords with case that varies by
-                              ;; driver (Postgres lowercases, Snowflake uppercases, etc). Pull values
-                              ;; by `vals` after asserting two columns -- avoids fragile per-driver
-                              ;; key-case handling.
-                                  (let [canonical-rows (->> (jdbc/query admin-spec
-                                                                        [(format "SELECT id, v FROM %s ORDER BY id"
-                                                                                 (qualified-table-sql admin-driver main-schema output-table-name))])
-                                                            (map (fn [row]
-                                                                   (let [vs (vals row)]
-                                                                     (assert (= 2 (count vs))
-                                                                             "expected 2 columns from canonical select")
-                                                                     (vec vs))))
-                                                            set)]
+                              ;; Probe directly via admin perms (bypasses QP + workspace mode).
+                                  (let [canonical-rows (read-canonical-rows admin-driver admin-spec admin-details
+                                                                            main-schema output-table-name)]
                                     (is (= #{[99 "pre-existing"] [98 "still-pre-existing"]}
                                            canonical-rows)
                                         "canonical main_schema.output-table-name still has its pre-seeded rows; transform output went to iso.<derived> instead")))
@@ -539,7 +603,7 @@
                               (t2/update! :model/WorkspaceDatabase :id (:id wsd) {:status :unprovisioned}))
                             (t2/delete! :model/Workspace :id ws-id)))))))
                 (finally
-                  (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name output-table-name)
+                  (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)
                        (catch Throwable _ nil)))))))))))
 
 ;; -----------------------------------------------------------------------------
@@ -572,7 +636,7 @@
         (let [admin-driver  driver/*driver*
               admin-db      (mt/db)
               admin-details (:details admin-db)
-              admin-spec    (sql-jdbc.conn/connection-details->spec admin-driver admin-details)
+              admin-spec    (admin-warehouse admin-driver admin-details)
               run-id        (random-suffix)
               main-schema   (canonical-schema-name admin-driver run-id admin-details)
               tbl-schema    (table-row-schema-value admin-driver main-schema)
@@ -580,8 +644,8 @@
               tgt-a-name    (str "t_a_" run-id)
               tgt-b-name    (str "t_b_" run-id)]
           (try
-            (create-canonical-schema! admin-driver admin-spec main-schema)
-            (create-source-table! admin-driver admin-spec main-schema src-name)
+            (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+            (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
             (mt/with-temp [:model/Database ws-db {:engine  admin-driver
                                                   :details admin-details
                                                   :name    (str "ws-native-repro-" run-id)}]
@@ -630,7 +694,7 @@
                             ;; `relation does not exist`. Post-fix, `rewrite-native-sql-for-workspace`
                             ;; substitutes the iso table name before driver/run-transform!.
                             (let [native-sql (format "SELECT count(*) AS n FROM %s"
-                                                     (qualified-table-sql admin-driver main-schema tgt-a-name))]
+                                                     (qualified-table-sql admin-driver admin-details main-schema tgt-a-name))]
                               (mt/with-temp [:model/Transform transform-b
                                              {:name   (str "transform-b-" run-id)
                                               :source {:type :query
@@ -665,7 +729,7 @@
                                         iso-namespace (or (:schema b-iso-spec) (:db b-iso-spec))
                                         rows (jdbc/query admin-spec
                                                          [(format "SELECT n FROM %s"
-                                                                  (qualified-table-sql admin-driver iso-namespace b-to-table))])]
+                                                                  (qualified-table-sql admin-driver admin-details iso-namespace b-to-table))])]
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
@@ -675,11 +739,11 @@
                          (catch Throwable t
                            (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
             (finally
-              (try (drop-canonical-schema! admin-driver admin-spec main-schema src-name tgt-a-name)
+              (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-a-name)
                    (catch Throwable _ nil))
               (try (jdbc/execute! admin-spec
                                   [(format "DROP TABLE IF EXISTS %s"
-                                           (qualified-table-sql admin-driver main-schema tgt-b-name))])
+                                           (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
                    (catch Throwable _ nil)))))))))
 
 (comment

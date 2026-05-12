@@ -11,24 +11,30 @@
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (defn- schema-filter-entries
-  "Build `:schema-filters-*` keys for the workspace's input scope, or `{}`
-   for engines that don't have schemas at all (MySQL, ClickHouse-as-1-DB).
+  "Build sync-filter keys for the workspace's input scope. Per-engine:
 
-   On schema-having drivers (Postgres, Redshift, SQL Server, Snowflake), the
-   filter is what scopes sync to the workspace's input schemas. On no-schema
-   drivers, JDBC reports `TABLE_SCHEM` as null for every row — and
-   `metabase.driver.sync/schema-patterns->filter-fn*` documents that
-   inclusion patterns NEVER match a `nil` schema. Emitting an inclusion
-   filter on those drivers makes sync silently produce zero Tables.
-
-   Scoping on no-schema drivers is already enforced by the connection's
-   bound database (`:details.db`), which itself maps 1-to-1 with the
-   workspace's input. Nothing more to filter."
+   - schema-having JDBC drivers (Postgres, Redshift, SQL Server, Snowflake,
+     ClickHouse) emit `:schema-filters-*` — `metabase.driver.sync` reads these
+     to scope describe-database to the named schemas.
+   - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
+     instead (BQ doesn't go through `metabase.driver.sync`).
+   - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null
+     and `schema-patterns->filter-fn*` documents inclusion patterns NEVER
+     match a `nil` schema. Scoping on those is enforced by the connection's
+     bound database (`:details.db`)."
   [{:keys [engine] :as db} wsd]
-  (if (driver/database-supports? engine :schemas db)
-    {:schema-filters-type     "inclusion"
-     :schema-filters-patterns (str/join "," (:input_schemas wsd))}
-    {}))
+  (let [patterns (str/join "," (:input_schemas wsd))]
+    (cond
+      (= engine :bigquery-cloud-sdk)
+      {:dataset-filters-type     "inclusion"
+       :dataset-filters-patterns patterns}
+
+      (driver/database-supports? engine :schemas db)
+      {:schema-filters-type     "inclusion"
+       :schema-filters-patterns patterns}
+
+      :else
+      {})))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)

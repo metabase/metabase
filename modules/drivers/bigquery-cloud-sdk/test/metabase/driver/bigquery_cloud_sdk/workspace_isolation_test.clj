@@ -29,171 +29,31 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.workspace-test-util :as bq.util]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (com.google.api.gax.core CredentialsProvider)
-   (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
    (com.google.cloud.bigquery
     BigQuery
-    BigQuery$DatasetDeleteOption
     BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$JobOption
-    BigQueryException
-    BigQueryOptions
     Dataset
-    DatasetId
-    DatasetInfo
     FieldValueList
-    TableResult
-    QueryJobConfiguration)
-   (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
-   (java.io ByteArrayInputStream)))
+    QueryJobConfiguration
+    TableResult)
+   (com.google.cloud.iam.admin.v1 IAMClient)))
 
 (set! *warn-on-reflection* true)
 
 (defn- random-suffix []
   (subs (str (random-uuid)) 0 8))
 
-(defn- bq-admin-credentials
-  "ServiceAccountCredentials parsed from the admin SA JSON in `(mt/db) :details`.
-   Used both to build the admin BigQuery client and as the source credentials for
-   `ImpersonatedCredentials` against the workspace SA."
-  ^ServiceAccountCredentials [details]
-  (ServiceAccountCredentials/fromStream
-   (ByteArrayInputStream. (.getBytes ^String (:service-account-json details)))))
-
-(defn- bq-admin-client
-  ^BigQuery [details]
-  (let [creds (.createScoped (bq-admin-credentials details)
-                             (doto (java.util.ArrayList.)
-                               (.add "https://www.googleapis.com/auth/bigquery")))]
-    (-> (doto (BigQueryOptions/newBuilder)
-          (.setCredentials creds)
-          (.setProjectId (or (:project-id details)
-                             (.getProjectId (bq-admin-credentials details)))))
-        .build
-        .getService)))
-
-(defn- bq-iam-client
-  ^IAMClient [details]
-  (let [creds (.createScoped (bq-admin-credentials details)
-                             (doto (java.util.ArrayList.)
-                               (.add "https://www.googleapis.com/auth/cloud-platform")))]
-    (IAMClient/create
-     (-> (doto (IAMSettings/newBuilder)
-           (.setCredentialsProvider (reify CredentialsProvider
-                                      (getCredentials [_] creds))))
-         .build))))
-
-(defn- bq-impersonated-client
-  "BigQuery client that authenticates as `ws-sa-email` via service-account
-   impersonation. Requires the admin creds to hold
-   `iam.serviceAccounts.getAccessToken` on `ws-sa-email`, which
-   [[init-workspace-isolation!]] grants during provisioning."
-  ^BigQuery [^ServiceAccountCredentials admin-creds ws-sa-email project-id]
-  (let [imp-creds (ImpersonatedCredentials/create
-                   admin-creds
-                   ws-sa-email
-                   nil
-                   (doto (java.util.ArrayList.)
-                     (.add "https://www.googleapis.com/auth/bigquery"))
-                   3600)]
-    (-> (doto (BigQueryOptions/newBuilder)
-          (.setCredentials imp-creds)
-          (.setProjectId project-id))
-        .build
-        .getService)))
-
-(defn- find-bq-exception
-  "Walk the cause chain until we find a `BigQueryException`, or nil."
-  [^Throwable t]
-  (loop [t t]
-    (cond
-      (nil? t)                          nil
-      (instance? BigQueryException t)   t
-      :else                             (recur (.getCause t)))))
-
-(defn- expect-bq-write-denied!
-  [^BigQuery client sql label]
-  (testing (format "%s on input dataset is denied" label)
-    (try
-      (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
-      (is false (format "%s unexpectedly succeeded" label))
-      (catch Throwable t
-        (let [bq-ex (find-bq-exception t)]
-          (is (some? bq-ex)
-              (format "expected BigQueryException for %s; got %s" label (class t)))
-          (when bq-ex
-            (is (= 403 (.getCode ^BigQueryException bq-ex))
-                (format "expected 403 for %s; got %d: %s"
-                        label (.getCode ^BigQueryException bq-ex) (.getMessage ^BigQueryException bq-ex)))))))))
-
-(defn- expect-bq-denied!
-  "Like [[expect-bq-write-denied!]] but accepts any 4xx response. Used where the
-   correct denial code varies — cross-workspace reads can return 403 (forbidden)
-   or 404 (resource not found, when the caller has no visibility on the target),
-   and storage/external-table escapes can surface as 403 (no GCS perms) or 404
-   (bucket not found). All 4xx codes mean the operation was correctly denied."
-  [^BigQuery client sql label]
-  (testing (format "%s is denied" label)
-    (try
-      (.query client (QueryJobConfiguration/of sql) (into-array BigQuery$JobOption []))
-      (is false (format "%s unexpectedly succeeded" label))
-      (catch Throwable t
-        (let [bq-ex (find-bq-exception t)]
-          (is (some? bq-ex)
-              (format "expected BigQueryException for %s; got %s" label (class t)))
-          (when bq-ex
-            (let [code (.getCode ^BigQueryException bq-ex)]
-              (is (and (>= code 400) (< code 500))
-                  (format "expected 4xx for %s; got %d: %s"
-                          label code (.getMessage ^BigQueryException bq-ex))))))))))
-
-(defn- verify-bq-destroy!
-  "Assert post-destroy state for BigQuery workspace isolation: the workspace's
-   output dataset is gone. Called right after `destroy-workspace-isolation!` to
-   confirm cleanup actually happened.
-
-   Note: the natural companion check — \"workspace SA can no longer issue
-   access tokens\" — is *not* asserted because GCP IAM propagation of
-   `deleteServiceAccount` is documented as taking up to 24 hours: deleted
-   service accounts can keep issuing tokens during that window, making any
-   immediate post-destroy assertion flaky. The dataset deletion is reliable
-   because admin-client reads see the deletion immediately. The actual SA is
-   hard-deleted by `bq-delete-sa-direct!` in the test's finally block."
-  [project-id ^BigQuery admin-client out-dataset]
-  (testing "workspace output dataset is dropped"
-    (let [ds-id (DatasetId/of project-id out-dataset)
-          ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]
-      (is (nil? ds)
-          (format "output dataset %s should be removed after destroy" out-dataset)))))
-
-(defn- bq-create-dataset! [^BigQuery client project-id dataset-name]
-  (.create client
-           (.build (DatasetInfo/newBuilder (DatasetId/of project-id dataset-name)))
-           (u/varargs BigQuery$DatasetOption [])))
-
-(defn- bq-drop-dataset! [^BigQuery client project-id dataset-name]
-  (let [ds-id (DatasetId/of project-id dataset-name)]
-    (when (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))
-      (.delete client ds-id
-               (u/varargs BigQuery$DatasetDeleteOption [(BigQuery$DatasetDeleteOption/deleteContents)])))))
-
-(defn- bq-delete-sa-direct!
-  "Belt-and-suspenders SA deletion that bypasses `destroy-workspace-isolation!` —
-   used in `finally` so we always attempt to clean up the workspace SA even when
-   destroy itself failed mid-run."
-  [^IAMClient iam-client project-id workspace]
-  (let [sa-id    (#'bigquery/ws-service-account-id workspace)
-        sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
-        sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
-    (try (.deleteServiceAccount iam-client sa-name)
-         (catch Throwable _ nil))))
+;; BQ helpers (admin client, IAM client, impersonated client, dataset CRUD,
+;; assertion helpers) live in `metabase.driver.bigquery-cloud-sdk.workspace-test-util`
+;; and are aliased as `bq.util` so the workspaces full-e2e test
+;; (`metabase-enterprise.workspaces.e2e-test`) can share them.
 
 (deftest ^:synchronized workspace-isolation-perms-bigquery-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -206,10 +66,10 @@
             ;; project embedded in the admin service-account JSON — every
             ;; Google-issued SA key carries the project it was created in.
             project-id   (or (:project-id details)
-                             (.getProjectId (bq-admin-credentials details)))
-            admin-creds  (bq-admin-credentials details)
-            admin-client (bq-admin-client details)
-            iam-client   (bq-iam-client details)
+                             (.getProjectId (bq.util/admin-credentials details)))
+            admin-creds  (bq.util/admin-credentials details)
+            admin-client (bq.util/admin-client details)
+            iam-client   (bq.util/iam-client details)
             run-id       (random-suffix)
             in-dataset   (str "mb_iso_in_" run-id)
             src-name     (str "ws_iso_src_" run-id)
@@ -224,14 +84,14 @@
                            (.query c (QueryJobConfiguration/of sql)
                                    (into-array BigQuery$JobOption [])))]
         (try
-          (bq-create-dataset! admin-client project-id in-dataset)
+          (bq.util/create-dataset! admin-client project-id in-dataset)
           (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-name)))
           (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-name)))
           (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
                 ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)
+                user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)
                 out-dataset     (:schema ws-with-details)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                  [in-dataset])
@@ -255,7 +115,7 @@
                                    [:drop-table    (format "DROP TABLE %s" (qual in-dataset src-name))]
                                    [:alter-add-col (format "ALTER TABLE %s ADD COLUMN extra INT64" (qual in-dataset src-name))]
                                    [:truncate      (format "TRUNCATE TABLE %s" (qual in-dataset src-name))]]]
-                (expect-bq-write-denied! user-client sql label)))
+                (bq.util/expect-write-denied! user-client sql label)))
             (testing "workspace SA has full read+write access to its own output dataset"
               (run-sql user-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-dataset out-name)))
               (run-sql user-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual out-dataset out-name)))
@@ -273,9 +133,9 @@
                     rows   (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
                                  (.iterateAll ^TableResult result))]
                 (is (= [{:id 1}] rows)))
-              (expect-bq-write-denied! user-client
-                                       (format "INSERT INTO %s (id, v) VALUES (3, 'c')" (qual in-dataset src-name))
-                                       :insert-after-regrant))
+              (bq.util/expect-write-denied! user-client
+                                            (format "INSERT INTO %s (id, v) VALUES (3, 'c')" (qual in-dataset src-name))
+                                            :insert-after-regrant))
             (testing "workspace SA cannot create a new dataset outside its own workspace"
               ;; The workspace SA holds `roles/bigquery.jobUser` at project level
               ;; plus `dataEditor` on its own output dataset. Creating a *new*
@@ -309,28 +169,28 @@
               ;; cannot reach GCS. Accept any 4xx via expect-bq-denied!.
               (let [hacker-uri  (format "gs://nonexistent-mb-iso-%s/data.csv" run-id)
                     ext-tbl     (qual out-dataset (str "ws_iso_ext_" run-id))]
-                (expect-bq-denied! user-client
-                                   (format "CREATE EXTERNAL TABLE %s OPTIONS (uris = ['%s'], format = 'CSV')"
-                                           ext-tbl hacker-uri)
-                                   :create-external-table)
-                (expect-bq-denied! user-client
-                                   (format "EXPORT DATA OPTIONS (uri = '%s', format = 'CSV') AS SELECT 1 AS x"
-                                           hacker-uri)
-                                   :export-data)))
+                (bq.util/expect-denied! user-client
+                                        (format "CREATE EXTERNAL TABLE %s OPTIONS (uris = ['%s'], format = 'CSV')"
+                                                ext-tbl hacker-uri)
+                                        :create-external-table)
+                (bq.util/expect-denied! user-client
+                                        (format "EXPORT DATA OPTIONS (uri = '%s', format = 'CSV') AS SELECT 1 AS x"
+                                                hacker-uri)
+                                        :export-data)))
             (testing "after destroy-workspace-isolation!, the workspace's footprint is gone"
               ;; Explicit destroy here (instead of relying on the `finally`) lets us
               ;; assert the cleanup actually happened. destroy is idempotent so
               ;; finally re-calling it is a no-op.
               (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
-              (verify-bq-destroy! project-id admin-client out-dataset)))
+              (bq.util/verify-destroy! project-id admin-client out-dataset)))
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
                    (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during test cleanup")))
             ;; Belt-and-suspenders: directly delete the input dataset and workspace SA,
             ;; regardless of whether destroy succeeded. Both are idempotent.
-            (try (bq-drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
-            (try (bq-delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
+            (try (bq.util/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
+            (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close iam-client))))))))
 
 (deftest ^:synchronized cross-workspace-isolation-perms-bigquery-test
@@ -381,8 +241,8 @@
                 _            (reset! ws-b-state ws-b-full)
                 a-sa-email   (-> ws-a-full :database_details :impersonate-service-account)
                 b-sa-email   (-> ws-b-full :database_details :impersonate-service-account)
-                a-client     (bq-impersonated-client admin-creds a-sa-email project-id)
-                b-client     (bq-impersonated-client admin-creds b-sa-email project-id)
+                a-client     (bq.util/impersonated-client admin-creds a-sa-email project-id)
+                b-client     (bq.util/impersonated-client admin-creds b-sa-email project-id)
                 out-b-ds     (:schema ws-b-full)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-a-full
                                                  [in-dataset])
@@ -392,9 +252,9 @@
             (run-sql b-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-b-ds b-secret)))
             (run-sql b-client (format "INSERT INTO %s (id, v) VALUES (1, 'b-only')" (qual out-b-ds b-secret)))
             (testing "workspace A's SA cannot SELECT from workspace B's output table"
-              (expect-bq-denied! a-client
-                                 (format "SELECT id, v FROM %s" (qual out-b-ds b-secret))
-                                 :select-other-output))
+              (bq.util/expect-denied! a-client
+                                      (format "SELECT id, v FROM %s" (qual out-b-ds b-secret))
+                                      :select-other-output))
             (testing "workspace A's SA cannot write to or DDL against workspace B's output dataset"
               (doseq [[label sql] [[:insert        (format "INSERT INTO %s (id, v) VALUES (2, 'x')" (qual out-b-ds b-secret))]
                                    [:update        (format "UPDATE %s SET v = 'x' WHERE id = 1" (qual out-b-ds b-secret))]
@@ -403,11 +263,11 @@
                                    [:drop-table    (format "DROP TABLE %s" (qual out-b-ds b-secret))]
                                    [:alter-add-col (format "ALTER TABLE %s ADD COLUMN extra INT64" (qual out-b-ds b-secret))]
                                    [:truncate      (format "TRUNCATE TABLE %s" (qual out-b-ds b-secret))]]]
-                (expect-bq-denied! a-client sql label)))
+                (bq.util/expect-denied! a-client sql label)))
             (testing "workspace A's SA cannot SELECT a source table that was only granted to workspace B"
-              (expect-bq-denied! a-client
-                                 (format "SELECT id, v FROM %s" (qual in-dataset src-b-name))
-                                 :select-other-grant))
+              (bq.util/expect-denied! a-client
+                                      (format "SELECT id, v FROM %s" (qual in-dataset src-b-name))
+                                      :select-other-grant))
             (testing "workspace A's listDatasets does not enumerate workspace B's output dataset"
               ;; A's SA has only `roles/bigquery.jobUser` at the project plus `dataEditor`
               ;; on its own dataset, so listDatasets either returns A's own dataset
@@ -433,7 +293,7 @@
             ;; Belt-and-suspenders: drop input dataset + delete each workspace SA directly.
             (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
             (doseq [w [ws-a ws-b]]
-              (try (bq-delete-sa-direct! iam-client project-id w) (catch Throwable _ nil)))
+              (try (bq.util/delete-sa-direct! iam-client project-id w) (catch Throwable _ nil)))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
 
 (deftest ^:synchronized grant-accumulation-bigquery-test
@@ -448,10 +308,10 @@
       (let [database     (mt/db)
             details      (:details database)
             project-id   (or (:project-id details)
-                             (.getProjectId (bq-admin-credentials details)))
-            admin-creds  (bq-admin-credentials details)
-            admin-client (bq-admin-client details)
-            iam-client   (bq-iam-client details)
+                             (.getProjectId (bq.util/admin-credentials details)))
+            admin-creds  (bq.util/admin-credentials details)
+            admin-client (bq.util/admin-client details)
+            iam-client   (bq.util/iam-client details)
             run-id       (random-suffix)
             in-dataset   (str "mb_iso_in_" run-id)
             src-a-name   (str "ws_iso_src_a_" run-id)
@@ -476,15 +336,15 @@
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
                 ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)]
+                user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                  [in-dataset])
             (testing "after first grant, A is readable and B is not"
               (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-a-name)))))
-              (expect-bq-write-denied! user-client
-                                       (format "SELECT id FROM %s" (qual in-dataset src-b-name))
-                                       :select-b-before-grant))
+              (bq.util/expect-write-denied! user-client
+                                            (format "SELECT id FROM %s" (qual in-dataset src-b-name))
+                                            :select-b-before-grant))
             ;; Second grant: only B. The additive contract means A's grant must
             ;; still be in effect afterward.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
@@ -497,7 +357,7 @@
                  (catch Throwable t
                    (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during grant-accumulation test cleanup")))
             (try (bigquery/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
-            (try (bq-delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
+            (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
 
 (deftest ^:synchronized init-handles-pre-existing-dataset-bigquery-test
@@ -515,10 +375,10 @@
       (let [database     (mt/db)
             details      (:details database)
             project-id   (or (:project-id details)
-                             (.getProjectId (bq-admin-credentials details)))
-            admin-creds  (bq-admin-credentials details)
-            admin-client (bq-admin-client details)
-            iam-client   (bq-iam-client details)
+                             (.getProjectId (bq.util/admin-credentials details)))
+            admin-creds  (bq.util/admin-credentials details)
+            admin-client (bq.util/admin-client details)
+            iam-client   (bq.util/iam-client details)
             run-id       (random-suffix)
             in-dataset   (str "mb_iso_in_" run-id)
             src-name     (str "ws_iso_src_" run-id)
@@ -542,7 +402,7 @@
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
                 ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)]
+                user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                  [in-dataset])
             (testing "init succeeded against the pre-existing dataset"
@@ -562,9 +422,9 @@
                     rows   (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
                                  (.iterateAll ^TableResult result))]
                 (is (= [{:id 1}] rows)))
-              (expect-bq-write-denied! user-client
-                                       (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))
-                                       :insert-input-after-collision)))
+              (bq.util/expect-write-denied! user-client
+                                            (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))
+                                            :insert-input-after-collision)))
           (finally
             (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
                  (catch Throwable t
@@ -575,5 +435,5 @@
             ;; create-dataset step (e.g., earlier failure) destroy might
             ;; not know to drop it. Idempotent.
             (try (bigquery/drop-dataset! admin-client project-id out-dataset) (catch Throwable _ nil))
-            (try (bq-delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
+            (try (bq.util/delete-sa-direct! iam-client project-id workspace) (catch Throwable _ nil))
             (u/ignore-exceptions (.close ^IAMClient iam-client))))))))
