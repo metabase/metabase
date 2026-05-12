@@ -153,6 +153,9 @@
         assistant-external-id  (str (random-uuid))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
+    ;; The user-message and assistant-placeholder rows share `created_at` because
+    ;; the column default resolves to `transaction_timestamp()`. Readers ordering
+    ;; metabot_message rows for chat-detail rendering must tiebreak on `:id`
     (t2/with-transaction [_conn]
       (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                                 (fn [existing]
@@ -464,4 +467,4 @@
                                   {:where    [:and
                                               [:= :conversation_id conversation-id]
                                               [:= :deleted_at nil]]
-                                   :order-by [[:created_at :asc]]}))}))
+                                   :order-by [[:created_at :asc] [:id :asc]]}))}))

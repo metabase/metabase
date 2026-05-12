@@ -324,6 +324,48 @@
                                    (:text d))))
                              rows)))))))))))
 
+(deftest start-turn-user-and-placeholder-share-created-at-test
+  (testing "user-message and assistant-placeholder rows inserted by start-turn! share created_at;
+            readers must tiebreak on :id to preserve user-before-assistant ordering"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (metabot-persistence/start-turn!
+           conversation-id "internal" {:role "user" :content "hi"}))
+        (let [[u a] (t2/select :model/MetabotMessage
+                               :conversation_id conversation-id
+                               {:order-by [[:id :asc]]})]
+          (is (= :user      (:role u)))
+          (is (= :assistant (:role a)))
+          (is (< (:id u) (:id a)) "user row is inserted first; smaller :id")
+          (is (= (:created_at u) (:created_at a))
+              "intra-transaction inserts resolve current_timestamp to the same value"))))))
+
+(deftest conversation-detail-drops-errored-pair-under-created-at-collision-test
+  (testing "drop-errored-pairs works correctly when the errored user/asst rows share created_at"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          ;; Errored turn: user-msg and asst-row share created_at via start-turn!'s transaction.
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "boom"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id []
+             :error {:message "kaboom" :type "RuntimeException"}))
+          ;; Healthy follow-up turn — its user-msg and asst-row also collide on created_at.
+          (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "retry"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id
+             [{:type :text :text "ok"}])))
+        ;; conversation-detail uses production reader ordering — the errored pair drops,
+        ;; leaving just the retry turn.
+        (let [{:keys [chat_messages]} (metabot-persistence/conversation-detail conversation-id)]
+          (is (= [["user" "retry"] ["agent" "ok"]]
+                 (mapv (juxt :role :message) chat_messages))))))))
+
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]

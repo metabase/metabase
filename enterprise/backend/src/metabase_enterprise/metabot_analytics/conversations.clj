@@ -96,7 +96,7 @@
                             [:= :mm.conversation_id :c.id]
                             [:= :mm.role "assistant"]
                             [:= :mm.deleted_at nil]]
-                 :order-by [[:mm.created_at :asc]]
+                 :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
                 :profile_id]]
    :from      [[:metabot_conversation :c]]
@@ -218,7 +218,7 @@
     (let [messages (t2/select :model/MetabotMessage
                               :conversation_id conversation-id
                               {:where    [:= :deleted_at nil]
-                               :order-by [[:created_at :asc]]})
+                               :order-by [[:created_at :asc] [:id :asc]]})
           hydrated (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
