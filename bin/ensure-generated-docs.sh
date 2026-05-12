@@ -17,6 +17,11 @@ if [ ! -f docs/embedding/sdk/api/snippets/index.md ]; then
   ./bin/generate-embedding-docs.sh --pure
 fi
 
+if [ ! -f docs-build/public/embedding/sdk/api/index.html ]; then
+  echo "→ embedding HTML API reference missing, generating..."
+  bun run embedding-sdk:docs:generate:html:pure
+fi
+
 if [ ! -f docs/api.json ]; then
   echo "→ OpenAPI spec missing, generating..."
   ./bin/generate-docs.sh --api

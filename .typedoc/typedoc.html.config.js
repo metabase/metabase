@@ -3,18 +3,19 @@ const commonConfig = require("./typedoc.common.config.js");
 /** @type {import("typedoc").TypeDocOptions} */
 const htmlConfig = {
   ...commonConfig,
-  plugin: [...commonConfig.plugin, "./typedoc-plugin-frontmatter.js"],
-  out: "../docs/embedding/sdk/api",
+  out: "../docs-build/public/embedding/sdk/api",
   favicon: "../resources/frontend_client/favicon.ico",
   customJs: "./page-custom-logic.js",
   customCss: "./page-custom-styles.css",
   pretty: true,
   visibilityFilters: {},
-  frontmatterGlobals: {
-    title: "Embedded analytics SDK documentation",
-    layout: "docs-api",
-  },
   hideGenerator: true,
+  // Override commonConfig.replaceText: drop the Jekyll Liquid include that
+  // it injects into <meta name="description"> (would render as literal
+  // `{% include %}` text under Astro), keep the data-refl scrubber.
+  replaceText: {
+    ' data-refl="[^"]*"': "",
+  },
   customFooterHtml:
     '<script type="text/javascript" src="/gdpr-cookie-notice/dist/script.js"></script>' +
     '<script type="text/javascript" src="/js/cookie-consent.js"></script>' +

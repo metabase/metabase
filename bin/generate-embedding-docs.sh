@@ -37,6 +37,9 @@ fi
 
 bun run embedding-eajs:docs:generate
 
+echo "Generating embedding HTML API reference..."
+bun run embedding-sdk:docs:generate:html:pure
+
 cat <<'EOF'
 
 ✓ Embedding docs generated.
@@ -44,4 +47,7 @@ cat <<'EOF'
 If files changed, commit them alongside your type change:
     docs/embedding/sdk/api/
     docs/embedding/eajs/snippets/
+
+The HTML API reference under docs-build/public/embedding/sdk/api/ is
+gitignored and regenerated on every build.
 EOF
