@@ -100,12 +100,7 @@ export function ProposalCard({
                   {t`Depends on:`}
                 </Text>
                 {dependencyNames.map((dep) => (
-                  <Badge
-                    key={dep.id}
-                    variant="default"
-                    size="sm"
-                    radius="sm"
-                  >
+                  <Badge key={dep.id} variant="default" size="sm" radius="sm">
                     {dep.name}
                   </Badge>
                 ))}
@@ -189,8 +184,6 @@ function kindLabel(kind: Proposal["kind"]): string {
       return t`Rewrite`;
     case "index":
       return t`Index`;
-    case "rewrite+index":
-      return t`Rewrite + index`;
     case "precompute":
       return t`Precompute`;
   }

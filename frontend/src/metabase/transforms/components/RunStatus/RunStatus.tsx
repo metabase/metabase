@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { Box, Group, Icon, Text } from "metabase/ui";
@@ -36,11 +36,15 @@ export function RunStatus({
       : null;
   const endTimeText = endTime != null ? endTime.fromNow() : null;
   const duration = formatRunDuration(start_time, end_time);
+  // Parentheses + a duration token aren't a translatable string (ttag
+  // refuses messages that are just punctuation around an interpolation),
+  // so render them as plain JSX. The duration string itself is locale-
+  // shaped by `formatRunDuration` via the existing run-duration t``
+  // calls.
   const durationNode =
     duration != null ? (
       <Text c="text-secondary" data-testid="run-duration">
-        {c("Run wall-clock duration, shown after the run status")
-          .t`(${duration})`}
+        {`(${duration})`}
       </Text>
     ) : null;
 

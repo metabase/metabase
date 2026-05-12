@@ -93,7 +93,7 @@ export function TargetIndexesSection({ transform, readOnly }: Props) {
         </Group>
       )}
 
-      {error && !isLoading && (
+      {Boolean(error) && !isLoading && (
         <Alert color="error" icon={<Icon name="warning" />}>
           {t`Couldn't load indexes.`}
         </Alert>
