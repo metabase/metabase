@@ -72,18 +72,29 @@ jest.mock("metabase/visualizations", () => ({
     ),
 }));
 
-// `useElementSize` measures the chart card directly. Mock it so tests
-// can assert chunking behavior at known card heights — jsdom's
-// ResizeObserver doesn't compute real layout dimensions.
-const mockElementSize = { value: { width: 0, height: 0 } };
-jest.mock("@mantine/hooks", () => ({
-  ...jest.requireActual("@mantine/hooks"),
-  useElementSize: () => ({
-    ref: jest.fn(),
-    width: mockElementSize.value.width,
-    height: mockElementSize.value.height,
-  }),
+// Stub `StickyXAxisChart` to keep echarts out of the test bundle.
+jest.mock("./StickyXAxisChart", () => ({
+  __esModule: true,
+  StickyXAxisChart: () => <div data-testid="sticky-x-axis-stub" />,
 }));
+
+// Mock `useElementSize` so the cartesian body's container measurement
+// is deterministic in JSDOM (which has no real ResizeObserver). The
+// default value is "small enough that the main chart overflows", so
+// the sticky axis renders; individual tests override
+// `mockScrollContainerHeight.value` to flip the overflow decision.
+const mockScrollContainerHeight = { value: 400 };
+jest.mock("@mantine/hooks", () => {
+  const actual = jest.requireActual("@mantine/hooks");
+  return {
+    ...actual,
+    useElementSize: () => ({
+      ref: () => undefined,
+      width: 800,
+      height: mockScrollContainerHeight.value,
+    }),
+  };
+});
 
 function makeQuery(
   overrides: Partial<ExplorationQuery> & {
@@ -179,7 +190,7 @@ describe("ExplorationGroupVisualization", () => {
       display: "line",
       settings: { "graph.x_axis.scale": "timeseries" },
     };
-    mockElementSize.value = { width: 0, height: 0 };
+    mockScrollContainerHeight.value = 400;
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
@@ -284,77 +295,124 @@ describe("ExplorationGroupVisualization", () => {
     ).not.toBeInTheDocument();
   });
 
-  describe("chunking many queries into multiple split-panels charts", () => {
+  describe("cartesian combined chart with sticky x-axis", () => {
     /**
-     * Helper: build N queries + their datasets, set the chart-card
-     * `contentRect.height`, render, and return the rendered chunks'
-     * lengths.
-     *
-     * Cap math (matches the component):
-     *   usable = cardHeight − 50 (card internal chrome) − 50 (chunk chrome)
-     *   maxPerChunk = max(2, floor(usable / 330))   // 330 = 300 panel + 30 gap
+     * Helper: build N queries + their datasets, render, and return
+     * the rendered `<Visualization>` and `<StickyXAxisChart>` stubs.
      */
-    function setupChunked(queryCount: number, cardHeight: number) {
-      mockElementSize.value = { width: 1280, height: cardHeight };
+    function setupCartesian(queryCount: number) {
       const queries = Array.from({ length: queryCount }, (_, i) =>
         makeQuery({ id: 100 + i, name: `Q${i + 1}`, status: "done" }),
       );
       const datasets = new Map(queries.map((q) => [q.id, makeDataset()]));
       setup({ queries, datasets });
-
-      const stubs = screen.getAllByTestId("visualization-stub");
-      return stubs.map(
-        (s) =>
-          JSON.parse(s.getAttribute("data-raw-series") ?? "[]")
-            .length as number,
-      );
+      return { queries };
     }
 
-    it("renders one chunk when the queries fit under the per-chunk cap", () => {
-      // cardHeight=1420 → usable=1320 → cap=floor(1320/330)=4.
-      // 4 queries fit in a single chunk.
-      const chunks = setupChunked(4, 1420);
-      expect(chunks).toEqual([4]);
-    });
+    it("renders a single combined Visualization with one rawSeries entry per query", () => {
+      setupCartesian(8);
 
-    it("splits queries across chunks once the cap is exceeded", () => {
-      // cardHeight=1090 → usable=990 → cap=floor(990/330)=3.
-      // 8 queries → ceil(8/3) = 3 chunks of sizes [3, 3, 2].
-      const chunks = setupChunked(8, 1090);
-      expect(chunks).toEqual([3, 3, 2]);
-    });
-
-    it("never produces single-panel chunks even on a tiny container", () => {
-      // cardHeight=200 → usable<0 → cap floors at 2.
-      // 5 queries → ceil(5/2) = 3 chunks of sizes [2, 2, 1].
-      // The trailing 1-panel chunk is the natural remainder; the floor
-      // is on the cap, not on chunk size — leftover queries always get
-      // a chunk regardless.
-      const chunks = setupChunked(5, 200);
-      expect(chunks).toEqual([2, 2, 1]);
-    });
-
-    it("falls back to a 4-panel cap before the first measurement lands", () => {
-      // cardHeight=0 → fallback cap of 4 kicks in.
-      // 8 queries → ceil(8/4) = 2 chunks of sizes [4, 4].
-      const chunks = setupChunked(8, 0);
-      expect(chunks).toEqual([4, 4]);
-    });
-
-    it("keeps graph.split_panels enabled on every chunk's series", () => {
-      const chunks = setupChunked(8, 1090);
-      expect(chunks).toEqual([3, 3, 2]);
+      // Exactly one Visualization stub, regardless of how many
+      // queries are in the group — chunking is gone.
       const stubs = screen.getAllByTestId("visualization-stub");
-      for (const stub of stubs) {
-        const rawSeries = JSON.parse(
-          stub.getAttribute("data-raw-series") ?? "[]",
-        );
-        for (const s of rawSeries) {
-          expect(s.card.visualization_settings["graph.split_panels"]).toBe(
-            true,
-          );
-        }
+      expect(stubs).toHaveLength(1);
+
+      const rawSeries = JSON.parse(
+        stubs[0].getAttribute("data-raw-series") ?? "[]",
+      );
+      expect(rawSeries).toHaveLength(8);
+      expect(rawSeries.map((s: any) => s.card.id)).toEqual([
+        100, 101, 102, 103, 104, 105, 106, 107,
+      ]);
+      for (const s of rawSeries) {
+        expect(s.card.visualization_settings["graph.split_panels"]).toBe(true);
       }
+    });
+
+    it("renders a sticky x-axis chart alongside the combined chart when the chart overflows the container", () => {
+      // Default `mockScrollContainerHeight.value` (400) is much
+      // smaller than the natural main-chart height (5 panels × 300px
+      // = 1500px), so the chart overflows and the sticky axis is
+      // needed.
+      setupCartesian(5);
+
+      // The sticky x-axis stub is rendered as a sibling of the main
+      // combined chart.
+      expect(screen.getByTestId("sticky-x-axis-stub")).toBeInTheDocument();
+      // Exactly one main Visualization (no chunking).
+      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(1);
+    });
+
+    it("does NOT render the sticky x-axis chart when the chart fits in the container", () => {
+      // Make the scroll container larger than the natural main-chart
+      // height (2 panels × 300px = 600px) so the chart fits and the
+      // main chart's own bottom x-axis is on-screen — no need for a
+      // duplicate sticky copy.
+      mockScrollContainerHeight.value = 2000;
+      setupCartesian(2);
+
+      expect(
+        screen.queryByTestId("sticky-x-axis-stub"),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(1);
+    });
+
+    it("hides the main chart's bottom x-axis (via vis-settings) when the sticky axis is shown", () => {
+      // Sticky on → main chart should have `graph.x_axis.axis_enabled`
+      // and `graph.x_axis.labels_enabled` forced off, so we don't
+      // render the axis twice.
+      setupCartesian(5);
+
+      const stub = screen.getByTestId("visualization-stub");
+      const rawSeries = JSON.parse(
+        stub.getAttribute("data-raw-series") ?? "[]",
+      );
+      for (const s of rawSeries) {
+        expect(s.card.visualization_settings["graph.x_axis.axis_enabled"]).toBe(
+          false,
+        );
+        expect(
+          s.card.visualization_settings["graph.x_axis.labels_enabled"],
+        ).toBe(false);
+      }
+    });
+
+    it("keeps the main chart's bottom x-axis enabled when the sticky axis is hidden", () => {
+      // Sticky off → main chart keeps its own bottom x-axis, so the
+      // axis settings should NOT be force-disabled.
+      mockScrollContainerHeight.value = 2000;
+      setupCartesian(2);
+
+      const stub = screen.getByTestId("visualization-stub");
+      const rawSeries = JSON.parse(
+        stub.getAttribute("data-raw-series") ?? "[]",
+      );
+      for (const s of rawSeries) {
+        // We don't force-set the axis-enabled flags when the sticky
+        // is off — they should be absent from the per-card override
+        // (and therefore fall through to the cartesian builder's
+        // defaults, which keep the axis visible).
+        expect(
+          s.card.visualization_settings["graph.x_axis.axis_enabled"],
+        ).toBeUndefined();
+        expect(
+          s.card.visualization_settings["graph.x_axis.labels_enabled"],
+        ).toBeUndefined();
+      }
+    });
+
+    it("does not render the sticky x-axis chart for non-cartesian displays", () => {
+      mockDefaultDisplay.value = {
+        display: "map",
+        settings: {} as Record<string, unknown>,
+      };
+      setupCartesian(3);
+
+      // Map mode renders N independent Visualizations, no sticky axis.
+      expect(
+        screen.queryByTestId("sticky-x-axis-stub"),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("visualization-stub")).toHaveLength(3);
     });
   });
 
