@@ -15,7 +15,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -99,7 +98,7 @@
    workspace as having no output mapping."
   [db output-namespace]
   (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws.table-remapping/engine-namespace-positions db)
+        positions  (ws/engine-namespace-positions db)
         schema     (when-not (str/blank? output-namespace) output-namespace)]
     (cond-> {}
       (:db components)     (assoc :db (:db positions))

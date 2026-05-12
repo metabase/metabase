@@ -2314,6 +2314,7 @@
            events
            lib
            lib-be
+           premium-features
            query-processor
            sync
            util

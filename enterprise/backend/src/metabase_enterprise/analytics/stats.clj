@@ -31,4 +31,7 @@
     :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
-    :enabled   (semantic-search/supported?)}])
+    :enabled   (semantic-search/supported?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (t2/exists? :model/Workspace)}])

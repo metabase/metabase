@@ -1349,25 +1349,18 @@
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]
-  (let [username      (-> workspace :database_details :user)
-        bound-db      (:db (:details database))
-        allowed-set   #{bound-db}
-        incoming-set  (set schemas)]
-    ;; MySQL `Database` rows bind to one MySQL database via `:details.db`. Reject
-    ;; any input that names something else — silently ignoring caller intent has
-    ;; bitten this codebase before. Empty input is fine (no-op grant).
-    (when (and (seq incoming-set)
-               (not= incoming-set allowed-set))
-      (throw (ex-info "MySQL workspace input must equal the bound database name"
-                      {:database-id (:id database)
-                       :bound       bound-db
-                       :incoming    (vec schemas)})))
-    (let [sqls (grant-workspace-read-access-sqls username schemas)]
-      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql sqls]
-            (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))))
+  ;; Each entry in `schemas` is interpreted as a MySQL database name. The
+  ;; workspace SA gets database-wide SELECT via `GRANT SELECT ON db.*`. The
+  ;; Metabase `Database` row's `:details.db` is the bound database, but MySQL
+  ;; itself allows `GRANT SELECT ON other_db.*` as long as the admin has it,
+  ;; so we don't reject inputs that don't equal `:details.db`.
+  (let [username (-> workspace :database_details :user)
+        sqls     (grant-workspace-read-access-sqls username schemas)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
 
 ;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
 ;; to manually clean up after testing rather than relying on transaction rollback.

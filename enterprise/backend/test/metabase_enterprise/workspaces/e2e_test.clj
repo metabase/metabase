@@ -165,6 +165,11 @@
     :bigquery-cloud-sdk ((bq-util 'create-dataset!) admin-warehouse
                                                     ((bq-util 'project-id) admin-details)
                                                     schema)
+    ;; ClickHouse calls its top level a "database" — `CREATE SCHEMA` is a
+    ;; syntax error there. Same drop counterpart in `drop-canonical-schema!`.
+    :clickhouse (jdbc/execute! admin-warehouse
+                               [(format "CREATE DATABASE %s"
+                                        (sql.u/quote-name driver :schema schema))])
     (jdbc/execute! admin-warehouse [(format "CREATE SCHEMA %s"
                                             (sql.u/quote-name driver :schema schema))])))
 

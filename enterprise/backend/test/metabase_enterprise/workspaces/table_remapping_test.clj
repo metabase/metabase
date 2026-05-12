@@ -140,8 +140,8 @@
   [db-id output-namespace f]
   (try
     (ws/set-instance-workspace! {:name "ws-3-slot"
-                                 :databases {db-id {:input  [{:schema "_"}]
-                                                    :output output-namespace}}})
+                                 :databases {db-id {:input_schemas ["_"]
+                                                    :output        output-namespace}}})
     (f)
     (finally
       (ws/clear-instance-workspace!))))
