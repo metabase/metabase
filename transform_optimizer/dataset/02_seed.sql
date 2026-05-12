@@ -98,7 +98,7 @@ SELECT
        ELSE 1 + ((i * 2654435761) % 500000)
   END,
   TIMESTAMPTZ '2022-01-01 00:00:00+00'
-    + (((i * 1019 + ((i * 7) % 9973)) % (365 * 3 * 24 * 60)) || ' minutes')::interval,
+    + ((((i::bigint * 1019) + ((i * 7) % 9973)) % (365 * 3 * 24 * 60)) || ' minutes')::interval,
   (ARRAY['placed','paid','paid','paid','shipped','shipped','delivered','delivered','delivered','cancelled','refunded'])[1 + (i % 11)],
   500 + ((i * 97) % 80000),                            -- $5 — $805
   (ARRAY['USD','USD','USD','EUR','GBP','BRL','JPY'])[1 + (i % 7)],
