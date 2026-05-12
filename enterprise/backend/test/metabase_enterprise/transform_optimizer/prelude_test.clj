@@ -38,7 +38,22 @@
     (testing "DDL constraints are present"
       (is (str/includes? text "create index"))
       (is (str/includes? text "if not exists"))
-      (is (str/includes? text "concurrently")))))
+      (is (str/includes? text "concurrently")))
+
+    (testing "equivalence pitfalls section is present (lessons from prior verifier diffs)"
+      (is (str/includes? text "equivalence pitfalls"))
+      (testing "NULL-safety footgun is documented"
+        (is (str/includes? text "not in"))
+        (is (str/includes? text "not null")
+            "the NOT-IN-on-nullable rewrite precondition must be explicit"))
+      (testing "multi-aggregate rollup footgun is documented"
+        (is (or (str/includes? text "array_agg")
+                (str/includes? text "full outer join"))))
+      (testing "type-compatibility note is present"
+        (is (or (str/includes? text "::bigint")
+                (str/includes? text "type compat"))))
+      (testing "scale-dependent LATERAL caveat is documented"
+        (is (str/includes? text "lateral"))))))
 
 (deftest prelude-cached-test
   (testing "successive calls return the same string instance (delayed cache)"

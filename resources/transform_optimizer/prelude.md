@@ -372,3 +372,14 @@ the precompute target table names into `body` references like
   non-empty, severity reflects the speedup from the index alone.
 - The `EXPLAIN` plan tells you what the planner is *currently* doing —
   use it to spot full scans, missing-index scans, and wide hashes.
+- **Walk every proposal through the "Equivalence pitfalls" checklist
+  before emitting it.** If any pitfall applies and the precondition
+  isn't met, either fix the proposal (e.g. add `WHERE col IS NOT NULL`
+  to the inner subquery for a `NOT IN` rewrite) or drop it entirely.
+  A user-visible "✗ DIFF — 30 rows differ" from the verifier is a
+  worse outcome than no proposal.
+- When equivalence depends on a schema-level precondition (e.g. `NOT
+  NULL` on a referenced column, an existing unique constraint), state
+  the precondition explicitly in the `rationale` field so the user can
+  audit it. Treat that case as **at most `:medium`** severity, even if
+  the expected speedup is high.
