@@ -2952,6 +2952,7 @@
            api
            app-db
            collections
+           database-routing
            documents
            driver
            events
