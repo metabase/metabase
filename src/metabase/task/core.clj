@@ -25,6 +25,7 @@
   schedule-task!
   scheduler
   scheduler-info
+  with-scheduler
   start-scheduler!
   stop-scheduler!
   trigger-now!])

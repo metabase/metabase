@@ -51,6 +51,19 @@
   ^Scheduler []
   @*quartz-scheduler*)
 
+(defmacro with-scheduler
+  "Execute `body` with the global Metabase scheduler bound to `scheduler`.
+
+  Intended for use inside a Quartz job that self-reschedules: pass
+  `(.getScheduler ctx)` so that calls to [[scheduler]] and [[schedule-task!]]
+  from the Quartz worker thread see the right scheduler. In production this
+  is redundant with the root binding, but tests use a thread-local `binding`
+  of [[*quartz-scheduler*]] that does not propagate to worker threads."
+  {:style/indent 1}
+  [scheduler & body]
+  `(binding [*quartz-scheduler* (atom ~scheduler)]
+     ~@body))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
