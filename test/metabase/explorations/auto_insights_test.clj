@@ -1,11 +1,20 @@
 (ns metabase.explorations.auto-insights-test
   "Unit tests for the orchestrator-namespace helpers that don't need a DB or LLM:
   the reasoning-trace filter, the error-doc builder, and the
-  append-reasoning-section no-op / append behavior."
+  append-reasoning-section no-op / append behavior. Also one end-to-end
+  integration test that stubs the LLM and verifies a Document is written
+  with materialized chart embeds."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.explorations.auto-insights :as auto-insights]))
+   [metabase.explorations.auto-insights :as auto-insights]
+   [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- attempt-reasonings ----------------------------------------------
 
@@ -154,6 +163,88 @@
                               (:content out))]
       (is (empty? headings-l4)
           "No 'Attempt N' heading when there's only one attempt"))))
+
+;;; ---------------------------------------------- end-to-end integration ----------------------------------------------
+
+(defn- fixture-qp-result []
+  {:status :completed
+   :data   {:cols [{:name           "month"
+                    :base_type      :type/DateTime
+                    :effective_type :type/DateTime
+                    :display_name   "Month"}
+                   {:name         "revenue"
+                    :base_type    :type/Integer
+                    :display_name "Revenue"}]
+            :rows [["2025-01-01T00:00:00Z" 100]
+                   ["2025-02-01T00:00:00Z" 110]
+                   ["2025-03-01T00:00:00Z" 95]
+                   ["2025-04-01T00:00:00Z" 220]
+                   ["2025-05-01T00:00:00Z" 240]]}
+   :row_count 5})
+
+(defn- serialize-result [qp-result]
+  (cache.impl/do-with-serialization
+   (fn [in result-fn] (in qp-result) (result-fn))))
+
+(deftest ^:integration generate-auto-insights-end-to-end-test
+  (testing "Happy path: stubbed LLM produces a curation and analysis; a Document is created with a materialized chart embed"
+    (mt/with-temp [:model/User u {:email "auto-insights-e2e@example.com"}
+                   :model/Card card {:creator_id    (:id u)
+                                     :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
+                   :model/Exploration e {:name "x" :creator_id (:id u)}
+                   :model/ExplorationThread t {:exploration_id (:id e)
+                                               :prompt         "How is revenue trending?"
+                                               :position       0}]
+      (let [qp-result    (fixture-qp-result)
+            query        (first (t2/insert-returning-instances!
+                                 :model/ExplorationQuery
+                                 {:exploration_thread_id (:id t)
+                                  :card_id               (:id card)
+                                  :name                  "Revenue by Month"
+                                  :dimension_id          "d1"
+                                  :dataset_query         (mt/mbql-query products
+                                                           {:aggregation [[:count]]
+                                                            :breakout    [!month.created_at]})
+                                  :status                "done"
+                                  :position              0}))
+            chart-cfg    (explorations.interestingness/qp-result->chart-config query qp-result)
+            chart-stats  (interestingness/compute-chart-stats chart-cfg {:deep? true})
+            curation-call (atom 0)
+            analysis-call (atom 0)]
+        (t2/insert! :model/ExplorationQueryResult
+                    {:exploration_query_id (:id query)
+                     :result_data          (serialize-result qp-result)
+                     :chart_stats          chart-stats})
+        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                      metabot.self/call-llm-structured-with-trace
+                      (fn [_model messages _schema _temp _max-tokens _opts]
+                        (let [user-msg (->> messages (filter #(= "user" (:role %))) first :content)]
+                          (if (str/includes? user-msg "CHART POOL")
+                            (do (swap! curation-call inc)
+                                {:result {:top_tier       [(:id query)]
+                                          :awareness_tier []
+                                          :rationale      "only chart in the pool"}
+                                 :parts  [{:type :reasoning :reasoning "thinking about curation"}]})
+                            (do (swap! analysis-call inc)
+                                {:result {:document
+                                          {:type "doc"
+                                           :content [{:type "heading" :attrs {:level 2}
+                                                      :content [{:type "text" :text "Abstract"}]}
+                                                     {:type "paragraph"
+                                                      :content [{:type "text" :text "Revenue trends upward in spring 2025."}]}
+                                                     {:type "explorationChart"
+                                                      :attrs {:exploration_query_id (:id query)}}]}}
+                                 :parts  [{:type :reasoning :reasoning "thinking about analysis"}]}))))]
+          (let [outcome (auto-insights/generate-auto-insights! (:id t))]
+            (is (= :ok outcome))
+            (is (= 1 @curation-call))
+            (is (= 1 @analysis-call))
+            (let [doc (t2/select-one :model/Document :exploration_thread_id (:id t)
+                                     :name "Automatic Insights")]
+              (is (some? doc) "Automatic Insights document was created")
+              ;; A card was created for the chart embed
+              (let [cards (t2/select :model/Card :document_id (:id doc))]
+                (is (= 1 (count cards)) "exactly one Card was materialized for the embed")))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

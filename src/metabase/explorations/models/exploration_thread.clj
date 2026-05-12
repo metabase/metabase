@@ -30,7 +30,7 @@
   [s]
   (when (string? s)
     (try
-      (edn/read-string s)
+      (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
       (catch Throwable e
         (log/warn e "Failed to parse exploration_thread.auto_insights_transcript; returning nil")
         nil))))

@@ -80,7 +80,7 @@
   [responses body-fn]
   (let [calls    (atom 0)
         history  (atom [])]
-    (with-redefs [common/call-llm (fn [messages _schema _tag]
+    (with-redefs [common/call-llm (fn [_llm-config messages _schema _tag]
                                     (swap! history conj messages)
                                     (let [n (deref calls)]
                                       (swap! calls inc)

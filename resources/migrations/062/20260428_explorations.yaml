@@ -991,6 +991,19 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v62.7438dfsed
+      author: nvoxland
+      comment: Backfill completed_at for pre-existing threads so legacy data doesn't trigger auto-insights on first deploy
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: completed_at
+                  valueComputed: current_timestamp
+            where: completed_at IS NULL
+
+  - changeSet:
       id: v62.gr324asd
       author: nvoxland
       comment: Raw stats on the chart

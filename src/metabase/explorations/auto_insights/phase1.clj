@@ -98,6 +98,12 @@
                    "- All ids you return MUST come from the pool below.\n"
                    "\n"
                    "GUIDANCE:\n"
+                   "- ASK YOURSELF FOR EACH CANDIDATE: \"can the analyst use this chart to make\n"
+                   "  a specific claim that helps answer the user's question?\" If yes → top\n"
+                   "  tier. If it adds useful context but won't carry a citation → awareness.\n"
+                   "  If neither → omit. Optimize for the SET of charts that together let the\n"
+                   "  analyst tell a coherent story — not the charts that look most\n"
+                   "  interesting in isolation.\n"
                    "- Diversify evidence angles. If \"Revenue by Day\" and \"Revenue by Week\"\n"
                    "  both rank high but tell the same story, pick one (probably the finer\n"
                    "  granularity) and put the other in awareness or skip it. Do NOT spend top\n"
@@ -227,13 +233,21 @@
   "Repair message for Phase 1: re-state the validation errors and ask for a
   corrected curation, preserving the original intent where possible."
   [previous-curation errors]
-  (str "Your curation didn't validate. Errors:\n\n"
-       (common/format-errors errors)
-       "\n\nReturn a corrected `structured_output` tool call with valid top_tier, "
-       "awareness_tier, and rationale fields. Keep the same overall selection logic — "
-       "only fix what the errors above point at. Your previous response was:\n```json\n"
-       (pr-str previous-curation)
-       "\n```"))
+  (let [echo     (pr-str previous-curation)
+        echo-cap 4000
+        echo     (if (<= (count echo) echo-cap)
+                   echo
+                   (str (subs echo 0 echo-cap) "\n... (truncated)"))]
+    (str (if (nil? previous-curation)
+           "Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the curation by calling the `structured_output` tool exactly once. "
+           "Your curation didn't validate. ")
+         "Errors:\n\n"
+         (common/format-errors errors)
+         "\n\nReturn a `structured_output` tool call with valid top_tier, "
+         "awareness_tier, and rationale fields. Keep the same overall selection logic — "
+         "only fix what the errors above point at. Your previous response was:\n```json\n"
+         echo
+         "\n```")))
 
 (defn run-curation!
   "Phase 1 entry point. `prompt` is the pre-rendered prompt string (built by

@@ -34,6 +34,20 @@
   Picked so a typical chart block stays well under ~1KB even at the cap."
   40)
 
+(def ^:private max-series-per-chart
+  "Cap on how many series we dump verbatim into a full chart block. A
+  high-cardinality breakout (e.g. 20 vendors × 40 data points) would otherwise
+  produce ~800 datapoints of prompt text for a single chart. We render the
+  first N by series order; the model still sees them all via the chart's
+  Markdown representation."
+  10)
+
+(def ^:private max-repair-echo-chars
+  "How many chars of the previous malformed response we echo back in the repair
+  prompt. A giant malformed response would otherwise double token consumption
+  on retry — the assistant turn already has it."
+  4000)
+
 (defn- downsample-pairs
   "Given parallel `x-values` and `y-values`, return a vector of `[x y]` pairs
   truncated to at most `n` evenly-spaced indices. Always preserves first and
@@ -94,12 +108,18 @@
   preserved; the header notes when downsampling happened so the model knows
   it's a sample. Top-tier full blocks only."
   [cfg]
-  (let [series (:series cfg)]
-    (when (seq series)
+  (let [series       (:series cfg)
+        total-series (count series)
+        kept-series  (take max-series-per-chart series)
+        dropped      (- total-series (count kept-series))]
+    (when (seq kept-series)
       (str "**Actual data points (chronological)** — every numeric claim and date in your output MUST appear in this list verbatim:\n"
+           (when (pos? dropped)
+             (str "_Note: showing first " (count kept-series) " of " total-series
+                  " series — " dropped " series omitted from this verbatim dump (still summarized in the chart Markdown above)._\n"))
            (str/join
             "\n"
-            (for [[sname {:keys [x_values y_values]}] series
+            (for [[sname {:keys [x_values y_values]}] kept-series
                   :let [orig-count (count x_values)
                         pairs      (downsample-pairs x_values y_values max-data-points-per-series)
                         downsampled? (< (count pairs) orig-count)]]
@@ -291,8 +311,11 @@
                    "    is REQUIRED for every embed whose x-axis is a category (state, source,\n"
                    "    category, vendor, etc.) — without it the chart comes back in query\n"
                    "    order, which is almost never what the reader needs. PICK THE SORT THAT\n"
-                   "    BEST SUPPORTS THE POINT YOU'RE MAKING; the same chart can be shown\n"
-                   "    twice with different sorts to make different points.\n"
+                   "    BEST SUPPORTS THE POINT YOU'RE MAKING; the SAME chart can legitimately\n"
+                   "    be embedded TWICE with different sorts to make different points (e.g.\n"
+                   "    once with `value_desc` to show the top contributors, then later with\n"
+                   "    `value_asc` to show the underperformers). Use this when the argument\n"
+                   "    benefits from both ordered views.\n"
                    "\n"
                    "    Decision tree for each embed:\n"
                    "      1. Is the x-axis a TIME column (year/month/day/etc.) or a NUMERIC\n"
@@ -420,14 +443,20 @@
   "Repair message for Phase 2 (analysis): point at the prose-mirror validation
   errors in the previous response and ask for a corrected document."
   [previous-doc errors]
-  (str "The document you returned doesn't conform to the supported ProseMirror schema. "
-       "Here are the structural errors I found (paths are JSONPath-style into the document):\n\n"
-       (common/format-errors errors)
-       "\n\nReturn a corrected JSON object with the SAME analytical content (don't rewrite the prose) "
-       "but a valid `document` tree. Allowed node types are listed in my previous message.\n\n"
-       "Your previous document was:\n```json\n"
-       (pr-str previous-doc)
-       "\n```"))
+  (let [echo (pr-str previous-doc)
+        echo (if (<= (count echo) max-repair-echo-chars)
+               echo
+               (str (subs echo 0 max-repair-echo-chars) "\n... (truncated)"))]
+    (str (if (nil? previous-doc)
+           "Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the document by calling the `structured_output` tool exactly once with `{\"document\": <prose-mirror-doc>}`. "
+           "The document you returned doesn't conform to the supported ProseMirror schema. ")
+         "Here are the structural errors I found (paths are JSONPath-style into the document):\n\n"
+         (common/format-errors errors)
+         "\n\nReturn a JSON object with the SAME analytical content (don't rewrite the prose) "
+         "but a valid `document` tree. Allowed node types are listed in my previous message.\n\n"
+         "Your previous document was:\n```json\n"
+         echo
+         "\n```")))
 
 (defn run-analysis!
   "Phase 2 entry point. `prompt` is the pre-rendered prompt string built by
@@ -483,14 +512,17 @@
    - the query already has an `order-by` (we respect existing sorts)
    - the requested sort needs a breakout / aggregation the query doesn't have
    - anything throws during the MLv2 round-trip"
-  [dataset-query sort]
+  [dataset-query sort mp-cache]
   (if (or (nil? sort)
           (not (mbql-query? dataset-query))
           (has-existing-order-by? dataset-query))
     dataset-query
     (try
       (let [db-id      (or (:database dataset-query) (get dataset-query "database"))
-            mp         (lib-be/application-database-metadata-provider db-id)
+            mp         (or (get @mp-cache db-id)
+                           (let [mp (lib-be/application-database-metadata-provider db-id)]
+                             (swap! mp-cache assoc db-id mp)
+                             mp))
             query      (lib/query mp dataset-query)
             ;; `aggregation-ref` produces an MLv2 `:aggregation` clause keyed to
             ;; the aggregation's `:lib/uuid` — that's the kind of ref `order-by`
@@ -533,13 +565,15 @@
        (line for temporal x, bar otherwise), populated upstream
     3. `(:display src-card)` — the source card's display
     4. `:table` — last-resort fallback"
-  [doc eq sort]
+  [doc eq sort mp-cache]
   (let [src-card (t2/select-one [:model/Card :name :display :visualization_settings]
                                 :id (:card_id eq))]
     (queries/create-card!
-     {:name                   (or (:name eq) (:name src-card) "Chart")
+     {:name                   (or (not-empty (:name eq))
+                                  (not-empty (:name src-card))
+                                  "Chart")
       :type                   :question
-      :dataset_query          (apply-chart-sort (:dataset_query eq) sort)
+      :dataset_query          (apply-chart-sort (:dataset_query eq) sort mp-cache)
       :display                (or (some-> (:display eq) keyword)
                                   (some-> (:computed-display eq) keyword)
                                   (:display src-card)
@@ -609,7 +643,8 @@
   references reuse the cached Card. Unknown ids are dropped silently with a
   debug log. Caller must have established a current-user binding."
   [pm-doc eq-by-id doc]
-  (let [card-cache (atom {})]            ; [eq-id sort] -> card-id
+  (let [card-cache (atom {})            ; [eq-id sort] -> card-id
+        mp-cache   (atom {})]           ; db-id -> metadata-provider (shared across embeds)
     (transform-nodes
      (fn [node]
        (if-let [eq-id (explorationchart-eq-id node)]
@@ -617,7 +652,7 @@
            (let [sort     (explorationchart-sort node)
                  cache-k  [eq-id sort]
                  card-id  (or (get @card-cache cache-k)
-                              (let [c (materialize-chart-card! doc eq sort)]
+                              (let [c (materialize-chart-card! doc eq sort mp-cache)]
                                 (swap! card-cache assoc cache-k (:id c))
                                 (:id c)))]
              {:type    "resizeNode"

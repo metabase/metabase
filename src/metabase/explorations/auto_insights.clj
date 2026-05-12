@@ -41,8 +41,11 @@
    [metabase.explorations.auto-insights.phase2 :as phase2]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -94,22 +97,23 @@
                :where    [:= :ett.exploration_thread_id thread-id]
                :order-by [[:ett.position :asc] [:te.timestamp :asc]]})]
     (->> rows
-         (group-by (juxt :timeline_id :timeline_name :timeline_description))
-         (sort-by (fn [[[_ _ _] rs]] (:position (first rs))))
-         (mapv (fn [[[tl-id tl-name tl-desc] tl-rows]]
-                 {:timeline-id          tl-id
-                  :timeline-name        tl-name
-                  :timeline-description tl-desc
-                  :events (->> tl-rows
-                               (keep (fn [r]
-                                       (when (:event_id r)
-                                         {:id          (:event_id r)
-                                          :name        (:event_name r)
-                                          :description (:event_description r)
-                                          :timestamp   (.toString ^Object (:event_timestamp r))
-                                          :icon        (:event_icon r)})))
-                               (sort-by :timestamp)
-                               vec)})))))
+         (group-by :timeline_id)
+         (sort-by (fn [[_ rs]] (:position (first rs))))
+         (mapv (fn [[_ tl-rows]]
+                 (let [head (first tl-rows)]
+                   {:timeline-id          (:timeline_id head)
+                    :timeline-name        (:timeline_name head)
+                    :timeline-description (:timeline_description head)
+                    :events (->> tl-rows
+                                 (keep (fn [r]
+                                         (when (:event_id r)
+                                           {:id          (:event_id r)
+                                            :name        (:event_name r)
+                                            :description (:event_description r)
+                                            :timestamp   (u.date/format (:event_timestamp r))
+                                            :icon        (:event_icon r)})))
+                                 (sort-by :timestamp)
+                                 vec)}))))))
 
 (defn- selection-context
   "Plain-text recap of metric / dimension / timeline names selected on the
@@ -372,7 +376,7 @@
   regardless of which branch the run takes. Timestamp is stored as an ISO-8601
   string so the EDN round-trip works without registering custom data readers."
   [thread-id]
-  {:generated-at      (.toString (java.time.Instant/now))
+  {:generated-at      (u.date/format (Instant/now))
    :thread-id         thread-id
    :phase-1-llm-config phase1/llm-config
    :phase-2-llm-config phase2/llm-config})

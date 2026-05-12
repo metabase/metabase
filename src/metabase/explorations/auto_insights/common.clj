@@ -32,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
+   (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
@@ -145,7 +146,10 @@
       (let [[sname _] (first series-entries)
             kp (key-points-from-stats chart-stats sname)]
         (if-not kp
-          (str (count (:x_values (val (first series-entries)))) " non-numeric points")
+          (let [total-points (reduce + 0 (map (fn [[_ s]] (count (:x_values s))) series-entries))]
+            (str total-points " non-numeric points"
+                 (when (> (count series-entries) 1)
+                   (str " across " (count series-entries) " series"))))
           (let [{:keys [peak trough first last change-pct n categorical?]} kp
                 [px pv] peak
                 [_ tv]  trough
@@ -230,6 +234,9 @@
                                                                 keyword (isa? :type/Number))
                                                     i))
                                                 cols))
+                ;; safe-chart-config (in the runner) only succeeds for exactly-2-column
+                ;; results, so the dim column is the other index — `(- 1 metric-idx)`
+                ;; flips 0↔1.
                 dim-idx    (when metric-idx (- 1 metric-idx))
                 dim-col    (when dim-idx (nth cols dim-idx nil))
                 metric-col (when metric-idx (nth cols metric-idx nil))]
@@ -289,21 +296,31 @@
   list is the raw streamed trace — reasoning blocks, any free-form text the
   model emitted alongside the tool call, the tool call itself, and usage —
   and is what we persist in the transcript so we can see why the model
-  produced what it did."
+  produced what it did.
+
+  When extended thinking is enabled, Claude uses `tool_choice: auto` and the
+  model can legitimately respond with reasoning + text but no tool call. The
+  underlying `call-llm-structured-with-trace` throws in that case. We catch it
+  here and return `{:response nil :parts <parts>}` so the validate / repair
+  loop in [[run-with-repair]] can ask for a properly-formatted tool call on
+  the retry, rather than letting the throw bubble all the way out and skip the
+  repair path entirely."
   [llm-config messages schema tag]
   (let [{:keys [model temperature max-tokens thinking-config]} llm-config
-        {:keys [result parts]}
-        (metabot.self/call-llm-structured-with-trace
-         model
-         messages
-         schema
-         temperature
-         max-tokens
-         (cond-> {:request-id (str (random-uuid))
-                  :source     "exploration"
-                  :tag        tag}
-           thinking-config (assoc :thinking thinking-config)))]
-    {:response result :parts parts}))
+        opts (cond-> {:request-id (str (random-uuid))
+                      :source     "exploration"
+                      :tag        tag}
+               thinking-config (assoc :thinking thinking-config))]
+    (try
+      (let [{:keys [result parts]}
+            (metabot.self/call-llm-structured-with-trace
+             model messages schema temperature max-tokens opts)]
+        {:response result :parts parts})
+      (catch ExceptionInfo e
+        (if-let [parts (:parts (ex-data e))]
+          (do (log/warnf "Auto-insights LLM call did not produce a tool call (tag=%s); falling back to repair loop" tag)
+              {:response nil :parts parts})
+          (throw e))))))
 
 (defn- summarize-parts
   "Pull the human-relevant pieces out of an AISDK parts trace so the persisted
