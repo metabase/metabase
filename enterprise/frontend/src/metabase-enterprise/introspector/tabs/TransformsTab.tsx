@@ -2,17 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useDeleteTransformMutation,
+  useArchiveTransformMutation,
   useDeleteTransformTargetMutation,
 } from "metabase/api";
 import { Box, Button, Chip, Group, Stack, Text, TextInput } from "metabase/ui";
 
 import { useListIntrospectorTransformsQuery } from "../api";
 import { Pagination } from "../components/Pagination";
-import { PendingDeletes } from "../components/PendingDeletes";
 import { TransformsTable } from "../components/TransformsTable";
-import type { PendingDelete } from "../hooks/usePendingDeletes";
-import { usePendingDeletes } from "../hooks/usePendingDeletes";
 import type { IntrospectorRow, TransformsFlagFilter } from "../types";
 
 /** v1 suppress state — keyed per browser + admin. v2 promotes this to an app-DB table. */
@@ -89,46 +86,25 @@ export function TransformsTab() {
     [suppressed],
   );
 
-  const [deleteTransform, { isLoading: isTrashing }] =
-    useDeleteTransformMutation();
+  // Trash action now hits POST /api/transform/:id/archive (soft delete) instead
+  // of DELETE /api/transform/:id — leaves the backend hard-delete API at parity
+  // for external callers, and the row is recoverable from the Trash collection.
+  const [archiveTransform, { isLoading: isTrashing }] =
+    useArchiveTransformMutation();
   const [deleteTransformTarget, { isLoading: isDroppingTable }] =
     useDeleteTransformTargetMutation();
-
-  // Actually fire the backend DELETE for a row whose grace period elapsed
-  // (or for `Delete now`). Optionally drops the target table first, ignoring
-  // failures so a missing/perm-denied table doesn't block the transform delete.
-  const commitDelete = useCallback(
-    async (entry: PendingDelete) => {
-      if (entry.alsoDropTable && entry.target_table?.active) {
-        try {
-          await deleteTransformTarget(entry.id).unwrap();
-        } catch {
-          // fall through — proceed with the transform delete regardless.
-        }
-      }
-      await deleteTransform(entry.id);
-    },
-    [deleteTransform, deleteTransformTarget],
-  );
-
-  const { pending, pendingIds, stage, restore, restoreAll, commitNow } =
-    usePendingDeletes({ commitDelete });
-
   const isWorking = isTrashing || isDroppingTable;
 
-  // Hide suppressed + currently-staged-for-delete rows from the visible list.
+  // Hide suppressed rows from the visible list. (The previous staged-commit
+  // "Recently deleted" pattern is gone — archive is a real soft delete, so
+  // restore lives in the standard /trash UI rather than a 30s grace timer.)
   const rows = useMemo(() => {
-    const hidden = new Set<number>(pendingIds);
-    if (!showSuppressed) {
-      suppressedIds.forEach((id) => hidden.add(id));
-    }
-    if (hidden.size === 0) {
+    if (showSuppressed || suppressedIds.size === 0) {
       return allRows;
     }
-    return allRows.filter((r) => !hidden.has(r.id));
-  }, [allRows, pendingIds, suppressedIds, showSuppressed]);
+    return allRows.filter((r) => !suppressedIds.has(r.id));
+  }, [allRows, suppressedIds, showSuppressed]);
 
-  // Reset to page 1 whenever filter/search changes (matches Cards/Dashboards tabs).
   const onFlagChange = useCallback((v: TransformsFlagFilter | null) => {
     setFlag(v ?? "all");
     setSelectedIds(new Set());
@@ -158,10 +134,25 @@ export function TransformsTab() {
     );
   }, [rows]);
 
-  // Per-row trash icon: stage immediately into the Recently deleted panel.
+  // Optionally drop the target table before archiving — matches the spike's
+  // "Also drop target tables" toggle in the bulk action bar.
+  const trashRow = useCallback(
+    async (row: IntrospectorRow) => {
+      if (alsoDropTable && row.target_table?.active) {
+        try {
+          await deleteTransformTarget(row.id).unwrap();
+        } catch {
+          // Best-effort — proceed with the archive even if the table drop fails.
+        }
+      }
+      await archiveTransform(row.id);
+    },
+    [alsoDropTable, archiveTransform, deleteTransformTarget],
+  );
+
   const trashOne = useCallback(
-    (row: IntrospectorRow) => {
-      stage(row, { alsoDropTable });
+    async (row: IntrospectorRow) => {
+      await trashRow(row);
       setSelectedIds((prev) => {
         if (!prev.has(row.id)) {
           return prev;
@@ -171,20 +162,20 @@ export function TransformsTab() {
         return next;
       });
     },
-    [stage, alsoDropTable],
+    [trashRow],
   );
 
-  const trashSelected = useCallback(() => {
+  const trashSelected = useCallback(async () => {
     const ids = Array.from(selectedIds);
     const byId = new Map(rows.map((r) => [r.id, r] as const));
-    for (const id of ids) {
-      const row = byId.get(id);
-      if (row) {
-        stage(row, { alsoDropTable });
-      }
-    }
+    await Promise.all(
+      ids.map((id) => {
+        const row = byId.get(id);
+        return row ? trashRow(row) : Promise.resolve();
+      }),
+    );
     setSelectedIds(new Set());
-  }, [selectedIds, rows, stage, alsoDropTable]);
+  }, [selectedIds, rows, trashRow]);
 
   const suppressOne = useCallback((row: IntrospectorRow) => {
     setSuppressed((prev) => {
@@ -196,8 +187,6 @@ export function TransformsTab() {
     });
   }, []);
 
-  // Bulk suppress: dismiss every selected row at once. Same per-row semantics
-  // as the menu Suppress action.
   const suppressSelected = useCallback(() => {
     const ids = Array.from(selectedIds);
     setSuppressed((prev) => {
@@ -313,7 +302,7 @@ export function TransformsTab() {
             loading={isWorking}
             onClick={trashSelected}
           >
-            {t`Delete selected…`}
+            {t`Move to Trash`}
           </Button>
         </Group>
       </Group>
@@ -336,13 +325,6 @@ export function TransformsTab() {
         offset={offset}
         limit={PAGE_SIZE}
         onChange={setOffset}
-      />
-
-      <PendingDeletes
-        pending={pending}
-        onRestore={restore}
-        onDeleteNow={(id) => void commitNow(id)}
-        onRestoreAll={restoreAll}
       />
     </Stack>
   );

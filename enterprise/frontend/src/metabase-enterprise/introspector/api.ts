@@ -50,7 +50,10 @@ export const introspectorApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/introspector/content/transforms",
         params,
       }),
-      providesTags: [tagFor("transforms")],
+      // Also tag with the standard transform list tag so archive/restore
+      // mutations (which invalidate `{type:"transform",id:"LIST"}`) refetch the
+      // introspector list without it knowing about the new endpoints.
+      providesTags: [tagFor("transforms"), { type: "transform", id: "LIST" }],
     }),
   }),
 });

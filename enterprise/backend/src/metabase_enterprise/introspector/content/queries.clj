@@ -105,7 +105,10 @@
 (defn- unreferenced-transforms-cte
   "A transform is unreferenced when no `dependency` row points at either the transform itself
   or its `target_table_id`. Broader than the card/dashboard equivalents because consumers of
-  a transform's output table show up as edges on the table, not the transform."
+  a transform's output table show up as edges on the table, not the transform.
+
+  Filters out trashed transforms (`archived = true`); the Introspector shouldn't surface
+  rows that are already in the Trash."
   []
   {:select-distinct [[:transform.id :id]]
    :from   [:transform]
@@ -119,17 +122,20 @@
                 [:= :dep_table.to_entity_id :transform.target_table_id]
                 [:= :dep_table.to_entity_type (h2x/literal "table")]]]
    :where  [:and
+            [:= :transform.archived false]
             [:= :dep_xform.id nil]
             [:= :dep_table.id nil]]})
 
 (defn- transform-target-missing-cte
   "Transforms whose `target_table_id` is set but the referenced `metabase_table` row is
-  inactive — the warehouse table was dropped externally or removed from sync."
+  inactive — the warehouse table was dropped externally or removed from sync. Trashed
+  transforms (`archived = true`) are excluded."
   []
   {:select [[:transform.id :id]]
    :from   [:transform]
    :join   [:metabase_table [:= :metabase_table.id :transform.target_table_id]]
    :where  [:and
+            [:= :transform.archived false]
             [:not= :transform.target_table_id nil]
             [:= :metabase_table.active false]]})
 
@@ -389,15 +395,20 @@
              :from   [:transform]
              :left-join [[:broken :broken] [:= :broken.id :transform.id]
                          [:unref :unref]   [:= :unref.id :transform.id]]
-             :where  (cond
-                       (and (contains? conditions :broken)
-                            (contains? conditions :unreferenced))
-                       [:or [:not= :broken.id nil] [:not= :unref.id nil]]
+             ;; Always filter out trashed transforms — they should appear in the Trash
+             ;; collection, not in the Introspector. Wrap the condition clause in :and
+             ;; so the trailing `(update :where conj search-clause)` keeps working.
+             :where  [:and
+                      [:= :transform.archived false]
+                      (cond
+                        (and (contains? conditions :broken)
+                             (contains? conditions :unreferenced))
+                        [:or [:not= :broken.id nil] [:not= :unref.id nil]]
 
-                       (contains? conditions :broken)       [:not= :broken.id nil]
-                       (contains? conditions :unreferenced) [:not= :unref.id nil]
-                       :else
-                       [:or [:not= :broken.id nil] [:not= :unref.id nil]])
+                        (contains? conditions :broken)       [:not= :broken.id nil]
+                        (contains? conditions :unreferenced) [:not= :unref.id nil]
+                        :else
+                        [:or [:not= :broken.id nil] [:not= :unref.id nil]])]
              :order-by (case sort-column
                          :last_used_at [[:transform.updated_at (or sort-direction :desc)]]
                          [[:%lower.name (or sort-direction :asc)]])

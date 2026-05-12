@@ -95,7 +95,11 @@
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
-   [:last_checkpoint_value {:optional true} [:maybe :string]]])
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
+   ;; Trash state — mirrors cards/dashboards. `archived_directly` distinguishes
+   ;; "user explicitly trashed this" from "ancestor collection was trashed".
+   [:archived {:optional true} :boolean]
+   [:archived_directly {:optional true} :boolean]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -137,15 +141,19 @@
              :name "gadget_products"}}])
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
-  "Get a list of transforms."
+  "Get a list of transforms. By default trashed transforms are excluded; pass
+  `?archived=true` to include them (used by the Trash collection view)."
   [_route-params
    query-params :-
    [:map
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (transforms.core/get-transforms query-params))
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]
+    [:archived {:optional true} [:maybe ms/BooleanValue]]]]
+  (transforms.core/get-transforms (-> query-params
+                                      (assoc :include-archived (boolean (:archived query-params)))
+                                      (dissoc :archived))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -245,10 +253,34 @@
   (transforms.core/update-transform! id body))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a transform."
+  "Delete a transform. Hard delete — removes the row from the application DB.
+  For trash-style soft delete with restore support, see
+  `POST /api/transform/:id/archive`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform id)))
+
+(api.macros/defendpoint :post "/:id/archive" :- TransformResponse
+  "Move a transform to the Trash (soft delete). Sets `archived = true` and
+  `archived_directly = true`; the row stays in the DB so it can be restored
+  via `POST /api/transform/:id/restore` or hard-deleted via
+  `DELETE /api/transform/:id`. Mirrors the trash flow for cards and
+  dashboards (`PUT /api/card/:id {archived: true}` and the trash-collection
+  presentation at `src/metabase/api/common.clj`)."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [transform (api/write-check :model/Transform id)]
+    (transforms.core/archive-transform! transform)
+    (transforms.core/get-transform id)))
+
+(api.macros/defendpoint :post "/:id/restore" :- TransformResponse
+  "Restore a trashed transform — clears both archive flags. No-op if the
+  transform isn't currently archived."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [transform (api/write-check :model/Transform id)]
+    (transforms.core/restore-transform! transform)
+    (transforms.core/get-transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."

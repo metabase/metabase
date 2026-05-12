@@ -1,0 +1,67 @@
+## Add `archived` + `archived_directly` to `transform` so transforms can use the same
+## trash pattern as cards and dashboards. See:
+##   - src/metabase/api/common.clj :: present-in-trash-if-archived-directly
+##   - src/metabase/collections/models/collection.clj :: trash-collection
+##
+## After this migration, transform soft-delete is implemented by setting
+## `archived = true, archived_directly = true` rather than `DELETE FROM transform`.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-05-12T00:00:00
+      author: ybtan
+      comment: Add `transform.archived`
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Has this transform been moved to the Trash"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: archived
+
+  - changeSet:
+      id: v61.2026-05-12T00:00:10
+      author: ybtan
+      comment: Add `transform.archived_directly`
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Was this transform trashed directly (vs swept along with an archived collection)"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: archived_directly
+
+  - changeSet:
+      id: v61.2026-05-12T00:00:20
+      author: ybtan
+      comment: Index on transform.archived for fast list filtering
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_archived
+            columns:
+              - column:
+                  name: archived
+              - column:
+                  name: archived_directly
+      rollback:
+        - dropIndex:
+            tableName: transform
+            indexName: idx_transform_archived

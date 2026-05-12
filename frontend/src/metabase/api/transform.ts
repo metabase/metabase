@@ -190,6 +190,29 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
     }),
+    /**
+     * Move a transform to the Trash (soft delete). Mirrors the cards/dashboards
+     * `PUT {archived: true}` flow but lives at a dedicated endpoint so the
+     * existing hard-delete `DELETE /api/transform/:id` stays at API parity for
+     * any external integrations that depend on it.
+     */
+    archiveTransform: builder.mutation<Transform, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/transform/${id}/archive`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+    }),
+    /** Restore a trashed transform — clears both archive flags. */
+    restoreTransform: builder.mutation<Transform, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/transform/${id}/restore`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+    }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "DELETE",
@@ -247,6 +270,8 @@ export const {
   useCreateTransformMutation,
   useUpdateTransformMutation,
   useDeleteTransformMutation,
+  useArchiveTransformMutation,
+  useRestoreTransformMutation,
   useDeleteTransformTargetMutation,
   useResetCheckpointMutation,
   useRunInspectorQueryQuery,
