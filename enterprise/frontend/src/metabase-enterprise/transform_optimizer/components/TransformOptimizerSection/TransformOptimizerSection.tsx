@@ -54,7 +54,7 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
     async (proposal: Proposal) => {
       const proposalIds = topoOrderForAccept(proposal, state.proposals);
       setBusyProposalId(proposal.id);
-      const { error } = await accept({
+      const { data, error } = await accept({
         transformId: transform.id,
         proposalIds,
       });
@@ -63,17 +63,43 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
         sendErrorToast(t`Failed to accept proposal`);
         return;
       }
-      sendSuccessToast(t`New transforms created`);
+      // Toast only when we actually created a transform — index-only
+      // accepts run DDL but don't materialise a new transform, so
+      // "Transform created" would be misleading. Fall back to a quieter
+      // confirmation for those.
+      const createdCount = data?.created_transforms?.length ?? 0;
+      if (createdCount > 0) {
+        sendSuccessToast(
+          createdCount === 1
+            ? t`New transform created`
+            : t`${createdCount} new transforms created`,
+        );
+      } else {
+        sendSuccessToast(t`Index changes applied`);
+      }
+      // Remove every proposal we just accepted (the target + all
+      // ancestors we topo-included) from the list so the user can move
+      // on to the next decision.
+      for (const id of proposalIds) {
+        dismissProposal(id);
+      }
     },
-    [accept, transform.id, state.proposals, sendErrorToast, sendSuccessToast],
+    [
+      accept,
+      transform.id,
+      state.proposals,
+      sendErrorToast,
+      sendSuccessToast,
+      dismissProposal,
+    ],
   );
 
-  const isStreaming = state.status === "streaming";
+  const isLoading = state.status === "loading";
   const isDone = state.status === "done";
   const isErrored = state.status === "error";
   const isCollapsed =
     isDone && state.optimizationDegree === 100 && state.proposals.length === 0;
-  const canTrigger = !isStreaming;
+  const canTrigger = !isLoading;
 
   return (
     <Stack p="lg" gap="md">
@@ -115,11 +141,11 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
             />
           </Group>
 
-          {(isStreaming || isDone || isErrored) && (
+          {(isLoading || isDone || isErrored) && (
             <Stack gap="md">
               {!isErrored && (
                 <OptimizationDegreeDial
-                  status={isStreaming ? "streaming" : "done"}
+                  status={isLoading ? "streaming" : "done"}
                   score={state.optimizationDegree}
                 />
               )}
@@ -208,7 +234,7 @@ function TriggerButton({
   onStart: () => void;
   onAbort: () => void;
 }) {
-  if (status === "streaming") {
+  if (status === "loading") {
     return (
       <Button variant="default" onClick={onAbort}>
         {t`Stop`}

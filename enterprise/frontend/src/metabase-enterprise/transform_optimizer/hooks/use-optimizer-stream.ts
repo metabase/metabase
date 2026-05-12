@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { runOptimizerStream } from "../api";
-import type {
-  OptimizerStreamError,
-  OptimizerStreamEvent,
-  OptimizerStreamState,
-  Proposal,
-} from "../types";
+import {
+  type OptimizeResponse,
+  useLazyOptimizeQuery,
+} from "../api";
+import type { OptimizerRunState } from "../types";
 
-const INITIAL: OptimizerStreamState = {
+const INITIAL: OptimizerRunState = {
   status: "idle",
   summary: null,
   proposals: [],
@@ -21,128 +19,108 @@ type Options = {
 };
 
 type Controls = {
-  state: OptimizerStreamState;
+  state: OptimizerRunState;
   start: (opts?: { analyze?: boolean }) => void;
   abort: () => void;
   reset: () => void;
   dismissProposal: (proposalId: string) => void;
 };
 
+/**
+ * Thin wrapper around `useLazyOptimizeQuery`. The endpoint used to be SSE,
+ * but the LLM call is fully buffered server-side anyway, so the streaming
+ * machinery wasn't pulling its weight. We keep this hook's shape stable so
+ * the section component doesn't need to know that the wire shape changed.
+ *
+ * Local-only state we still track:
+ *   - `dismissedProposalIds` so "Dismiss" hides a card without re-fetching.
+ *   - The abort token from `useLazyOptimizeQuery` so an unmount mid-call
+ *     doesn't try to setState on a dead component.
+ */
 export function useOptimizerStream({ transformId }: Options): Controls {
-  const [state, setState] = useState<OptimizerStreamState>(INITIAL);
-  const abortRef = useRef<AbortController | null>(null);
-
-  const handleEvent = useCallback((event: OptimizerStreamEvent) => {
-    setState((prev) => reduceEvent(prev, event));
-  }, []);
+  const [trigger, queryResult] = useLazyOptimizeQuery();
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
+  const lastSubscriptionRef = useRef<{ abort: () => void } | null>(null);
 
   const start = useCallback(
     ({ analyze = false }: { analyze?: boolean } = {}) => {
-      // Cancel any in-flight stream before starting a new one.
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setState({
-        status: "streaming",
-        summary: null,
-        proposals: [],
-        optimizationDegree: null,
-        error: null,
-      });
-
-      void runOptimizerStream({
-        transformId,
-        analyze,
-        signal: controller.signal,
-        onEvent: handleEvent,
-      })
-        .catch((err) => {
-          if ((err as Error)?.name === "AbortError") {
-            return;
-          }
-          setState((prev) => ({
-            ...prev,
-            status: "error",
-            error: {
-              message: (err as Error)?.message ?? "Stream failed",
-              retryable: true,
-            },
-          }));
-        })
-        .finally(() => {
-          // If neither a `done` nor an `error` ever landed, mark as done so
-          // the UI doesn't sit on a perpetual spinner.
-          setState((prev) =>
-            prev.status === "streaming" ? { ...prev, status: "done" } : prev,
-          );
-        });
+      lastSubscriptionRef.current?.abort();
+      setDismissed(new Set());
+      const sub = trigger({ transformId, analyze });
+      lastSubscriptionRef.current = sub as unknown as { abort: () => void };
     },
-    [transformId, handleEvent],
+    [trigger, transformId],
   );
 
   const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setState((prev) =>
-      prev.status === "streaming" ? { ...prev, status: "aborted" } : prev,
-    );
+    lastSubscriptionRef.current?.abort();
+    lastSubscriptionRef.current = null;
   }, []);
 
   const reset = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setState(INITIAL);
+    lastSubscriptionRef.current?.abort();
+    lastSubscriptionRef.current = null;
+    setDismissed(new Set());
   }, []);
 
   const dismissProposal = useCallback((proposalId: string) => {
-    setState((prev) => ({
-      ...prev,
-      proposals: prev.proposals.filter((p) => p.id !== proposalId),
-    }));
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(proposalId);
+      return next;
+    });
   }, []);
 
   // Cancel on unmount so a navigation doesn't leak a fetch.
   useEffect(() => {
     return () => {
-      abortRef.current?.abort();
+      lastSubscriptionRef.current?.abort();
     };
   }, []);
 
+  const state = projectState(queryResult, dismissed);
   return { state, start, abort, reset, dismissProposal };
 }
 
-function reduceEvent(
-  prev: OptimizerStreamState,
-  event: OptimizerStreamEvent,
-): OptimizerStreamState {
-  switch (event.event) {
-    case "summary":
-      return { ...prev, summary: event.data.text };
-    case "proposal": {
-      const incoming: Proposal = event.data;
-      // Server may stream the same proposal twice (retry); dedupe by id.
-      const existing = prev.proposals.findIndex((p) => p.id === incoming.id);
-      const nextProposals =
-        existing >= 0
-          ? prev.proposals.map((p, i) => (i === existing ? incoming : p))
-          : [...prev.proposals, incoming];
-      return { ...prev, proposals: nextProposals };
-    }
-    case "done":
-      return {
-        ...prev,
-        status: "done",
-        optimizationDegree: event.data.optimization_degree,
-      };
-    case "error":
-      return reduceError(prev, event.data);
-  }
-}
+type LazyResult = {
+  data?: OptimizeResponse;
+  error?: { message?: string };
+  isFetching: boolean;
+  isUninitialized: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+};
 
-function reduceError(
-  prev: OptimizerStreamState,
-  error: OptimizerStreamError,
-): OptimizerStreamState {
-  return { ...prev, status: "error", error };
+function projectState(
+  result: LazyResult,
+  dismissed: Set<string>,
+): OptimizerRunState {
+  if (result.isUninitialized) {
+    return INITIAL;
+  }
+  if (result.isFetching) {
+    return { ...INITIAL, status: "loading" };
+  }
+  if (result.isError) {
+    return {
+      ...INITIAL,
+      status: "error",
+      error: {
+        message:
+          (result.error && result.error.message) ||
+          "Optimizer request failed.",
+        retryable: true,
+      },
+    };
+  }
+  if (!result.data) {
+    return INITIAL;
+  }
+  return {
+    status: "done",
+    summary: result.data.summary ?? null,
+    proposals: result.data.proposals.filter((p) => !dismissed.has(p.id)),
+    optimizationDegree: result.data.optimization_degree,
+    error: null,
+  };
 }

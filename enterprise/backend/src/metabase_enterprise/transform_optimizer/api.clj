@@ -1,18 +1,13 @@
 (ns metabase-enterprise.transform-optimizer.api
   "HTTP endpoints for the Transform Optimizer.
 
-  Mounted under `/api/ee/transform-optimizer` by the EE route map. The
-  primary endpoint is the streaming SSE one (`POST /:id/optimize`). Verify
-  and accept are simple request/response endpoints — see SUMMARY.md for the
-  wire contract.
-
-  Today the optimizer is buffered server-side: we call Claude, wait for the
-  full structured response, then re-emit it as a sequence of SSE events.
-  The FE contract is preserved (events arrive in the documented order) so
-  we can upgrade to incremental LLM streaming later without touching the
-  client."
+  Mounted under `/api/ee/transform-optimizer` by the EE route map. All
+  three endpoints (optimize / verify / accept / indexes / drop) are plain
+  request/response — no SSE in this branch. We may revisit streaming once
+  we have incremental JSON parsing of the LLM tool call, but until then
+  the response is buffered server-side anyway and the wire complexity
+  isn't paying for itself."
   (:require
-   [clojure.core.async :as a]
    [metabase-enterprise.transform-optimizer.accept :as opt.accept]
    [metabase-enterprise.transform-optimizer.core :as opt.core]
    [metabase-enterprise.transform-optimizer.indexes :as opt.indexes]
@@ -22,90 +17,44 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.server.streaming-response :as sr]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.io OutputStream)))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 ;; ---------------------------------------------------------------------------
-;; SSE helpers
-;;
-;; Server-Sent Events frames are:
-;;
-;;   event: <name>
-;;   data: <single line of JSON>
-;;
-;;   (blank line terminates the frame)
-;;
-;; The blank line is critical — without it the EventSource on the FE never
-;; dispatches the event. We always JSON-encode data (no multi-line payloads).
-
-(defn- write-sse!
-  "Write one SSE frame to `os` and flush. Returns `false` if the client is
-  gone (EofException) so the caller can stop the stream cleanly."
-  [^OutputStream os event-name data]
-  (try
-    (let [bytes (.getBytes (str "event: " event-name "\n"
-                                "data: "  (json/encode data) "\n\n")
-                           "UTF-8")]
-      (.write os bytes)
-      (.flush os)
-      true)
-    (catch org.eclipse.jetty.io.EofException _
-      false)))
-
-(defn- canceled? [canceled-chan]
-  (and canceled-chan (a/poll! canceled-chan)))
-
-;; ---------------------------------------------------------------------------
-;; Streaming endpoint
+;; Optimize
 
 (api.macros/defendpoint :post "/:id/optimize"
-  "Stream optimization proposals for the given transform as SSE events.
+  "Run the optimizer for `transform-id` and return the full result in one
+  JSON payload:
 
-  Emits, in order:
-    event: summary    — `{text}`
-    event: proposal   — one per proposal, in `depends_on` topological order
-    event: done       — `{optimization_degree}`
+    {:transform           {id, name, source_database_id, target}
+     :sql                 <compiled source SQL>
+     :summary             <one-paragraph diagnosis>
+     :proposals           [{id, name, kind, severity, body | ddl_statement, …}]
+     :optimization_degree <0..100>}
 
-  On failure: a single `event: error` frame then closes the stream."
+  Proposals are cached server-side keyed by (user, transform, proposal id)
+  so the verify/accept endpoints can look them up by id alone."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:maybe [:map [:analyze {:optional true} [:maybe :boolean]]]]]
   (let [transform (api/read-check :model/Transform id)
         analyze?  (boolean (:analyze body))]
-    (sr/streaming-response {:content-type "text/event-stream; charset=UTF-8"
-                            :headers      {"Cache-Control" "no-cache"
-                                           "X-Accel-Buffering" "no"}}
-                           [^OutputStream os canceled-chan]
-      (try
-        (let [result (opt.core/optimize! (:id transform) :analyze? analyze?)]
-          ;; Cache every proposal under (user, transform, proposal-id) so
-          ;; verify/accept can look them up by id alone (FE never re-sends
-          ;; the body). The cache is short-lived (1 h) and per-user.
-          (opt.cache/put-all! api/*current-user-id* (:id transform) (:proposals result))
-
-          (when-not (canceled? canceled-chan)
-            (write-sse! os "summary" {:text (or (:summary result) "")}))
-
-          (loop [[p & more] (:proposals result)]
-            (cond
-              (canceled? canceled-chan) :canceled
-              (nil? p)                  :done
-              :else (do (write-sse! os "proposal" p)
-                        (recur more))))
-
-          (when-not (canceled? canceled-chan)
-            (write-sse! os "done" {:optimization_degree (:optimization_degree result)})))
-        (catch Exception e
-          (log/errorf e "optimize streaming failed (transform-id=%d)" (:id transform))
-          (write-sse! os "error"
-                      {:message   (or (ex-message e) "unknown error")
-                       :retryable (boolean (-> e ex-data :retryable))}))))))
+    (try
+      (let [result (opt.core/optimize! (:id transform) :analyze? analyze?)]
+        ;; Stash each proposal in the per-user cache so verify/accept can
+        ;; resolve a `proposal_id` back to its full payload.
+        (opt.cache/put-all! api/*current-user-id* (:id transform) (:proposals result))
+        result)
+      (catch Exception e
+        (log/errorf e "optimize failed (transform-id=%d)" (:id transform))
+        (let [data (ex-data e)]
+          {:status (or (:status-code data) 502)
+           :body   {:error     "optimize_failed"
+                    :message   (or (ex-message e) "unknown error")
+                    :retryable (boolean (:retryable data))}})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Verify endpoint
@@ -119,8 +68,7 @@
   deferred until DAG accept is in place.
 
   The proposal payload is resolved server-side from the proposal cache
-  populated by the streaming `/optimize` endpoint, so the FE only sends
-  the `proposal_id`."
+  populated by `/optimize`, so the FE only sends the `proposal_id`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map [:proposal_id :string]]]
@@ -160,12 +108,11 @@
   order given).
 
   Each proposal payload is resolved server-side from the proposal cache
-  populated by the streaming `/optimize` endpoint. If any id is missing,
-  the whole request is rejected (404) — partial accept is too easy to
-  mis-handle on the FE.
+  populated by `/optimize`. If any id is missing, the whole request is
+  rejected (404) — partial accept is too easy to mis-handle on the FE.
 
   The response includes `ddl_statements` with per-statement execution
-  status (`:executed | :failed | :skipped`) plus the original
+  status (`:executed | :failed | :skipped | :pending`) plus the original
   validation tag. Failed DDL does NOT roll back successfully-created
   transforms — `CREATE INDEX IF NOT EXISTS` is idempotent, so the user
   can re-run accept after fixing whatever the problem was."
@@ -187,7 +134,7 @@
       (opt.accept/accept! transform proposals (:collection_id body)))))
 
 ;; ---------------------------------------------------------------------------
-;; Index management on a transform's target table
+;; Index management on a transform's target + source tables
 
 (api.macros/defendpoint :get "/:id/indexes"
   "List every index on the transform's target table *and* every source

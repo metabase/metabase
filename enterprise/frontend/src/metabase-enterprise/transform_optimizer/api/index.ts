@@ -7,8 +7,6 @@ import type {
   TargetIndex,
 } from "../types";
 
-export { runOptimizerStream } from "./stream";
-
 export type VerifyResponse =
   | {
       equivalent: boolean;
@@ -21,15 +19,31 @@ export type VerifyResponse =
   | { error: string; detail?: string };
 
 /**
- * One entry in the accept response's `ddl_statements`. Mirrors the BE
- * shape: every accepted source-DB statement carries an execution
- * `status`; every accepted transform-target / precompute-of statement
- * carries `status: "pending"` (it's queued on the new transform's
- * `target.post_run_ddl` and will run after the next transform run);
- * rejected statements pass through with no status but a `rejection`.
+ * The full result of one optimizer run. Returned as a single JSON
+ * payload — the optimizer used to be SSE-streamed, but the LLM call is
+ * fully buffered server-side anyway, so the streaming framing didn't
+ * pay for itself.
+ */
+export type OptimizeResponse = {
+  transform: {
+    id: number;
+    name: string;
+    source_database_id: number;
+    target?: unknown;
+  };
+  sql: string | null;
+  summary: string | null;
+  proposals: Proposal[];
+  optimization_degree: number;
+};
+
+/**
+ * One entry in the accept response's `ddl_statements`. Each accepted
+ * source-DB statement carries an execution `status`; transform-target /
+ * precompute-of statements carry `status: "pending"`; rejected
+ * statements pass through with no status but a `rejection`.
  */
 export type AcceptDdlStatement = {
-  id: string;
   proposal_id: string;
   statement: string;
   target: unknown;
@@ -61,6 +75,16 @@ export type ListIndexesResponse = {
 
 const optimizerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    optimize: builder.query<
+      OptimizeResponse,
+      { transformId: number | string; analyze?: boolean }
+    >({
+      query: ({ transformId, analyze = false }) => ({
+        method: "POST",
+        url: `/api/ee/transform-optimizer/${transformId}/optimize`,
+        body: { analyze },
+      }),
+    }),
     verifyProposal: builder.mutation<
       VerifyResponse,
       { transformId: number | string; proposal: Proposal }
@@ -116,6 +140,7 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useLazyOptimizeQuery,
   useVerifyProposalMutation,
   useAcceptProposalMutation,
   useListTargetIndexesQuery,

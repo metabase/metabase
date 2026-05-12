@@ -49,31 +49,20 @@ export type Proposal = {
   depends_on: string[];
 };
 
-export type OptimizerStreamStatus =
-  | "idle"
-  | "streaming"
-  | "done"
-  | "error"
-  | "aborted";
+export type OptimizerRunStatus = "idle" | "loading" | "done" | "error";
 
-export type OptimizerStreamError = {
+export type OptimizerRunError = {
   message: string;
   retryable: boolean;
 };
 
-export type OptimizerStreamState = {
-  status: OptimizerStreamStatus;
+export type OptimizerRunState = {
+  status: OptimizerRunStatus;
   summary: string | null;
   proposals: Proposal[];
   optimizationDegree: number | null;
-  error: OptimizerStreamError | null;
+  error: OptimizerRunError | null;
 };
-
-export type OptimizerStreamEvent =
-  | { event: "summary"; data: { text: string } }
-  | { event: "proposal"; data: Proposal }
-  | { event: "done"; data: { optimization_degree: number } }
-  | { event: "error"; data: OptimizerStreamError };
 
 /**
  * One row from `GET /api/ee/transform-optimizer/:id/indexes`. Matches the
