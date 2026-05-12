@@ -24,7 +24,6 @@ export function OptimizationDegreeDial({
   score,
   errorMessage,
 }: Props) {
-    return <DefragLoader />;
   if (status === "streaming" && score == null) {
     return <DefragLoader />;
   }

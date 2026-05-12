@@ -48,6 +48,8 @@
 
   display: block;
   width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
   background: var(--chrome);
   padding: 2px;
   box-sizing: border-box;
