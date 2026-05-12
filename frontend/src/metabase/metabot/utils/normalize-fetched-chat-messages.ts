@@ -5,7 +5,7 @@ import type { MetabotAgentTurnError, MetabotChatMessage } from "../state/types";
 import { convertSlackChatMessage } from "./slack-mrkdwn";
 
 export type FetchedChatMessage = MetabotChatMessage & {
-  finished?: boolean;
+  finished?: boolean | null;
   error?: MetabotAgentTurnError | null;
 };
 

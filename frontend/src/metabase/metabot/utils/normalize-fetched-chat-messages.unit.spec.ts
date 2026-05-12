@@ -4,7 +4,10 @@ import { normalizeFetchedChatMessages } from "./normalize-fetched-chat-messages"
 const agentText = (
   id: string,
   message: string,
-  extras: { finished?: boolean; error?: { message: string } | null } = {},
+  extras: {
+    finished?: boolean | null;
+    error?: { message: string } | null;
+  } = {},
 ): FetchedChatMessage => ({
   id,
   role: "agent",
@@ -70,6 +73,14 @@ describe("normalizeFetchedChatMessages", () => {
         type: "text",
         message: "hello",
       });
+    });
+
+    it("treats finished=null as not-aborted (no trailing turn_aborted)", () => {
+      const result = normalizeFetchedChatMessages([
+        agentText("a1", "hello", { finished: null }),
+      ]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ type: "text", message: "hello" });
     });
   });
 });

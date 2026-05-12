@@ -190,6 +190,8 @@
                     originator-id (assoc :user_id originator-id)
                     channel-id    (assoc :channel_id channel-id)
                     slack-msg-id  (assoc :slack_msg_id slack-msg-id)))
+      ;; `:finished nil` is the in-flight marker; `finalize-assistant-turn!`
+      ;; UPDATEs to true (success/error) or false (aborted).
       (let [pk (t2/insert-returning-pk!
                 :model/MetabotMessage
                 (cond-> {:conversation_id conversation-id
@@ -199,7 +201,7 @@
                          :external_id     assistant-external-id
                          :total_tokens    0
                          :ai_proxied      (boolean ai-proxy?)
-                         :finished        false}
+                         :finished        nil}
                   user-id    (assoc :user_id user-id)
                   channel-id (assoc :channel_id channel-id)))]
         {:assistant-msg-id      pk
@@ -220,8 +222,8 @@
      `message-persist-bytes` histogram. Defaults to `\"unknown\"` so callers
      without a profile (e.g. test helpers) don't fail.
   - `:finished?` — boolean (default true). Set `false` only for client-aborted
-     turns; the placeholder's pre-existing `finished=false` is preserved when
-     this is explicitly false (no-op).
+     turns; either way the placeholder's `:finished` flips from NULL to a
+     concrete boolean so it stops being filtered as in-flight.
   - `:error` — JSON-serializable error payload; encoded into the `error` column.
   - `:slack-msg-id`, `:channel-id` — backfill onto the assistant row when known
      at completion (Slack response posts mid-stream)."
@@ -346,9 +348,15 @@
   "Stamp `:finished` and `:error` from the parent row onto the
   *last* agent-role chat message produced from it. The annotation describes the
   row's outcome, so it belongs on a single message — the FE expands it into a
-  trailing `turn_aborted` / `turn_errored` chat message."
-  [chat-messages {:keys [finished error] :or {finished true}}]
-  (let [decoded-error  (some-> error decode-error)
+  trailing `turn_aborted` / `turn_errored` chat message.
+
+  Parent `:finished nil` (stale placeholder past the grace window) becomes
+  `:finished false` so the FE renders it as aborted."
+  [chat-messages message]
+  (let [finished       (if (contains? message :finished)
+                         (or (:finished message) false)
+                         true)
+        decoded-error  (some-> (:error message) decode-error)
         last-agent-idx (->> chat-messages
                             (keep-indexed (fn [i m] (when (= "agent" (:role m)) i)))
                             last)]
@@ -373,18 +381,22 @@
 (defn message->chat-messages
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
    Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
-   Assistant rows that produced zero chat messages but carry `:error` or
-   `:finished false` get a synthetic empty text message so the FE has something
-   to render the alert on."
+   Assistant rows that produced zero chat messages but carry `:error`,
+   `:finished false`, or `:finished nil` (a stale placeholder past the grace
+   window) get a synthetic empty text message so the FE has something to render
+   the alert on."
   [message]
   (let [blocks       (or (:data message) [])
         external-id  (:external_id message)
         chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)
         merged       (merge-tool-results chat-msgs blocks)
+        ;; Absent :finished is treated as true (success); only explicit nil
+        ;; (stale placeholder) or false (aborted) should drive the stub branch.
+        not-finished (and (contains? message :finished)
+                          (not (true? (:finished message))))
         with-stub    (if (and (= :assistant (:role message))
                               (empty? merged)
-                              (or (some? (:error message))
-                                  (false? (:finished message))))
+                              (or (some? (:error message)) not-finished))
                        [(empty-agent-placeholder message)]
                        merged)]
     (annotate-agent-messages with-stub message)))
@@ -430,15 +442,13 @@
 
 (defn- placeholder-still-active?
   "True if `row` is an in-flight placeholder created by [[start-turn!]] for a
-  stream that hasn't yet completed: assistant role, empty `:data`, `:finished`
-  false, no `:error`, and `:created_at` within the grace window. Used by
-  [[messages->chat-messages]] to suppress live placeholders from chat reads so a
-  reload mid-stream does not render an empty `turn_aborted` stub."
-  [{:keys [role data finished error created_at]}]
+  stream that hasn't yet completed: assistant role, `:finished` IS NULL (the
+  schema-level placeholder marker), and `:created_at` within the grace window.
+  Used by [[messages->chat-messages]] to suppress live placeholders from chat
+  reads so a reload mid-stream does not render an empty `turn_aborted` stub."
+  [{:keys [role finished created_at]}]
   (and (= :assistant role)
-       (false? finished)
-       (nil? error)
-       (or (nil? data) (empty? data))
+       (nil? finished)
        (some? created_at)
        (when-let [then (->instant created_at)]
          (< (.toMillis (java.time.Duration/between then (Instant/now)))

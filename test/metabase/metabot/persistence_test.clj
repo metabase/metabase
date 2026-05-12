@@ -187,7 +187,7 @@
             (is (= user-id (:user_id user-msg))))
           (testing "assistant placeholder is in-flight, no slack_msg_id yet"
             (is (= :assistant (:role asst-msg)))
-            (is (false? (:finished asst-msg)))
+            (is (nil? (:finished asst-msg)) "in-flight placeholder uses NULL marker")
             (is (= [] (:data asst-msg)))
             (is (= channel-id (:channel_id asst-msg)))
             (is (nil? (:slack_msg_id asst-msg)))
@@ -233,7 +233,7 @@
               (let [asst (second rows)]
                 (is (= assistant-msg-id (:id asst)))
                 (is (= assistant-external-id (:external_id asst)))
-                (is (false? (:finished asst)))
+                (is (nil? (:finished asst)) "in-flight placeholder uses NULL marker")
                 (is (= [] (:data asst)))))))))))
 
 (deftest finalize-assistant-turn-updates-placeholder-in-place-test
@@ -365,6 +365,27 @@
         (let [{:keys [chat_messages]} (metabot-persistence/conversation-detail conversation-id)]
           (is (= [["user" "retry"] ["agent" "ok"]]
                  (mapv (juxt :role :message) chat_messages))))))))
+
+(deftest placeholder-still-active-uses-nil-finished-marker-test
+  (testing "the in-flight predicate keys off finished IS NULL (not :data emptiness or :error)"
+    (let [recent (java.time.OffsetDateTime/now)
+          stale  (.minusHours recent 2)
+          base   {:role :assistant :data [] :error nil}]
+      (testing "finished=nil + recent created_at → filtered"
+        (is (= [] (metabot-persistence/messages->chat-messages
+                   [(assoc base :finished nil :created_at recent)]))))
+      (testing "finished=nil + stale created_at → not filtered (renders aborted stub)"
+        (is (=? [{:type "text" :message "" :finished false}]
+                (metabot-persistence/messages->chat-messages
+                 [(assoc base :finished nil :created_at stale)]))))
+      (testing "finished=false → never filtered, even within grace"
+        (is (=? [{:type "text" :message "" :finished false}]
+                (metabot-persistence/messages->chat-messages
+                 [(assoc base :finished false :created_at recent)]))))
+      (testing "finished=true → never filtered"
+        (is (= [] (metabot-persistence/messages->chat-messages
+                   [(assoc base :finished true :created_at recent)]))
+            "no stub: finished=true with no error is a successful empty turn")))))
 
 (deftest conversation-detail-filters-soft-deleted-messages-and-orders-ascending-test
   (testing "conversation-detail returns only non-deleted messages, ordered by :created_at ascending"
@@ -568,15 +589,15 @@
         (is (= "boom" (:error chat-msg)))))))
 
 (deftest messages-chat-messages-skips-in-flight-placeholders-test
-  (testing "in-flight placeholders (data=[], finished=false, error=nil, recent created_at)
+  (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)
             are filtered out of the chat-message conversion, so a mid-stream read does not
             render a stub 'Response was interrupted' alert"
     (let [recent      (java.time.OffsetDateTime/now)
           ;; Comfortably outside the grace window so the test isn't sensitive
           ;; to the exact value of `placeholder-grace-period-ms`.
           stale       (.minusHours recent 2)
-          placeholder {:role :assistant :data [] :finished false :error nil :created_at recent}
-          stale-stub  {:role :assistant :data [] :finished false :error nil :created_at stale}
+          placeholder {:role :assistant :data [] :finished nil :error nil :created_at recent}
+          stale-stub  {:role :assistant :data [] :finished nil :error nil :created_at stale}
           user-msg    {:role :user :data [{:role "user" :content "hi"}]}
           done-asst   {:role :assistant :data [{:type "text" :text "done" :id "b1"}] :finished true}]
       (testing "in-flight placeholder is skipped; surrounding messages still render"
@@ -586,8 +607,8 @@
         (let [out (metabot-persistence/messages->chat-messages [user-msg stale-stub])]
           (is (= 2 (count out)))
           (is (=? [{:message "hi"} {:type "text" :message "" :finished false}] out))))
-      (testing "placeholder with :error set is treated as errored (not in-flight) — the errored pair is dropped from default reads but visible to the audit path"
-        (let [errored {:role :assistant :data [] :finished false
+      (testing "row with :error set is treated as errored (not in-flight) — the errored pair is dropped from default reads but visible to the audit path"
+        (let [errored {:role :assistant :data [] :finished true
                        :error (json/encode {:message "boom"})
                        :created_at recent}]
           (is (= []
