@@ -10,7 +10,7 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORM_OPTIMIZER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -39,6 +39,8 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
+  const OptimizerSection = PLUGIN_TRANSFORM_OPTIMIZER.RunPageSection;
+
   const content = (
     <>
       <Stack>
@@ -48,6 +50,12 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
+      {OptimizerSection && (
+        <>
+          <Divider />
+          <OptimizerSection transform={transform} readOnly={readOnly} />
+        </>
+      )}
       <Divider />
       <Group p="lg" gap="lg">
         <Stack gap="sm">

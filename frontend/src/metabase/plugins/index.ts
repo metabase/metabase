@@ -131,6 +131,11 @@ export {
   type PythonTransformsPlugin,
 } from "./oss/transforms";
 export {
+  PLUGIN_TRANSFORM_OPTIMIZER,
+  type TransformOptimizerPlugin,
+  type TransformOptimizerRunPageSectionProps,
+} from "./oss/transform-optimizer";
+export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
   type CheckDependenciesFormProps,
@@ -192,6 +197,7 @@ import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
 import { reinitialize as reinitializeSnippets } from "./oss/snippets";
 import { reinitialize as reinitializeSupport } from "./oss/support";
 import { reinitialize as reinitializeTenants } from "./oss/tenants";
+import { reinitialize as reinitializeTransformOptimizer } from "./oss/transform-optimizer";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
@@ -237,6 +243,7 @@ export function reinitialize() {
   reinitializeTenants();
   reinitializeDependencies();
   reinitializeTransforms();
+  reinitializeTransformOptimizer();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
   reinitializeWritableConnection();

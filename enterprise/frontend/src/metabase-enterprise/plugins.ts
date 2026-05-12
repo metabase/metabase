@@ -46,6 +46,7 @@ import { initializePlugin as initializeSupport } from "./support";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
 import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTools } from "./tools";
+import { initializePlugin as initializeTransformOptimizer } from "./transform_optimizer";
 import { initializePlugin as initializeTransforms } from "./transforms";
 import { initializePlugin as initializeTransformsInspector } from "./transforms-inspector";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
@@ -98,6 +99,7 @@ export function initializePlugins() {
   initializeSemanticSearch();
   initializeTransforms();
   initializeTransformsInspector();
+  initializeTransformOptimizer();
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();

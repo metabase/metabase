@@ -1,0 +1,49 @@
+.dialWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.score {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.track {
+  stroke: var(--mb-color-border);
+}
+
+.green {
+  stroke: var(--mb-color-success);
+  transition: stroke-dashoffset 400ms ease-out;
+}
+
+.greenYellow {
+  stroke: color-mix(
+    in srgb,
+    var(--mb-color-success) 60%,
+    var(--mb-color-warning)
+  );
+  transition: stroke-dashoffset 400ms ease-out;
+}
+
+.orange {
+  stroke: var(--mb-color-warning);
+  transition: stroke-dashoffset 400ms ease-out;
+}
+
+.red {
+  stroke: var(--mb-color-error);
+  transition: stroke-dashoffset 400ms ease-out;
+}
+
+.errorChip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mb-color-error);
+}

@@ -1,0 +1,33 @@
+.card {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-bg-white);
+}
+
+.codeBlock {
+  max-height: 320px;
+  overflow: auto;
+  font-size: 12px;
+  white-space: pre;
+}
+
+.kindTag {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.severity_high {
+  background: color-mix(in srgb, var(--mb-color-error) 12%, transparent);
+  color: var(--mb-color-error);
+}
+
+.severity_medium {
+  background: color-mix(in srgb, var(--mb-color-warning) 14%, transparent);
+  color: var(--mb-color-warning);
+}
+
+.severity_low {
+  background: color-mix(in srgb, var(--mb-color-text-secondary) 12%, transparent);
+  color: var(--mb-color-text-secondary);
+}

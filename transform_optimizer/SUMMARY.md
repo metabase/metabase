@@ -71,19 +71,18 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 | BE-9 | Permission-check at accept-time | — | Today only `read-check` runs on the source transform. Accept should also assert write permission on the target DB. |
 | BE-10 | Cost guard | — | Skip EXPLAIN ANALYZE / verify materialisation for transforms whose latest run exceeded N minutes. |
 
+
 ## Open FE tasks
 
-| # | Task | Depends on | Notes |
-|---|---|---|---|
-| FE-1 | "Suggest optimizations" trigger button on transform page | — | Plain button → opens panel + kicks off SSE request |
-| FE-2 | Side panel scaffold + open/close state | FE-1 | Two regions: header (dial + summary) + proposal list |
+
+| FE-1 | "Suggest optimizations" trigger button on transform run page (/data-studio/transforms/:id/run) | — | Plain button kicks off SSE request |
+| FE-2 | New section under "RunSection" to output stream results.
 | FE-3 | Optimization-degree dial | mock data | Colour-coded; "Analyzing…" spinner while streaming; collapse-to-✓ when score is 100. Mock against the **Streaming endpoint** contract below. |
 | FE-4 | Summary text region | mock data | Lands first (before the first proposal); replaces the spinner |
 | FE-5 | Proposal card component | mock data | Severity badge, kind tag, diff/SQL block, rationale, expected speedup |
 | FE-6 | "Index changes" subsection on proposal card | mock data | Per-DDL state: pending/running/executed/failed (executed/failed unused this branch — DDL is advisory) + validation status (`accepted` / `rejected` with reason) |
 | FE-7 | Per-card actions (accept, verify, dismiss) | BE-4, BE-5 for non-mock | Buttons disabled with tooltip when user lacks write permission |
 | FE-8 | Toast / inline error rendering for stream errors | — | Maps `error` events to user-facing messages |
-
 ---
 
 ## Streaming endpoint — wire contract

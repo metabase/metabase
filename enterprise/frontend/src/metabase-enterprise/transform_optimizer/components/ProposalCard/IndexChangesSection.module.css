@@ -1,0 +1,32 @@
+.row {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-sm);
+  background: var(--mb-color-bg-light);
+}
+
+.codeBlock {
+  font-size: 12px;
+  white-space: pre;
+  overflow: auto;
+}
+
+.status_pending {
+  color: var(--mb-color-text-secondary);
+}
+
+.status_running {
+  color: var(--mb-color-brand);
+}
+
+.status_executed {
+  color: var(--mb-color-success);
+}
+
+.status_failed {
+  color: var(--mb-color-error);
+}
+
+.status_skipped {
+  color: var(--mb-color-text-secondary);
+}
