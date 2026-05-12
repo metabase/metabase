@@ -77,7 +77,6 @@ describe("scenarios > native > snippet tags", () => {
     });
 
     cy.log("create a snippet that uses the previous snippet");
-    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().icon("add").click();
     H.popover().findByText("New snippet").click();
     H.modal().within(() => {
