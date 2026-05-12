@@ -3,6 +3,7 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
 import type { SchemaName } from "metabase-types/api";
@@ -10,6 +11,7 @@ import type { SchemaName } from "metabase-types/api";
 import type { DataPickerValue } from "../DataPicker";
 
 import {
+  type MiniPickerCollectionFolderItem,
   type MiniPickerCollectionItem,
   type MiniPickerFolderItem,
   MiniPickerFolderModel,
@@ -18,7 +20,7 @@ import {
   type MiniPickerTableItem,
 } from "./types";
 
-export const getOurAnalytics = (): MiniPickerFolderItem => ({
+export const getOurAnalytics = (): MiniPickerCollectionFolderItem => ({
   model: "collection",
   id: "root" as any, // cmon typescript
   name: t`Our analytics`,
@@ -120,7 +122,7 @@ async function getTablePathFromValue(
 async function getCollectionPathFromValue(
   value: DataPickerValue,
   dispatch: DispatchFn,
-  libraryCollection?: MiniPickerCollectionItem,
+  collectionItem?: MiniPickerCollectionItem,
 ): Promise<MiniPickerFolderItem[]> {
   const table =
     value.model === "table"
@@ -137,7 +139,9 @@ async function getCollectionPathFromValue(
 
   const collection = table?.collection ?? card?.collection;
 
-  const location = collection?.effective_location ?? collection?.location;
+  const location = PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)
+    ? collection?.location
+    : (collection?.effective_location ?? collection?.location);
 
   if (!location) {
     return [getOurAnalytics()];
@@ -151,7 +155,7 @@ async function getCollectionPathFromValue(
     collection?.id,
   ].filter(Boolean);
 
-  if (collectionIds.includes(libraryCollection?.id)) {
+  if (collectionIds.includes(collectionItem?.id)) {
     collectionIds.shift(); // pretend the library is at the top level
     locationPath.shift();
   }
@@ -178,6 +182,42 @@ async function getCollectionPathFromValue(
     );
 
     if (!nextItem) {
+      if (
+        collectionId === collectionItem?.id &&
+        PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)
+      ) {
+        const promotedItem = collectionItems.data.find(
+          (item) =>
+            item.model === "collection" &&
+            item.id === collectionIds[i + 2] &&
+            item.type === collection.type,
+        );
+
+        const syntheticItem =
+          PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem({
+            collectionId: collectionItem.id,
+            type: collection.type,
+            miniPicker: true,
+          });
+
+        if (syntheticItem) {
+          locationPath.push(syntheticItem);
+        }
+
+        if (promotedItem) {
+          locationPath.push({
+            id: promotedItem.id,
+            name: promotedItem.name,
+            model: "collection",
+            here: promotedItem.here,
+            below: promotedItem.below,
+            type: promotedItem.type,
+          });
+          i += 1;
+          continue;
+        }
+      }
+
       break;
     }
 
@@ -187,6 +227,7 @@ async function getCollectionPathFromValue(
       model: "collection",
       here: nextItem.here,
       below: nextItem.below,
+      type: nextItem.type,
     });
   }
 

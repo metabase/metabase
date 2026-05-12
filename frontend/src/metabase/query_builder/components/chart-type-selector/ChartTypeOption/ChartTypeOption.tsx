@@ -1,16 +1,25 @@
 import cx from "classnames";
+import { t } from "ttag";
 
-import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
-import { checkNotNull } from "metabase/utils/types";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import {
+  ActionIcon,
+  Badge,
+  Center,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import ChartTypeOptionS from "./ChartTypeOption.module.css";
 
 export type ChartTypeOptionProps = {
-  onSelectVisualization: (display: CardDisplayType) => void;
-  visualizationType: CardDisplayType;
-  selectedVisualization: CardDisplayType;
+  onSelectVisualization: (display: VisualizationDisplay) => void;
+  visualizationType: VisualizationDisplay;
+  selectedVisualization: VisualizationDisplay;
   onOpenSettings?: () => void;
 };
 
@@ -20,8 +29,12 @@ export const ChartTypeOption = ({
   onSelectVisualization,
   onOpenSettings,
 }: ChartTypeOptionProps) => {
-  const visualization = checkNotNull(visualizations.get(visualizationType));
+  const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
+
+  const displayName = visualization?.getUiName() ?? visualizationType;
+  const iconName = visualization?.iconName;
+  const hasCustomIcon = !!visualization?.iconUrl;
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -30,7 +43,7 @@ export const ChartTypeOption = ({
         gap="xs"
         role="option"
         aria-selected={isSelected}
-        data-testid={`${visualization.getUiName()}-container`}
+        data-testid={`${displayName}-container`}
       >
         <ActionIcon
           w="3.125rem"
@@ -50,12 +63,19 @@ export const ChartTypeOption = ({
             ChartTypeOptionS.BorderedButton,
             ChartTypeOptionS.VisualizationButton,
           )}
-          data-testid={`${visualization.getUiName()}-button`}
+          data-testid={`${displayName}-button`}
         >
-          <Icon
-            name={visualization.iconName}
-            c={isSelected ? "white" : "brand"}
+          <EntityIcon
+            name={iconName ?? "unknown"}
+            iconUrl={visualization?.iconUrl}
+            alt={displayName}
+            color={isSelected ? "white" : "brand"}
             size={20}
+            style={
+              hasCustomIcon && isSelected
+                ? { filter: "brightness(0) invert(1)" }
+                : undefined
+            }
           />
         </ActionIcon>
 
@@ -86,8 +106,19 @@ export const ChartTypeOption = ({
           color={isSelected ? "brand" : "text-secondary"}
           data-testid="chart-type-option-label"
         >
-          {visualization.getUiName()}
+          {displayName}
         </Text>
+
+        {visualization?.isDev && (
+          <Tooltip
+            label={t`This is a development version of the visualization`}
+          >
+            <Badge
+              variant="outline"
+              aria-label={t`This is a development version of the visualization`}
+            >{t`dev`}</Badge>
+          </Tooltip>
+        )}
       </Stack>
     </Center>
   );

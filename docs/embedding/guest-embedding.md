@@ -5,8 +5,6 @@ summary: Embed questions, dashboards, and documents without requiring SSO.
 
 # Guest embeds
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
 "Guest" refers to the authentication approach: Metabase doesn't create a session for each person. Authentication has nothing to do with data freshness. Dashboards and charts in guest embeds always show live data from your database.
@@ -103,13 +101,13 @@ Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regeneratin
 
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute               | Description                                                                                          |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `token`                 | Required. The signed JWT token from your server.                                                     |
-| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                               |
-| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                          |
-| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                |
-| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                   |
+| Attribute               | Description                                                                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`                 | Required. The signed JWT token from your server.                                                                                                                                                                                                                                 |
+| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                                                                                                                                                                                           |
+| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                                                                                                                                                                                      |
+| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                                                                                                                                                                                            |
+| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                                                                                                                                                                                               |
 | `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
 
 \* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -342,10 +340,10 @@ Request:
 }
 ```
 
-| Field           | Description                                                                    |
-| --------------- | ------------------------------------------------------------------------------ |
-| `entityType`    | `"dashboard"` or `"question"`.                                                 |
-| `entityId`      | The ID of the dashboard or question being embedded.                            |
+| Field           | Description                                                               |
+| --------------- | ------------------------------------------------------------------------- |
+| `entityType`    | `"dashboard"` or `"question"`.                                            |
+| `entityId`      | The ID of the dashboard or question being embedded.                       |
 | `customContext` | Optional. The string or object you set on the `custom-context` attribute. |
 
 Response: a JSON object with a single `jwt` field:

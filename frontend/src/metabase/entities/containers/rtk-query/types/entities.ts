@@ -43,7 +43,6 @@ export type EntityType =
   | "databases"
   | "documents"
   | "fields"
-  | "groups"
   | "pulses"
   | "questions"
   | "revisions"

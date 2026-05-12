@@ -6,9 +6,22 @@ import { t } from "ttag";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
-import { ActionIcon, Badge, Box, Button, Flex, Icon, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
+import {
+  CodeEditTablePills,
+  NavigateToTablePills,
+} from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 
@@ -30,12 +43,37 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "transform_suggestion" } }, (msg) => (
       <AgentSuggestionMessage message={msg} readonly={readonly} />
     ))
-    .with({ part: { type: "navigate_to" } }, ({ part }) =>
-      debug ? <NavigateToDataPart type={part.type} path={part.value} /> : null,
-    )
-    .with({ part: { type: "code_edit" } }, ({ part }) =>
-      debug ? <CodeEditDataPart type={part.type} value={part.value} /> : null,
-    )
+    .with({ part: { type: "navigate_to" } }, ({ part }) => {
+      const sourcePills = (
+        <NavigateToTablePills
+          path={part.value}
+          messageId={readonly ? undefined : message.externalId}
+        />
+      );
+
+      return (
+        <Stack gap="md">
+          {debug && <NavigateToDataPart type={part.type} path={part.value} />}
+          {sourcePills}
+        </Stack>
+      );
+    })
+    .with({ part: { type: "code_edit" } }, ({ part, metadata }) => {
+      const sourcePills = (
+        <CodeEditTablePills
+          value={part.value}
+          buffer={metadata?.codeEditBuffer}
+          messageId={readonly ? undefined : message.externalId}
+        />
+      );
+
+      return (
+        <Stack gap="md">
+          {debug && <CodeEditDataPart type={part.type} value={part.value} />}
+          {sourcePills}
+        </Stack>
+      );
+    })
     .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
@@ -121,9 +159,10 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     direction="row"
     align="center"
     justify="space-between"
+    gap="sm"
   >
-    <Flex align="center">
-      <Icon name="document" c="text-secondary" mr="sm" />
+    <Flex align="center" gap="sm" style={{ minWidth: 0, flex: 1 }}>
+      <Icon name="document" c="text-secondary" />
       <Text fw="bold">{type}</Text>
     </Flex>
     <Button

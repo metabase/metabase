@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
@@ -9,6 +11,7 @@ import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type { CardId, SingleSeries } from "metabase-types/api";
 
 import type {
@@ -88,6 +91,23 @@ export function MetricsViewerVisualization({
 
   if (rawSeries.length === 0) {
     return null;
+  }
+
+  const hasNoResults = rawSeries.every((series) =>
+    datasetContainsNoResults(series.data),
+  );
+
+  if (hasNoResults) {
+    return (
+      <Center h="100%">
+        <ErrorMessage
+          type="noRows"
+          title={t`No results!`}
+          message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
+          action={null}
+        />
+      </Center>
+    );
   }
 
   return (

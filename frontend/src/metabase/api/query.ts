@@ -1,6 +1,6 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query/react";
 
-import api from "metabase/utils/api";
+import api from "metabase/api/legacy-client";
 
 type AllowedHTTPMethods = "GET" | "POST" | "PUT" | "DELETE";
 const allowedHTTPMethods = new Set<AllowedHTTPMethods>([

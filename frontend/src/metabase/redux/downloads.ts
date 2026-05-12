@@ -8,6 +8,7 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import api, { GET, POST } from "metabase/api/legacy-client";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
@@ -20,7 +21,6 @@ import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/setup/selectors";
 import * as Urls from "metabase/urls";
-import api, { GET, POST } from "metabase/utils/api";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";

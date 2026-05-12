@@ -295,7 +295,11 @@ describe("scenarios [EE] > embedding > questions", () => {
       },
     );
 
-    H.main().should("have.css", "font-family", "Roboto, sans-serif");
+    H.main().should(
+      "have.css",
+      "font-family",
+      'Roboto, "Noto Sans", sans-serif',
+    );
   });
 });
 

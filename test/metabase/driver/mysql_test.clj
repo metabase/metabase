@@ -1042,21 +1042,26 @@
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
 
 (deftest ^:parallel only-connect-when-non-malicious-properties
-  (testing "Reject connection strings with malicious properties"
-    (are [bad-option] (let [details (assoc (tx/dbdef->connection-details :mysql :db
-                                                                         {:database-name "argent"})
-                                           :additional-options bad-option)
-                            result (try (driver/can-connect? :mysql details)
-                                        ::did-not-throw
-                                        (catch Exception e e))]
-                        (is (instance? clojure.lang.ExceptionInfo result))
-                        (is (partial= {:cause "Potentially dangerous keys in additional options"}
-                                      (Throwable->map result))))
-      "allowLoadLocalInfile=true"
-      "allowLoadLocalInfileInPath=1"
-      "allowUrlInLocalInfile=1"
-      "autoDeserialize=1"
-      "serverRSAPublicKeyFile=/path/to/file")))
+  (mt/test-driver :mysql
+    (let [details (:details (mt/db))]
+      (testing "Reject connection strings with malicious properties"
+        (are [bad-option] (let [details (assoc details :additional-options bad-option)]
+                            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                  #"Potentially dangerous keys in additional options"
+                                                  (driver/can-connect? :mysql details))))
+          "allowLoadLocalInfile=true"
+          "allowLoadLocalInfileInPath=1"
+          "allowUrlInLocalInfile=1"
+          "autoDeserialize=1"
+          "serverRSAPublicKeyFile=/path/to/file"))
+      (testing "Allow connection strings with non-malicious properties"
+        (are [ok-option] (let [details (assoc details :additional-options ok-option)]
+                           (is (true? (driver/can-connect? :mysql details))))
+          nil
+          ""
+          " "
+          "tinyInt1isBit=1")
+        (is (true? (driver/can-connect? :mysql details)))))))
 
 (deftest ^:parallel set-role-statement-escape-quotes-test
   (mt/test-driver :mysql
