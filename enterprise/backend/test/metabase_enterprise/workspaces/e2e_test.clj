@@ -519,7 +519,7 @@
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                       (testing "querying the isolation table directly works like querying any other table"
                                         (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                              ;; FIXME: native sql w/ default from-schema fails for now (Bug 2).
+                              ;; NOTE: native sql w/ default from-schema fails for now.
                               ;; More info: https://gist.github.com/escherize/721764240c300e995c54add2d71ff356
                                   #_(mt/with-temp [:model/Card card
                                                    {:name          (str "ws-e2e-card-native-" run-id)
