@@ -129,6 +129,21 @@ jobs:
               throw err;
             }
 
+      # "Milestone backfill" = assign milestone 0.{next} to every PR/issue
+      # whose commit landed on master between the previous release branch
+      # forking point and this freshly-cut branch. Without this, those
+      # commits would ship in the new release with no milestone and the
+      # release-notes preview wouldn't pick them up.
+      - name: Trigger milestone backfill for the new branch
+        id: triggerMilestones
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh workflow run check-milestone.yml \
+            -f version=${{ steps.preflight.outputs.next }} \
+            --repo "${{ github.repository }}"
+
       - name: Notify Slack
         uses: actions/github-script@v7
         env:
@@ -143,6 +158,7 @@ jobs:
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
             const labelFailed = '${{ steps.label.outcome }}' === 'failure';
             const milestoneFailed = '${{ steps.milestone.outcome }}' === 'failure';
+            const triggerMilestonesFailed = '${{ steps.triggerMilestones.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -163,6 +179,9 @@ jobs:
               milestoneFailed
                 ? `:warning: Creating milestone \`0.${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/milestones/new|New milestone>`
                 : null,
+              triggerMilestonesFailed
+                ? `:warning: Triggering milestone backfill failed — please run it manually: <https://github.com/${owner}/${repo}/actions/workflows/check-milestone.yml|Set milestone workflow>`
+                : `Milestone backfill triggered — wait for it to finish before running release notes preview: <https://github.com/${owner}/${repo}/actions/workflows/check-milestone.yml|Set milestone runs>.`,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
