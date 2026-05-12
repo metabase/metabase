@@ -55,10 +55,8 @@ const MAP_DISPLAY_ALIASES = ["state", "country", "pin_map"] as const;
 function isSensible({ cols, rows }: DatasetData) {
   return (
     PinMap.isSensible({ cols, rows }) ||
-    // @ts-expect-error - convert ChoroplethMap to ts
-    ChoroplethMap.isSensible({ cols, rows }) ||
-    // @ts-expect-error - convert LeafletGridHeatMap to ts
-    LeafletGridHeatMap.isSensible({ cols, rows })
+    ChoroplethMap.isSensible({ cols }) ||
+    LeafletGridHeatMap.isSensible({ cols })
   );
 }
 
@@ -99,7 +97,6 @@ function MapComponent(props: VisualizationProps) {
   }
 
   if (type === "region") {
-    // @ts-expect-error - convert ChoroplethMap to ts
     return <ChoroplethMap {...props} />;
   }
 
