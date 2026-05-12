@@ -993,6 +993,7 @@
            search
            startup
            timeline
+           types
            util}
    :model-exports #{:model/Exploration
                     :model/ExplorationQuery
@@ -1281,6 +1282,7 @@
               config
               documents
               driver
+              explorations
               interestingness
               legacy-mbql
               lib

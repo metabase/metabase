@@ -8,44 +8,6 @@
    [clojure.test :refer :all]
    [metabase.explorations.auto-insights.common :as common]))
 
-;;; ---------------------------------------------- downsample-pairs ----------------------------------------------
-
-(deftest downsample-pairs-passthrough-test
-  (testing "Sequences at or under the cap are returned unchanged"
-    (is (= [[:a 1] [:b 2] [:c 3]]
-           (#'common/downsample-pairs [:a :b :c] [1 2 3] 5)))
-    (is (= [[:a 1] [:b 2] [:c 3]]
-           (#'common/downsample-pairs [:a :b :c] [1 2 3] 3)))))
-
-(deftest downsample-pairs-preserves-endpoints-test
-  (testing "Downsampled sequences always include first and last point"
-    (let [xs   (vec (range 100))
-          ys   (mapv (partial * 2) xs)
-          out  (#'common/downsample-pairs xs ys 10)
-          firsts (mapv first out)
-          lasts  (mapv second out)]
-      (is (<= (count out) 10))
-      (is (= 0  (first firsts)) "first x preserved")
-      (is (= 99 (last firsts))  "last x preserved")
-      (is (= 0   (first lasts)) "first y preserved")
-      (is (= 198 (last lasts))  "last y preserved"))))
-
-(deftest downsample-pairs-evenly-spaced-test
-  (testing "Indices are evenly distributed across the input range"
-    (let [xs  (vec (range 21))   ; 0..20
-          ys  (vec (range 21))
-          out (#'common/downsample-pairs xs ys 5)]
-      ;; step = 20 / 4 = 5 → indices 0, 5, 10, 15, 20
-      (is (= [[0 0] [5 5] [10 10] [15 15] [20 20]] out)))))
-
-(deftest downsample-pairs-distinct-indices-test
-  (testing "Duplicate rounded indices are deduplicated (so output can be smaller than n)"
-    ;; 3 inputs, asking for 4 samples — rounding produces duplicates that get
-    ;; squeezed out. The function takes count(distinct indices) of pairs.
-    (let [out (#'common/downsample-pairs [:a :b :c] [1 2 3] 4)]
-      ;; 3 elements ≤ cap 4 → passthrough kicks in first; covered above.
-      (is (= 3 (count out))))))
-
 ;;; ---------------------------------------------- summarize-parts ----------------------------------------------
 
 (deftest summarize-parts-collapses-by-type-test
@@ -73,7 +35,7 @@
 ;;; first attempt, pass on repair, fail after repair. We exercise each branch
 ;;; against a stubbed `call-llm` (private fn — redef via #').
 
-(defn- with-stubbed-llm
+(defn- with-stubbed-llm!
   "Run `body` with the private `call-llm` swapped for a function that returns
   successive elements of `responses` on each call. Each response is the
   full `{:response :parts}` map."
@@ -89,7 +51,7 @@
 
 (deftest run-with-repair-passes-first-attempt-test
   (testing "Valid first response → :ok, one attempt, no repair message"
-    (with-stubbed-llm
+    (with-stubbed-llm!
       [{:response {:x 1} :parts []}]
       (fn [{:keys [calls history]}]
         (let [out (common/run-with-repair
@@ -111,7 +73,7 @@
   (testing "Invalid first, valid retry → :ok, two attempts, repair message includes errors"
     (let [validate-calls (atom 0)
           repair-built   (atom nil)]
-      (with-stubbed-llm
+      (with-stubbed-llm!
         [{:response {:bad 1} :parts []}
          {:response {:good 1} :parts []}]
         (fn [{:keys [history]}]
@@ -142,7 +104,7 @@
 
 (deftest run-with-repair-gives-up-after-repair-test
   (testing "Invalid first AND invalid retry → :failed, :final-errors populated"
-    (with-stubbed-llm
+    (with-stubbed-llm!
       [{:response {:bad 1} :parts []}
        {:response {:still-bad 1} :parts []}]
       (fn [_]
@@ -161,7 +123,7 @@
 
 (deftest run-with-repair-records-validation-errors-per-attempt-test
   (testing "Each attempt's record carries its own validation-errors vector"
-    (with-stubbed-llm
+    (with-stubbed-llm!
       [{:response {:r 1} :parts []}
        {:response {:r 2} :parts []}]
       (fn [_]

@@ -16,7 +16,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
-   [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.core :as timeline]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -138,7 +138,7 @@ Always return a single object matching the supplied schema. Do not respond with 
         (when-let [timeline (t2/select-one :model/Timeline :id timeline-id)]
           (let [thread   (t2/select-one [:model/ExplorationThread :prompt]
                                         :id (:exploration_thread_id query))
-                hydrated (timeline-event/include-events-singular timeline {:events/all? false})]
+                hydrated (timeline/include-events-singular timeline {:events/all? false})]
             {:query        query
              :result-bytes result_data
              :timeline     hydrated

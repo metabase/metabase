@@ -47,7 +47,7 @@
     (try
       (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
       (catch Throwable e
-        (log/warnf e "Failed to parse exploration_query_result.chart_stats; returning nil")
+        (log/warn e "Failed to parse exploration_query_result.chart_stats; returning nil")
         nil))))
 
 (t2/deftransforms :model/ExplorationQueryResult

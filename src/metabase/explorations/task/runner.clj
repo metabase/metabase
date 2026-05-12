@@ -26,7 +26,7 @@
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]
