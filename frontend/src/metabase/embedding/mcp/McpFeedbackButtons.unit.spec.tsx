@@ -75,9 +75,9 @@ describe("McpFeedbackButtons", () => {
     expect(request.url).toBe(`${instanceUrl}/api/embed-mcp/feedback`);
     expect(getRequestHeaders(request)).toEqual(
       expect.objectContaining({
-        "X-Metabase-Client": "mcp-apps",
-        "X-Metabase-Session": "metabase-session-token",
-        "Mcp-Session-Id": "mcp-session-id",
+        "x-metabase-client": "mcp-apps",
+        "x-metabase-session": "metabase-session-token",
+        "mcp-session-id": "mcp-session-id",
       }),
     );
 

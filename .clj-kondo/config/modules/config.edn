@@ -1185,7 +1185,6 @@
            metabase.mcp.init}
    :uses #{agent-api
            api
-           api-scope
            app-db
            config
            llm

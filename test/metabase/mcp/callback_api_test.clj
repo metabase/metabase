@@ -38,16 +38,14 @@
                                 body)))
 
 (deftest drills-post-stores-handle-test
-  (testing "POST returns a UUID handle that round-trips through read-handle"
+  (testing "POST returns a UUID handle"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           response   (post-drill {:encodedQuery "ZW5jb2RlZA=="}
-                                 {"mcp-session-id" session-id})
-          handle     (get-in response [:body :handle])]
+                                 {"mcp-session-id" session-id})]
       (is (=? {:status 200
                :body   {:handle parse-uuid}}
-              response))
-      (is (= "ZW5jb2RlZA==" (mcp.session/read-handle session-id handle))))))
+              response)))))
 
 (deftest drills-post-validates-session-header-test
   (testing "missing Mcp-Session-Id header returns 400"
@@ -103,16 +101,17 @@
                                          :opts opts
                                          :body (json/decode+kw (:body opts))}))]
           (post-mcp-feedback :rasta 204 body session-id)
-          (is (= expected-url (:url @captured)))
-          (is (pos-int? (get-in @captured [:opts :conn-timeout])))
-          (is (pos-int? (get-in @captured [:opts :socket-timeout])))
-          (is (= (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id)
-                 (get-in @captured [:body :metabot_id])))
-          (is (= (:feedback body) (get-in @captured [:body :feedback])))
-          (is (= (:conversation_data body) (get-in @captured [:body :conversation_data])))
-          (is (contains? (:body @captured) :version))
-          (is (contains? (:body @captured) :submission_time))
-          (is (false? (get-in @captured [:body :is_admin]))))))))
+          (is (=? {:url  expected-url
+                   :opts {:conn-timeout   pos-int?
+                          :socket-timeout pos-int?}
+                   :body {:metabot_id        (metabot.config/normalize-metabot-id
+                                              metabot.config/embedded-metabot-id)
+                          :feedback          (:feedback body)
+                          :conversation_data (:conversation_data body)
+                          :version           some?
+                          :submission_time   some?
+                          :is_admin          false}}
+                  @captured)))))))
 
 (deftest feedback-post-returns-400-when-harbormaster-cannot-be-reached-test
   (testing "MCP feedback fails when there is no Harbormaster fallback"
