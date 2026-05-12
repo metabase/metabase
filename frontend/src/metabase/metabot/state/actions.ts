@@ -299,7 +299,7 @@ export const submitInput = createAsyncThunk<
         return {
           prompt: rawPrompt,
           success: false,
-          shouldRetry: result.payload.shouldRetry,
+          shouldRetry: result.payload?.shouldRetry ?? true,
           error:
             result.payload?.type === "error"
               ? result.payload.display
@@ -332,6 +332,7 @@ type SendAgentRequestError =
     }
   | ({
       type: "abort";
+      shouldRetry: false;
       unresolved_tool_calls: { toolCallId: string; toolName: string }[];
     } & MetabotAgentResponse);
 
