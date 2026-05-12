@@ -28,10 +28,18 @@
         log2   (/ (Math/log (max 1 tables)) (Math/log 2))]
     (max 1 (int (Math/ceil log2)))))
 
+;; A transform job is a set of tags; running it executes every transform that
+;; shares any of those tags. Counting tag rows would understate jobs that fan out
+;; to many transforms via a single tag. Count the distinct transforms instead.
 (defmethod weight-for :transform-job [_ job-id]
-  (max 1 (or (when job-id
-               (t2/count :model/TransformJobTransformTag :job_id job-id))
-             1)))
+  (let [tag-ids (when job-id
+                  (t2/select-fn-set :tag_id :model/TransformJobTransformTag
+                                    :job_id job-id))]
+    (max 1
+         (if (seq tag-ids)
+           (count (t2/select-fn-set :transform_id :model/TransformTransformTag
+                                    :tag_id [:in tag-ids]))
+           1))))
 
 (defmethod weight-for :persisted-refresh [_ db-id]
   (max 1 (or (when db-id
@@ -45,8 +53,8 @@
 (defmethod weight-for :alert [_ subscription-id]
   (max 1 (or (when subscription-id
                (when-let [notif-id (t2/select-one-fn :notification_id
-                                                    :model/NotificationSubscription
-                                                    :id subscription-id)]
+                                                     :model/NotificationSubscription
+                                                     :id subscription-id)]
                  (t2/count :model/NotificationHandler :notification_id notif-id)))
              1)))
 

@@ -27,10 +27,23 @@ type Props = {
   rows: WorkloadSlotRow[] | undefined;
   isLoading: boolean;
   timezone: string;
+  rangeFrom: string; // used for "all week" title when slot is null
+  rangeTo: string;
 };
 
-type SortKey = "type" | "entity" | "cron" | "weight";
+type SortKey = "type" | "entity" | "fires" | "weight";
 type SortDir = "asc" | "desc";
+
+type SlotGroup = {
+  id: string;
+  type: WorkloadJobType;
+  entity_id: number | null;
+  entity_name: string | null;
+  cron: string | null;
+  settings_url: string | null;
+  fires: number;
+  totalWeight: number;
+};
 
 const BADGE_COLOR: Record<
   WorkloadJobType,
@@ -87,29 +100,55 @@ const sortableHeader = (
   </th>
 );
 
-function sortRows(
-  rows: WorkloadSlotRow[],
+function groupKey(r: WorkloadSlotRow): string {
+  // Group same-entity-same-schedule fires together. Cron is part of the key so
+  // an entity with two different triggers in the same hour stays distinct.
+  return `${r.type}::${r.entity_id ?? "x"}::${r.cron ?? ""}`;
+}
+
+function groupRows(rows: WorkloadSlotRow[]): SlotGroup[] {
+  const m = new Map<string, SlotGroup>();
+  for (const r of rows) {
+    const key = groupKey(r);
+    const existing = m.get(key);
+    if (existing) {
+      existing.fires += 1;
+      existing.totalWeight += r.weight;
+    } else {
+      m.set(key, {
+        id: key,
+        type: r.type,
+        entity_id: r.entity_id,
+        entity_name: r.entity_name,
+        cron: r.cron,
+        settings_url: r.settings_url,
+        fires: 1,
+        totalWeight: r.weight,
+      });
+    }
+  }
+  return [...m.values()];
+}
+
+function sortGroups(
+  groups: SlotGroup[],
   key: SortKey,
   dir: SortDir,
-): WorkloadSlotRow[] {
+): SlotGroup[] {
   const sign = dir === "asc" ? 1 : -1;
-  const cmp = (a: WorkloadSlotRow, b: WorkloadSlotRow) => {
+  const cmp = (a: SlotGroup, b: SlotGroup) => {
     switch (key) {
       case "type":
         return sign * a.type.localeCompare(b.type);
       case "entity":
         return sign * (a.entity_name ?? "").localeCompare(b.entity_name ?? "");
-      case "cron":
-        return sign * (a.cron ?? "").localeCompare(b.cron ?? "");
+      case "fires":
+        return sign * (a.fires - b.fires);
       case "weight":
-        return sign * (a.weight - b.weight);
+        return sign * (a.totalWeight - b.totalWeight);
     }
   };
-  return [...rows].sort(cmp);
-}
-
-function rowId(r: WorkloadSlotRow, i: number): string {
-  return `${r.type}-${r.entity_id ?? "x"}-${r.fire_at}-${i}`;
+  return [...groups].sort(cmp);
 }
 
 function formatSlotTitle(slot: string, timezone: string): string {
@@ -129,7 +168,7 @@ function formatSlotTitle(slot: string, timezone: string): string {
   return `${datePart} · ${timePart} ${timezone}`;
 }
 
-function groupByType(
+function countsByType(
   rows: WorkloadSlotRow[],
 ): { type: WorkloadJobType; count: number }[] {
   const m = new Map<WorkloadJobType, number>();
@@ -141,7 +180,31 @@ function groupByType(
     .map(([type, count]) => ({ type, count }));
 }
 
-export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
+function formatRangeTitle(
+  fromIso: string,
+  toIso: string,
+  timezone: string,
+): string {
+  const from = new Date(fromIso);
+  // toIso is exclusive (midnight after the last day) — show an inclusive end label.
+  const inclusiveEnd = new Date(new Date(toIso).getTime() - 24 * 3600 * 1000);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      timeZone: timezone,
+    });
+  return t`All scheduled work · ${fmt(from)} – ${fmt(inclusiveEnd)} ${timezone}`;
+}
+
+export function SlotExpansion({
+  slot,
+  rows,
+  isLoading,
+  timezone,
+  rangeFrom,
+  rangeTo,
+}: Props) {
   const dispatch = useDispatch();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("weight");
@@ -151,15 +214,13 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
   const [spreadMut, { isLoading: isSpreading }] =
     useSpreadWorkloadJobsMutation();
 
-  // Clear selection whenever the focused slot changes.
   useEffect(() => {
     setSelectedIds(new Set());
   }, [slot]);
 
-  const visibleRows = useMemo(() => {
-    if (!rows) {
-      return [];
-    }
+  const allGroups = useMemo(() => (rows ? groupRows(rows) : []), [rows]);
+
+  const visibleGroups = useMemo(() => {
     const q = query.trim().toLowerCase();
     const explainCron = (cron: string | null) => {
       if (!cron) {
@@ -168,24 +229,24 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
       return getScheduleExplanation(cron)?.toLowerCase() ?? cron.toLowerCase();
     };
     const filtered = q
-      ? rows.filter(
-          (r) =>
-            (r.entity_name ?? "").toLowerCase().includes(q) ||
-            explainCron(r.cron).includes(q) ||
-            r.type.toLowerCase().includes(q),
+      ? allGroups.filter(
+          (g) =>
+            (g.entity_name ?? "").toLowerCase().includes(q) ||
+            explainCron(g.cron).includes(q) ||
+            g.type.toLowerCase().includes(q),
         )
-      : rows;
-    return sortRows(filtered, sortKey, sortDir);
-  }, [rows, query, sortKey, sortDir]);
+      : allGroups;
+    return sortGroups(filtered, sortKey, sortDir);
+  }, [allGroups, query, sortKey, sortDir]);
 
-  const groups = useMemo(() => (rows ? groupByType(rows) : []), [rows]);
+  const typeSummary = useMemo(() => (rows ? countsByType(rows) : []), [rows]);
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortDir(key === "weight" ? "desc" : "asc");
+      setSortDir(key === "weight" || key === "fires" ? "desc" : "asc");
     }
   };
 
@@ -200,8 +261,8 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
   };
 
   const allVisibleIds = useMemo(
-    () => visibleRows.map((r, i) => rowId(r, i)),
-    [visibleRows],
+    () => visibleGroups.map((g) => g.id),
+    [visibleGroups],
   );
   const allSelected =
     allVisibleIds.length > 0 &&
@@ -219,10 +280,9 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
     if (!slot) {
       return;
     }
-    const jobs = visibleRows
-      .map((r, i) => ({ row: r, id: rowId(r, i) }))
-      .filter(({ id }) => selectedIds.has(id))
-      .map(({ row }) => ({ type: row.type, entity_id: row.entity_id }));
+    const jobs = visibleGroups
+      .filter((g) => selectedIds.has(g.id))
+      .map((g) => ({ type: g.type, entity_id: g.entity_id }));
     try {
       await spreadMut({ slot, jobs }).unwrap();
       dispatch(
@@ -241,24 +301,6 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
       );
     }
   };
-
-  if (!slot) {
-    return (
-      <Box
-        mt="lg"
-        p="md"
-        style={{
-          background: "var(--mb-color-bg-light)",
-          border: "1px solid var(--mb-color-border)",
-          borderRadius: 8,
-        }}
-      >
-        <Text c="text-secondary" size="sm">
-          {t`Click a cell to see the jobs scheduled in that hour.`}
-        </Text>
-      </Box>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -282,11 +324,17 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
         }}
       >
         <Text c="text-secondary" size="sm">
-          {t`Nothing scheduled in this hour.`}
+          {slot
+            ? t`Nothing scheduled in this hour.`
+            : t`Nothing scheduled in this week.`}
         </Text>
       </Box>
     );
   }
+
+  const title = slot
+    ? formatSlotTitle(slot, timezone)
+    : formatRangeTitle(rangeFrom, rangeTo, timezone);
 
   return (
     <Box
@@ -300,9 +348,9 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
     >
       <Group justify="space-between" mb="sm" align="end">
         <Stack gap={4}>
-          <Title order={5}>{formatSlotTitle(slot, timezone)}</Title>
+          <Title order={5}>{title}</Title>
           <Group gap={6} wrap="wrap">
-            {groups.map(({ type, count }) => (
+            {typeSummary.map(({ type, count }) => (
               <Badge key={type} color={BADGE_COLOR[type]} variant="light">
                 {typeLabel(type)} · {count}
               </Badge>
@@ -311,9 +359,9 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
         </Stack>
         <Group gap="sm" align="center">
           <Text c="text-secondary" size="xs">
-            {visibleRows.length === rows.length
-              ? t`${rows.length} jobs`
-              : t`${visibleRows.length} of ${rows.length}`}
+            {visibleGroups.length === allGroups.length
+              ? t`${allGroups.length} entities · ${rows.length} fires`
+              : t`${visibleGroups.length} of ${allGroups.length} entities`}
           </Text>
           <TextInput
             size="xs"
@@ -347,11 +395,12 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
               () => toggleSort("entity"),
               t`Entity`,
             )}
+            <th style={headerStyleBase}>{t`Schedule`}</th>
             {sortableHeader(
-              sortKey === "cron",
+              sortKey === "fires",
               sortDir,
-              () => toggleSort("cron"),
-              t`Schedule`,
+              () => toggleSort("fires"),
+              t`Fires`,
             )}
             {sortableHeader(
               sortKey === "weight",
@@ -362,12 +411,11 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
           </tr>
         </thead>
         <tbody>
-          {visibleRows.map((r, i) => {
-            const id = rowId(r, i);
-            const isSelected = selectedIds.has(id);
+          {visibleGroups.map((g) => {
+            const isSelected = selectedIds.has(g.id);
             return (
               <tr
-                key={id}
+                key={g.id}
                 style={
                   isSelected
                     ? { background: "var(--mb-color-bg-white)" }
@@ -377,22 +425,22 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
                 <td style={cellStyle}>
                   <Checkbox
                     checked={isSelected}
-                    onChange={() => toggleRow(id)}
+                    onChange={() => toggleRow(g.id)}
                     aria-label={t`Select job`}
                   />
                 </td>
                 <td style={cellStyle}>
-                  <Badge color={BADGE_COLOR[r.type]} variant="light">
-                    {typeLabel(r.type)}
+                  <Badge color={BADGE_COLOR[g.type]} variant="light">
+                    {typeLabel(g.type)}
                   </Badge>
                 </td>
                 <td style={cellStyle}>
-                  {r.entity_name && r.settings_url ? (
-                    <Anchor href={r.settings_url} size="sm">
-                      {r.entity_name}
+                  {g.entity_name && g.settings_url ? (
+                    <Anchor href={g.settings_url} size="sm">
+                      {g.entity_name}
                     </Anchor>
-                  ) : r.entity_name ? (
-                    <Text component="span">{r.entity_name}</Text>
+                  ) : g.entity_name ? (
+                    <Text component="span">{g.entity_name}</Text>
                   ) : (
                     <Text c="text-secondary" component="span">
                       {t`(orphaned)`}
@@ -400,22 +448,31 @@ export function SlotExpansion({ slot, rows, isLoading, timezone }: Props) {
                   )}
                 </td>
                 <td style={cellStyle}>
-                  {r.cron ? (
+                  {g.cron ? (
                     <Text size="xs">
-                      {getScheduleExplanation(r.cron) ?? r.cron}
+                      {getScheduleExplanation(g.cron) ?? g.cron}
                     </Text>
                   ) : (
                     "—"
                   )}
                 </td>
-                <td style={cellStyle}>{r.weight}</td>
+                <td style={cellStyle}>
+                  <Text
+                    size="sm"
+                    fw={g.fires > 1 ? 500 : 400}
+                    c={g.fires > 1 ? undefined : "text-secondary"}
+                  >
+                    {t`${g.fires}×`}
+                  </Text>
+                </td>
+                <td style={cellStyle}>{g.totalWeight}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      {selectedIds.size > 0 && (
+      {selectedIds.size > 0 && slot && (
         <Paper withBorder p="sm" mt="md" shadow="sm" pos="sticky" bottom={16}>
           <Group justify="space-between">
             <Text fw={500} size="sm">

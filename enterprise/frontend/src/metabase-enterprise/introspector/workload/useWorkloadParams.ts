@@ -88,5 +88,12 @@ export function useWorkloadParams() {
     return { from: start.toISOString(), to: end.toISOString() };
   }, [params.slot]);
 
-  return { params, setParams, range, slotRange };
+  // Used by the slot table when no cell is focused — falls back to the full
+  // week so the admin always sees what's scheduled, not just per-cell drill-down.
+  const tableRange = useMemo(
+    () => slotRange ?? { from: range.from, to: range.to },
+    [slotRange, range.from, range.to],
+  );
+
+  return { params, setParams, range, slotRange, tableRange };
 }

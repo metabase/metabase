@@ -190,7 +190,7 @@
 (defn- ^String settings-url-for [{:keys [type id]}]
   (case type
     :sync                   (when id (str "/admin/databases/" id))
-    :transform-job          (when id (str "/admin/transforms/jobs/" id))
+    :transform-job          (when id (str "/data-studio/transforms/jobs/" id))
     ;; Dashboard subscription id is a pulse_id; resolve to the dashboard the pulse targets.
     :dashboard-subscription (when id
                               (when-let [dash-id (t2/select-one-fn :dashboard_id

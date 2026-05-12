@@ -38,7 +38,7 @@ const JOB_TYPE_LABEL: Record<WorkloadJobType, string> = {
 };
 
 export function WorkloadPage() {
-  const { params, setParams, range, slotRange } = useWorkloadParams();
+  const { params, setParams, range, tableRange } = useWorkloadParams();
   const timezone = useSetting("system-timezone") || "UTC";
 
   const gridParams = useMemo(
@@ -53,16 +53,11 @@ export function WorkloadPage() {
   const { data: grid, isFetching: gridLoading } =
     useGetWorkloadGridQuery(gridParams);
 
-  const { data: slotRows, isFetching: slotLoading } = useGetWorkloadSlotQuery(
-    slotRange
-      ? {
-          from: slotRange.from,
-          to: slotRange.to,
-          types: params.types.length > 0 ? params.types.join(",") : undefined,
-        }
-      : { from: "", to: "" },
-    { skip: !slotRange },
-  );
+  const { data: slotRows, isFetching: slotLoading } = useGetWorkloadSlotQuery({
+    from: tableRange.from,
+    to: tableRange.to,
+    types: params.types.length > 0 ? params.types.join(",") : undefined,
+  });
 
   const toggleType = (tt: WorkloadJobType) => {
     const next = params.types.includes(tt)
@@ -144,6 +139,8 @@ export function WorkloadPage() {
         rows={slotRows}
         isLoading={slotLoading}
         timezone={timezone}
+        rangeFrom={range.from}
+        rangeTo={range.to}
       />
     </Box>
   );
