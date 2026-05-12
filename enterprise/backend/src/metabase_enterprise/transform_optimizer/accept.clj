@@ -77,70 +77,158 @@
        :collection_id (or collection-id (:collection_id original))})))
 
 ;; ---------------------------------------------------------------------------
-;; DDL execution
+;; DDL routing
+;;
+;; A DDL statement's `:target` controls *when and where* it executes:
+;;
+;;   "source-db"               → run immediately at accept time, against the
+;;                                source database. Source-DB indices are
+;;                                durable across transform runs.
+;;   "transform-target"        → run after each materialisation of the
+;;                                proposal's own new transform target. The
+;;                                statement is persisted on
+;;                                `transform.target.post_run_ddl` and
+;;                                replayed by the post-run event handler.
+;;   {"precompute-of": "<pid>"}→ same as transform-target but for a sibling
+;;                                proposal's transform target.
 
-(defn- execute-ddl!
-  "Walk every proposal's `ddl_statements`. For each :accepted statement,
-  run it against the source DB and tag with its execution status. For
-  :rejected statements, pass through with the rejection reason so the UI
-  can render the failure alongside successful ones."
+(defn- ddl-target-kind
+  "Returns `:source-db`, `:transform-target`, `:precompute-of`, or `:unknown`."
+  [{:keys [target]}]
+  (cond
+    (= target "source-db")                                :source-db
+    (= target "transform-target")                         :transform-target
+    (and (map? target) (some-> target :precompute-of))    :precompute-of
+    :else                                                 :unknown))
+
+(defn- group-deferred-ddl-by-proposal
+  "Returns `{proposal-id [ddl …]}` for every accepted DDL that should be
+  attached to a transform's `target.post_run_ddl` (i.e. transform-target
+  and precompute-of). Source-db statements are excluded — they run
+  immediately."
+  [proposals]
+  (reduce
+   (fn [acc p]
+     (reduce
+      (fn [acc d]
+        (if-not (= :accepted (:validation d))
+          acc
+          (case (ddl-target-kind d)
+            :transform-target (update acc (:id p) (fnil conj []) d)
+            :precompute-of    (update acc (get-in d [:target :precompute-of])
+                                      (fnil conj []) d)
+            acc)))
+      acc
+      (or (:ddl_statements p) [])))
+   {}
+   proposals))
+
+(defn- execute-source-db-ddl!
+  "Run every accepted source-db statement immediately. Returns a vector of
+  `{… :status :executed|:failed|:skipped}` maps."
   [original-transform proposals]
   (let [db-id     (:source_database_id original-transform)
         database  (when db-id (t2/select-one :model/Database :id db-id))
         driver-kw (some-> database :engine keyword)]
     (vec
      (for [p proposals
-           d (or (:ddl_statements p) [])]
+           d (or (:ddl_statements p) [])
+           :when (= :source-db (ddl-target-kind d))]
        (let [base (-> (select-keys d [:id :statement :target :rationale
                                       :validation :index_name :rejection])
                       (assoc :proposal_id (:id p)))]
          (if (= :accepted (:validation d))
            (merge base (ddl.execute/execute! driver-kw database (:statement d)))
-           ;; Rejected at validation time — never reaches execution.
            base))))))
+
+(defn- pending-deferred-ddl-summary
+  "Returns a `{… :status :pending}` row per deferred DDL so the UI can
+  show 'will be created on first transform run' alongside executed ones."
+  [proposals]
+  (vec
+   (for [p proposals
+         d (or (:ddl_statements p) [])
+         :when (and (= :accepted (:validation d))
+                    (contains? #{:transform-target :precompute-of} (ddl-target-kind d)))]
+     (-> (select-keys d [:id :statement :target :rationale :validation :index_name])
+         (assoc :proposal_id (:id p) :status :pending)))))
+
+(defn- rejected-ddl-summary
+  "Rejected statements pass through to the response so the UI can show
+  the rejection reason."
+  [proposals]
+  (vec
+   (for [p proposals
+         d (or (:ddl_statements p) [])
+         :when (= :rejected (:validation d))]
+     (-> (select-keys d [:id :statement :target :rationale :validation :rejection])
+         (assoc :proposal_id (:id p))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn accept!
-  "Apply a proposal set: create one new transform per proposal with a
-  body, then run every validated DDL statement against the source
-  database. Returns:
+  "Apply a proposal set. Three things happen:
+
+  1. Every proposal with a body becomes a new transform.
+  2. Each accepted `target=\"source-db\"` DDL runs immediately against
+     the source database.
+  3. Each accepted `target=\"transform-target\"` or
+     `target={\"precompute-of\":\"<pid>\"}` DDL is **persisted** onto the
+     relevant new transform's `:target.post_run_ddl`. The transform
+     pipeline re-executes those statements after each materialisation
+     (see `events.clj`), so the indices survive every rebuild.
+
+  Returns:
 
     {:created_transforms [{id, name, proposal_id, depends_on, kind} …]
-     :ddl_statements     [{statement, target, rationale,
-                            validation, status, error_message, …} …]
+     :ddl_statements     [{statement, target, rationale, validation,
+                            status, error_message, …} …]
      :skipped_proposals  [proposal-id …]}
 
-  The caller is responsible for permission checks (`create-transform!`
-  itself checks write permission on the target DB, and `read-check`
-  should have been called on the source transform already).
+  Statuses on `ddl_statements`:
+    :executed — source-db statement ran successfully now
+    :failed   — source-db statement errored now (error_message present)
+    :skipped  — non-Postgres driver or no source DB available
+    :pending  — transform-target / precompute-of statement persisted;
+                will run after the next transform run
+    (no :status) — rejected at validation time (`:rejection` present)
 
-  Proposals with no body (e.g. pure-`:index` proposals) are recorded in
-  `:skipped_proposals` — but their DDL still runs, since that's the whole
-  point of that proposal kind."
+  Proposals with no body (pure-`:index` proposals) are recorded in
+  `:skipped_proposals` — but their source-db DDL still runs, since
+  that's the whole point of that proposal kind."
   [original-transform proposals collection-id]
-  (let [proposals (vec (or proposals []))
-        created   (->> proposals
-                       (keep (fn [p]
-                               (when-let [body (proposal->create-body
-                                                original-transform p collection-id)]
-                                 (try
-                                   (let [new (transforms.crud/create-transform! body)]
-                                     {:id          (:id new)
-                                      :name        (:name new)
-                                      :proposal_id (:id p)
-                                      :kind        (some-> (:kind p) name)
-                                      :depends_on  (or (:depends_on p) [])})
-                                   (catch Exception e
-                                     (log/warnf e "accept!: create-transform! failed for proposal %s" (:id p))
-                                     {:proposal_id (:id p)
-                                      :error       (or (ex-message e) "create failed")})))))
-                       vec)
+  (let [proposals       (vec (or proposals []))
+        deferred-by-pid (group-deferred-ddl-by-proposal proposals)
+        created
+        (->> proposals
+             (keep
+              (fn [p]
+                (when-let [body (proposal->create-body original-transform p collection-id)]
+                  (let [deferred (get deferred-by-pid (:id p))
+                        body+ddl (cond-> body
+                                   (seq deferred)
+                                   (assoc-in [:target :post_run_ddl] (vec deferred)))]
+                    (try
+                      (let [new (transforms.crud/create-transform! body+ddl)]
+                        {:id           (:id new)
+                         :name         (:name new)
+                         :proposal_id  (:id p)
+                         :kind         (some-> (:kind p) name)
+                         :depends_on   (or (:depends_on p) [])
+                         :pending_ddl  (count deferred)})
+                      (catch Exception e
+                        (log/warnf e "accept!: create-transform! failed for proposal %s" (:id p))
+                        {:proposal_id (:id p)
+                         :error       (or (ex-message e) "create failed")}))))))
+             vec)
         skipped   (->> proposals
                        (filter #(or (nil? (:body %)) (str/blank? (:body %))))
                        (mapv :id))
-        ddl-results (execute-ddl! original-transform proposals)]
+        ddl-rows  (-> []
+                      (into (execute-source-db-ddl!         original-transform proposals))
+                      (into (pending-deferred-ddl-summary   proposals))
+                      (into (rejected-ddl-summary           proposals)))]
     {:created_transforms created
-     :ddl_statements     ddl-results
+     :ddl_statements     ddl-rows
      :skipped_proposals  skipped}))

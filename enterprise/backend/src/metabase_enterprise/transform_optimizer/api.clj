@@ -15,6 +15,7 @@
    [clojure.core.async :as a]
    [metabase-enterprise.transform-optimizer.accept :as opt.accept]
    [metabase-enterprise.transform-optimizer.core :as opt.core]
+   [metabase-enterprise.transform-optimizer.indexes :as opt.indexes]
    [metabase-enterprise.transform-optimizer.proposal-cache :as opt.cache]
    [metabase-enterprise.transform-optimizer.verify :as opt.verify]
    [metabase.api.common :as api]
@@ -184,6 +185,42 @@
                                          "(expired or never seen); re-run /optimize.")
                 :missing_proposal_ids missing}}
       (opt.accept/accept! transform proposals (:collection_id body)))))
+
+;; ---------------------------------------------------------------------------
+;; Index management on a transform's target table
+
+(api.macros/defendpoint :get "/:id/indexes"
+  "List every index on the transform's target table. Each entry carries
+  the index name, definition (raw `pg_get_indexdef`), key + INCLUDE
+  columns, access method, partial predicate, and a
+  `managed_by_optimizer` flag indicating whether the optimizer registered
+  the index for post-run replay."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [transform (api/read-check :model/Transform id)]
+    {:transform {:id (:id transform) :target (:target transform)}
+     :indexes   (opt.indexes/list-indexes transform)}))
+
+(api.macros/defendpoint :post "/:id/index/drop"
+  "Drop the named index from the transform's target table. Validates
+  that the index actually exists on that table — we don't drop random
+  indices on the source DB. If the optimizer was managing this index
+  (i.e. it appears in `target.post_run_ddl`), the persisted entry is
+  also removed so the next transform run doesn't recreate it."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map [:index_name ms/NonBlankString]]]
+  (let [transform (api/read-check :model/Transform id)
+        result    (opt.indexes/drop-index! transform (:index_name body))]
+    (case (:status result)
+      :dropped result
+      :failed  {:status 502 :body (assoc result :error "drop_failed")}
+      :skipped {:status (case (:reason result)
+                          :index-not-on-target 404
+                          :unsafe-name         400
+                          :no-database         404
+                          :not-postgres        422
+                          400)
+                :body (assoc result :error "drop_skipped")})))
 
 ;; ---------------------------------------------------------------------------
 ;; Route bundle
