@@ -2,7 +2,10 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSignedJwtForResource, updateSetting } from "e2e/support/helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { Parameter } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -477,6 +480,391 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
         .findByText("First Dashboard")
+        .should("be.visible");
+    });
+  });
+
+  describe("same-dashboard navigation (EMB-1714)", () => {
+    beforeEach(() => {
+      H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
+    });
+
+    it("should switch tab and pass parameters when click behavior points to a different tab on the same dashboard", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+
+      const ID_FILTER: Parameter = createMockActionParameter({
+        id: "tabbed-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
+      H.createQuestion({
+        name: "Orders on Tab 1",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: tabOneCard }) => {
+        H.createQuestion({
+          name: "Orders on Tab 2",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: tabTwoCard }) => {
+          H.createDashboardWithTabs({
+            name: "Tabbed Dashboard",
+            parameters: [ID_FILTER],
+            tabs: [TAB_1, TAB_2],
+            dashcards: [
+              createMockDashboardCard({
+                id: -1,
+                card_id: tabOneCard.id,
+                dashboard_tab_id: TAB_1.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+              createMockDashboardCard({
+                id: -2,
+                card_id: tabTwoCard.id,
+                dashboard_tab_id: TAB_2.id,
+                size_x: 12,
+                size_y: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: ID_FILTER.id,
+                    card_id: tabTwoCard.id,
+                    target: ["dimension", ["field", ORDERS.ID, null]],
+                  },
+                ],
+              }),
+            ],
+          }).then((dashboard) => {
+            const tabs = dashboard.tabs ?? [];
+            const resolvedTab1 = tabs[0];
+            const resolvedTab2 = tabs[1];
+            const updatedDashcards = (dashboard.dashcards ?? []).map(
+              (dashcard) => {
+                if (dashcard.dashboard_tab_id !== resolvedTab1.id) {
+                  return dashcard;
+                }
+                return {
+                  ...dashcard,
+                  visualization_settings: {
+                    column_settings: {
+                      [`["ref",["field",${ORDERS.ID},null]]`]: {
+                        click_behavior: {
+                          type: "link",
+                          linkType: "dashboard",
+                          linkTextTemplate: "Go to Tab 2",
+                          targetId: dashboard.id,
+                          tabId: resolvedTab2.id,
+                          parameterMapping: {
+                            [ID_FILTER.id]: {
+                              source: {
+                                type: "column",
+                                id: "ID",
+                                name: "ID",
+                              },
+                              target: {
+                                type: "parameter",
+                                id: ID_FILTER.id,
+                              },
+                              id: ID_FILTER.id,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                };
+              },
+            );
+
+            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+              ...dashboard,
+              dashcards: updatedDashcards,
+            });
+
+            cy.wrap(dashboard.id).as("tabbedDashboardId");
+          });
+        });
+      });
+
+      cy.get<number>("@tabbedDashboardId").then((dashboardId) => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript({})}
+          <metabase-dashboard dashboard-id="${dashboardId}" drills enable-entity-navigation />
+        `);
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@getDashCardQuery");
+
+      cy.log("Tab 1 starts active");
+      H.getSimpleEmbedIframeContent()
+        .findByRole("tab", { name: "Tab 1" })
+        .should("have.attr", "aria-selected", "true");
+
+      cy.log("trigger click behavior pointing to Tab 2");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Tab 2")
+        .first()
+        .click();
+
+      cy.log("Tab 2 should become active in place");
+      H.getSimpleEmbedIframeContent()
+        .findByRole("tab", { name: "Tab 2" })
+        .should("have.attr", "aria-selected", "true");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Orders on Tab 2")
+        .should("be.visible");
+
+      cy.log("mapped parameter is applied to the dashboard filter");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .findByLabelText("ID Filter")
+        .should("contain", "1");
+
+      cy.log("no back-button frame is pushed for an in-place tab switch");
+      H.getSimpleEmbedIframeContent()
+        .findByText(/Back to/)
+        .should("not.exist");
+    });
+
+    it("should apply mapped parameters when click behavior points to the same tab-less dashboard", () => {
+      const ID_FILTER: Parameter = createMockActionParameter({
+        id: "self-link-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
+      H.createQuestion({
+        name: "Self-linking card",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: card }) => {
+        H.createDashboard({
+          name: "Self-linking Dashboard",
+          parameters: [ID_FILTER],
+        }).then(({ body: dashboard }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: createMockDashboardCard({
+              card_id: card.id,
+              size_x: 24,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: ID_FILTER.id,
+                  card_id: card.id,
+                  target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+              ],
+              visualization_settings: {
+                column_settings: {
+                  [`["ref",["field",${ORDERS.ID},null]]`]: {
+                    click_behavior: {
+                      type: "link",
+                      linkType: "dashboard",
+                      linkTextTemplate: "Self link",
+                      targetId: dashboard.id,
+                      parameterMapping: {
+                        [ID_FILTER.id]: {
+                          source: { type: "column", id: "ID", name: "ID" },
+                          target: {
+                            type: "parameter",
+                            id: ID_FILTER.id,
+                          },
+                          id: ID_FILTER.id,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          });
+          cy.wrap(dashboard.id).as("selfDashboardId");
+        });
+      });
+
+      cy.get<number>("@selfDashboardId").then((dashboardId) => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript({})}
+          <metabase-dashboard dashboard-id="${dashboardId}" drills enable-entity-navigation />
+        `);
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@getDashCardQuery");
+
+      cy.log("trigger self-link click behavior");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Self link")
+        .first()
+        .click();
+
+      cy.log("filter widget reflects the mapped value");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .findByLabelText("ID Filter")
+        .should("contain", "1");
+
+      cy.log("no extra navigation frame pushed for self-link");
+      H.getSimpleEmbedIframeContent()
+        .findByText(/Back to/)
+        .should("not.exist");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Self-linking Dashboard")
+        .should("be.visible");
+    });
+  });
+
+  describe("cross-dashboard navigation with tabId", () => {
+    beforeEach(() => {
+      H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
+    });
+
+    it("should open the target dashboard on the requested tab", () => {
+      const TARGET_TAB_1 = { id: 1, name: "Target Tab 1" };
+      const TARGET_TAB_2 = { id: 2, name: "Target Tab 2" };
+
+      const TARGET_ID_FILTER: Parameter = createMockActionParameter({
+        id: "target-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
+      H.createQuestion({
+        name: "Card on Target Tab 1",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: targetTab1Card }) => {
+        H.createQuestion({
+          name: "Card on Target Tab 2",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: targetTab2Card }) => {
+          H.createDashboardWithTabs({
+            name: "Target Dashboard With Tabs",
+            parameters: [TARGET_ID_FILTER],
+            tabs: [TARGET_TAB_1, TARGET_TAB_2],
+            dashcards: [
+              createMockDashboardCard({
+                id: -1,
+                card_id: targetTab1Card.id,
+                dashboard_tab_id: TARGET_TAB_1.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+              createMockDashboardCard({
+                id: -2,
+                card_id: targetTab2Card.id,
+                dashboard_tab_id: TARGET_TAB_2.id,
+                size_x: 12,
+                size_y: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: TARGET_ID_FILTER.id,
+                    card_id: targetTab2Card.id,
+                    target: ["dimension", ["field", ORDERS.ID, null]],
+                  },
+                ],
+              }),
+            ],
+          }).then((targetDashboard) => {
+            const resolvedTargetTab2 = (targetDashboard.tabs ?? [])[1];
+
+            H.createQuestion({
+              name: "Source Card",
+              query: { "source-table": ORDERS_ID, limit: 5 },
+            }).then(({ body: sourceCard }) => {
+              H.createDashboard({ name: "Source Dashboard" }).then(
+                ({ body: sourceDashboard }) => {
+                  H.addOrUpdateDashboardCard({
+                    card_id: sourceCard.id,
+                    dashboard_id: sourceDashboard.id,
+                    card: createMockDashboardCard({
+                      card_id: sourceCard.id,
+                      size_x: 24,
+                      size_y: 8,
+                      visualization_settings: {
+                        column_settings: {
+                          [`["ref",["field",${ORDERS.ID},null]]`]: {
+                            click_behavior: {
+                              type: "link",
+                              linkType: "dashboard",
+                              linkTextTemplate: "Go to Target Tab 2",
+                              targetId: targetDashboard.id,
+                              tabId: resolvedTargetTab2.id,
+                              parameterMapping: {
+                                [TARGET_ID_FILTER.id]: {
+                                  source: {
+                                    type: "column",
+                                    id: "ID",
+                                    name: "ID",
+                                  },
+                                  target: {
+                                    type: "parameter",
+                                    id: TARGET_ID_FILTER.id,
+                                  },
+                                  id: TARGET_ID_FILTER.id,
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    }),
+                  });
+                  cy.wrap(sourceDashboard.id).as("sourceDashboardId");
+                },
+              );
+            });
+          });
+        });
+      });
+
+      cy.get<number>("@sourceDashboardId").then((dashboardId) => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript({})}
+          <metabase-dashboard dashboard-id="${dashboardId}" drills enable-entity-navigation />
+        `);
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      cy.log("trigger cross-dashboard click behavior with tabId");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Target Tab 2")
+        .first()
+        .click();
+
+      cy.wait("@getDashboard");
+
+      cy.log("target dashboard opens directly on Target Tab 2");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Target Dashboard With Tabs")
+        .should("be.visible");
+      H.getSimpleEmbedIframeContent()
+        .findByRole("tab", { name: "Target Tab 2" })
+        .should("have.attr", "aria-selected", "true");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Card on Target Tab 2")
+        .should("be.visible");
+
+      cy.log("mapped parameter is applied to the target filter");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .findByLabelText("ID Filter")
+        .should("contain", "1");
+
+      cy.log("back button to Source Dashboard is present");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Back to Source Dashboard")
         .should("be.visible");
     });
   });
