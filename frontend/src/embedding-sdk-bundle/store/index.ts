@@ -4,15 +4,12 @@ import { useContext } from "react";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
+import { metabaseReduxContext, useDispatch, useStore } from "metabase/redux";
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
-import {
-  MetabaseReduxContext,
-  useDispatch,
-  useStore,
-} from "metabase/utils/redux";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
+import { sdkListenerMiddleware } from "./listener-middleware";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
@@ -25,16 +22,21 @@ export const sdkReducers = {
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>
-  getStore(sdkReducers, null, {
-    embed: {
-      options: {
-        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
+  getStore(
+    sdkReducers,
+    null,
+    {
+      embed: {
+        options: {
+          entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
+        },
+      },
+      app: {
+        isDndAvailable: false,
       },
     },
-    app: {
-      isDndAvailable: false,
-    },
-  }) as unknown as SdkStore;
+    [sdkListenerMiddleware.middleware],
+  ) as unknown as SdkStore;
 
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
@@ -49,7 +51,7 @@ export const useSdkStore = () => {
 };
 
 const useCheckSdkReduxContext = () => {
-  const context = useContext(MetabaseReduxContext);
+  const context = useContext(metabaseReduxContext);
 
   if (!context) {
     console.warn(

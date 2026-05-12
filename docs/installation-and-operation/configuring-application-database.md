@@ -45,7 +45,7 @@ export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<use
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the `MB_DB_CONNECTION_URI` [environment variable](../configuring-metabase/environment-variables.md) in combination with `MB_DB_USER` and `MB_DB_PASS` variables:
+If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri) environment variable in combination with [`MB_DB_USER`](../configuring-metabase/environment-variables.md#mb_db_user) and [`MB_DB_PASS`](../configuring-metabase/environment-variables.md#mb_db_pass) variables:
 
 ```sh
 export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
@@ -58,7 +58,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/).
 
-The minimum recommended version is MySQL 8.0.17 or MariaDB 10.2.2. The `utf8mb4` character set is required.
+The minimum recommended version is MySQL 8.4.0 or MariaDB 10.6.0. The `utf8mb4` character set is required.
 
 We don't support ApsaraDB MySQL. You can instead use ApsaraDB PostgreSQL.
 

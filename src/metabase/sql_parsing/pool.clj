@@ -5,8 +5,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
-   [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -18,10 +17,14 @@
     Pool
     Pools)
    (java.io Closeable File)
-   (java.nio.file Files Path)
+   (java.net URI)
+   (java.nio.channels SeekableByteChannel)
+   (java.nio.file AccessMode DirectoryStream DirectoryStream$Filter Files FileSystems Path)
    (java.time Duration)
+   (java.util Map Set)
    (java.util.concurrent TimeUnit TimeoutException)
-   (org.graalvm.polyglot Context HostAccess)))
+   (org.graalvm.polyglot Context HostAccess)
+   (org.graalvm.polyglot.io FileSystem IOAccess)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,57 +34,12 @@
   "Resource path for Python sources (sql_tools.py and sqlglot)."
   "python-sources")
 
-(defn- plugins-dir-path
-  "Get path to plugins directory. Lightweight alternative to metabase.plugins.core/plugins-dir
-   that avoids loading the entire plugin system (~8 seconds of namespace loading)."
-  ^Path []
-  (let [dir-name (or (System/getenv "MB_PLUGINS_DIR")
-                     "plugins")
-        path     (u.files/get-path dir-name)]
-    (u.files/create-dir-if-not-exists! path)
-    path))
-
 (defn- jar-resource?
   "True if the given resource is inside a JAR (production), false if from filesystem (dev)."
   [resource]
   (boolean
    (when-let [url (io/resource resource)]
      (.contains (.getFile ^java.net.URL url) ".jar!/"))))
-
-(defn- copy-dir-recursive!
-  "Recursively copy all files from source Path to dest Path.
-  Works across filesystems (e.g., from JAR filesystem to default filesystem)."
-  [^Path source ^Path dest]
-  (doseq [^Path child (u.files/files-seq source)]
-    (let [relative-name (str (.getFileName child))
-          target        (.resolve dest relative-name)]
-      (if (Files/isDirectory child (into-array java.nio.file.LinkOption []))
-        (do
-          (u.files/create-dir-if-not-exists! target)
-          (copy-dir-recursive! child target))
-        (log/with-no-logs ;; <-- Suppress per-file logs from copy-file! (hundreds of files in sqlglot)
-          (u.files/copy-file! child target))))))
-
-(defn- extract-python-sources!
-  "Extract python-sources from JAR to plugins directory. Returns the path as a string.
-  Uses the same plugins directory as driver modules for consistency.
-  Skips extraction if version file matches."
-  ^String []
-  (let [^Path plugins-path (plugins-dir-path)
-        dest-path          (.resolve plugins-path "python-sources")
-        version-file       (.resolve dest-path "pyproject.toml")
-        jar-version        (some-> (io/resource "python-sources/pyproject.toml") slurp str/trim)
-        dest-version       (when (u.files/exists? version-file)
-                             (str/trim (slurp (.toFile version-file))))]
-    (if (and jar-version (= jar-version dest-version))
-      (log/info "Python sources already extracted (version" jar-version ")")
-      (do
-        (u.files/create-dir-if-not-exists! dest-path)
-        (log/info "Extracting Python sources to" (str dest-path))
-        (u.files/with-open-path-to-resource [source-path python-sources-resource]
-          (copy-dir-recursive! source-path dest-path))
-        (log/info "Python sources extracted")))
-    (str dest-path)))
 
 ;;; -------------------------------------------------- Dev lazy installation --------------------------------------------------
 
@@ -166,17 +124,65 @@
 
 ;;; -------------------------------------------------- Python path delay --------------------------------------------------
 
+(defn- nio-polyglot-fs
+  "Wrap a NIO `java.nio.file.FileSystem` as a polyglot `FileSystem`, routing reads to
+  `Files/newByteChannel` instead of the provider's `newFileChannel`.
+
+  The stock wrapper triggers ZipFileSystem to extract deflated entries to a temp file beside the jar,
+  which fails when the jar's parent directory isn't writable (e.g. non-root in a Kubernetes pod).
+  See https://github.com/metabase/metabase/issues/73541."
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
+  (let [provider (.provider nio-fs)]
+    (reify FileSystem
+      (^Path parsePath [_ ^URI uri]
+        (.getPath provider uri))
+      (^Path parsePath [_ ^String s]
+        (.getPath nio-fs s (into-array String [])))
+      (^void checkAccess [_ ^Path p ^Set modes ^"[Ljava.nio.file.LinkOption;" _opts]
+        ;; LinkOption opts are dropped: the only value is NOFOLLOW_LINKS, and neither our jar zip FS
+        ;; nor resources/python-sources contains symlinks.
+        (.checkAccess provider p ^"[Ljava.nio.file.AccessMode;" (into-array AccessMode modes)))
+      (^void createDirectory [_ ^Path p ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/createDirectory p attrs))
+      (^void delete [_ ^Path p]
+        (Files/delete p))
+      (^SeekableByteChannel newByteChannel
+        [_ ^Path p ^Set opts ^"[Ljava.nio.file.attribute.FileAttribute;" attrs]
+        (Files/newByteChannel p opts attrs))
+      (^DirectoryStream newDirectoryStream [_ ^Path dir ^DirectoryStream$Filter filter]
+        (Files/newDirectoryStream dir filter))
+      (^Path toAbsolutePath [_ ^Path p]
+        (.toAbsolutePath p))
+      (^Path toRealPath [_ ^Path p ^"[Ljava.nio.file.LinkOption;" opts]
+        (.toRealPath p opts))
+      (^Map readAttributes [_ ^Path p ^String attrs ^"[Ljava.nio.file.LinkOption;" opts]
+        (Files/readAttributes p attrs opts)))))
+
+(defn- read-only-polyglot-fs
+  "Wrap an NIO `java.nio.file.FileSystem` as a read-only polyglot FileSystem suitable for GraalPy."
+  ^FileSystem [^java.nio.file.FileSystem nio-fs]
+  (-> nio-fs nio-polyglot-fs FileSystem/newReadOnlyFileSystem))
+
 (defonce ^:private
-  ^{:doc "Path to Python sources directory. In dev, this is resources/python-sources.
-          When running from a JAR, we extract to the plugins directory.
-          In dev, lazily installs sqlglot if not present or version mismatched."}
-  python-path
+  ^{:doc "A read-only polyglot FileSystem and the PythonPath within it.
+          In dev: wraps the default filesystem, path is resources/python-sources.
+          In jar: wraps the jar's zip filesystem, path is /python-sources.
+          Either way, the filesystem is read-only so extracted sources cannot be tampered with."}
+  python-fs-and-path
   (delay
     (if (jar-resource? python-sources-resource)
-      (extract-python-sources!)
+      ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib are both inside the
+      ;; jar, so nothing is extracted to disk and there's nothing to tamper with. The filesystem lives for the
+      ;; duration of the process (via defonce + delay) and is shared by all pooled Python contexts.
+      {:fs           (-> (u.files/get-jar-path) u.files/nio-fs read-only-polyglot-fs)
+       :python-path  "/python-sources"
+       :std-lib-home "/META-INF/resources/libpython"
+       :core-home    "/META-INF/resources/libgraalpy"}
+      ;; In dev: use the real filesystem (read-only wrapper). sqlglot is installed locally.
       (do
         (ensure-sqlglot-installed!)
-        dev-python-sources-dir))))
+        {:fs          (read-only-polyglot-fs (FileSystems/getDefault))
+         :python-path dev-python-sources-dir}))))
 
 ;;; -------------------------------------------- Context Wrappers ----------------------------------------------------
 
@@ -224,15 +230,23 @@
   The context is configured with:
   - PythonPath pointing to python-sources (contains sql_tools.py and sqlglot)
   - Full host access (needed for JSON serialization)
-  - IO access enabled (for Python imports)"
+  - Read-only filesystem (sources loaded directly from classpath/jar, no disk extraction in prod)"
   ^Context []
-  (let [ctx (.. (Context/newBuilder (into-array String ["python"]))
-                (option "engine.WarnInterpreterOnly" "false")
-                ;; python-sources contains both sql_tools.py shim and installed sqlglot
-                (option "python.PythonPath" @python-path)
-                (allowHostAccess HostAccess/ALL)
-                (allowIO true)
-                (build))]
+  (let [{:keys [^FileSystem fs python-path std-lib-home core-home]} @python-fs-and-path
+        io-access (.. (IOAccess/newBuilder)
+                      (fileSystem fs)
+                      (build))
+        builder   (.. (Context/newBuilder (into-array String ["python"]))
+                      (option "engine.WarnInterpreterOnly" "false")
+                      (option "python.PythonPath" python-path)
+                      (allowHostAccess HostAccess/ALL)
+                      (allowIO io-access))
+        ;; When running from the jar, GraalPy's stdlib is also inside the jar filesystem
+        ;; and we need to tell it where to find the core and stdlib paths explicitly.
+        builder   (cond-> builder
+                    std-lib-home (.option "python.StdLibHome" std-lib-home)
+                    core-home    (.option "python.CoreHome" core-home))
+        ctx       (.build builder)]
     (.eval ctx "python" "import sql_tools")
     ctx))
 

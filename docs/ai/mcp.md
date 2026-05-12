@@ -11,13 +11,19 @@ Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol
 
 ## Connect an MCP client
 
-If your admin has turned on [your Metabase's MCP server](./settings.md#mcp-server-settings), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
+If your admin has turned on [your Metabase's MCP server](./settings.md#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/mcp`. For example:
 
 ```
 https://{your-metabase.example.com}/api/mcp
 ```
 
-In Claude Code, for example, you can run `/mcp add metabase https://{your-metabase.example.com}/api/mcp --transport streamable-http` and Claude will handle the OAuth flow for you.
+In the terminal, for example, you can run the following command.
+
+```
+claude mcp add --transport http metabase https://{your-metabase-url}/api/mcp
+```
+
+Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
 
 For Claude Desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
 

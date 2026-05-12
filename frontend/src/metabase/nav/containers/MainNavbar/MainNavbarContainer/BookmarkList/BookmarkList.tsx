@@ -15,11 +15,12 @@ import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
-import { connect } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
@@ -80,13 +81,20 @@ const BookmarkItem = ({
   onSelect,
   onDeleteBookmark,
 }: BookmarkItemProps) => {
+  const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
+  const isTenantUser = useSelector(getIsTenantUser);
 
-  const icon = getIcon({
-    model: getBookmarkModel(bookmark),
-    display: bookmark.display,
-  });
+  const icon = getIcon(
+    {
+      model: getBookmarkModel(bookmark),
+      display: bookmark.display,
+      authority_level: bookmark.authority_level,
+      is_remote_synced: bookmark.is_remote_synced,
+    },
+    { isTenantUser },
+  );
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =

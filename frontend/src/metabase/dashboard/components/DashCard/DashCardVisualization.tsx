@@ -2,11 +2,9 @@ import cx from "classnames";
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
-import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -16,36 +14,32 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import { getVirtualCardType } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isDashcardAccessRestricted,
+} from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
-  Box,
-  Button,
   Flex,
   Group,
-  HoverCard,
-  Icon,
   type IconName,
   type IconProps,
   Menu,
-  Text,
   Title,
-  Transition,
 } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { duration } from "metabase/utils/formatting";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
 } from "metabase/visualizations/components/legend/LegendCaption";
-import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
@@ -64,7 +58,6 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
-  CardDisplayType,
   CardId,
   DashCardId,
   DashboardCard,
@@ -89,79 +82,6 @@ import {
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
 } from "./utils";
-
-const DashCardLoadingView = ({
-  isSlow,
-  expectedDuration,
-  display,
-}: LoadingViewProps & { display?: CardDisplayType }) => {
-  const { url, showMetabaseLinks } = useLearnUrl(
-    "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
-  );
-  const getPreamble = () => {
-    if (isSlow === "usually-fast") {
-      return t`This usually loads immediately, but is currently taking longer.`;
-    }
-    if (expectedDuration) {
-      return jt`This usually takes around ${(
-        <span key="duration" className={CS.textNoWrap}>
-          {duration(expectedDuration)}
-        </span>
-      )}.`;
-    }
-  };
-
-  return (
-    <div
-      data-testid="loading-indicator"
-      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
-    >
-      <ChartSkeleton display={display} />
-      <Transition
-        mounted={!!isSlow}
-        transition={{
-          in: { opacity: 1, transform: "scale(1)" },
-          out: { opacity: 0, transform: "scale(0.8)" },
-          transitionProperty: "transform, opacity",
-        }}
-        duration={80}
-      >
-        {(styles) => (
-          <Box style={styles} className={CS.absolute} left={12} bottom={12}>
-            <HoverCard width={288} offset={4} position="bottom-start">
-              <HoverCard.Target>
-                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
-                  <Icon name="snail" size={12} d="flex" />
-                </Button>
-              </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8}>
-                <div className={cx(CS.p2, CS.textCentered)}>
-                  <Text fw="bold">{t`Waiting for your data`}</Text>
-                  <Text lh="1.5" mt={4}>
-                    {getPreamble()}{" "}
-                    {t`You can use caching to speed up question loading.`}
-                  </Text>
-                  {showMetabaseLinks && (
-                    <Button
-                      mt={12}
-                      variant="subtle"
-                      size="compact-md"
-                      rightSection={<Icon name="external" />}
-                      component={ExternalLink}
-                      href={url}
-                    >
-                      {t`Making dashboards faster`}
-                    </Button>
-                  )}
-                </div>
-              </HoverCard.Dropdown>
-            </HoverCard>
-          </Box>
-        )}
-      </Transition>
-    </div>
-  );
-};
 
 /**
  * This populates the `data` field of each series with an empty
@@ -287,6 +207,11 @@ export function DashCardVisualization({
     ) {
       return;
     }
+    // Skip when access is denied; the permission message would otherwise be
+    // masked by "Some columns are missing".
+    if (isDashcardAccessRestricted(rawSeries)) {
+      return;
+    }
 
     const missingCols = getMissingColumnsFromVisualizationSettings({
       visualizerEntity: dashcard.visualization_settings.visualization,
@@ -330,9 +255,10 @@ export function DashCardVisualization({
       ]),
     );
 
-    const didEveryDatasetLoad = dataSources.every(
-      (dataSource) => dataSourceDatasets[dataSource.id] != null,
-    );
+    const everyDatasetLoaded = dataSources.every((dataSource) => {
+      const dataset = dataSourceDatasets[dataSource.id];
+      return dataset != null && dataset.error == null;
+    });
 
     const columns = getVisualizationColumns(
       visualizerEntity,
@@ -348,9 +274,10 @@ export function DashCardVisualization({
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
-    ) as Card;
+    );
 
-    if (!didEveryDatasetLoad) {
+    if (!everyDatasetLoaded) {
+      // No `data` so the parent <Visualization> picks its error or loading view.
       return [{ card }] as RawSeries;
     }
 

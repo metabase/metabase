@@ -11,14 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: choice
-        options:
-          - none
-          - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -33,14 +25,6 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: string
-        # options:
-        #   - none
-        #   - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -581,20 +565,9 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
-  set-release-channel:
-    needs: publish-version-info
-    uses: ./.github/workflows/release-tag.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      tag_name: ${{ inputs.release-channel }}
-      tag_rollout: 100
-      tag_ee: true
-      tag_oss: true
-
   publish-complete-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    needs: [set-release-channel, add-extra-tags]
+    needs: [add-extra-tags]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -622,43 +595,3 @@ jobs:
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
-
-  manage-milestones:
-    if: ${{ !inputs.auto }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: |
-          release
-          .github
-    - name: Prepare release scripts
-      uses: ./.github/actions/prepare-release-scripts
-    - name: Update milestones
-      uses: actions/github-script@v7
-      with:
-        script: | # js
-          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const version = '${{ inputs.version }}';
-
-          if (isPreReleaseVersion(version)) {
-            console.log("This is a prerelease version, skipping milestone management");
-            return;
-          }
-
-          await closeMilestone({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version,
-          }).catch(console.error);
-
-          await openNextMilestones({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version,
-          }).catch(console.error);

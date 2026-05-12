@@ -2,8 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { MetabotSetupInner } from "metabase/admin/ai/MetabotSetup";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -13,9 +15,6 @@ import {
   Modal,
   Text,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
-
-import { MetabotSetupInner } from "./MetabotAdmin/MetabotSetup";
 
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";

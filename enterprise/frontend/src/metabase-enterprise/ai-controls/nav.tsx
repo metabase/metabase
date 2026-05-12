@@ -1,10 +1,19 @@
 import { t } from "ttag";
 
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
+import { UpsellGem } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 
-export function AiControlsNavItems() {
+export function getAiControlsNavItems() {
+  return <AiControlsNavItems />;
+}
+
+export function getAiControlsUpsellNavItems() {
+  return <AiControlsUpsellNavItems />;
+}
+
+function AiControlsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
 
@@ -21,12 +30,12 @@ export function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`AI feature access`}
+          label={t`Access`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
           disabled={!isConfigured}
         />
         <AdminNavItem
-          label={t`AI usage limits`}
+          label={t`Limits`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
         />
       </AdminNavItem>
@@ -43,7 +52,7 @@ export function AiControlsNavItems() {
         disabled={!isConfigured}
       >
         <AdminNavItem
-          label={t`Metabot chat`}
+          label={t`AI chat`}
           path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
           disabled={!isConfigured}
         />
@@ -58,6 +67,31 @@ export function AiControlsNavItems() {
           disabled={!isConfigured}
         />
       </AdminNavItem>
+    </>
+  );
+}
+
+function AiControlsUpsellNavItems() {
+  return (
+    <>
+      <AdminNavItem
+        icon="lock"
+        label={t`Usage controls`}
+        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
+        rightSection={<UpsellGem.New size={14} />}
+      />
+      <AdminNavItem
+        icon="palette"
+        label={t`Customization`}
+        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/customization`}
+        rightSection={<UpsellGem.New size={14} />}
+      />
+      <AdminNavItem
+        icon="document"
+        label={t`System prompts`}
+        path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
+        rightSection={<UpsellGem.New size={14} />}
+      />
     </>
   );
 }

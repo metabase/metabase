@@ -96,7 +96,7 @@
 ;; Should mirror the logic in `sql.qp/->honeysql [:sql :aggregation]`
 (defmethod sql.qp/->honeysql [:sql-mbql5 :aggregation]
   [driver [_ _opts _agg-uuid :as clause]]
-  (driver-api/match-lite clause
+  (driver-api/match-one clause
     [:aggregation {driver-api/qp.add.desired-alias desired-alias} _agg-uuid]
     (sql.qp/->honeysql driver (h2x/identifier :field-alias desired-alias))
 

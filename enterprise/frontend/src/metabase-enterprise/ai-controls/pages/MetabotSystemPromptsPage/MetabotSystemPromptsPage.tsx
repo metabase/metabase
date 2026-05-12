@@ -4,10 +4,10 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
-import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
+import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
 
@@ -24,9 +24,8 @@ type SystemPromptPageProps = {
 
 function SystemPromptPage(props: SystemPromptPageProps) {
   const { title, description, settingKey } = props;
-  const { handleInputChange, inputValue } = useAdminSettingWithDebouncedInput<
-    string | null
-  >(settingKey);
+  const { handleInputChange, handleBlur, inputValue } =
+    useAdminSettingWithBlurInput(settingKey);
 
   return (
     <SettingsPageWrapper title={title} mt="sm">
@@ -38,6 +37,7 @@ function SystemPromptPage(props: SystemPromptPageProps) {
           aria-label={title}
           className={S.textareaWrapper}
           onChange={(e) => handleInputChange(e.target.value)}
+          onBlur={handleBlur}
           placeholder={getPlaceholder()}
           value={inputValue || ""}
         />
@@ -71,7 +71,7 @@ export function MetabotChatPromptPage() {
 
   return (
     <SystemPromptPage
-      title={t`Metabot chat prompt instructions`}
+      title={t`AI chat prompt instructions`}
       description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />

@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { GitSyncSetupMenuItemProps } from "metabase/plugins/types";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { FixedSizeIcon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import S from "./GitSyncSetupMenuItem.module.css";
 

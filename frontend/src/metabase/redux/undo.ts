@@ -3,9 +3,9 @@ import { createRef } from "react";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
+import { createAction, createThunkAction } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Undo } from "metabase/redux/store/undo";
-import { createAction, createThunkAction } from "metabase/utils/redux";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -14,7 +14,7 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
+export const addUndo = createThunkAction(ADD_UNDO, (undo: Partial<Undo>) => {
   return (dispatch, getState) => {
     const { icon = "check_filled", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;

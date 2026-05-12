@@ -1,16 +1,15 @@
-import api, { DELETE, GET, POST, PUT } from "metabase/utils/api";
+import api, { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
+import { isNative } from "metabase/common/utils/card";
+import { isEmbedPreview } from "metabase/embedding/config";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
-
-import { getIsEmbedPreview } from "./get-is-embed-preview";
 
 export const internalBase = "/api";
 export const publicBase = "/api/public";
 // use different endpoints for embed previews
 export function getEmbedBase() {
-  return getIsEmbedPreview() ? "/api/preview_embed" : "/api/embed";
+  return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";
 }
 
 export const ActivityApi = {
@@ -52,6 +51,13 @@ async function handleQueryApiError(apiPromise) {
       error.status < 500 &&
       error.data
     ) {
+      // The QP returns a structured `{ error, error_type, ... }` body, but
+      // plainer endpoints (e.g. `/api/embed/*` API-level checks) return a
+      // plain-text body. Normalize so callers can rely on a `{ error, ... }`
+      // shape and don't fall through to the empty state (EMB-1659).
+      if (typeof error.data === "string") {
+        return { error: error.data, status: error.status };
+      }
       return error.data;
     }
     // For 5xx and other errors, re-throw

@@ -1,9 +1,8 @@
 (ns metabase.warehouses.models.database
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
@@ -177,26 +176,27 @@
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
-  (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
-    [false _ _]
-    (merge
-     database
-     (sync.schedules/schedule-map->cron-strings
-      (sync.schedules/default-randomized-schedule)))
+  (let [user-control-scheduling (boolean (:let-user-control-scheduling details))]
+    (cond (not user-control-scheduling)
+          (merge
+           database
+           (sync.schedules/schedule-map->cron-strings
+            (sync.schedules/default-randomized-schedule)))
 
-    ;; "Regularly on a schedule"
-    ;; -> sync both steps, schedule should be provided
-    [true true false]
-    (do
-      (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
-      database)
+          (and user-control-scheduling is_full_sync (not is_on_demand))
+          ;; "Regularly on a schedule"
+          ;; -> sync both steps, schedule should be provided
+          (do
+            (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+            database)
 
-    ;; "Only when adding a new filter" or "Never, I'll do it myself"
-    ;; -> Sync metadata only
-    [true false _]
-    ;; schedules should only contains metadata_sync, but FE might sending both
-    ;; so we just manually nullify it here
-    (assoc database :cache_field_values_schedule nil)))
+          (and user-control-scheduling (not is_full_sync))
+          ;; schedules should only contains metadata_sync, but FE might sending both
+          ;; so we just manually nullify it here
+          (assoc database :cache_field_values_schedule nil)
+
+          :else (throw (ex-info "Illegal options combination."
+                                (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
@@ -667,6 +667,25 @@
                               (:details ingested)            (update :details driver/sanitize-db-details)
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
                             maybe-local))
+
+(def ^:private metadata-export-perms
+  {:perms/view-data      :unrestricted
+   :perms/create-queries :query-builder})
+
+(defmethod serdes/metadata-query :model/Database
+  [model opts]
+  (t2/reducible-query {:select [:id :name :engine]
+                       :from   [[(t2/table-name model) :db]]
+                       :where  (serdes/metadata-query-filter model :db opts)}))
+
+(defmethod serdes/metadata-query-filter :model/Database
+  [_model alias {:keys [user-info database-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key alias :is_audit) false]
+           [:= (u/qualified-key alias :router_database_id) nil]
+           [:in (u/qualified-key alias :id)
+            (perms/visible-database-filter-select user-info metadata-export-perms)]]
+    (seq database-ids) (conj [:in (u/qualified-key alias :id) database-ids])))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

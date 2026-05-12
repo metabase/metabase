@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { useMetabotSetupContext } from "metabase/admin/ai/MetabotSetup";
 import {
   useRefreshTokenStatusMutation,
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
@@ -26,7 +27,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { useSelector } from "metabase/utils/redux";
 import {
   type MetabotUsageResponse,
   useGetMetabotUsageQuery,

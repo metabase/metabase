@@ -21,11 +21,11 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
-                                             with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -35,16 +35,13 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
+   [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql
-    Connection
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)
+   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -59,7 +56,11 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent #{:sql-jdbc})
+;; Inherit from `::like-escape-char-built-in/like-escape-char-built-in` because Postgres's
+;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
+;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
+;; `standard_conforming_strings = off` (#73721).
+(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 (driver/register! :postgres-mbql5, :parent #{:postgres :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
@@ -610,8 +611,8 @@
 
 (defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
   [driver [_ _opts arg target-timezone source-timezone]]
-  ((get-method sql.qp/->honeysql [:postgres :convert-timezone]) driver
-   [:convert-timezone arg target-timezone source-timezone]))
+  ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
+   driver [:convert-timezone arg target-timezone source-timezone]))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver [_ raw-value {base-type :base_type database-type :database_type}]]
@@ -765,13 +766,22 @@
   ```clj
   [::json-query [::h2x/identifier :field [\"boop\" \"bleh\"]] \"bigint\" [\"meh\"]]
   =>
-  [\"(boop.bleh#>> array[?]::text[])::bigint\" \"meh\"]
-  ```"
+  [\"(boop.bleh#>> (array[?]::text[]))::bigint\" \"meh\"]
+  ```
+
+  The path argument is wrapped in an extra pair of parentheses so the `::text[]`
+  cast is unambiguously bound to `array[...]` rather than to the result of `#>>`.
+  Postgres' grammar gives `::` higher precedence than `#>>` so the parens are
+  redundant for Postgres itself, but `sqlglot` (used by
+  [[metabase.driver.sql/validate-impersonated-query*]] to canonicalize impersonated
+  native SQL) parses `parent #>> array[?]::text[]` as `(parent #>> array[?])::text[]`
+  and re-emits it with the cast wrapping the wrong expression — which then makes
+  Postgres reject the query at execution. See #73776."
   [_fn [parent-identifier field-type names]]
   (let [names-text-array                 (into [::text-array] names)
         [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
         [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
-    (into [(format "(%s#>> %s)::%s" parent-id-sql path-sql field-type)]
+    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql field-type)]
           cat
           [parent-id-args path-args])))
 
@@ -797,9 +807,21 @@
       (pg-conversion identifier :numeric)
 
       (driver-api/json-field? stored-field)
-      (if (or (::sql.qp/forced-alias opts)
-              (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
-        (keyword (driver-api/qp.add.source-alias opts))
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference
+        ;; the projected column directly instead of re-applying extraction,
+        ;; which would derive the wrong column name through nested
+        ;; projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
@@ -837,8 +859,8 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres-mbql5 :breakout]
   [driver clause honeysql-form query]
-  ((get-method sql.qp/->honeysql [:postgres :breakout]) driver
-   clause honeysql-form (update query :breakout #(for [[a b c] %] [a c b]))))
+  ((get-method sql.qp/->honeysql [:postgres :breakout])
+   driver clause honeysql-form (update query :breakout #(for [[a b c] %] [a c b]))))
 
 (defn- order-by-is-json-field?
   [clause n]
@@ -1329,13 +1351,23 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod driver.sql/set-role-statement :postgres
-  [_ role]
+(def ^{:arglists '([driver conn role])} memoized-quote-identifier
+  "Call `quote_ident(?) on Postgres to quote an identifier; presumably this should never change so use a bounded cache
+  to avoid the overhead of calling this on every query.
+
+  Takes `driver` as a parameter so this function can also be used by Redshift without sharing the same cache."
+  (memoize/bounded
+   (-> (fn [_driver conn role]
+         (:quote_ident (next.jdbc/execute-one! conn ["SELECT quote_ident(?);" role])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[driver _conn role]] [driver role])))))
+
+(defmethod sql-jdbc/set-role-statement :postgres
+  [driver conn role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET ROLE \"%s\";" role)
-      (format "SET ROLE %s;" role))))
+        needs-quote?          (re-find special-chars-pattern role)
+        quoted-role           (cond->> role
+                                needs-quote? (memoized-quote-identifier driver conn))]
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]

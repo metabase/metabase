@@ -10,7 +10,6 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useListTransformsQuery,
@@ -19,6 +18,8 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -33,7 +34,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";

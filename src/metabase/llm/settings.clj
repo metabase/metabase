@@ -29,8 +29,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-anthropic-api-key
                              "sk-ant-"
-                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''."))
-  :doc false)
+                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")))
 
 (defsetting llm-anthropic-api-key-configured?
   "Whether an Anthropic API key has been configured."
@@ -38,7 +37,7 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (some? (llm-anthropic-api-key)))
+  :getter     #(some? (llm-anthropic-api-key))
   :doc        false)
 
 (defsetting llm-anthropic-model
@@ -149,7 +148,7 @@
   :visibility       :settings-manager
   :export?          false
   :setter           :none
-  :getter           #(boolean (some? (llm-proxy-base-url)))
+  :getter           #(some? (llm-proxy-base-url))
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------
@@ -159,8 +158,7 @@
   :type       :boolean
   :visibility :public
   :default    true
-  :export?    true
-  :doc        false)
+  :export?    true)
 
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")

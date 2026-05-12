@@ -274,9 +274,9 @@
      [nil nil]]]
    ["maps_test"
     [{:field-name "m", :base-type {:native "Map(String, UInt64)"}}]
-    [[(java.util.HashMap. {"key1" 1, "key2" 10})]
-     [(java.util.HashMap. {"key1" 2, "key2" 20})]
-     [(java.util.HashMap. {"key1" 3, "key2" 30})]]]
+    [[(doto (java.util.HashMap.) (.putAll {"key1" 1, "key2" 10}))]
+     [(doto (java.util.HashMap.) (.putAll {"key1" 2, "key2" 20}))]
+     [(doto (java.util.HashMap.) (.putAll {"key1" 3, "key2" 30}))]]]
    ["datetime_diff_nullable"
     [{:field-name "idx",  :base-type {:native "Int32"}}
      {:field-name "dt64", :base-type {:native "Nullable(DateTime64(3, 'UTC'))"}}

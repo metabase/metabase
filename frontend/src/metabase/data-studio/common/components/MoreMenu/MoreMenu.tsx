@@ -49,7 +49,6 @@ export function MoreMenu({
             <Menu.Item
               component={Link}
               to={previewUrl}
-              target="_blank"
               leftSection={<Icon name="share" />}
             >
               {previewLabel ?? t`Preview`}

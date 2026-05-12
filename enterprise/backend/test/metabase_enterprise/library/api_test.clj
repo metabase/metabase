@@ -35,3 +35,20 @@
                (is (= "Library" (:name response)))
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response)))))))))))
+
+(deftest disallow-cross-type-collection-move-via-api-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection data-parent    {:name "Data Parent"    :type collection/library-data-collection-type}
+                   :model/Collection metrics-parent {:name "Metrics Parent" :type collection/library-metrics-collection-type}
+                   :model/Collection data-child     {:name "Data Child"     :type collection/library-data-collection-type
+                                                     :location (str "/" (:id data-parent) "/")}
+                   :model/Collection metrics-child  {:name "Metrics Child"  :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id metrics-parent) "/")}]
+      (testing "Moving a library-data collection into a library-metrics parent returns 400"
+        (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id data-child))
+                                             {:parent_id (:id metrics-parent)})]
+          (is (some? response))))
+      (testing "Moving a library-metrics collection into a library-data parent returns 400"
+        (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id metrics-child))
+                                             {:parent_id (:id data-parent)})]
+          (is (some? response)))))))

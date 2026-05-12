@@ -28,6 +28,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import api from "metabase/api/legacy-client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
@@ -38,8 +39,7 @@ import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import api from "metabase/utils/api";
-import { createAsyncThunk } from "metabase/utils/redux";
+import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
 import type { Settings } from "metabase-types/api";
 

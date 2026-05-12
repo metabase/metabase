@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
 
 type MoveToTrashEventDetail =
   | "question"
@@ -11,7 +11,8 @@ type MoveToTrashEventDetail =
   | "snippet"
   | "document"
   | "table"
-  | "transform";
+  | "transform"
+  | "measure";
 
 type MoveToTrashTriggeredFrom = "collection" | "detail_page" | "cleanup_modal";
 

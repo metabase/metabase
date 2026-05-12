@@ -9,6 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
 (comment
@@ -362,3 +363,69 @@
   (is (= {:stages [["Initial MBQL stage must have either :source-table or :source-card (but not both)"]]}
          (me/humanize (mr/explain ::lib.schema/query
                                   {:lib/type :mbql/query, :database 2378, :stages [{:lib/type :mbql.stage/mbql}]})))))
+
+;; these two queries are taken from the representations repository
+(def basic-external-query
+  {:lib/type :mbql/query
+   :database "Sample Database"
+   :stages [{:lib/type :mbql.stage/mbql
+             :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+             :aggregation [[:sum {} [:field {:base-type :type/Float}
+                                     ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]]]]}]})
+
+(def native-external-query
+  {:lib/type :mbql/query
+   :database "Sample Database"
+   :stages
+   [{:lib/type :mbql.stage/native
+     :native "SELECT *
+                FROM ORDERS
+               WHERE TOTAL > {{min_total}}
+                 AND CREATED_AT > {{after_date}}
+                 AND USER_ID = {{user_id}}
+                 AND {{is_active}}"
+     :template-tags {"min_total" {:type :number
+                                  :name "min_total"
+                                  :id "aa000001-0000-0000-0000-000000000001"
+                                  :display-name "Minimum Total"
+                                  :default 50
+                                  :required true
+                                  :sectionid "number"}
+                     "after_date" {:type :date
+                                   :name "after_date"
+                                   :id "aa000002-0000-0000-0000-000000000002"
+                                   :display-name "After Date"
+                                   :default "2024-01-01"
+                                   :sectionid "date"}
+                     "user_id" {:type :text
+                                :name "user_id"
+                                :id "aa000003-0000-0000-0000-000000000003"
+                                :display-name "User ID"
+                                :default "1"}
+                     "is_active" {:type :boolean
+                                  :name "is_active"
+                                  :id "aa000004-0000-0000-0000-000000000004"
+                                  :display-name "Is Active"
+                                  :default true
+                                  :sectionid "boolean"}}}]})
+
+(deftest ^:parallel external-test
+  ;; this one is not valid according to the internal schema because it
+  ;; uses a string tuple for the field instead of an integer.
+  (is (mr/explain ::lib.schema/query basic-external-query))
+  ;; if these fail, it's likely because the :mbql.clause/field or ::common/options
+  ;; schemas changed; see the comment in ::lib.schema/external-query for details.
+  (is (not (me/humanize (mr/explain ::lib.schema/external-query
+                                    basic-external-query))))
+  (is (not (me/humanize (mr/explain ::lib.schema/external-query
+                                    native-external-query)))))
+
+(deftest ^:parallel normalize-query-drop-limit-in-stage-with-page-test
+  (testing "If a query has `:page` we should drop `:limit` since the two conflict during normalization"
+    (let [stage {:lib/type     :mbql.stage/mbql
+                 :source-table (:id (meta/table-metadata :venues))
+                 :page         {:page 1, :items 15}
+                 :limit        20}]
+      (is (=? {:page  {:page 1, :items 15}
+               :limit (symbol "nil #_\"key is not present.\"")}
+              (lib/normalize ::lib.schema/stage stage))))))

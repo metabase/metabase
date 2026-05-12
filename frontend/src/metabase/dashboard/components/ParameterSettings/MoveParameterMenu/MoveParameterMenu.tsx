@@ -4,9 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
 
@@ -95,12 +95,10 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     [dashcardMap],
   );
 
-  const value = useMemo(() => {
-    if (!isOpen) {
-      return;
-    }
-    return parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE;
-  }, [isOpen, parameterDashcard]);
+  const value = useMemo(
+    () => (parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE),
+    [parameterDashcard],
+  );
 
   const options = useMemo(() => {
     const rootGroup = {
@@ -139,6 +137,12 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 
         // Hides the chevron-down icon on the right to make it look like a button
         section: !isOpen ? CS.hidden : undefined,
+      }}
+      wrapperProps={{
+        className: !isOpen
+          ? S.CollapsedMoveParameterMenuInputWrapper
+          : undefined,
+        "data-label": t`Move filter`,
       }}
       placeholder={t`Move filter`}
       data={options}

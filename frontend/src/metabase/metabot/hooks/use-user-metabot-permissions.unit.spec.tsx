@@ -19,10 +19,12 @@ function TestComponent() {
 
 function setup({
   isMetabotEnabled = true,
+  isAuthenticated = true,
   apiResponse,
   apiStatus = 200,
 }: {
   isMetabotEnabled?: boolean;
+  isAuthenticated?: boolean;
   apiResponse?: UserMetabotPermissionsResponse;
   apiStatus?: number;
 } = {}) {
@@ -43,7 +45,10 @@ function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(<TestComponent />, {
-    storeInitialState: createMockState({ settings }),
+    storeInitialState: createMockState({
+      settings,
+      ...(isAuthenticated ? {} : { currentUser: null }),
+    }),
   });
 }
 
@@ -75,6 +80,17 @@ describe("useUserMetabotPermissions", () => {
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
     expect(perms.canUseOtherTools).toBe(false);
+  });
+
+  it("does not call the API when the user is unauthenticated (UXW-3939)", async () => {
+    setup({ isAuthenticated: false });
+    const perms = await getPerms();
+    expect(perms.canUseMetabot).toBe(false);
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/metabot/permissions/user-permissions",
+      ),
+    ).toHaveLength(0);
   });
 
   it("returns all false when the API returns an error", async () => {
