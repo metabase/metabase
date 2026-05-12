@@ -1,4 +1,3 @@
-import { BookmarkSchema } from "metabase/schema";
 import type {
   Bookmark,
   CreateBookmarkRequest,
@@ -13,7 +12,6 @@ import {
   listTag,
   provideBookmarkListTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const bookmarkApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -23,7 +21,6 @@ export const bookmarkApi = Api.injectEndpoints({
         url: "/api/bookmark",
       }),
       providesTags: (bookmarks = []) => provideBookmarkListTags(bookmarks),
-      onQueryStarted: hydrateLegacyEntities([BookmarkSchema]),
     }),
     createBookmark: builder.mutation<Bookmark, CreateBookmarkRequest>({
       query: ({ id, type }) => ({
