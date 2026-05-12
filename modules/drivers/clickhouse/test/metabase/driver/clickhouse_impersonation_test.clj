@@ -57,7 +57,7 @@
 (defn- set-role-throws-test!
   [details-map]
   (testing "throws when assigning a non-existent role"
-    (is (thrown-with-msg? SQLException #"There is no role `asdf` in user directories."
+    (is (thrown-with-msg? SQLException #"There is no role `asdf` in `user directories`."
                           (sql-jdbc.execute/do-with-connection-with-options
                            :clickhouse (sql-jdbc.conn/connection-details->spec :clickhouse details-map) nil
                            (fn [^java.sql.Connection conn]
@@ -69,7 +69,7 @@
     [:model/Database db {:engine :clickhouse :details details}]
     (qp.store/with-metadata-provider (u/the-id db) (thunk db))))
 
-(deftest clickhouse-set-role
+(deftest clickhouse-set-role-test
   (mt/test-driver :clickhouse
     (let [user-details                   {:user "metabase_test_user"}
           ;; See docker-compose.yml for the port mappings
