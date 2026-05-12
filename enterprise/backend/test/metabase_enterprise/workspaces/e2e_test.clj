@@ -60,7 +60,17 @@
 (def workspaces-supported-drivers
   "Drivers covered by the full e2e. JDBC drivers go through `jdbc/execute!`+
    `jdbc/query`; `:bigquery-cloud-sdk` goes through the BQ Java API via
-   `bq.util`. Each helper below dispatches on driver."
+   `bq.util`. Each helper below dispatches on driver.
+
+   The `workspace-full-e2e-test` exercises this whole set. The smaller
+   `native-transform-references-prior-canonical-output-test` deliberately runs on
+   `#{:postgres :mysql}` only -- not because Redshift/Snowflake/etc. aren't
+   workspace-supported, but because that test depends on workspace-user
+   `describe-database` returning the source table, and on Redshift the
+   workspace user's `describe-database` returns `{:tables #{}}` even when
+   USAGE/SELECT grants are intact (root cause pending investigation; see
+   that test's docstring). Don't add drivers to the smaller test without
+   first fixing the underlying sync visibility."
   #{:postgres :sqlserver :clickhouse :mysql :redshift :snowflake :bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
