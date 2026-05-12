@@ -373,13 +373,13 @@
                     {:status-code 415}))
 
     :else
-    ;; `import-metadata-file!` takes a File, so spool the request body to disk first.
+    ;; Spool the request body to a temp file, then hand the file off to the
+    ;; serializing agent. The agent deletes the temp file once it finishes
+    ;; (or fails) processing. Returns immediately so concurrent client calls
+    ;; queue rather than 500-ing on tight contention.
     (let [tmp (spool-to-temp-file! body)]
-      (try
-        (metadata-file-import/import-metadata-file! tmp)
-        {:success true}
-        (finally
-          (.delete tmp))))))
+      (metadata-file-import/enqueue-import! tmp {:delete-after? true})
+      {:queued true})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."
