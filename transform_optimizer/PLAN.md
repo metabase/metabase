@@ -11,10 +11,22 @@ Pipeline (in the end-state):
 
 ```
 slow transform ──┐
-                 ├─► context builder ──► metabot agent ──► streamed proposals ──► UI
-schema/FK/idx ───┤                       (LLM + prelude    (1..N transforms      (accept / verify
-EXPLAIN plan ────┘                        of examples)      forming a DAG)        / discard)
+                 ├─► context builder ──► metabot agent ──► streamed { proposals[]    ──► UI
+schema/FK/idx ───┤                       (LLM + prelude        + optimization_degree }   (accept / verify
+EXPLAIN plan ────┘                        of examples)                                    / discard)
 ```
+
+The streamed response carries two things:
+
+1. **Proposals** — 0..N alternative transforms (single rewrites, or DAGs
+   when split-for-precompute is warranted). Each carries a kind, rationale,
+   expected speedup, and severity. A proposal-free response is a valid
+   answer for an already-optimal transform.
+2. **Optimization degree** — a 0–100 score answering "how optimized is the
+   *current* transform?" Computed deterministically from the proposals
+   (see Phase 2). 100 ⇔ proposals is empty ⇔ "no further optimizations
+   found". This is shown first in the UI so the user immediately knows
+   whether to bother reading proposals.
 
 ## Scope (this branch)
 
@@ -41,6 +53,16 @@ files we'll hook into):
 - `metabase.metabot.agent.core/run-agent-loop` — reused as-is for streaming.
 - `metabase.metabot.api/native-agent-streaming-request` — the streaming
   contract we ride on (AI-SDK v4 SSE).
+- `metabase-enterprise.transforms-inspector.context/build-context` — **already**
+  assembles a per-transform context map (source/target tables, field metadata,
+  join structure, column mappings) for LLM consumption. We *extend* it: add
+  detailed index info, an `EXPLAIN` block, and recent-run durations.
+- `metabase-enterprise.transforms-inspector.query-analysis/analyze-native-query`
+  — **already** extracts referenced tables/columns from a native SQL string
+  via Macaw + `sql-tools`. We call it directly; we do not write our own parser.
+- `metabase.sync.fetch-metadata/index-metadata` and
+  `driver/describe-table-indexes` — pulled at optimizer-request time for
+  index detail beyond the `Field.database_indexed` bool that sync persists.
 
 ### New code
 
@@ -49,14 +71,17 @@ Roughly:
 ```
 src/metabase/transform_optimizer/
   core.clj                  ; public entry: optimize-transform!
-  pg_introspection.clj      ; pg_class / pg_index / pg_constraint helpers
-  sql_extraction.clj        ; pull referenced tables out of a native SQL string
-  explain.clj               ; run EXPLAIN (FORMAT JSON) safely
-  context.clj               ; assemble the LLM context block
+  index_introspection.clj   ; thin layer over driver/describe-table-indexes,
+                            ;  caches per-request; complements appdb FK/PK
+  explain.clj               ; run EXPLAIN (FORMAT JSON, VERBOSE) safely
+  context.clj               ; wraps transforms-inspector.context/build-context,
+                            ;  adds indexes + EXPLAIN + run history
   prelude.clj               ; embed the curated pre→post examples corpus
+  scoring.clj               ; proposals → optimization_degree (deterministic)
   verify.clj                ; pre/post equivalence check (EXCEPT both ways)
   models/
-    proposal.clj            ; persisted proposal (1..N proposed transforms)
+    proposal.clj            ; persisted proposal (1..N proposed transforms,
+                            ;  + optimization_degree of the original)
   api.clj                   ; POST /api/transform/:id/optimize + GET proposals
 
 src/metabase/metabot/tools/
@@ -67,8 +92,18 @@ resources/transform_optimizer/
   examples/                 ; .sql pairs that feed the prelude
 
 frontend/src/metabase/transform_optimizer/
-  …                         ; panel on the transform page that streams proposals
+  …                         ; panel on the transform page that streams
+                            ;  the optimization_degree + proposals
 ```
+
+We do **not** write our own `pg_introspection` or `sql_extraction`:
+- Table / column / FK info comes from the appdb (`Table`, `Field` with
+  `fk_target_field_id`) which sync already populates.
+- "Is this column indexed?" comes from `Field.database_indexed`.
+- "What's the full shape of the index (composite columns, INCLUDE list,
+  partial predicate, GIN/BRIN type)?" is the only piece sync does *not*
+  persist; we call `driver/describe-table-indexes` at request time.
+- Native SQL parsing reuses `transforms-inspector.query-analysis`.
 
 ## Phased delivery
 
@@ -82,16 +117,33 @@ frontend/src/metabase/transform_optimizer/
 
 ### Phase 1 — Read-only backend: context builder
 
-- `pg_introspection`: for a connection + a list of table names, return
-  `{table → {columns [], indexes [], foreign_keys [], approx_row_count}}`.
-  Use `pg_class.reltuples`, `pg_index`/`pg_indexes`, `pg_constraint`,
-  `information_schema.columns`. NOTE: some of this already exists as part of the driver/sync information available in the appdb
-- `sql_extraction`: lightweight parser that yields the set of referenced
-  schemas/tables for a native query. NOTE: This already exists as internal utilities, see how
-  metabase-enterprise.transforms-inspector.context and metabase-enterprise.transforms-inspector.query-analysis do it
-- `explain.clj`: `EXPLAIN (FORMAT JSON, VERBOSE)` against the source DB.
-  No `ANALYZE` by default — running the slow query is exactly what we're
-  trying to avoid. Add an `:analyze?` opt for opt-in.
+The context we feed the LLM is mostly assembled from existing utilities.
+What we add is index detail, EXPLAIN output, and recent-run timing.
+
+- **Reuse `transforms-inspector.context/build-context`** for the bulk of the
+  payload: source tables (with `column_count`, fingerprint-derived field
+  stats), target table, join structure, column-to-column mappings between
+  the transform output and its inputs.
+- **Reuse `transforms-inspector.query-analysis/analyze-native-query`** to
+  obtain the set of `{table-id, column-id}` references for a native SQL
+  body. The optimizer never invents its own SQL parser.
+- **FKs and "is this column indexed?"** come for free from the appdb:
+  `Field.fk_target_field_id` (a Toucan2 hydration step) and the
+  `Field.database_indexed` boolean (populated by `sync.sync-metadata.indexes`).
+- **`index_introspection.clj`** is the only new introspection code we write.
+  It calls `driver/describe-table-indexes` at request time for each
+  referenced table to recover the shape sync drops on the floor:
+  composite column order, `INCLUDE` payload, partial predicate, index type
+  (btree / gin / brin / hash). Cached for the duration of one optimizer
+  request. Falls back gracefully on drivers that don't implement the
+  multimethod (the LLM is told "index detail unavailable" rather than
+  hallucinating).
+- **`explain.clj`**: `EXPLAIN (FORMAT JSON, VERBOSE)` against the source
+  DB. No `ANALYZE` by default — running the slow query is exactly what
+  we're trying to avoid. `:analyze?` opt-in flag for advanced callers.
+- **Approximate row counts**: prefer `Table` fingerprint row count when
+  fresh; fall back to `pg_class.reltuples` if missing. (We only need an
+  order-of-magnitude figure for the LLM.)
 - Unit-test all of the above against the seeded Postgres from Phase 0.
 
 ### Phase 2 — Prompt + Metabot tool
@@ -113,20 +165,77 @@ frontend/src/metabase/transform_optimizer/
   - last N runs: started_at, duration_ms, status
   ```
 - `deftool` `propose-transform-optimizations` accepts `{transform_id}` and
-  returns a structured payload of N proposals, each:
+  streams a structured payload:
   ```
-  {name, depends_on [], body, rationale, expected_speedup, kind}
-  kind ∈ #{:rewrite :rewrite+index :precompute}
+  {optimization_degree    ; integer in [0, 100]
+   summary                ; one-paragraph diagnosis
+   proposals [{name, depends_on [], body, rationale,
+               kind, severity, expected_speedup}]}
+
+  kind     ∈ #{:rewrite :rewrite+index :precompute}
+  severity ∈ #{:high :medium :low}  ; required on every proposal
   ```
   We instruct the LLM to *not* propose indexes the user can't create
-  (target DB write permissions are required; see Phase 5).
+  (target DB write permissions are required; see Phase 5). We also
+  explicitly allow `proposals` to be empty when the transform is already
+  optimal.
+
+#### Optimization degree
+
+The score is **deterministic** given the proposal set — the LLM does
+*not* emit it directly, so the same proposals always yield the same
+score and we don't have to babysit LLM calibration:
+
+```
+optimization_degree =
+  100 - clamp(Σ weight(severity_i), 0, 100)
+
+weight(:high)   = 30
+weight(:medium) = 15
+weight(:low)    =  5
+```
+
+Properties this gives us:
+
+- No proposals ⇒ score is 100 (the LLM saying "I looked and found
+  nothing worth changing"). The UI shows "✓ already optimized".
+- Three high-severity proposals ⇒ 10 (lots of room).
+- Two medium proposals ⇒ 70 ("there's some room, but it's not on fire").
+- Score depends only on what the LLM proposes — not on what it *says*.
+
+The LLM is given an explicit severity rubric in the system prompt:
+
+- **high**: ≥100× speedup expected, or removes an unbounded-time risk
+  (e.g. NOT-IN-on-nullable, full-table LIKE-search).
+- **medium**: 10–100× speedup, or eliminates re-computation by adding
+  a precompute step.
+- **low**: <10× speedup, cosmetic rewrite, or speculative.
+
+#### Streaming order
+
+The agent emits, in order:
+
+1. `summary` (one paragraph, lands quickly so the user has something to
+   read while proposals generate)
+2. `proposals[*]` one at a time (each as its own SSE event/data part)
+3. Final `optimization_degree`, computed from the accumulated proposals
+   when the LLM signals end-of-output. Computed *server-side* in
+   `scoring.clj` — not trusted from the model.
 
 ### Phase 3 — UI
 
 - Button on the transform page: "Suggest optimizations".
-- Streams proposals into a side panel. Each proposal renders as a card with:
-  diff (or full new SQL), rationale, expected speedup, accept / verify /
-  dismiss actions.
+- Side panel opens with two regions:
+  - **Header**: a large optimization-degree dial (e.g. `73 / 100`,
+    colour-coded). While streaming, it shows a "Analyzing…" spinner;
+    when the LLM emits its summary the spinner becomes the summary
+    paragraph; when streaming ends, the dial animates to the computed
+    score. If the score is 100, the panel collapses to
+    "✓ Already optimized — nothing to suggest" and the proposal list
+    is hidden.
+  - **Proposals list**: each proposal renders as it arrives, as a card
+    with: severity badge, kind tag, diff (or full new SQL), rationale,
+    expected speedup, accept / verify / dismiss actions.
 - "Accept" creates N new transforms (linked through `depends_on`) and routes
   the user to the first one. Original transform is untouched.
 
@@ -168,6 +277,13 @@ proposed DAG, executed in order.
 - Multi-database: do we limit proposals to indexes/extensions the user
   *actually has*, or just suggest and let them fail? Currently: suggest with a
   clear "requires …" annotation.
+- Score calibration: do we want to factor *measured* (verifier-run) speedups
+  back into the score after Phase 4, so accepted proposals retroactively
+  re-grade the score? Lean no — the score should reflect the *as-presented*
+  diagnosis, not become a moving target.
+- Should the severity rubric also factor in the EXPLAIN cost ratio between
+  the slow and proposed plans, so the LLM has a less subjective anchor?
+  Worth a small experiment in Phase 2.
 
 ## Phase 0 deliverables (this commit)
 
