@@ -38,7 +38,37 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 | `core` | `core.clj` | Public entry `optimize!`. Stitches everything together. Server-side proposal post-processing (DDL validation tag + scoring) is wired in. |
 | `api` | `api.clj` | HTTP endpoints mounted at `/api/ee/transform-optimizer`. |
 
-### Phase 3 — UI ⛔ **not started**
+### Phase 3 — UI ✅ **walking skeleton done** (mock-aware, BE-wired)
+
+All under `enterprise/frontend/src/metabase-enterprise/transform_optimizer/` unless noted:
+
+| Layer | Path | What it does |
+|---|---|---|
+| OSS plugin slot | `frontend/src/metabase/plugins/oss/transform-optimizer.ts` | New `PLUGIN_TRANSFORM_OPTIMIZER` with `RunPageSection` injection point. Re-exported + reinitialized in `frontend/src/metabase/plugins/index.ts`. |
+| OSS host | `frontend/src/metabase/transforms/pages/TransformRunPage/RunSection/RunSection.tsx` | Renders `PLUGIN_TRANSFORM_OPTIMIZER.RunPageSection` between the run output and the tags row when the EE plugin registers a section. |
+| EE plugin init | `index.ts` | Gated on `transforms-python` premium feature; registers `TransformOptimizerSection` in the OSS slot. |
+| Types | `types/index.ts` | `Proposal`, `DdlStatement`, `OptimizerStreamEvent`, `OptimizerStreamState` matching the wire contract below. |
+| SSE client | `api/stream.ts` | `runOptimizerStream({transformId, analyze, signal, onEvent})`. Hand-rolled SSE parser (`event:` / `data:` framing, multi-chunk frames, comments, malformed JSON tolerated). Uses the legacy `api` client for basename + auth headers. Maps non-OK responses to a single synthetic `error` event. |
+| Mutations | `api/index.ts` | RTK Query mutations on `EnterpriseApi`: `useVerifyProposalMutation`, `useAcceptProposalMutation`. |
+| Stream hook | `hooks/use-optimizer-stream.ts` | Reducer-driven `{state, start, abort, reset, dismissProposal}`. Dedupes proposals by id, auto-cancels on unmount and on re-`start`, falls back to `done` if the server never emits a terminal event. |
+| Dial | `components/OptimizationDegreeDial/` | SVG ring with the 4 colour buckets per the table below. Spinner while streaming; the section hides the dial entirely on error (avoids double-rendering the error next to the alert). |
+| Proposal card | `components/ProposalCard/ProposalCard.tsx` | Severity badge, kind tag, expected-speedup chip, SQL `<Code block>`, accept/verify/dismiss actions with permission tooltips. |
+| Index changes | `components/ProposalCard/IndexChangesSection.tsx` | Per-DDL row: target label, validation badge (accepted / rejected with reason), execution-status badge (pending/running/executed/failed/skipped — only `pending` is reachable while DDL is advisory), statement code block, rationale, error detail. |
+| Section orchestrator | `components/TransformOptimizerSection/TransformOptimizerSection.tsx` | Trigger button (Suggest / Stop / Re-analyze), dial, summary paragraph, error `<Alert>` with Retry, proposal list. Collapses to "✓ Already optimized" when stream ends with score 100 and zero proposals. |
+| Unit test | `api/stream.unit.spec.ts` | 4 cases: ordered event parsing, chunk-split frames, HTTP-error → synthetic error event, malformed/comment frames ignored. All pass. |
+
+Maps to the FE task list:
+
+| Task | Status | Notes |
+|---|---|---|
+| FE-1 trigger button | ✅ | `<TriggerButton>` in `TransformOptimizerSection.tsx`. |
+| FE-2 section under RunSection | ✅ | Injected via the new `PLUGIN_TRANSFORM_OPTIMIZER` slot. |
+| FE-3 optimization-degree dial | ✅ | Colour buckets per "Severity → score mapping" table. Streaming spinner; collapse-to-✓ handled by the section, not the dial. |
+| FE-4 summary text region | ✅ | Renders below the dial as soon as the `summary` event arrives. Suppressed while erroring. |
+| FE-5 proposal card | ✅ | Severity, kind, rationale, expected speedup, SQL block. |
+| FE-6 index-changes subsection | ✅ | DDL state + validation status with rejection reason inline. |
+| FE-7 per-card actions | ✅ | Wired to `useVerifyProposalMutation` / `useAcceptProposalMutation`; dismiss is local. Buttons disabled-with-tooltip when `readOnly`. |
+| FE-8 stream error rendering | ✅ | Inline `<Alert color="error">` + Retry; toasts handled by `useMetadataToasts` for accept/verify failures. Dial is hidden in error state so the error renders once. |
 
 ### Phase 4 — Equivalence verification 🟡 **partial (single-transform only)**
 
@@ -121,15 +151,12 @@ In this order — each step is largely independent of the next:
 
 ## Open FE tasks
 
+FE-1..FE-8 are landed (see Phase 3 above). What's left:
 
-| FE-1 | "Suggest optimizations" trigger button on transform run page (/data-studio/transforms/:id/run) | — | Plain button kicks off SSE request |
-| FE-2 | New section under "RunSection" to output stream results.
-| FE-3 | Optimization-degree dial | mock data | Colour-coded; "Analyzing…" spinner while streaming; collapse-to-✓ when score is 100. Mock against the **Streaming endpoint** contract below. |
-| FE-4 | Summary text region | mock data | Lands first (before the first proposal); replaces the spinner |
-| FE-5 | Proposal card component | mock data | Severity badge, kind tag, diff/SQL block, rationale, expected speedup |
-| FE-6 | "Index changes" subsection on proposal card | mock data | Per-DDL state: pending/running/executed/failed (executed/failed unused this branch — DDL is advisory) + validation status (`accepted` / `rejected` with reason) |
-| FE-7 | Per-card actions (accept, verify, dismiss) | BE-4, BE-5 for non-mock | Buttons disabled with tooltip when user lacks write permission |
-| FE-8 | Toast / inline error rendering for stream errors | — | Maps `error` events to user-facing messages |
+| # | Task | Depends on | Notes |
+|---|---|---|---|
+| FE-9 | Empty-state polish | — | First-visit affordance before the user clicks "Suggest optimizations" (currently the section is just the trigger row). |
+| FE-10 | "Already optimized" collapse animation | — | Cosmetic; the panel currently swaps to the Alert without a transition. |
 ---
 
 ## Streaming endpoint — wire contract
@@ -331,11 +358,13 @@ Response (200):
 
 ## Parallelisation notes
 
-- **FE can start immediately** against the contract above. Mock with
-  artificial 200–500 ms gaps between `summary` → `proposal` → `proposal` →
-  `done` so the streaming UX is exercisable.
-- **BE-1 + BE-2 are blocking for FE-7 verify/accept actions** but not for
-  the panel scaffold, dial, or proposal cards.
+- **FE walking skeleton is live** against the wire contract. The SSE parser
+  in `api/stream.ts` is contract-driven and decoupled from any specific
+  backend implementation — keep the contract stable and the panel will keep
+  working if BE event shapes change downstream.
+- **Verify/accept** are wired to RTK Query against `EnterpriseApi`. Until
+  BE-6 (persistence) lands, the panel re-runs the optimizer on each open;
+  proposals are kept in component state for the lifetime of the page.
 - **BE-4 (verify)** is independent — can be built and tested in
   isolation against the existing query pairs (Phase 0 harness already
   validates exactly the EXCEPT-ALL equivalence form we'll use).
