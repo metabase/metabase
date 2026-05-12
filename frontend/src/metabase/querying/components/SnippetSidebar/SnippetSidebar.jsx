@@ -100,11 +100,22 @@ class SnippetSidebarInner extends React.Component {
       );
     }
 
+    const collectionsById = _.indexBy(snippetCollections, "id");
+    const snippetsById = _.indexBy(snippets, "id");
+    const hydrateSearchItem = (item) => {
+      const model = item.model || "snippet";
+      const full =
+        model === "collection"
+          ? collectionsById[item.id]
+          : snippetsById[item.id];
+      return full ? { ...full, model } : item;
+    };
+
     const displayedItems = showSearch
       ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
-      : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
+      : _.sortBy(search, "model").map(hydrateSearchItem); // relies on "collection" sorting before "snippet";
 
     const onSnippetCollectionBack = () => {
       const parentCollectionId = snippetCollection.parent_id ?? "root";

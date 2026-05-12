@@ -1,23 +1,13 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import { useGetCollectionQuery } from "metabase/api";
 import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Icon } from "metabase/ui";
 
 const ICON_SIZE = 16;
 
-function CollectionRow({ item, setSnippetCollectionId }) {
-  const { data: collection } = useGetCollectionQuery({
-    id: item.id,
-    namespace: "snippets",
-  });
-
-  if (!collection) {
-    return null;
-  }
-
+function CollectionRow({ item: collection, setSnippetCollectionId }) {
   const onSelectCollection = () => {
     if (setSnippetCollectionId) {
       setSnippetCollectionId(collection.id);

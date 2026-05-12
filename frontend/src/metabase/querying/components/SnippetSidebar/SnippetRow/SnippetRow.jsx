@@ -3,21 +3,21 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useGetSnippetQuery, useUpdateSnippetMutation } from "metabase/api";
+import { useUpdateSnippetMutation } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Icon } from "metabase/ui";
 
 import SnippetRowS from "./SnippetRow.module.css";
 
-export function SnippetRow({ item, insertSnippet, setModalSnippet, canWrite }) {
+export function SnippetRow({
+  item: snippet,
+  insertSnippet,
+  setModalSnippet,
+  canWrite,
+}) {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: snippet } = useGetSnippetQuery(item.id);
   const [updateSnippet] = useUpdateSnippetMutation();
-
-  if (!snippet) {
-    return null;
-  }
 
   const { description, content } = snippet;
 
