@@ -14,6 +14,7 @@ import type {
   MetabotAgentDataPartMessage,
   MetabotAgentTextChatMessage,
   MetabotAgentTurnError,
+  MetabotAgentTurnErroredMessage,
   MetabotChatMessage,
   MetabotDataPart,
   MetabotUserChatMessage,
@@ -226,16 +227,7 @@ export const AgentMessage = ({
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
         ))
         .with({ type: "turn_errored" }, (m) => (
-          <AgentTurnAlert
-            variant="error"
-            message={m.display?.message ?? t`Something went wrong`}
-            footer={
-              m.error.type === "metabase_ai_managed_locked" && (
-                <MetabotManagedProviderLimitActions inline />
-              )
-            }
-            debugDetails={debug ? m.error : undefined}
-          />
+          <AgentErroredTurnAlert message={m} debug={debug} />
         ))
         .exhaustive()}
       {!hideActions && (
@@ -347,6 +339,25 @@ const AgentTurnAlert = ({
     )}
     {footer && <Box ml="lg">{footer}</Box>}
   </Flex>
+);
+
+const AgentErroredTurnAlert = ({
+  message,
+  debug,
+}: {
+  message: MetabotAgentTurnErroredMessage;
+  debug: boolean;
+}) => (
+  <AgentTurnAlert
+    variant="error"
+    message={message.display?.message ?? t`Something went wrong`}
+    footer={
+      message.error.type === "metabase_ai_managed_locked" && (
+        <MetabotManagedProviderLimitActions inline />
+      )
+    }
+    debugDetails={debug ? message.error : undefined}
+  />
 );
 
 const AbortedTurnAlert = ({

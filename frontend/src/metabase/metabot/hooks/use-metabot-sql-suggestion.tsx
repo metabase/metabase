@@ -76,7 +76,7 @@ export function useMetabotSQLSuggestion({
         (isFulfilled(action) && !action.payload?.success) ||
         !responseHasCodeEdit(action)
       ) {
-        const error: MetabotAgentTurnDisplayError = nextError || {
+        const error = nextError || {
           type: "message",
           message: METABOT_ERR_MSG.default,
         };

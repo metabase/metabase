@@ -225,10 +225,7 @@ export const submitInput = createAsyncThunk<
   }
 >(
   "metabase/metabot/submitInput",
-  async (
-    payload,
-    { dispatch, getState, signal },
-  ): Promise<MetabotPromptSubmissionResult> => {
+  async (payload, { dispatch, getState, signal }) => {
     const state = getState();
     const { agentId, message: rawPrompt, profile, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
@@ -246,7 +243,7 @@ export const submitInput = createAsyncThunk<
         return { prompt, success: false, shouldRetry: false };
       }
 
-      // if the last prompt failed, rewind the conversation back to before it
+      // if there were from the last prompt, remove the last prompt from the history
       const rewindToMessageId = getMessageIdToRewind(state, agentId);
       if (rewindToMessageId) {
         dispatch(
@@ -369,7 +366,8 @@ export const sendAgentRequest = createAsyncThunk<
     let state = {};
     let response: ProcessedChatResponse | undefined;
     try {
-      let streamError: MetabotAgentTurnError | undefined;
+      // store error object streamed across the wire
+      let streamedError: MetabotAgentTurnError | undefined;
       response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -466,7 +464,7 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(toolCallEnd({ ...part, agentId }));
           },
           onError: function handleError(part) {
-            streamError = isMatching({ message: P.string }, part)
+            streamedError = isMatching({ message: P.string }, part)
               ? part
               : { message: String(part) };
           },
@@ -477,19 +475,19 @@ export const sendAgentRequest = createAsyncThunk<
         throw new DOMException("Stream aborted", "AbortError");
       }
 
-      if (streamError) {
-        const display = match(streamError)
-          .with(
-            { "error-code": "ai_usage_limit_reached", message: P.string },
-            ({ message }) => ({ type: "message" as const, message }),
-          )
-          .otherwise(() => undefined);
+      if (streamedError) {
         return rejectWithValue({
           type: "error",
           conversation_id: request.conversation_id,
           shouldRetry: true,
-          error: streamError,
-          display,
+          error: streamedError,
+          display: isMatching(
+            { "error-code": "ai_usage_limit_reached", message: P.string },
+            streamedError,
+          )
+            ? // special case where we want to show the returned error from the backend
+              { type: "message" as const, message: streamedError.message }
+            : undefined,
         });
       }
 

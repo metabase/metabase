@@ -15,7 +15,7 @@ databaseChangeLog:
                   name: finished
                   type: ${boolean.type}
                   defaultValueBoolean: true
-                  remarks: True for completed and errored assistant turns; false only when the client aborted mid-stream.
+                  remarks: True for completed assistant turns; false only when the client aborted mid-stream.
                   constraints:
                     nullable: false
 
@@ -30,6 +30,6 @@ databaseChangeLog:
               - column:
                   name: error
                   type: ${text.type}
-                  remarks: JSON-encoded error payload from the agent's error stream part (message/type/data). NULL for healthy or aborted turns.
+                  remarks: Error payload from the agent's error stream part.
                   constraints:
                     nullable: true

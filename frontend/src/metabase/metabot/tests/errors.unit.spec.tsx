@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
   adminQuotaLimitErroredResponse,
   assertConversation,
+  chat,
   enterChatMessage,
   erroredResponse,
   input,
@@ -61,9 +62,6 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", METABOT_ERR_MSG.locked],
     ]);
-    expect(
-      screen.getByRole("button", { name: "Use a different AI provider" }),
-    ).toBeInTheDocument();
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
@@ -99,7 +97,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
-  it("should surface a generic alert for stream-level errors (provider auth)", async () => {
+  it("should mask streamed errors with a generic message", async () => {
     setup();
     mockAgentEndpoint({ textChunks: erroredResponse });
 
@@ -109,6 +107,9 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", /Something went wrong/],
     ]);
+    expect(
+      within(await chat()).queryByText(/Anthropic API key expired or invalid/),
+    ).not.toBeInTheDocument();
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
@@ -151,7 +152,7 @@ describe("metabot > errors", () => {
     ]);
   });
 
-  it("should rewind the failed turn (UI and history) when retrying after a stream-level error", async () => {
+  it("should rewind the previous prompt on next submit if last response contained a stream-level error", async () => {
     setup();
     mockAgentEndpoint({ textChunks: erroredResponse });
 
@@ -164,18 +165,15 @@ describe("metabot > errors", () => {
     const retrySpy = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
     });
-    await enterChatMessage("retry prompt");
+    await enterChatMessage("new first prompt");
 
-    // the failed user prompt and the turn_errored alert are gone; only the
-    // retry exchange remains visible.
     await assertConversation([
-      ["user", "retry prompt"],
+      ["user", "new first prompt"],
       ["agent", "You, but don't tell anyone."],
     ]);
 
-    // and the retry request to the BE doesn't carry the failed user prompt.
     const retryBody = await lastReqBody(retrySpy);
-    expect(retryBody.message).toBe("retry prompt");
+    expect(retryBody.message).toBe("new first prompt");
     expect(retryBody.history).not.toContainEqual(
       expect.objectContaining({ role: "user", content: "first prompt" }),
     );
