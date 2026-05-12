@@ -13,10 +13,7 @@ import { PendingDeletes } from "../components/PendingDeletes";
 import { TransformsTable } from "../components/TransformsTable";
 import type { PendingDelete } from "../hooks/usePendingDeletes";
 import { usePendingDeletes } from "../hooks/usePendingDeletes";
-import type {
-  IntrospectorRow,
-  TransformsFlagFilter,
-} from "../types";
+import type { IntrospectorRow, TransformsFlagFilter } from "../types";
 
 /** v1 suppress state — keyed per browser + admin. v2 promotes this to an app-DB table. */
 const SUPPRESS_STORAGE_KEY = "metabase.introspector.suppressed-transforms";
@@ -57,7 +54,6 @@ function flagToConditions(flag: TransformsFlagFilter): string | undefined {
     case "stale":
       return "unreferenced";
     case "all":
-    default:
       return undefined;
   }
 }

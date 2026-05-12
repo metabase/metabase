@@ -68,19 +68,36 @@ function daysInRange(cells: WorkloadCell[]): string[] {
   return arr;
 }
 
-// Compute the (weekday, business-hours) flag for a (day, hour-UTC) pair in the
-// user's display timezone. We project the UTC instant to the target TZ and then
-// read weekday + hour off the resulting wall-clock.
-function isBusinessHour(day: string, hour: number, timezone: string): boolean {
+// `Intl.DateTimeFormat` construction is the hot cost here — build once per
+// timezone and reuse across all 168 cells + 7 day labels.
+type TzFormatters = {
+  bizHour: Intl.DateTimeFormat;
+  dayLabel: Intl.DateTimeFormat;
+  isoDay: Intl.DateTimeFormat;
+};
+
+function makeFormatters(timezone: string): TzFormatters {
+  return {
+    bizHour: new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      hour: "numeric",
+      hour12: false,
+    }),
+    dayLabel: new Intl.DateTimeFormat(undefined, {
+      timeZone: timezone,
+      weekday: "short",
+      month: "numeric",
+      day: "numeric",
+    }),
+    isoDay: new Intl.DateTimeFormat("en-CA", { timeZone: timezone }),
+  };
+}
+
+function isBusinessHour(fmt: TzFormatters, day: string, hour: number): boolean {
   const [y, m, d] = day.split("-").map(Number);
   const instant = new Date(Date.UTC(y, m - 1, d, hour));
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "short",
-    hour: "numeric",
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(instant);
+  const parts = fmt.bizHour.formatToParts(instant);
   const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
   const hourStr = parts.find((p) => p.type === "hour")?.value ?? "0";
   const localHour = parseInt(hourStr, 10);
@@ -93,26 +110,15 @@ function isBusinessHour(day: string, hour: number, timezone: string): boolean {
 }
 
 function formatDayLabel(
+  fmt: TzFormatters,
   day: string,
-  timezone: string,
+  todayIso: string,
 ): { label: string; isToday: boolean } {
   const [y, m, d] = day.split("-").map(Number);
   // Anchor at noon UTC so the date doesn't flip when projecting to most TZs.
   const noon = new Date(Date.UTC(y, m - 1, d, 12));
-  const fmt = new Intl.DateTimeFormat(undefined, {
-    timeZone: timezone,
-    weekday: "short",
-    month: "numeric",
-    day: "numeric",
-  });
-  const label = fmt.format(noon).replace(",", "");
-  const todayStr = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-  }).format(new Date());
-  const dayStr = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-  }).format(noon);
-  return { label, isToday: dayStr === todayStr };
+  const label = fmt.dayLabel.format(noon).replace(",", "");
+  return { label, isToday: fmt.isoDay.format(noon) === todayIso };
 }
 
 export function WorkloadGrid({
@@ -134,6 +140,8 @@ export function WorkloadGrid({
   }, [cells]);
 
   const thresholds = useMemo(() => computeThresholds(scaleMax), [scaleMax]);
+  const fmt = useMemo(() => makeFormatters(timezone), [timezone]);
+  const todayIso = useMemo(() => fmt.isoDay.format(new Date()), [fmt]);
 
   if (isLoading) {
     return (
@@ -174,7 +182,7 @@ export function WorkloadGrid({
         }}
       >
         {days.map((day) => {
-          const { label, isToday } = formatDayLabel(day, timezone);
+          const { label, isToday } = formatDayLabel(fmt, day, todayIso);
           return (
             <Fragment key={day}>
               <Text
@@ -194,7 +202,7 @@ export function WorkloadGrid({
                 const value = cell?.weight ?? 0;
                 const idx = bucketIndex(value, thresholds);
                 const focused = focusedSlot === slot;
-                const isBiz = isBusinessHour(day, h, timezone);
+                const isBiz = isBusinessHour(fmt, day, h);
                 const noun = value === 1 ? t`job` : t`jobs`;
                 return (
                   <Box

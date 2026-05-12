@@ -164,13 +164,17 @@
   (if-not (running?)
     {:cells [] :scale_max 0 :scheduler_status "stopped"}
     (let [keep-type? (type-filter-fn types)
-          buckets    (volatile! (transient {}))]
+          buckets    (volatile! (transient {}))
+          ;; A trigger that fires hourly across a 7-day window produces 168
+          ;; weight-for calls for the same (type, id) — each one a fresh
+          ;; SQL count. Memoize for the duration of this request.
+          weight-for (memoize weights/weight-for)]
       (doseq [trig (all-triggers)
               :let [parsed (parse-trigger trig)
                     {:keys [type id]} parsed]
               :when (and parsed (keep-type? type))
               ^Instant fire (fires-of trig from to)]
-        (let [w   (weights/weight-for type id)
+        (let [w   (weight-for type id)
               bk  (bucket-key fire)
               cur (get @buckets bk {:day    (:day bk)
                                     :hour   (:hour bk)
@@ -279,7 +283,9 @@
   [^Instant from ^Instant to {:keys [types]}]
   (if-not (running?)
     []
-    (let [keep-type? (type-filter-fn types)]
+    (let [keep-type? (type-filter-fn types)
+          weight-for (memoize weights/weight-for)
+          entity-meta (memoize entity-meta-for)]
       (vec
        (for [trig (all-triggers)
              :let [parsed (parse-trigger trig)
@@ -288,7 +294,7 @@
              ^Instant fire (fires-of trig from to)
              :let [cron (when (instance? CronTrigger trig)
                           (.getCronExpression ^CronTrigger trig))
-                   meta (entity-meta-for parsed)]]
+                   meta (entity-meta parsed)]]
          {:type         type
           :entity_id    id
           :entity_name  (:name meta)
@@ -296,5 +302,5 @@
           :creator      (:creator meta)
           :cron         cron
           :fire_at      (str fire)
-          :weight       (weights/weight-for type id)
+          :weight       (weight-for type id)
           :settings_url (settings-url-for parsed)})))))

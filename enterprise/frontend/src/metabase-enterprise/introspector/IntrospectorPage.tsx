@@ -17,6 +17,21 @@ const TABS: { key: IntrospectorEntityType; label: string }[] = [
   { key: "transforms", label: "Transforms" },
 ];
 
+// For transforms, `stale` and `unreferenced` are the same wire value
+// (see StatStrip + queries.clj :summary) so we'd double-count if we summed all three.
+function tabTotal(
+  key: IntrospectorEntityType,
+  counts: { broken: number; stale: number; unreferenced: number } | undefined,
+): number | null {
+  if (!counts) {
+    return null;
+  }
+  if (key === "transforms") {
+    return counts.broken + counts.stale;
+  }
+  return counts.broken + counts.stale + counts.unreferenced;
+}
+
 export function IntrospectorPage() {
   const [activeTab, setActiveTab] = useState<IntrospectorEntityType>("cards");
   const { data: summary, isFetching: summaryLoading } =
@@ -52,14 +67,7 @@ export function IntrospectorPage() {
       >
         <Tabs.List>
           {TABS.map((tab) => {
-            const c = summary?.[tab.key];
-            // For transforms, `stale` and `unreferenced` mirror the same wire
-            // value (see StatStrip + queries.clj :summary). Don't double-count.
-            const total = c
-              ? tab.key === "transforms"
-                ? c.broken + c.stale
-                : c.broken + c.stale + c.unreferenced
-              : null;
+            const total = tabTotal(tab.key, summary?.[tab.key]);
             return (
               <Tabs.Tab key={tab.key} value={tab.key}>
                 {tab.label}

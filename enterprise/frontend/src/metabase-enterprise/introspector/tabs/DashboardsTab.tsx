@@ -73,8 +73,14 @@ export function DashboardsTab() {
 
   const trashOne = async (row: IntrospectorRow) => {
     await updateDashboard({ id: row.id, archived: true });
-    selectedIds.delete(row.id);
-    setSelectedIds(new Set(selectedIds));
+    setSelectedIds((prev) => {
+      if (!prev.has(row.id)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(row.id);
+      return next;
+    });
   };
 
   const trashSelected = async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { IntrospectorRow, TransformTargetTable } from "../types";
 
@@ -118,9 +118,14 @@ export function usePendingDeletes({ commitDelete }: UsePendingDeletesArgs) {
     };
   }, []);
 
+  const pendingIds = useMemo(
+    () => new Set(pending.map((p) => p.id)),
+    [pending],
+  );
+
   return {
     pending,
-    pendingIds: new Set(pending.map((p) => p.id)),
+    pendingIds,
     stage,
     restore,
     restoreAll,
