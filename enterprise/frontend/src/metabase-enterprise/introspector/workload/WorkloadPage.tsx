@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Alert, Box, Chip, Group, Stack, Text, Title } from "metabase/ui";
+import { Alert, Box, Button, Group, Stack, Text, Title } from "metabase/ui";
 
 import { SlotExpansion } from "./SlotExpansion";
 import { WorkloadGrid } from "./WorkloadGrid";
@@ -85,19 +85,27 @@ export function WorkloadPage() {
         timezone={timezone}
       />
 
-      <Group gap="xs" mt="sm" mb="lg">
-        {JOB_TYPES.map((tt) => (
-          <Chip
-            key={tt}
-            checked={params.types.includes(tt)}
-            onChange={() => toggleType(tt)}
-            size="sm"
-            variant="outline"
-            color="brand"
-          >
-            {JOB_TYPE_LABEL[tt]}
-          </Chip>
-        ))}
+      <Group gap="xs" mt="md" mb="lg" align="center">
+        <Text c="text-secondary" size="sm" fw={500} mr="xs">
+          {t`Show`}
+        </Text>
+        <Button.Group>
+          {JOB_TYPES.map((tt) => {
+            const active = params.types.includes(tt);
+            return (
+              <Button
+                key={tt}
+                size="sm"
+                variant={active ? "filled" : "default"}
+                color="brand"
+                onClick={() => toggleType(tt)}
+                aria-pressed={active}
+              >
+                {JOB_TYPE_LABEL[tt]}
+              </Button>
+            );
+          })}
+        </Button.Group>
       </Group>
 
       <SlotExpansion
