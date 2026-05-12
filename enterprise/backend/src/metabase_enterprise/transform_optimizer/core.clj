@@ -73,23 +73,37 @@
         (concat (:sources ctx)
                 (when-let [t (:target ctx)] [t]))))
 
+(defn- coerce-ddl-shape
+  "Older prelude drafts (and some LLM training data) emit
+  `ddl_statements: [{…}]` instead of `ddl_statement: {…}`. Take the first
+  entry from the plural form when the singular field is missing so we
+  don't lose the index proposal entirely. Also drop the plural field
+  afterwards so downstream code sees exactly one shape."
+  [proposal]
+  (let [{:keys [ddl_statement ddl_statements]} proposal
+        coerced (or ddl_statement (first ddl_statements))]
+    (-> proposal
+        (dissoc :ddl_statements)
+        (cond-> coerced (assoc :ddl_statement coerced)))))
+
 (defn- validate-proposal-ddl
   "Each proposal carries at most one `:ddl_statement` (singular). Validate
   the statement against the CREATE-INDEX allowlist and tag with
   `:validation = :accepted | :rejected`. Rejected statements stay on the
   proposal with their rejection reason so the UI can render the failure
   inline instead of silently dropping the proposal."
-  [{:keys [ddl_statement] :as proposal} allowed-tables]
-  (if-not ddl_statement
-    proposal
-    (let [{:keys [ok?] :as r} (ddl.parse/parse (:statement ddl_statement) allowed-tables)]
-      (assoc proposal
-             :ddl_statement
-             (cond-> ddl_statement
-               ok?         (assoc :validation :accepted
-                                  :index_name (:name r))
-               (not ok?)   (assoc :validation :rejected
-                                  :rejection  (select-keys r [:reason :detail])))))))
+  [proposal allowed-tables]
+  (let [{:keys [ddl_statement] :as proposal} (coerce-ddl-shape proposal)]
+    (if-not ddl_statement
+      proposal
+      (let [{:keys [ok?] :as r} (ddl.parse/parse (:statement ddl_statement) allowed-tables)]
+        (assoc proposal
+               :ddl_statement
+               (cond-> ddl_statement
+                 ok?         (assoc :validation :accepted
+                                    :index_name (:name r))
+                 (not ok?)   (assoc :validation :rejected
+                                    :rejection  (select-keys r [:reason :detail]))))))))
 
 (defn finalise-proposals
   "Server-side cleanup applied to a raw proposal set from the LLM:

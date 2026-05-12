@@ -36,9 +36,14 @@
                      "use depends_on to point at the proposal whose target the index belongs to.")})
 
 (def ^:private ddl-statement-schema
+  ;; We deliberately leave `additionalProperties` open and `id` optional —
+  ;; the LLM has muscle memory from earlier prelude drafts and sometimes
+  ;; still emits `id`. Anthropic's structured-output rejects the entire
+  ;; tool call when even one field violates a strict schema, so being
+  ;; permissive here keeps the round-trip alive.
   {:type "object"
-   :additionalProperties false
-   :properties {:target    ddl-target-schema
+   :properties {:id        {:type "string"}
+                :target    ddl-target-schema
                 :statement {:type "string"
                             :description "Single CREATE INDEX [CONCURRENTLY] [IF NOT EXISTS] …"}
                 :rationale {:type "string"}}
@@ -47,10 +52,12 @@
 (def ^:private proposal-schema
   ;; One proposal = one change. Either a rewrite/precompute (carries `body`,
   ;; no `ddl_statement`) or a single index (carries `ddl_statement`, no
-  ;; `body`). We declare both fields as optional + nullable here; the BE
-  ;; checks the kind/field invariant after parsing.
+  ;; `body`). We declare both fields as optional and accept either
+  ;; `ddl_statement` (new shape) or `ddl_statements` (older shape) — the BE
+  ;; normalises on parse. `additionalProperties` is intentionally open;
+  ;; with it strict, a single muscle-memory extra field aborts the whole
+  ;; structured-output call and we lose every proposal.
   {:type "object"
-   :additionalProperties false
    :properties {:id               {:type "string"}
                 :name             {:type "string"}
                 :kind             {:type "string"
@@ -61,8 +68,11 @@
                 :expected_speedup {:type "string"}
                 :body             {:type ["string" "null"]
                                    :description "SQL body for kind = rewrite | precompute; null for kind = index"}
-                :ddl_statement    {:oneOf [ddl-statement-schema {:type "null"}]
-                                   :description "Single CREATE INDEX for kind = index; null for kind = rewrite | precompute"}
+                :ddl_statement    (merge ddl-statement-schema
+                                         {:description "Single CREATE INDEX for kind = index; omit for kind = rewrite | precompute"})
+                :ddl_statements   {:type "array"
+                                   :items ddl-statement-schema
+                                   :description "Legacy plural form (older prelude). The BE coerces a single-element array to ddl_statement."}
                 :depends_on       {:type "array" :items {:type "string"}}}
    :required ["id" "name" "kind" "severity" "rationale" "expected_speedup"
               "depends_on"]})
@@ -70,7 +80,6 @@
 (def output-schema
   "JSON Schema for the LLM's structured response — `{summary, proposals[]}`."
   {:type "object"
-   :additionalProperties false
    :properties {:summary   {:type "string"}
                 :proposals {:type "array" :items proposal-schema}}
    :required ["summary" "proposals"]})
@@ -130,9 +139,20 @@
                     output-schema
                     temperature
                     max-tokens
-                    track)]
-        (log/debugf "transform-optimizer: LLM returned %d proposals"
-                    (count (:proposals result)))
+                    track)
+            proposals (:proposals result)
+            kind-counts (frequencies (map :kind proposals))]
+        (log/infof "transform-optimizer: LLM returned %d proposal(s) — by kind: %s"
+                   (count proposals)
+                   (pr-str (or (not-empty kind-counts) "none")))
+        (when (and (seq proposals)
+                   (every? #(and (nil? (:ddl_statement %))
+                                 (nil? (not-empty (:ddl_statements %)))
+                                 (nil? (:body %)))
+                           proposals))
+          (log/warnf (str "transform-optimizer: every proposal is empty (no body, no DDL). "
+                          "This usually means the LLM hit a structured-output schema rejection; "
+                          "check the prelude for shape mismatches.")))
         result)
       (catch Exception e
         (log/errorf e "transform-optimizer: LLM call failed")
