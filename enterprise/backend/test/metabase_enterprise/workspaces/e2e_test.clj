@@ -449,7 +449,7 @@
                                              :from_db         (or input-ns-db "")
                                              :to_db           to-db-stored
                                              :database_id     (:id ws-db)}]
-                                           (for [r (t2/select :model/TableRemapping)]
+                                           (for [r (t2/select :model/TableRemapping :database_id (:id ws-db))]
                                              (select-keys r [:to_schema :from_schema :from_table_name :from_db :to_db :database_id]))))))
                           ;; --- Assertion: describe-database stays in main ------
                           ;; describe-database reads JDBC's TABLE_SCHEM into `:schema`. For MySQL
@@ -484,7 +484,9 @@
                                                                :db_id  (:id ws-db)
                                                                :schema tbl-schema
                                                                :name   output-table-name)
-                                      {:keys [to_table_name]} (t2/select-one :model/TableRemapping)]
+                                      {:keys [to_table_name]} (t2/select-one :model/TableRemapping
+                                                                             :database_id     (:id ws-db)
+                                                                             :from_table_name output-table-name)]
                                   (is (some? out-table)
                                       "canonical-named output table exists to represent the table that will exist as a result of the new transform running in production")
                               ;; Diagnostic: the Card MBQL query downstream needs Fields on
