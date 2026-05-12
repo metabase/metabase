@@ -599,7 +599,7 @@ export const getSelectedTab = createSelector(
   },
 );
 
-export function getInitialSelectedTabId(
+function getInitialSelectedTabId(
   dashboard: Dashboard | StoreDashboard,
   siteUrl: string,
   isWebApp: boolean,
@@ -625,7 +625,7 @@ export function getInitialSelectedTabId(
   return dashboard.tabs?.[0]?.id || null;
 }
 
-export function getSdkInitialDashboardTabId(
+function getSdkInitialDashboardTabId(
   dashboard: Dashboard | StoreDashboard,
   sdkInitialDashboardTabId: DashboardTabId | null | undefined,
 ) {
