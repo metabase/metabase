@@ -66,13 +66,18 @@ export function TargetIndexesSection({ transform, readOnly }: Props) {
     [dropIndex, transform.id, refetch, sendSuccessToast, sendErrorToast],
   );
 
+  // Group indices by [schema, table]. Target table first (so the
+  // optimizer-managed indices land at the top), then source tables in
+  // resolution order — the BE returns them in that order already.
+  const groups = groupByTable(data?.indexes ?? []);
+
   return (
     <Stack gap="sm">
       <Group justify="space-between" align="center">
         <Box>
-          <Text fw="bold">{t`Indexes on the target table`}</Text>
+          <Text fw="bold">{t`Indexes on referenced tables`}</Text>
           <Text c="text-secondary" size="sm">
-            {t`Includes both indexes the optimizer manages and any others on this table.`}
+            {t`Includes indexes on this transform's target table and the source tables it reads from.`}
           </Text>
         </Box>
         <Button
@@ -101,25 +106,67 @@ export function TargetIndexesSection({ transform, readOnly }: Props) {
 
       {data && data.indexes.length === 0 && !isLoading && (
         <Text c="text-secondary" size="sm">
-          {t`No indexes found. The target table hasn't been materialized yet, or there are no indexes on it.`}
+          {t`No indexes found on any referenced table yet.`}
         </Text>
       )}
 
-      {data && data.indexes.length > 0 && (
-        <Stack gap="xs">
-          {data.indexes.map((idx) => (
-            <IndexRow
-              key={idx.name}
-              index={idx}
-              onDrop={handleDrop}
-              busy={dropResult.isLoading}
-              readOnly={readOnly}
-            />
+      {groups.length > 0 && (
+        <Stack gap="md">
+          {groups.map(({ schema, table, isTarget, rows }) => (
+            <Stack key={`${schema}.${table}`} gap="xs">
+              <Group gap="xs">
+                <Text fw="bold" size="sm" ff="monospace">
+                  {schema}.{table}
+                </Text>
+                <Badge
+                  color={isTarget ? "brand" : "gray"}
+                  variant="light"
+                  size="sm"
+                >
+                  {isTarget ? t`Target` : t`Source`}
+                </Badge>
+              </Group>
+              {rows.map((idx) => (
+                <IndexRow
+                  key={idx.name}
+                  index={idx}
+                  onDrop={handleDrop}
+                  busy={dropResult.isLoading}
+                  readOnly={readOnly}
+                />
+              ))}
+            </Stack>
           ))}
         </Stack>
       )}
     </Stack>
   );
+}
+
+function groupByTable(indexes: TargetIndex[]) {
+  const groups: Array<{
+    schema: string;
+    table: string;
+    isTarget: boolean;
+    rows: TargetIndex[];
+  }> = [];
+  const byKey = new Map<string, (typeof groups)[number]>();
+  for (const idx of indexes) {
+    const key = `${idx.schema}.${idx.table}`;
+    let group = byKey.get(key);
+    if (!group) {
+      group = {
+        schema: idx.schema,
+        table: idx.table,
+        isTarget: idx.is_target_table,
+        rows: [],
+      };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.rows.push(idx);
+  }
+  return groups;
 }
 
 function IndexRow({
@@ -210,8 +257,8 @@ function formatDropFailure(
   }
   if (result.status === "skipped") {
     switch (result.reason) {
-      case "index-not-on-target":
-        return t`Index ${name} isn't on this transform's target table.`;
+      case "index-not-on-referenced-table":
+        return t`Index ${name} isn't on this transform's target or source tables.`;
       case "unsafe-name":
         return t`Refused to drop ${name}: name contains unsafe characters.`;
       case "no-database":

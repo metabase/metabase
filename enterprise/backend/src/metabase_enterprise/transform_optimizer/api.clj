@@ -190,22 +190,23 @@
 ;; Index management on a transform's target table
 
 (api.macros/defendpoint :get "/:id/indexes"
-  "List every index on the transform's target table. Each entry carries
-  the index name, definition (raw `pg_get_indexdef`), key + INCLUDE
-  columns, access method, partial predicate, and a
-  `managed_by_optimizer` flag indicating whether the optimizer registered
-  the index for post-run replay."
+  "List every index on the transform's target table *and* every source
+  table it reads from. Each row carries `:schema`/`:table` so the FE can
+  group, plus `:is_target_table` for visual separation and
+  `:managed_by_optimizer` indicating whether the optimizer registered
+  the index for post-run replay (target-table-only)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform id)]
     {:transform {:id (:id transform) :target (:target transform)}
      :indexes   (opt.indexes/list-indexes transform)}))
 
 (api.macros/defendpoint :post "/:id/index/drop"
-  "Drop the named index from the transform's target table. Validates
-  that the index actually exists on that table — we don't drop random
-  indices on the source DB. If the optimizer was managing this index
-  (i.e. it appears in `target.post_run_ddl`), the persisted entry is
-  also removed so the next transform run doesn't recreate it."
+  "Drop the named index from any of the transform's referenced tables
+  (target or source). Validates that the index actually exists on one of
+  those tables — we won't drop random indices elsewhere on the DB. When
+  the dropped index was on the target *and* the optimizer was replaying
+  it via `target.post_run_ddl`, the persisted entry is also removed so
+  the next transform run doesn't recreate it."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map [:index_name ms/NonBlankString]]]
@@ -215,10 +216,10 @@
       :dropped result
       :failed  {:status 502 :body (assoc result :error "drop_failed")}
       :skipped {:status (case (:reason result)
-                          :index-not-on-target 404
-                          :unsafe-name         400
-                          :no-database         404
-                          :not-postgres        422
+                          :index-not-on-referenced-table 404
+                          :unsafe-name                   400
+                          :no-database                   404
+                          :not-postgres                  422
                           400)
                 :body (assoc result :error "drop_skipped")})))
 

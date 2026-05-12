@@ -78,8 +78,12 @@ export type OptimizerStreamEvent =
 /**
  * One row from `GET /api/ee/transform-optimizer/:id/indexes`. Matches the
  * Postgres catalog shape returned by `index-introspection/fetch-indexes`,
- * plus the `managed_by_optimizer` flag the BE adds by cross-referencing
- * `transform.target.post_run_ddl`.
+ * plus:
+ *   - `is_target_table` — true when the index lives on the transform's
+ *     materialised target, false when it's on a source (input) table
+ *   - `managed_by_optimizer` — true when the index is replayed by the
+ *     optimizer's `target.post_run_ddl` machinery (only ever true for
+ *     target-table indices)
  */
 export type TargetIndex = {
   schema: string;
@@ -95,6 +99,7 @@ export type TargetIndex = {
   key_columns: string[];
   include_columns: string[];
   managed_by_optimizer: boolean;
+  is_target_table: boolean;
 };
 
 export type DropIndexResult =
@@ -103,7 +108,7 @@ export type DropIndexResult =
   | {
       status: "skipped";
       reason:
-        | "index-not-on-target"
+        | "index-not-on-referenced-table"
         | "unsafe-name"
         | "no-database"
         | "not-postgres";
