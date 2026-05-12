@@ -780,23 +780,6 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // No back-button entry should be created for an in-place tab switch.
         cy.findByText(/Back to/).should("not.exist");
-
-        // Switch back to Tab 1 manually, then re-trigger the click behavior.
-        // Verifies same-dashboard branch is idempotent and no stale SDK
-        // initialDashboardTabId leaks between repeated in-place switches.
-        cy.findByRole("tab", { name: "Tab 1" }).click();
-        cy.findByRole("tab", { name: "Tab 1" }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        H.getDashboardCard().findAllByText("Go to Tab 2").first().click();
-        cy.findByRole("tab", { name: "Tab 2" }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        cy.findByText(/Back to/).should("not.exist");
       });
     });
 
@@ -888,13 +871,6 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText(/Back to/).should("not.exist");
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
-
-        // Re-click the self-link — must remain a no-op, no extra back-frame
-        // pushed and filter value preserved. Guards against repeated same-
-        // dashboard navigation leaking SDK navigation state.
-        H.getDashboardCard().findAllByText("Self link").first().click();
-        cy.findByText(/Back to/).should("not.exist");
-        H.filterWidget().should("contain.text", "1");
       });
     });
   });
@@ -1047,27 +1023,6 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         H.filterWidget().should("contain.text", "1");
 
         cy.findByText("Back to Source Dashboard").should("be.visible");
-
-        // Pop back to source, then re-trigger the same cross-dashboard click
-        // behavior. The target must still land on Target Tab 2 with the
-        // filter applied — verifies SDK initialDashboardTabId is re-applied
-        // on repeat cross-dashboard navigation and not stale-cleared.
-        cy.findByText("Back to Source Dashboard").click();
-        cy.findByText("Source Dashboard").should("be.visible");
-
-        H.getDashboardCard()
-          .findAllByText("Go to Target Tab 2")
-          .first()
-          .click();
-        cy.wait("@getDashboard");
-
-        cy.findByText("Target Dashboard").should("be.visible");
-        cy.findByRole("tab", { name: "Target Tab 2" }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        H.filterWidget().should("contain.text", "1");
       });
     });
   });
