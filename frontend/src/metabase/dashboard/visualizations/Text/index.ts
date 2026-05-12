@@ -35,7 +35,6 @@ const TextViz: VisualizationDefinition = {
       dashboard: false,
     },
     text: {
-      value: "",
       getDefault: () => "",
     },
     "text.align_vertical": {
