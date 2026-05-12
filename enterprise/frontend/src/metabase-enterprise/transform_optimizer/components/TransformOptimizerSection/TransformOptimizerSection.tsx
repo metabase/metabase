@@ -50,8 +50,12 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
 
   const handleAccept = useCallback(
     async (proposal: Proposal) => {
+      const proposalIds = topoOrderForAccept(proposal, state.proposals);
       setBusyProposalId(proposal.id);
-      const { error } = await accept({ transformId: transform.id, proposal });
+      const { error } = await accept({
+        transformId: transform.id,
+        proposalIds,
+      });
       setBusyProposalId(null);
       if (error) {
         sendErrorToast(t`Failed to accept proposal`);
@@ -59,7 +63,7 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
       }
       sendSuccessToast(t`New transforms created`);
     },
-    [accept, transform.id, sendErrorToast, sendSuccessToast],
+    [accept, transform.id, state.proposals, sendErrorToast, sendSuccessToast],
   );
 
   const isStreaming = state.status === "streaming";
@@ -201,6 +205,42 @@ function TriggerButton({
       {status === "idle" ? t`Suggest optimizations` : t`Re-analyze`}
     </Button>
   );
+}
+
+/**
+ * Walk `depends_on` from the chosen proposal back through every ancestor and
+ * return ids in roots-first order (matching the accept-endpoint contract).
+ *
+ * The server rejects the whole request if any referenced id is missing
+ * from the cache, so a missing ancestor in the client state is dropped
+ * here — the user will see a 404 with the offending ids if that ever
+ * happens.
+ */
+function topoOrderForAccept(
+  target: Proposal,
+  available: Proposal[],
+): string[] {
+  const byId = new Map(available.map((p) => [p.id, p]));
+  const visited = new Set<string>();
+  const order: string[] = [];
+
+  const visit = (id: string) => {
+    if (visited.has(id)) {
+      return;
+    }
+    visited.add(id);
+    const node = byId.get(id);
+    if (!node) {
+      return;
+    }
+    for (const depId of node.depends_on) {
+      visit(depId);
+    }
+    order.push(id);
+  };
+
+  visit(target.id);
+  return order;
 }
 
 function reportVerify(

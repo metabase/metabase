@@ -19,14 +19,20 @@ export type AcceptResponse = {
   created_transforms: Array<{
     id: number;
     name: string;
+    proposal_id: string;
     kind: string;
-    depends_on: number[];
+    depends_on: string[];
   }>;
   advisory_ddl: Array<{
+    id: string;
+    proposal_id: string;
     statement: string;
     target: unknown;
     rationale: string;
+    validation: "accepted" | "rejected";
+    index_name?: string | null;
   }>;
+  skipped_proposals: string[];
 };
 
 const optimizerApi = EnterpriseApi.injectEndpoints({
@@ -45,15 +51,20 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
       AcceptResponse,
       {
         transformId: number | string;
-        proposal: Proposal;
+        /**
+         * Proposal ids in dependency order (roots first). For a single
+         * `rewrite` / `index` proposal that's one id; for a `precompute`
+         * DAG, every ancestor of the chosen proposal must precede it.
+         */
+        proposalIds: string[];
         collectionId?: number;
       }
     >({
-      query: ({ transformId, proposal, collectionId }) => ({
+      query: ({ transformId, proposalIds, collectionId }) => ({
         method: "POST",
         url: `/api/ee/transform-optimizer/${transformId}/proposal/accept`,
         body: {
-          proposal_id: proposal.id,
+          proposal_ids: proposalIds,
           ...(collectionId != null ? { collection_id: collectionId } : {}),
         },
       }),
