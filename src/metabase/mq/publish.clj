@@ -1,7 +1,7 @@
 (ns metabase.mq.publish
   "Publishing pipeline: buffering, transaction support, and the `with-buffer` macro."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]

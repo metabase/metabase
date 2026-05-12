@@ -3,7 +3,7 @@
   `metabase.mq.transport`. Owns the listener-instrumentation wrapper that adds
   Prometheus counters to topic handlers."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.transport :as transport]))
 

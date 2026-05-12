@@ -3,7 +3,7 @@
   Messages are stored in the `topic_message_batch` table. Each subscriber on each node polls
   independently, tracking its read offset in memory."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
@@ -61,9 +61,9 @@
 (defn- update-lag-gauges! []
   (doseq [[topic-name offset] @offsets]
     (let [max-id (current-max-id topic-name)]
-      (analytics/set! :metabase-mq/appdb-topic-subscriber-lag
-                      {:channel (name topic-name)}
-                      (- max-id offset)))))
+      (analytics/set-gauge! :metabase-mq/appdb-topic-subscriber-lag
+                            {:channel (name topic-name)}
+                            (- max-id offset)))))
 
 (defn- poll-iteration!
   "One iteration of the polling loop: run periodic tasks, then poll all topics.

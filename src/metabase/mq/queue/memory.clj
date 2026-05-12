@@ -3,7 +3,7 @@
   The layer holds the batch registry for retry tracking — each `MemoryQueueBackend`
   carries a reference to its layer so tests can construct isolated instances."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.memory :as memory]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.settings :as mq.settings]

@@ -1,7 +1,7 @@
 (ns metabase.mq.impl
   "Backend coordination: message delivery, analytics helpers, and lifecycle management."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]

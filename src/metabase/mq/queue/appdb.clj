@@ -1,7 +1,7 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.mq.impl :as mq.impl]
@@ -136,7 +136,7 @@
           (t2/query {:select   [:queue_name :status [[:count :*] :cnt]]
                      :from     [:queue_message_batch]
                      :group-by [:queue_name :status]})]
-    (analytics/set! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
+    (analytics/set-gauge! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
 
 (defn- update-heartbeats! []
   (doseq [channel (filter #(= "queue" (namespace %)) (mq.impl/busy-channels))]

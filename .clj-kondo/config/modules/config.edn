@@ -1359,6 +1359,7 @@
    :api  #{metabase.mq.core
            metabase.mq.init}
    :uses #{analytics
+           analytics-interface
            app-db
            models
            settings

@@ -2,7 +2,7 @@
   "Publish buffering: batches rapid-fire publishes into time-windowed groups
    and flushes them on a background scheduled thread."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
   (:import
@@ -47,9 +47,9 @@
   "Drains publish buffer entries past their deadline."
   []
   (doseq [[channel entry] @*publish-buffer*]
-    (analytics/set! :metabase-mq/publish-buffer-depth
-                    {:channel (name channel)}
-                    (count (:messages entry))))
+    (analytics/set-gauge! :metabase-mq/publish-buffer-depth
+                          {:channel (name channel)}
+                          (count (:messages entry))))
   (doseq [channel (keys @*publish-buffer*)]
     (let [drained (atom nil)]
       (swap! *publish-buffer*
