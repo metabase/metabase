@@ -1,35 +1,36 @@
 -- @meta
--- name: Customers who never triggered an identified web event
+-- name: Customers who have never placed an order
 -- kind: rewrite
--- expected_speedup: ≥10×
+-- expected_speedup: ≥2× (modest at hackathon scale; larger on bigger data)
 -- requires: -
 --
 -- Why the slow version is slow
 -- ============================
--- `NOT IN (subquery)` on a **nullable** column is the classic foot-gun.
--- `events.customer_id` is nullable (anonymous traffic). The planner cannot
--- collapse `NOT IN` into an anti-join because the SQL standard says
--- "x NOT IN (set)" returns UNKNOWN when the set contains a NULL — Postgres
--- must check for that case explicitly. The result is a Hashed-SubPlan with
--- an extra null-aware probe per outer row, costing significantly more than
--- a plain anti-join.
+-- `NOT IN (subquery)` materialises the full subquery into a hash before
+-- probing. On `orders.customer_id` (NOT NULL) the planner *can* now
+-- transform `NOT IN` to an anti-join, but it does so less aggressively
+-- than `NOT EXISTS`, especially when the subquery is large relative to the
+-- outer table — the materialise-then-probe form still does a full scan +
+-- hash build.
 --
--- The fast rewrite uses `NOT EXISTS`. Its NULL semantics are different
--- (NULL on the inner side simply fails the WHERE) so the planner can use
--- a proper anti-join.
+-- `NOT EXISTS` is the planner's preferred form for anti-semi-join: it can
+-- short-circuit per outer row once any match is found.
 --
--- We use `events` (not `orders`) here because we declared `orders.customer_id
--- NOT NULL` — without nullable values, both forms produce the same plan and
--- the pathology disappears.
+-- ⚠ Equivalence note: this rewrite is only safe because
+-- `orders.customer_id` is `NOT NULL`. On a nullable column the two forms
+-- behave differently — `NOT IN` returns UNKNOWN (excluded) for non-matching
+-- outer rows when the subquery contains any NULL, while `NOT EXISTS` does
+-- not. The optimizer should never propose this rewrite without checking
+-- the NOT NULL constraint on the referenced column.
 
 -- @slow
 SELECT c.id, c.email, c.name, c.signed_up_at
 FROM shop.customers c
-WHERE c.id NOT IN (SELECT e.customer_id FROM shop.events e);
+WHERE c.id NOT IN (SELECT o.customer_id FROM shop.orders o);
 
 -- @fast
 SELECT c.id, c.email, c.name, c.signed_up_at
 FROM shop.customers c
 WHERE NOT EXISTS (
-  SELECT 1 FROM shop.events e WHERE e.customer_id = c.id
+  SELECT 1 FROM shop.orders o WHERE o.customer_id = c.id
 );
