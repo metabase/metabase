@@ -316,7 +316,7 @@
   *last* agent-role chat message produced from it. The annotation describes the
   row's outcome, so it belongs on a single message — the FE expands it into a
   trailing `turn_aborted` / `turn_errored` chat message."
-  [chat-messages {:keys [finished error]}]
+  [chat-messages {:keys [finished error] :or {finished true}}]
   (let [decoded-error  (some-> error decode-error)
         last-agent-idx (->> chat-messages
                             (keep-indexed (fn [i m] (when (= "agent" (:role m)) i)))
@@ -325,7 +325,7 @@
       chat-messages
       (update chat-messages last-agent-idx
               (fn [m]
-                (cond-> (assoc m :finished (not= false finished))
+                (cond-> (assoc m :finished finished)
                   (some? decoded-error) (assoc :error decoded-error)))))))
 
 (defn- empty-agent-placeholder

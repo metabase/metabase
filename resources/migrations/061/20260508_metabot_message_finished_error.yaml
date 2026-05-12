@@ -1,8 +1,6 @@
 ## Track per-assistant-turn outcome on metabot_message: was the turn aborted (finished=false) or did it error (error text set).
 
 databaseChangeLog:
-  - logicalFilePath: migrations/061_update_migrations.yaml
-
   - changeSet:
       id: v61.2026-05-08T10:00:00
       author: sloansparger
