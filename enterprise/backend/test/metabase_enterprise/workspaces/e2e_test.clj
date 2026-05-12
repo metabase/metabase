@@ -531,7 +531,7 @@
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                       (testing "querying the isolation table directly works like querying any other table"
                                         (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                              ;; INTENTIONALLY DISABLED (GHY-3576): bare-table-name SQL.
+                              ;; INTENTIONALLY DISABLED (GHY-3580): bare-table-name SQL.
                               ;;
                               ;; The two `mt/with-temp` blocks immediately above and below this one cover
                               ;; the qualified-name flows:
@@ -546,7 +546,7 @@
                               ;; https://gist.github.com/escherize/721764240c300e995c54add2d71ff356 for the
                               ;; repro and proposed approach.
                               ;;
-                              ;; Re-enable when GHY-3576 lands: delete the `#_`, run the test.
+                              ;; Re-enable when GHY-3580 lands: delete the `#_`, run the test.
                                   #_(mt/with-temp [:model/Card card
                                                    {:name          (str "ws-e2e-card-native-" run-id)
                                                     :database_id   (:id ws-db)
