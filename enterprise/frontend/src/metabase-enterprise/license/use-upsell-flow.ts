@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
 import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { getIsHosted } from "metabase/setup/selectors";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";

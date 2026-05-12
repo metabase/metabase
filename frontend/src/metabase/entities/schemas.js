@@ -9,7 +9,6 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -23,6 +22,8 @@ import {
   parseSchemaId,
 } from "metabase-lib/v1/metadata/utils/schema";
 
+import { createEntity, entityCompatibleQuery } from "./utils";
+
 // This is a weird entity because we don't have actual schema objects
 
 /**
@@ -32,12 +33,12 @@ export const Schemas = createEntity({
   name: "schemas",
   schema: SchemaSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, getAll = false, ...args }, dispatch) => {

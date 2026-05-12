@@ -45,7 +45,7 @@
 }
 
 /* Global id for an element used for positioning tooltips.
- * Check usage in metabase/lib/dom.ts when removing this component. */
+ * Check usage in metabase/utils/dom.ts when removing this component. */
 :global(#popover-event-target) {
   position: fixed;
   width: 6px;

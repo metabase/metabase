@@ -6,10 +6,9 @@ import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,
@@ -148,6 +147,5 @@ export const CollectionPermissionsPage = _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
-  Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPageView);

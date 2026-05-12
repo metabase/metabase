@@ -99,3 +99,18 @@
                   (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
     (->> (map fmt bits)
          (str/join "\n"))))
+
+;;; MBQL utils (needed until we erradicate legacy from Metabot module)
+
+(defn extract-sql-content
+  "Extract SQL content from a dataset_query map.
+  Handles both legacy format and lib/query format."
+  [query]
+  (or
+   ;; Following should be ideally handled by lib functions. However we have test in place that checks this piece
+   ;; is able to handle not-normalized mblq5 with e.g. string value for type. Lib functions throw on such input.
+   ;;
+   ;; Try lib/query format (with stages)
+   (get-in query [:stages 0 :native])
+   ;; Try legacy format
+   (get-in query [:native :query])))

@@ -8,11 +8,11 @@ import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isTableDisplay } from "metabase/dashboard/utils";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
+} from "metabase/parameters/utils/click-behavior";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ClickBehavior,

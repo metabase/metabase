@@ -1,6 +1,7 @@
 import { setupFieldValuesEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   PEOPLE,
@@ -8,7 +9,6 @@ import {
   PRODUCT_CATEGORY_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { GlobalFingerprint } from "./GlobalFingerprint";
 

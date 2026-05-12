@@ -1,5 +1,6 @@
 (ns metabase.metabot.agent.user-context-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -248,6 +249,11 @@
   (testing "returns empty string when no recent views"
     (let [context {}
           result (user-context/format-recent-views context)]
+      (is (= "" result))))
+
+  (testing "returns empty string when recent views is an empty vector (e.g. after verified-only filter)"
+    (let [context {:user_recently_viewed []}
+          result (user-context/format-recent-views context)]
       (is (= "" result)))))
 
 (deftest format-current-user-info-test
@@ -377,9 +383,9 @@
 
   (testing "table viewing context omits measures/segments sections when none exist"
     (with-redefs [entity-details/get-table-details
-                  (fn [{:keys [table-id]}]
+                  (fn [{:keys [entity-id]}]
                     {:structured-output
-                     {:id table-id
+                     {:id entity-id
                       :type :table
                       :name "plain_table"
                       :database_id 1
@@ -435,3 +441,21 @@
                     {:user_is_viewing [{:type "table" :id (mt/id :orders)}]})]
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
+
+(deftest ^:parallel format-user-context-with-legacy-query-test
+  (let [lq {:database 1111
+            :type :native
+            :native {:query "select 1"}}
+        {:keys [result error]}
+        (try {:result (user-context/format-viewing-context
+                       {:user_is_viewing [{:type "adhoc" :query lq}]})}
+             (catch Throwable t
+               {:error t}))]
+    (is (nil? error)
+        "Formatting of context with legacy query should yield no error.")
+    (is (string? result)
+        "Formatting result should be a string.")
+    (is (str/includes? result "select 1")
+        "Formatting result should contain the native query string")
+    (is (str/includes? result "1111")
+        "Formatting result should contain database id")))

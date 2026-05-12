@@ -1,17 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { CollectionType, User } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { CollectionType } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { MetricToolbar } from "./MetricToolbar";
 
@@ -49,6 +51,8 @@ function setup({
   showDataStudioLink = false,
   collectionType = null,
 }: SetupOpts = {}) {
+  setupEnterpriseOnlyPlugin("library");
+
   const Lib = jest.requireMock("metabase-lib");
   Lib.queryDisplayInfo.mockReturnValue({ isEditable });
 
@@ -62,11 +66,13 @@ function setup({
     is_superuser: isAdmin,
   });
 
-  const settingValues = createMockSettings();
+  const settingValues = createMockSettings({
+    "token-features": createMockTokenFeatures({ library: true }),
+  });
 
   const state = createMockState({
     settings: mockSettings(settingValues),
-    currentUser: user as User,
+    currentUser: user,
   });
 
   setupBookmarksEndpoints([]);
@@ -148,6 +154,7 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: true,
         collectionType: "library-metrics",
+        isAdmin: true,
       });
       await openMenu();
 
@@ -157,7 +164,7 @@ describe("MetricToolbar", () => {
     });
 
     it("should hide 'Open in Data Studio' when not in library collection", async () => {
-      setup({ showDataStudioLink: true, collectionType: null });
+      setup({ showDataStudioLink: true, collectionType: null, isAdmin: true });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
@@ -169,7 +176,17 @@ describe("MetricToolbar", () => {
       setup({
         showDataStudioLink: false,
         collectionType: "library-metrics",
+        isAdmin: true,
       });
+      await openMenu();
+
+      expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();
+      expect(getDividers()).toHaveLength(2);
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should hide 'Open in Data Studio' when user is not an admin", async () => {
+      setup({ showDataStudioLink: true, collectionType: "library-metrics" });
       await openMenu();
 
       expect(screen.queryByText("Open in Data Studio")).not.toBeInTheDocument();

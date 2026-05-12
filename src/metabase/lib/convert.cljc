@@ -766,7 +766,7 @@
                (seq inner-query) (assoc query-type inner-query)
                (seq parameters)  (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
+      (throw (ex-info (lib.util/format "Error converting MBQL 5 query to legacy MBQL query: %s" (ex-message e))
                       {:query query}
                       e)))))
 

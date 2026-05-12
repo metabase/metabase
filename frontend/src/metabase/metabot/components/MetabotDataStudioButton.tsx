@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import {
   useMetabotAgent,
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
 

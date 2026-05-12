@@ -19,12 +19,15 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config"
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { createSnowplowTracker } from "metabase/analytics";
+import api from "metabase/api/legacy-client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
-import { createTracker } from "metabase/lib/analytics-untyped";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -40,14 +43,42 @@ import {
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
 
+let _embedReferrer: string | undefined;
+
+const embedReferrerHandler = async (
+  config: OnBeforeRequestHandlerConfig,
+): Promise<OnBeforeRequestHandlerConfig | void> => {
+  if (_embedReferrer) {
+    return {
+      ...config,
+      options: {
+        ...config.options,
+        headers: {
+          ...config.options.headers,
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+          "X-Metabase-Embed-Referrer": _embedReferrer,
+        },
+      },
+    };
+  }
+};
+
+// Register once — uses a named function ref so it can't be pushed twice
+if (!api.beforeRequestHandlers.includes(embedReferrerHandler)) {
+  api.beforeRequestHandlers.push(embedReferrerHandler);
+}
+
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
     settings?.useExistingUserSession || false;
+
+  // Forward the host page URL so it's sent as X-Metabase-Embed-Referrer on API requests.
+  _embedReferrer = settings?._embedReferrer;
 };
 
 const store = getSdkStore();
-createTracker(store);
+createSnowplowTracker(() => getUserId(store.getState()));
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({

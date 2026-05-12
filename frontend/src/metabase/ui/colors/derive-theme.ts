@@ -1,13 +1,16 @@
 import _ from "underscore";
 
-import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
-import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
+import type {
+  MetabaseColorKey,
+  MetabaseDerivedThemeV2,
+  MetabaseEmbeddingThemeV2,
+} from "./types";
 
 /**
  * Derives the _full_ metabase themes given a theme configuration.
@@ -16,7 +19,6 @@ import type { MetabaseColorKey, MetabaseDerivedThemeV2 } from "./types";
  * Priority: base theme colors < appearance settings whitelabel colors < modular embedding theme overrides
  *
  * TODO(EMB-984): generate lightness stops based on a single color
- * TODO(EMB-1013): generate square and octagonal color harmonies
  * TODO(EMB-1016): derive full color palette based on the given color object
  */
 export function deriveFullMetabaseTheme({

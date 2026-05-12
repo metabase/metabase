@@ -120,7 +120,7 @@ describe("command palette", () => {
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      H.commandPaletteInput().clear().type("For");
+      H.commandPaletteInput().clear().type("Form");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
@@ -212,7 +212,7 @@ describe("command palette", () => {
 
         cy.findAllByRole("option")
           // filter out unrelated items, keep only options with data
-          .invoke("slice", 1, -2)
+          .invoke("slice", 3, -2)
           .should("have.length", results.length)
           .each(($option, index) => {
             cy.wrap($option).should("contain", results[index].name);
@@ -456,7 +456,7 @@ describe("command palette", () => {
 
   describe("ee", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should have a 'New document' item", () => {
@@ -575,6 +575,16 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "navigate-trash",
     });
 
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("match", /^\/data-studio/);
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-data-studio",
+    });
+
+    cy.realPress("g").realPress("m");
+
     cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
 
     H.navigationSidebar().should("be.visible");
@@ -616,6 +626,17 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.location("pathname").should("contain", "/admin/datamodel");
     cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
+  });
+
+  it("should not navigate to data studio via shortcut for non-admin users", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("equal", "/");
   });
 
   it("should support dashboard shortcuts", () => {

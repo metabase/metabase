@@ -1,8 +1,9 @@
 import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
-import { defer } from "metabase/lib/promise";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -21,7 +22,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { runQuestionQuery } from "./services";
 
@@ -258,6 +258,27 @@ describe("metabase/services > runQuestionQuery", () => {
       ).rejects.toMatchObject({
         status: 500,
       });
+    });
+
+    it("normalizes plain-text 4xx error bodies into a structured error result (EMB-1659)", async () => {
+      // Embed API checks (e.g. `/api/embed/card/:token/query`) reject with a
+      // plain-text body when a locked param is missing from the JWT. Without
+      // normalization the result reaches the visualization as a bare string,
+      // so `result?.error` is undefined and the UI falls through to an empty
+      // state instead of showing the message.
+      const question = createMockSavedQuestion();
+      const errorMessage = "You must specify a value for category in the JWT.";
+
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 400,
+        body: errorMessage,
+      });
+
+      const result = await runQuestionQuery(question, {
+        cancelDeferred: defer(),
+      });
+
+      expect(result).toEqual([{ error: errorMessage, status: 400 }]);
     });
   });
 });

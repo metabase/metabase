@@ -1,20 +1,23 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
-import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
+import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { DimensionMetadata } from "metabase-lib/metric";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type { CardId, SingleSeries } from "metabase-types/api";
 
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
 
@@ -22,33 +25,32 @@ import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];
-  dimensionItems: DimensionItem[];
-  onDimensionChange?: (
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove?: (definitionId: MetricSourceId) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
-  definitions: MetricsViewerDefinitionEntry[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToEntityIndex: Record<CardId, number>;
   interactive?: boolean;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
 };
 
 export function MetricsViewerVisualization({
   rawSeries,
-  dimensionItems,
-  onDimensionChange,
-  onDimensionRemove,
   onBrush,
   className,
   definitions,
+  formulaEntities,
+  metricSlots,
   tab,
   onTabUpdate,
-  cardIdToDimensionId,
+  cardIdToEntityIndex,
   interactive = true,
+  queriesAreLoading,
+  queriesError,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
@@ -58,13 +60,55 @@ export function MetricsViewerVisualization({
       interactive
         ? new MetricsViewerClickActionsMode({
             definitions,
+            formulaEntities,
+            metricSlots,
             tab,
             onTabUpdate,
-            cardIdToDimensionId,
+            cardIdToEntityIndex,
           })
         : undefined,
-    [cardIdToDimensionId, definitions, interactive, onTabUpdate, tab],
+    [
+      definitions,
+      cardIdToEntityIndex,
+      formulaEntities,
+      metricSlots,
+      interactive,
+      onTabUpdate,
+      tab,
+    ],
   );
+
+  if (queriesAreLoading || queriesError) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper
+          loading={queriesAreLoading}
+          error={queriesError}
+        />
+      </Center>
+    );
+  }
+
+  if (rawSeries.length === 0) {
+    return null;
+  }
+
+  const hasNoResults = rawSeries.every((series) =>
+    datasetContainsNoResults(series.data),
+  );
+
+  if (hasNoResults) {
+    return (
+      <Center h="100%">
+        <ErrorMessage
+          type="noRows"
+          title={t`No results!`}
+          message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
+          action={null}
+        />
+      </Center>
+    );
+  }
 
   return (
     <Flex
@@ -112,14 +156,6 @@ export function MetricsViewerVisualization({
             onChangeCardAndRun={noop}
           />
         </DebouncedFrame>
-      )}
-
-      {dimensionItems.length > 0 && onDimensionChange && (
-        <DimensionPillBar
-          items={dimensionItems}
-          onDimensionChange={onDimensionChange}
-          onDimensionRemove={onDimensionRemove}
-        />
       )}
     </Flex>
   );

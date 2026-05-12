@@ -2,6 +2,7 @@
   "Common logging interface that wraps clojure.tools.logging in JVM Clojure and Glogi in CLJS.
 
   The interface is the same as [[clojure.tools.logging]]."
+  {:clj-kondo/ignore [:unquote-not-syntax-quoted]}
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]

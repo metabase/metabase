@@ -14,7 +14,7 @@ There are different ways you can embed questions:
 
 ## Embedding a question
 
-You can embed a question using the one of the question components:
+You can embed a question using one of the question components:
 
 ### `StaticQuestion`
 

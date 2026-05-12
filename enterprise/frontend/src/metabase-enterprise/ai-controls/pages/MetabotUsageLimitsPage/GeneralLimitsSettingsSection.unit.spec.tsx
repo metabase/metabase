@@ -83,7 +83,7 @@ describe("GeneralLimitsSettingsSection", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Total monthly instance limit \(millions of tokens\)/),
+        screen.getByText("Total monthly instance token limit"),
       ).toBeInTheDocument();
     });
   });
@@ -94,7 +94,7 @@ describe("GeneralLimitsSettingsSection", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/instance limit \(message count\)/),
+        screen.getByText("Total monthly instance message limit"),
       ).toBeInTheDocument();
     });
   });
@@ -115,6 +115,24 @@ describe("GeneralLimitsSettingsSection", () => {
     expect(screen.getByPlaceholderText("Unlimited")).toBeInTheDocument();
   });
 
+  it("shows 'million' unit beside the instance limit input when limit type is tokens", async () => {
+    setup({ limitType: "tokens" });
+    await screen.findByText("How do you want to limit AI usage?");
+
+    await waitFor(() => {
+      expect(screen.getByText("million")).toBeInTheDocument();
+    });
+  });
+
+  it("shows 'messages' unit beside the instance limit input when limit type is messages", async () => {
+    setup({ limitType: "messages" });
+    await screen.findByText("How do you want to limit AI usage?");
+
+    await waitFor(() => {
+      expect(screen.getByText("messages")).toBeInTheDocument();
+    });
+  });
+
   it("renders the quota-reached message input with saved value", async () => {
     setup({ quotaMessage: "You hit the limit!" });
     await screen.findByText("How do you want to limit AI usage?");
@@ -133,7 +151,7 @@ describe("GeneralLimitsSettingsSection", () => {
     await userEvent.click(screen.getByText("By message count"));
 
     expect(
-      screen.getByText(/instance limit \(message count\)/),
+      screen.getByText("Total monthly instance message limit"),
     ).toBeInTheDocument();
   });
 
@@ -144,7 +162,7 @@ describe("GeneralLimitsSettingsSection", () => {
     await userEvent.click(screen.getByText("Daily"));
 
     await waitFor(() => {
-      expect(screen.getByText(/daily.*instance limit/i)).toBeInTheDocument();
+      expect(screen.getByText(/total daily instance/i)).toBeInTheDocument();
     });
   });
 });

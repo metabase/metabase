@@ -5,24 +5,9 @@ import {
   useGetDashboardQuery,
   useListDashboardsQuery,
 } from "metabase/api/dashboard";
-import {
-  canonicalCollectionId,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
-import {
-  getCollectionType,
-  normalizedCollection,
-} from "metabase/entities/collections/utils";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import { compose, withAction, withRequestState } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
-import { color } from "metabase/ui/colors";
+import { getCollectionType } from "metabase/entities/collections/utils";
 
-const COPY_ACTION = `metabase/entities/dashboards/COPY`;
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -37,12 +22,12 @@ export const Dashboards = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`dashboards`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetDashboardQuery,
     }),
     useListQuery: useListDashboardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>
@@ -81,73 +66,6 @@ export const Dashboards = createEntity({
         dispatch,
         dashboardApi.endpoints.saveDashboard,
       ),
-    copy: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        dashboardApi.endpoints.copyDashboard,
-      ),
-  },
-
-  objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Dashboards.actions.update(
-        { id },
-        { archived },
-        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
-      ),
-
-    setCollection: ({ id }, collection, opts) =>
-      Dashboards.actions.update(
-        { id },
-        {
-          collection_id: canonicalCollectionId(collection && collection.id),
-          archived: isRootTrashCollection(collection),
-        },
-        undo(opts, "dashboard", "moved"),
-      ),
-
-    setPinned: ({ id }, pinned, opts) =>
-      Dashboards.actions.update(
-        { id },
-        {
-          collection_position:
-            typeof pinned === "number" ? pinned : pinned ? 1 : null,
-        },
-        opts,
-      ),
-
-    // TODO move into more common area as copy is implemented for more entities
-    copy: compose(
-      withAction(COPY_ACTION),
-      // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
-      withRequestState((dashboard) => [
-        "entities",
-        "dashboard",
-        dashboard.id,
-        "copy",
-      ]),
-    )(
-      (entityObject, overrides, { notify } = {}) =>
-        async (dispatch, getState) => {
-          const result = Dashboards.normalize(
-            await entityCompatibleQuery(
-              {
-                id: entityObject.id,
-                ...overrides,
-                is_deep_copy: !overrides.is_shallow_copy,
-              },
-              dispatch,
-              dashboardApi.endpoints.copyDashboard,
-            ),
-          );
-          if (notify) {
-            dispatch(addUndo(notify));
-          }
-          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-          return result;
-        },
-    ),
   },
 
   actions: {
@@ -163,20 +81,6 @@ export const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
-  },
-
-  reducer: (state = {}, { type, payload, error }) => {
-    if (type === COPY_ACTION && !error && state[""]) {
-      return { ...state, "": state[""].concat([payload.result]) };
-    }
-    return state;
-  },
-
-  objectSelectors: {
-    getName: (dashboard) => dashboard && dashboard.name,
-    getCollection: (dashboard) =>
-      dashboard && normalizedCollection(dashboard.collection),
-    getColor: () => color("dashboard"),
   },
 
   getAnalyticsMetadata([object], { action }, getState) {

@@ -1,4 +1,5 @@
 import type { NonEmpty } from "metabase/i18n/types";
+import { clone } from "metabase/utils/clone";
 import type { DictionaryArray } from "metabase-types/api";
 
 export const germanFieldNames: NonEmpty<DictionaryArray> = [
@@ -59,14 +60,14 @@ export const nonAsciiFieldNames: DictionaryArray = [
 
 export const columnNamesWithTypeText = ["Title", "Category", "Vendor"];
 
-export const invalidLocaleXX = structuredClone(germanFieldNames);
+export const invalidLocaleXX = clone(germanFieldNames);
 invalidLocaleXX[0].locale = "xx";
 
-export const multipleInvalidLocales = structuredClone(germanFieldNames);
+export const multipleInvalidLocales = clone(germanFieldNames);
 multipleInvalidLocales[0].locale = "ze";
 multipleInvalidLocales[3].locale = "qe";
 
-export const stringTranslatedTwice = structuredClone(germanFieldNames);
+export const stringTranslatedTwice = clone(germanFieldNames);
 stringTranslatedTwice.push({
   locale: "de",
   msgid: "Title",

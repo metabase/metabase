@@ -7,10 +7,8 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -18,7 +16,12 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import type {
+  ClickBehaviorSidebarState,
+  EditParameterSidebarState,
+  State,
+  StoreDashboard,
+} from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -26,6 +29,9 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
+import * as Urls from "metabase/urls";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -42,12 +48,6 @@ import type {
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
-import type {
-  ClickBehaviorSidebarState,
-  EditParameterSidebarState,
-  State,
-  StoreDashboard,
-} from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
@@ -230,7 +230,7 @@ export const getDashcardHref = createSelector(
       !dashboard ||
       !dashcard ||
       !isQuestionDashCard(dashcard) ||
-      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+      !dashcard.card.dataset_query // cards without queries will cause Lib to throw in getNewCardUrl
     ) {
       return undefined;
     }

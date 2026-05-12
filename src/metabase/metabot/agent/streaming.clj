@@ -21,21 +21,39 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
+(defn persistable-data-part?
+  "True if `part` should be written to MetabotMessage.data. `state` parts are
+  skipped because their value is salvaged separately into MetabotConversation.state;
+  duplicating the blob in every message would bloat storage. Non-data parts are
+  always persistable here; the caller is responsible for filtering stream-level
+  metadata (`:start`, `:usage`, `:finish`) separately."
+  [part]
+  (not (and (= :data (:type part))
+            (= state-type (:data-type part)))))
+
 ;;; Query URL Encoding
 
 (defn query->url-hash
-  "Convert an MLv2/MBQL query to a base64-encoded URL hash.
+  "Convert an MBQL 4 (legacy) or MBQL 5 query to a base64-encoded URL hash.
+  When `display` is provided, includes it so the frontend renders the
+  correct visualization type instead of defaulting to table.
   Used for /question# URLs."
-  [query]
-  (-> {:dataset_query query}
-      json/encode
-      (.getBytes "UTF-8")
-      codecs/bytes->b64-str))
+  ([query]
+   (query->url-hash query nil))
+  ([query display]
+   (-> (cond-> {:dataset_query query}
+         display (assoc :display (name display)))
+       json/encode
+       (.getBytes "UTF-8")
+       codecs/bytes->b64-str)))
 
 (defn query->question-url
-  "Convert a query to a /question# URL."
-  [query]
-  (str "/question#" (query->url-hash query)))
+  "Convert a query to a /question# URL.
+  Optional `display` sets the visualization type (e.g. :line, :bar)."
+  ([query]
+   (query->question-url query nil))
+  ([query display]
+   (str "/question#" (query->url-hash query display))))
 
 ;;; Data Part Constructors
 

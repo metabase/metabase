@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys not-empty get-in every?
+  (:refer-clojure :exclude [+ - * / case abs time concat replace float mapv some select-keys not-empty get-in every?
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
@@ -23,13 +23,13 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.number :as u.number]
    [metabase.util.performance :refer [mapv some select-keys not-empty get-in every? #?(:clj doseq) #?(:clj for)]]))
 
@@ -328,7 +328,7 @@
          expressionable (lib.common/->op-arg expressionable)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
-     ;; the QP code, and it should be powered by MLv2 in due course.
+     ;; the QP code, and it should be powered by Lib in due course.
      #_(when (conflicting-name? query stage-number expression-name)
          (throw (ex-info "Expression name conflicts with a column in the same query stage"
                          {:expression-name expression-name})))
@@ -578,7 +578,7 @@
 
 (defn- referred-expressions
   [expr]
-  (set (lib.util.match/match-many expr [:expression _opts x & _] x)))
+  (set (match/match-many expr [:expression _opts x & _] x)))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -586,7 +586,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (set (lib.util.match/match-many agg [:aggregation _opts x & _] x)))
+  (set (match/match-many agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]
@@ -756,11 +756,11 @@
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
              :friendly true})
           (when (and (= expression-mode :expression)
-                     (lib.util.match/match-lite expr :offset true))
+                     (match/match-one expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom columns")
              :friendly true})
           (when (and (= expression-mode :filter)
-                     (lib.util.match/match-lite expr :offset true))
+                     (match/match-one expr :offset true))
             {:message  (i18n/tru "OFFSET is not supported in custom filters")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)

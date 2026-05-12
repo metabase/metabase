@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.annotate.legacy-helper-fns
-  "Helper functions that used to live in the old implementation of [[metabase.query-processor.middleware.annotate]]
-  that no longer do since we rewrote it to use MLv2. These were used by various drivers for various nefarious purposes.
+  "Helper functions that used to live in the old implementation of [[metabase.query-processor.middleware.annotate]] that
+  no longer do since we rewrote it to use Lib. These were used by various drivers for various nefarious purposes.
 
-  I'm keeping them around for now so drivers can continue to use them until we work on converting drivers to MLv2 (at
-  which point they can use MLv2 directly)."
+  I'm keeping them around for now so drivers can continue to use them until we work on converting drivers to MBQL
+  5 (at which point they can use Lib directly)."
   (:require
    ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -19,7 +19,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
-  "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
+  "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
   {:deprecated "0.57.0"}
   [inner-query :- [:and
                    :map
@@ -28,7 +28,7 @@
                     (some-fn :query :source-table :source-query)]]]
   ;; existing usage -- don't use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (qp.store/cached [:mlv2-query (hash inner-query)]
+  (qp.store/cached [:mbql5-query (hash inner-query)]
     (try
       (lib/query-from-legacy-inner-query
        (qp.store/metadata-provider)
@@ -60,11 +60,11 @@
   this namespace."
   [legacy-query {initial-cols :cols, :as _initial-metadata} :- [:maybe :map]]
   (let [expected-cols (requiring-resolve 'metabase.query-processor.middleware.annotate/expected-cols)
-        mlv2-query    (lib/query
+        mbql5-query   (lib/query
                        (qp.store/metadata-provider)
                        ;; if this query has a `:native` query added to it already then remove that so we don't get
                        ;; schema validation errors
                        (cond-> legacy-query
                          ((every-pred :native :query) legacy-query)
                          (dissoc :native)))]
-    (expected-cols mlv2-query initial-cols)))
+    (expected-cols mbql5-query initial-cols)))

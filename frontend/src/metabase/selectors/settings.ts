@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
+import type { State } from "metabase/redux/store";
 import type { TokenStatus, Version } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(
@@ -161,7 +161,7 @@ export const getDocsUrlForVersion = (
     anchor = `#${anchor}`;
   }
 
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/utils/settings"
   return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 

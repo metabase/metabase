@@ -1,5 +1,4 @@
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
 import {
   closeObjectDetail,
   followForeignKey,
@@ -18,9 +17,10 @@ import {
   getZoomRow,
   getZoomedObjectId,
 } from "metabase/query_builder/selectors";
+import { connect } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getUser } from "metabase/selectors/user";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { State } from "metabase-types/store";
 
 import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
 import type { ObjectDetailProps, ObjectId } from "./types";

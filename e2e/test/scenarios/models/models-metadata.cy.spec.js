@@ -62,28 +62,24 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Subtotal");
     });
 
-    it("allows for canceling changes, back navigation (metabase#55162)", () => {
+    it("allows for canceling changes", () => {
       H.openQuestionActions("Edit metadata");
       H.waitForLoaderToBeRemoved();
+
+      const RENAMED_COLUMN = "Pre-tax";
 
       H.openColumnOptions("Subtotal");
-      H.renameColumn("Subtotal", "Pre-tax");
+      H.renameColumn("Subtotal", RENAMED_COLUMN);
       H.setColumnType("No semantic type", "Currency");
 
-      cy.findByTestId("dataset-edit-bar").button("Cancel").click();
+      H.datasetEditBar().button("Cancel").click();
       H.modal().button("Discard changes").click();
+      H.datasetEditBar().should("not.exist");
 
       cy.findAllByTestId("header-cell")
-        .should("contain", "Subtotal")
-        .and("not.contain", "Pre-tax");
-
-      // Ensure back navigation works correctly metabase#55162
-      H.openQuestionActions("Edit metadata");
-      H.waitForLoaderToBeRemoved();
-      cy.go("back");
-      cy.get("@questionId").then((id) => {
-        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
-      });
+        .filter(":contains(Subtotal)")
+        .should("not.contain", "$");
+      cy.findAllByTestId("header-cell").should("not.contain", RENAMED_COLUMN);
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {

@@ -1,12 +1,13 @@
 import _ from "underscore";
 
+import { MetadataSymbol } from "metabase-lib";
 import type {
   CardId,
   DatabaseId,
   FieldId,
   FieldReference,
   MeasureId,
-  MetricId,
+  Metric,
   NativeQuerySnippet,
   SchemaId,
   SegmentId,
@@ -20,7 +21,6 @@ import type Question from "../Question";
 import type Database from "./Database";
 import type Field from "./Field";
 import type Measure from "./Measure";
-import type Metric from "./Metric";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 import type Table from "./Table";
@@ -45,6 +45,10 @@ interface MetadataOpts {
  *   Do not rely on data being implicitly loaded in some other place.
  */
 class Metadata {
+  // We brand this type with the MetadataSymbol to
+  // to mark it as a Metadata instance.
+
+  readonly [MetadataSymbol]?: void;
   databases: Record<string, Database> = {};
   schemas: Record<string, Schema> = {};
   tables: Record<string, Table> = {};
@@ -111,20 +115,6 @@ class Metadata {
    */
   measure(measureId: MeasureId | undefined | null): Measure | null {
     return (measureId != null && this.measures[measureId]) || null;
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListMetricsQuery
-   */
-  metricsList(): Metric[] {
-    return Object.values(this.metrics);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useGetMetricQuery
-   */
-  metric(metricId: MetricId | undefined | null): Metric | null {
-    return (metricId != null && this.metrics[metricId]) || null;
   }
 
   /**

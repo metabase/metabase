@@ -178,9 +178,12 @@ are known to be the same."
 (defmethod = :metadata/column
   [col-1 col-2]
   (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
-    (if not-equal-reason
-      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
-      (log/debug "Columns are equal."))
+    ;; This block is commented out for performance reasons. Even when DEBUG level is not enabled, computing level
+    ;; eligibility on each comparison operation is significantly expensive. If you need to debug this, consider
+    ;; restricting the log to particular columns.
+    #_(if not-equal-reason
+        (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+        (log/debug "Columns are equal."))
     (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
@@ -554,7 +557,7 @@ are known to be the same."
   to `needles` with the corresponding index into the `haystack`, or -1 if not found.
 
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
-  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  Other Lib code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
   [query        :- ::lib.schema/query
    stage-number :- :int

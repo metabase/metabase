@@ -3,17 +3,16 @@ export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";
-export { updateSnippet } from "./updateSnippet";
 export { createApiKey } from "./createApiKey";
 export { createCard } from "./createCard";
 export { createCollection } from "./createCollection";
 export { createComment } from "./createComment";
 export { createDashboard } from "./createDashboard";
-export { createLibrary } from "./createLibrary";
 export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithQuestions } from "./createDashboardWithQuestions";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
 export { createDocument } from "./createDocument";
+export { createLibrary } from "./createLibrary";
 export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";
@@ -30,23 +29,28 @@ export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
 export { createSnippet } from "./createSnippet";
 export { createSnippetFolder } from "./createSnippetFolder";
-export { createTestQuery, createTestNativeQuery } from "./createTestQuery";
+export { createTestNativeQuery, createTestQuery } from "./createTestQuery";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { createTransform } from "./createTransform";
 export { createTransformJob } from "./createTransformJob";
 export { createTransformTag } from "./createTransformTag";
+export * from "./customVizPlugin";
 export { deleteComment } from "./deleteComment";
 export { editDashboardCard } from "./editDashboardCard";
 export { getCurrentUser } from "./getCurrentUser";
 export { publishTables } from "./publishTables";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
+export { seedSecurityAdvisories } from "./seedSecurityAdvisories";
+export type { SecurityAdvisorySpec } from "./seedSecurityAdvisories";
 export { unpublishTables } from "./unpublishTables";
+export { updateAdvancedPermissionsGraph } from "./updateAdvancedPermissionsGraph";
 export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
 export {
-  updateSetting,
   updateEnterpriseSetting,
   updateEnterpriseSettings,
+  updateSetting,
 } from "./updateSetting";
+export { updateSnippet } from "./updateSnippet";

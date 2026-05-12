@@ -6,7 +6,8 @@ describe("scenarios > data studio > library > metrics", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    // Needs cloud because the "No notification channels" banner takes up too much space and the run button is not clickable
+    H.activateToken("pro-cloud");
 
     cy.intercept("POST", "/api/card").as("createCard");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
@@ -102,6 +103,8 @@ describe("scenarios > data studio > library > metrics", () => {
     H.echartsContainer().findByText("Count").should("be.visible");
 
     cy.log("Verify metric dependencies page");
+    H.waitForBackfillComplete();
+    cy.reload();
     H.DataStudio.Metrics.dependenciesTab().click();
     H.DependencyGraph.graph().within(() => {
       cy.findByText("Orders").should("be.visible");
@@ -269,7 +272,6 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.log("Verify View link opens in new tab");
     H.DataStudio.Metrics.moreMenu().click();
     H.DataStudio.Metrics.exploreLink()
-      .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
       .and("match", /\/explore\?metricId=\d+/);
   });

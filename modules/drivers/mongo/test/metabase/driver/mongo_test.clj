@@ -16,7 +16,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -26,6 +25,7 @@
    [metabase.test.data.mongo :as tdm]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
@@ -270,10 +270,12 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9,
+                                             :nfc-path ["nested_mixed_uuid" "nested_data"]}}
                            :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5,
+                                             :nfc-path ["nested_mixed_not_uuid" "nested_data_2"]}}
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
@@ -672,11 +674,11 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (nil?
-           (lib.util.match/match-lite
+           (match/match-one
              (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))
-             [:field _ (_ :guard :binning)] true))))))
+             [:field _ {:binning &truthy}] true))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
@@ -1064,7 +1066,8 @@
                    :database-position 2,
                    :base-type :type/Dictionary,
                    :name "b",
-                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c"}}}}}}
+                   :nfc-path ["a" "b"],
+                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c", :nfc-path ["a" "b" "c"]}}}}}}
              @nested-fields)))))
 
 (deftest nulls-are-last-test
@@ -1082,7 +1085,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b"}}}
+                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 
@@ -1102,7 +1105,7 @@
                 :database-position 1,
                 :base-type :type/Dictionary,
                 :name "a",
-                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b"}}}
+                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b", :nfc-path ["a" "b"]}}}
                {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
              @nested-fields)))))
 

@@ -3,7 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
@@ -11,7 +11,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { TOOL_CALL_MESSAGES } from "../constants";
+import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -81,14 +81,16 @@ export const metabot = createSlice({
       (
         convo,
         action: ConvoPayloadAction<
-          Omit<MetabotAgentChatMessage, "id" | "role">
+          Omit<MetabotAgentChatMessage, "id" | "role" | "externalId">
         >,
       ) => {
         convo.activeToolCalls = [];
+        const externalId = convo.pendingMessageExternalId;
         convo.messages.push({
           id: createMessageId(),
           role: "agent",
           ...action.payload,
+          ...(externalId ? { externalId } : {}),
           // transforms in message is making this flakily produce possibly infinite
           // typescript errors. since unused ts-expect-error directives produces
           // errors, casting this as any to avoid having to add / remove constantly.
@@ -112,15 +114,22 @@ export const metabot = createSlice({
         if (canAppend) {
           lastMessage.message = lastMessage.message + action.payload.text;
         } else {
+          const externalId = convo.pendingMessageExternalId;
           convo.messages.push({
             id: createMessageId(),
             role: "agent",
             type: "text",
             message: action.payload.text,
+            ...(externalId ? { externalId } : {}),
           });
         }
 
         convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
+      },
+    ),
+    setPendingMessageExternalId: convoReducer(
+      (convo, action: ConvoPayloadAction<{ externalId: string }>) => {
+        convo.pendingMessageExternalId = action.payload.externalId;
       },
     ),
     toolCallStart: convoReducer(
@@ -206,7 +215,10 @@ export const metabot = createSlice({
       },
     ),
     setProfileOverride: convoReducer(
-      (state, action: ConvoPayloadAction<{ profile: string | undefined }>) => {
+      (
+        state,
+        action: ConvoPayloadAction<{ profile: MetabotProfileId | undefined }>,
+      ) => {
         state.profileOverride = action.payload.profile;
       },
     ),
@@ -337,11 +349,13 @@ export const metabot = createSlice({
           convo.activeToolCalls = [];
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
+          convo.pendingMessageExternalId = undefined;
         }
       })
       .addCase(sendAgentRequest.rejected, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {
+          convo.pendingMessageExternalId = undefined;
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {
             convo.state = { ...(action.payload?.state ?? {}) };

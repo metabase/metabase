@@ -1,0 +1,11 @@
+name: revenue
+entity_id: rEvEnUeOrDeRs0000001
+archived: false
+table_id:
+- Sample Database
+- PUBLIC
+- orders
+serdes/meta:
+- id: rEvEnUeOrDeRs0000001
+  label: revenue
+  model: Measure

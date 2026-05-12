@@ -69,6 +69,7 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    ai-features-enabled: true
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -92,6 +93,7 @@ config:
       linkedin.com,
       twitter.com,
       x.com
+    analytics-pii-retention-enabled: false
     anon-tracking-enabled: true
     api-key: null
     application-colors: {}
@@ -115,6 +117,7 @@ config:
     custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
+    custom-viz-enabled: false
     dashboards-save-last-used-parameters: true
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
@@ -136,6 +139,7 @@ config:
     email-smtp-security-override: ssl
     email-smtp-username: null
     email-smtp-username-override: null
+    embedded-metabot-enabled: true
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
@@ -198,6 +202,8 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    llm-anthropic-api-key: null
+    llm-metabot-provider: anthropic/claude-sonnet-4-6
     load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
@@ -205,6 +211,7 @@ config:
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-enabled: true
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -229,9 +236,13 @@ config:
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
     remote-sync-task-time-limit-ms: 300000
+    remote-sync-token: null
     remote-sync-transforms: false
+    remote-sync-type: read-only
+    remote-sync-url: null
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
@@ -284,6 +295,7 @@ config:
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For

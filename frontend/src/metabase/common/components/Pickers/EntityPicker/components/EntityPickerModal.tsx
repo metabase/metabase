@@ -8,8 +8,8 @@ import { t } from "ttag";
 
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import resizeObserver from "metabase/lib/resize-observer";
 import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
+import resizeObserver from "metabase/utils/resize-observer";
 import type { RecentContexts } from "metabase-types/api";
 
 import { useLogRecentItem } from "../hooks";
@@ -46,6 +46,7 @@ export type EntityPickerModalProps = {
   value?: OmniPickerValue;
   onClose: () => void;
   recentsContext?: RecentContexts[];
+  disableRecentLogging?: boolean;
   options?: EntityPickerOptions;
 } & Omit<
   EntityPickerProps,
@@ -64,6 +65,7 @@ export function EntityPickerModal({
   options,
   onClose,
   onChange,
+  disableRecentLogging,
   ...rest
 }: EntityPickerModalProps) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
@@ -97,9 +99,12 @@ export function EntityPickerModal({
         return;
       }
       await onChange(item);
-      tryLogRecentItem(item);
+
+      if (!disableRecentLogging) {
+        tryLogRecentItem(item);
+      }
     },
-    [isDialogOpen, onChange, tryLogRecentItem],
+    [disableRecentLogging, isDialogOpen, onChange, tryLogRecentItem],
   );
 
   useWindowEvent(
@@ -217,7 +222,7 @@ const SearchInput = ({
       data-autofocus
       type="search"
       leftSection={<Icon name="search" size={16} />}
-      miw={400}
+      miw="min(400px, 100%)"
       placeholder={t`Search…`}
       value={localValue}
       onChange={(e) => {

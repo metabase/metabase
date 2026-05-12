@@ -7,7 +7,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
 import { type Plan, getPlan } from "metabase/common/utils/plan";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
@@ -116,7 +116,11 @@ export const CloudPanel = ({
         )}
 
         {migration && migrationState === "error" && (
-          <MigrationError migration={migration} />
+          <MigrationError
+            migration={migration}
+            restartMigration={handleCreateMigration}
+            isRestarting={createCloudMigrationResult.isLoading}
+          />
         )}
 
         {createCloudMigrationResult.isError && (

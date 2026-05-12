@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import type { InspectorLensMetadata } from "metabase-types/api";
 
 import type { LensHandle, RouteParams } from "../../types";

@@ -53,7 +53,7 @@
                    (m/dissoc-in [:data :results_metadata])
                    (m/dissoc-in [:data :insights]))]
      (cond
-       (contains? #{:id :started_at :running_time :hash :cache_hash} k)
+       (contains? #{:id :started_at :running_time :hash :cache_hash :auth_method :metabase_version} k)
        [k (boolean v)]
 
        (and (= :data k) (contains? v :native_form))
@@ -128,7 +128,19 @@
                   :started_at       true
                   :running_time     true
                   :embedding_client nil
-                  :embedding_version nil}
+                  :embedding_hostname nil
+                  :embedding_path nil
+                  :embedding_route nil
+                  :embedding_sdk_version nil
+                  :metabase_version true
+                  :auth_method      true
+                  :ip_address       nil
+                  :is_db_routed     false
+                  :is_impersonated  false
+                  :parameters       nil
+                  :tenant_id        nil
+                  :user_agent       nil
+                  :sanitized_user_agent nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
 (deftest failure-test
@@ -945,9 +957,9 @@
       (is (= ["A   sian" "As"]
              (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
 
-(deftest ^:parallel adhoc-mlv2-query-test
+(deftest ^:parallel adhoc-mbql5-query-test
   (testing "POST /api/dataset"
-    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+    (testing "Should be able to run an ad-hoc MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -957,9 +969,9 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-test
+(deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
-    (testing "Should be able to convert an MLv2 query to native (#39024)"
+    (testing "Should be able to convert an MBQL 5 query to native (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -986,9 +998,9 @@
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
+(deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
+    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)

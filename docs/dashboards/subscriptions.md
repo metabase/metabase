@@ -59,7 +59,7 @@ You'll need to specify what time of day to send the dashboard, and, for weekly a
 
 ### Test subscription
 
-You can click **Send email/Slack now** in subscription settings to send a test email or Slack message (without waiting for regular schedule). This will send a subscriptions immediately to all subscribers or Slack channels.
+You can click **Send email/Slack now** in subscription settings to send a test email or Slack message (without waiting for regular schedule). This will send a subscription immediately to all subscribers or Slack channels.
 
 We recommend first creating a subscription with a test email/channel, then using **Send email/Slack now** to test it, and once you are satisfied with the subscription, replacing the test email/channel with real recipients and saving the subscription.
 

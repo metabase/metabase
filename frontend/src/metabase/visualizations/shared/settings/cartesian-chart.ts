@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -353,7 +353,7 @@ export const isXAxisScaleValid = (
 
   return Boolean(
     !isWaterfall ||
-      (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
+    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
   );
 };
 

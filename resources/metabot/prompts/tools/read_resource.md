@@ -24,6 +24,14 @@ You can request multiple resources in a single call by providing a list of URIs,
 - Want model structure (fields without value information)? → `metabase://model/456/fields`
 - Want detailed field information (sample values for format patterns)? → `metabase://model/456/fields/1`
 
+## Question resources
+- metabase://question/{id} - Get basic question info
+- metabase://question/{id}/fields - Get question details with available fields
+- metabase://question/{id}/fields/{field_id} - Get detailed field information with sample values and metadata
+
+**Examples:**
+- Want question structure (fields without value information)? → `metabase://question/456/fields`
+- Want detailed field information (sample values for format patterns)? → `metabase://question/456/fields/1`
 
 ## Metric resources
 - metabase://metric/{id} - Get basic metric info
