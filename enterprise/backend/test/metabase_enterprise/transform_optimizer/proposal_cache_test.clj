@@ -7,19 +7,21 @@
 
 (use-fixtures :each (fn [t] (#'cache/clear-all!) (t) (#'cache/clear-all!)))
 
-(deftest put-and-get-test
+(deftest put-and-get-roundtrip-test
   (testing "stored proposals are retrievable by user+transform+id"
     (cache/put-all! 1 99 [{:id "p1" :body "SELECT 1"}
                           {:id "p2" :body "SELECT 2"}])
     (is (= {:id "p1" :body "SELECT 1"}
            (cache/get-one 1 99 "p1")))
     (is (= {:id "p2" :body "SELECT 2"}
-           (cache/get-one 1 99 "p2"))))
+           (cache/get-one 1 99 "p2")))))
 
+(deftest get-missing-returns-nil-test
   (testing "missing id returns nil rather than throwing"
     (cache/put-all! 1 99 [{:id "p1"}])
-    (is (nil? (cache/get-one 1 99 "p2"))))
+    (is (nil? (cache/get-one 1 99 "p2")))))
 
+(deftest skips-blank-ids-test
   (testing "skips proposals with blank/nil ids"
     (cache/put-all! 1 99 [{:id nil :body "x"} {:id "" :body "y"} {:id "p3"}])
     (is (nil? (cache/get-one 1 99 nil)))
@@ -40,19 +42,24 @@
     (is (nil? (cache/get-one 1 100 "p1")))
     (is (some? (cache/get-one 1 99 "p1")))))
 
-(deftest get-many-test
+;; Split into separate deftests so the :each fixture clears the cache
+;; between each scenario. `testing` blocks inside one deftest share state.
+
+(deftest get-many-mixed-test
   (testing "returns proposals in input order + reports missing"
     (cache/put-all! 1 99 [{:id "p1" :body "a"} {:id "p3" :body "c"}])
     (let [[found missing] (cache/get-many 1 99 ["p1" "p2" "p3" "p4"])]
       (is (= [{:id "p1" :body "a"} {:id "p3" :body "c"}] found))
-      (is (= ["p2" "p4"] missing))))
+      (is (= ["p2" "p4"] missing)))))
 
+(deftest get-many-all-present-test
   (testing "all present ⇒ no missing"
     (cache/put-all! 1 99 [{:id "p1"} {:id "p2"}])
     (let [[found missing] (cache/get-many 1 99 ["p1" "p2"])]
       (is (= 2 (count found)))
-      (is (empty? missing))))
+      (is (empty? missing)))))
 
+(deftest get-many-all-missing-test
   (testing "all missing ⇒ all reported as missing"
     (let [[found missing] (cache/get-many 1 99 ["p1" "p2"])]
       (is (empty? found))
