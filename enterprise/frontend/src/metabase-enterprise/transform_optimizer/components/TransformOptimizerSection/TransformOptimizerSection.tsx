@@ -1,8 +1,11 @@
 import { useCallback, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
 import { Alert, Box, Button, Divider, Group, Icon, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
 import {
@@ -23,6 +26,7 @@ type Props = {
 };
 
 export function TransformOptimizerSection({ transform, readOnly }: Props) {
+  const dispatch = useDispatch();
   const currentSql = getNativeSql(transform);
   const { state, start, abort, dismissProposal } = useOptimizerStream({
     transformId: transform.id,
@@ -71,16 +75,25 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
         return;
       }
       if (data && "replaced_transform" in data) {
+        // Replace mode: the user is already on this transform's page —
+        // navigating to it would be a no-op. Just a confirmation toast.
         sendSuccessToast(
           t`Replaced source of "${data.replaced_transform.name}"`,
         );
       } else {
-        const createdCount = data?.created_transforms?.length ?? 0;
-        if (createdCount > 0) {
+        const created = data?.created_transforms ?? [];
+        if (created.length > 0) {
+          // Open the *leaf* of the created set — for a single rewrite
+          // that's the only one; for a precompute DAG it's the final
+          // proposal the user clicked, which is the one whose result
+          // they care about.
+          const leaf = created[created.length - 1];
           sendSuccessToast(
-            createdCount === 1
-              ? t`New transform created`
-              : t`${createdCount} new transforms created`,
+            created.length === 1
+              ? t`New transform "${leaf.name}" created`
+              : t`${created.length} new transforms created — leaf: "${leaf.name}"`,
+            () => dispatch(push(Urls.transform(leaf.id))),
+            t`Open`,
           );
         } else {
           sendSuccessToast(t`Index changes applied`);
@@ -98,6 +111,7 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
       sendErrorToast,
       sendSuccessToast,
       dismissProposal,
+      dispatch,
     ],
   );
 
