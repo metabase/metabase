@@ -86,9 +86,10 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
           "Navigating to embed flow step 2 and selecting an item to embed",
         );
         cy.findByRole("button", { name: "Next" }).click();
-        cy.get('[data-testid="embed-recent-item-card"]')
-          .should("have.length.greaterThan", 0)
-          .contains("Orders in a dashboard")
+        cy.findByTestId("embed-browse-entity-button").click();
+        H.entityPickerModal()
+          .findAllByText("Orders in a dashboard")
+          .first()
           .click();
 
         cy.log("Preview should load after embedding is enabled");

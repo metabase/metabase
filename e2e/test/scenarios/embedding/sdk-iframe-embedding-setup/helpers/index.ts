@@ -20,8 +20,9 @@ export const getEmbedSidebar = () =>
     .first()
     .within(() => cy.findByRole("complementary"));
 
-export const getRecentItemCards = () =>
-  cy.findAllByTestId("embed-recent-item-card");
+export const getResourceSelectorButton = (
+  options?: Partial<Cypress.Timeoutable>,
+) => cy.findByTestId("embed-browse-entity-button", options);
 
 export const visitNewEmbedPage = (
   { waitForResource } = { waitForResource: true },
