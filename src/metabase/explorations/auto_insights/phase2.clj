@@ -16,6 +16,7 @@
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.explorations.auto-insights.common :as common]
+   [metabase.explorations.auto-insights.prompts :as prompts]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -196,206 +197,24 @@
 
 (defn build-analysis-prompt
   "Phase 2 prompt: research-paper-shaped Automatic Insights document grounded
-  in the Phase-1-curated chart set. Top-tier charts (full data) are listed
-  before awareness-tier (slim) so the model encounters the citation-grade
-  evidence first. Timeline events are included in their own section and
-  treated as a major analytical signal whenever they're present."
+  in the Phase-1-curated chart set. The Selmer template lives at
+  `resources/explorations/auto_insights/prompts/phase2_analysis.selmer`."
   [{:keys [thread-prompt selections curation-rationale timelines
            top-blocks awareness-blocks
            total-chart-count pool-size]}]
-  (let [intro (str "You are writing an Automatic Insights report for a completed Metabase data\n"
-                   "exploration. This is an ANALYSIS document — a short research-paper-style\n"
-                   "write-up that uses the supplied charts as evidence — NOT a tour of the charts\n"
-                   "or a one-paragraph summary per chart.\n"
-                   "\n"
-                   "PRIMARY GOAL:\n"
-                   "Answer the user's question using the data. The charts are evidence; the prose\n"
-                   "is the argument. If the data answers the question, say so and prove it. If the\n"
-                   "data is inconclusive or contradicts itself, say *that* clearly and prove\n"
-                   "*that*. Either way, the supporting charts must be embedded inline at the\n"
-                   "moment they support the surrounding sentence — not collected into a gallery.\n"
-                   "\n"
-                   "The user picked a set of metrics, dimensions, and (optionally) timelines, and\n"
-                   "the system generated one chart per (metric × dimension × segment) combination.\n"
-                   "A curator (an earlier LLM pass) selected " (count top-blocks) " charts for\n"
-                   "TOP-TIER analysis (full data points provided — you may cite specific values\n"
-                   "verbatim) and " (count awareness-blocks) " charts for AWARENESS only (you\n"
-                   "know they exist; only key-points and a summary are provided — don't cite\n"
-                   "values from them, but consider them when suggesting next steps). These were\n"
-                   "picked from a pool of " pool-size " upstream-ranked charts (out of "
-                   total-chart-count " total).\n"
-                   "\n"
-                   "CURATOR'S RATIONALE (from Phase 1):\n"
-                   (if (str/blank? curation-rationale)
-                     "(none provided)"
-                     curation-rationale)
-                   "\n"
-                   "\n"
-                   "GROUNDING — NON-NEGOTIABLE:\n"
-                   "Each chart block contains a verbatim list of `(x, y)` data points labeled\n"
-                   "**Actual data points (chronological)**. EVERY numeric value, date, label, peak,\n"
-                   "trough, comparison, and percentage you cite MUST come from those lists. Do NOT\n"
-                   "interpolate, extrapolate, or invent values that aren't in the list. If a list\n"
-                   "is downsampled (the header will say so), only cite values that actually appear\n"
-                   "in the sample — do not guess what's between them. If the data doesn't support\n"
-                   "a claim, don't make the claim. A shorter analysis that's correct beats a longer\n"
-                   "one that fabricates.\n"
-                   "\n"
-                   "Before writing each sentence with a number/date in it, find the matching point\n"
-                   "in the data list. If you can't find it, drop the sentence.\n"
-                   "\n"
-                   "DOCUMENT STRUCTURE (required — model after a short research paper):\n"
-                   "\n"
-                   "1. **Abstract** — heading level 2, titled `Abstract`. One concise paragraph\n"
-                   "   (2-4 sentences) stating the user's question, the answer you reached, and\n"
-                   "   the strength of the evidence. If the data is inconclusive, say so here.\n"
-                   "   No chart embeds in this section.\n"
-                   "\n"
-                   "2. **Discussion** — heading level 2, titled `Discussion`. The body of the\n"
-                   "   document. This is where you build the argument. Embed `explorationChart`\n"
-                   "   nodes INLINE, mid-discussion, immediately after the paragraph whose claim\n"
-                   "   they support — so each chart functions as a proof point, not a standalone\n"
-                   "   item.\n"
-                   "\n"
-                   "   Organize the discussion into level-3 sub-sections (each with a short,\n"
-                   "   descriptive heading) that group the argument by *idea*, not by chart.\n"
-                   "   Good sub-section titles describe what the section argues — e.g. `Growth\n"
-                   "   is concentrated in two regions`, `Seasonality alone doesn't explain the\n"
-                   "   Q4 dip`, `Where the evidence is weakest`. Bad ones name a chart or a\n"
-                   "   dimension. Use as many sub-sections as the argument needs; a very short\n"
-                   "   discussion may have none. Don't structure it as one sub-section per chart.\n"
-                   "\n"
-                   "   The discussion should walk the reader through the reasoning: what the data\n"
-                   "   shows, what it means for the question, where the evidence is strong, where\n"
-                   "   it's weak, what contradicts the leading explanation, and which charts\n"
-                   "   support each step. If data points are sparse, noisy, or downsampled (the\n"
-                   "   chart's `**Note**:` warnings will say so), discuss that here.\n"
-                   "\n"
-                   "3. **Conclusion** — heading level 2, titled `Conclusion`. One short paragraph\n"
-                   "   re-stating the answer (or the lack of one) in light of the discussion. No\n"
-                   "   new evidence here. Then a level-3 sub-heading `Suggestions for further\n"
-                   "   exploration` containing a bulletList with concrete next steps: additional\n"
-                   "   data that would sharpen the answer, follow-up questions worth asking,\n"
-                   "   alternative causes worth checking, dimensions to break out by, segments to\n"
-                   "   filter to, timelines whose events might explain notable moments. Only\n"
-                   "   suggest things plausibly reachable from the current dataset.\n"
-                   "\n"
-                   "Output format: you MUST emit your final answer by calling the\n"
-                   "`structured_output` tool exactly once, with a single argument\n"
-                   "`{\"document\": <prose-mirror-doc>}`. The document is the full page the user\n"
-                   "will see. Do not emit the document as free text — only the tool call counts.\n"
-                   "Use your thinking/reasoning to plan, then call the tool with the final result.\n"
-                   "\n"
-                   "SUPPORTED NODE TYPES (ProseMirror):\n"
-                   "- Root: `{\"type\": \"doc\", \"content\": [<block>, ...]}`\n"
-                   "- Block: paragraph, heading (`attrs.level` 1-3), bulletList, orderedList,\n"
-                   "  blockquote, explorationChart.\n"
-                   "  - paragraph:  `{\"type\": \"paragraph\", \"content\": [<inline>, ...]}`\n"
-                   "  - heading:    `{\"type\": \"heading\", \"attrs\": {\"level\": 2},\n"
-                   "                  \"content\": [<inline>, ...]}`\n"
-                   "  - bulletList: `{\"type\": \"bulletList\", \"content\": [<listItem>, ...]}`\n"
-                   "  - listItem:   `{\"type\": \"listItem\", \"content\": [<paragraph>, ...]}`\n"
-                   "  - blockquote: `{\"type\": \"blockquote\", \"content\": [<block>, ...]}`\n"
-                   "  - explorationChart: `{\"type\": \"explorationChart\",\n"
-                   "                        \"attrs\": {\"exploration_query_id\": <int>,\n"
-                   "                                  \"sort\": \"value_desc\"}}`\n"
-                   "    Use this to embed one of the supplied charts inline as a proof point.\n"
-                   "    Place it immediately after the paragraph whose claim it supports.\n"
-                   "    Reference an exploration_query_id from the CHARTS section below — do not\n"
-                   "    invent ids. Embed as many charts as the analysis genuinely needs — every\n"
-                   "    embed should materially advance the argument, but don't ration them\n"
-                   "    artificially. If the argument needs ten proof points, use ten; if it\n"
-                   "    only needs two, use two.\n"
-                   "\n"
-                   "    The `sort` attribute controls how the embedded chart is ordered, and\n"
-                   "    is REQUIRED for every embed whose x-axis is a category (state, source,\n"
-                   "    category, vendor, etc.) — without it the chart comes back in query\n"
-                   "    order, which is almost never what the reader needs. PICK THE SORT THAT\n"
-                   "    BEST SUPPORTS THE POINT YOU'RE MAKING; the SAME chart can legitimately\n"
-                   "    be embedded TWICE with different sorts to make different points (e.g.\n"
-                   "    once with `value_desc` to show the top contributors, then later with\n"
-                   "    `value_asc` to show the underperformers). Use this when the argument\n"
-                   "    benefits from both ordered views.\n"
-                   "\n"
-                   "    Decision tree for each embed:\n"
-                   "      1. Is the x-axis a TIME column (year/month/day/etc.) or a NUMERIC\n"
-                   "         column (price bucket, count bucket, etc.)?\n"
-                   "         → OMIT `sort`. Chronological / numeric order is correct.\n"
-                   "      2. Otherwise (categorical x-axis): WHAT POINT IS THIS EMBED MAKING?\n"
-                   "         • Ranking / showing concentration / \"which is biggest\":\n"
-                   "           → `\"value_desc\"` (largest first). This is the default\n"
-                   "             choice for comparison/ranking arguments — use it whenever\n"
-                   "             you're saying \"X dominates\", \"top contributors are…\",\n"
-                   "             \"revenue is concentrated in…\", or similar.\n"
-                   "         • Finding outliers / underperformers / \"which is smallest\":\n"
-                   "           → `\"value_asc\"` (smallest first).\n"
-                   "         • LOOKUP — the reader needs to find a specific named category\n"
-                   "           (e.g. \"how did Texas perform?\" in a US-states chart):\n"
-                   "           → `\"label_asc\"` (alphabetical).\n"
-                   "         • Reverse alphabetical: → `\"label_desc\"` (rare).\n"
-                   "\n"
-                   "    The default for a categorical comparison is `value_desc`. If you're\n"
-                   "    not sure, use `value_desc`. Only use `label_asc` when the surrounding\n"
-                   "    prose specifically tells the reader to look something up by name.\n"
-                   "    Sort is applied via a query order-by when the chart is rendered.\n"
-                   "- Inline: `{\"type\": \"text\", \"text\": \"...\"}`, optionally with\n"
-                   "  `\"marks\": [{\"type\": \"bold\"}]` or `{\"type\": \"italic\"}` or\n"
-                   "  `{\"type\": \"code\"}`.\n"
-                   "\n"
-                   "TONE & CALIBRATION:\n"
-                   "- Write like an analyst answering a question, not a tour guide describing\n"
-                   "  charts. The user can see each chart you embed — don't restate what's on it;\n"
-                   "  tell them what it MEANS for the question.\n"
-                   "- Don't list summary statistics (mean, std-dev, trend) at the user — use\n"
-                   "  those numbers to support the argument, not as the argument itself.\n"
-                   "  GOOD: \"Revenue dropped 42% after the pricing change, concentrated in\n"
-                   "         enterprise deals — see the chart below.\"\n"
-                   "  BAD:  \"The mean is 45.2, std dev 12.8, trend -15%, with peaks at...\".\n"
-                   "- Round all percent changes to ONE decimal place when you cite them in\n"
-                   "  prose: write `+29,314.1%`, not `+29,314.13%` or `+29314.125%`. The\n"
-                   "  pre-computed key-points already follow this; mirror that precision in\n"
-                   "  your own numbers. False precision suggests certainty the data doesn't\n"
-                   "  support.\n"
-                   "- When a chart has a `**Note**:` warning about small values, high variance,\n"
-                   "  or limited data points, treat it as a caveat on the evidence and say so in\n"
-                   "  the discussion. Small denominators make percentage changes unreliable.\n"
-                   "- TIMELINE EVENTS — when present (see the TIMELINE EVENTS section), they are\n"
-                   "  a MAJOR part of the analysis. Walk through the relevant events explicitly.\n"
-                   "  For each notable inflection point in the data (peak, trough, sustained\n"
-                   "  level shift, sudden trend change), check whether a timeline event sits\n"
-                   "  within ~1 bucket of the inflection. If it does, name the event and date,\n"
-                   "  describe the data movement, and (when reasonable) suggest the causal link.\n"
-                   "  Do NOT force a correlation that isn't there — if the events don't align\n"
-                   "  with the inflections, say so plainly (\"the [event name] in [date]\n"
-                   "  doesn't appear to have moved the data — revenue continued its prior\n"
-                   "  trend\"). Either alignment or non-alignment is a finding the user wants\n"
-                   "  to know. Treat the timeline analysis as a first-class part of the\n"
-                   "  Discussion, not as a footnote.\n"
-                   "- A null/inconclusive finding is a finding. Say it plainly and explain why\n"
-                   "  the available evidence is insufficient.\n"
-                   "\n"
-                   "STYLE: Direct, analytical, specific. Avoid hedging language like 'it appears'\n"
-                   "and 'might suggest' unless you are explicitly flagging weak evidence.\n"
-                   "\n"
-                   "---\n\n")
-        question (if (str/blank? thread-prompt)
-                   "USER QUESTION: (none provided — infer from the metrics/dimensions selected)\n"
-                   (str "USER QUESTION:\n" thread-prompt "\n"))
-        sel-text (if (seq selections)
-                   (str "SELECTIONS:\n" (str/join "\n" selections) "\n")
-                   "")
-        timeline-md (common/format-timeline-events timelines)
-        top-md   (str/join "\n\n---\n\n" (map full-block top-blocks))
-        slim-md  (str/join "\n\n---\n\n" (map slim-block awareness-blocks))]
-    (str intro
-         question "\n"
-         sel-text "\n"
-         (when timeline-md (str "---\n\n" timeline-md "\n\n"))
-         "---\n\nTOP-TIER CHARTS (full data — cite values from these):\n\n"
-         top-md
-         (when (seq awareness-blocks)
-           (str "\n\n---\n\nAWARENESS-TIER CHARTS (summary only — context, not citation):\n\n"
-                slim-md)))))
+  (prompts/render
+   "phase2_analysis.selmer"
+   {:thread_prompt         (when-not (str/blank? thread-prompt) thread-prompt)
+    :selections            (when (seq selections) (str/join "\n" selections))
+    :curation_rationale    (when-not (str/blank? curation-rationale) curation-rationale)
+    :timeline_md           (common/format-timeline-events timelines)
+    :top_block_count       (count top-blocks)
+    :awareness_block_count (count awareness-blocks)
+    :pool_size             pool-size
+    :total_chart_count     total-chart-count
+    :top_md                (str/join "\n\n---\n\n" (map full-block top-blocks))
+    :awareness_blocks      (boolean (seq awareness-blocks))
+    :slim_md               (str/join "\n\n---\n\n" (map slim-block awareness-blocks))}))
 
 (defn- extract-doc [response]
   (when (map? response)
@@ -538,16 +357,11 @@
         echo (if (<= (count echo) max-repair-echo-chars)
                echo
                (str (subs echo 0 max-repair-echo-chars) "\n... (truncated)"))]
-    (str (if (nil? previous-doc)
-           "Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the document by calling the `structured_output` tool exactly once with `{\"document\": <prose-mirror-doc>}`. "
-           "The document you returned doesn't conform to the supported ProseMirror schema. ")
-         "Here are the structural errors I found (paths are JSONPath-style into the document):\n\n"
-         (common/format-errors errors)
-         "\n\nReturn a JSON object with the SAME analytical content (don't rewrite the prose) "
-         "but a valid `document` tree. Allowed node types are listed in my previous message.\n\n"
-         "Your previous document was:\n```json\n"
-         echo
-         "\n```")))
+    (prompts/render
+     "phase2_repair.selmer"
+     {:no_tool_call  (nil? previous-doc)
+      :errors        (common/format-errors errors)
+      :previous_echo echo})))
 
 (defn run-analysis!
   "Phase 2 entry point. `prompt` is the pre-rendered prompt string built by

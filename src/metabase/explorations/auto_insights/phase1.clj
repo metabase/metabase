@@ -12,7 +12,8 @@
   infrastructure lives in [[metabase.explorations.auto-insights.common]]."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.auto-insights.common :as common]))
+   [metabase.explorations.auto-insights.common :as common]
+   [metabase.explorations.auto-insights.prompts :as prompts]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,92 +68,25 @@
 
 (defn build-curation-prompt
   "Phase 1 prompt: pick top-tier (full-data) and awareness-tier (summary-only)
-  charts from a thin index of the pool. Emits guidance about size targets,
-  diversification, and (when timelines are attached) prioritizing charts that
-  overlap timeline events."
+  charts from a thin index of the pool. The Selmer template lives at
+  `resources/explorations/auto_insights/prompts/phase1_curation.selmer`."
   [{:keys [thread-prompt selections timelines index-entries pool-size total-chart-count]}]
   (let [{:keys [top-tier-min top-tier-max
                 awareness-tier-min awareness-tier-max
-                combined-max]} curation-bounds
-        timeline-md (common/format-timeline-events timelines)
-        intro (str "You are the CURATOR for an Automatic Insights document. A second LLM\n"
-                   "pass (the ANALYST) will write the actual research-paper-style document; your\n"
-                   "job is to choose which charts that analyst gets to work with and at what\n"
-                   "depth.\n"
-                   "\n"
-                   "WHY THIS MATTERS:\n"
-                   "The analyst only sees what you select. Charts you omit are unreachable —\n"
-                   "they will not appear in the document and will not influence the analysis.\n"
-                   "Choose carefully against the user's question, not against generic relevance.\n"
-                   "\n"
-                   "YOUR CHOICES:\n"
-                   "- TOP TIER (" top-tier-min "–" top-tier-max ", aim for ~8–15): these charts get the FULL\n"
-                   "  data point list so the analyst can cite specific values verbatim. Pick\n"
-                   "  charts whose actual numbers the analyst should be quoting in the document.\n"
-                   "- AWARENESS TIER (" awareness-tier-min "–" awareness-tier-max ", aim for ~15–25): these get only\n"
-                   "  a one-line summary and pre-computed key points (peak, trough, first → last,\n"
-                   "  mean). The analyst can mention them, suggest them as follow-up directions,\n"
-                   "  or use them for context — but won't cite specific values from them.\n"
-                   "- Total of both tiers MUST be ≤ " combined-max ".\n"
-                   "- A chart should appear in at most one tier.\n"
-                   "- All ids you return MUST come from the pool below.\n"
-                   "\n"
-                   "GUIDANCE:\n"
-                   "- ASK YOURSELF FOR EACH CANDIDATE: \"can the analyst use this chart to make\n"
-                   "  a specific claim that helps answer the user's question?\" If yes → top\n"
-                   "  tier. If it adds useful context but won't carry a citation → awareness.\n"
-                   "  If neither → omit. Optimize for the SET of charts that together let the\n"
-                   "  analyst tell a coherent story — not the charts that look most\n"
-                   "  interesting in isolation.\n"
-                   "- Diversify evidence angles. If \"Revenue by Day\" and \"Revenue by Week\"\n"
-                   "  both rank high but tell the same story, pick one (probably the finer\n"
-                   "  granularity) and put the other in awareness or skip it. Do NOT spend top\n"
-                   "  tier slots on near-duplicates.\n"
-                   "- Prefer charts whose summary line shows something *notable* (a sharp\n"
-                   "  trend, an extreme value, a concentration) over flat / noisy ones.\n"
-                   "- The upstream score is a hint, not a verdict. A rank-30 chart with a\n"
-                   "  striking summary that directly answers the question beats a rank-1\n"
-                   "  chart that just barely touches the question.\n"
-                   "- A broad / open-ended user question warrants more charts; a focused\n"
-                   "  question (\"why did revenue drop in Q4?\") warrants fewer, more targeted\n"
-                   "  ones. Tune the tier sizes within the allowed ranges accordingly.\n"
-                   (when timeline-md
-                     (str "- TIMELINE EVENTS ARE A MAJOR SIGNAL (see the TIMELINE EVENTS section\n"
-                          "  below). When the user has attached timelines, they expect the\n"
-                          "  analyst to correlate event dates with movements in the data. PRIORITIZE\n"
-                          "  for the top tier any chart whose:\n"
-                          "    * x-axis (time) range contains one or more event dates, AND\n"
-                          "    * data shows a visible inflection point near an event date (peak,\n"
-                          "      trough, sudden change in slope, sustained level shift).\n"
-                          "  A chart with even moderate base relevance becomes high-priority if\n"
-                          "  events sit on top of its inflection points — that's the story the\n"
-                          "  user is hoping to find. Conversely, charts whose dimension is\n"
-                          "  unrelated to time (pure categorical) cannot intersect events; only\n"
-                          "  consider these on their own merits.\n"))
-                   "\n"
-                   "OUTPUT: call the `structured_output` tool exactly once with\n"
-                   "`{top_tier: [ids], awareness_tier: [ids], rationale: \"...\"}`. The\n"
-                   "rationale should be 1–3 sentences explaining the selection logic so the\n"
-                   "analyst (and humans debugging the run) can understand your choices."
-                   (when timeline-md
-                     " If timeline events drove specific picks, mention which ones.")
-                   "\n"
-                   "\n"
-                   "Use your extended thinking to deliberate. Skim every entry in the pool\n"
-                   "below before deciding.\n"
-                   "\n"
-                   "---\n\n")
-        question (if (str/blank? thread-prompt)
-                   "USER QUESTION: (none provided — infer from the metrics/dimensions selected)\n"
-                   (str "USER QUESTION:\n" thread-prompt "\n"))
-        sel-text (if (seq selections)
-                   (str "SELECTIONS:\n" (str/join "\n" selections) "\n")
-                   "")
-        pool-md  (str/join "\n" (map index-entry index-entries))]
-    (str intro question "\n" sel-text "\n"
-         (when timeline-md (str "---\n\n" timeline-md "\n\n"))
-         "---\n\nCHART POOL (" pool-size " of " total-chart-count " total, ranked best-first):\n\n"
-         pool-md)))
+                combined-max]} curation-bounds]
+    (prompts/render
+     "phase1_curation.selmer"
+     {:top_tier_min       top-tier-min
+      :top_tier_max       top-tier-max
+      :awareness_tier_min awareness-tier-min
+      :awareness_tier_max awareness-tier-max
+      :combined_max       combined-max
+      :thread_prompt      (when-not (str/blank? thread-prompt) thread-prompt)
+      :selections         (when (seq selections) (str/join "\n" selections))
+      :timeline_md        (common/format-timeline-events timelines)
+      :pool_md            (str/join "\n" (map index-entry index-entries))
+      :pool_size          pool-size
+      :total_chart_count  total-chart-count})))
 
 (defn- extract-curation
   "Pull the parsed curation map out of the LLM's structured-tool response."
@@ -229,25 +163,21 @@
           (and top-seq? aware-seq? (> combined combined-max))
           (conj (str "top_tier + awareness_tier = " combined " entries; combined max is " combined-max)))))))
 
+(def ^:private repair-echo-cap 4000)
+
 (defn- repair-prompt
   "Repair message for Phase 1: re-state the validation errors and ask for a
   corrected curation, preserving the original intent where possible."
   [previous-curation errors]
-  (let [echo     (pr-str previous-curation)
-        echo-cap 4000
-        echo     (if (<= (count echo) echo-cap)
-                   echo
-                   (str (subs echo 0 echo-cap) "\n... (truncated)"))]
-    (str (if (nil? previous-curation)
-           "Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the curation by calling the `structured_output` tool exactly once. "
-           "Your curation didn't validate. ")
-         "Errors:\n\n"
-         (common/format-errors errors)
-         "\n\nReturn a `structured_output` tool call with valid top_tier, "
-         "awareness_tier, and rationale fields. Keep the same overall selection logic — "
-         "only fix what the errors above point at. Your previous response was:\n```json\n"
-         echo
-         "\n```")))
+  (let [echo (pr-str previous-curation)
+        echo (if (<= (count echo) repair-echo-cap)
+               echo
+               (str (subs echo 0 repair-echo-cap) "\n... (truncated)"))]
+    (prompts/render
+     "phase1_repair.selmer"
+     {:no_tool_call  (nil? previous-curation)
+      :errors        (common/format-errors errors)
+      :previous_echo echo})))
 
 (defn run-curation!
   "Phase 1 entry point. `prompt` is the pre-rendered prompt string (built by
