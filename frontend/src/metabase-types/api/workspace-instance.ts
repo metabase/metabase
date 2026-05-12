@@ -4,7 +4,7 @@ export type WorkspaceInstanceDatabase = {
   id: DatabaseId;
   name: string;
   input_schemas: string[];
-  output_schema: string;
+  output_namespace: string;
 };
 
 export type WorkspaceInstance = {

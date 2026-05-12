@@ -11,7 +11,7 @@ export function createMockWorkspaceInstanceDatabase(
     id: 1,
     name: "Sample Database",
     input_schemas: [],
-    output_schema: "",
+    output_namespace: "",
     ...opts,
   };
 }

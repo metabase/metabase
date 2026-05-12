@@ -40,7 +40,7 @@
             (is (= (mt/id) (:id db)))
             (is (string? (:name db)))
             (is (= ["PUBLIC"] (:input_schemas db)))
-            (is (= "ws_alice" (:output_schema db)))))))))
+            (is (= "ws_alice" (:output_namespace db)))))))))
 
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires superuser"

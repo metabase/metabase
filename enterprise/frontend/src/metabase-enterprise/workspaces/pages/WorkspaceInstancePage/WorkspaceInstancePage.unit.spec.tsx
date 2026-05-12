@@ -26,7 +26,7 @@ function setup({ remappings = [] as TableRemapping[] } = {}) {
           id: POSTGRES.id,
           name: POSTGRES.name,
           input_schemas: ["public"],
-          output_schema: "ws_dev",
+          output_namespace: "ws_dev",
         }),
       ],
     }),
