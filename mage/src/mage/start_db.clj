@@ -229,21 +229,25 @@
   ([db-info db version]
    (start-db db-info db version nil))
   ([db-info db version opts]
-   (let [default-port     (get-in db-info [db :ports version])
-         port             (or (:port opts) default-port)
-         db               (keyword db)
-         version          (cond-> version (string? version) keyword)
-         resolved-version (resolve-version db-info db version)]
-     (u/debug "PORT:" port)
+   (let [db               (keyword db)
+         version          (cond-> version (string? version) keyword)]
      (cond (not (contains? db-info db))
            (do
              (println (c/red "Invalid DB: " (name db)))
              (println (usage {:db-info db-info})))
 
-           (not (integer? port))
-           (do
-             (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
-             (println (usage {:db-info db-info})))
+           (and (= db :clickhouse) (:port opts))
+           (println (c/red "--port is not supported for clickhouse. Ports are configured in modules/drivers/clickhouse/docker-compose.yml"))
 
            :else
-           (start-db! db version resolved-version port)))))
+           (let [default-port     (get-in db-info [db :ports version])
+                 port             (or (:port opts) default-port)
+                 resolved-version (resolve-version db-info db version)]
+             (u/debug "PORT:" port)
+             (cond (not (integer? port))
+                   (do
+                     (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
+                     (println (usage {:db-info db-info})))
+
+                   :else
+                   (start-db! db version resolved-version port)))))))
