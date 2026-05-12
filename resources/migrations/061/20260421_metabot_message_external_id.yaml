@@ -5,6 +5,12 @@ databaseChangeLog:
       id: v61.2026-04-21T10:00:00
       author: sloansparger
       comment: Add nullable external_id column to metabot_message
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabot_message
+                columnName: external_id
       changes:
         - addColumn:
             tableName: metabot_message
@@ -20,6 +26,12 @@ databaseChangeLog:
       id: v61.2026-04-21T10:00:01
       author: sloansparger
       comment: Unique constraint on metabot_message.external_id for feedback lookup
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: metabot_message
+                constraintName: uq_metabot_message_external_id
       changes:
         - addUniqueConstraint:
             tableName: metabot_message
