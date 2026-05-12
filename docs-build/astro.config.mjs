@@ -28,17 +28,9 @@ export default defineConfig({
       rehypeBlockquoteClasses,
     ],
     shikiConfig: {
-      theme: "github-dark-dimmed",
+      // Light theme to match the live docs (white code blocks with a soft shadow).
+      theme: "github-light",
       wrap: true,
-    },
-  },
-  vite: {
-    css: {
-      preprocessorOptions: {
-        scss: {
-          api: "modern-compiler",
-        },
-      },
     },
   },
 });
