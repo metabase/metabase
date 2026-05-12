@@ -1,6 +1,7 @@
 (ns metabase.metabot.api-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
@@ -111,41 +112,44 @@
           (fn [req respond _raise]
             (respond
              (compojure.response/render
-              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os _canceled-chan]
+              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os llm-canceled-chan]
                 (try
-                  (let [write! (fn [^String s]
-                                 (.write os (.getBytes s "UTF-8"))
-                                 (.flush os))]
+                  (let [write!    (fn [^String s]
+                                    (.write os (.getBytes s "UTF-8"))
+                                    (.flush os))
+                        canceled? #(some? (a/poll! llm-canceled-chan))]
                     ;; First chunk: role assignment (empty content to establish assistant role)
                     (write! (sse-event {:id      chat-id
                                         :model   "anthropic/claude-haiku-4-5"
                                         :choices [{:index         0
                                                    :delta         {:role "assistant" :content ""}
                                                    :finish_reason nil}]}))
-                    ;; Stream text content chunks slowly
+                    ;; Stream text content chunks slowly, stop early if the consumer disconnects
                     (loop []
-                      (when (pos? @cnt)
+                      (when (and (pos? @cnt) (not (canceled?)))
                         (write! (sse-event {:id      chat-id
                                             :model   "anthropic/claude-haiku-4-5"
                                             :choices [{:index         0
-                                                       :delta         {:content (str "chunk-" @cnt " ")}
+                                                       ;; pad past Jetty's 8 KB buffer so .flush reaches the client mid-stream
+                                                       :delta         {:content (str "chunk-" @cnt " " (apply str (repeat 512 \x)))}
                                                        :finish_reason nil}]}))
                         (swap! cnt dec)
                         (Thread/sleep 10)
                         (recur)))
-                    ;; Finish reason
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices [{:index         0
-                                                   :delta         {}
-                                                   :finish_reason "stop"}]}))
-                    ;; Usage (separate final chunk, as OpenRouter does)
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices []
-                                        :usage   {:prompt_tokens     10
-                                                  :completion_tokens 50}}))
-                    (write! "data: [DONE]\n\n"))
+                    (when-not (canceled?)
+                      ;; Finish reason
+                      (write! (sse-event {:id      chat-id
+                                          :model   "anthropic/claude-haiku-4-5"
+                                          :choices [{:index         0
+                                                     :delta         {}
+                                                     :finish_reason "stop"}]}))
+                      ;; Usage (separate final chunk, as OpenRouter does)
+                      (write! (sse-event {:id      chat-id
+                                          :model   "anthropic/claude-haiku-4-5"
+                                          :choices []
+                                          :usage   {:prompt_tokens     10
+                                                    :completion_tokens 50}}))
+                      (write! "data: [DONE]\n\n")))
                   (catch Exception _e nil)))
               req)))
           llm-server
