@@ -9,9 +9,9 @@ import { Group, Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
+import { HelpMenu } from "../../components/HelpMenu";
 import { getAvailableDatabases } from "../../utils";
 
-import { HelpMenu } from "./HelpMenu";
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceSection } from "./WorkspaceSection";

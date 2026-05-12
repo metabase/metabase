@@ -1,5 +1,8 @@
 import type {
+  CreateWorkspaceDatabaseRequest,
   CreateWorkspaceRequest,
+  DeleteWorkspaceDatabaseRequest,
+  UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
@@ -57,6 +60,41 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
+    createWorkspaceDatabase: builder.mutation<
+      Workspace,
+      CreateWorkspaceDatabaseRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace-manager/${id}/database`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+    }),
+    updateWorkspaceDatabase: builder.mutation<
+      Workspace,
+      UpdateWorkspaceDatabaseRequest
+    >({
+      query: ({ id, database_id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace-manager/${id}/database/${database_id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+    }),
+    deleteWorkspaceDatabase: builder.mutation<
+      Workspace,
+      DeleteWorkspaceDatabaseRequest
+    >({
+      query: ({ id, database_id }) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace-manager/${id}/database/${database_id}`,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+    }),
   }),
 });
 
@@ -66,4 +104,7 @@ export const {
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
+  useCreateWorkspaceDatabaseMutation,
+  useUpdateWorkspaceDatabaseMutation,
+  useDeleteWorkspaceDatabaseMutation,
 } = workspaceApi;

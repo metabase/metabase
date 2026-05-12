@@ -26,6 +26,7 @@ export function HelpMenu() {
             to={fileBasedDevDocsUrl}
             target="_blank"
             rel="noreferrer"
+            leftSection={<Icon name="reference" />}
           >
             {t`File-based development`}
           </Menu.Item>
@@ -36,6 +37,7 @@ export function HelpMenu() {
             to={remoteSyncDocsUrl}
             target="_blank"
             rel="noreferrer"
+            leftSection={<Icon name="reference" />}
           >
             {t`Using remote sync`}
           </Menu.Item>
