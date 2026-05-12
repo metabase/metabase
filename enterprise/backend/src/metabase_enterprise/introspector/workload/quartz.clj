@@ -7,6 +7,7 @@
    - (slot from to opts)      -> [{:type :entity_id :entity_name :cron :fire_at :weight :settings_url}...]"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.introspector.workload.history :as history]
    [metabase-enterprise.introspector.workload.weights :as weights]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -321,20 +322,21 @@
                            (all-triggers))
           info       (bulk-entity-info
                       (map (fn [{:keys [parsed]}] [(:type parsed) (:id parsed)])
-                           matched))]
-      (vec
-       (for [{:keys [trigger parsed]} matched
-             :let [{:keys [type id]} parsed]
-             ^Instant fire (fires-of trigger from to)
-             :let [cron (when (instance? CronTrigger trigger)
-                          (.getCronExpression ^CronTrigger trigger))
-                   meta (get info [type id])]]
-         {:type         type
-          :entity_id    id
-          :entity_name  (:name meta)
-          :updated_at   (some-> (:updated_at meta) str)
-          :creator      (:creator meta)
-          :cron         cron
-          :fire_at      (str fire)
-          :weight       (weight-for type id)
-          :settings_url (:settings_url meta)})))))
+                           matched))
+          rows       (vec
+                      (for [{:keys [trigger parsed]} matched
+                            :let [{:keys [type id]} parsed]
+                            ^Instant fire (fires-of trigger from to)
+                            :let [cron (when (instance? CronTrigger trigger)
+                                         (.getCronExpression ^CronTrigger trigger))
+                                  meta (get info [type id])]]
+                        {:type         type
+                         :entity_id    id
+                         :entity_name  (:name meta)
+                         :updated_at   (some-> (:updated_at meta) str)
+                         :creator      (:creator meta)
+                         :cron         cron
+                         :fire_at      (str fire)
+                         :weight       (weight-for type id)
+                         :settings_url (:settings_url meta)}))]
+      (history/enrich rows))))

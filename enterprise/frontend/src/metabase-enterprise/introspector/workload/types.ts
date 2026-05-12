@@ -21,6 +21,13 @@ export type WorkloadGridResponse = {
   scheduler_status: "running" | "stopped";
 };
 
+export type WorkloadLastRun = {
+  duration_ms: number;
+  run_type: "sync" | "alert" | "subscription";
+  entity_type: "database" | "card" | "dashboard";
+  entity_id: number;
+};
+
 export type WorkloadSlotRow = {
   type: WorkloadJobType;
   entity_id: number | null;
@@ -31,6 +38,7 @@ export type WorkloadSlotRow = {
   fire_at: string;
   weight: number;
   settings_url: string | null;
+  last_run: WorkloadLastRun | null;
 };
 
 export type WorkloadQueryParams = {

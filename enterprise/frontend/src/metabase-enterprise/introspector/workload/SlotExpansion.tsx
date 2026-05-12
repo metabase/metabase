@@ -22,7 +22,11 @@ import {
 import { getScheduleExplanation } from "metabase/utils/cron";
 
 import { usePauseWorkloadJobsMutation } from "./api";
-import type { WorkloadJobType, WorkloadSlotRow } from "./types";
+import type {
+  WorkloadJobType,
+  WorkloadLastRun,
+  WorkloadSlotRow,
+} from "./types";
 
 type Props = {
   slot: string | null;
@@ -47,7 +51,36 @@ type SlotGroup = {
   settings_url: string | null;
   fires: number;
   totalWeight: number;
+  last_run: WorkloadLastRun | null;
 };
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  const s = Math.round(ms / 1000);
+  if (s < 60) {
+    return `${s}s`;
+  }
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m < 60) {
+    return rem === 0 ? `${m}m` : `${m}m ${rem}s`;
+  }
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm === 0 ? `${h}h` : `${h}h ${mm}m`;
+}
+
+function lastRunUrl(last: WorkloadLastRun): string {
+  const params = new URLSearchParams({
+    "run-type": last.run_type,
+    "entity-type": last.entity_type,
+    "entity-id": String(last.entity_id),
+    status: "success",
+  });
+  return `/admin/tools/tasks/runs?${params.toString()}`;
+}
 
 const BADGE_COLOR: Record<
   WorkloadJobType,
@@ -130,6 +163,7 @@ function groupRows(rows: WorkloadSlotRow[]): SlotGroup[] {
         settings_url: r.settings_url,
         fires: 1,
         totalWeight: r.weight,
+        last_run: r.last_run,
       });
     }
   }
@@ -443,6 +477,7 @@ export function SlotExpansion({
               () => toggleSort("weight"),
               t`Weight`,
             )}
+            <th style={headerStyleBase}>{t`Last run`}</th>
             <th style={{ ...headerStyleBase, width: 64 }} />
           </tr>
         </thead>
@@ -516,6 +551,21 @@ export function SlotExpansion({
                   </Text>
                 </td>
                 <td style={cellStyle}>{g.totalWeight}</td>
+                <td style={cellStyle}>
+                  {g.last_run ? (
+                    <Anchor
+                      href={lastRunUrl(g.last_run)}
+                      size="sm"
+                      title={t`See runs in troubleshooting logs`}
+                    >
+                      {formatDuration(g.last_run.duration_ms)}
+                    </Anchor>
+                  ) : (
+                    <Text size="sm" c="text-secondary" component="span">
+                      —
+                    </Text>
+                  )}
+                </td>
                 <td style={cellStyle}>
                   <Group gap={4} justify="flex-end" wrap="nowrap">
                     <Tooltip label={t`Pause this job`}>
