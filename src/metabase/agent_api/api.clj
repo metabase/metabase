@@ -716,7 +716,11 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope metabot/agent-query-execute
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."
+           :description (str "Execute a previously constructed query and return raw results with column metadata, "
+                             "row count, and execution time. Use this when the user explicitly asks for raw data, "
+                             "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
+                             "show, display, visualize, plot, chart, or present the result, use visualize_query "
+                             "instead.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
