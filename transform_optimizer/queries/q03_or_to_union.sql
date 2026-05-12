@@ -26,9 +26,9 @@ SELECT
   e.type,
   e.url_path
 FROM shop.events e
-WHERE e.occurred_at >= TIMESTAMPTZ '2024-06-01 00:00:00+00'
-  AND e.occurred_at <  TIMESTAMPTZ '2024-07-01 00:00:00+00'
-  AND (e.customer_id = 42 OR e.product_id = 17);
+WHERE e.occurred_at >= TIMESTAMPTZ '2025-06-01 00:00:00+00'
+  AND e.occurred_at <  TIMESTAMPTZ '2025-07-01 00:00:00+00'
+  AND (e.customer_id BETWEEN 1 AND 1000 OR e.product_id BETWEEN 1 AND 100);
 
 -- @fast
 SELECT DISTINCT ON (e.id)
@@ -36,13 +36,13 @@ SELECT DISTINCT ON (e.id)
 FROM (
   SELECT id, customer_id, product_id, occurred_at, type, url_path
   FROM shop.events
-  WHERE customer_id = 42
-    AND occurred_at >= TIMESTAMPTZ '2024-06-01 00:00:00+00'
-    AND occurred_at <  TIMESTAMPTZ '2024-07-01 00:00:00+00'
+  WHERE customer_id BETWEEN 1 AND 1000
+    AND occurred_at >= TIMESTAMPTZ '2025-06-01 00:00:00+00'
+    AND occurred_at <  TIMESTAMPTZ '2025-07-01 00:00:00+00'
   UNION ALL
   SELECT id, customer_id, product_id, occurred_at, type, url_path
   FROM shop.events
-  WHERE product_id = 17
-    AND occurred_at >= TIMESTAMPTZ '2024-06-01 00:00:00+00'
-    AND occurred_at <  TIMESTAMPTZ '2024-07-01 00:00:00+00'
+  WHERE product_id BETWEEN 1 AND 100
+    AND occurred_at >= TIMESTAMPTZ '2025-06-01 00:00:00+00'
+    AND occurred_at <  TIMESTAMPTZ '2025-07-01 00:00:00+00'
 ) e;

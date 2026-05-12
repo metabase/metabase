@@ -2,8 +2,8 @@
 --
 -- Loads roughly:
 --   customers       50 000   suppliers   2 000   categories      30
---   products        10 000   orders    300 000   order_items ≈ 900 000
---   events       1 000 000   reviews    150 000
+--   products        10 000   orders    500 000   order_items ≈ 1 500 000
+--   events       2 000 000   reviews    250 000
 --
 -- Sizing rationale
 -- ================
@@ -65,7 +65,10 @@ SELECT
   i,
   'user' || i || '@example.com',
   'Customer ' || i,
-  (ARRAY['US','UK','DE','FR','IT','ES','BR','JP','CA','AU','NL','SE','PL','MX','IN'])[1 + (i % 15)],
+  -- country is driven by `(i / 100) % 15` rather than `i % 15` so it
+  -- decorrelates from segment (which depends on `i % 100`). With the latter,
+  -- gcd(15, 100) = 5 means segment='enterprise' AND country='US' is empty.
+  (ARRAY['US','UK','DE','FR','IT','ES','BR','JP','CA','AU','NL','SE','PL','MX','IN'])[1 + ((i / 100) % 15)],
   CASE
     WHEN (i % 100) < 80 THEN 'free'
     WHEN (i % 100) < 97 THEN 'pro'
@@ -110,16 +113,18 @@ SELECT
        THEN 1 + ((i * 2654435761) % 10000)
        ELSE 1 + ((i * 2654435761) % 50000)
   END,
-  TIMESTAMPTZ '2022-01-01 00:00:00+00'
+  -- Orders span 2023-06-01 → ~2026-06-01 so that "last 12 months" filters
+  -- relative to today's NOW (≈ 2026-05) land inside the data.
+  TIMESTAMPTZ '2023-06-01 00:00:00+00'
     + ((((i::bigint * 1019) + ((i * 7) % 9973)) % (365 * 3 * 24 * 60)) || ' minutes')::interval,
   (ARRAY['placed','paid','paid','paid','shipped','shipped','delivered','delivered','delivered','cancelled','refunded'])[1 + (i % 11)],
   500 + ((i * 97) % 80000),                            -- $5 — $805
   (ARRAY['USD','USD','USD','EUR','GBP','BRL','JPY'])[1 + (i % 7)],
   (ARRAY['US','UK','DE','FR','IT','ES','BR','JP','CA','AU','NL','SE','PL','MX','IN'])[1 + ((i * 11) % 15)]
-FROM generate_series(1, 300000) AS i;
+FROM generate_series(1, 500000) AS i;
 
 -- ----------------------------------------------------------------------------
--- Order items (≈ 900k)
+-- Order items (≈ 1.5M)
 --
 -- 1–5 items per order, deterministic. We use a row_number() global counter to
 -- assign primary keys.
@@ -137,7 +142,7 @@ FROM orders o,
      LATERAL generate_series(1, 1 + (o.id % 5)) AS g;
 
 -- ----------------------------------------------------------------------------
--- Events (1M)
+-- Events (2M)
 --
 -- Mostly anonymous page_views; ~15% authenticated; ~3% purchases.
 -- ----------------------------------------------------------------------------
@@ -149,8 +154,10 @@ SELECT
        THEN 1 + ((i * 2654435761) % 50000)
        ELSE NULL
   END,
-  TIMESTAMPTZ '2023-01-01 00:00:00+00'
-    + (((i * 31) % (365 * 2 * 24 * 60 * 60)) || ' seconds')::interval,
+  -- Events span 2024-06-01 → ~2026-06-01 so "last 90 days" relative to
+  -- today's NOW (≈ 2026-05) lands inside the data.
+  TIMESTAMPTZ '2024-06-01 00:00:00+00'
+    + (((i::bigint * 31) % (365 * 2 * 24 * 60 * 60)) || ' seconds')::interval,
   (ARRAY['page_view','page_view','page_view','page_view','page_view','page_view','page_view',
          'search','search','add_to_cart','add_to_cart','checkout_start','purchase'])[1 + (i % 13)],
   CASE WHEN (i % 5) = 0 THEN 1 + ((i * 7) % 10000) ELSE NULL END,
@@ -158,10 +165,10 @@ SELECT
   '/' || (ARRAY['home','products','search','cart','checkout','account','help','blog'])[1 + (i % 8)]
     || '/' || ((i * 11) % 10000),
   jsonb_build_object('referrer', (ARRAY['google','direct','email','ad','social'])[1 + (i % 5)])
-FROM generate_series(1, 1000000) AS i;
+FROM generate_series(1, 2000000) AS i;
 
 -- ----------------------------------------------------------------------------
--- Reviews (150k)
+-- Reviews (250k)
 --
 -- We salt review bodies with hot keywords ("refund", "broken", "amazing",
 -- "fast delivery") at a low rate so the trigram-search example is realistic.
@@ -188,7 +195,7 @@ SELECT
   END,
   TIMESTAMPTZ '2023-01-01 00:00:00+00'
     + (((i * 53) % (365 * 2 * 24 * 60)) || ' minutes')::interval
-FROM generate_series(1, 150000) AS i;
+FROM generate_series(1, 250000) AS i;
 
 COMMIT;
 

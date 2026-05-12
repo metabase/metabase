@@ -1,30 +1,35 @@
 -- @meta
--- name: Customers who have never placed an order
+-- name: Customers who never triggered an identified web event
 -- kind: rewrite
--- expected_speedup: ≥100×
+-- expected_speedup: ≥10×
 -- requires: -
 --
 -- Why the slow version is slow
 -- ============================
--- `NOT IN (subquery)` on a nullable column forces Postgres to use a
--- Hashed-SubPlan that materializes the entire `orders.customer_id` column
--- (5M rows) — and because the column is nullable, the planner must
--- additionally check for NULLs for every outer row, which prevents the more
--- efficient anti-join plan. The result: ~5M-row hash build for every
--- evaluation, no index help, multiple seconds.
+-- `NOT IN (subquery)` on a **nullable** column is the classic foot-gun.
+-- `events.customer_id` is nullable (anonymous traffic). The planner cannot
+-- collapse `NOT IN` into an anti-join because the SQL standard says
+-- "x NOT IN (set)" returns UNKNOWN when the set contains a NULL — Postgres
+-- must check for that case explicitly. The result is a Hashed-SubPlan with
+-- an extra null-aware probe per outer row, costing significantly more than
+-- a plain anti-join.
 --
--- The fast rewrite uses `NOT EXISTS`, which the planner recognises as an
--- anti-semi-join. With the FK on orders.customer_id and the customers PK,
--- Postgres can choose an anti-join on the smaller side.
+-- The fast rewrite uses `NOT EXISTS`. Its NULL semantics are different
+-- (NULL on the inner side simply fails the WHERE) so the planner can use
+-- a proper anti-join.
+--
+-- We use `events` (not `orders`) here because we declared `orders.customer_id
+-- NOT NULL` — without nullable values, both forms produce the same plan and
+-- the pathology disappears.
 
 -- @slow
 SELECT c.id, c.email, c.name, c.signed_up_at
 FROM shop.customers c
-WHERE c.id NOT IN (SELECT o.customer_id FROM shop.orders o);
+WHERE c.id NOT IN (SELECT e.customer_id FROM shop.events e);
 
 -- @fast
 SELECT c.id, c.email, c.name, c.signed_up_at
 FROM shop.customers c
 WHERE NOT EXISTS (
-  SELECT 1 FROM shop.orders o WHERE o.customer_id = c.id
+  SELECT 1 FROM shop.events e WHERE e.customer_id = c.id
 );
