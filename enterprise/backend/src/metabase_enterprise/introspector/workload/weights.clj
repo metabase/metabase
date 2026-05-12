@@ -59,10 +59,24 @@
              1)))
 
 ;; Dashboard subscriptions still use the legacy pulse system.
-;; id = pulse_id; one delivery per enabled channel.
+;; id = pulse_id; cost is dominated by per-card sequential render (query +
+;; chart). Linear in card count — a 100-card dashboard really is ~4× the work
+;; of a 25-card one — but halved so big dashboards don't completely swamp
+;; sync/transform rows in the heatmap. Channels barely contribute (they just
+;; resend the already-rendered payload) so they're omitted.
+;;   1 card   -> 1
+;;   10 cards -> 5
+;;   25 cards -> 13
+;;   50 cards -> 25
+;;   100      -> 50
 (defmethod weight-for :dashboard-subscription [_ pulse-id]
-  (max 1 (or (when pulse-id
-               (t2/count :model/PulseChannel :pulse_id pulse-id :enabled true))
-             1)))
+  (or (when pulse-id
+        (let [dashboard-id (t2/select-one-fn :dashboard_id :model/Pulse :id pulse-id)
+              cards        (or (when dashboard-id
+                                 (t2/count :model/DashboardCard
+                                           :dashboard_id dashboard-id))
+                               1)]
+          (max 1 (int (Math/ceil (/ cards 2.0))))))
+      1))
 
 (defmethod weight-for :default [_ _] 1)
