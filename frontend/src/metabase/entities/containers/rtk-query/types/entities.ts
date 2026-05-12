@@ -45,7 +45,6 @@ export type EntityType =
   | "pulses"
   | "questions"
   | "revisions"
-  | "schemas"
   | "search"
   | "segments"
   | "snippetCollections"
