@@ -60,11 +60,11 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
+(defmethod analytics/known-labels :metabase-search/appdb-index-batches-skipped
   [_]
   [{:table-type :active} {:table-type :pending}])
 
-(defmethod analytics.core/known-labels :metabase-search/index-documents-skipped
+(defmethod analytics/known-labels :metabase-search/index-documents-skipped
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
