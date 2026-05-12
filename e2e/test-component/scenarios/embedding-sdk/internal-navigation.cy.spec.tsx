@@ -977,7 +977,9 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                       },
                     }),
                   });
-                  cy.wrap(sourceDashboard.entity_id).as("sourceDashboardEntityId");
+                  cy.wrap(sourceDashboard.entity_id).as(
+                    "sourceDashboardEntityId",
+                  );
                 },
               );
             });
