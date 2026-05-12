@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
   Alert,
+  Anchor,
   Box,
   Chip,
   Group,
@@ -66,6 +68,14 @@ export function WorkloadPage() {
         <Text c="text-secondary" size="sm">
           {t`Scheduled background work across your instance. Click a cell to see what runs in that hour.`}
         </Text>
+        <Group gap="md">
+          <Anchor component={Link} to="/admin/introspector" c="text-secondary">
+            {t`Content`}
+          </Anchor>
+          <Anchor component={Link} to="/admin/introspector/workload" fw={600}>
+            {t`Workload`}
+          </Anchor>
+        </Group>
       </Stack>
 
       {grid?.scheduler_status === "stopped" && (
