@@ -17,11 +17,11 @@ export type TableRemappingId = number;
 export type TableRemapping = {
   id: TableRemappingId;
   database_id: DatabaseId;
-  from_db: string;
-  from_schema: string;
+  from_db: string | null;
+  from_schema: string | null;
   from_table_name: string;
-  to_db: string;
-  to_schema: string;
+  to_db: string | null;
+  to_schema: string | null;
   to_table_name: string;
   created_at: string;
 };

@@ -27,11 +27,11 @@
   [:map
    [:id              ms/PositiveInt]
    [:database_id     ms/PositiveInt]
-   [:from_db         :string]
-   [:from_schema     :string]
+   [:from_db         [:maybe :string]]
+   [:from_schema     [:maybe :string]]
    [:from_table_name ms/NonBlankString]
-   [:to_db           :string]
-   [:to_schema       :string]
+   [:to_db           [:maybe :string]]
+   [:to_schema       [:maybe :string]]
    [:to_table_name   ms/NonBlankString]
    [:created_at      :any]])
 

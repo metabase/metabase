@@ -19,7 +19,7 @@ function getFromTableColumn(): TreeTableColumnDef<TableRemapping> {
     width: "auto",
     maxAutoWidth: 520,
     accessorFn: (remapping) =>
-      formatQualifiedName(
+      getQualifiedName(
         remapping.from_db,
         remapping.from_schema,
         remapping.from_table_name,
@@ -35,7 +35,7 @@ function getToTableColumn(): TreeTableColumnDef<TableRemapping> {
     width: "auto",
     maxAutoWidth: 520,
     accessorFn: (remapping) =>
-      formatQualifiedName(
+      getQualifiedName(
         remapping.to_db,
         remapping.to_schema,
         remapping.to_table_name,
@@ -56,6 +56,8 @@ function getCreatedAtColumn(): TreeTableColumnDef<TableRemapping> {
   };
 }
 
-function formatQualifiedName(...parts: string[]): string {
-  return parts.filter((part) => part !== "").join("/");
+export function getQualifiedName(...parts: (string | null)[]): string {
+  return parts
+    .filter((part): part is string => part != null && part !== "")
+    .join("/");
 }

@@ -46,3 +46,5 @@ export * from "./timeline";
 export * from "./transform";
 export * from "./user";
 export * from "./util";
+export * from "./workspace";
+export * from "./workspace-instance";
