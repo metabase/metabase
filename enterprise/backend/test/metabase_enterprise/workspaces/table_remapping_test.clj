@@ -918,6 +918,39 @@
            (is (true? active)
                "canonical Table row with an active remap stays active across syncs")))))))
 
+;;; -------------------------- engine-namespace-positions: unknown-engine handling --------------------------
+
+(deftest engine-namespace-positions-unknown-2-slot-degrades-test
+  (testing "Unknown engine whose qualified-name-components is [:schema] degrades to table's :schema column"
+    (with-redefs [driver/qualified-name-components (fn [d]
+                                                     (case d
+                                                       :ws-test-2-slot [:schema]
+                                                       [:schema]))]
+      (is (= {:db nil :schema "public"}
+             (ws/engine-namespace-positions {:engine :ws-test-2-slot :name "x"}
+                                            {:schema "public" :name "orders"}))))))
+
+(deftest engine-namespace-positions-unknown-3-slot-throws-test
+  (testing "Unknown engine whose qualified-name-components includes :db throws (programmer error)"
+    (with-redefs [driver/qualified-name-components (fn [d]
+                                                     (case d
+                                                       :ws-test-3-slot [:db :schema]
+                                                       [:schema]))]
+      (let [database {:engine  :ws-test-3-slot
+                      :name    "x"
+                      :details {:db "warehouse"}}
+            table    {:schema "public" :name "orders"}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"engine-namespace-positions has no case for engine :ws-test-3-slot"
+             (ws/engine-namespace-positions database table)))
+        (try
+          (ws/engine-namespace-positions database table)
+          (catch clojure.lang.ExceptionInfo e
+            (let [data (ex-data e)]
+              (is (= :ws-test-3-slot (:engine data)))
+              (is (= #{:db :schema} (:components data))))))))))
+
 ;;; -------------------------- GHY-3553: MySQL-shape sentinel-leak regressions --------------------------
 ;;;
 ;;; MySQL stores `:schema` as `""` (the no-level sentinel) at the storage layer but

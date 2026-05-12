@@ -32,6 +32,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -79,11 +80,24 @@
      {:db (:project-id (:details database))
       :schema (:schema table)}
 
-     ;; Unknown engine: degrade to the table's own schema column. Anything
-     ;; calling this for a 3-slot driver we haven't enumerated is a bug;
-     ;; surface it loudly at the call site (downstream `:db` lookup yields nil).
-     {:db nil
-      :schema (:schema table)})))
+     ;; Unknown engine. Two outcomes:
+     ;;   - If the driver declares `:db` in `qualified-name-components`, we're
+     ;;     missing a case for a 3-slot (or 1-slot-with-db, like MySQL) driver.
+     ;;     Silently degrading would store remap rows with `:db nil` and break
+     ;;     cross-DB routing at query time. Throw to surface the gap.
+     ;;   - Otherwise the driver is at most 2-slot; degrade to the table's
+     ;;     `:schema` column, which is the conventional shape for any
+     ;;     `[:schema]` driver we haven't enumerated.
+     (let [components (set (driver/qualified-name-components (:engine database)))]
+       (if (contains? components :db)
+         (throw (ex-info (str "engine-namespace-positions has no case for engine "
+                              (pr-str (:engine database))
+                              " but its qualified-name-components includes :db; "
+                              "add an explicit branch.")
+                         {:engine     (:engine database)
+                          :components components}))
+         {:db nil
+          :schema (:schema table)})))))
 
 (defonce ^{:dynamic true
            :doc "The single workspace loaded into this instance from `config.yml`, or nil
