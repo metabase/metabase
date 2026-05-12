@@ -152,9 +152,9 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (doto
-            {:effective_type new-base-type}
-             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
+           (let [et {:effective_type new-base-type}]
+             (schema.field-user-settings/upsert-user-settings metabase-field et)
+             et))
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -188,7 +188,7 @@
            ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
            (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
                   (some? old-pk)
-                     ;; otherwise, log only if logical pk status has changed
+                  ;; otherwise, log only if logical pk status has changed
                   (not= new-pk (= old-semantic-type :type/PK)))
              (log/infof "Database pk of %s has changed from '%s' to '%s'"
                         (common/field-metadata-name-for-logging table metabase-field)
