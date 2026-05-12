@@ -7,7 +7,7 @@ redirect_from:
 
 # JWT-based authentication
 
-{% include plans-blockquote.html feature="JWT-based authentication" %}
+> **Plans:** JWT-based authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
 

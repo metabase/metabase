@@ -49,7 +49,7 @@ You can also go to **Admin > Embedding > Modular embedding** and click **New emb
 
 ### 2. Pick how to authenticate the embed
 
-{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embedding=true %}
+> **Plans:** Authenticated modular embedding is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-of-embedding-types)).
 
@@ -146,7 +146,7 @@ If you're embedding multiple components in a single page, you only need to inclu
 
 ## Each end user should have their own Metabase account
 
-{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embedding=true %}
+> **Plans:** Modular embedding with SSO is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 

@@ -5,7 +5,7 @@ summary: Tenants let you serve multiple customers from a single Metabase while k
 
 # Tenants
 
-{% include plans-blockquote.html feature="Tenants" is_plural=true %}
+> **Plans:** Tenants are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Tenants give you a way to group users and keep them isolated from users in other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
 

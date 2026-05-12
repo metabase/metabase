@@ -5,7 +5,7 @@ description: How to embed charts in your app with the Modular embedding SDK.
 
 # Modular embedding SDK - questions
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true%}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 There are different ways you can embed questions:
 

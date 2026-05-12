@@ -28,22 +28,22 @@ Let's say you want to create a field filter variable that filters the `People` t
 Here's the field filter syntax:
 
 ```sql
-{% raw %}
+
 SELECT
   *
 FROM
   PEOPLE
 WHERE
   {{state}}
-{% endraw %}
+
 ```
 
-Note the lack of the column and operator (it's not `{% raw %}WHERE state = {{state}}{% endraw %}`, it's just `{% raw %}WHERE {{state}}{% endraw %}`). The reason you need to structure field filter variables in this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects _multiple_ values in the filter widget, or a _range_ of dates, Metabase will have to interpolate the SQL code to handle those inputs into the variable.
+Note the lack of the column and operator (it's not `WHERE state = {{state}}`, it's just `WHERE {{state}}`). The reason you need to structure field filter variables in this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects _multiple_ values in the filter widget, or a _range_ of dates, Metabase will have to interpolate the SQL code to handle those inputs into the variable.
 
 In a MongoDB native query, you'll need to put the field filter in a `$match` clause.
 
 ```
-{% raw %}[ {$match: {{date_var}} } ]{% endraw %}
+[ {$match: {{date_var}} } ]
 ```
 
 ### Connect the field filter to a database field
@@ -63,14 +63,14 @@ If you map a filter to a field from an aliased table, you'll need to tell Metaba
 For example, let's say you want to map a field filter to the `category` field from the `products` table, but in your query you use the alias `p` for the `products` table, like so:
 
 ```sql
-{% raw %}
+
 SELECT
   *
 FROM
   products AS p
 WHERE
   {{category_filter}}
-{% endraw %}
+
 ```
 
 If you map to the `category` field from the products table, you'll also need to fill out the **Table and field alias** input to let Metabase know about the alias. In this case, you input `p.category`.
@@ -80,7 +80,7 @@ Setting this **Table and field alias** is only required if your query uses an al
 Here's another example, this time with a CTE
 
 ```sql
-{% raw %}
+
 WITH
   expensive_products AS (
     SELECT
@@ -96,7 +96,7 @@ FROM
   expensive_products
 WHERE
   {{category_filter}}
-{% endraw %}
+
 ```
 
 Here, we again map the field filter to the `category` field in the `products` table. But since we use a CTE, aliased as `expensive_products`, we'd need to put `expensive_products.category` in the **Table and field alias** input for the mapping to work correctly.
@@ -106,20 +106,20 @@ Here, we again map the field filter to the `category` field in the `products` ta
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
 ```sql
-{% raw %}
+
 SELECT
   *
 FROM
   ORDERS
 WHERE
   {{ product_category }}
-{% endraw %}
+
 ```
 
-Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
+Let's say the `{{ product_category }}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
 ```sql
-{% raw %}
+
 SELECT
   *
 FROM
@@ -127,7 +127,7 @@ FROM
   JOIN PRODUCTS ON ORDERS.product_id = PRODUCTS.id
 WHERE
   {{ product_category }}
-{% endraw %}
+
 ```
 
 If you can't use a field filter, you can instead fall back to using a [basic variable](./basic-sql-parameters.md).

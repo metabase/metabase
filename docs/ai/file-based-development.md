@@ -5,7 +5,7 @@ summary: "Use a coding agent and the Metabase CLI to create Metabase content, th
 
 # Agent-driven development
 
-{% include plans-blockquote.html feature="Agent-driven development" %}
+> **Plans:** File-based development is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Now that we have actual genies, you can just ask the genies to create the content for you (call it "lamp-rubbing development").
 

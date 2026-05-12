@@ -7,7 +7,7 @@ redirect_from:
 
 # Full app embedding UI components
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true%}
+> **Plans:** Full app embedding is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To change the interface of your full app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 

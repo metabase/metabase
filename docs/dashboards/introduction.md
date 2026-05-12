@@ -29,7 +29,7 @@ Every new Metabase comes with an example dashboard, **E-commerce insights**, in 
 
 ## How to create a dashboard
 
-{% include youtube.html id='W-i9E5_Wjmw' %}
+<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/W-i9E5_Wjmw" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 1. In the top right of the screen, click the **+ New** > **Dashboard**.
 2. Give your new dashboard a name and a description.
@@ -86,12 +86,12 @@ To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.c
 
 ### Including variables in text cards
 
-You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces, `{% raw %}{{{% endraw %}` and `{% raw %}}}{%endraw%}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
+You can include a variable in a text card, then wire that variable up to a dashboard filter. All you need to do to create a variable is to wrap a word in double braces, `{{` and `}}` (the variable can't contain any spaces). For example, you could add a text card with the following text:
 
 ```
-{% raw %}
+
 # {{state}} orders
-{% endraw %}
+
 ```
 
 And connect that variable to a dashboard filter widget that filters for states. If someone selected `WI` in the state filter, the text in the markdown card would read: **WI orders**.
@@ -99,12 +99,12 @@ And connect that variable to a dashboard filter widget that filters for states. 
 You can also make text optional by wrapping the text in double brackets, `[[` and `]]`:
 
 ```
-{% raw %}
+
 # Orders [[from {{state}}]
-{% endraw %}
+
 ```
 
-In this case, the phrase `{% raw %}from {{state}}{%endraw%}` would only display if someone selected a value (or values) in the filter widget.
+In this case, the phrase `from {{state}}` would only display if someone selected a value (or values) in the filter widget.
 
 To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 
@@ -123,9 +123,9 @@ To add a link card to a dashboard:
 Link cards support variables so you can use dashboard filters to update values in the link card's URL. For example, you could include a variable in a URL using double braces, like so:
 
 ```
-{% raw %}
+
 https://www.example.com/{{path}}
-{% endraw %}
+
 ```
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `path`). Parameters are only supported for non-Metabase URLs (that is, URLs that you manually enter, not URLs you search and select from your Metabase). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
@@ -160,9 +160,9 @@ And behold, a dashboard with an embedded video:
 Iframe cards support variables so that you can use a filter widget to update values in the iframe. For example, you could include a variable in the iframe's `src` URL with double braces, like so:
 
 ```
-{% raw %}
+
 src="https://www.youtube.com/embed/{{video_id}}
-{% endraw %}
+
 ```
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
@@ -315,7 +315,7 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 ## Caching dashboard results
 
-{% include plans-blockquote.html feature="Caching dashboard results" %}
+> **Plans:** Caching dashboard results is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching-policy).
 

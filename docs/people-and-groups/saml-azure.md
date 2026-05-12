@@ -7,7 +7,7 @@ redirect_from:
 
 # SAML with Microsoft Entra ID
 
-{% include plans-blockquote.html feature="SAML authentication" %}
+> **Plans:** SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ## Enable SAML in Metabase
 

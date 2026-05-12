@@ -10,7 +10,7 @@ redirect_from:
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
-{% include youtube.html id='yTRzCQeTmO8' %}
+<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/yTRzCQeTmO8" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 ## Pivot tables vs. regular tables
 

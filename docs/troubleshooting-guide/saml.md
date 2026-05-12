@@ -4,7 +4,7 @@ title: Troubleshooting SAML authentication setup
 
 # Troubleshooting SAML authentication setup
 
-{% include plans-blockquote.html feature="SAML authentication" %}
+> **Plans:** SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Some common problems when setting up SAML.
 

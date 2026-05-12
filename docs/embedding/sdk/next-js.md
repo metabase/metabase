@@ -5,9 +5,9 @@ summary: Set up the Modular embedding SDK with Next.js using App Router or Pages
 
 # Using the modular embedding SDK with Next.js
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
-{% include youtube.html id='UfL8okz36d0' %}
+<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/UfL8okz36d0" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 Some notes on using the modular embedding SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
 

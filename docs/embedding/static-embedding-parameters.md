@@ -158,7 +158,7 @@ For global appearance settings, such as the colors and fonts used across your en
 
 ## Setting the language for a static embed
 
-{% include plans-blockquote.html feature="Locales for static embeds" %}
+> **Plans:** Locales for static embeds is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, append `#locale=ko`:
 
@@ -183,7 +183,7 @@ Making an embed transparent depends on the type of embed:
 
 ## Disable downloads for an embedded question or dashboard
 
-{% include plans-blockquote.html feature="Disabling downloads" %}
+> **Plans:** Disabling downloads is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards.
 

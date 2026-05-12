@@ -4,7 +4,7 @@ title: Usage analytics
 
 # Usage analytics
 
-{% include plans-blockquote.html feature="Usage analytics" %}
+> **Plans:** Usage analytics is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 The **Usage analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
 

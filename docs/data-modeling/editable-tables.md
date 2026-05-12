@@ -5,7 +5,7 @@ summary: Admins can create, update, and delete data in tables right in Metabase.
 
 # Editable tables
 
-{% include plans-blockquote.html feature="Editable tables"  %}
+> **Plans:** Editable tables is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Admins can enable editable tables in Metabase, which will allow admins to edit data in tables directly from Metabase.
 

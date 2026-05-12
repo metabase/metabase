@@ -47,7 +47,7 @@ From there, you can selectively grant privileges to different groups.
 
 ## View data permissions
 
-{% include plans-blockquote.html feature="View data permissions" %}
+> **Plans:** View data permissions is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
 
@@ -77,7 +77,7 @@ For _which_ questions, models, and dashboards a group can view, instead see [col
 
 ### Can view data permission
 
-{% include plans-blockquote.html feature="Can view data permission" %}
+> **Plans:** Can view data permission is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
 
@@ -85,7 +85,7 @@ In order to view the data in the [Browse databases](../exploration-and-organizat
 
 ### Granular view data permission
 
-{% include plans-blockquote.html feature="Granular view data permission" %}
+> **Plans:** Granular view data permission is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 This option lets you set View data permissions for individual schemas or tables. Available only for databases and schemas. If you select Granular for a database or schema, Metabase will open that data source and ask you to set permissions for each individual schema or table.
 
@@ -93,7 +93,7 @@ For tables, you have the option to set either **Can view** or **Sandboxed**.
 
 ### Row and column security
 
-{% include plans-blockquote.html feature="Row and column security" %}
+> **Plans:** Row and column security is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Allows you to set row-level permissions based on user attributes, as well as custom views. Can only be configured at the table level.
 
@@ -101,7 +101,7 @@ See [Row and column security](./row-and-column-security.md).
 
 ### Impersonated view data permission
 
-{% include plans-blockquote.html feature="Impersonated view data permission" %}
+> **Plans:** Impersonated view data permission is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 The **Impersonated** option lets you use a role in your database to specify what data people can view and query. Impersonation can only be set at the database level, as Metabase will defer to the permissions granted to the database role.
 
@@ -109,7 +109,7 @@ See [impersonated view data permissions](./impersonation.md)
 
 ### Blocked view data permission
 
-{% include plans-blockquote.html feature="Blocked view data permission" %}
+> **Plans:** Blocked view data permission is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 **Blocked** ensures people in a group can’t see the data from this database, schema, or table, regardless of their permissions at the collection level.
 
@@ -143,7 +143,7 @@ The granular option lets you define Create queries permissions for each schema a
 
 ## Download results permissions
 
-{% include plans-blockquote.html feature="Download permissions" is_plural=true %}
+> **Plans:** Download permissions are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can set permissions on whether people in a group can download results (and how many rows) from a data source. Options are:
 
@@ -156,7 +156,7 @@ Downloads of native queries are only allowed if a group has download permissions
 
 ## Manage table metadata permissions
 
-{% include plans-blockquote.html feature="Data model permissions" is_plural=true  %}
+> **Plans:** Data model permissions are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
 
@@ -166,7 +166,7 @@ You can define whether a group can [edit table metadata](../data-modeling/metada
 
 ## Manage database permissions
 
-{% include plans-blockquote.html feature="Database management permissions" is_plural=true %}
+> **Plans:** Database management permissions are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 The **Manage database** permission grants access to the settings page for a given database (i.e., the page at **Admin** > **Databases** > your database).
 
@@ -188,7 +188,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 ## Transform permissions
 
-{% include plans-blockquote.html feature="Transform permissions" is_plural=true %}
+> **Plans:** Transform permissions are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Transform permissions control who can manage and run [transforms](../data-studio/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
 

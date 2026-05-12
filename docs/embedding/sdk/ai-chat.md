@@ -7,7 +7,7 @@ summary: Embed an AI chat component in your app that can create queries from nat
 
 ![Embedded AI chat](../images/ai-chat.png)
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true%}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can embed an AI chat in your application similar to [Metabot](../modular-embedding.md) in Metabase.
 

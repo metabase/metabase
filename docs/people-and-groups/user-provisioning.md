@@ -4,7 +4,7 @@ title: User provisioning with SCIM
 
 # User provisioning with SCIM
 
-{% include plans-blockquote.html feature="User provisioning with SCIM" %}
+> **Plans:** User provisioning with SCIM is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Metabase supports user provisioning via the System for Cross-domain Identity Management (SCIM) protocol. In addition to Single Sign-on (SSO), you can set up user provisioning in Metabase with SCIM to:
 

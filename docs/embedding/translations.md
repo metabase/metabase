@@ -5,7 +5,7 @@ summary: Upload a translation dictionary to translate the UI and content of embe
 
 # Translate embedded components
 
-{% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embedding=true %}
+> **Plans:** Translation of embedded content is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. If you've uploaded a translation dictionary, Metabase will also translate content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
 

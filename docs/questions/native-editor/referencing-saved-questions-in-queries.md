@@ -16,7 +16,7 @@ First, create and save a question or model that returns the result set you'd lik
 
 To reference that question or model in a SQL query, use typeahead search in a variable prefixed with `#`.
 
-Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
+Type `{{#your search term }} ` and Metabase will display a list of models and questions relevant to your search term.
 
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
@@ -29,12 +29,12 @@ Only the `#` and `ID` is required. Metabase just displays the model or question 
 The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/sql/working-with-sql/sql-cte) (with SQL databases that support CTEs):
 
 ```sql
-WITH gizmo_orders AS {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
+WITH gizmo_orders AS {{#5-gizmo-orders-in-2019}}
 SELECT count(*)
 FROM gizmo_orders
 ```
 
-When this query is run, the `{% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
+When this query is run, the `{{#5-gizmo-orders-in-2019}}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
 ```sql
 WITH

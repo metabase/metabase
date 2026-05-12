@@ -7,7 +7,7 @@ redirect_from:
 
 # Fonts
 
-{% include plans-blockquote.html feature="Customizable fonts" is_plural=true%}
+> **Plans:** Customizable fonts are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 On Pro and Enterprise plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 

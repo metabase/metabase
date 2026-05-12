@@ -7,7 +7,7 @@ redirect_from:
 
 # Application permissions
 
-{% include plans-blockquote.html feature="Application permissions" %}
+> **Plans:** Application permissions is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 

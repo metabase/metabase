@@ -5,7 +5,7 @@ summary: Admins can swap out a table, model, or question and replace it with a d
 
 # Replace data sources
 
-{% include plans-blockquote.html feature="Replacing data sources" %}
+> **Plans:** Replacing data sources is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.
 
@@ -69,7 +69,7 @@ You can replace a table, model, or saved question with any other table, model, o
 
 ## Find and replace data sources
 
-{% include plans-blockquote.html feature="Dependency graph" %}
+> **Plans:** Dependency graph is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Only admins can replace data sources.
 

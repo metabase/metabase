@@ -6,7 +6,7 @@ redirect_from:
 
 # SAML-based authentication
 
-{% include plans-blockquote.html feature="SAML authentication" %}
+> **Plans:** SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Integrating your SSO with Metabase allows you to:
 

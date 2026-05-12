@@ -71,7 +71,7 @@ For example, to embed the SQL editor:
 
 ## Browser
 
-{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
+> **Plans:** Browser component is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -92,7 +92,7 @@ To render a collection browser so people can navigate a collection and open dash
 
 ## AI chat
 
-{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
+> **Plans:** AI chat component is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -110,7 +110,7 @@ If you're using the SDK, you can use either the [`MetabotQuestion`](./sdk/ai-cha
 
 ## Customizing loader and error components
 
-{% include plans-blockquote.html feature="Customizing loader and error components" convert_pro_link_to_embedding=true%}
+> **Plans:** Customizing loader and error components is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 

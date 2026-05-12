@@ -6,7 +6,7 @@ redirect_from:
 
 # SAML with Auth0
 
-{% include plans-blockquote.html feature="SAML authentication" %}
+> **Plans:** SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 1. [Configure SAML in Auth0](#working-in-the-auth0-console) (the identity provider).
 2. [Configure SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).

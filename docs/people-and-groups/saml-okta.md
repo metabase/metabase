@@ -4,7 +4,7 @@ title: SAML with Okta
 
 # SAML with Okta
 
-{% include plans-blockquote.html feature="Okta SAML authentication" %}
+> **Plans:** Okta SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 1. [Turn on SAML-based SSO in Metabase](#turn-on-saml-based-sso-in-metabase)
 2. [Set up SAML in Okta](#set-up-saml-in-okta).

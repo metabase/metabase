@@ -82,13 +82,13 @@ Some things to keep in mind regarding group mapping:
 
 ## LDAP group membership filter
 
-{% include plans-blockquote.html feature="LDAP advanced features" %}
+> **Plans:** LDAP advanced features is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
 ## Syncing user attributes with LDAP
 
-{% include plans-blockquote.html feature="LDAP advanced features" %}
+> **Plans:** LDAP advanced features is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
 

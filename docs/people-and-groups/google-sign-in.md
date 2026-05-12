@@ -50,7 +50,7 @@ Note that Metabase accounts _created_ with Google Sign-In will not have password
 
 ## Multiple domains for Google Sign-in
 
-{% include plans-blockquote.html feature="Multiple domains for Google Sign-in" %}
+> **Plans:** Multiple domains for Google Sign-in is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 If you're on a [pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, you can specify multiple domains from the same Google Workspace in the **Domain** field, separated by a comma. For example, `mycompany.com,example.com.br,otherdomain.co.uk`.
 

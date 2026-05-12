@@ -6,7 +6,7 @@ redirect_from:
 
 # Snippet folder permissions
 
-{% include plans-blockquote.html feature="Snippet controls" %}
+> **Plans:** Snippet controls is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 This article covers **Snippet folders**, which allow you to organize and set permissions on [Snippets](../questions/native-editor/snippets.md).
 
@@ -82,7 +82,7 @@ In three parts:
 
 1. **People in that group can run the question and get results**. They have permission to see that data (the question results), so they should be able to see that data. The group's permission to the collection takes precedence over permissions to the folder (the snippet code).
 2. **The snippet would not show up in the Snippet sidebar**. However, just because people in that group can run the question without issue, they still don't have permission to the snippet's folder, so they wouldn't be able to see or edit that snippet (or the snippet's folder) in the Snippet sidebar.
-3. **People with SQL query access can still run the snippet if they know its name, regardless if they have permissions to the snippet's folder**. They wouldn't be able to view or edit the snippet, but they could include it in a query if they knew its name, e.g, `{% raw %}{{snippet: Example snippet I don't have permissions to but can still use }}{% endraw %}`.
+3. **People with SQL query access can still run the snippet if they know its name, regardless if they have permissions to the snippet's folder**. They wouldn't be able to view or edit the snippet, but they could include it in a query if they knew its name, e.g, `{{snippet: Example snippet I don't have permissions to but can still use }}`.
 
 Because of how snippet folder permissions work, we recommend that you consider snippet folder permissions as an additional tool for snippet organization, not as method of preventing access to the SQL code those snippets contain. Use folder permissions to keep the snippet sidebar tidy by exposing teams to folders relevant to their analytical domain, and restrict editing permissions to key snippets in your organization to keep important SQL code accurate and safe from bugs introduced by unvetted edits.
 

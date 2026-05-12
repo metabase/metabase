@@ -24,7 +24,7 @@ They're like file-system folders. You can put stuff in them.
 
 ### Official collections
 
-{% include plans-blockquote.html feature="Official collections" %}
+> **Plans:** Official collections is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ![Official collections](./images/official-collection.png)
 
@@ -40,7 +40,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 
 ### Library
 
-{% include plans-blockquote.html feature="Library" %}
+> **Plans:** Library is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ![Library](./images/library.png)
 
@@ -133,7 +133,7 @@ In general, you want to save questions to dashboards unless you know people will
 
 ## Cleaning up collections
 
-{% include plans-blockquote.html feature="Collection cleanup" %}
+> **Plans:** Collection cleanup is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 It's possible to ask too many questions. Fortunately, you can clean up collections by [trashing items](./delete-and-restore.md) that people haven't even looked at for a period of time. Cleaning up old questions and dashboards can keep your Metabase from getting too cluttered, and you can always resurrect items from the trash if you need to.
 

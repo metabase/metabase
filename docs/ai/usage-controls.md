@@ -5,7 +5,7 @@ summary: Control who can use Metabot, and cap token or message usage by instance
 
 # AI usage controls
 
-{% include plans-blockquote.html feature="AI controls" is_plural=true%}
+> **Plans:** AI controls are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Admin > AI > Usage controls_
 

@@ -10,7 +10,7 @@ The Admin **Tools** tab contains features for troubleshooting. To get to the Adm
 
 ## Question error logs
 
-{% include plans-blockquote.html feature="Question error logs" %}
+> **Plans:** Question error logs is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Metabase will list the questions that returned errors when last run, including the:
 

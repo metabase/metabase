@@ -27,7 +27,7 @@ This setting applies equally to everyone regardless of their browser behavior or
 
 ## Log people out after inactivity
 
-{% include plans-blockquote.html feature="Session timeout" %}
+> **Plans:** Session timeout is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 `MB_SESSION_TIMEOUT` controls how long a session can be inactive before it ends. Someone who opens Metabase in the morning, uses it for an hour, and then spends the rest of the day in other tools will be logged out once the inactivity window closes.
 

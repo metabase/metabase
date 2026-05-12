@@ -7,7 +7,7 @@ redirect_from:
 
 # Serialization
 
-{% include plans-blockquote.html feature="Serialization" %}
+> **Plans:** Serialization is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Serialization lets you export the contents of one Metabase and import them into another Metabase. It's useful when you run multiple Metabases, like separate instances for testing and production, or a Metabase per office or region.
 

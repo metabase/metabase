@@ -5,7 +5,7 @@ summary: Embed Metabase collection browser in your application using the Metabas
 
 # Modular embedding SDK - collections
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ## Embedding a collection browser
 

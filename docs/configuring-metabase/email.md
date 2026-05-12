@@ -30,7 +30,7 @@ When Metabase manages the SMTP server, you can't change the from address. If you
 
 ### Custom SMTP Server on Metabase Cloud
 
-{% include plans-blockquote.html feature="Custom SMTP server on Metabase Cloud" %}
+> **Plans:** Custom SMTP server on Metabase Cloud is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Admin > Settings > Email > Set up a custom SMTP server_
 
@@ -114,7 +114,7 @@ To configure CC/BCC:
 
 ### Approved domains for notifications
 
-{% include plans-blockquote.html feature="Approved domains for notifications" %}
+> **Plans:** Approved domains for notifications is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can configure allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
@@ -134,7 +134,7 @@ You can also set this property using the environment variable [`MB_SUBSCRIPTION_
 
 ### Suggest recipients on dashboard subscriptions and alerts
 
-{% include plans-blockquote.html feature="Configuring suggested recipients" %}
+> **Plans:** Configuring suggested recipients is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can control which recipients people can see when they create a new [dashboard subscription](../dashboards/subscriptions.md) or [alert](../questions/alerts.md).
 

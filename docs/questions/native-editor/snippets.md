@@ -27,14 +27,14 @@ In the [**native editor**](./writing-sql.md):
    ```sql
    orders AS o
    LEFT JOIN products AS p ON o.product_id = p.id
-   WHERE p.category = {% raw %}{{category}}{% endraw %}
+   WHERE p.category = {{category}}
    ```
 
    Within a snippet, you can use:
 
-   - [SQL parameters](#sql-parameters-in-snippets), like `{% raw %}{{param}}{% endraw %}`,
-   - references to other snippets, like `{% raw %}{{snippet: orders}}{% endraw %}` (Metabase will detect and disallow circular references),
-   - [references to saved questions or models](./referencing-saved-questions-in-queries.md), like `{% raw %}{{#123-orders-model}}{% endraw %}`.
+   - [SQL parameters](#sql-parameters-in-snippets), like `{{param}}`,
+   - references to other snippets, like `{{snippet: orders}}` (Metabase will detect and disallow circular references),
+   - [references to saved questions or models](./referencing-saved-questions-in-queries.md), like `{{#123-orders-model}}`.
 
 3. Right-click on the highlighted section and select **Save as snippet** to create a snippet.
 
@@ -52,18 +52,18 @@ You can also create a new snippet from the Snippet sidebar:
 
 ## Use a snippet
 
-You can insert a saved snippet into your query, which will add a `{% raw %}{{snippet: }}{% endraw %}` reference:
+You can insert a saved snippet into your query, which will add a `{{snippet: }}` reference:
 
 ```sql
 SELECT
   *
 FROM
- {% raw %}{{snippet: orders and products}}{% endraw %}
+ {{snippet: orders and products}}
 ```
 
-To add a snippet to your native code, start typing `{% raw %}{{snippet: }}{% endraw %}` and Metabase will present autocomplete options for available snippets.
+To add a snippet to your native code, start typing `{{snippet: }}` and Metabase will present autocomplete options for available snippets.
 
-Metabase is sensitive to whitespace in snippet references, so you should type `{% raw %}{{snippet: Products}}{% endraw %}`, with no space between `{% raw %}{{{% endraw %}` and `snippet`, and with a space between `:` and snippet's name.
+Metabase is sensitive to whitespace in snippet references, so you should type `{{snippet: Products}}`, with no space between `{{` and `snippet`, and with a space between `:` and snippet's name.
 
 When you execute the query, behind the scenes Metabase replaces the snippet reference with the snippet's SQL.
 
@@ -126,12 +126,12 @@ Two snippets cannot share the same name, as even if a snippet is archived, that 
 You can reference [SQL parameters](sql-parameters.md) in snippets. For example, you can save a snippet with SQL code like
 
 ```sql
- {% raw %}
+ 
 WHERE
   {{created_at}}
 AND category = {{category}}
 GROUP BY {{time_grouping}}
-{% endraw %}
+
 ```
 
 When a snippet with parameters is added to a SQL query, Metabase will show a widget for the snippet's parameter.
@@ -145,31 +145,31 @@ You'll be able to specify the type, connected columns, and default values for th
 Settings for snippet parameters are defined by the query, not the snippet, so settings aren't shared between queries that use the same snippet. For example, if you have a snippet like:
 
 ```sql
-WHERE {% raw %}{{created_at}}{% endraw %}
+WHERE {{created_at}}
 ```
 
 you could put the snippet in one query and have the snippet parameter map to a `CREATED_AT` column, and put the snippet in another query and have that same snippet parameter map to a different column, like `CANCELED_AT`.
 
-If you have multiple snippets containing parameters with the same name, the question using those snippets will only use one instance of the parameter. For example, if `{% raw %}{{snippet: 1}}{% endraw %}` contains parameter `{% raw %}{{var}}{% endraw %}` and `{% raw %}{{snippet: 2}}{% endraw %}` also contains parameter `{% raw %}{{var}}{% endraw %}`, the question will display only one `{% raw %}{{var}}{% endraw %}` parameter and use its value in both snippets.
+If you have multiple snippets containing parameters with the same name, the question using those snippets will only use one instance of the parameter. For example, if `{{snippet: 1}}` contains parameter `{{var}}` and `{{snippet: 2}}` also contains parameter `{{var}}`, the question will display only one `{{var}}` parameter and use its value in both snippets.
 
 ### Table variables in snippets
 
 You can also use [table variables](./table-variables.md) in snippets to write a generic query once and reuse it across different tables, inserting a new table in each question.
 
 ```sql
-{% raw %}
+
 SELECT
   COUNT(*)
 FROM
   {{table}}
-{% endraw %}
+
 ```
 
 ### Sharing parameters across questions
 
 You can also use snippets to share parameters across multiple SQL questions, including questions that build on one another (nested questions).
 
-For example, you have a question “Orders by date” that filters orders using `{% raw %}{{start_date}}{% endraw %}`. You then create another question, say “Revenue by product,” that uses the results from “Orders by date.” To keep using the same `{% raw %}{{start_date}}{% endraw %}` parameter in both questions, move the SQL that contains the parameter from “Orders by date” into a snippet and update both questions to reference that snippet. Now, both questions surface the same parameter, and a single dashboard date filter can control both cards that use the snippet.
+For example, you have a question “Orders by date” that filters orders using `{{start_date}}`. You then create another question, say “Revenue by product,” that uses the results from “Orders by date.” To keep using the same `{{start_date}}` parameter in both questions, move the SQL that contains the parameter from “Orders by date” into a snippet and update both questions to reference that snippet. Now, both questions surface the same parameter, and a single dashboard date filter can control both cards that use the snippet.
 
 ## Snippet permissions
 
@@ -183,7 +183,7 @@ Snippets are good for:
 
 - **Standardization**
 
-  How does your organization define a popular product? Is it by number of units sold? Or by reviews with an average rating greater than 4? You can define those qualifications for a popular product and codify them in a Snippet, `{% raw %}{{snippet: popular products}}{% endraw %}`, and have that code populate in every question that uses that snippet. If down the line this definition needs to change, simply update the snippet’s SQL, and the change will propagate to all questions that use that snippet.
+  How does your organization define a popular product? Is it by number of units sold? Or by reviews with an average rating greater than 4? You can define those qualifications for a popular product and codify them in a Snippet, `{{snippet: popular products}}`, and have that code populate in every question that uses that snippet. If down the line this definition needs to change, simply update the snippet’s SQL, and the change will propagate to all questions that use that snippet.
 
   Similar to how [segments](../../data-modeling/segments.md) (a named filter or set of filters) and [metrics](../../data-modeling/models.md) (a named computation) can standardize analytics in your organization, snippets offer a way to ensure correctness and consistency of SQL across teams.
 

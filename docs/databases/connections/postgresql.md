@@ -60,7 +60,7 @@ The password for the username that you use to connect to the database.
 
 ### Use an authentication provider
 
-{% include plans-blockquote.html feature="Authenticating with a provider" %}
+> **Plans:** Authenticating with a provider is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Instead of a password, you can authenticate with a supported provider.
 

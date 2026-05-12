@@ -48,7 +48,7 @@ _Data Studio > Tables > Details_
 
 ![Publishing a table from Data structure](./images/data-structure-publish.png)
 
-{% include plans-blockquote.html feature="Publishing tables to the Library" %}
+> **Plans:** Publishing tables to the Library is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Once you select a table in **Data Studio > Tables**, you can publish the table to add it to the Library. The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content.
 

@@ -36,13 +36,13 @@ These policies determine how long cached results will remain valid.
 
 ### Duration caching policy
 
-{% include plans-blockquote.html feature="Duration caching policy" %}
+> **Plans:** Duration caching policy is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Invalidate and clear the cache after a certain number of hours. When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
 
 ### Schedule caching policy
 
-{% include plans-blockquote.html feature="Schedule caching policy" %}
+> **Plans:** Schedule caching policy is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Pick when to regularly invalidate the cache. Metabase will only store results when people run a query, and it will clear the cached results according to the schedule you set here.
 
@@ -72,7 +72,7 @@ If you select "Don't cache results" for a question, dashboard, or database, Meta
 
 ## Refresh cache automatically
 
-{% include plans-blockquote.html feature="Refresh cache automatically" %}
+> **Plans:** Refresh cache automatically is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 If you turn on "Refresh cache automatically" for a question or dashboard, Metabase will rerun the query/queries as soon as the cache is invalidated by whichever caching policy you've set. 
 
@@ -118,7 +118,7 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 ### Database caching policy
 
-{% include plans-blockquote.html feature="Database caching" %}
+> **Plans:** Database caching is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
 
@@ -128,7 +128,7 @@ If you have databases connected to Metabase that are set to **Use default** poli
 
 ### Dashboard caching policy
 
-{% include plans-blockquote.html feature="Dashboard caching" %}
+> **Plans:** Dashboard caching is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
@@ -142,7 +142,7 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 
 ### Question caching policy
 
-{% include plans-blockquote.html feature="Question caching" %}
+> **Plans:** Question caching is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 

@@ -20,11 +20,11 @@ In the action editor, you can write your own code to create an action, like writ
 
 ## Field types for action variables
 
-For each {% raw %}{{ variable }}{% endraw %} that you set in an action, you'll need to set the field type.
+For each {{ variable }} that you set in an action, you'll need to set the field type.
 
 Each of these variable field types present different options. Click on the gear icon to change options.
 
-If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. In the SQL code, remember to enclose any optional variables and commas in brackets, like `{% raw %}[[, column = {{ optional_variable }}]] {% endraw %}`.
+If you don't require a variable, you can optionally specify a default value for Metabase to use in cases where people don't fill out the field. In the SQL code, remember to enclose any optional variables and commas in brackets, like `[[, column = {{ optional_variable }}]] `.
 
 You can include placeholder text for all fields in the action form.
 
@@ -79,13 +79,13 @@ If something goes wrong, Metabase will display the error message it received fro
 You could write an action that would update the `plan` column for a record in the `invoices` table in the Sample Database:
 
 ```sql
-{% raw %}
+
 UPDATE invoices
 SET plan = {{ plan }}
    [[, payment = {{ payment }}]]
 WHERE
    id = {{ id }}
-{% endraw %}
+
 ```
 
 The above code will create a form that prompts people to input updated values for the (required) `plan` field and optionally the `payment` field for a given record specified by `ID`.
@@ -99,7 +99,7 @@ The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed 
 Insert statements are pretty straightforward:
 
 ```sql
-{% raw %}
+
 INSERT INTO invoices (
   account_id
   ,payment
@@ -114,7 +114,7 @@ VALUES (
   ,{{plan}}
   ,({{date_received}}
 );
-{% endraw %}
+
 ```
 
 ### Casting field values in actions
@@ -122,11 +122,11 @@ VALUES (
 If you get a type error when you submit a form, you may need to `CAST` the data type in the query so it matches the data type of the target field in the database. Here we're casting a value to a `boolean`:
 
 ```sql
-{% raw %}
+
 UPDATE invoices
 SET expected_invoice = CAST({{expected_invoice}} AS boolean)
 WHERE id = {{id}};
-{% endraw %}
+
 ```
 
 ### Referencing saved questions in actions
@@ -134,7 +134,7 @@ WHERE id = {{id}};
 You can also reference saved questions in actions. Here we're taking the results of a `SELECT` statement on a saved question ("Potential customers") and inserting the results into a `people_to_write` table.
 
 ```sql
-{% raw %}
+
 WITH prospects AS {{#6-potential-customers}}
 
 INSERT INTO
@@ -148,7 +148,7 @@ SELECT
   ,last_name
   ,email
 FROM prospects;
-{% endraw %}
+
 ```
 
 ## Further reading
