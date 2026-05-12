@@ -121,6 +121,7 @@ function getFilteringPreviewKey(field: Field) {
     field.semantic_type,
     field.fk_target_field_id,
     field.visibility_type,
+    field.has_field_values,
   ].join(":");
 }
 
