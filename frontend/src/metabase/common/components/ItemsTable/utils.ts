@@ -32,9 +32,12 @@ export const getVisibleColumnsMap = (
 export const canSelectItems = (
   collection: Collection | undefined,
   onToggleSelected: OnToggleSelectedWithItem | undefined,
-): boolean =>
-  Boolean(
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    !PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type) &&
-    typeof onToggleSelected === "function",
-  );
+): boolean => {
+  if (typeof onToggleSelected !== "function") {
+    return false;
+  }
+  if (PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type)) {
+    return false;
+  }
+  return Boolean(collection?.can_write) || isRootTrashCollection(collection);
+};
