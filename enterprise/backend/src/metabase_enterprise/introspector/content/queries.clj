@@ -126,10 +126,12 @@
             [:= :dep_xform.id nil]
             [:= :dep_table.id nil]]})
 
-(defn- transform-target-missing-cte
-  "Transforms whose `target_table_id` is set but the referenced `metabase_table` row is
-  inactive — the warehouse table was dropped externally or removed from sync. Trashed
-  transforms (`archived = true`) are excluded."
+(defn- transform-target-missing-broken-cte
+  "Transforms whose target table is inactive **and that have been run at least
+  once** — the broken signal. A never-run transform with a missing target is
+  more likely an abandoned config (covered by `transform-stale-cte`) than a
+  break; we only call it broken once something has actually executed against
+  it. Trashed transforms (`archived = true`) are excluded."
   []
   {:select [[:transform.id :id]]
    :from   [:transform]
@@ -137,7 +139,40 @@
    :where  [:and
             [:= :transform.archived false]
             [:not= :transform.target_table_id nil]
-            [:= :metabase_table.active false]]})
+            [:= :metabase_table.active false]
+            [:exists {:select [[[:inline 1]]]
+                      :from   [[:transform_run :__has_runs]]
+                      :where  [:= :__has_runs.transform_id :transform.id]}]]})
+
+(defn- transform-stale-cte
+  "Transforms that look abandoned rather than broken:
+    - have NEVER been run (no `transform_run` rows), AND
+    - have no live target table (either `target_table_id IS NULL` or the
+      referenced `metabase_table.active = false`), AND
+    - were created before the staleness cutoff.
+
+  Captures transforms that were set up long ago, never executed, and whose
+  output table doesn't exist — surface them so admins can clean up rather
+  than treating them as broken (which implies something *was* working)."
+  [^java.time.LocalDate cutoff-date]
+  {:select [[:transform.id :id]]
+   :from   [:transform]
+   :left-join [[:metabase_table :mt] [:= :mt.id :transform.target_table_id]]
+   :where  [:and
+            [:= :transform.archived false]
+            ;; No runs of any kind — see also the comment on
+            ;; `transform-target-missing-broken-cte` re: this distinction.
+            [:not [:exists {:select [[[:inline 1]]]
+                            :from   [[:transform_run :__tr]]
+                            :where  [:= :__tr.transform_id :transform.id]}]]
+            ;; No active target table — either never had one or it's been
+            ;; dropped/deactivated.
+            [:or
+             [:= :transform.target_table_id nil]
+             [:= :mt.active false]]
+            ;; Old enough — using `transform.created_at` since there's no
+            ;; `last_used_at` for transforms.
+            [:<= :transform.created_at cutoff-date]]})
 
 (defn- transform-latest-failed-cte
   "Transforms whose most recent finished run (`is_active IS NULL`) ended in `:failed` status.
@@ -160,15 +195,21 @@
             [:= :fr.status (h2x/literal "failed")]]})
 
 (defn- broken-transforms-cte
-  "Combined broken signal for transforms: analysis-finding error OR target table missing OR
-  latest finished run failed. Matches `docs/developers-guide/transforms-admin-cleanup-spike.md`.
+  "Combined broken signal for transforms:
+    - analysis-finding error, OR
+    - target table missing **and at least one run has happened** (a never-run
+      transform with a missing target is `transform-stale-cte`, not broken), OR
+    - the latest finished run failed.
 
-  Uses `:union` (deduplicating) rather than `:union-all` so a transform that trips multiple
-  broken signals appears once — keeps the outer LEFT JOIN cardinality-preserving and lets us
-  drop the SELECT DISTINCT that H2 rejects when combined with `ORDER BY LOWER(name)`."
+  Matches `docs/developers-guide/transforms-admin-cleanup-spike.md` with the
+  refinement that target-table-missing only flags as broken once the transform
+  has actually been executed.
+
+  Uses `:union` (deduplicating) so a transform that trips multiple broken
+  signals appears once — keeps the outer LEFT JOIN cardinality-preserving."
   []
   {:union [(broken-ids-cte "transform")
-           (transform-target-missing-cte)
+           (transform-target-missing-broken-cte)
            (transform-latest-failed-cte)]})
 
 (defn- conditions-filter-clause
@@ -377,19 +418,30 @@
 ;; based on `transform_run.last_run` or "enabled but never ran").
 
 (defn transforms-federated-query
-  "Federated query for the Transforms tab. Surfaces `:broken` and `:unreferenced`; `:stale` is
-  dropped if requested (transforms have no `last_used_at`).
+  "Federated query for the Transforms tab. Three independent signals now:
 
-  Broken signals union analysis-finding errors, missing/inactive target tables, and the most
-  recent finished run failing — see `broken-transforms-cte`."
-  [{:keys [conditions search sort-column sort-direction limit offset]
-    :or   {conditions     #{:broken :unreferenced}
+    - `:broken`       — analysis findings, latest run failed, or target table
+                        missing **on a transform that has runs** (see
+                        `broken-transforms-cte`).
+    - `:stale`        — `:cutoff-date` based, time-flavored. A transform is
+                        stale when it has no runs, no live target table, and
+                        was created on or before the cutoff (see
+                        `transform-stale-cte`).
+    - `:unreferenced` — no inbound `dependency` edges (see
+                        `unreferenced-transforms-cte`).
+
+  Unlike the previous version which folded stale into unreferenced for
+  transforms, these are now three distinct conditions, mirroring how
+  Cards/Dashboards work."
+  [{:keys [conditions cutoff-date search sort-column sort-direction limit offset]
+    :or   {conditions     #{:broken :stale :unreferenced}
            sort-column    :name
            sort-direction :asc
            limit          50
            offset         0}}]
-  (let [conditions (disj conditions :stale)]
+  (let [cutoff (or cutoff-date (t/minus (t/local-date) (t/months 6)))]
     (cond-> {:with [[:broken (broken-transforms-cte)]
+                    [:stale  (transform-stale-cte cutoff)]
                     [:unref  (unreferenced-transforms-cte)]]
              :select [:transform.id
                       :transform.name
@@ -402,29 +454,22 @@
                       ;; Raw JSON; parsed in `attach-transform-extras` to extract :type
                       ;; (query / native / python) for the "Target table" column.
                       [:transform.source :source_json]
-                      [[:inline 0] :is_stale]
-                      ;; H2 infers the union-of-CTEs `broken.id` as VARCHAR, which then makes
-                      ;; the CASE expression return strings ("1"/"0") instead of ints. Cast
-                      ;; the result so the wire row shape matches the cards/dashboards rows.
+                      ;; Cast all three because H2 infers union-of-CTE join columns
+                      ;; as VARCHAR, which makes the CASE expression return strings
+                      ;; ("1"/"0") instead of ints.
+                      [[:cast [:case [:not= :stale.id nil] 1 :else 0] :integer] :is_stale]
                       [[:cast [:case [:not= :broken.id nil] 1 :else 0] :integer] :is_broken]
                       [[:cast [:case [:not= :unref.id nil] 1 :else 0] :integer] :is_unreferenced]]
              :from   [:transform]
              :left-join [[:broken :broken] [:= :broken.id :transform.id]
-                         [:unref :unref]   [:= :unref.id :transform.id]]
-             ;; Always filter out trashed transforms — they should appear in the Trash
-             ;; collection, not in the Introspector. Wrap the condition clause in :and
-             ;; so the trailing `(update :where conj search-clause)` keeps working.
+                         [:stale  :stale]  [:= :stale.id  :transform.id]
+                         [:unref  :unref]  [:= :unref.id  :transform.id]]
+             ;; Always filter out trashed transforms — they belong in the Trash
+             ;; collection, not in the Introspector. Wrap in :and so the
+             ;; trailing `(update :where conj search-clause)` keeps working.
              :where  [:and
                       [:= :transform.archived false]
-                      (cond
-                        (and (contains? conditions :broken)
-                             (contains? conditions :unreferenced))
-                        [:or [:not= :broken.id nil] [:not= :unref.id nil]]
-
-                        (contains? conditions :broken)       [:not= :broken.id nil]
-                        (contains? conditions :unreferenced) [:not= :unref.id nil]
-                        :else
-                        [:or [:not= :broken.id nil] [:not= :unref.id nil]])]
+                      (conditions-filter-clause conditions)]
              :order-by (case sort-column
                          :last_used_at [[:transform.updated_at (or sort-direction :desc)]]
                          [[:%lower.name (or sort-direction :asc)]])
@@ -593,8 +638,11 @@
                                            [:= :afe.analyzed_entity_type (h2x/literal "transform")]
                                            [:in :afe.analyzed_entity_id ids]]}))
           target-missing-f    (future
+                                ;; Only report target-missing as a *reason* for
+                                ;; rows where it actually contributes to broken,
+                                ;; i.e. where the transform has runs.
                                 (t2/query
-                                 (-> (transform-target-missing-cte)
+                                 (-> (transform-target-missing-broken-cte)
                                      (update :where conj [:in :transform.id ids]))))
           latest-failed-f     (future
                                 (t2/query
@@ -758,15 +806,19 @@
                 [:= :report_dashboard.collection_id nil]
                 [:not-in :report_dashboard.collection_id archived-collection-ids-subq]]]})
 
-(defn- transforms-summary-query []
+(defn- transforms-summary-query [cutoff]
   {:with [[:broken (broken-transforms-cte)]
+          [:stale  (transform-stale-cte cutoff)]
           [:unref  (unreferenced-transforms-cte)]]
    :select    [[[:count :broken.id] :broken]
+               [[:count :stale.id]  :stale]
                [[:count :unref.id]  :unreferenced]
                [:%count.*           :healthy]]
    :from      [:transform]
    :left-join [[:broken :broken] [:= :broken.id :transform.id]
-               [:unref :unref]   [:= :unref.id :transform.id]]})
+               [:stale  :stale]  [:= :stale.id  :transform.id]
+               [:unref  :unref]  [:= :unref.id  :transform.id]]
+   :where     [:= :transform.archived false]})
 
 (defn summary
   "Per-entity-type, per-condition counts for the stat strip. `:cutoff-date`
@@ -779,20 +831,17 @@
   (let [cutoff       (or cutoff-date (t/minus (t/local-date) (t/months 6)))
         cards-f      (future (first (t2/query (cards-summary-query cutoff))))
         dashboards-f (future (first (t2/query (dashboards-summary-query cutoff))))
-        transforms-f (future (first (t2/query (transforms-summary-query))))
+        ;; Transforms use a different stale signal (target-missing + no-runs +
+        ;; created-before-cutoff) — see `transform-stale-cte`. Still keyed on
+        ;; the same cutoff so all three entity types respond to the same FE
+        ;; staleness picker.
+        transforms-f (future (first (t2/query (transforms-summary-query cutoff))))
         cards        @cards-f
         dashboards   @dashboards-f
-        transforms   @transforms-f
-        ;; Transforms have no `last_used_at`, so the existing introspector "stale =
-        ;; time-based" concept doesn't apply. The spike (transforms-admin-cleanup-spike.md)
-        ;; instead reuses "stale" to mean "orphaned output / no downstream dependents" —
-        ;; i.e. exactly what introspector elsewhere calls `:unreferenced`. Report the same
-        ;; value under both keys so the FE filter pill (Stale → ?conditions=unreferenced)
-        ;; and the StatStrip tile agree.
-        orphaned     (or (:unreferenced transforms) 0)]
+        transforms   @transforms-f]
     {:cards      cards
      :dashboards dashboards
      :transforms {:broken       (or (:broken transforms) 0)
-                  :stale        orphaned
-                  :unreferenced orphaned
+                  :stale        (or (:stale transforms) 0)
+                  :unreferenced (or (:unreferenced transforms) 0)
                   :healthy      (or (:healthy transforms) 0)}}))

@@ -52,6 +52,11 @@
 (def ^:private transforms-query-args
   [:map
    [:conditions     {:optional true} [:maybe :string]]
+   ;; Same `yyyy-MM-dd` shape as the cards/dashboards endpoints. For transforms
+   ;; the cutoff is matched against `transform.created_at` rather than
+   ;; `last_used_at` (which doesn't exist on transforms) — see
+   ;; `transform-stale-cte`.
+   [:stale-before   {:optional true} [:maybe :string]]
    [:search         {:optional true} [:maybe :string]]
    [:sort-column    {:optional true} [:maybe [:enum "name" "last_used_at"]]]
    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]
@@ -92,12 +97,15 @@
                        :offset            (or offset 0)}))
 
 (api.macros/defendpoint :get "/transforms"
-  "Federated list of transforms in problematic states. Supports `:broken` and `:unreferenced`;
-  `:stale` is ignored if passed (transforms have no `last_used_at`)."
+  "Federated list of transforms in problematic states. Supports `:broken`,
+  `:stale`, and `:unreferenced`. `:stale` is a time-based signal here too
+  (target-missing + no-runs + `created_at` <= `?stale-before`) — see
+  `transform-stale-cte`."
   [_route
-   {:keys [conditions search sort-column sort-direction limit offset]} :- transforms-query-args]
+   {:keys [conditions stale-before search sort-column sort-direction limit offset]} :- transforms-query-args]
   (api/check-superuser)
   (q/fetch-transforms {:conditions     (parse-conditions conditions)
+                       :cutoff-date    (parse-cutoff stale-before)
                        :search         search
                        :sort-column    (keyword (or sort-column "name"))
                        :sort-direction (keyword (or sort-direction "asc"))
