@@ -197,3 +197,25 @@ jobs:
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
               message,
             }).catch(console.error);
+
+      # `failure()` fires when any previous step without continue-on-error
+      # fails — i.e. preflight, the cut itself, or the surrounding setup
+      # steps. The post-cut steps (bump, label, milestone, backfill) all
+      # set continue-on-error and surface their own failures in the
+      # happy-path message above, so they don't trip this alert.
+      - name: Notify Slack on cut failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, mentionSlackTeam } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const team = mentionSlackTeam('releasemanagers');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            await sendSlackMessage({
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              message: `:rotating_light: Cutting next release branch failed — see <${runUrl}|run logs> ${team}`,
+            }).catch(console.error);
