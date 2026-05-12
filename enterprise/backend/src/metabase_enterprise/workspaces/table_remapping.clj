@@ -371,12 +371,15 @@
    ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
   :feature :none
   [tuples db-id]
+  ;; Storage rows carry the `""` sentinel for absent slots; sync tuples carry
+  ;; `nil` (e.g. MySQL `:schema` is always nil). Denormalize both sides so the
+  ;; comparison matches across the boundary.
   (let [to-pairs (into #{}
-                       (map (fn [to-spec] [(:schema to-spec) (:table to-spec)]))
+                       (map (fn [to-spec] [(denormalize-level (:schema to-spec)) (:table to-spec)]))
                        (vals (all-mappings-for-db db-id)))]
     (if (empty? to-pairs)
       tuples
-      (into #{} (remove (fn [t] (contains? to-pairs [(:schema t) (:name t)]))) tuples))))
+      (into #{} (remove (fn [t] (contains? to-pairs [(denormalize-level (:schema t)) (:name t)]))) tuples))))
 
 (defenterprise expand-schema-names-with-workspace
   "Enterprise impl: augment a `:schema-names` list with `to_schema` values for
@@ -408,12 +411,16 @@
    `sync-tables-and-database!` diff keys on."
   :feature :none
   [tuples db-id]
+  ;; Storage rows carry the `""` sentinel for absent slots; the sync diff
+  ;; matches against `nil`-schema tuples on schema-less drivers (MySQL). Use
+  ;; `denormalize-level` so synthetic tuples match the diff key shape.
   (let [mappings (all-mappings-for-db db-id)]
     (if (empty? mappings)
       tuples
       (let [synthetic (into #{}
                             (map (fn [[from-spec _]]
-                                   {:schema (:schema from-spec) :name (:table from-spec)}))
+                                   {:schema (denormalize-level (:schema from-spec))
+                                    :name   (:table from-spec)}))
                             mappings)]
         (into tuples synthetic)))))
 
@@ -426,16 +433,20 @@
    canonical."
   :feature :none
   [rows db-id]
+  ;; Storage `:schema` is the `""` sentinel for absent slots; FK-result rows
+  ;; carry `nil` on schema-less drivers (MySQL). Denormalize on both sides of
+  ;; the lookup so the rewrite matches across the boundary. Output `:schema`
+  ;; values come from the canonical from-spec — also denormalized.
   (let [to->from (into {}
                        (map (fn [[from-spec to-spec]]
-                              [[(:schema to-spec) (:table to-spec)]
-                               [(:schema from-spec) (:table from-spec)]]))
+                              [[(denormalize-level (:schema to-spec)) (:table to-spec)]
+                               [(denormalize-level (:schema from-spec)) (:table from-spec)]]))
                        (all-mappings-for-db db-id))]
     (if (empty? to->from)
       rows
       (mapv (fn [row]
-              (let [fk-key [(:fk-table-schema row) (:fk-table-name row)]
-                    pk-key [(:pk-table-schema row) (:pk-table-name row)]]
+              (let [fk-key [(denormalize-level (:fk-table-schema row)) (:fk-table-name row)]
+                    pk-key [(denormalize-level (:pk-table-schema row)) (:pk-table-name row)]]
                 (cond-> row
                   (contains? to->from fk-key)
                   (assoc :fk-table-schema (first (to->from fk-key))

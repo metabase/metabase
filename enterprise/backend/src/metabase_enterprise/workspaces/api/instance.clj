@@ -46,7 +46,7 @@
 (defn- present-workspace-instance-database [db-id wsd dbs-by-id]
   {:id            db-id
    :name          (get-in dbs-by-id [db-id :name] "")
-   :input_schemas (vec (keep :schema (:input wsd)))
+   :input_schemas (vec (:input_schemas wsd))
    :output_schema (or (:schema (:output wsd)) "")})
 
 (defn- present-workspace-instance [workspace]

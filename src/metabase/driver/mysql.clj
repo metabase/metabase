@@ -1387,11 +1387,11 @@
                           (when test-table
                             (try
                               ;; `grant-workspace-read-access!` takes a vector of
-                              ;; `::table-namespace` maps `[{:db ?, :schema ?}]`.
-                              ;; MySQL has no schema layer; the database name
-                              ;; (`test-table`'s `:schema` from caller) lands in `:db`.
+                              ;; schema-name strings. MySQL has no schema layer; each
+                              ;; entry is interpreted as a database name. `test-table`'s
+                              ;; `:schema` from the caller IS the MySQL database name.
                               (driver/grant-workspace-read-access! driver database workspace-with-details
-                                                                   [{:db (:schema test-table)}])
+                                                                   [(:schema test-table)])
                               (catch Exception e
                                 (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
                                                      (:schema test-table) (ex-message e))

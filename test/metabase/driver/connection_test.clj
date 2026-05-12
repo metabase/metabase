@@ -98,7 +98,7 @@
 
 (deftest effective-details-admin-with-admin-details-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:admin-connection}
+   (mt/with-premium-features #{:workspaces}
      (let [details       {:host "read-host" :port 5432}
            admin-details {:host "admin-host" :port 5432 :user "root"}]
        (testing "effective-details returns admin_details when :admin and details exist"
@@ -119,7 +119,7 @@
                        (driver.conn/effective-details database)))))))))))
 
 (deftest effective-details-admin-fallback-test
-  (mt/with-premium-features #{:admin-connection}
+  (mt/with-premium-features #{:workspaces}
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :admin but no admin details"
         (let [database {:lib/type      :metadata/database
@@ -151,7 +151,7 @@
   (testing "admin-connection-requested? returns false by default"
     (is (false? (driver.conn/admin-connection-requested?))))
   (testing "admin-connection-requested? returns true inside with-admin-connection"
-    (mt/with-premium-features #{:admin-connection}
+    (mt/with-premium-features #{:workspaces}
       (driver.conn/with-admin-connection
         (is (true? (driver.conn/admin-connection-requested?))))))
   (testing "admin-connection-requested? does not leak across to write-connection"
@@ -159,13 +159,13 @@
       (driver.conn/with-write-connection
         (is (false? (driver.conn/admin-connection-requested?))))))
   (testing "write-connection-requested? does not leak across to admin-connection"
-    (mt/with-premium-features #{:admin-connection}
+    (mt/with-premium-features #{:workspaces}
       (driver.conn/with-admin-connection
         (is (false? (driver.conn/write-connection-requested?)))))))
 
 (deftest effective-connection-type-admin-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:admin-connection}
+   (mt/with-premium-features #{:workspaces}
      (let [details       {:host "read-host"}
            admin-details {:host "admin-host"}
            configured    {:lib/type :metadata/database :id 1
@@ -182,7 +182,7 @@
 
 (deftest effective-details-admin-with-workspace-swap-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:admin-connection}
+   (mt/with-premium-features #{:workspaces}
      (testing "effective-details applies workspace swap AFTER admin-details merge"
        (let [database {:lib/type      :metadata/database
                        :id            1
@@ -195,7 +195,7 @@
 
 (deftest type-resolved-metric-admin-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:admin-connection}
+   (mt/with-premium-features #{:workspaces}
      (testing "type-resolved counter increments when admin-details are genuinely used"
        (mt/with-prometheus-system! [_ system]
          (let [database {:lib/type      :metadata/database
