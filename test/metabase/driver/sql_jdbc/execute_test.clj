@@ -217,6 +217,7 @@
 
 (deftest bad-connection-details-throw-client-error-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Database tmp-db {:details (assoc (:details (mt/db)) :host "badhost")
                                            :engine  driver/*driver*}]
       (let [query    {:database (:id tmp-db)
