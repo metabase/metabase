@@ -33,19 +33,17 @@ const BUSINESS_HOUR_START = 9;
 const BUSINESS_HOUR_END = 17;
 const BUSINESS_DAY_TINT = "rgba(245, 158, 11, 0.06)"; // soft amber wash
 
-// Quantile-based thresholds: divide non-zero weights into 5 buckets at the
-// 20/40/60/80 percentiles. Adapts to skewed distributions far better than a
-// linear (max/5) split — a long tail of outliers doesn't wash out the rest.
-function computeThresholds(cells: WorkloadCell[]): number[] {
-  const sorted = cells
-    .map((c) => c.weight)
-    .filter((w) => w > 0)
-    .sort((a, b) => a - b);
-  if (sorted.length === 0) {
+// Peak-relative thresholds: each bucket boundary is a fraction of this view's
+// busiest hour. Stable as filters change (top bucket is always "near the peak"
+// rather than "wherever the cells cluster") and skewed toward the upper end so
+// hotspots stand out instead of being averaged into the middle of the scale.
+const BUCKET_FRACTIONS = [0.15, 0.35, 0.6, 0.85];
+
+function computeThresholds(scaleMax: number): number[] {
+  if (scaleMax <= 0) {
     return [];
   }
-  const pct = (p: number) => sorted[Math.floor((sorted.length - 1) * p)];
-  return Array.from(new Set([pct(0.2), pct(0.4), pct(0.6), pct(0.8)]));
+  return BUCKET_FRACTIONS.map((f) => scaleMax * f);
 }
 
 function bucketIndex(value: number, thresholds: number[]): number {
@@ -135,7 +133,7 @@ export function WorkloadGrid({
     return m;
   }, [cells]);
 
-  const thresholds = useMemo(() => computeThresholds(cells), [cells]);
+  const thresholds = useMemo(() => computeThresholds(scaleMax), [scaleMax]);
 
   if (isLoading) {
     return (
