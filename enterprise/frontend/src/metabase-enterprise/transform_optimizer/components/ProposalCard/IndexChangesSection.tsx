@@ -7,16 +7,21 @@ import type { DdlStatement, DdlTarget } from "../../types";
 import S from "./IndexChangesSection.module.css";
 
 type Props = {
-  /** One DDL per `:index` proposal in this branch (`ddl_statement` is singular). */
+  /** One DDL per `:index` proposal in this branch. */
   statements: DdlStatement[];
 };
 
+/**
+ * Render the DDL block on a proposal card. With one-change-per-proposal
+ * the proposal's `rationale` already explains *why* the index helps, so
+ * we deliberately do NOT also render `ddl_statement.rationale` — that
+ * duplication is the recent complaint. We show only what's not on the
+ * parent card already: the target hint and the SQL statement itself.
+ * Rejected DDL keeps a one-line failure note.
+ */
 export function IndexChangesSection({ statements }: Props) {
   return (
     <Stack gap="sm">
-      <Text fw="bold" fz="sm">
-        {t`Index change`}
-      </Text>
       {statements.map((statement, i) => (
         <DdlRow
           key={`${statement.index_name ?? "ddl"}-${i}`}
@@ -30,22 +35,12 @@ export function IndexChangesSection({ statements }: Props) {
 function DdlRow({ statement }: { statement: DdlStatement }) {
   return (
     <Box className={S.row}>
-      <Stack gap={2} miw={0} mb={4}>
-        <Text fz="sm" fw="bold">
-          {statement.index_name || t`Index change`}
-        </Text>
-        <Text fz="xs" c="text-secondary">
-          {targetLabel(statement.target)}
-        </Text>
-      </Stack>
+      <Text fz="xs" c="text-secondary" mb={4}>
+        {targetLabel(statement.target)}
+      </Text>
       <Code block className={S.codeBlock}>
         {statement.statement}
       </Code>
-      {statement.rationale && (
-        <Text fz="xs" c="text-secondary" mt={4}>
-          {statement.rationale}
-        </Text>
-      )}
       {statement.validation === "rejected" && statement.rejection && (
         <Text fz="xs" c="error" mt={4}>
           {c("Reason an LLM-emitted DDL was rejected by the server validator")
