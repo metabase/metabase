@@ -2,23 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import {
-  Alert,
-  Anchor,
-  Box,
-  Chip,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Alert, Box, Chip, Group, Stack, Text, Title } from "metabase/ui";
 
-import { HotspotList } from "./HotspotList";
 import { SlotExpansion } from "./SlotExpansion";
 import { WorkloadGrid } from "./WorkloadGrid";
-import { WorkloadStatStrip } from "./WorkloadStatStrip";
 import { useGetWorkloadGridQuery, useGetWorkloadSlotQuery } from "./api";
-import type { WorkloadJobType } from "./types";
+import type { WorkloadCell, WorkloadJobType } from "./types";
 import { useWorkloadParams } from "./useWorkloadParams";
 
 const JOB_TYPES: WorkloadJobType[] = [
@@ -36,6 +25,14 @@ const JOB_TYPE_LABEL: Record<WorkloadJobType, string> = {
   "dashboard-subscription": "Subscription",
   "persisted-refresh": "Model cache refresh",
 };
+
+function heroSentence(cells: WorkloadCell[]): string {
+  const total = cells.reduce((s, c) => s + c.weight, 0);
+  if (total === 0) {
+    return t`No background jobs scheduled in the next 7 days.`;
+  }
+  return t`${total.toLocaleString()} background jobs scheduled across the next 7 days.`;
+}
 
 export function WorkloadPage() {
   const { params, setParams, range, tableRange } = useWorkloadParams();
@@ -68,11 +65,9 @@ export function WorkloadPage() {
 
   return (
     <Box p="lg" style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <Stack gap="sm" mb="lg">
+      <Stack gap="xs" mb="lg">
         <Title order={2}>{t`Workload`}</Title>
-        <Text c="text-secondary" size="sm">
-          {t`Scheduled background work across your instance. Click a cell to see what runs in that hour.`}
-        </Text>
+        <Text c="text-secondary">{heroSentence(grid?.cells ?? [])}</Text>
       </Stack>
 
       {grid?.scheduler_status === "stopped" && (
@@ -80,49 +75,6 @@ export function WorkloadPage() {
           {t`Scheduled jobs are paused on this instance — workload data is unavailable.`}
         </Alert>
       )}
-
-      <WorkloadStatStrip
-        cells={grid?.cells ?? []}
-        scaleMax={grid?.scale_max ?? 0}
-        timezone={timezone}
-        isLoading={gridLoading}
-      />
-
-      <Stack gap="sm" mb="md">
-        <Group justify="space-between">
-          <Text c="text-secondary" size="sm">
-            {t`Showing the next 7 days · ${timezone}`}
-          </Text>
-          {params.types.length > 0 && (
-            <Anchor size="sm" onClick={() => setParams({ types: [] })}>
-              {t`Clear filters`}
-            </Anchor>
-          )}
-        </Group>
-        <Group gap="xs" align="center">
-          <Text c="text-secondary" size="sm" mr="xs">
-            {t`Filter by type:`}
-          </Text>
-          {JOB_TYPES.map((tt) => (
-            <Chip
-              key={tt}
-              checked={params.types.includes(tt)}
-              onChange={() => toggleType(tt)}
-              size="sm"
-              variant="outline"
-              color="brand"
-            >
-              {JOB_TYPE_LABEL[tt]}
-            </Chip>
-          ))}
-        </Group>
-      </Stack>
-
-      <HotspotList
-        cells={grid?.cells ?? []}
-        timezone={timezone}
-        onJumpToSlot={(slot) => setParams({ slot })}
-      />
 
       <WorkloadGrid
         cells={grid?.cells ?? []}
@@ -132,6 +84,21 @@ export function WorkloadPage() {
         onSelectSlot={(slot) => setParams({ slot })}
         timezone={timezone}
       />
+
+      <Group gap="xs" mt="sm" mb="lg">
+        {JOB_TYPES.map((tt) => (
+          <Chip
+            key={tt}
+            checked={params.types.includes(tt)}
+            onChange={() => toggleType(tt)}
+            size="sm"
+            variant="outline"
+            color="brand"
+          >
+            {JOB_TYPE_LABEL[tt]}
+          </Chip>
+        ))}
+      </Group>
 
       <SlotExpansion
         slot={params.slot}

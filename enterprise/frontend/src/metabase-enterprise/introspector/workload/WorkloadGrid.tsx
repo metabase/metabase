@@ -1,10 +1,16 @@
-/* eslint-disable metabase/no-color-literals */
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Group, Skeleton, Text } from "metabase/ui";
+import { Box, Flex, Skeleton, Text, UnstyledButton } from "metabase/ui";
 
-import type { WorkloadCell } from "./types";
+import type { WorkloadCell, WorkloadJobType } from "./types";
+
+const BANDS: { label: string; start: number; end: number }[] = [
+  { label: "Night", start: 0, end: 6 },
+  { label: "Morning", start: 6, end: 12 },
+  { label: "Afternoon", start: 12, end: 18 },
+  { label: "Evening", start: 18, end: 24 },
+];
 
 type Props = {
   cells: WorkloadCell[];
@@ -15,14 +21,20 @@ type Props = {
   timezone: string;
 };
 
-const COLORS = [
-  "#f3f4f6",
-  "#dbeafe",
-  "#93c5fd",
-  "#3b82f6",
-  "#1d4ed8",
-  "#1e3a8a",
-];
+// Theme-aware heatmap ramp: bucket 0 = page bg (effectively empty), buckets
+// 1..5 = brand color mixed with transparent at increasing weights. Using
+// color-mix instead of fixed brand-light/brand-dark tokens because we want
+// 5 stops, not 2, and want the ramp to follow whatever brand the instance
+// has themed to.
+const BUCKET_OPACITY_PCT = [0, 12, 25, 45, 70, 100];
+
+function bucketBg(idx: number): string {
+  if (idx <= 0) {
+    return "var(--mb-color-bg-light)";
+  }
+  const pct = BUCKET_OPACITY_PCT[Math.min(idx, 5)];
+  return `color-mix(in srgb, var(--mb-color-brand) ${pct}%, transparent)`;
+}
 
 const ROW_HEIGHT_PX = 28;
 
@@ -31,7 +43,39 @@ const ROW_HEIGHT_PX = 28;
 // jobs while people are working." A future setting could make this configurable.
 const BUSINESS_HOUR_START = 9;
 const BUSINESS_HOUR_END = 17;
-const BUSINESS_DAY_TINT = "rgba(245, 158, 11, 0.06)"; // soft amber wash
+const BUSINESS_DAY_TINT =
+  "color-mix(in srgb, var(--mb-color-warning) 8%, transparent)";
+
+const TYPE_SHORT: Record<WorkloadJobType, string> = {
+  sync: "syncs",
+  "transform-job": "transforms",
+  alert: "alerts",
+  "dashboard-subscription": "subscriptions",
+  "persisted-refresh": "refreshes",
+};
+
+function tooltipText(
+  label: string,
+  hour: number,
+  value: number,
+  byType: Partial<Record<WorkloadJobType, number>> | undefined,
+  timezone: string,
+): string {
+  const head = `${label} ${pad2(hour)}:00 ${timezone}`;
+  if (value === 0) {
+    return `${head} — ${t`nothing scheduled`}`;
+  }
+  const entries = Object.entries(byType ?? {}) as [WorkloadJobType, number][];
+  entries.sort((a, b) => b[1] - a[1]);
+  const top = entries
+    .slice(0, 2)
+    .map(([k, v]) => `${v} ${TYPE_SHORT[k]}`)
+    .join(", ");
+  const noun = value === 1 ? t`job` : t`jobs`;
+  return top
+    ? `${head} — ${value} ${noun} · ${top}`
+    : `${head} — ${value} ${noun}`;
+}
 
 // Peak-relative thresholds: each bucket boundary is a fraction of this view's
 // busiest hour. Stable as filters change (top bucket is always "near the peak"
@@ -163,8 +207,35 @@ export function WorkloadGrid({
           marginBottom: 4,
         }}
       >
+        <div />
+        {BANDS.map((band) => (
+          <Text
+            key={band.label}
+            size="sm"
+            c="text-secondary"
+            fw={500}
+            ta="center"
+            style={{
+              gridColumn: `span ${band.end - band.start}`,
+              borderBottom: "1px solid var(--mb-color-border)",
+              paddingBottom: 2,
+            }}
+          >
+            {band.label}
+          </Text>
+        ))}
+      </Box>
+
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "80px repeat(24, 1fr)",
+          gap: 2,
+          marginBottom: 4,
+        }}
+      >
         <Text size="xs" c="text-secondary" fw={500}>
-          {t`Hour (${timezone})`}
+          {timezone}
         </Text>
         {Array.from({ length: 24 }).map((_, h) => (
           <Text key={h} size="xs" c="text-secondary" ta="center">
@@ -205,23 +276,21 @@ export function WorkloadGrid({
                 const isBiz = isBusinessHour(fmt, day, h);
                 const noun = value === 1 ? t`job` : t`jobs`;
                 return (
-                  <Box
+                  <UnstyledButton
                     key={slot}
-                    role="button"
-                    tabIndex={0}
                     aria-label={t`${label} ${pad2(h)}:00, ${value} ${noun}`}
                     aria-pressed={focused}
                     onClick={() => onSelectSlot(slot)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onSelectSlot(slot);
-                      }
-                    }}
-                    title={`${label} ${pad2(h)}:00 ${timezone} — ${value} ${noun}`}
+                    title={tooltipText(
+                      label,
+                      h,
+                      value,
+                      cell?.by_type,
+                      timezone,
+                    )}
                     style={{
                       height: ROW_HEIGHT_PX,
-                      background: COLORS[idx],
+                      background: bucketBg(idx),
                       backgroundImage: isBiz
                         ? `linear-gradient(${BUSINESS_DAY_TINT}, ${BUSINESS_DAY_TINT})`
                         : undefined,
@@ -230,63 +299,25 @@ export function WorkloadGrid({
                         ? "2.5px solid var(--mb-color-brand)"
                         : undefined,
                       outlineOffset: focused ? 1 : 0,
-                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 11,
-                      color: idx >= 3 ? "rgba(255,255,255,0.9)" : "#1e3a8a",
+                      fontVariantNumeric: "tabular-nums",
+                      color:
+                        idx >= 3
+                          ? "var(--mb-color-text-white)"
+                          : "var(--mb-color-text-primary)",
                     }}
                   >
                     {value > 0 ? value : ""}
-                  </Box>
+                  </UnstyledButton>
                 );
               })}
             </Fragment>
           );
         })}
       </Box>
-
-      <Group mt="sm" gap={16} align="center">
-        <Flex gap={4} align="center">
-          <Text size="xs" c="text-secondary" mr={4}>
-            {t`Light`}
-          </Text>
-          {COLORS.map((c) => (
-            <Box
-              key={c}
-              style={{
-                width: 18,
-                height: 12,
-                background: c,
-                borderRadius: 2,
-              }}
-            />
-          ))}
-          <Text size="xs" c="text-secondary" ml={4}>
-            {t`Heavy`}
-          </Text>
-        </Flex>
-        <Flex gap={4} align="center">
-          <Box
-            style={{
-              width: 18,
-              height: 12,
-              background: "var(--mb-color-bg-white)",
-              backgroundImage: `linear-gradient(${BUSINESS_DAY_TINT}, ${BUSINESS_DAY_TINT})`,
-              border: "1px solid var(--mb-color-border)",
-              borderRadius: 2,
-            }}
-          />
-          <Text size="xs" c="text-secondary">
-            {t`Business hours (Mon–Fri, 9–5 ${timezone})`}
-          </Text>
-        </Flex>
-        <Box style={{ flex: 1 }} />
-        <Text size="xs" c="text-secondary">
-          {t`Peak: ${scaleMax || "—"} jobs/hr`}
-        </Text>
-      </Group>
     </Box>
   );
 }
