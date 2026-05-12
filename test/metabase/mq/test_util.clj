@@ -117,8 +117,10 @@
 
 (defn- merge-listeners!
   "Merges a user-supplied listener map on top of whatever listeners
-  `register-listeners!` already registered. Values can be plain fns (wrapped in
-  standard listener config) or full config maps with `:listener` etc."
+  `register-listeners!` already registered. Values can be plain single-message
+  fns (wrapped to match the vec-of-messages contract that `handle!` expects)
+  or full config maps with `:listener` etc. Map-form values are passed through
+  as-is — their `:listener` must already accept a vec of messages."
   [listeners]
   (when (seq listeners)
     (swap! listener/*listeners*
@@ -126,8 +128,8 @@
              (reduce-kv (fn [m k v]
                           (assoc m k (if (fn? v)
                                        (if-let [existing (get current k)]
-                                         (assoc existing :listener v)
-                                         {:listener           v
+                                         (assoc existing :listener (partial run! v))
+                                         {:listener           (partial run! v)
                                           :max-batch-messages 1})
                                        v)))
                         current

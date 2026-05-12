@@ -93,8 +93,8 @@
 (deftest exclusive-listen-test
   (let [heard-messages (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      {:queue/exclusive-test {:listener           (fn [message]
-                                                    (swap! heard-messages conj message))
+      {:queue/exclusive-test {:listener           (fn [messages]
+                                                    (run! #(swap! heard-messages conj %) messages))
                               :max-batch-messages 1
                               :exclusive          true}}
       (testing "Exclusive queue processes messages via the async memory backend"

@@ -35,13 +35,13 @@ transports with a unified API.
 
 ## Queues vs Topics
 
-|               | Queue                                           | Topic                             |
-|---------------|-------------------------------------------------|-----------------------------------|
-| Delivery      | Exactly-once per listener (claimed by one node) | At-least-once per active node     |
-| Retry         | Yes — up to `queue-max-retries` (default 5)     | No                                |
-| Backing table | `queue_message_batch`                           | `topic_message_batch`             |
-| Backlog       | Persists until processed or exhausted           | Cleaned up after 1 hour           |
-| Use when      | Work must complete reliably                     | All nodes must react to something |
+|               | Queue                                       | Topic                             |
+|---------------|---------------------------------------------|-----------------------------------|
+| Delivery      | At-least-once per listener                  | At-least-once per active node     |
+| Retry         | Yes — up to `queue-max-retries` (default 5) | No                                |
+| Backing table | `queue_message_batch`                       | `topic_message_batch`             |
+| Backlog       | Persists until processed or exhausted       | Cleaned up after 1 hour           |
+| Use when      | Work must complete reliably                 | All nodes must react to something |
 
 ## Architecture
 

@@ -86,28 +86,23 @@
    The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
   [channel message-batches messages]
   (swap! last-activity* assoc channel (System/nanoTime))
-  (analytics/inc! :metabase-mq/messages-received
-                  {:transport (namespace channel) :channel (name channel)}
-                  (count messages))
-  (let [{:keys [max-batch-messages]} (listener/get-listener channel)]
+  (let [{:keys [max-batch-messages]} (listener/get-listener channel)
+        batch-size                   (or max-batch-messages 1)
+        transport                    (namespace channel)
+        labels                       {:transport transport :channel (name channel)}]
+    (analytics/inc! :metabase-mq/messages-received labels (count messages))
     (invoke-listener!
      {:channel      channel
       :listener-fn  #(:listener (listener/get-listener channel))
       :invoke-fn    (fn [h]
                       (let [error (atom nil)]
-                        (if (and max-batch-messages (> max-batch-messages 1))
-                          (doseq [batch (partition-all max-batch-messages messages)]
-                            (try (h (vec batch))
-                                 (catch Exception e
-                                   (reset! error e)
-                                   (log/errorf e "Error handling %s message for %s, continuing"
-                                               (namespace channel) (name channel)))))
-                          (doseq [msg messages]
-                            (try (h msg)
-                                 (catch Exception e
-                                   (reset! error e)
-                                   (log/errorf e "Error handling %s message for %s, continuing"
-                                               (namespace channel) (name channel))))))
+                        (doseq [batch (partition-all batch-size messages)]
+                          (try (h (vec batch))
+                               (catch Exception e
+                                 (analytics/inc! :metabase-mq/handler-errors labels)
+                                 (reset! error e)
+                                 (log/errorf e "Error handling %s message for %s, continuing"
+                                             transport (name channel)))))
                         (when-let [e @error]
                           (throw (ex-info "One or more messages failed" {} e)))))
       :on-success   #(doseq [[bid backend] message-batches]

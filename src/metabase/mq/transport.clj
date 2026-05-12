@@ -19,12 +19,6 @@
   {:arglists '([channel opts])}
   (fn [channel _opts] (transport-type channel)))
 
-(defmulti wrap-listener
-  "Transport-specific wrapper applied to a listener fn during registration.
-  Dispatched on `transport-type`."
-  {:arglists '([channel listener])}
-  (fn [channel _listener] (transport-type channel)))
-
 (defn publish!
   "Publishes messages to the appropriate backend for the channel's transport type."
   [channel messages]

@@ -44,23 +44,21 @@
       (throw (ex-info (str "Listener already registered for " (namespace channel) " " (name channel))
                       {:channel channel})))))
 
+(defn batch-listen!
+  "Registers a batch listener for a queue or topic. The listener is always invoked
+   with a vec of messages, sized up to `:max-batch-messages`. Queues support `{:exclusive true}`"
+  [channel listener config]
+  (let [defaults (transport/on-listen! channel config)]
+    (register-listener! channel
+                        (merge defaults config {:listener listener}))))
+
 (defn listen!
-  "Registers a listener for a queue or topic.
+  "Registers a single-message listener for a queue or topic.
    `opts` is an optional map; pass nil or {} for defaults. Queues support `{:exclusive true}`."
   [channel opts listener]
-  (let [defaults  (transport/on-listen! channel opts)
-        listener' (transport/wrap-listener channel listener)]
-    (register-listener! channel
-                        (merge defaults opts {:listener listener' :max-batch-messages 1}))))
-
-(defn batch-listen!
-  "Registers a batch listener for a queue or topic.
-   The listener will be called with a vec of messages, sized up to :max-batch-messages."
-  [channel listener config]
-  (let [defaults  (transport/on-listen! channel config)
-        listener' (transport/wrap-listener channel listener)]
-    (register-listener! channel
-                        (merge defaults config {:listener listener'}))))
+  (batch-listen! channel
+                 (partial run! listener)
+                 (assoc (or opts {}) :max-batch-messages 1)))
 
 (defn unlisten!
   "Removes the listener for a channel."

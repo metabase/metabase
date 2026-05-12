@@ -689,8 +689,8 @@
    (prometheus/counter :metabase-mq/messages-received
                        {:description "Individual messages delivered to handlers."
                         :labels [:transport :channel]})
-   (prometheus/counter :metabase-mq/topic-handler-errors
-                       {:description "Errors in topic subscriber handlers."
+   (prometheus/counter :metabase-mq/handler-errors
+                       {:description "Errors thrown by queue or topic message handlers."
                         :labels [:transport :channel]})
 
    ;; release dashboard metrics

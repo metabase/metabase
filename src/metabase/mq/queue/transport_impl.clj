@@ -8,6 +8,3 @@
 
 (defmethod transport/on-listen! :queue [_channel opts]
   {:exclusive (boolean (:exclusive opts))})
-
-(defmethod transport/wrap-listener :queue [_channel listener]
-  listener)
