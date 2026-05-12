@@ -19,6 +19,7 @@
    ```"
   [& body]
   `(do
+     (mt/initialize-if-needed! :db)
      ;; Clear existing library collections
      (t2/update! (t2/table-name :model/Collection)
                  :type collection/library-collection-type

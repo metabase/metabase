@@ -5,13 +5,13 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
 import { Questions } from "metabase/entities/questions";
 import { Schemas } from "metabase/entities/schemas";
-import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -440,7 +440,6 @@ export class UnconnectedDataSelector extends Component {
   }
 
   isSearchLoading = () => {
-    // indicates status of API request triggered by Search.loadList
     return this.props.loading;
   };
 
@@ -1060,22 +1059,39 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
+// If there is at least one model or metric, we want to display a slightly
+// different data picker view (see DATA_BUCKET step). Pre-fetches available
+// models via search and exposes them as `metadata`/`loading`/`loaded` props.
+function withAvailableModels(WrappedComponent) {
+  return function DataSelectorWithAvailableModels(props) {
+    const { data: response, isLoading } = useSearchQuery({
+      calculate_available_models: true,
+      limit: 0,
+      models: ["dataset", "metric"],
+    });
+    let metadata;
+    if (response) {
+      const { data: _data, ...rest } = response;
+      metadata = rest;
+    }
+    return (
+      <WrappedComponent
+        {...props}
+        metadata={metadata}
+        loading={isLoading}
+        loaded={!isLoading && response != null}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
+  };
+}
+
 const DataSelector = _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
     listName: "allDatabases",
   }),
-  // If there is at least one model or metric,
-  // we want to display a slightly different data picker view
-  // (see DATA_BUCKET step)
-  Search.loadList({
-    query: {
-      calculate_available_models: true,
-      limit: 0,
-      models: ["dataset", "metric"],
-    },
-    loadingAndErrorWrapper: false,
-  }),
+  withAvailableModels,
   connect(
     (state, ownProps) => ({
       availableModels: ownProps.metadata?.available_models ?? [],

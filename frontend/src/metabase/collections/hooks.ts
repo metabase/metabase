@@ -10,11 +10,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import {
-  canonicalCollectionId,
-  isLibraryCollection,
-  isRootTrashCollection,
-} from "./utils";
+import { canonicalCollectionId, isRootTrashCollection } from "./utils";
 
 export type UseInitialCollectionIdProps = {
   collectionId?: Collection["id"] | null;
@@ -105,7 +101,7 @@ export function useInitialCollectionId({
       if (collection == null || isRootTrashCollection(collection)) {
         continue;
       }
-      if (collection.can_write && !isLibraryCollection(collection)) {
+      if (collection.can_write) {
         return canonicalCollectionId(collection.id);
       }
     }

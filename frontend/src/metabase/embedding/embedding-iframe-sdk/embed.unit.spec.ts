@@ -2,10 +2,24 @@ import fetchMock from "fetch-mock";
 import jwt from "jsonwebtoken";
 import { act } from "react-dom/test-utils";
 
-import { MetabaseEmbedElement } from "./embed";
+import {
+  type MetabaseDashboardElement,
+  MetabaseEmbedElement,
+  type MetabaseQuestionElement,
+} from "./embed";
 
 const defineMetabaseConfig = (config: unknown) => {
   (window as any).metabaseConfig = config;
+};
+
+// Wait for all fetch mocks, and async/await to finish
+const flushPromises = () =>
+  new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+const triggerIframeMessage = (iframe: HTMLIFrameElement, data: unknown) => {
+  window.dispatchEvent(
+    new MessageEvent("message", { data, source: iframe.contentWindow }),
+  );
 };
 
 describe("embed.js script tag for sdk iframe embedding", () => {
@@ -209,10 +223,6 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   });
 
   describe("guest embed token provider", () => {
-    // Wait for all fetch mocks, and async/await to finish
-    const flushPromises = () =>
-      new Promise<void>((resolve) => setTimeout(resolve, 0));
-
     function setupGuestEmbed({
       dashboardId,
       token,
@@ -243,23 +253,18 @@ describe("embed.js script tag for sdk iframe embedding", () => {
         "postMessage",
       );
 
-      const triggerIframeMessage = (data: unknown) => {
-        window.dispatchEvent(
-          new MessageEvent("message", { data, source: iframe.contentWindow }),
-        );
-      };
-
       return { embed, iframe, iframePostMessageSpy, triggerIframeMessage };
     }
 
     describe("refresh token only (static token)", () => {
       it("skips provider fetch and sends setSettings directly with static token", async () => {
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-          token: "static-jwt-token",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+            token: "static-jwt-token",
+          });
 
-        triggerIframeMessage({ type: "metabase.embed.iframeReady" });
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
         await flushPromises();
 
         expect(fetchMock.callHistory.calls("path:/mock-provider")).toHaveLength(
@@ -289,12 +294,13 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
         fetchMock.post("path:/mock-provider", { jwt: "refreshed-token" });
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-          customContext: "my-context",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+            customContext: "my-context",
+          });
 
-        triggerIframeMessage({
+        triggerIframeMessage(iframe, {
           type: "metabase.embed.requestGuestTokenRefresh",
           data: { expiredToken },
         });
@@ -323,12 +329,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("should parse a stringified JSON passed to custom-context", async () => {
         fetchMock.post("path:/mock-provider", { jwt: "refreshed-token" });
 
-        const { triggerIframeMessage } = setupGuestEmbed({
+        const { iframe, triggerIframeMessage } = setupGuestEmbed({
           dashboardId: "1",
           customContext: '{"param":"value","nested":{"a":1}}',
         });
 
-        triggerIframeMessage({
+        triggerIframeMessage(iframe, {
           type: "metabase.embed.requestGuestTokenRefresh",
           data: { expiredToken: "any.expired.token" },
         });
@@ -348,11 +354,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("sends reportAuthenticationError to iframe when provider returns HTTP error", async () => {
         fetchMock.post("path:/mock-provider", 403);
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+          });
 
-        triggerIframeMessage({
+        triggerIframeMessage(iframe, {
           type: "metabase.embed.requestGuestTokenRefresh",
           data: { expiredToken: "any.expired.token" },
         });
@@ -374,11 +381,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("sends reportAuthenticationError to iframe when provider returns invalid JSON shape", async () => {
         fetchMock.post("path:/mock-provider", { token: "wrong-field-name" });
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+          });
 
-        triggerIframeMessage({
+        triggerIframeMessage(iframe, {
           type: "metabase.embed.requestGuestTokenRefresh",
           data: { expiredToken: "any.expired.token" },
         });
@@ -402,12 +410,13 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("fetches initial token from provider with { entityType, entityId, customContext } and sends setSettings", async () => {
         fetchMock.post("path:/mock-provider", { jwt: "initial-token" });
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-          customContext: "my-context",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+            customContext: "my-context",
+          });
 
-        triggerIframeMessage({ type: "metabase.embed.iframeReady" });
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
         await flushPromises();
 
         const call = fetchMock.callHistory.lastCall("path:/mock-provider");
@@ -444,11 +453,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("sends reportAuthenticationError when initial token fetch returns HTTP error", async () => {
         fetchMock.post("path:/mock-provider", 500);
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+          });
 
-        triggerIframeMessage({ type: "metabase.embed.iframeReady" });
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
         await flushPromises();
 
         expect(iframePostMessageSpy).toHaveBeenCalledWith(
@@ -479,11 +489,12 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       it("sends reportAuthenticationError when initial token fetch returns invalid JSON shape", async () => {
         fetchMock.post("path:/mock-provider", { token: "wrong-field" });
 
-        const { triggerIframeMessage, iframePostMessageSpy } = setupGuestEmbed({
-          dashboardId: "1",
-        });
+        const { iframe, triggerIframeMessage, iframePostMessageSpy } =
+          setupGuestEmbed({
+            dashboardId: "1",
+          });
 
-        triggerIframeMessage({ type: "metabase.embed.iframeReady" });
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
         await flushPromises();
 
         expect(iframePostMessageSpy).toHaveBeenCalledWith(
@@ -498,6 +509,273 @@ describe("embed.js script tag for sdk iframe embedding", () => {
           "*",
         );
       });
+    });
+  });
+
+  describe("parameter API", () => {
+    const setupDashboard = () => {
+      defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
+
+      const embed = document.createElement(
+        "metabase-dashboard",
+      ) as MetabaseDashboardElement;
+      embed.setAttribute("dashboard-id", "1");
+      document.body.appendChild(embed);
+
+      const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
+      const iframePostMessageSpy = jest.spyOn(
+        iframe.contentWindow!,
+        "postMessage",
+      );
+
+      const markReady = async () => {
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+        await flushPromises();
+        iframePostMessageSpy.mockClear();
+      };
+
+      return {
+        embed,
+        iframe,
+        iframePostMessageSpy,
+        markReady,
+      };
+    };
+
+    const lastSetSettings = (
+      spy: jest.SpyInstance,
+    ): Record<string, unknown> | undefined => {
+      for (let i = spy.mock.calls.length - 1; i >= 0; i--) {
+        const [message] = spy.mock.calls[i];
+        if (message?.type === "metabase.embed.setSettings") {
+          return message.data;
+        }
+      }
+      return undefined;
+    };
+
+    it("pushes a setSettings update when the `parameters` attribute is set", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.setAttribute("parameters", JSON.stringify({ state: "NY" }));
+
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.parameters).toEqual({ state: "NY" });
+    });
+
+    it("reflects to the attribute and pushes a setSettings update when the `parameters` property is set", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: "NY" };
+
+      expect(embed).toHaveAttribute("parameters", '{"state":"NY"}');
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.parameters).toEqual({ state: "NY" });
+    });
+
+    it("returns the parsed attribute when the `parameters` property is read", async () => {
+      const { embed, markReady } = setupDashboard();
+      await markReady();
+
+      embed.setAttribute("parameters", '{"state":"AR","tier":["gold"]}');
+      expect(embed.parameters).toEqual({ state: "AR", tier: ["gold"] });
+    });
+
+    it("re-pushes a setSettings update when the same value is set twice in a row", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: null };
+      iframePostMessageSpy.mockClear();
+
+      // Simulates: user manually edited the filter (no host attribute write),
+      // then pushed the same clear-all payload again. The setter must
+      // re-dispatch `setSettings` even though `setAttribute` would be a no-op.
+      embed.parameters = { state: null };
+
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.parameters).toEqual({ state: null });
+    });
+
+    it("pushes a setSettings update when a parameter is cleared via `null`", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: "NY" };
+      iframePostMessageSpy.mockClear();
+
+      embed.parameters = { state: null };
+
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.parameters).toEqual({ state: null });
+    });
+
+    it("removes the attribute when `parameters` is set to undefined", async () => {
+      const { embed, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: "NY" };
+      expect(embed.getAttribute("parameters")).not.toBeNull();
+
+      embed.parameters = undefined;
+      expect(embed).not.toHaveAttribute("parameters");
+    });
+
+    it("fires exactly one setSettings call when the `parameters` property is set (no double-dispatch via attributeChangedCallback)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+      iframePostMessageSpy.mockClear();
+
+      embed.parameters = { state: "NY" };
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      expect(setSettingsCalls).toHaveLength(1);
+      expect(setSettingsCalls[0][0].data.parameters).toEqual({ state: "NY" });
+    });
+
+    it("re-pushes setSettings when the same `parameters` value is re-assigned (host can counter iframe drift)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+
+      embed.parameters = { state: "NY" };
+      iframePostMessageSpy.mockClear();
+
+      embed.parameters = { state: "NY" };
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      expect(setSettingsCalls).toHaveLength(1);
+    });
+
+    it("treats `el.parameters = null` as a no-op (does not crash; no excess setSettings dispatch)", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupDashboard();
+      await markReady();
+      iframePostMessageSpy.mockClear();
+
+      expect(() => {
+        (embed as unknown as { parameters: unknown }).parameters = null;
+      }).not.toThrow();
+
+      const setSettingsCalls = iframePostMessageSpy.mock.calls.filter(
+        ([message]) => message?.type === "metabase.embed.setSettings",
+      );
+      // SDK push hook treats null as "no controlled value" — at the embed
+      // boundary we don't crash and we don't fire more than one update.
+      expect(setSettingsCalls.length).toBeLessThanOrEqual(1);
+    });
+
+    it("dispatches a `parameters-change` event when the iframe broadcasts a change", async () => {
+      const { iframe, embed, markReady } = setupDashboard();
+      await markReady();
+
+      const handler = jest.fn();
+      embed.addEventListener("parameters-change", handler);
+
+      const payload = {
+        source: "manual-change" as const,
+        parameters: { state: "NY" },
+        defaultParameters: {},
+        lastUsedParameters: {},
+      };
+      triggerIframeMessage(iframe, {
+        type: "metabase.embed.parametersChange",
+        data: payload,
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const event = handler.mock.calls[0][0] as CustomEvent;
+      expect(event.detail).toEqual(payload);
+    });
+  });
+
+  describe("SQL parameter API", () => {
+    const setupQuestion = () => {
+      defineMetabaseConfig({ instanceUrl: "http://localhost:3000" });
+
+      const embed = document.createElement(
+        "metabase-question",
+      ) as MetabaseQuestionElement;
+      embed.setAttribute("question-id", "1");
+      document.body.appendChild(embed);
+
+      const iframe = embed.querySelector("iframe") as HTMLIFrameElement;
+      const iframePostMessageSpy = jest.spyOn(
+        iframe.contentWindow!,
+        "postMessage",
+      );
+
+      const markReady = async () => {
+        triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+        await flushPromises();
+        iframePostMessageSpy.mockClear();
+      };
+
+      return {
+        embed,
+        iframe,
+        iframePostMessageSpy,
+        markReady,
+      };
+    };
+
+    const lastSetSettings = (
+      spy: jest.SpyInstance,
+    ): Record<string, unknown> | undefined => {
+      for (let i = spy.mock.calls.length - 1; i >= 0; i--) {
+        const [message] = spy.mock.calls[i];
+        if (message?.type === "metabase.embed.setSettings") {
+          return message.data;
+        }
+      }
+      return undefined;
+    };
+
+    it("pushes a setSettings update when the `sql-parameters` attribute is set", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupQuestion();
+      await markReady();
+
+      embed.setAttribute("sql-parameters", JSON.stringify({ region: "EU" }));
+
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.sqlParameters).toEqual({ region: "EU" });
+    });
+
+    it("reflects to the attribute and pushes a setSettings update when the `sqlParameters` property is set", async () => {
+      const { embed, iframePostMessageSpy, markReady } = setupQuestion();
+      await markReady();
+
+      embed.sqlParameters = { region: "EU" };
+
+      expect(embed).toHaveAttribute("sql-parameters", '{"region":"EU"}');
+      const settings = lastSetSettings(iframePostMessageSpy);
+      expect(settings?.sqlParameters).toEqual({ region: "EU" });
+    });
+
+    it("dispatches a `sql-parameters-change` event on iframe broadcast", async () => {
+      const { iframe, embed, markReady } = setupQuestion();
+      await markReady();
+
+      const handler = jest.fn();
+      embed.addEventListener("sql-parameters-change", handler);
+
+      const payload = {
+        source: "manual-change" as const,
+        parameters: { region: "EU" },
+        defaultParameters: {},
+      };
+      triggerIframeMessage(iframe, {
+        type: "metabase.embed.sqlParametersChange",
+        data: payload,
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const event = handler.mock.calls[0][0] as CustomEvent;
+      expect(event.detail).toEqual(payload);
     });
   });
 });

@@ -78,6 +78,7 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     "tooltip-text": baseColors.white,
     warning: baseColors.dubloon[30],
     "background-warning": baseColors.dubloon[5],
+    "background-warning-secondary": baseColors.dubloon[20],
     info: baseColors.orion[40],
     "background-info": baseColors.orion[10],
     white: baseColors.white,

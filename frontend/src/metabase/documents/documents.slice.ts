@@ -14,8 +14,8 @@ import type {
 } from "metabase/redux/store/documents";
 import type {
   Card,
-  CardDisplayType,
   Document,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -84,7 +84,7 @@ const documentsSlice = createSlice({
     },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{ cardId: number; display: CardDisplayType }>,
+      action: PayloadAction<{ cardId: number; display: VisualizationDisplay }>,
     ) => {
       const { cardId, display } = action.payload;
       if (state.draftCards[cardId]) {

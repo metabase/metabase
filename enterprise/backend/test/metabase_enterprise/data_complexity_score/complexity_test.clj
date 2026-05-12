@@ -793,6 +793,31 @@
           (is (every? #(= expected-model (get-in % ["parameters" "embedding_model"])) events))
           (is (every? #(= "names_split"  (get-in % ["parameters" "text_variant"])) events)))))))
 
+(deftest ^:sequential emit-snowplow-batch-id-test
+  (testing "scoring stamps every event with a UUID batch_id, constant within a pass and fresh between passes"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")]
+                                               :universe [(entity :name "orders")]
+                                               :metabot  [(entity :name "orders")]})]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (letfn [(drain-and-check-pass! []
+                  (let [events     (complexity-events!)
+                        batch-ids  (set (map #(get % "batch_id") events))
+                        catalogs   (frequencies (map #(get % "catalog") events))
+                        event-keys (set (map (juxt #(get % "catalog") #(get % "key")) events))]
+                    ;; 1 grand total + 2 group totals + 5 leaves = 8 events per catalog.
+                    (is (= {"library" 8 "universe" 8 "metabot" 8} catalogs))
+                    (is (= (count events) (count event-keys)))
+                    (is (= 1 (count batch-ids)))
+                    (is (every? parse-uuid batch-ids))
+                    (first batch-ids)))]
+          (complexity/complexity-scores :embedder nil)
+          (let [batch-1 (drain-and-check-pass!)]
+            (complexity/complexity-scores :embedder nil)
+            (let [batch-2 (drain-and-check-pass!)]
+              (is (not= batch-1 batch-2)))))))))
+
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
     (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs

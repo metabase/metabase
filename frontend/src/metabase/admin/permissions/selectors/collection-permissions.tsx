@@ -4,6 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  getGroupNameLocalized,
+  getGroupSortOrder,
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
+import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
@@ -20,12 +26,6 @@ import type {
   ExpandedCollection,
   State,
 } from "metabase/redux/store";
-import {
-  getGroupNameLocalized,
-  getGroupSortOrder,
-  getSpecialGroupType,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -196,7 +196,7 @@ const getFolder = (state: State, props: CollectionIdProps) => {
   const folderId = getCurrentCollectionId(state, props);
   const folders = SnippetCollections.selectors.getList(state);
 
-  return folders.find((folder: Collection) => folder.id === folderId);
+  return folders?.find((folder: Collection) => folder.id === folderId);
 };
 
 export const getCollectionEntity = (state: State, props: CollectionIdProps) => {

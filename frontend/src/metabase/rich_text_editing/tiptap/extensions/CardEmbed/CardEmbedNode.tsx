@@ -48,7 +48,6 @@ import {
   Ellipsified,
   Flex,
   Icon,
-  Loader,
   Menu,
   Text,
   TextInput,
@@ -78,6 +77,7 @@ import CS from "../extensions.module.css";
 import { NativeQueryModal } from "../shared/NativeQueryModal";
 import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 
+import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
@@ -451,17 +451,14 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-primary" fw={700}>
+                  <Text size="md" c="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
               </Flex>
             </Box>
-            <Box className={styles.questionResults}>
-              <Box className={styles.loadingContainer}>
-                <Loader />
-              </Box>
-            </Box>
+
+            <CardEmbedLoadingState />
           </Box>
         </NodeViewWrapper>
       );

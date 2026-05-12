@@ -36,7 +36,7 @@ export function ArchivedSnippetsPage() {
   const [updateSnippet] = useUpdateSnippetMutation();
 
   const handleUnarchiveClick = useCallback(
-    async (item: CollectionItem) => {
+    async (item: Pick<CollectionItem, "id" | "name">) => {
       try {
         await updateSnippet({
           id: item.id,

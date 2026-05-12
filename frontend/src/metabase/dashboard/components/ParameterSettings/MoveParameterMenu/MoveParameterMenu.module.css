@@ -2,11 +2,7 @@
   text-align: center;
   border-radius: var(--mantine-radius-sm);
   cursor: pointer;
-
-  &::placeholder {
-    color: var(--mb-color-text-primary);
-    font-weight: 700;
-  }
+  color: transparent;
 
   &:hover {
     background-color: var(--mb-color-background-hover);
@@ -14,6 +10,21 @@
     &::placeholder {
       color: var(--mb-color-brand);
     }
+  }
+}
+
+.CollapsedMoveParameterMenuInputWrapper {
+  position: relative;
+
+  &::after {
+    content: attr(data-label);
+    color: var(--mb-color-text-primary);
+    font-weight: 700;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
   }
 }
 

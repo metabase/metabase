@@ -19,29 +19,8 @@ export interface ChartTooltipProps {
   settings: VisualizationSettings;
 }
 
-export const ChartTooltipContent = ({
-  hovered,
-  settings,
-}: ChartTooltipProps) => {
-  if (!hovered) {
-    return null;
-  }
-  if (!_.isEmpty(hovered.timelineEvents)) {
-    return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
-  }
-
-  if (hovered.stackedTooltipModel) {
-    return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
-  }
-
-  return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
-};
-
 /**
- * Returns a stable proxy element positioned at the given element's bounding
- * rect. Reading getBoundingClientRect during render (before effects) ensures
- * we capture the position before ECharts potentially rebuilds the SVG and
- * detaches the original element.
+ * Fixes a race condition where an ECharts rerender removes `element` before tippy can read its position
  */
 function useStableTooltipTarget(element: Element | undefined | null) {
   const proxyRef = useRef<HTMLDivElement | null>(null);
@@ -53,13 +32,13 @@ function useStableTooltipTarget(element: Element | undefined | null) {
     };
   }, []);
 
-  if (!element || !document.body.contains(element)) {
+  if (!element) {
     return null;
   }
 
   const rect = element.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
-    return null;
+    return proxyRef.current;
   }
 
   if (!proxyRef.current) {
@@ -78,6 +57,24 @@ function useStableTooltipTarget(element: Element | undefined | null) {
 
   return proxy;
 }
+
+export const ChartTooltipContent = ({
+  hovered,
+  settings,
+}: ChartTooltipProps) => {
+  if (!hovered) {
+    return null;
+  }
+  if (!_.isEmpty(hovered.timelineEvents)) {
+    return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
+  }
+
+  if (hovered.stackedTooltipModel) {
+    return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
+  }
+
+  return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
+};
 
 const ChartTooltip = ({
   hovered: untranslatedHoveredObject,
@@ -104,12 +101,8 @@ const ChartTooltip = ({
   }, [hovered]);
 
   const hasTargetEvent = hovered?.event != null;
-  const hasTargetElement = hovered?.element != null;
-  const proxyTarget = useStableTooltipTarget(
-    hasTargetElement ? hovered?.element : null,
-  );
-  const hasValidTarget = proxyTarget != null || hasTargetEvent;
-  const isOpen = isNotEmpty && hasValidTarget;
+  const proxyTarget = useStableTooltipTarget(hovered?.element);
+  const isOpen = isNotEmpty && (proxyTarget != null || hasTargetEvent);
   const isPadded = hovered?.stackedTooltipModel == null;
 
   const target = proxyTarget

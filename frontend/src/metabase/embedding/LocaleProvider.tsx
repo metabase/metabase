@@ -6,14 +6,12 @@ import {
   useState,
 } from "react";
 
+import { setLocaleHeader } from "metabase/api/legacy-client";
+import { loadLocalization } from "metabase/api/localization";
 import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
-import { setLocaleHeader } from "metabase/utils/api";
-import {
-  type LocaleDataWithLanguage,
-  loadLocalization,
-} from "metabase/utils/i18n";
+import type { LocaleDataWithLanguage } from "metabase/utils/i18n";
 
 interface LocaleProviderProps {
   locale?: string | null;
