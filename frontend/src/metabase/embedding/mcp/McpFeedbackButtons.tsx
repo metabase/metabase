@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -28,6 +28,12 @@ interface McpFeedbackButtonsProps {
 }
 
 type FeedbackChoice = "positive" | "negative";
+type FeedbackContext = Pick<McpFeedbackButtonsProps, "prompt" | "query">;
+
+const isSameFeedbackContext = (
+  first: FeedbackContext,
+  second: FeedbackContext,
+) => first.prompt === second.prompt && first.query === second.query;
 
 export function McpFeedbackButtons({
   instanceUrl,
@@ -46,16 +52,20 @@ export function McpFeedbackButtons({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [sendToast] = useToast();
+  const feedbackContext = { prompt, query };
+
+  const feedbackContextRef = useRef<FeedbackContext>(feedbackContext);
+  feedbackContextRef.current = feedbackContext;
 
   useEffect(() => {
     setSubmittedFeedback(null);
     setSelectedFeedback(null);
-    setIsSubmitting(false);
   }, [prompt, query]);
 
   const handleFeedback = async (
     values: McpFeedbackModalValues & { positive: boolean },
   ) => {
+    const submittedContext = feedbackContextRef.current;
     const payload = {
       feedback: {
         positive: values.positive,
@@ -63,7 +73,7 @@ export function McpFeedbackButtons({
         issue_type: values.issue_type || undefined,
         freeform_feedback: values.freeform_feedback || undefined,
       },
-      conversation_data: { source: "mcp", prompt, query },
+      conversation_data: { source: "mcp", ...submittedContext },
     } as const;
 
     try {
@@ -76,11 +86,15 @@ export function McpFeedbackButtons({
         payload,
       });
 
-      sendToast({ icon: "check", message: t`Feedback submitted` });
-      setSubmittedFeedback(values.positive ? "positive" : "negative");
-      setSelectedFeedback(null);
+      if (isSameFeedbackContext(submittedContext, feedbackContextRef.current)) {
+        sendToast({ icon: "check", message: t`Feedback submitted` });
+        setSubmittedFeedback(values.positive ? "positive" : "negative");
+        setSelectedFeedback(null);
+      }
     } catch {
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      if (isSameFeedbackContext(submittedContext, feedbackContextRef.current)) {
+        sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      }
     } finally {
       setIsSubmitting(false);
     }

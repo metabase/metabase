@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -33,6 +33,10 @@ describe("McpFeedbackButtons", () => {
     request: ReturnType<typeof fetchMock.callHistory.calls>[number],
   ) => JSON.parse(request.options.body?.toString() ?? "{}");
 
+  const getRequestHeaders = (
+    request: ReturnType<typeof fetchMock.callHistory.calls>[number],
+  ) => request.options.headers as Record<string, string>;
+
   it("submits separate MCP feedback events to the feedback endpoint", async () => {
     const user = userEvent.setup();
     const instanceUrl = "http://localhost:3000";
@@ -58,13 +62,24 @@ describe("McpFeedbackButtons", () => {
 
     await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    await waitFor(async () =>
-      expect(await findFeedbackRequests()).toHaveLength(1),
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/embed-mcp/feedback", {
+          method: "POST",
+        }),
+      ).toHaveLength(1),
     );
 
     const [request] = await findFeedbackRequests();
 
     expect(request.url).toBe(`${instanceUrl}/api/embed-mcp/feedback`);
+    expect(getRequestHeaders(request)).toEqual(
+      expect.objectContaining({
+        "X-Metabase-Client": "mcp-apps",
+        "X-Metabase-Session": "metabase-session-token",
+        "Mcp-Session-Id": "mcp-session-id",
+      }),
+    );
 
     expect(getRequestBody(request)).toEqual({
       feedback: {
@@ -99,5 +114,63 @@ describe("McpFeedbackButtons", () => {
         query: "encoded-query",
       },
     });
+  });
+
+  it("keeps an in-flight submission tied to the visualization it was submitted for", async () => {
+    const user = userEvent.setup();
+    const instanceUrl = "http://localhost:3000";
+    let resolveFeedback!: (status: number) => void;
+    const feedbackSubmission = new Promise<number>((resolve) => {
+      resolveFeedback = resolve;
+    });
+
+    fetchMock.post("path:/api/embed-mcp/feedback", () => feedbackSubmission);
+
+    const { rerender } = renderWithProviders(
+      <McpFeedbackButtons
+        instanceUrl={instanceUrl}
+        sessionToken="metabase-session-token"
+        mcpSessionId="mcp-session-id"
+        prompt="show me orders"
+        query="encoded-query"
+      />,
+    );
+
+    await user.click(screen.getByTestId("mcp-feedback-thumbs-up"));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/embed-mcp/feedback", {
+          method: "POST",
+        }),
+      ).toHaveLength(1),
+    );
+
+    rerender(
+      <McpFeedbackButtons
+        instanceUrl={instanceUrl}
+        sessionToken="metabase-session-token"
+        mcpSessionId="mcp-session-id"
+        prompt="show me products"
+        query="new-encoded-query"
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Submit" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("mcp-feedback-thumbs-up")).toBeDisabled();
+
+    await act(async () => {
+      resolveFeedback(204);
+      await feedbackSubmission;
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("mcp-feedback-thumbs-up")).toBeEnabled(),
+    );
   });
 });
