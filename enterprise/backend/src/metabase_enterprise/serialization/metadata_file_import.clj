@@ -242,8 +242,15 @@
       {:reason (format "metadata-file-import in progress (file=%s, since=%s)"
                        file since)})))
 
-(defonce ^:private _busy-predicate-registered
-  (do (sync.util/register-busy-predicate! import-busy-reason) true))
+(defonce ^:private initialized? (atom false))
+
+(defn init!
+  "Register hooks with the subsystems this module coordinates with (sync).
+  Called from `metabase-enterprise.serialization.init` at boot. Idempotent —
+  callers don't need to guard against multiple invocations."
+  []
+  (when (compare-and-set! initialized? false true)
+    (sync.util/register-busy-predicate! import-busy-reason)))
 
 (defn- run-import*
   "Agent body. Always returns `::serializer`; `:error-mode :continue` plus
