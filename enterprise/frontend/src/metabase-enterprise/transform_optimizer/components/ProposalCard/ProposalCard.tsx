@@ -73,11 +73,11 @@ export function ProposalCard({
         )}
       </Stack>
 
-      {proposal.ddl_statements.length > 0 && (
+      {proposal.ddl_statement && (
         <>
           <Divider />
           <Box p="md">
-            <IndexChangesSection statements={proposal.ddl_statements} />
+            <IndexChangesSection statements={[proposal.ddl_statement]} />
           </Box>
         </>
       )}

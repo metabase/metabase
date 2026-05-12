@@ -74,27 +74,29 @@
                 (when-let [t (:target ctx)] [t]))))
 
 (defn- validate-proposal-ddl
-  "Walk `:ddl_statements` on a proposal, swap each entry's `:status` based on
-  the validator outcome. Statements that fail validation are kept in the
-  payload but marked `:rejected` with a reason so the UI can render the
-  failure inline rather than silently dropping them."
-  [proposal allowed-tables]
-  (update proposal :ddl_statements
-          (fn [stmts]
-            (mapv (fn [{:keys [statement] :as ddl}]
-                    (let [{:keys [ok?] :as r} (ddl.parse/parse statement allowed-tables)]
-                      (cond-> ddl
-                        ok?         (assoc :validation :accepted
-                                           :index_name (:name r))
-                        (not ok?)   (assoc :validation :rejected
-                                           :rejection  (select-keys r [:reason :detail])))))
-                  (or stmts [])))))
+  "Each proposal carries at most one `:ddl_statement` (singular). Validate
+  the statement against the CREATE-INDEX allowlist and tag with
+  `:validation = :accepted | :rejected`. Rejected statements stay on the
+  proposal with their rejection reason so the UI can render the failure
+  inline instead of silently dropping the proposal."
+  [{:keys [ddl_statement] :as proposal} allowed-tables]
+  (if-not ddl_statement
+    proposal
+    (let [{:keys [ok?] :as r} (ddl.parse/parse (:statement ddl_statement) allowed-tables)]
+      (assoc proposal
+             :ddl_statement
+             (cond-> ddl_statement
+               ok?         (assoc :validation :accepted
+                                  :index_name (:name r))
+               (not ok?)   (assoc :validation :rejected
+                                  :rejection  (select-keys r [:reason :detail])))))))
 
 (defn finalise-proposals
   "Server-side cleanup applied to a raw proposal set from the LLM:
 
-   1. Validate every DDL statement against the CREATE-INDEX allowlist
-      and tag with :validation = :accepted | :rejected.
+   1. Validate the single DDL statement on each `:index` proposal against
+      the CREATE-INDEX allowlist and tag with
+      `:validation = :accepted | :rejected`.
    2. Compute the deterministic optimization_degree.
 
    Returns the response payload exactly as the UI consumes it."

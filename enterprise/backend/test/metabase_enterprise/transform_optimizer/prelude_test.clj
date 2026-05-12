@@ -24,10 +24,13 @@
       (is (str/includes? text "ddl_statements"))
       (is (str/includes? text "depends_on")))
 
-    (testing "all four proposal kinds are described"
-      (doseq [kind ["rewrite" "index" "rewrite+index" "precompute"]]
+    (testing "all proposal kinds are described"
+      ;; One change per proposal — `rewrite+index` is intentionally gone.
+      (doseq [kind ["rewrite" "index" "precompute"]]
         (is (str/includes? text kind)
             (str "missing kind: " kind))))
+    (testing "rewrite+index is explicitly NOT a valid kind"
+      (is (not (str/includes? text "\"rewrite+index\""))))
 
     (testing "severity rubric is in the prompt"
       (is (str/includes? text "severity"))

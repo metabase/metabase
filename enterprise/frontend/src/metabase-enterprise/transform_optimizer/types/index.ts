@@ -1,15 +1,8 @@
-export type ProposalKind =
-  | "rewrite"
-  | "index"
-  | "rewrite+index"
-  | "precompute";
+export type ProposalKind = "rewrite" | "index" | "precompute";
 
 export type ProposalSeverity = "high" | "medium" | "low";
 
-export type DdlTarget =
-  | "source-db"
-  | "transform-target"
-  | { "precompute-of": string };
+export type DdlTarget = "source-db" | "transform-target";
 
 export type DdlValidation = "accepted" | "rejected";
 
@@ -20,23 +13,30 @@ export type DdlExecutionStatus =
   | "failed"
   | "skipped";
 
+/**
+ * The single DDL attached to a `kind: "index"` proposal. Indices that
+ * target a new table created by another proposal use
+ * `target: "transform-target"` and the parent proposal's id in
+ * `depends_on`.
+ */
 export type DdlStatement = {
-  id: string;
   target: DdlTarget;
   statement: string;
   rationale: string;
   validation: DdlValidation;
   index_name?: string | null;
   rejection?: { reason: string; detail?: string } | null;
-  /**
-   * Local-only execution state for the UI. Server emits this in the advisory
-   * "validation" field, but in this branch DDL is never run by Metabase,
-   * so the value stays "pending" unless the user uses Run DDL.
-   */
-  execution_status?: DdlExecutionStatus;
-  execution_error?: string | null;
 };
 
+/**
+ * One change per proposal:
+ *   - `rewrite` / `precompute` carry `body`, no `ddl_statement`.
+ *   - `index` carries `ddl_statement`, no `body`.
+ *
+ * Indices that depend on a new target table express that via
+ * `depends_on` plus `ddl_statement.target = "transform-target"` — the FE
+ * walks `depends_on` to topo-order accept requests.
+ */
 export type Proposal = {
   id: string;
   name: string;
@@ -45,8 +45,8 @@ export type Proposal = {
   rationale: string;
   expected_speedup: string;
   body: string | null;
+  ddl_statement: DdlStatement | null;
   depends_on: string[];
-  ddl_statements: DdlStatement[];
 };
 
 export type OptimizerStreamStatus =

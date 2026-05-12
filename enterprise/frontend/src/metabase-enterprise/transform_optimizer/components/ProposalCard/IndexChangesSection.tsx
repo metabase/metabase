@@ -7,6 +7,7 @@ import type { DdlStatement, DdlTarget } from "../../types";
 import S from "./IndexChangesSection.module.css";
 
 type Props = {
+  /** One DDL per `:index` proposal in this branch (`ddl_statement` is singular). */
   statements: DdlStatement[];
 };
 
@@ -14,10 +15,13 @@ export function IndexChangesSection({ statements }: Props) {
   return (
     <Stack gap="sm">
       <Text fw="bold" fz="sm">
-        {t`Index changes`}
+        {t`Index change`}
       </Text>
-      {statements.map((statement) => (
-        <DdlRow key={statement.id} statement={statement} />
+      {statements.map((statement, i) => (
+        <DdlRow
+          key={`${statement.index_name ?? "ddl"}-${i}`}
+          statement={statement}
+        />
       ))}
     </Stack>
   );
@@ -54,12 +58,8 @@ function DdlRow({ statement }: { statement: DdlStatement }) {
 }
 
 function targetLabel(target: DdlTarget): string {
-  if (typeof target === "string") {
-    if (target === "source-db") {
-      return t`On source database`;
-    }
-    return t`On transform target`;
+  if (target === "source-db") {
+    return t`On source database`;
   }
-  return c("Index target: another proposal in the same DAG")
-    .t`On precompute of ${target["precompute-of"]}`;
+  return t`On a new transform target (created by a linked proposal)`;
 }

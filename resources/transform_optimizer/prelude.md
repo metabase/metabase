@@ -129,6 +129,21 @@ real structural change.
 
 ## Output schema
 
+**One proposal = one change.** Each proposal is either a rewrite/precompute
+(carries `body`, no `ddl_statement`) or a single index (carries
+`ddl_statement`, no `body`). Never both. This lets the user accept and
+verify each change independently.
+
+When a rewrite needs a supporting index, emit them as **two proposals**
+linked via `depends_on`:
+
+- proposal A: `kind: "rewrite"` with the new SQL `body`
+- proposal B: `kind: "index"` with the `CREATE INDEX` statement, and
+  `depends_on: ["A"]`
+
+The user can then accept just A, just B, or both. The server takes care
+of running them in dependency order when both are selected.
+
 Emit JSON matching exactly this shape:
 
 ```json
@@ -138,20 +153,20 @@ Emit JSON matching exactly this shape:
     {
       "id": "p1",
       "name": "human-readable proposal name",
-      "kind": "rewrite | index | rewrite+index | precompute",
+      "kind": "rewrite | index | precompute",
       "severity": "high | medium | low",
       "rationale": "why this is an improvement",
       "expected_speedup": "≥100×",
-      "body": "SELECT ...   -- the new transform's SQL, or null for kind=index",
-      "depends_on": [],
-      "ddl_statements": [
-        {
-          "id": "ddl1",
-          "target": "source-db | transform-target | {\"precompute-of\": \"p2\"}",
-          "statement": "CREATE INDEX IF NOT EXISTS idx_… ON schema.table (col1, col2) ...",
-          "rationale": "what this index supports"
-        }
-      ]
+
+      /* exactly one of these two must be present: */
+      "body": "SELECT ...",        /* present for kind = rewrite | precompute */
+      "ddl_statement": {            /* present for kind = index */
+        "target": "source-db" | "transform-target",
+        "statement": "CREATE INDEX IF NOT EXISTS idx_… ON schema.table (col1, col2) ...",
+        "rationale": "what this index supports"
+      },
+
+      "depends_on": []   /* ids of earlier proposals this depends on */
     }
   ]
 }
@@ -173,16 +188,20 @@ you do not emit it.
 
 ## Constraints on emitted DDL
 
-Every `ddl_statements[]` entry must be a **single `CREATE INDEX` statement**:
+Every `:index` proposal's `ddl_statement.statement` must be a **single
+`CREATE INDEX` statement**:
 
 - Must include `IF NOT EXISTS` so accept-and-execute is idempotent.
-- For `target: source-db`, prefer `CONCURRENTLY` so the source table
+- For `target: "source-db"`, prefer `CONCURRENTLY` so the source table
   isn't locked.
 - Schema-qualified table name (e.g. `shop.orders`, not just `orders`).
 - Use the schema from the referenced-tables list — do **not** invent
   schemas.
 - Use the `idx_<table>_<cols>` naming convention so duplicates across
   proposals are detectable.
+- When the index targets a table created by another proposal (a new
+  transform's target), set `target: "transform-target"` and use
+  `depends_on` to point at that proposal's id.
 
 You may not emit `DROP`, `ALTER`, `GRANT`, or multi-statement DDL. The
 server will reject anything else.
@@ -218,7 +237,7 @@ LEFT JOIN (
 Rationale: O(N×M) → O(N+M). High severity; ≥100× on 5M-row orders + 500k
 customers.
 
-### Example 2 — kind: index (no SQL change, DDL only)
+### Example 2 — kind: index (no SQL change)
 
 **Slow** (sequential scan of orders to filter status + date):
 
@@ -231,22 +250,28 @@ WHERE status IN ('shipped','delivered')
 GROUP BY 1;
 ```
 
-DDL:
+Proposal:
 
-```sql
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_status_ordered_at_customer
-  ON shop.orders (status, ordered_at, customer_id) INCLUDE (total_cents);
+```json
+{
+  "id": "p1",
+  "kind": "index",
+  "severity": "high",
+  "rationale": "Index covers the filter prefix and pulls total_cents from the leaf; planner switches from seq-scan to index-only scan.",
+  "expected_speedup": "≥100×",
+  "ddl_statement": {
+    "target": "source-db",
+    "statement": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_status_ordered_at_customer ON shop.orders (status, ordered_at, customer_id) INCLUDE (total_cents);",
+    "rationale": "Covers the WHERE prefix; INCLUDE total_cents avoids heap fetches."
+  },
+  "depends_on": []
+}
 ```
 
-Rationale: the index covers the filter prefix and pulls `total_cents` from
-the leaf; the planner switches from seq-scan to index-only scan. High
-severity; ≥100× speedup. The SQL body is unchanged so `body` is `null`
-and `kind` is `index`.
+### Example 3 — rewrite + supporting index (two proposals)
 
-### Example 3 — kind: rewrite+index (scale-dependent — check EXPLAIN)
-
-**Slow** (top-N per category via a window function over 20k products
-joined to 15M order_items):
+**Slow** (top-N per category via a window function over 10k products
+joined to a large order_items table):
 
 ```sql
 SELECT category_id, product_id, name, gross
@@ -261,106 +286,120 @@ FROM (
 WHERE rn <= 5;
 ```
 
-**Fast** (small per-product rollup + LATERAL top-5):
-
-```sql
-WITH product_revenue AS (
-  SELECT product_id,
-         sum((quantity * unit_price_cents) - discount_cents) AS gross
-  FROM shop.order_items
-  GROUP BY product_id
-)
-SELECT c.id, top.product_id, p.name, top.gross
-FROM shop.categories c
-CROSS JOIN LATERAL (
-  SELECT pr.product_id, pr.gross
-  FROM product_revenue pr
-  JOIN shop.products p2 ON p2.id = pr.product_id
-  WHERE p2.category_id = c.id
-  ORDER BY pr.gross DESC
-  LIMIT 5
-) top
-JOIN shop.products p ON p.id = top.product_id;
-```
-
-DDL:
-
-```sql
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_order_items_product_id
-  ON shop.order_items (product_id) INCLUDE (quantity, unit_price_cents, discount_cents);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_category_id
-  ON shop.products (category_id);
-```
-
-Medium severity (≥50× speedup at production scale). **Only propose this
-rewrite when the EXPLAIN plan shows a sort or full-scan that the LATERAL
-pattern would avoid, and when an index exists that supports the
-`ORDER BY … DESC` inside the LATERAL.** At small fact-table scale the
-window-function plan often beats the LATERAL rewrite — see the
-"Top-N per group" pitfall above.
-
-### Example 4 — kind: precompute (DAG split)
-
-A monolithic cohort-retention query scans 5M orders twice. Split into
-**two precompute transforms** plus a small final query that joins them.
-The two precomputes are `:table-incremental` so they keep their indexes
-across runs.
-
-Proposal payload:
+**Two independent proposals**, linked by `depends_on` so the user can
+accept the rewrite alone, the index alone, or both:
 
 ```json
 {
-  "summary": "Scans orders twice. Split into per-customer cohort rollup + monthly activity rollup.",
   "proposals": [
     {
       "id": "p1",
-      "name": "customer_first_purchase",
-      "kind": "precompute",
+      "name": "Top-N per category via LATERAL + small revenue rollup",
+      "kind": "rewrite",
       "severity": "medium",
-      "rationale": "Compact rollup; ≤ 500k rows. Reusable for other dashboards.",
-      "expected_speedup": "≥10×",
-      "body": "SELECT customer_id, DATE_TRUNC('month', MIN(ordered_at))::DATE AS cohort_month FROM shop.orders WHERE status IN ('paid','shipped','delivered') GROUP BY customer_id",
-      "depends_on": [],
-      "ddl_statements": [
-        {"id": "ddl1", "target": {"precompute-of": "p1"},
-         "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON {target} (customer_id)",
-         "rationale": "Join key for the final query."}
-      ]
+      "rationale": "Replace window function with a small per-product rollup + LATERAL top-5 per category. Wins meaningfully only when the supporting index from p2 is in place.",
+      "expected_speedup": "≥50×",
+      "body": "WITH product_revenue AS (SELECT product_id, sum((quantity * unit_price_cents) - discount_cents) AS gross FROM shop.order_items GROUP BY product_id) SELECT c.id, top.product_id, p.name, top.gross FROM shop.categories c CROSS JOIN LATERAL (SELECT pr.product_id, pr.gross FROM product_revenue pr JOIN shop.products p2 ON p2.id = pr.product_id WHERE p2.category_id = c.id ORDER BY pr.gross DESC LIMIT 5) top JOIN shop.products p ON p.id = top.product_id",
+      "depends_on": []
     },
     {
       "id": "p2",
-      "name": "customer_monthly_activity",
-      "kind": "precompute",
+      "name": "Index order_items(product_id) INCLUDE quantity/price/discount",
+      "kind": "index",
       "severity": "medium",
-      "rationale": "Distinct (customer, month) pairs; smaller than orders × repeated work.",
-      "expected_speedup": "≥10×",
-      "body": "SELECT DISTINCT customer_id, DATE_TRUNC('month', ordered_at)::DATE AS activity_month FROM shop.orders WHERE status IN ('paid','shipped','delivered')",
-      "depends_on": [],
-      "ddl_statements": [
-        {"id": "ddl2", "target": {"precompute-of": "p2"},
-         "statement": "CREATE INDEX IF NOT EXISTS idx_cma_customer_id ON {target} (customer_id)",
-         "rationale": "Join key for the final query."}
-      ]
-    },
-    {
-      "id": "p3",
-      "name": "cohort_retention",
-      "kind": "precompute",
-      "severity": "medium",
-      "rationale": "Reads from the two small rollups instead of re-scanning orders.",
-      "expected_speedup": "≥10×",
-      "body": "SELECT c.cohort_month, a.activity_month, count(*) AS active_customers, … FROM <p1 target> c JOIN <p2 target> a ON a.customer_id = c.customer_id GROUP BY c.cohort_month, a.activity_month",
-      "depends_on": ["p1", "p2"],
-      "ddl_statements": []
+      "rationale": "Backs the per-product aggregation in p1's rewrite. Useful on its own for other queries too.",
+      "expected_speedup": "5–10× standalone, multiplicative with p1",
+      "ddl_statement": {
+        "target": "source-db",
+        "statement": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_order_items_product_id ON shop.order_items (product_id) INCLUDE (quantity, unit_price_cents, discount_cents);",
+        "rationale": "Covers product_id grouping and the gross aggregate."
+      },
+      "depends_on": []
     }
   ]
 }
 ```
 
-`depends_on` is the DAG edge: `p3` must run *after* `p1` and `p2`. The
-server creates the new transforms in topological order and substitutes
-the precompute target table names into `body` references like
-`<p1 target>`.
+`p1.depends_on` is empty: the rewrite is valid SQL with or without the
+index — the user can verify it independently. p2 is also independent.
+The user can choose to accept both, just one, or neither.
+
+### Example 4 — kind: precompute (DAG split with supporting indexes)
+
+A cohort-retention query scans orders twice. Split into precompute
+transforms plus a final query — and emit each precompute index as its
+own `:index` proposal that `depends_on` the precompute it supports.
+
+```json
+{
+  "summary": "Scans orders twice. Split into per-customer cohort rollup + monthly activity rollup, plus their join indexes.",
+  "proposals": [
+    {
+      "id": "p1",
+      "name": "customer_first_purchase precompute",
+      "kind": "precompute",
+      "severity": "medium",
+      "rationale": "Compact rollup, reusable.",
+      "expected_speedup": "≥10×",
+      "body": "SELECT customer_id, DATE_TRUNC('month', MIN(ordered_at))::DATE AS cohort_month FROM shop.orders WHERE status IN ('paid','shipped','delivered') GROUP BY customer_id",
+      "depends_on": []
+    },
+    {
+      "id": "p2",
+      "name": "Index on customer_first_purchase(customer_id)",
+      "kind": "index",
+      "severity": "low",
+      "rationale": "Backs the join in p3.",
+      "expected_speedup": "10×",
+      "ddl_statement": {
+        "target": "transform-target",
+        "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON shop.customer_first_purchase (customer_id)",
+        "rationale": "Join key for the final query."
+      },
+      "depends_on": ["p1"]
+    },
+    {
+      "id": "p3",
+      "name": "customer_monthly_activity precompute",
+      "kind": "precompute",
+      "severity": "medium",
+      "rationale": "Distinct (customer, month) pairs.",
+      "expected_speedup": "≥10×",
+      "body": "SELECT DISTINCT customer_id, DATE_TRUNC('month', ordered_at)::DATE AS activity_month FROM shop.orders WHERE status IN ('paid','shipped','delivered')",
+      "depends_on": []
+    },
+    {
+      "id": "p4",
+      "name": "Index on customer_monthly_activity(customer_id)",
+      "kind": "index",
+      "severity": "low",
+      "rationale": "Backs the join in p5.",
+      "expected_speedup": "10×",
+      "ddl_statement": {
+        "target": "transform-target",
+        "statement": "CREATE INDEX IF NOT EXISTS idx_cma_customer_id ON shop.customer_monthly_activity (customer_id)",
+        "rationale": "Join key for the final query."
+      },
+      "depends_on": ["p3"]
+    },
+    {
+      "id": "p5",
+      "name": "cohort_retention final",
+      "kind": "precompute",
+      "severity": "medium",
+      "rationale": "Reads the two small rollups instead of re-scanning orders.",
+      "expected_speedup": "≥10×",
+      "body": "SELECT c.cohort_month, a.activity_month, count(*) AS active_customers, … FROM shop.customer_first_purchase c JOIN shop.customer_monthly_activity a ON a.customer_id = c.customer_id GROUP BY c.cohort_month, a.activity_month",
+      "depends_on": ["p1", "p3"]
+    }
+  ]
+}
+```
+
+Accepting `p5` topo-orders the whole DAG. Accepting just `p1` creates
+the customer_first_purchase precompute without its index. Accepting
+just `p2` would fail because `p2` depends on `p1` — the FE walks
+`depends_on` and includes ancestors automatically.
 
 ## Final reminders
 
@@ -368,8 +407,9 @@ the precompute target table names into `body` references like
   transform. Don't pad.
 - Lean on the indexes that **already exist** before proposing new ones —
   the referenced-tables block lists every existing index.
-- For pure-`index` proposals: `body` is `null`, `ddl_statements` is
-  non-empty, severity reflects the speedup from the index alone.
+- **One change per proposal.** Never bundle a rewrite with an index in
+  the same proposal — split them so each can be tested and accepted
+  independently.
 - The `EXPLAIN` plan tells you what the planner is *currently* doing —
   use it to spot full scans, missing-index scans, and wide hashes.
 - **Walk every proposal through the "Equivalence pitfalls" checklist

@@ -29,40 +29,43 @@
 ;; shape must match what `core/finalise-proposals` expects.
 
 (def ^:private ddl-target-schema
-  ;; "source-db" | "transform-target" | { "precompute-of": "<sibling id>" }
-  {:oneOf [{:type "string" :enum ["source-db" "transform-target"]}
-           {:type "object"
-            :properties           {:precompute-of {:type "string"}}
-            :required             ["precompute-of"]
-            :additionalProperties false}]})
+  {:type "string"
+   :enum ["source-db" "transform-target"]
+   :description (str "source-db: run on the original transform's source database. "
+                     "transform-target: index a table created by a depends_on proposal; "
+                     "use depends_on to point at the proposal whose target the index belongs to.")})
 
 (def ^:private ddl-statement-schema
   {:type "object"
    :additionalProperties false
-   :properties {:id        {:type "string"}
-                :target    ddl-target-schema
+   :properties {:target    ddl-target-schema
                 :statement {:type "string"
                             :description "Single CREATE INDEX [CONCURRENTLY] [IF NOT EXISTS] …"}
                 :rationale {:type "string"}}
-   :required ["id" "target" "statement" "rationale"]})
+   :required ["target" "statement" "rationale"]})
 
 (def ^:private proposal-schema
+  ;; One proposal = one change. Either a rewrite/precompute (carries `body`,
+  ;; no `ddl_statement`) or a single index (carries `ddl_statement`, no
+  ;; `body`). We declare both fields as optional + nullable here; the BE
+  ;; checks the kind/field invariant after parsing.
   {:type "object"
    :additionalProperties false
    :properties {:id               {:type "string"}
                 :name             {:type "string"}
                 :kind             {:type "string"
-                                   :enum ["rewrite" "index" "rewrite+index" "precompute"]}
+                                   :enum ["rewrite" "index" "precompute"]}
                 :severity         {:type "string"
                                    :enum ["high" "medium" "low"]}
                 :rationale        {:type "string"}
                 :expected_speedup {:type "string"}
                 :body             {:type ["string" "null"]
-                                   :description "SQL of the new transform, or null for kind=index"}
-                :depends_on       {:type "array" :items {:type "string"}}
-                :ddl_statements   {:type "array" :items ddl-statement-schema}}
+                                   :description "SQL body for kind = rewrite | precompute; null for kind = index"}
+                :ddl_statement    {:oneOf [ddl-statement-schema {:type "null"}]
+                                   :description "Single CREATE INDEX for kind = index; null for kind = rewrite | precompute"}
+                :depends_on       {:type "array" :items {:type "string"}}}
    :required ["id" "name" "kind" "severity" "rationale" "expected_speedup"
-              "depends_on" "ddl_statements"]})
+              "depends_on"]})
 
 (def output-schema
   "JSON Schema for the LLM's structured response — `{summary, proposals[]}`."

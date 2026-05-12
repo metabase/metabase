@@ -1,15 +1,16 @@
 (ns metabase-enterprise.transform-optimizer.accept
-  "Materialise an accepted proposal (or proposal DAG) as new transforms
-  *and* run any validated `CREATE INDEX` statements that came with them.
+  "Apply a proposal set. One proposal does **one** thing:
 
-  We create one new transform per proposal that has a non-nil `body`.
-  Pure-`index` proposals (DDL only, no body) don't create a transform —
-  they only contribute DDL statements to the execution list.
+    - `:rewrite` / `:precompute` — has a `body`, no DDL. We create a new
+      transform from the body.
+    - `:index` — has a single `ddl_statement`, no body. We either run it
+      immediately (when `target = 'source-db'`) or attach it to the
+      `:target.post_run_ddl` of the transform created by the proposal it
+      `depends_on` (when `target = 'transform-target'`).
 
-  Every DDL statement was already validated server-side at proposal
-  generation time (`ddl.parse`); accept only executes statements with
-  `validation = :accepted`. Rejected statements are echoed back so the
-  UI can show the rejection reason alongside the failure."
+  Mixing a rewrite with an index in one proposal is no longer allowed at
+  the prelude / schema level, which makes the accept routing
+  straightforward."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transform-optimizer.ddl.execute :as ddl.execute]
@@ -49,36 +50,17 @@
 ;; ---------------------------------------------------------------------------
 ;; Proposal → transform body
 ;;
-;; We start from the original transform's already-normalised source query and
-;; swap *only* the native SQL via `lib/with-native-query`. This preserves the
-;; `:database` id, driver-specific stage settings, template tags, and any
-;; other metadata Lib would otherwise have to re-derive — and prevents the
-;; new transform from drifting onto a different DB. Constructing the query
-;; shape by hand and trusting normalisation is too fragile (e.g. a missing
-;; `:database` key silently picked the first DB in the appdb).
+;; Same as before: anchor the new query's `:database` to the original
+;; transform's `source_database_id` column, in case the embedded query has
+;; drifted.
 
 (defn- proposal->create-body
-  "Map a single proposal into the shape `transforms.crud/create-transform!`
-  expects. Returns `nil` for proposals with no SQL body (pure-`:index`).
-
-  Anchors the new query's `:database` to the original transform's
-  `:source_database_id` *column*, not whatever happens to be in the
-  original query map. The two can drift in practice (older transforms,
-  manual appdb edits, mid-history changes), and `create-transform!`
-  strips `:source_database_id` from the body before insert — so the
-  before-insert hook derives the new transform's DB by walking
-  `:source.query.database`. If that's stale, the new transform ends up
-  on the wrong source DB and any DDL we run against it fails with
-  'schema does not exist'."
   [{original-source :source :keys [target source_database_id] :as original}
    {:keys [body name id] :as _proposal}
    collection-id]
   (when (and body (not (str/blank? body)))
     (let [original-query (:query original-source)
           new-query      (cond-> (lib/with-native-query original-query body)
-                           ;; Force `:database` to the canonical column id so
-                           ;; the source-db-id multimethod returns it
-                           ;; consistently downstream.
                            (some? source_database_id)
                            (assoc :database source_database_id))]
       {:name          (str (:name original) " — " (or name id "proposal"))
@@ -86,168 +68,149 @@
                            (or id "?") ")")
        :source        {:type  :query
                        :query new-query}
-       :target        {:schema (or (:schema target) "public")
-                       :name   (clamp-name name)
-                       :type   :table
-                       ;; Also pin `:target.database` to the same DB so
-                       ;; target-db-id resolution doesn't have to fall back
-                       ;; on `source.query.database` either.
+       :target        {:schema   (or (:schema target) "public")
+                       :name     (clamp-name name)
+                       :type     :table
                        :database source_database_id}
        :collection_id (or collection-id (:collection_id original))})))
 
 ;; ---------------------------------------------------------------------------
 ;; DDL routing
 ;;
-;; A DDL statement's `:target` controls *when and where* it executes:
+;; Each `:index` proposal owns exactly one statement. Routing key off the
+;; proposal's `ddl_statement.target`:
 ;;
-;;   "source-db"               → run immediately at accept time, against the
-;;                                source database. Source-DB indices are
-;;                                durable across transform runs.
-;;   "transform-target"        → run after each materialisation of the
-;;                                proposal's own new transform target. The
-;;                                statement is persisted on
-;;                                `transform.target.post_run_ddl` and
-;;                                replayed by the post-run event handler.
-;;   {"precompute-of": "<pid>"}→ same as transform-target but for a sibling
-;;                                proposal's transform target.
+;;   "source-db"        → run immediately against the source DB.
+;;   "transform-target" → attach to the `target.post_run_ddl` of the
+;;                        new transform created by the proposal this one
+;;                        `depends_on`. (We require exactly one body-bearing
+;;                        dependency for transform-target indices.)
 
-(defn- ddl-target-kind
-  "Returns `:source-db`, `:transform-target`, `:precompute-of`, or `:unknown`."
-  [{:keys [target]}]
-  (cond
-    (= target "source-db")                                :source-db
-    (= target "transform-target")                         :transform-target
-    (and (map? target) (some-> target :precompute-of))    :precompute-of
-    :else                                                 :unknown))
+(defn- proposal-ddl
+  "Returns the accepted ddl_statement of an `:index` proposal, or nil."
+  [{:keys [ddl_statement] :as _proposal}]
+  (when (and ddl_statement (= :accepted (:validation ddl_statement)))
+    ddl_statement))
 
-(defn- group-deferred-ddl-by-proposal
-  "Returns `{proposal-id [ddl …]}` for every accepted DDL that should be
-  attached to a transform's `target.post_run_ddl` (i.e. transform-target
-  and precompute-of). Source-db statements are excluded — they run
-  immediately."
+(defn- group-deferred-ddl-by-dep
+  "For every `:index` proposal whose `ddl_statement.target` is
+  `transform-target`, attach its statement to the *first* body-bearing
+  proposal in its `depends_on` list. Returns `{dep-pid [ddl …]}`."
   [proposals]
-  (reduce
-   (fn [acc p]
-     (reduce
-      (fn [acc d]
-        (if-not (= :accepted (:validation d))
-          acc
-          (case (ddl-target-kind d)
-            :transform-target (update acc (:id p) (fnil conj []) d)
-            :precompute-of    (update acc (get-in d [:target :precompute-of])
-                                      (fnil conj []) d)
-            acc)))
-      acc
-      (or (:ddl_statements p) [])))
-   {}
-   proposals))
+  (let [body-bearing-ids (into #{}
+                               (keep (fn [{:keys [id body]}]
+                                       (when (and id (not (str/blank? (or body "")))) id)))
+                               proposals)]
+    (reduce
+     (fn [acc p]
+       (if-let [ddl (proposal-ddl p)]
+         (if (= "transform-target" (:target ddl))
+           (if-let [dep (some body-bearing-ids (:depends_on p))]
+             (update acc dep (fnil conj []) ddl)
+             ;; transform-target with no body-bearing dep → can't apply;
+             ;; surface as failed later (we keep the ddl on the proposal so
+             ;; the UI can show the rejection).
+             acc)
+           acc)
+         acc))
+     {}
+     proposals)))
 
-(defn- execute-source-db-ddl!
-  "Run every accepted source-db statement immediately. Returns a vector of
-  `{… :status :executed|:failed|:skipped}` maps."
+;; ---------------------------------------------------------------------------
+;; Execution
+
+(defn- run-source-db-ddl!
+  "Runs every accepted `source-db` DDL. Returns a `{pid → result-map}` keyed
+  by the originating proposal id."
   [original-transform proposals]
   (let [db-id     (:source_database_id original-transform)
         database  (when db-id (t2/select-one :model/Database :id db-id))
         driver-kw (some-> database :engine keyword)]
-    (vec
-     (for [p proposals
-           d (or (:ddl_statements p) [])
-           :when (= :source-db (ddl-target-kind d))]
-       (let [base (-> (select-keys d [:id :statement :target :rationale
-                                      :validation :index_name :rejection])
-                      (assoc :proposal_id (:id p)))]
-         (if (= :accepted (:validation d))
-           (merge base (ddl.execute/execute! driver-kw database (:statement d)))
-           base))))))
+    (reduce
+     (fn [acc p]
+       (let [ddl (proposal-ddl p)]
+         (if (and ddl (= "source-db" (:target ddl)))
+           (assoc acc (:id p) (ddl.execute/execute! driver-kw database (:statement ddl)))
+           acc)))
+     {}
+     proposals)))
 
-(defn- pending-deferred-ddl-summary
-  "Returns a `{… :status :pending}` row per deferred DDL so the UI can
-  show 'will be created on first transform run' alongside executed ones."
-  [proposals]
-  (vec
-   (for [p proposals
-         d (or (:ddl_statements p) [])
-         :when (and (= :accepted (:validation d))
-                    (contains? #{:transform-target :precompute-of} (ddl-target-kind d)))]
-     (-> (select-keys d [:id :statement :target :rationale :validation :index_name])
-         (assoc :proposal_id (:id p) :status :pending)))))
+(defn- ddl-row
+  "Build the response row for a proposal's `ddl_statement` based on
+  validation + execution outcome."
+  [{:keys [id ddl_statement] :as _proposal} exec-result]
+  (when ddl_statement
+    (let [base (-> (select-keys ddl_statement
+                                [:target :statement :rationale
+                                 :validation :index_name :rejection])
+                   (assoc :proposal_id id))]
+      (cond
+        (= :rejected (:validation ddl_statement))
+        base                                            ;; no status — rejected at validation
 
-(defn- rejected-ddl-summary
-  "Rejected statements pass through to the response so the UI can show
-  the rejection reason."
-  [proposals]
-  (vec
-   (for [p proposals
-         d (or (:ddl_statements p) [])
-         :when (= :rejected (:validation d))]
-     (-> (select-keys d [:id :statement :target :rationale :validation :rejection])
-         (assoc :proposal_id (:id p))))))
+        exec-result
+        (merge base
+               {:status (:status exec-result)}
+               (when-let [m (:error-message exec-result)] {:error_message m}))
+
+        (= "transform-target" (:target ddl_statement))
+        (assoc base :status :pending)
+
+        :else
+        (assoc base :status :skipped :error_message "no dependency to attach to")))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn accept!
-  "Apply a proposal set. Three things happen:
+  "Apply a proposal set:
 
-  1. Every proposal with a body becomes a new transform.
-  2. Each accepted `target=\"source-db\"` DDL runs immediately against
-     the source database.
-  3. Each accepted `target=\"transform-target\"` or
-     `target={\"precompute-of\":\"<pid>\"}` DDL is **persisted** onto the
-     relevant new transform's `:target.post_run_ddl`. The transform
-     pipeline re-executes those statements after each materialisation
-     (see `events.clj`), so the indices survive every rebuild.
+    - For each proposal with a body → create a new transform. If any
+      `:index` proposal `depends_on` this one and is targeting
+      `transform-target`, its DDL is embedded in the new transform's
+      `:target.post_run_ddl` so the optimizer's event handler replays it
+      after every transform run.
+    - For each `:index` proposal with `target = 'source-db'` → execute
+      the DDL immediately against the source database.
 
   Returns:
 
-    {:created_transforms [{id, name, proposal_id, depends_on, kind} …]
-     :ddl_statements     [{statement, target, rationale, validation,
-                            status, error_message, …} …]
-     :skipped_proposals  [proposal-id …]}
-
-  Statuses on `ddl_statements`:
-    :executed — source-db statement ran successfully now
-    :failed   — source-db statement errored now (error_message present)
-    :skipped  — non-Postgres driver or no source DB available
-    :pending  — transform-target / precompute-of statement persisted;
-                will run after the next transform run
-    (no :status) — rejected at validation time (`:rejection` present)
-
-  Proposals with no body (pure-`:index` proposals) are recorded in
-  `:skipped_proposals` — but their source-db DDL still runs, since
-  that's the whole point of that proposal kind."
+    {:created_transforms [{id, name, proposal_id, kind, depends_on, …}]
+     :ddl_statements     [{proposal_id, target, status, …}]
+     :skipped_proposals  [proposal-id …]}"
   [original-transform proposals collection-id]
   (let [proposals       (vec (or proposals []))
-        deferred-by-pid (group-deferred-ddl-by-proposal proposals)
+        deferred-by-dep (group-deferred-ddl-by-dep proposals)
+        source-db-out   (run-source-db-ddl! original-transform proposals)
         created
         (->> proposals
              (keep
               (fn [p]
                 (when-let [body (proposal->create-body original-transform p collection-id)]
-                  (let [deferred (get deferred-by-pid (:id p))
+                  (let [deferred (get deferred-by-dep (:id p))
                         body+ddl (cond-> body
                                    (seq deferred)
                                    (assoc-in [:target :post_run_ddl] (vec deferred)))]
                     (try
                       (let [new (transforms.crud/create-transform! body+ddl)]
-                        {:id           (:id new)
-                         :name         (:name new)
-                         :proposal_id  (:id p)
-                         :kind         (some-> (:kind p) name)
-                         :depends_on   (or (:depends_on p) [])
-                         :pending_ddl  (count deferred)})
+                        {:id          (:id new)
+                         :name        (:name new)
+                         :proposal_id (:id p)
+                         :kind        (some-> (:kind p) name)
+                         :depends_on  (or (:depends_on p) [])
+                         :pending_ddl (count deferred)})
                       (catch Exception e
                         (log/warnf e "accept!: create-transform! failed for proposal %s" (:id p))
                         {:proposal_id (:id p)
                          :error       (or (ex-message e) "create failed")}))))))
              vec)
+        ;; Build the DDL response rows by walking proposals (preserves order).
+        ddl-rows  (vec (keep #(ddl-row % (get source-db-out (:id %))) proposals))
+        ;; Proposals are "skipped" only when they have a body that didn't
+        ;; produce a transform — i.e. nothing actually got created.
         skipped   (->> proposals
                        (filter #(or (nil? (:body %)) (str/blank? (:body %))))
-                       (mapv :id))
-        ddl-rows  (-> []
-                      (into (execute-source-db-ddl!         original-transform proposals))
-                      (into (pending-deferred-ddl-summary   proposals))
-                      (into (rejected-ddl-summary           proposals)))]
+                       (mapv :id))]
     {:created_transforms created
      :ddl_statements     ddl-rows
      :skipped_proposals  skipped}))

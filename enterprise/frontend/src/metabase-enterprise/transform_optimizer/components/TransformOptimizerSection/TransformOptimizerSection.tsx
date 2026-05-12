@@ -146,34 +146,43 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
               )}
 
               <Stack gap="md">
-                {state.proposals.map((proposal) => (
-                  <ProposalCard
-                    key={proposal.id}
-                    proposal={proposal}
-                    actions={{
-                      accept: {
-                        kind: "accept",
-                        busy:
-                          busyProposalId === proposal.id &&
-                          acceptResult.isLoading,
-                        disabled: readOnly,
-                        disabledReason: readOnly
-                          ? t`You don't have permission to create transforms here.`
+                {state.proposals.map((proposal) => {
+                  // Verify only makes sense for proposals that actually
+                  // produce a new SQL result (rewrite / precompute).
+                  // `:index` proposals don't change the query result, so
+                  // there's nothing to EXCEPT-ALL against.
+                  const canVerify = proposal.kind !== "index";
+                  return (
+                    <ProposalCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      actions={{
+                        accept: {
+                          kind: "accept",
+                          busy:
+                            busyProposalId === proposal.id &&
+                            acceptResult.isLoading,
+                          disabled: readOnly,
+                          disabledReason: readOnly
+                            ? t`You don't have permission to create transforms here.`
+                            : undefined,
+                        },
+                        verify: canVerify
+                          ? {
+                              kind: "verify",
+                              busy:
+                                busyProposalId === proposal.id &&
+                                verifyResult.isLoading,
+                            }
                           : undefined,
-                      },
-                      verify: {
-                        kind: "verify",
-                        busy:
-                          busyProposalId === proposal.id &&
-                          verifyResult.isLoading,
-                      },
-                      dismiss: { kind: "dismiss" },
-                    }}
-                    onAccept={() => handleAccept(proposal)}
-                    onVerify={() => handleVerify(proposal)}
-                    onDismiss={() => dismissProposal(proposal.id)}
-                  />
-                ))}
+                        dismiss: { kind: "dismiss" },
+                      }}
+                      onAccept={() => handleAccept(proposal)}
+                      onVerify={() => handleVerify(proposal)}
+                      onDismiss={() => dismissProposal(proposal.id)}
+                    />
+                  );
+                })}
               </Stack>
             </Stack>
           )}
