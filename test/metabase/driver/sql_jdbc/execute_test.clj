@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.lib.core :as lib]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -221,7 +219,8 @@
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (mt/with-temp [:model/Database tmp-db {:details (assoc (:details (mt/db)) :host "badhost")
                                            :engine  driver/*driver*}]
-      (let [mp       (lib.tu/mock-metadata-provider {:database {:id (:id tmp-db)}})
-            query    (lib/native-query mp "SELECT 1")
+      (let [query    {:database (:id tmp-db)
+                      :type     :native
+                      :native   {:query "SELECT 1"}}
             response (mt/user-http-request :crowberto :post 400 "dataset" query)]
         (is (= "unable-to-acquire-connection" (:error_type response)))))))
