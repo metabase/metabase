@@ -15,7 +15,9 @@
    [metabase.models.humanization :as humanization]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql PreparedStatement Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -165,6 +167,96 @@
                      batch)]
       (t2/insert! :metabase_table_import rows))))
 
+(defn- encode-path-or-nil
+  "Encode an `:nfc_path` coll as a JSON string, matching the
+  `metabase_field.nfc_path` storage convention. NULL for empty/nil;
+  JSON-encoded array string otherwise."
+  [coll]
+  (when (seq coll) (json/encode (vec coll))))
+
+;;; ============================== JDBC drain (perf path) ==============================
+;;;
+;;; Hand-rolled JDBC `executeBatch` against single per-staging-table prepared
+;;; statements. Used by the loader's `drain-and-match-databases!` to bypass
+;;; the t2/insert! + HoneySQL VALUES formatting overhead — measured ~15×
+;;; slower per row than PG's COPY floor on multi-million-row drains.
+
+(def tables-insert-sql
+  "Parameterized INSERT for `metabase_table_import`. Column order matches the
+  `set*-batch!` parameter-binding order in [[drain-tables-batch-jdbc!]]."
+  (str "INSERT INTO metabase_table_import"
+       " (source_id, source_db_id, db_name, schema, name, description, display_name)"
+       " VALUES (?, ?, ?, ?, ?, ?, ?)"))
+
+(def fields-insert-sql
+  "Parameterized INSERT for `metabase_field_import`. Column order matches the
+  `set*-batch!` parameter-binding order in [[drain-fields-batch-jdbc!]]."
+  (str "INSERT INTO metabase_field_import"
+       " (source_id, source_table_id, source_parent_id, source_fk_target_id,"
+       "  name, base_type, database_type, effective_type, semantic_type,"
+       "  coercion_strategy, description, nfc_path)"
+       " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))
+
+(defn- set-int-or-null! [^PreparedStatement ps ^long idx v]
+  (if v
+    (.setInt ps idx (int v))
+    (.setNull ps idx Types/INTEGER)))
+
+(defn- set-string-or-null! [^PreparedStatement ps ^long idx v]
+  (if v
+    (.setString ps idx (str v))
+    (.setNull ps idx Types/VARCHAR)))
+
+(defn drain-tables-batch-jdbc!
+  "Per-batch handler for `:tables` that binds rows onto `ps` and flushes via
+  `executeBatch`. Validates each row first; throws on schema failure.
+
+  `ps` must be a `PreparedStatement` for [[tables-insert-sql]]; the caller
+  owns the connection + statement lifecycle."
+  [^PreparedStatement ps databases-by-source-id batch]
+  (doseq [[ln line] batch]
+    (validate-line! ::schemas/table-info ln line {:source-id (:id line)}))
+  (when (seq batch)
+    (doseq [[_ {:keys [id db_id schema name description]}] batch]
+      (.setInt ps 1 (int id))
+      (.setInt ps 2 (int db_id))
+      (.setString ps 3 (str (get databases-by-source-id db_id)))
+      (set-string-or-null! ps 4 schema)
+      (.setString ps 5 (str name))
+      (set-string-or-null! ps 6 description)
+      (.setString ps 7 (humanization/name->human-readable-name name))
+      (.addBatch ps))
+    (.executeBatch ps)))
+
+(defn drain-fields-batch-jdbc!
+  "Per-batch handler for `:fields` that binds rows onto `ps` and flushes via
+  `executeBatch`. Validates each row first; throws on schema failure.
+
+  `ps` must be a `PreparedStatement` for [[fields-insert-sql]]; the caller
+  owns the connection + statement lifecycle."
+  [^PreparedStatement ps batch]
+  (doseq [[ln line] batch]
+    (validate-line! ::schemas/field-info ln line {:source-id (:id line)}))
+  (when (seq batch)
+    (doseq [[_ {:keys [id table_id parent_id fk_target_field_id
+                       name base_type database_type
+                       effective_type semantic_type
+                       coercion_strategy description nfc_path]}] batch]
+      (.setInt ps 1 (int id))
+      (.setInt ps 2 (int table_id))
+      (set-int-or-null! ps 3 parent_id)
+      (set-int-or-null! ps 4 fk_target_field_id)
+      (.setString ps 5 (str name))
+      (.setString ps 6 (str base_type))
+      (.setString ps 7 (str database_type))
+      (set-string-or-null! ps 8 effective_type)
+      (set-string-or-null! ps 9 semantic_type)
+      (set-string-or-null! ps 10 coercion_strategy)
+      (set-string-or-null! ps 11 description)
+      (set-string-or-null! ps 12 (encode-path-or-nil nfc_path))
+      (.addBatch ps))
+    (.executeBatch ps)))
+
 (defn resolve-target-table-ids-in-staging!
   "Set `metabase_table_import.target_id` to the int id of the matching
   `metabase_table` row for every staging row whose match key resolves. The
@@ -262,13 +354,6 @@
         :where  [:= :it.target_id nil]}]})))
 
 ;;; ============================== fields — drain + merge ==============================
-
-(defn- encode-path-or-nil
-  "Encode an `:nfc_path` coll as a JSON string, matching the
-  `metabase_field.nfc_path` storage convention. NULL for empty/nil;
-  JSON-encoded array string otherwise."
-  [coll]
-  (when (seq coll) (json/encode (vec coll))))
 
 (defn drain-fields-batch!
   "Per-batch handler for `:fields`: validate each row, then bulk-insert into

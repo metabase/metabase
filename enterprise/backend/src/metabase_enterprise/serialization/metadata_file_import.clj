@@ -24,10 +24,12 @@
    [environ.core :as env]
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
+   [metabase.app-db.core :as mdb]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io File)
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -80,15 +82,33 @@
 (defn- drain-and-match-databases!
   "Single-pass walk of the metadata file: match `:databases` against the live
   appdb, drain `:tables` and `:fields` into staging. Returns the set of
-  matched target-db-ids."
+  matched target-db-ids.
+
+  Uses hand-rolled JDBC `executeBatch` against per-staging-table prepared
+  statements, all committed in one transaction at the end. Bypasses the
+  `t2/insert!` + HoneySQL VALUES formatting overhead, which is the dominant
+  cost at multi-million-row scale."
   [^File file]
   (let [matched-ids            (volatile! #{})
-        databases-by-source-id (volatile! {})]
-    (parsers/stream-keyed-arrays!
-     file processors/import-batch-size
-     {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
-      :tables    (fn [batch] (processors/drain-tables-batch! @databases-by-source-id batch))
-      :fields    processors/drain-fields-batch!})
+        databases-by-source-id (volatile! {})
+        ds                     (mdb/data-source)]
+    (with-open [^Connection conn (.getConnection ds)]
+      (let [prev-autocommit (.getAutoCommit conn)]
+        (.setAutoCommit conn false)
+        (try
+          (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
+                      ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
+            (parsers/stream-keyed-arrays!
+             file processors/import-batch-size
+             {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
+              :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
+              :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))}))
+          (.commit conn)
+          (catch Throwable t
+            (.rollback conn)
+            (throw t))
+          (finally
+            (.setAutoCommit conn prev-autocommit)))))
     @matched-ids))
 
 ;;; ============================== Top-level orchestration ==============================
