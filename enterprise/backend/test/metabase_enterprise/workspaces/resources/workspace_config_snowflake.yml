@@ -1,0 +1,32 @@
+# Snowflake workspace - 3-slot identifiers.
+#
+# Snowflake emits `database.schema.table` (qualified-name-components is
+# [:db :schema]). The :db slot is the Snowflake database; the :schema
+# slot is the Snowflake schema. Cross-DB workspace expressible end-to-end:
+# the output namespace can name a different database than the input.
+version: 1
+config:
+  databases:
+  - name: test-data (snowflake)
+    engine: snowflake
+    details:
+      host: xy12345.us-east-1.snowflakecomputing.com
+      account: xy12345
+      regionid: us-east-1
+      db: ANALYTICS
+      warehouse: COMPUTE_WH
+      role: WS_ALICE_ROLE
+      user: mb__isolation_44490_1933
+      password: not-a-real-password
+  users:
+  - first_name: Workspace
+    last_name: Admin
+    email: workspace@workspace.local
+    password: password1
+  workspace:
+    name: New workspace
+    databases:
+      test-data (snowflake):
+        input_schemas:
+        - PUBLIC
+        output_namespace: WS_ALICE

@@ -549,12 +549,12 @@
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
-   ;; Write-connection telemetry
+   ;; Connection-type telemetry (default / write-data / admin)
    (prometheus/counter :metabase-db-connection/write-op
-                       {:description "JDBC connection pool acquisitions by connection type (default or write-data)."
+                       {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
@@ -613,6 +613,12 @@
                         :labels [:model :source]})
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
+                       {:description "LLM cache creation input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-read-tokens
+                       {:description "LLM cache read input tokens (Anthropic prompt caching)"
                         :labels [:model :source]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"

@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
+   [dev.debug]
    [environ.core :as env]
    [hashp.preload]
    [metabase.classloader.core :as classloader]
@@ -11,6 +12,27 @@
    [metabase.util :as u]
    [nrepl.server :as nrepl-server]
    [refactor-nrepl.middleware]))
+
+;; Two debug-print readers, both available at dev time:
+;;
+;;   `#p`  - hashp's stock reader. Writes to *err* with color, suitable for
+;;           live REPL inspection.
+;;   `#d`  - our `dev.trace/d` reader. Writes to `MB_TRACE_LOG` (default
+;;           `/tmp/trace.log`). Real source line numbers (captured from
+;;           `(meta form)` at read time, not the runtime JVM stack like
+;;           hashp does). Survives across threads and JVM processes
+;;           (test-agent + REPL share the file).
+;;
+;; Use `#p` for live REPL inspection, `#d` for grep/tail-able output (test
+;; runs, agent debugging, cross-thread tracing).
+;;
+;; REPL helpers in `dev.trace`:
+;;   `(dev.trace/clear!)`   — truncate the file
+;;   `(dev.trace/tail 50)`  — last 50 lines as a string
+;;   `(dev.trace/stack!)`   — spit a filtered call stack
+;;
+;; Watch the log live:
+;;   tail -f /tmp/trace.log | bat --paging=never -l edn
 
 (set! *warn-on-reflection* true)
 

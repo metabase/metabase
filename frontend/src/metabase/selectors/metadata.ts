@@ -9,9 +9,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import Schema from "metabase-lib/v1/metadata/Schema";
-import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -19,7 +17,10 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
+  Collection as ApiCollection,
   Card,
+  Metric,
+  NormalizedCollection,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -28,6 +29,7 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  Segment,
 } from "metabase-types/api";
 
 import { getSettings } from "./settings";
@@ -94,6 +96,7 @@ const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
 const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedCollections = (state: State) => state.entities.collections;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
@@ -114,6 +117,7 @@ export const getMetadata: (
     getNormalizedMetrics,
     getNormalizedQuestions,
     getNormalizedSnippets,
+    getNormalizedCollections,
     getSettings,
   ],
   (
@@ -126,6 +130,7 @@ export const getMetadata: (
     metrics,
     questions,
     snippets,
+    collections,
     settings,
   ) => {
     const metadata = new Metadata({ settings });
@@ -145,13 +150,13 @@ export const getMetadata: (
         .map((f) => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
-      Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
+      Object.values(segments).map((s) => [s.id, createSegment(s)]),
     );
     metadata.measures = Object.fromEntries(
       Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
     );
     metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
+      Object.values(metrics).map((m) => [m.id, createMetric(m)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -181,11 +186,11 @@ export const getMetadata: (
     Object.values(metadata.schemas).forEach((schema) => {
       schema.tables = hydrateSchemaTables(schema, metadata);
     });
-    Object.values(metadata.segments).forEach((segment) => {
-      segment.table = hydrateSegmentTable(segment, metadata);
-    });
     Object.values(metadata.measures).forEach((measure) => {
       measure.table = hydrateMeasureTable(measure, metadata);
+    });
+    Object.values(metadata.metrics).forEach((metric) => {
+      metric.collection = hydrateMetricCollection(metric, collections);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -259,13 +264,9 @@ function createForeignKey(
   return instance;
 }
 
-function createSegment(
-  segment: NormalizedSegment,
-  metadata: Metadata,
-): Segment {
-  const instance = new Segment(segment);
-  instance.metadata = metadata;
-  return instance;
+function createSegment(segment: NormalizedSegment): Segment {
+  const { table: _normalizedTableId, ...rest } = segment;
+  return rest;
 }
 
 function createMeasure(
@@ -277,10 +278,9 @@ function createMeasure(
   return instance;
 }
 
-function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
-  const instance = new Metric(metric);
-  instance.metadata = metadata;
-  return instance;
+function createMetric(metric: NormalizedMetric): Metric {
+  const { collection: _normalizedCollectionId, ...rest } = metric;
+  return { ...rest, collection: null };
 }
 
 function createQuestion(card: Card, metadata: Metadata): Question {
@@ -392,7 +392,9 @@ function hydrateTableForeignKeys(
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
+  return segmentIds
+    .map((id) => metadata.segments[id] ?? null)
+    .filter(isNotNull);
 }
 
 function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
@@ -426,16 +428,24 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   }
 }
 
-function hydrateSegmentTable(
-  segment: Segment,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(segment.table_id) ?? undefined;
-}
-
 function hydrateMeasureTable(
   measure: Measure,
   metadata: Metadata,
 ): Table | undefined {
   return metadata.table(measure.table_id) ?? undefined;
+}
+
+function hydrateMetricCollection(
+  metric: Metric,
+  collections: Record<string, NormalizedCollection>,
+): ApiCollection | null {
+  if (metric.collection_id == null) {
+    return null;
+  }
+  const normalized = collections[metric.collection_id];
+  if (!normalized) {
+    return null;
+  }
+  const { items: _items, ...rest } = normalized;
+  return rest;
 }

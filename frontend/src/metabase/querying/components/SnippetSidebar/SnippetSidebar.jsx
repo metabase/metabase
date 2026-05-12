@@ -15,7 +15,6 @@ import { Snippets } from "metabase/entities/snippets";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
@@ -244,7 +243,6 @@ class SnippetSidebarInner extends React.Component {
             </Flex>
           </>
         )}
-        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
       </SidebarContent>
     );
   }

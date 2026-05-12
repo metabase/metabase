@@ -100,6 +100,16 @@
                               :workspace                              true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
+(defmethod driver/qualified-name-components :mysql
+  [_driver]
+  ;; MySQL's "schema" doesn't exist; its "database" is what other engines call a schema and
+  ;; what JDBC calls a catalog. We populate the `:db` AST slot (= SQLGlot `Table.catalog`)
+  ;; with the connection's bound DB so workspace remap can record both canonical and iso
+  ;; DB names on `TableRemapping` rows and the QP can rewrite identifiers across DBs.
+  ;; Production SELECTs continue to emit unqualified `t` because the SQL compiler reads
+  ;; the per-driver `quote-name` rules, not this multimethod.
+  [:db])
+
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
@@ -740,8 +750,18 @@
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
-  [& args]
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  [driver ^java.sql.Connection conn schema-inclusion-filters schema-exclusion-filters]
+  ;; Scope describe-database to the connection's current catalog (= bound DB).
+  ;; By default `post-filtered-active-tables` passes `nil` for the catalog filter,
+  ;; which makes JDBC enumerate every DB the user has privileges on. That's wrong
+  ;; for workspace MySQL users — they own the iso DB and have GRANT SELECT on the
+  ;; canonical DB, so the iso DB's tables would leak into sync. Constraining to
+  ;; `conn.getCatalog()` means only the canonical (bound) DB's tables show up,
+  ;; regardless of what else the user can read. Also strictly more correct for
+  ;; plain MySQL: a user with GRANT on multiple DBs only configured one as the
+  ;; Metabase Database; sync should never have surfaced the others.
+  (sql-jdbc.sync/post-filtered-active-tables
+   driver conn (.getCatalog conn) schema-inclusion-filters schema-exclusion-filters))
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
@@ -1293,7 +1313,14 @@
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name
-     :database_details {:user user, :password password :db db-name}}))
+     ;; Intentionally omit `:db` from `:database_details`: when the workspace
+     ;; loader merges these over the canonical Database's `:details`, we must
+     ;; not overwrite the connection's bound database. MySQL workspace users
+     ;; need to read from the canonical input DB (granted via `GRANT SELECT
+     ;; ON <input-db>.*`) while output writes go to `db-name` via fully
+     ;; qualified `INSERT INTO <db-name>.<table>`. The output DB lives in
+     ;; the WSD row's `:output_namespace`, not in connection details.
+     :database_details {:user user, :password password}}))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
@@ -1307,24 +1334,40 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
+(defn- grant-workspace-read-access-sqls
+  "Build SQL statements that grant `username` SELECT on all tables in each database
+  named in `schemas`. MySQL has no schema layer — `qualified-name-components`
+  is `[]` — so each entry in `schemas` is interpreted as a database name.
+  Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
+  [username schemas]
+  (let [qu               (sql.u/quote-name :mysql :field username)
+        source-databases (set schemas)]
+    (perf/mapv (fn [db]
+                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                         (sql.u/quote-name :mysql :schema db) qu))
+               source-databases)))
+
 (defmethod driver/grant-workspace-read-access! :mysql
-  [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        qu       (sql.u/quote-name :mysql :field username)
-        ;; In MySQL, tables don't have separate schemas within a database,
-        ;; but the :schema field contains the source database name
-        sqls     (for [{db :schema, t :name} tables]
-                   (if (str/blank? db)
-                     (format "GRANT SELECT ON %s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :table t) qu)
-                     (format "GRANT SELECT ON %s.%s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :schema db)
-                             (sql.u/quote-name :mysql :table t) qu)))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+  [_driver database workspace schemas]
+  (let [username      (-> workspace :database_details :user)
+        bound-db      (:db (:details database))
+        allowed-set   #{bound-db}
+        incoming-set  (set schemas)]
+    ;; MySQL `Database` rows bind to one MySQL database via `:details.db`. Reject
+    ;; any input that names something else — silently ignoring caller intent has
+    ;; bitten this codebase before. Empty input is fine (no-op grant).
+    (when (and (seq incoming-set)
+               (not= incoming-set allowed-set))
+      (throw (ex-info "MySQL workspace input must equal the bound database name"
+                      {:database-id (:id database)
+                       :bound       bound-db
+                       :incoming    (vec schemas)})))
+    (let [sqls (grant-workspace-read-access-sqls username schemas)]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql sqls]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))))
 
 ;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
 ;; to manually clean up after testing rather than relying on transaction rollback.
@@ -1334,44 +1377,50 @@
   [driver database test-table]
   (let [test-workspace {:id   perm-check-workspace-id
                         :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection _conn]
-       (let [result (try
-                      (let [init-result (try
-                                          (driver/init-workspace-isolation! driver database test-workspace)
-                                          (catch Exception e
-                                            (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
-                                                                 (ex-message e))
-                                                            {:step :init} e))))
-                            workspace-with-details (merge test-workspace init-result)]
-                        (when test-table
+    (driver.conn/with-admin-connection
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       {:write? true}
+       (fn [^Connection _conn]
+         (let [result (try
+                        (let [init-result (try
+                                            (driver/init-workspace-isolation! driver database test-workspace)
+                                            (catch Exception e
+                                              (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                   (ex-message e))
+                                                              {:step :init} e))))
+                              workspace-with-details (merge test-workspace init-result)]
+                          (when test-table
+                            (try
+                              ;; `grant-workspace-read-access!` takes a vector of
+                              ;; `::table-namespace` maps `[{:db ?, :schema ?}]`.
+                              ;; MySQL has no schema layer; the database name
+                              ;; (`test-table`'s `:schema` from caller) lands in `:db`.
+                              (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                                   [{:db (:schema test-table)}])
+                              (catch Exception e
+                                (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
+                                                     (:schema test-table) (ex-message e))
+                                                {:step :grant :table test-table} e)))))
                           (try
-                            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+                            (driver/destroy-workspace-isolation! driver database workspace-with-details)
                             (catch Exception e
-                              (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                                   (:schema test-table) (:name test-table) (ex-message e))
-                                              {:step :grant :table test-table} e)))))
-                        (try
-                          (driver/destroy-workspace-isolation! driver database workspace-with-details)
-                          (catch Exception e
-                            (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
-                                                 (ex-message e))
-                                            {:step :destroy} e))))
-                        nil)
-                      (catch Exception e
-                        ;; On failure, attempt cleanup
-                        (try
-                          (driver/destroy-workspace-isolation! driver database
-                                                               (merge test-workspace
-                                                                      {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
-                                                                       :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
-                          (catch Exception _cleanup-error
-                            nil))
-                        (ex-message e)))]
-         result)))))
+                              (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                   (ex-message e))
+                                              {:step :destroy} e))))
+                          nil)
+                        (catch Exception e
+                          ;; On failure, attempt cleanup
+                          (try
+                            (driver/destroy-workspace-isolation! driver database
+                                                                 (merge test-workspace
+                                                                        {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
+                                                                         :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
+                            (catch Exception _cleanup-error
+                              nil))
+                          (ex-message e)))]
+           result))))))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

@@ -766,7 +766,12 @@
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
+   ;; SQL Server / Snowflake `db.schema.table`, MySQL workspace-remapped tables routing
+   ;; to a different database). Sync doesn't populate it on standard reads — only
+   ;; workspace remap and other cross-DB rewriters fill it.
+   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to

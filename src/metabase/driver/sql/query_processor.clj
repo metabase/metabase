@@ -2,7 +2,6 @@
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -772,28 +771,28 @@
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
       (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
-    (u/prog1 (match [base-type coercion-strategy]
-               [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+    (u/prog1 (cond
+               (and (isa? base-type :type/Number) (isa? coercion-strategy :Coercion/UNIXTime->Temporal))
                (unix-timestamp->honeysql driver
                                          (semantic-type->unix-timestamp-unit coercion-strategy)
                                          honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Temporal)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Temporal))
                (cast-temporal-string driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+               (and (isa? base-type :type/*) (isa? coercion-strategy :Coercion/Bytes->Temporal))
                (cast-temporal-byte driver coercion-strategy honeysql-form)
 
-               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
+               (and (isa? base-type :type/DateTime) (isa? coercion-strategy :Coercion/DateTime->Date))
                (->date driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Float)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Float))
                (->float driver honeysql-form)
 
-               [:type/Text (:isa? :Coercion/String->Integer)]
+               (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Integer))
                (->integer driver honeysql-form)
 
-               [:type/Float (:isa? :Coercion/Float->Integer)]
+               (and (= base-type :type/Float) (isa? coercion-strategy :Coercion/Float->Integer))
                (->integer driver honeysql-form)
 
                :else honeysql-form)
@@ -1355,7 +1354,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-lite (nth (:aggregation *inner-query*) index)
+  (driver-api/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
@@ -1542,7 +1541,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace-lite
+   (driver-api/replace
      form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
@@ -1810,7 +1809,7 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-lite args
+    (if-let [field-arg (driver-api/match-one args
                          [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause
@@ -1951,8 +1950,13 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; query at a database different from the connection's bound one. The
+  ;; identifier helper drops nil components, so absent `:db` produces the same
+  ;; `schema.table` shape as before.
+  (let [{table-name :name, schema :schema, db :db} table]
+    (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -2173,10 +2177,26 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
-  (let [{sql-query :query sql-params :params} query]
+  [driver {:keys [query output-db output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; AST `:db` position and the canonical `output-table` is bare.
+        ;;
+        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
+        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
+        ;; Server / BigQuery cross-DB) aren't expressible through this single-
+        ;; keyword shape; when those workspaces land they'll either need
+        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        target-id (cond
+                    (and (not (str/blank? output-db))
+                         (str/blank? (namespace (keyword output-table))))
+                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    :else
+                    (keyword output-table))]
     [(first (format-honeysql driver
-                             {:create-table-as [(keyword output-table)]
+                             {:create-table-as [target-id]
                               :raw sql-query}))
      sql-params]))
 

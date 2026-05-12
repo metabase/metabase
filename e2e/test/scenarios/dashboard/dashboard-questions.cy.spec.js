@@ -732,9 +732,9 @@ describe("Dashboard > Dashboard Questions", () => {
     it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-      H.createQuestion(
-        {
-          name: "Average Quantity by Month Question",
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Blue Question",
           collection_id: S.FIRST_COLLECTION_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -758,15 +758,17 @@ describe("Dashboard > Dashboard Questions", () => {
           },
           display: "line",
         },
-        {
-          wrapId: true,
-          idAlias: "avgQuanityQuestionId",
+        dashboardDetails: {
+          name: "Blue Dashboard",
+          collection_id: S.FIRST_COLLECTION_ID,
         },
-      );
+      }).then(({ body: { card_id } }) => {
+        cy.wrap(card_id).as("blueQuestionId");
+      });
 
-      H.createQuestion(
-        {
-          name: "Average Order Total by Month Question",
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Purple Question",
           collection_id: S.FIRST_COLLECTION_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -790,116 +792,79 @@ describe("Dashboard > Dashboard Questions", () => {
           },
           display: "line",
         },
-        {
-          wrapId: true,
-          idAlias: "avgTotalQuestionId",
-        },
-      );
-
-      H.createDashboard(
-        {
-          name: "Blue Dashboard",
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-        { wrapId: true, idAlias: "blueDashboardId" },
-      );
-
-      H.createDashboard(
-        {
+        dashboardDetails: {
           name: "Purple Dashboard",
           collection_id: S.FIRST_COLLECTION_ID,
         },
-        { wrapId: true, idAlias: "purpleDashboardId" },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
+
+      cy.log(
+        "Add the blue question to the purple dashboard as an additional series",
       );
-
-      cy.get("@blueDashboardId").then((blueDashboardId) => {
-        H.visitDashboard(blueDashboardId);
-      });
-
-      // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openQuestionsSidebar();
 
-      H.sidebar().findByText("First collection").click();
-      H.sidebar().findByText("Average Quantity by Month Question").click();
-      H.saveDashboard();
-
-      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
-        H.visitDashboard(purpleDashboardId);
-      });
-
-      // add the total question to the purple dashboard
-      H.editDashboard();
-      H.openQuestionsSidebar();
-
-      H.sidebar().findByText("First collection").click();
-      H.sidebar().findByText("Average Order Total by Month Question").click();
-
-      // overlay the quantity series in the purple dashboard
       H.showDashcardVisualizerModal(0, {
         isVisualizerCard: false,
       });
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.selectDataset("Average Quantity by Month Question");
+        H.selectDataset("Blue Question");
         cy.button("Save").click();
       });
 
       H.saveDashboard();
-      H.dashboardCards()
-        .findByText(/Average Quantity by Month/)
-        .should("be.visible");
+      H.getDashboardCard().within(() => {
+        H.echartsContainer().should("be.visible").and("not.be.empty");
+        cy.log("Visit the question directly from a dashcard");
+        cy.findAllByTestId("legend-item")
+          .filter(":contains(Blue Question)")
+          .click();
+      });
 
-      // move the quantity question to an entirely different dashboard
-      H.visitQuestion("@avgQuanityQuestionId");
+      cy.log("Move the question to an entirely different dashboard");
       H.openQuestionActions("Move");
 
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
-      let shouldError = true;
+      cy.log("Should warn about removing from 2 dashboards");
+      // The first (blue) dashboard is the one that contains the question as dashcard
+      // The second (purple) dashboard contains it as a series
+      H.modal().should(
+        "contain.text",
+        "Blue Question will be removed from Blue Dashboard and Purple Dashboard",
+      );
 
-      // Simulate an error to ensure that it's passed back and shown in the modal.
-      cy.get("@avgQuanityQuestionId").then((questionId) => {
-        cy.intercept("PUT", `**/api/card/${questionId}**`, (req) => {
-          if (shouldError === true) {
-            shouldError = false;
-            req.reply({
-              statusCode: 400,
-              body: {
-                message: "Ryan said no",
-              },
-            });
-          } else {
-            req.continue();
-          }
-        });
+      cy.log("Simulate an error ONLY ON THE FIRST MOVE ATTEMPT");
+      cy.get("@blueQuestionId").then((questionId) => {
+        cy.intercept(
+          { method: "PUT", url: `**/api/card/${questionId}**`, times: 1 },
+          {
+            statusCode: 400,
+            body: {
+              message: "Ryan said no",
+            },
+          },
+        );
       });
 
-      // should warn about removing from 2 dashboards
       H.modal().within(() => {
-        cy.findByText(/will be removed from/i);
-        cy.findByText(/purple dashboard/i);
-        cy.findByText(/blue dashboard/i);
+        cy.log(
+          "Simulated error should appear in the modal on the first attempt only.",
+        );
         cy.button("Move it").click();
         cy.findByText("Ryan said no");
 
-        //Continue with the expected behavior
+        cy.log("Continue with the expected behavior");
         cy.button("Move it").click();
       });
 
-      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
-        H.visitDashboard(purpleDashboardId);
-      });
-
-      //Wait for dashcard to load
-      H.dashboardCards().findByText("Created At: Month").should("exist");
-
-      H.dashboardCards().should(
-        "not.contain.text",
-        "Average Quantity by Month Question",
-      );
+      cy.log("The question move succeeded");
+      cy.findByRole("status").should("contain", "Question moved");
+      H.modal().should("not.exist");
     });
 
     it("should be able to save a question to a specific tab", () => {

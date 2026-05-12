@@ -732,23 +732,19 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace tables]
+  [_driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct (map :schema tables))]
-    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
+        schemas  (distinct schemas)]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
+    ;; Schema-wide grant covers existing + future tables. Per-table grants
+    ;; are not emitted: workspace input shape is per-namespace, not per-table.
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^Statement stmt
                      ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
                                      (sql.u/quote-name :h2 :schema schema) qu)))
-        ;; Also grant on individual tables for more fine-grained access
-        (doseq [table tables]
-          (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON %s.%s TO %s"
-                                     (sql.u/quote-name :h2 :schema (:schema table))
-                                     (sql.u/quote-name :h2 :table (:name table)) qu)))
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]

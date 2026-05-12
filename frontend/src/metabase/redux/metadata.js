@@ -1,10 +1,9 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi, dashboardApi, datasetApi } from "metabase/api";
+import { cardApi, dashboardApi, datasetApi, segmentApi } from "metabase/api";
 import { Databases } from "metabase/entities/databases";
 import { Fields } from "metabase/entities/fields";
-import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
@@ -22,15 +21,22 @@ const deprecated = (message) => {
   }
 };
 
-export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
-export const fetchSegments = (reload = false) => {
+export const fetchSegments = () => (dispatch) => {
   deprecated("metabase/redux/metadata fetchSegments");
-  return Segments.actions.fetchList(null, { reload });
+  return entityCompatibleQuery(
+    undefined,
+    dispatch,
+    segmentApi.endpoints.listSegments,
+  );
 };
 
-export const updateSegment = (segment) => {
+export const updateSegment = (segment) => (dispatch) => {
   deprecated("metabase/redux/metadata updateSegment");
-  return Segments.actions.update(segment);
+  return entityCompatibleQuery(
+    segment,
+    dispatch,
+    segmentApi.endpoints.updateSegment,
+  );
 };
 
 export const fetchRealDatabases = (reload = false) => {

@@ -368,6 +368,38 @@
 
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
+(defmulti qualified-name-components
+  "Which **AST identifier positions** does this driver populate when referencing a table?
+  Returns an ordered subset of `#{:db :schema}`. The `:table` position is always implicit.
+
+  These positions correspond to SQLGlot's `Table.catalog` (`:db`) and `Table.db`
+  (`:schema`) AST fields — *not* warehouse vocabulary. A warehouse calling its top
+  level \"database\" (e.g. ClickHouse) does **not** use the `:db` position here unless
+  it emits a 3-part `catalog.schema.table` identifier; it uses `:schema` because that's
+  the AST position holding the level above the table.
+
+  Concrete mapping:
+  - 1-level (`SELECT * FROM t`):           `[]`            — Mongo
+  - 1-level over a catalog (`SELECT * FROM t`, but workspace remap and other
+    consumers need a catalog name to route across DBs): `[:db]` — MySQL.
+    The compiled SQL is still bare; this slot tells consumers MySQL has a
+    meaningful database identifier (= JDBC `TABLE_CAT`) above the table.
+  - 2-level (`SELECT * FROM s.t`):         `[:schema]`     — Postgres, Redshift, ClickHouse, H2, Oracle
+  - 3-level (`SELECT * FROM c.s.t`):       `[:db :schema]` — Snowflake, SQL Server, BigQuery
+    (Snowflake `db.schema.table`; SQL Server `db.schema.table`; BigQuery
+    `project.dataset.table`).
+
+  Used by workspace table remapping to decide:
+  - which columns to populate when storing a `:model/TableRemapping` row
+  - which AST positions to match against during query rewriting
+
+  Defaults to `[:schema]` (Postgres-style)."
+  {:added "0.61.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod qualified-name-components ::driver [_driver] [:schema])
+
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/key-constraints
   but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
@@ -1163,10 +1195,11 @@
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
   unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
 
-  Implementations should normalize both `:details` and `:write-data-details` (if present), since
-  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]].
-  Un-normalized fields in `:write-data-details` can leak through to the merged result. See
-  [[metabase.driver.connection]] for more information."
+  Implementations should normalize `:details`, `:write-data-details`, and `:admin-details` (each if present),
+  since `:write-data-details` and `:admin-details` are merged on top of `:details` by
+  [[metabase.driver.connection/effective-details]] under their respective contexts. Un-normalized fields in
+  the overlay maps can leak through to the merged result. See [[metabase.driver.connection]] for more
+  information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1804,12 +1837,20 @@
   :hierarchy #'hierarchy)
 
 (defmulti grant-workspace-read-access!
-  "Grant read access on specified tables to a workspace's isolated user.
-   This allows the workspace to read from source tables that it needs as inputs.
+  "Grant read access on the workspace's input namespaces to the workspace's isolated
+   user/role. `input` is a sequence of `::table-namespace` maps `[{:db ?, :schema ?}]`
+   identifying the namespaces to grant access to. Granularity is per-namespace
+   (schema-wide / database-wide); per-table grants are not supported.
 
-   `tables` is a sequence of maps with :schema and :name keys identifying
-   the tables to grant access to."
-  {:added "0.59.0" :arglists '([driver database workspace tables])}
+   Slot semantics by driver:
+
+   - 2-slot schema-having (Postgres, Redshift, ClickHouse): read `:schema`,
+     ignore `:db` (connection-bound).
+   - 3-slot (Snowflake, SQL Server, BigQuery): read `:db` + `:schema`. `:db`
+     falls back to the connection's bound db when absent.
+   - schema-less (MySQL): read `:db`; the `qualified-name-components` is `[]`
+     and the database name lives in the `:db` slot."
+  {:added "0.59.0" :arglists '([driver database workspace input])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

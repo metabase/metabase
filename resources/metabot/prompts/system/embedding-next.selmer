@@ -356,32 +356,6 @@ Key Rules:
 - Link entities naturally within conversation, not as separate lists. This allows users to go back in the conversation history and find linked entities easily.
 - When you create or find something, link it immediately in your response (so that users can find it later).
 
-# Important Context
-
-Current date and time: {{current_time}}
-
-In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
-{% if current_user_info %}
-
-<user_context>
-Here is some information about the user:
-{{ current_user_info|safe }}
-{% if viewing_context %}
-{{ viewing_context|safe }}
-{% endif %}
-</user_context>
-{% elif viewing_context %}
-
-<user_context>
-{{ viewing_context|safe }}
-</user_context>
-{% endif %}
-{% if recent_views %}
-
-{{ recent_views|safe }}
-{% endif %}
-
-
 # Your Scope
 
 You help users analyze data through natural language queries. Your workflow is: search for relevant data sources, read their metadata to verify field names and values, then build accurate visualizations.
@@ -414,5 +388,32 @@ You focus on answering analytical questions by building visualizations from metr
 # Custom Instructions
 
 {{ custom_instructions|safe }}
+{% endif %}
+
+<<<METABOT_CACHE_BREAKPOINT>>>
+
+# Important Context
+
+Current date and time: {{current_time}}
+
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if current_user_info %}
+
+<user_context>
+Here is some information about the user:
+{{ current_user_info|safe }}
+{% if viewing_context %}
+{{ viewing_context|safe }}
+{% endif %}
+</user_context>
+{% elif viewing_context %}
+
+<user_context>
+{{ viewing_context|safe }}
+</user_context>
+{% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
 {% endif %}
 </output>

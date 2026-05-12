@@ -424,7 +424,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"

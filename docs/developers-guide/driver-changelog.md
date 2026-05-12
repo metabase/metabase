@@ -8,6 +8,13 @@ title: Driver interface changelog
 
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
 
+- Added `metabase.driver/qualified-name-components` multimethod. Returns the ordered subset of
+  `#{:db :schema}` identifier positions a driver populates when referencing a table in compiled
+  SQL. Used by workspace table remapping to decide tuple shape when storing `:model/TableRemapping`
+  rows and matching AST positions during query rewriting. Defaults to `[:schema]`. Drivers that
+  emit bare table names (MySQL, Mongo) should override to `[]`; drivers that emit a 3-part
+  `catalog.schema.table` identifier (BigQuery) should override to `[:db :schema]`.
+
 - `metabase.driver.sql/set-role-statement` has been deprecated in favor of
   `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
   the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.

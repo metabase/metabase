@@ -1,7 +1,7 @@
 import { updateMetadata } from "metabase/redux/metadata";
 import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
-  BulkTableSelection,
+  BulkTableRequest,
   BulkTableSelectionInfo,
   DiscardTablesValuesRequest,
   EditTablesRequest,
@@ -166,7 +166,7 @@ export const tableApi = Api.injectEndpoints({
     /// DATA STUDIO
     getTableSelectionInfo: builder.query<
       BulkTableSelectionInfo,
-      BulkTableSelection
+      BulkTableRequest
     >({
       query: (body) => ({
         method: "POST",

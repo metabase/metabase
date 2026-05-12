@@ -70,6 +70,10 @@ export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
 }
 
+export function editDatabaseAdminConnection(databaseId: DatabaseId) {
+  return `/admin/databases/${databaseId}/admin`;
+}
+
 type DataModelParams = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName | null;
@@ -134,6 +138,10 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
 
 export function uploadsSettings() {
   return "/admin/settings/uploads";
+}
+
+export function adminRemoteSync() {
+  return "/admin/settings/remote-sync";
 }
 
 export function adminLicense() {

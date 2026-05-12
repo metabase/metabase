@@ -1,6 +1,5 @@
 (ns metabase.warehouses.models.database
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.data :as data]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -29,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -52,6 +52,7 @@
 (t2/deftransforms :model/Database
   {:details                        mi/transform-encrypted-json
    :write_data_details             mi/transform-encrypted-json
+   :admin_details                  mi/transform-encrypted-json
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -153,6 +154,16 @@
   [_db-id]
   (mi/superuser?))
 
+(defenterprise reconcile-workspace-database-refs-before-delete!
+  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
+   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
+   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
+   implementation is a no-op — fresh OSS installs have no workspace_database table, and
+   feature-off EE instances have nothing to reconcile."
+  metabase-enterprise.workspaces.models.workspace-database
+  [_db-id]
+  nil)
+
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -177,26 +188,27 @@
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
-  (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
-    [false _ _]
-    (merge
-     database
-     (sync.schedules/schedule-map->cron-strings
-      (sync.schedules/default-randomized-schedule)))
+  (let [user-control-scheduling (boolean (:let-user-control-scheduling details))]
+    (cond (not user-control-scheduling)
+          (merge
+           database
+           (sync.schedules/schedule-map->cron-strings
+            (sync.schedules/default-randomized-schedule)))
 
-    ;; "Regularly on a schedule"
-    ;; -> sync both steps, schedule should be provided
-    [true true false]
-    (do
-      (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
-      database)
+          (and user-control-scheduling is_full_sync (not is_on_demand))
+          ;; "Regularly on a schedule"
+          ;; -> sync both steps, schedule should be provided
+          (do
+            (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+            database)
 
-    ;; "Only when adding a new filter" or "Never, I'll do it myself"
-    ;; -> Sync metadata only
-    [true false _]
-    ;; schedules should only contains metadata_sync, but FE might sending both
-    ;; so we just manually nullify it here
-    (assoc database :cache_field_values_schedule nil)))
+          (and user-control-scheduling (not is_full_sync))
+          ;; schedules should only contains metadata_sync, but FE might sending both
+          ;; so we just manually nullify it here
+          (assoc database :cache_field_values_schedule nil)
+
+          :else (throw (ex-info "Illegal options combination."
+                                (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
@@ -206,7 +218,8 @@
 (defn should-sync?
   "Should this database be synced?"
   [db]
-  (not (is-destination? db)))
+  (and (not (is-destination? db))
+       (not (warehouses.settings/disable-auto-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -271,6 +284,7 @@
   "Checks database health off-thread.
    - checks connectivity for the default connection
    - checks connectivity for the write connection (if configured)
+   - checks connectivity for the admin connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
@@ -281,7 +295,8 @@
              database    (assoc database :details details)
              engine-str  (name engine)
              driver      (keyword engine-str)
-             details-map (assoc details :engine engine-str)]
+             details-map (assoc details :engine engine-str)
+             lib-db      (driver.u/ensure-lib-database database)]
          (when (check-connection! database driver engine-str details-map "default")
            (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
@@ -292,11 +307,16 @@
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
-         (when (driver.conn/database-write-data-details (driver.u/ensure-lib-database database))
+         (when (driver.conn/database-write-data-details lib-db)
            (let [write-details (driver.conn/without-resolution-telemetry
                                 (driver.conn/with-write-connection
                                   (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
+         (when (driver.conn/database-admin-details lib-db)
+           (let [admin-details (driver.conn/without-resolution-telemetry
+                                (driver.conn/with-admin-connection
+                                  (driver.conn/effective-details database)))]
+             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool."
@@ -350,7 +370,8 @@
                driver
                (-> db
                    (m/update-existing-in [:details :auth-provider] keyword)
-                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)
+                   (m/update-existing-in [:admin_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -391,6 +412,11 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
+  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
+  ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
+  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
+  ;; / fields for a Database whose deletion is about to be refused.
+  (reconcile-workspace-database-refs-before-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
@@ -456,7 +482,8 @@
                  infer-db-schedules
 
                  (or (some? (:details changes))
-                     (some? (:write_data_details changes)))
+                     (some? (:write_data_details changes))
+                     (some? (:admin_details changes)))
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
@@ -551,9 +578,9 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details` and `write_data_details` for any User without write perms
-  for the DB. Users with write perms can see the details but remove anything resembling a password. No one gets to
-  see this in an API response!
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, and `admin_details` for any User
+  without write perms for the DB. Users with write perms can see the details but remove anything resembling a
+  password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
@@ -565,12 +592,13 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details))
+                    (dissoc db :details :write_data_details :admin_details))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields))))]
+                        (m/update-existing :write_data_details redact-sensitive-fields)
+                        (m/update-existing :admin_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -597,38 +625,34 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
-  {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
-               :uploads_schema_name :uploads_table_prefix]
-   :skip      [;; deprecated field
-               :cache_ttl]
-   :transform {:created_at          (serdes/date)
-               ;; details should be imported if available regardless of options
-               :details             {:export-with-context
-                                     (fn [current _ details]
-                                       (if (and include-database-secrets
-                                                (not (:is_attached_dwh current)))
-                                         details
-                                         ::serdes/skip))
-                                     :import identity}
-               :write_data_details {:export-with-context
-                                    (fn [current _ details]
-                                      (if (and include-database-secrets
-                                               (not (:is_attached_dwh current)))
-                                        details
-                                        ::serdes/skip))
-                                    :import identity}
-               :creator_id          (serdes/fk :model/User)
-               :router_database_id (serdes/fk :model/Database)
-               :initial_sync_status {:export identity :import (constantly "complete")}}
-   :defaults {:auto_run_queries true
-              :is_attached_dwh  false
-              :is_audit         false
-              :is_full_sync     true
-              :is_on_demand     false
-              :is_sample        false
-              :uploads_enabled  false}})
+  ;; Export only when secrets are explicitly included AND the database isn't an attached DWH.
+  ;; Import is unconditional.
+  (let [details-transform {:export-with-context (fn [current _ details]
+                                                  (if (and include-database-secrets
+                                                           (not (:is_attached_dwh current)))
+                                                    details
+                                                    ::serdes/skip))
+                           :import              identity}]
+    {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :uploads_schema_name :uploads_table_prefix]
+     :skip      [;; deprecated field
+                 :cache_ttl]
+     :transform {:created_at          (serdes/date)
+                 :details             details-transform
+                 :write_data_details  details-transform
+                 :admin_details       details-transform
+                 :creator_id          (serdes/fk :model/User)
+                 :router_database_id  (serdes/fk :model/Database)
+                 :initial_sync_status {:export identity :import (constantly "complete")}}
+     :defaults  {:auto_run_queries true
+                 :is_attached_dwh  false
+                 :is_audit         false
+                 :is_full_sync     true
+                 :is_on_demand     false
+                 :is_sample        false
+                 :uploads_enabled  false}}))
 
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
@@ -665,7 +689,8 @@
   (assert-not-h2! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
-                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
+                              (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
                             maybe-local))
 
 (def ^:private metadata-export-perms

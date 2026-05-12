@@ -177,6 +177,7 @@
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}

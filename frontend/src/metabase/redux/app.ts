@@ -13,11 +13,8 @@ import type {
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
-import {
-  isSmallScreen,
-  openInBlankWindow,
-  shouldOpenInBlankWindow,
-} from "metabase/utils/dom";
+import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
+import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
