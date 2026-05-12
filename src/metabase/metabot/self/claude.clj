@@ -233,7 +233,16 @@
        (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
 
 (mu/defn claude-raw
-  "Perform a streaming request to Claude API."
+  "Perform a streaming request to Claude API.
+
+  `:thinking` accepts either of Anthropic's two extended-thinking shapes:
+   - Legacy / explicit budget (Sonnet 4.6 and earlier):
+       `{:type \"enabled\" :budget_tokens <int>}`
+   - Adaptive (required by Opus 4.7+):
+       `{:type \"adaptive\" :effort \"high\"|\"medium\"|\"low\"}`
+  When `:effort` is present it is split out into the top-level `output_config`
+  field that the adaptive API expects — callers can keep passing one map and
+  not care about the wire format split."
   [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
@@ -245,6 +254,8 @@
         schema-tool-choice (if thinking
                              {:type "auto"}
                              {:type "tool" :name "structured_output"})
+        effort        (some-> thinking :effort)
+        thinking-body (some-> thinking (dissoc :effort))
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
@@ -260,7 +271,8 @@
                                              :tools [{:name         "structured_output"
                                                       :description  "Output structured data"
                                                       :input_schema schema}])
-                    thinking          (assoc :thinking thinking))]
+                    thinking-body     (assoc :thinking thinking-body)
+                    effort            (assoc :output_config {:effort effort}))]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)

@@ -19,16 +19,33 @@
 ;;; ---------------------------------------------- attempt-reasonings ----------------------------------------------
 
 (deftest attempt-reasonings-test
-  (testing "Keeps attempts that produced a reasoning trace, drops the rest"
+  (testing "Keeps attempts that produced readable reasoning"
     (let [attempts [{:attempt 1 :trace {:reasoning "step one"}}
                     {:attempt 2 :trace {}}
                     {:attempt 3 :trace {:reasoning "step three"}}]]
       (is (= [{:attempt 1 :reasoning "step one"}
               {:attempt 3 :reasoning "step three"}]
              (#'auto-insights/attempt-reasonings attempts)))))
-  (testing "Blank reasoning is treated as no reasoning (not-empty)"
+  (testing "Empty reasoning with NO reasoning part in the raw trace → dropped"
     (is (= [] (#'auto-insights/attempt-reasonings
-               [{:attempt 1 :trace {:reasoning ""}}]))))
+               [{:attempt 1 :trace {:reasoning ""}}])))
+    (is (= [] (#'auto-insights/attempt-reasonings
+               [{:attempt 1 :trace {:reasoning ""
+                                    :all       [{:type :text :text "hi"}]}}]))))
+  (testing "Empty reasoning BUT a reasoning part is present (opaque/encrypted trace) → kept as opaque"
+    (is (= [{:attempt 1 :opaque? true}]
+           (#'auto-insights/attempt-reasonings
+            [{:attempt 1 :trace {:reasoning ""
+                                 :all       [{:type :reasoning :reasoning ""}
+                                             {:type :tool-input}]}}]))))
+  (testing "Mixed: opaque attempt followed by a readable one"
+    (is (= [{:attempt 1 :opaque? true}
+            {:attempt 2 :reasoning "got it"}]
+           (#'auto-insights/attempt-reasonings
+            [{:attempt 1 :trace {:reasoning ""
+                                 :all       [{:type :reasoning :reasoning ""}]}}
+             {:attempt 2 :trace {:reasoning "got it"
+                                 :all       [{:type :reasoning :reasoning "got it"}]}}]))))
   (testing "Empty input → empty vector"
     (is (= [] (#'auto-insights/attempt-reasonings [])))))
 
@@ -163,6 +180,53 @@
                               (:content out))]
       (is (empty? headings-l4)
           "No 'Attempt N' heading when there's only one attempt"))))
+
+(deftest append-reasoning-section-opaque-test
+  (testing "Opaque phase (thinking ran but trace was encrypted) emits an italic stub"
+    (let [out (#'auto-insights/append-reasoning-section
+               bare-doc
+               {:phase-1 {:reasonings [] :rationale "curator picked"}
+                :phase-2 {:reasonings [{:attempt 1 :opaque? true}]}
+                :thread-id 42})
+          all-text (find-text out)]
+      ;; The Phase 2 heading is still emitted so the user knows thinking
+      ;; happened on that phase.
+      (is (str/includes? all-text "Phase 2 — Analysis"))
+      ;; The stub mentions encryption rather than going silent.
+      (is (str/includes? all-text "encrypted"))
+      ;; The stub paragraph is italic (the only italic mark applied to the
+      ;; "encrypted" text — confirms the marks survive into the PM tree).
+      (let [paragraphs (filter #(and (map? %) (= "paragraph" (:type %)))
+                               (:content out))
+            italic-encrypted? (some (fn [p]
+                                      (some (fn [c]
+                                              (and (= "text" (:type c))
+                                                   (str/includes? (:text c) "encrypted")
+                                                   (some #(= "italic" (:type %))
+                                                         (:marks c))))
+                                            (:content p)))
+                                    paragraphs)]
+        (is italic-encrypted?
+            "The opaque-thinking notice should be rendered as italic text")))))
+
+(deftest append-reasoning-section-opaque-multi-attempt-test
+  (testing "Opaque entries also get an Attempt N heading when there are multiple attempts"
+    (let [out (#'auto-insights/append-reasoning-section
+               bare-doc
+               {:phase-1 {:reasonings [{:attempt 1 :opaque?   true}
+                                       {:attempt 2 :reasoning "second try worked"}]
+                          :rationale  nil}
+                :phase-2 {:reasonings []}
+                :thread-id 1})
+          headings-l4 (filter #(and (map? %)
+                                    (= "heading" (:type %))
+                                    (= 4 (-> % :attrs :level)))
+                              (:content out))
+          all-text (find-text out)]
+      (is (some #(str/includes? (find-text %) "Attempt 1") headings-l4))
+      (is (some #(str/includes? (find-text %) "Attempt 2") headings-l4))
+      (is (str/includes? all-text "encrypted"))
+      (is (str/includes? all-text "second try worked")))))
 
 ;;; ---------------------------------------------- end-to-end integration ----------------------------------------------
 

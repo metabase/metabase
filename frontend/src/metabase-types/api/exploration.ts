@@ -183,6 +183,7 @@ export interface ExplorationThread {
   prompt: string | null;
   position: number;
   started_at: string | null;
+  completed_at: string | null;
   entity_id: string;
   created_at: string;
   updated_at: string;

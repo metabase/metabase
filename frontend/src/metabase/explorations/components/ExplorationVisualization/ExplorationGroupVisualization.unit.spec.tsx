@@ -117,6 +117,7 @@ const thread: ExplorationThread = {
   prompt: null,
   position: 0,
   started_at: null,
+  completed_at: null,
   entity_id: "thrd00000000000000001",
   created_at: "2026-04-30T00:00:00Z",
   updated_at: "2026-04-30T00:00:00Z",

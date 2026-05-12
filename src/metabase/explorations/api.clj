@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.explorations.auto-insights :as auto-insights]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.result-access :as result-access]
@@ -427,6 +428,7 @@
                                    :content_type          documents/prose-mirror-content-type
                                    :creator_id            api/*current-user-id*
                                    :exploration_thread_id tid})
+          _           (auto-insights/create-placeholder-doc! tid api/*current-user-id*)
           metric-rows (when (seq metrics)
                         (t2/insert-returning-instances!
                          :model/ExplorationThreadMetric

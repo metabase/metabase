@@ -140,7 +140,7 @@
   {:model           "anthropic/claude-opus-4-7"
    :temperature     1.0
    :max-tokens      16000
-   :thinking-config {:type "enabled" :budget_tokens 8000}})
+   :thinking-config {:type "adaptive" :effort "high"}})
 
 (defn slim-block
   "Awareness-tier rendering: title + metric/dim detail + summary line +
@@ -436,8 +436,99 @@
 (def ^:private validation-opts
   {:custom-block-nodes {"explorationChart" validate-exploration-chart}})
 
-(defn- validate-doc [pm-doc]
-  (documents/validate-prose-mirror pm-doc validation-opts))
+(defn- node-type [node]
+  (when (map? node)
+    (or (get node :type) (get node "type"))))
+
+(defn- explorationchart-eq-id
+  "Pull a numeric exploration_query_id out of an `explorationChart` placeholder
+  node, tolerating string/keyword keys and numeric strings."
+  [node]
+  (when (= "explorationChart" (node-type node))
+    (let [attrs (or (get node :attrs) (get node "attrs"))
+          raw   (or (get attrs :exploration_query_id)
+                    (get attrs "exploration_query_id"))]
+      (cond
+        (integer? raw) raw
+        (string? raw)  (try (Long/parseLong raw) (catch Exception _ nil))))))
+
+(defn- explorationchart-sort
+  "Pull the validated `sort` attribute out of an `explorationChart` placeholder
+  node, or nil when absent. The per-node validator already enforced enum
+  membership when sort is present."
+  [node]
+  (let [attrs (or (get node :attrs) (get node "attrs"))
+        raw   (or (get attrs :sort) (get attrs "sort"))]
+    (when (contains? allowed-chart-sorts raw) raw)))
+
+(defn- all-exploration-chart-nodes
+  "Walk `pm-doc` depth-first and return every `explorationChart` node in
+  document order. Tolerates the keyword / string key shapes that arrive
+  post-JSON-decode."
+  [pm-doc]
+  (cond
+    (and (map? pm-doc) (= "explorationChart" (node-type pm-doc))) [pm-doc]
+    (map? pm-doc)        (mapcat all-exploration-chart-nodes
+                                 (or (:content pm-doc) (get pm-doc "content")))
+    (sequential? pm-doc) (mapcat all-exploration-chart-nodes pm-doc)
+    :else                []))
+
+(defn- validate-categorical-sorts
+  "Require a `sort` attribute on every `explorationChart` whose underlying
+  chart has a categorical x-axis. The model's prompt already calls this out
+  as REQUIRED, but the JSON schema can't express it (temporal/numeric charts
+  must omit sort). Without this check the analyst can write prose calling for
+  a specific ordering and forget to attach the structured attribute, which
+  silently renders the chart in query order. The per-node validator already
+  enforces enum membership when sort is present — this only enforces
+  presence."
+  [pm-doc categorical-chart-ids]
+  (->> (all-exploration-chart-nodes pm-doc)
+       (keep (fn [node]
+               (let [eq-id (explorationchart-eq-id node)
+                     sort  (explorationchart-sort node)]
+                 (when (and eq-id
+                            (contains? categorical-chart-ids eq-id)
+                            (nil? sort))
+                   (str "explorationChart with exploration_query_id="
+                        eq-id " has a categorical x-axis but no `sort` attribute. "
+                        "Pick one of \"value_desc\", \"value_asc\", \"label_asc\", "
+                        "or \"label_desc\" — see the prompt's sort decision tree.")))))
+       vec))
+
+(defn- validate-no-duplicate-embeds
+  "Flag any pair of `explorationChart` embeds that share the same
+  (exploration_query_id, sort) — they materialize to the same Card and render
+  identically, which is almost always an oversight where the prose calls for
+  two distinct orderings of the same chart but the second embed lost its
+  sort attribute. The error message names a concrete fix."
+  [pm-doc]
+  (->> (all-exploration-chart-nodes pm-doc)
+       (map (juxt explorationchart-eq-id explorationchart-sort))
+       (filter first)        ; ids that didn't parse are caught by the per-node validator
+       frequencies
+       (keep (fn [[[eq-id sort] n]]
+               (when (> n 1)
+                 (str "explorationChart for exploration_query_id=" eq-id
+                      " appears " n " times with the same sort=" (pr-str sort)
+                      ". Repeats of the same chart must use distinct sorts "
+                      "(e.g. value_desc + value_asc to show top contributors "
+                      "vs. underperformers) — otherwise both embeds render "
+                      "identically. Pick different sorts or remove the duplicate."))))
+       vec))
+
+(defn- validate-doc
+  "Phase-2 document validator. Combines:
+   - the generic prose-mirror schema validation (knows the standard node types
+     plus the custom `explorationChart` placeholder via `validation-opts`),
+   - the categorical-sort presence check, and
+   - the duplicate-embed check.
+  Returns one flat vector of error strings so the repair prompt can address
+  them all in a single retry."
+  [pm-doc categorical-chart-ids]
+  (vec (concat (documents/validate-prose-mirror pm-doc validation-opts)
+               (validate-categorical-sorts pm-doc categorical-chart-ids)
+               (validate-no-duplicate-embeds pm-doc))))
 
 (defn- repair-prompt
   "Repair message for Phase 2 (analysis): point at the prose-mirror validation
@@ -460,16 +551,20 @@
 
 (defn run-analysis!
   "Phase 2 entry point. `prompt` is the pre-rendered prompt string built by
-  [[build-analysis-prompt]]. Returns `{:value :attempts :outcome [:final-errors]}`
-  where `:value` is the validated ProseMirror document map."
-  [thread-id prompt]
+  [[build-analysis-prompt]]; `categorical-chart-ids` is the set of
+  exploration_query_ids whose underlying chart has a categorical x-axis
+  (used by [[validate-categorical-sorts]] to require a `sort` attr on every
+  embed of those charts). Returns
+  `{:value :attempts :outcome [:final-errors]}` where `:value` is the
+  validated ProseMirror document map."
+  [thread-id prompt categorical-chart-ids]
   (common/run-with-repair {:thread-id      thread-id
                            :phase-name     "phase-2"
                            :llm-config     llm-config
                            :prompt         prompt
                            :schema         response-schema
                            :extract-fn     extract-doc
-                           :validate-fn    validate-doc
+                           :validate-fn    #(validate-doc % categorical-chart-ids)
                            :repair-builder repair-prompt}))
 
 ;;; ----- query sorting -----
@@ -584,31 +679,6 @@
       :collection_id          (:collection_id doc)
       :document_id            (:id doc)}
      @api/*current-user*)))
-
-(defn- node-type [node]
-  (when (map? node)
-    (or (get node :type) (get node "type"))))
-
-(defn- explorationchart-eq-id
-  "Pull a numeric exploration_query_id out of an `explorationChart` placeholder
-  node, tolerating string/keyword keys and numeric strings."
-  [node]
-  (when (= "explorationChart" (node-type node))
-    (let [attrs (or (get node :attrs) (get node "attrs"))
-          raw   (or (get attrs :exploration_query_id)
-                    (get attrs "exploration_query_id"))]
-      (cond
-        (integer? raw) raw
-        (string? raw)  (try (Long/parseLong raw) (catch Exception _ nil))))))
-
-(defn- explorationchart-sort
-  "Pull the validated `sort` attribute out of an `explorationChart` placeholder
-  node, or nil when absent. The validator has already enforced that the value
-  is one of [[allowed-chart-sorts]] if present."
-  [node]
-  (let [attrs (or (get node :attrs) (get node "attrs"))
-        raw   (or (get attrs :sort) (get attrs "sort"))]
-    (when (contains? allowed-chart-sorts raw) raw)))
 
 (defn- transform-nodes
   "Walk a ProseMirror tree depth-first, applying `f` to each node. `f` may

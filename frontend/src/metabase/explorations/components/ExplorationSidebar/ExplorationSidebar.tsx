@@ -67,6 +67,8 @@ interface ExplorationSidebarProps {
 
 const INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
+export const AUTO_INSIGHTS_DOCUMENT_NAME = "Automatic Insights";
+
 export function ExplorationSidebar({
   exploration,
   selectedEntityId,
@@ -368,6 +370,11 @@ export function ExplorationSidebar({
                   selectedEntityId?.type === "document" &&
                   selectedEntityId.id === document.id
                 }
+                isLoading={
+                  document.name === AUTO_INSIGHTS_DOCUMENT_NAME &&
+                  thread.started_at != null &&
+                  thread.completed_at == null
+                }
                 onSelect={() =>
                   setSelectedEntityId({ type: "document", id: document.id })
                 }
@@ -577,12 +584,14 @@ function ExplorationQueryGroupBlock({
 interface ExplorationDocumentRowProps {
   document: ExplorationDocument;
   isSelected: boolean;
+  isLoading: boolean;
   onSelect: () => void;
 }
 
 function ExplorationDocumentRow({
   document,
   isSelected,
+  isLoading,
   onSelect,
 }: ExplorationDocumentRowProps) {
   return (
@@ -594,7 +603,11 @@ function ExplorationDocumentRow({
       })}
       onClick={onSelect}
     >
-      <Icon name="document" c="text-secondary" aria-label={t`Document`} />
+      {isLoading ? (
+        <Loader size="xs" aria-label={t`Generating analysis…`} />
+      ) : (
+        <Icon name="document" c="text-secondary" aria-label={t`Document`} />
+      )}
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {document.name}
       </Ellipsified>

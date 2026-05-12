@@ -47,9 +47,14 @@
     :schema      - JSON Schema map for structured output; each provider forces a
                    tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
     :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
-    :thinking    - Provider-specific extended-thinking config. For Anthropic:
-                   `{:type \"enabled\" :budget_tokens <int>}`. Only the Claude
-                   adapter currently consumes this; other providers ignore it."
+    :thinking    - Provider-specific extended-thinking config. For Anthropic,
+                   either of:
+                     - `{:type \"enabled\" :budget_tokens <int>}` (Sonnet 4.6 and
+                       earlier)
+                     - `{:type \"adaptive\" :effort \"high|medium|low\"}` (Opus
+                       4.7+; `:effort` is forwarded as `output_config.effort`)
+                   Only the Claude adapter currently consumes this; other
+                   providers ignore it."
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -557,9 +562,28 @@
       (or auth
           (throw (missing-api-key-ex llm-type))))))
 
+(def ^:private ^:const default-connection-timeout-ms
+  "TCP connect timeout for an LLM HTTP request. A provider that's down or
+  unreachable should fail fast instead of holding a worker thread forever."
+  10000)
+
+(def ^:private ^:const default-socket-timeout-ms
+  "Inter-byte read timeout for an LLM HTTP request. Anthropic streams responses,
+  so this is the gap between successive chunks (NOT total response time). Picked
+  generously: extended thinking can pause for tens of seconds between thinking
+  chunks. Without this, a hung TLS read inside the stream blocks the worker
+  indefinitely — observed in production when an upstream proxy held the
+  connection open without sending data."
+  120000)
+
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. Callers can override either timeout by
+  passing `:connection-timeout` / `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (http/request (-> {:connection-timeout default-connection-timeout-ms
+                     :socket-timeout     default-socket-timeout-ms}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

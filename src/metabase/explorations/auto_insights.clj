@@ -160,19 +160,47 @@
   is the user's working space and we never overwrite it."
   "Automatic Insights")
 
-(defn- create-auto-insights-doc!
+(defn placeholder-pm-doc
+  "ProseMirror doc body shown while auto-insights generation is still running.
+  The sidebar links to this doc the moment the exploration is created; we
+  swap its `:document` content in-place when generation finishes (success,
+  skip, or failure). Public because the API endpoint creates the doc at
+  exploration-creation time, before any worker has touched the thread."
+  []
+  {:type    "doc"
+   :content [{:type    "heading"
+              :attrs   {:level 2}
+              :content [{:type "text" :text "Analysis underway…"}]}
+             {:type    "paragraph"
+              :content [{:type  "text"
+                         :text  "Automatic Insights is generating an analysis of this exploration. This page will update when it's ready."
+                         :marks [{:type "italic"}]}]}]})
+
+(defn create-placeholder-doc!
   "Insert a fresh `Automatic Insights` document on `thread-id` owned by
-  `creator-id` and return the inserted instance. Caller must establish a
-  current-user binding (so the revisions event handler attributes the new doc
-  to the right user)."
+  `creator-id`, populated with the `Analysis underway…` placeholder. Caller
+  must establish a current-user binding. The doc is created up-front by the
+  exploration POST endpoint so the FE sidebar shows it immediately; the
+  later `write-document!` in this namespace updates it in place."
   [thread-id creator-id]
   (first
    (t2/insert-returning-instances! :model/Document
                                    {:name                  auto-doc-name
-                                    :document              {:type "doc" :content []}
+                                    :document              (placeholder-pm-doc)
                                     :content_type          prose-mirror/prose-mirror-content-type
                                     :creator_id            creator-id
                                     :exploration_thread_id thread-id})))
+
+(defn- find-placeholder-doc
+  "Look up the Automatic Insights document for `thread-id`. Returns nil when
+  none has been created yet (e.g. an old exploration created before the
+  endpoint started pre-creating the placeholder); callers should defensively
+  re-create it in that case."
+  [thread-id]
+  (t2/select-one :model/Document
+                 :exploration_thread_id thread-id
+                 :name                  auto-doc-name
+                 :archived              false))
 
 ;;; ----- Debug helpers (REPL-friendly accessors for the persisted transcript) -----
 
@@ -186,13 +214,29 @@
                   :id thread-id)))
 
 (defn- attempt-reasonings
-  "Extract `{:attempt N :reasoning \"...\"}` entries from an attempts vector,
-  dropping attempts that produced no thinking trace."
+  "Extract per-attempt reasoning entries from an attempts vector. Each entry is
+  one of:
+    - `{:attempt N :reasoning \"...\"}` — readable extended-thinking text.
+    - `{:attempt N :opaque? true}`     — thinking ran but the API returned
+      only encrypted signature blocks (currently the case for Opus 4.7 with
+      adaptive thinking), so we have no text to display. Surfacing this as a
+      stub rather than dropping the entry lets the renderer flag *that*
+      thinking happened without pretending the trace is there.
+  Attempts with no reasoning content block at all are dropped entirely."
   [attempts]
   (->> attempts
        (keep (fn [{:keys [attempt trace]}]
-               (when-let [r (not-empty (:reasoning trace))]
-                 {:attempt attempt :reasoning r})))
+               (let [text (not-empty (:reasoning trace))
+                     ;; A reasoning content block was emitted iff `summarize-parts`
+                     ;; saw at least one `:type :reasoning` chunk in the raw parts
+                     ;; list. With readable thinking the text is also populated;
+                     ;; with opaque/encrypted thinking we only get the part with
+                     ;; an empty `:reasoning` field.
+                     had-reasoning-part? (some #(= :reasoning (:type %))
+                                               (:all trace))]
+                 (cond
+                   text                {:attempt attempt :reasoning text}
+                   had-reasoning-part? {:attempt attempt :opaque? true}))))
        vec))
 
 (defn debug-reasoning
@@ -237,18 +281,39 @@
                {:type    "paragraph"
                 :content [{:type "text" :text p}]}))))
 
+(def ^:private opaque-thinking-blocks
+  "Stub body for an attempt where extended thinking ran but the trace came
+  back encrypted (e.g. Opus 4.7 adaptive thinking — Anthropic returns only a
+  cryptographic signature, no readable `thinking_delta` events). One italic
+  paragraph so the section shows up rather than being silently dropped."
+  [{:type    "paragraph"
+    :content [{:type  "text"
+               :text  "The model used extended thinking on this attempt, but the trace came back encrypted and could not be displayed."
+               :marks [{:type "italic"}]}]}])
+
+(defn- attempt-blocks
+  "Render one reasoning-attempt entry as a list of prose-mirror blocks.
+  Readable entries produce one paragraph per blank-line-separated chunk;
+  opaque entries (thinking ran but the text was encrypted) produce the
+  italic stub."
+  [{:keys [reasoning opaque?]}]
+  (cond
+    reasoning (reasoning-paragraphs reasoning)
+    opaque?   opaque-thinking-blocks
+    :else     []))
+
 (defn- reasonings-blocks
-  "Render a vector of `{:attempt N :reasoning \"...\"}` entries as prose-mirror
-  blocks. Single-attempt sequences are rendered flat; multi-attempt sequences
-  use level-4 sub-headings to separate each attempt."
+  "Render a vector of reasoning-attempt entries as prose-mirror blocks.
+  Single-attempt sequences are rendered flat; multi-attempt sequences use
+  level-4 sub-headings to separate each attempt."
   [reasonings]
   (if (= 1 (count reasonings))
-    (reasoning-paragraphs (:reasoning (first reasonings)))
-    (mapcat (fn [{:keys [attempt reasoning]}]
+    (attempt-blocks (first reasonings))
+    (mapcat (fn [{:keys [attempt] :as entry}]
               (cons {:type    "heading"
                      :attrs   {:level 4}
                      :content [{:type "text" :text (str "Attempt " attempt)}]}
-                    (reasoning-paragraphs reasoning)))
+                    (attempt-blocks entry)))
             reasonings)))
 
 (defn- repl-helpers-blocks
@@ -327,8 +392,9 @@
   or model behavior, and someone should look."
   [{:keys [phase thread-id final-errors detail]}]
   (let [phase-label (case phase
-                      :phase-1 "Phase 1 — Chart curation"
-                      :phase-2 "Phase 2 — Analysis"
+                      :phase-1  "Phase 1 — Chart curation"
+                      :phase-2  "Phase 2 — Analysis"
+                      :uncaught "an unexpected error before any phase ran"
                       (str phase))
         err-items   (mapv (fn [e]
                             {:type    "listItem"
@@ -383,12 +449,12 @@
 
 (defn- write-document!
   "Materialize the PM doc (resolving explorationChart placeholders to real
-  Cards) and persist it as a new Document on `thread-id`. Returns the
-  rendered (post-materialization) PM doc."
-  [{:keys [thread-id pm-doc eq-by-id creator-id]}]
+  Cards) and update the placeholder `doc` (created up-front by
+  [[create-placeholder-doc!]]) with the final content. Returns the rendered
+  (post-materialization) PM doc."
+  [{:keys [doc pm-doc eq-by-id creator-id]}]
   (request/with-current-user creator-id
-    (let [doc (create-auto-insights-doc! thread-id creator-id)
-          body (phase2/materialize-chart-embeds pm-doc eq-by-id doc)]
+    (let [body (phase2/materialize-chart-embeds pm-doc eq-by-id doc)]
       (t2/update! :model/Document (:id doc)
                   {:document     body
                    :content_type prose-mirror/prose-mirror-content-type})
@@ -455,8 +521,18 @@
                   :skip-no-charts)
 
               :else
-              ;; -------- Phase 1: curation --------
-              (let [curation-prompt (phase1/build-curation-prompt
+              ;; -------- The placeholder doc was created up-front by the
+              ;; exploration POST endpoint so the FE sidebar shows it the
+              ;; moment the exploration is created. Every branch below
+              ;; (phase-1-failed, phase-2-failed, ok) swaps this doc's body
+              ;; in place — we never insert a second doc. For threads created
+              ;; before the endpoint started pre-creating it, fall back to
+              ;; creating one here so old data still works.
+              (let [creator-id (:creator_id exploration)
+                    placeholder-doc (or (find-placeholder-doc thread-id)
+                                        (request/with-current-user creator-id
+                                          (create-placeholder-doc! thread-id creator-id)))
+                    curation-prompt (phase1/build-curation-prompt
                                      {:thread-prompt     (:prompt thread)
                                       :selections        selections
                                       :timelines         timelines
@@ -483,10 +559,10 @@
                                   :phase-2   {:reasonings []}
                                   :thread-id thread-id})
                         {:keys [document-id rendered-pm-doc]}
-                        (write-document! {:thread-id  thread-id
+                        (write-document! {:doc        placeholder-doc
                                           :pm-doc     err-pm+
                                           :eq-by-id   {}
-                                          :creator-id (:creator_id exploration)})]
+                                          :creator-id creator-id})]
                     (save-transcript! thread-id
                                       (assoc preamble
                                              :outcome         :phase-1-failed
@@ -501,6 +577,20 @@
                   (let [{:keys [top_tier awareness_tier rationale]} (:value p1)
                         top-prepped       (vec (keep prepped-by-id top_tier))
                         awareness-prepped (vec (keep prepped-by-id awareness_tier))
+                        ;; Top-tier charts whose x-axis is neither time nor
+                        ;; numeric. Passed into Phase 2 validation so the
+                        ;; repair loop catches embeds that forgot the `sort`
+                        ;; attribute on a categorical chart (see the prompt's
+                        ;; sort decision tree). Awareness-tier ids aren't
+                        ;; included since the analyst is told not to embed
+                        ;; them; if one slips in, the per-node validator
+                        ;; catches the malformed reference separately.
+                        categorical-top-ids (->> top-prepped
+                                                 (filter (fn [p]
+                                                           (let [xt (some-> p :cfg :series first val :x :type)]
+                                                             (and xt (not (#{"datetime" "number"} xt))))))
+                                                 (map :exploration-query-id)
+                                                 set)
                         analysis-prompt   (phase2/build-analysis-prompt
                                            {:thread-prompt      (:prompt thread)
                                             :selections         selections
@@ -510,7 +600,7 @@
                                             :awareness-blocks   awareness-prepped
                                             :total-chart-count  (count done-queries)
                                             :pool-size          (count prepped)})
-                        p2 (phase2/run-analysis! thread-id analysis-prompt)
+                        p2 (phase2/run-analysis! thread-id analysis-prompt categorical-top-ids)
                         p2-transcript {:prompt       analysis-prompt
                                        :attempts     (:attempts p2)
                                        :outcome      (:outcome p2)
@@ -536,10 +626,10 @@
                                       :phase-2   {:reasonings p2-reasonings}
                                       :thread-id thread-id})
                             {:keys [document-id rendered-pm-doc]}
-                            (write-document! {:thread-id  thread-id
+                            (write-document! {:doc        placeholder-doc
                                               :pm-doc     err-pm+
                                               :eq-by-id   {}
-                                              :creator-id (:creator_id exploration)})]
+                                              :creator-id creator-id})]
                         (save-transcript! thread-id
                                           (assoc preamble
                                                  :outcome         :phase-2-failed
@@ -560,10 +650,10 @@
                                       :phase-2   {:reasonings p2-reasonings}
                                       :thread-id thread-id})
                             {:keys [document-id rendered-pm-doc]}
-                            (write-document! {:thread-id  thread-id
+                            (write-document! {:doc        placeholder-doc
                                               :pm-doc     pm-doc+
                                               :eq-by-id   eq-by-id
-                                              :creator-id (:creator_id exploration)})]
+                                              :creator-id creator-id})]
                         (save-transcript! thread-id
                                           (assoc preamble
                                                  :outcome         :ok
@@ -579,4 +669,27 @@
       (save-transcript! thread-id (assoc (base-transcript thread-id)
                                          :outcome :error
                                          :error   (.getMessage e)))
+      ;; Replace the "Analysis underway…" placeholder with an error doc so
+      ;; the user doesn't stare at a spinner forever. Defensive: this branch
+      ;; may run before a placeholder was created, the thread may have been
+      ;; deleted, or the doc may have been archived — swallow any secondary
+      ;; failure rather than mask the original throw.
+      (try
+        (let [thread     (t2/select-one [:model/ExplorationThread :id :exploration_id]
+                                        :id thread-id)
+              creator-id (when thread
+                           (:creator_id
+                            (t2/select-one [:model/Exploration :creator_id]
+                                           :id (:exploration_id thread))))
+              doc        (find-placeholder-doc thread-id)]
+          (when (and doc creator-id)
+            (request/with-current-user creator-id
+              (t2/update! :model/Document (:id doc)
+                          {:document     (error-doc {:phase        :uncaught
+                                                     :thread-id    thread-id
+                                                     :final-errors [(or (.getMessage e) (.toString e))]
+                                                     :detail       "Automatic Insights hit an unexpected error before it could produce a document. The transcript has the full stack trace."})
+                           :content_type prose-mirror/prose-mirror-content-type}))))
+        (catch Throwable e2
+          (log/warnf e2 "Failed to write error doc for thread %d after generate-auto-insights! failure" thread-id)))
       nil)))

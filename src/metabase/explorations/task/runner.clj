@@ -113,19 +113,20 @@
                  (:id exploration-query))
       nil)))
 
-(defn- mark-thread-completed-if-done!
-  "Atomically flip `exploration_thread.completed_at` from NULL to NOW() iff every
+(defn- claim-analysis-if-ready!
+  "Atomically flip `exploration_thread.analysis_started_at` from NULL to NOW() iff every
   query on the thread has reached a terminal status (anything other than `pending`)
   AND every (query, timeline) pair has `scored_at` set. Returns true iff this caller
-  was the one that flipped it."
+  was the one that claimed it — the unique caller who should run the handler. The
+  matching `completed_at` flip happens later, after the handler finishes."
   [thread-id]
   (pos?
    (t2/query-one
     {:update :exploration_thread
-     :set    {:completed_at (OffsetDateTime/now)}
+     :set    {:analysis_started_at (OffsetDateTime/now)}
      :where  [:and
               [:= :id thread-id]
-              [:= :completed_at nil]
+              [:= :analysis_started_at nil]
               [:not-exists {:select [1]
                             :from   [:exploration_query]
                             :where  [:and
@@ -146,28 +147,43 @@
                                          [:= :s.id nil]
                                          [:= :s.scored_at nil]]]}]]})))
 
+(defn- mark-thread-fully-completed!
+  "Set `completed_at` to NOW(). Called after the auto-insights handler has finished
+  (success, skip, or failure). This is what the UI polls on to decide it's done
+  watching the thread."
+  [thread-id]
+  (t2/update! :model/ExplorationThread thread-id {:completed_at (OffsetDateTime/now)}))
+
 (defn- on-thread-completed
   "Single entry point for post-completion work. Always invoked with `thread-id` (a long)
   exactly once per thread, on a background daemon thread. Runs after the runner's row
   transaction has committed, so it's free to do its own DB I/O, HTTP, LLM calls, etc.
 
-  Add new sub-steps inline here. Each sub-step should defend itself with try/catch so
-  one failure doesn't kill subsequent steps."
+  Stamps `completed_at` last so the UI's polling loop sees a clean done signal only
+  after the auto-insights doc has been written (or failed)."
   [thread-id]
-  (log/infof "Exploration thread %d completed" thread-id)
-  (explorations.auto-insights/generate-auto-insights! thread-id))
+  (log/infof "Exploration thread %d: queries+scoring done, running auto-insights" thread-id)
+  (try
+    (explorations.auto-insights/generate-auto-insights! thread-id)
+    (catch Throwable e
+      (log/errorf e "generate-auto-insights! threw for thread %d" thread-id))
+    (finally
+      (try
+        (mark-thread-fully-completed! thread-id)
+        (catch Throwable e
+          (log/errorf e "Failed to set completed_at for thread %d" thread-id))))))
 
 (defn- maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`
   (a query reaching a terminal status, or a timeline pair being scored). If this call is
-  the one that flips the thread to completed, runs `on-thread-completed` on a background
+  the one that claims the analysis run, runs `on-thread-completed` on a background
   `future`. Safe to call repeatedly: subsequent calls are no-ops thanks to the
-  `completed_at IS NULL` predicate.
+  `analysis_started_at IS NULL` predicate.
 
   `thread-id` may be nil (e.g. the runner couldn't resolve the thread for a now-deleted
   query); in that case this is a no-op."
   [thread-id]
-  (when (and thread-id (mark-thread-completed-if-done! thread-id))
+  (when (and thread-id (claim-analysis-if-ready! thread-id))
     (future
       (try
         (on-thread-completed thread-id)
@@ -206,7 +222,9 @@
         (let [started (OffsetDateTime/now)]
           (try
             (let [qp-result    (qp/process-query
-                                (qp/userland-query-with-default-constraints (:dataset_query row)))
+                                (qp/userland-query-with-default-constraints
+                                 (:dataset_query row)
+                                 {:context :exploration}))
                   bytes        (serialize-result qp-result)
                   chart-config (safe-chart-config row qp-result)
                   stats        (safe-deep-stats row chart-config)

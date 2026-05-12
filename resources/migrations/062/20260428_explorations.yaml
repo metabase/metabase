@@ -1004,6 +1004,34 @@ databaseChangeLog:
             where: completed_at IS NULL
 
   - changeSet:
+      id: v62.startedat
+      author: nvoxland
+      comment: Add exploration_thread.analysis_started_at — CAS claim gate for the auto-insights handler. completed_at now marks end of analysis (after auto-insights doc is written); analysis_started_at marks when the handler claimed the thread.
+      changes:
+        - addColumn:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: analysis_started_at
+                  type: ${timestamp_type}
+                  remarks: Set once when every query in the thread has reached a terminal status AND every (query, timeline) pair has been scored. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v62.startedatbf
+      author: nvoxland
+      comment: Backfill analysis_started_at for pre-existing threads so the CAS predicate doesn't re-fire the handler on already-completed legacy data.
+      changes:
+        - update:
+            tableName: exploration_thread
+            columns:
+              - column:
+                  name: analysis_started_at
+                  valueComputed: current_timestamp
+            where: analysis_started_at IS NULL
+
+  - changeSet:
       id: v62.gr324asd
       author: nvoxland
       comment: Raw stats on the chart
