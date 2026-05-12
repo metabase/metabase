@@ -3,7 +3,7 @@ import type { MarkdownHeading } from "astro";
 import Sidebar from "../components/Sidebar.astro";
 import TopBar from "../components/TopBar.astro";
 import TableOfContents from "../components/TableOfContents.astro";
-import "../styles/docs.scss";
+import "../styles/docs.css";
 
 interface Props {
   title: string;
@@ -24,6 +24,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <title>{title} | Metabase Documentation</title>
     {summary && <meta name="description" content={summary} />}
     <link rel="icon" type="image/svg+xml" href={`${base}/images/favicon.svg`} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Roboto+Mono&display=swap"
+    />
   </head>
   <body>
     <div class="docs-shell">
