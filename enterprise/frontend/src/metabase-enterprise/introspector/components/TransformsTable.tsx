@@ -7,7 +7,6 @@ import {
   Checkbox,
   Group,
   Icon,
-  Menu,
   Stack,
   Text,
   Tooltip,
@@ -26,9 +25,8 @@ interface Props {
   onToggleSelectAll: () => void;
   isLoading?: boolean;
   isAllSelected?: boolean;
-  /** Per-row action callbacks. */
+  /** Single-row archive — fires the same `POST /:id/archive` the bulk bar uses. */
   onTrash: (row: IntrospectorRow) => void;
-  onSuppress: (row: IntrospectorRow) => void;
 }
 
 const STATUS_COLOR: Record<string, "error" | "warning" | "success" | "brand"> =
@@ -199,25 +197,19 @@ function ReasonsCell({
 }
 
 /**
- * Per-row action cluster.
+ * Per-row action cluster — matches Cards/Dashboards: Open + Trash.
  *
- * Primary actions mirror the existing Cards/Dashboards tabs: an `Open` link
- * icon, a dependency-graph link icon (only when broken — same gate the other
- * tabs use), and a Trash icon. The spike's additional deep-links (Runs,
- * Inspector) and the localStorage-backed Suppress sit in a small ⋯ menu so we
- * preserve the spike's row vocabulary without breaking the inline-icon
- * paradigm the rest of the Introspector follows.
+ * Runs/Inspector/Suppress/dependency-graph deliberately omitted from the row;
+ * users who need those navigate from the transform definition page, and bulk
+ * Suppress/Trash live in the floating action bar when rows are selected.
  */
 function RowActions({
   row,
   onTrash,
-  onSuppress,
 }: {
   row: IntrospectorRow;
   onTrash: (row: IntrospectorRow) => void;
-  onSuppress: (row: IntrospectorRow) => void;
 }) {
-  const isBroken = (row.flags ?? []).includes("broken");
   return (
     <Group gap={4} justify="flex-end" wrap="nowrap">
       <Tooltip label={t`Open`}>
@@ -232,64 +224,16 @@ function RowActions({
           <Icon name="external" />
         </ActionIcon>
       </Tooltip>
-      {isBroken && (
-        <Tooltip label={t`Open dependency graph`}>
-          <ActionIcon
-            component="a"
-            href={`/data-studio/dependencies?id=${row.id}&type=transform`}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="subtle"
-            aria-label={t`Open dependency graph`}
-          >
-            <Icon name="link" />
-          </ActionIcon>
-        </Tooltip>
-      )}
-      <Tooltip label={t`Send to Trash`}>
+      <Tooltip label={t`Move to Trash`}>
         <ActionIcon
           variant="subtle"
           color="error"
           onClick={() => onTrash(row)}
-          aria-label={t`Send to Trash`}
+          aria-label={t`Move to Trash`}
         >
           <Icon name="trash" />
         </ActionIcon>
       </Tooltip>
-      <Menu position="bottom-end" withinPortal>
-        <Menu.Target>
-          <ActionIcon variant="subtle" aria-label={t`More actions`}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item
-            component="a"
-            href={`/data-studio/transforms/${row.id}/run`}
-            target="_blank"
-            rel="noopener noreferrer"
-            leftSection={<Icon name="play_outlined" />}
-          >
-            {t`Open runs`}
-          </Menu.Item>
-          <Menu.Item
-            component="a"
-            href={`/data-studio/transforms/${row.id}/settings`}
-            target="_blank"
-            rel="noopener noreferrer"
-            leftSection={<Icon name="gear" />}
-          >
-            {t`Open inspector`}
-          </Menu.Item>
-          <Menu.Divider />
-          <Menu.Item
-            onClick={() => onSuppress(row)}
-            leftSection={<Icon name="eye_crossed_out" />}
-          >
-            {t`Suppress`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
     </Group>
   );
 }
@@ -302,7 +246,6 @@ export function TransformsTable({
   isLoading,
   isAllSelected,
   onTrash,
-  onSuppress,
 }: Props) {
   if (!isLoading && rows.length === 0) {
     return (
@@ -338,7 +281,8 @@ export function TransformsTable({
           <col style={{ width: 120 }} />
           {/* Reasons — gets the remaining flex. */}
           <col />
-          <col style={{ width: 148 }} />
+          {/* Actions: Open + Trash, matching Cards/Dashboards rows. */}
+          <col style={{ width: 88 }} />
         </colgroup>
         <thead>
           <tr>
@@ -414,11 +358,7 @@ export function TransformsTable({
                   <ReasonsCell reasons={row.reasons ?? []} />
                 </td>
                 <td style={cellStyle}>
-                  <RowActions
-                    row={row}
-                    onTrash={onTrash}
-                    onSuppress={onSuppress}
-                  />
+                  <RowActions row={row} onTrash={onTrash} />
                 </td>
               </tr>
             );

@@ -8,6 +8,7 @@ import {
 import { Box, Button, Chip, Group, Stack, Text, TextInput } from "metabase/ui";
 
 import { useListIntrospectorTransformsQuery } from "../api";
+import { BulkActionBar } from "../components/BulkActionBar";
 import { Pagination } from "../components/Pagination";
 import { TransformsTable } from "../components/TransformsTable";
 import type { IntrospectorRow, TransformsFlagFilter } from "../types";
@@ -51,6 +52,7 @@ function flagToConditions(flag: TransformsFlagFilter): string | undefined {
     case "stale":
       return "unreferenced";
     case "all":
+    default:
       return undefined;
   }
 }
@@ -86,18 +88,12 @@ export function TransformsTab() {
     [suppressed],
   );
 
-  // Trash action now hits POST /api/transform/:id/archive (soft delete) instead
-  // of DELETE /api/transform/:id — leaves the backend hard-delete API at parity
-  // for external callers, and the row is recoverable from the Trash collection.
   const [archiveTransform, { isLoading: isTrashing }] =
     useArchiveTransformMutation();
   const [deleteTransformTarget, { isLoading: isDroppingTable }] =
     useDeleteTransformTargetMutation();
   const isWorking = isTrashing || isDroppingTable;
 
-  // Hide suppressed rows from the visible list. (The previous staged-commit
-  // "Recently deleted" pattern is gone — archive is a real soft delete, so
-  // restore lives in the standard /trash UI rather than a 30s grace timer.)
   const rows = useMemo(() => {
     if (showSuppressed || suppressedIds.size === 0) {
       return allRows;
@@ -134,25 +130,23 @@ export function TransformsTab() {
     );
   }, [rows]);
 
-  // Optionally drop the target table before archiving — matches the spike's
-  // "Also drop target tables" toggle in the bulk action bar.
-  const trashRow = useCallback(
-    async (row: IntrospectorRow) => {
-      if (alsoDropTable && row.target_table?.active) {
-        try {
-          await deleteTransformTarget(row.id).unwrap();
-        } catch {
-          // Best-effort — proceed with the archive even if the table drop fails.
-        }
-      }
-      await archiveTransform(row.id);
-    },
-    [alsoDropTable, archiveTransform, deleteTransformTarget],
-  );
+  // Cancel deselects everything and resets the modifier toggle so the next
+  // selection starts clean.
+  const clearSelection = useCallback(() => {
+    if (isWorking) {
+      return;
+    }
+    setSelectedIds(new Set());
+    setAlsoDropTable(false);
+  }, [isWorking]);
 
+  // Per-row trash: fire archive immediately for a single row. Doesn't
+  // honor the bulk "Also drop target tables" toggle — that's a bulk-only
+  // affordance and we don't want a single row-icon click silently doing
+  // more than the user expected.
   const trashOne = useCallback(
-    async (row: IntrospectorRow) => {
-      await trashRow(row);
+    (row: IntrospectorRow) => {
+      void archiveTransform(row.id);
       setSelectedIds((prev) => {
         if (!prev.has(row.id)) {
           return prev;
@@ -162,30 +156,40 @@ export function TransformsTab() {
         return next;
       });
     },
-    [trashRow],
+    [archiveTransform],
   );
 
+  // Optionally drop the target table before archiving — matches the spike's
+  // "Also drop target tables" toggle. Failures on the table drop don't block
+  // the archive call (best effort).
   const trashSelected = useCallback(async () => {
     const ids = Array.from(selectedIds);
     const byId = new Map(rows.map((r) => [r.id, r] as const));
     await Promise.all(
-      ids.map((id) => {
+      ids.map(async (id) => {
         const row = byId.get(id);
-        return row ? trashRow(row) : Promise.resolve();
+        if (!row) {
+          return;
+        }
+        if (alsoDropTable && row.target_table?.active) {
+          try {
+            await deleteTransformTarget(row.id).unwrap();
+          } catch {
+            // proceed with archive regardless
+          }
+        }
+        await archiveTransform(row.id);
       }),
     );
     setSelectedIds(new Set());
-  }, [selectedIds, rows, trashRow]);
-
-  const suppressOne = useCallback((row: IntrospectorRow) => {
-    setSuppressed((prev) => {
-      const next = prev.some((e) => e.id === row.id)
-        ? prev
-        : [...prev, { id: row.id, acknowledged_at: new Date().toISOString() }];
-      writeSuppressed(next);
-      return next;
-    });
-  }, []);
+    setAlsoDropTable(false);
+  }, [
+    selectedIds,
+    rows,
+    alsoDropTable,
+    archiveTransform,
+    deleteTransformTarget,
+  ]);
 
   const suppressSelected = useCallback(() => {
     const ids = Array.from(selectedIds);
@@ -234,15 +238,16 @@ export function TransformsTab() {
             </Chip>
           </Group>
         </Chip.Group>
+        {/* Search bar width matches Cards/Dashboards FilterRow exactly. */}
         <TextInput
           placeholder={t`Search name…`}
           value={search}
           onChange={(e) => onSearchChange(e.currentTarget.value)}
-          style={{ minWidth: 240, flex: "0 1 320px" }}
+          style={{ flex: 1, minWidth: 200 }}
         />
       </Group>
 
-      {/* ── Toolbar: page summary + bulk-action cluster ────────────────────── */}
+      {/* ── Toolbar: page summary + suppressed visibility toggle ──────────── */}
       <Group justify="space-between" wrap="wrap" gap="sm">
         <Text c="text-secondary" size="sm">
           {isFetching
@@ -251,60 +256,29 @@ export function TransformsTab() {
               ? t`${rows.length} of ${total} transforms (showing suppressed)`
               : t`${rows.length} of ${total} transforms${suppressedCount > 0 ? t` · ${suppressedCount} suppressed` : ""}`}
         </Text>
-        <Group gap="xs">
-          {suppressedCount > 0 && (
-            <>
+        {suppressedCount > 0 && (
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="subtle"
+              onClick={() => setShowSuppressed((v) => !v)}
+            >
+              {showSuppressed
+                ? t`Hide suppressed`
+                : t`Show suppressed (${suppressedCount})`}
+            </Button>
+            {showSuppressed && (
               <Button
                 size="xs"
                 variant="subtle"
-                onClick={() => setShowSuppressed((v) => !v)}
+                color="error"
+                onClick={clearSuppressed}
               >
-                {showSuppressed
-                  ? t`Hide suppressed`
-                  : t`Show suppressed (${suppressedCount})`}
+                {t`Clear suppressed`}
               </Button>
-              {showSuppressed && (
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="error"
-                  onClick={clearSuppressed}
-                >
-                  {t`Clear suppressed`}
-                </Button>
-              )}
-            </>
-          )}
-          <Text size="sm" c="text-secondary">
-            {selectedCount > 0 ? t`${selectedCount} selected` : t`0 selected`}
-          </Text>
-          <Button
-            size="xs"
-            variant="default"
-            disabled={selectedCount === 0}
-            onClick={suppressSelected}
-          >
-            {t`Suppress selected`}
-          </Button>
-          <Button
-            size="xs"
-            variant="default"
-            onClick={() => setAlsoDropTable((v) => !v)}
-            color={alsoDropTable ? "error" : undefined}
-            aria-pressed={alsoDropTable}
-          >
-            {alsoDropTable ? t`✓ Drop target tables` : t`Drop target tables`}
-          </Button>
-          <Button
-            size="xs"
-            color="error"
-            disabled={selectedCount === 0 || isWorking}
-            loading={isWorking}
-            onClick={trashSelected}
-          >
-            {t`Move to Trash`}
-          </Button>
-        </Group>
+            )}
+          </Group>
+        )}
       </Group>
 
       <Box>
@@ -316,7 +290,6 @@ export function TransformsTab() {
           isAllSelected={rows.length > 0 && selectedIds.size === rows.length}
           isLoading={isFetching}
           onTrash={trashOne}
-          onSuppress={suppressOne}
         />
       </Box>
 
@@ -325,6 +298,26 @@ export function TransformsTab() {
         offset={offset}
         limit={PAGE_SIZE}
         onChange={setOffset}
+      />
+
+      {/*
+        Floating bulk-action bar — same component Cards/Dashboards use,
+        extended with the transforms-only `Suppress` button and
+        `Also drop target tables` toggle. The bar is `position: sticky;
+        bottom: 16px` so it floats at the bottom of the viewport once any
+        row is selected; opaque `bg-dark` background so it doesn't bleed
+        the table behind it.
+      */}
+      <BulkActionBar
+        count={selectedCount}
+        onClear={clearSelection}
+        onTrash={trashSelected}
+        isWorking={isWorking}
+        onSuppress={suppressSelected}
+        alsoDropTable={{
+          checked: alsoDropTable,
+          onToggle: setAlsoDropTable,
+        }}
       />
     </Stack>
   );
