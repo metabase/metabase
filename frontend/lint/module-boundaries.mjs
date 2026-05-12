@@ -24,7 +24,7 @@ const elements = [
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
   }),
-  createElement({ type: "lib", name: "utils" }),
+  createElement({ type: "lib", name: "utils", enforceOutgoing: true }),
   createElement({ type: "lib", name: "analytics", enforceOutgoing: true }),
   createElement({ type: "lib", name: "css", enforceOutgoing: true }),
   createElement({

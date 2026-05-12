@@ -4,6 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  getGroupNameLocalized,
+  getGroupSortOrder,
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
+import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
@@ -20,12 +26,6 @@ import type {
   ExpandedCollection,
   State,
 } from "metabase/redux/store";
-import {
-  getGroupNameLocalized,
-  getGroupSortOrder,
-  getSpecialGroupType,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
