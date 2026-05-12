@@ -91,7 +91,7 @@
   "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
   [wsd workspace-id]
   (merge {:database_details {}
-          :output_schema    ""}
+          :output_namespace ""}
          wsd
          {:workspace_id workspace-id}))
 
@@ -111,14 +111,14 @@
 
 (defn- reject-active-modification!
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
-  is missing from the incoming `:databases` list or would have its `:input` changed.
+  is missing from the incoming `:databases` list or would have its `:input_schemas` changed.
   Only `:unprovisioned` rows are freely mutable; `:provisioning`, `:provisioned`,
   and `:deprovisioning` rows must be preserved verbatim."
   [existing-active incoming-by-db-id]
-  (doseq [{:keys [database_id input]} existing-active]
+  (doseq [{:keys [database_id input_schemas]} existing-active]
     (let [incoming (get incoming-by-db-id database_id)]
       (when (or (nil? incoming)
-                (not= (vec input) (vec (:input incoming))))
+                (not= (vec input_schemas) (vec (:input_schemas incoming))))
         (throw (ex-info "Cannot modify a workspace_database that is not :unprovisioned"
                         {:status-code 409
                          :database_id database_id}))))))

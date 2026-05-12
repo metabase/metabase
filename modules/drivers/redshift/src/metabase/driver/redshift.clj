@@ -784,10 +784,10 @@
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [_driver database workspace input]
+  [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         qu             (sql.u/quote-name :postgres :field username)
-        source-schemas (into #{} (keep :schema) input)
+        source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; Pre-flight check (read-only) can run in its own transaction.
     (jdbc/with-db-transaction [t-conn spec]

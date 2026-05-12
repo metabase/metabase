@@ -27,9 +27,6 @@ config:
     name: New workspace
     databases:
       test-data (snowflake):
-        input:
-        - db: ANALYTICS
-          schema: PUBLIC
-        output:
-          db: WS_DB
-          schema: WS_ALICE
+        input_schemas:
+        - PUBLIC
+        output_namespace: WS_ALICE

@@ -16,6 +16,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.sql-tools.core :as sql-tools]
@@ -271,70 +272,89 @@
 
 (defn- fixture-wsd
   "Pull the single workspace-database entry from a fixture: returns
-   `[<db-name-string>, <wsd-config-map>]` where wsd-config has `:input`
-   and `:output` namespaces."
+   `[<db-name-string>, <wsd-config-map>]` where wsd-config has `:input_schemas`
+   and `:output_namespace`."
   [section]
   (let [[db-name-kw wsd] (-> section :databases first)]
     [(name db-name-kw) wsd]))
 
 (def ^:private fixture-rewriter-test-cases
-  "Per-driver chain test cases. Everything that's *config-derived* (the input
-   filter, the output destination, the database name) is pulled from the
-   fixture YAML at test time - so this map only carries the things that are
-   NOT in the fixture: the driver keyword to dispatch on, the SQL query the
-   QP would emit for a representative source table, and the source `:table`
-   slot value (which is per-test-author, not per-fixture)."
+  "Per-driver chain test cases. The fixture YAML carries `:input_schemas` and
+   `:output_namespace`; the catalog (Snowflake/SQL Server/BigQuery) is pulled
+   from `Database.details`. Each test case adds the engine + details needed to
+   drive the loader's expansion path, plus the SQL the QP would emit for a
+   representative source table."
   [{:fixture-driver :postgres
     :driver         :postgres
+    :engine         :postgres
+    :details        {}
     :source-table   "orders"
     :canonical-sql  "SELECT \"public\".\"orders\".\"id\" FROM \"public\".\"orders\""}
 
    {:fixture-driver :mysql
     :driver         :mysql
+    :engine         :mysql
+    :details        {:db "prod_db"}
     :source-table   "orders"
     :canonical-sql  "SELECT `orders`.`id` FROM `orders`"}
 
    {:fixture-driver :clickhouse
     :driver         :clickhouse
+    :engine         :clickhouse
+    :details        {}
     :source-table   "events"
     :canonical-sql  "SELECT `prod_events`.`events`.`tag` FROM `prod_events`.`events`"}
 
    {:fixture-driver :snowflake
     :driver         :snowflake
+    :engine         :snowflake
+    :details        {:db "ANALYTICS"}
     :source-table   "ORDERS"
     :canonical-sql  "SELECT \"ANALYTICS\".\"PUBLIC\".\"ORDERS\".\"ID\" FROM \"ANALYTICS\".\"PUBLIC\".\"ORDERS\""}
 
    {:fixture-driver :sqlserver
     :driver         :sqlserver
+    :engine         :sqlserver
+    :details        {:db "AnalyticsDB"}
     :source-table   "orders"
     :canonical-sql  "SELECT [AnalyticsDB].[dbo].[orders].[id] FROM [AnalyticsDB].[dbo].[orders]"}
 
    {:fixture-driver :bigquery
     :driver         :bigquery-cloud-sdk
+    :engine         :bigquery-cloud-sdk
+    :details        {:project-id "metabase-prod"}
     :source-table   "orders"
     :canonical-sql  "SELECT `metabase-prod.core.orders`.`id` FROM `metabase-prod.core.orders`"}])
 
 (deftest per-driver-fixture-rewriter-chain-test
   (testing "Each per-driver fixture YAML loads, sets up a TableRemapping, and the rewriter swaps slots correctly"
-    (doseq [{:keys [fixture-driver driver source-table canonical-sql]} fixture-rewriter-test-cases
+    (doseq [{:keys [fixture-driver driver engine details source-table canonical-sql]} fixture-rewriter-test-cases
             :when (workspaces.tu/driver-loadable? driver)]
       (testing (str fixture-driver " fixture -> rewriter chain")
         (let [section          (load-fixture-section fixture-driver)
               [db-name wsd]    (fixture-wsd section)
-              fixture-input    (first (:input wsd))
-              fixture-output   (:output wsd)
+              first-input      (first (:input_schemas wsd))
+              ;; Build expected `:output` map the same way the loader does — so the
+              ;; assertions below test loader fidelity end-to-end.
+              fake-db          {:engine engine :details details}
+              expected-output  (cond-> {}
+                                 (some #{:schema} (driver/qualified-name-components driver))
+                                 (assoc :schema (:output_namespace wsd))
+                                 (and (some #{:db} (driver/qualified-name-components driver))
+                                      (some #{:schema} (driver/qualified-name-components driver)))
+                                 (assoc :db (:db (ws.table-remapping/engine-namespace-positions fake-db)))
+                                 (and (some #{:db} (driver/qualified-name-components driver))
+                                      (not (some #{:schema} (driver/qualified-name-components driver))))
+                                 (assoc :db (:output_namespace wsd)))
               ;; The from-spec handed to the rewriter must match what the driver
               ;; actually *emits* in SQL, which is governed by qualified-name-components.
-              ;; This usually matches the fixture's input filter, but not for the
-              ;; cardinality-upgrade case (MySQL): the fixture says "remap things
-              ;; coming from prod_db", but MySQL's emitted SQL is bare `orders` -
-              ;; no schema slot at all. So we zero out slots the driver doesn't emit.
               emitted-slots    (set (driver/qualified-name-components driver))
-              from-spec        {:db     (if (:db emitted-slots)     (or (:db fixture-input) "") "")
-                                :schema (if (:schema emitted-slots) (or (:schema fixture-input) "") "")
+              input-positions  (ws.table-remapping/engine-namespace-positions fake-db {:schema first-input})
+              from-spec        {:db     (if (:db emitted-slots)     (or (:db input-positions)     "") "")
+                                :schema (if (:schema emitted-slots) (or (:schema input-positions) "") "")
                                 :table  source-table}]
           (mt/with-empty-h2-app-db!
-            (mt/with-temp [:model/Database {db-id :id} {:name db-name}]
+            (mt/with-temp [:model/Database {db-id :id} {:name db-name :engine engine :details details}]
               (try
                 ;; 1. Load through the production loader. Populates the atom.
                 (advanced-config.file.workspace/apply-workspace-section! section)
@@ -345,32 +365,31 @@
                                                   driver canonical-sql
                                                   {(prune-no-level from-spec)
                                                    (prune-no-level to-spec)})]
-                  (testing "atom output equals fixture output (loader fidelity)"
-                    (is (= fixture-output ws-ns)
-                        "db-workspace-namespace must return what the fixture's :output declared"))
-                  (testing "rewritten SQL parses to the fixture's workspace :schema slot"
-                    (is (contains? tables {:schema (:schema fixture-output) :table source-table})
-                        (str "expected {:schema " (:schema fixture-output) ", :table " source-table
-                             "} in parsed tables; got: " tables
-                             "\n  rewritten SQL: " rewritten)))
-                  (testing "rewritten SQL no longer references the canonical schema"
-                    (when-let [from-schema (:schema fixture-input)]
-                      (is (not-any? #(= (:schema %) from-schema) tables)
-                          (str "expected canonical schema " (pr-str from-schema)
-                               " gone from parsed refs; got: " tables))))
-                  ;; 3-slot drivers (where fixture's output has :db): parser is lossy on :db,
-                  ;; so verify via the rewritten string. Both presence (workspace :db) and
-                  ;; absence (canonical :db, when it differs from workspace :db) are checked.
-                  (when-let [output-db (:db fixture-output)]
-                    (let [from-text  (str (re-find #"(?i)\bFROM\b.*$" rewritten))
-                          input-db   (:db fixture-input)
-                          db-changed (not= input-db output-db)]
-                      (testing "rewritten FROM clause contains workspace :db slot"
-                        (is (re-find (re-pattern (java.util.regex.Pattern/quote output-db)) from-text)
-                            (str "expected " (pr-str output-db) " in FROM; got: " from-text)))
-                      (when db-changed
-                        (testing "rewritten FROM clause does not retain canonical :db slot"
-                          (is (not (re-find (re-pattern (java.util.regex.Pattern/quote input-db)) from-text))
-                              (str "expected " (pr-str input-db) " gone from FROM; got: " from-text)))))))
+                  (testing "atom output matches the loader's expansion of fixture's output_namespace"
+                    (is (= expected-output ws-ns)
+                        "db-workspace-namespace must return the loader's expanded :output map"))
+                  ;; MySQL is special-cased: it has no schema layer, so Phase 1 (table
+                  ;; metadata mutation) adds the iso `:db` qualifier — Phase 2's SQLGlot
+                  ;; rewriter never sees a qualifier to swap. Skip the rewriter SQL
+                  ;; assertions for MySQL; the atom-output assertion above is what matters.
+                  (when (not= driver :mysql)
+                    (testing "rewritten SQL parses to the workspace :schema slot"
+                      (let [expected-schema (or (:schema expected-output) (:db expected-output))]
+                        (is (contains? tables {:schema expected-schema :table source-table})
+                            (str "expected {:schema " expected-schema ", :table " source-table
+                                 "} in parsed tables; got: " tables
+                                 "\n  rewritten SQL: " rewritten))))
+                    (testing "rewritten SQL no longer references the canonical schema"
+                      (when (:schema input-positions)
+                        (is (not-any? #(= (:schema %) (:schema input-positions)) tables)
+                            (str "expected canonical schema " (pr-str (:schema input-positions))
+                                 " gone from parsed refs; got: " tables))))
+                    ;; 3-slot drivers (where workspace output has :db): parser is lossy on :db,
+                    ;; so verify via the rewritten string.
+                    (when-let [output-db (:db expected-output)]
+                      (let [from-text (str (re-find #"(?i)\bFROM\b.*$" rewritten))]
+                        (testing "rewritten FROM clause contains workspace :db slot"
+                          (is (re-find (re-pattern (java.util.regex.Pattern/quote output-db)) from-text)
+                              (str "expected " (pr-str output-db) " in FROM; got: " from-text)))))))
                 (finally
                   (ws/clear-instance-workspace!))))))))))

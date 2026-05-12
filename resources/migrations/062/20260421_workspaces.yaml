@@ -193,9 +193,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: output_schema
+                  name: output_namespace
                   type: varchar(254)
-                  remarks: Schema where workspace output tables are written
+                  remarks: Driver-opaque namespace string where workspace output tables are written (schema on Postgres-shaped drivers, database name on MySQL)
                   constraints:
                     nullable: false
               - column:

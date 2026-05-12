@@ -23,9 +23,6 @@ config:
     name: New workspace
     databases:
       test-data (bigquery):
-        input:
-        - db: metabase-prod
-          schema: core
-        output:
-          db: metabase-prod
-          schema: ws_alice
+        input_schemas:
+        - core
+        output_namespace: ws_alice

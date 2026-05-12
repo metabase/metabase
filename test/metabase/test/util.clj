@@ -403,8 +403,8 @@
    (fn [_] (default-timestamped
             {:database_id      (data/id)
              :database_details {}
-             :input            []
-             :output_schema    ""
+             :input_schemas    []
+             :output_namespace ""
              :status           :unprovisioned}))})
 
 ;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.

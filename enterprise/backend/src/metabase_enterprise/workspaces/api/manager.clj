@@ -23,18 +23,6 @@
 (def ^:private WorkspaceStatus
   [:enum "unprovisioned" "provisioning" "provisioned" "deprovisioning"])
 
-(def ^:private TableNamespaceParam
-  "Wire shape for a workspace input namespace: `{:db ?, :schema ?}`. At least one
-   of the keys must be a non-blank string. 3-slot drivers (Snowflake, SQL Server,
-   BigQuery) require `:db`. 2-slot drivers (Postgres, Redshift, ClickHouse)
-   typically use `:schema` only. MySQL uses `:db` only."
-  [:and
-   [:map {:closed true}
-    [:db     {:optional true} [:maybe ms/NonBlankString]]
-    [:schema {:optional true} [:maybe ms/NonBlankString]]]
-   [:fn {:error/message "namespace must populate at least one of :db or :schema"}
-    (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
-
 (def ^:private AddDatabaseParams
   [:map {:closed true}
    [:database_id   ms/PositiveInt]
@@ -54,9 +42,10 @@
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
-   [:database_id   ms/PositiveInt]
-   [:input_schemas [:sequential ms/NonBlankString]]
-   [:status        WorkspaceStatus]])
+   [:database_id      ms/PositiveInt]
+   [:input_schemas    [:sequential ms/NonBlankString]]
+   [:output_namespace :string]
+   [:status           WorkspaceStatus]])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -84,22 +73,9 @@
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
-(defn- input->input-schemas
-  "Convert internal `:input` (a sequence of `{:db ?, :schema ?}` maps) to the wire-format
-   `:input_schemas` (a sequence of schema-name strings). Drops entries without a `:schema`."
-  [input]
-  (vec (keep :schema input)))
-
-(defn- input-schemas->input
-  "Convert the wire-format `:input_schemas` (a sequence of schema-name strings) to internal
-   `:input` shape (a sequence of `{:schema schema}` maps)."
-  [input-schemas]
-  (mapv (fn [schema] {:schema schema}) input-schemas))
-
 (defn- present-workspace-database [wsd]
-  {:database_id   (:database_id wsd)
-   :input_schemas (input->input-schemas (:input wsd))
-   :status        (name (:status wsd))})
+  (-> (select-keys wsd [:database_id :input_schemas :output_namespace :status])
+      (update :status name)))
 
 (defn- present-creator [creator]
   (when creator
@@ -165,9 +141,7 @@
    params :- AddDatabaseParams]
   (api/create-check :model/WorkspaceDatabase params)
   (present-workspace
-   (ws/add-database! id
-                     (:database_id params)
-                     (input-schemas->input (:input_schemas params)))))
+   (ws/add-database! id (:database_id params) (:input_schemas params))))
 
 (api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
   "Update a database's input namespaces. Deprovisions the old config and reprovisions
@@ -179,7 +153,7 @@
                                                  :workspace_id id
                                                  :database_id db-id)))
   (present-workspace
-   (ws/update-database! id db-id (input-schemas->input (:input_schemas params)))))
+   (ws/update-database! id db-id (:input_schemas params))))
 
 (api.macros/defendpoint :delete "/:id/database/:db-id"
   :- WorkspaceResponse
@@ -212,14 +186,12 @@
 
 (defn- workspace-metadata-filters
   "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema.
-   Each per-row vector is built from the new `::table-namespace` shape — pull `:schema`
-   from each input map; drivers without a schema slot (MySQL) contribute an empty list."
+   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
   [{:keys [databases]}]
   {:database-ids (mapv :database_id databases)
    :schema-ids   (into {}
-                       (map (fn [{:keys [database_id input]}]
-                              [database_id (vec (keep :schema input))]))
+                       (map (fn [{:keys [database_id input_schemas]}]
+                              [database_id (vec input_schemas)]))
                        databases)})
 
 (api.macros/defendpoint :get "/:id/metadata/export"

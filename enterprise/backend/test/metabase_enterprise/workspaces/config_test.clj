@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.config :as config]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -22,8 +23,8 @@
                    {:workspace_id     ws-id
                     :database_id      db-id
                     :database_details {:user "mb_isolation_github" :password "secret"}
-                    :output_schema    "mb_isolation_github"
-                    :input            [{:schema "raw_github"}]
+                    :output_namespace "mb_isolation_github"
+                    :input_schemas    ["raw_github"]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (testing "outer shape matches config.yml (version + config block)"
@@ -43,33 +44,34 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "workspace entry uses driver-agnostic ::table-namespace shape"
+        (testing "workspace entry uses flat input_schemas + driver-aware :output"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
-                  {:input  [{:schema "raw_github"}]
-                   :output {:schema "mb_isolation_github"}}}
+                  {:input_schemas ["raw_github"]
+                   :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
-  (testing "Snowflake (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
-    (mt/with-temp [:model/Database {db-id :id}
-                   {:name    "Snowflake DW"
-                    :engine  :snowflake
-                    :details {:db "ANALYTICS" :user "u" :password "p"}}
-                   :model/Workspace {ws-id :id} {:name       "snow"
-                                                 :creator_id (mt/user->id :crowberto)}
-                   :model/WorkspaceDatabase _
-                   {:workspace_id     ws-id
-                    :database_id      db-id
-                    :database_details {}
-                    :output_schema    "WS_ALICE"
-                    :input            [{:db "ANALYTICS" :schema "PUBLIC"}]
-                    :status           :provisioned}]
-      (let [cfg (config/build-workspace-config ws-id)]
-        (is (= {"Snowflake DW"
-                {:input  [{:db "ANALYTICS" :schema "PUBLIC"}]
-                 :output {:db "ANALYTICS" :schema "WS_ALICE"}}}
-               (-> cfg :config :workspace :databases)))))))
+  (when (workspaces.tu/driver-loadable? :snowflake)
+    (testing "Snowflake (3-slot, qualified-name-components=[:db :schema]) gets the :db slot populated from connection details"
+      (mt/with-temp [:model/Database {db-id :id}
+                     {:name    "Snowflake DW"
+                      :engine  :snowflake
+                      :details {:db "ANALYTICS" :user "u" :password "p"}}
+                     :model/Workspace {ws-id :id} {:name       "snow"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details {}
+                      :output_namespace "WS_ALICE"
+                      :input_schemas    ["PUBLIC"]
+                      :status           :provisioned}]
+        (let [cfg (config/build-workspace-config ws-id)]
+          (is (= {"Snowflake DW"
+                  {:input_schemas ["PUBLIC"]
+                   :output        {:db "ANALYTICS" :schema "WS_ALICE"}}}
+                 (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
   (testing "Multiple input schemas are comma-joined in schema-filters-patterns"
@@ -81,12 +83,34 @@
                    {:workspace_id     ws-id
                     :database_id      db-id
                     :database_details {:user "u" :password "p"}
-                    :output_schema    "out"
-                    :input            [{:schema "schema_a"} {:schema "schema_b"} {:schema "schema_c"}]
+                    :output_namespace "out"
+                    :input_schemas    ["schema_a" "schema_b" "schema_c"]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
+
+(deftest build-workspace-config-bigquery-emits-dataset-filters-test
+  (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
+    (testing "BigQuery emits :dataset-filters-* (not :schema-filters-*); BQ's list-datasets reads dataset-filters"
+      (mt/with-temp [:model/Database {db-id :id}
+                     {:name "BQ" :engine :bigquery-cloud-sdk
+                      :details {:project-id "metabase-prod"}}
+                     :model/Workspace {ws-id :id} {:name       "bq-ws"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details {}
+                      :output_namespace "ws_alice"
+                      :input_schemas    ["core" "warehouse"]
+                      :status           :provisioned}]
+        (let [details (-> (config/build-workspace-config ws-id) :config :databases first :details)]
+          (is (= "inclusion" (:dataset-filters-type details)))
+          (is (= "core,warehouse" (:dataset-filters-patterns details)))
+          (is (nil? (:schema-filters-type details))
+              "BigQuery must NOT emit :schema-filters-* — those wire into describe-database which BQ doesn't use")
+          (is (nil? (:schema-filters-patterns details))))))))
 
 (deftest build-workspace-config-rejects-non-provisioned-test
   (testing "Any non-:provisioned WorkspaceDatabase causes a 409"
@@ -94,7 +118,7 @@
                                                  :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _
                    {:workspace_id ws-id :database_id (mt/id)
-                    :database_details {} :output_schema "" :input [{:schema "public"}]
+                    :database_details {} :output_namespace "" :input_schemas ["public"]
                     :status :unprovisioned}]
       (is (thrown-with-msg?
            Exception

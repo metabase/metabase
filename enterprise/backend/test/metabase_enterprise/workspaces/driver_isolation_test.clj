@@ -308,7 +308,7 @@
                 out-schema      (:schema ws-with-details)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-name}])
+                                                 [in-schema])
             (testing "workspace user can SELECT from a granted input table"
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")]))))
@@ -369,7 +369,7 @@
               ;; still cannot INSERT. Catches both noisy re-grant failures and silent
               ;; privilege escalation in re-grant code paths.
               (driver/grant-workspace-read-access! driver database ws-with-details
-                                                   [{:schema in-schema :name src-name}])
+                                                   [in-schema])
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")])))
               (expect-sql-denied! user-spec
@@ -488,9 +488,9 @@
             ;; Each workspace is granted access only to its own input namespace —
             ;; A's grant must not let A read src-b in B's namespace, and vice-versa.
             (driver/grant-workspace-read-access! driver database ws-a-full
-                                                 [{:schema in-schema-a :name src-a-name}])
+                                                 [in-schema-a])
             (driver/grant-workspace-read-access! driver database ws-b-full
-                                                 [{:schema in-schema-b :name src-b-name}])
+                                                 [in-schema-b])
             ;; B populates its own output schema with a table A should never reach.
             (jdbc/execute! user-b-spec [(str "CREATE TABLE " b-secret-fq
                                              " (id INT, v VARCHAR(8))" (create-table-tail driver))])
@@ -603,7 +603,7 @@
                 user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-name}])
+                                                 [in-schema])
             (testing "init succeeded against the pre-existing namespace"
               (is (some? init-result)))
             (testing "workspace user has full read+write access to its output namespace post-collision"
@@ -671,7 +671,7 @@
                 user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-a-name}])
+                                                 [in-schema])
             (testing "after first grant, A is readable and B is not"
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src-a)])))
@@ -687,7 +687,7 @@
             ;; Second grant: only B. The additive contract means A's grant must
             ;; still be in effect afterward.
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-b-name}])
+                                                 [in-schema])
             (testing "after second grant, both A and B are readable (A's grant accumulated)"
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src-a)])))
@@ -793,7 +793,7 @@
                 _               (reset! ws-state ws-with-details)
                 user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-name}])
+                                                 [in-schema])
             (testing "workspace user denied SELECT against a fully-qualified table in another database"
               (expect-sql-denied! user-spec
                                   (str "SELECT id, secret FROM " (second-db-qualified driver other-db secret-tbl))
@@ -896,7 +896,7 @@
                 ws-with-details (merge workspace init-result)]
             (reset! ws-state ws-with-details)
             (driver/grant-workspace-read-access! driver database ws-with-details
-                                                 [{:schema in-schema :name src-name}])
+                                                 [in-schema])
             (testing "no leakage to default principal after init+grant"
               ;; Search both the workspace-namespace name and the workspace-user
               ;; name fragment, since per-driver grants can land on either.

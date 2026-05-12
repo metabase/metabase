@@ -421,20 +421,19 @@
      :database_details read-user}))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace input]
+  [_driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
         qu             (sql.u/quote-name :clickhouse :field read-user-name)]
     (when-not read-user-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; ClickHouse `qualified-name-components` is `[:schema]` — each input map
-    ;; carries the database-as-schema in `:schema`. Grant `*` covers all
-    ;; tables in the database; ClickHouse re-resolves `*` so future tables
-    ;; get coverage too.
-    (let [sqls (for [{:keys [schema] :as ns} input
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
+    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
+    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
+    (let [sqls (for [schema schemas
                      :let [_ (when (str/blank? schema)
-                               (throw (ex-info (tru "ClickHouse workspace input namespace is missing :schema")
-                                               {:database-id (:id database) :namespace ns :step :grant})))]]
+                               (throw (ex-info (tru "ClickHouse workspace input schema is blank")
+                                               {:database-id (:id database) :step :grant})))]]
                  (format "GRANT SELECT ON %s.* TO %s"
                          (sql.u/quote-name :clickhouse :schema schema)
                          qu))]

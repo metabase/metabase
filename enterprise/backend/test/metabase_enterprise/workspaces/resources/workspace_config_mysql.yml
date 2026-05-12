@@ -26,7 +26,6 @@ config:
     name: New workspace
     databases:
       test-data (mysql):
-        input:
-        - schema: prod_db
-        output:
-          schema: ws_alice
+        input_schemas:
+        - prod_db
+        output_namespace: ws_alice

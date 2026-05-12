@@ -1475,21 +1475,19 @@
         (.close iam-client)))))
 
 (defmethod driver/grant-workspace-read-access! :bigquery-cloud-sdk
-  [_driver database workspace input]
-  ;; Workspace input shape is `[{:db ?, :schema ?}]` — per-namespace, not per-table.
-  ;; On BigQuery, `:schema` carries the dataset name and `:db` carries the project id
-  ;; (when it differs from the connection-bound project). Grant dataViewer at the
-  ;; dataset level so future tables in the dataset also gain access — matches the
-  ;; schema-wide semantics of the SQL drivers.
-  (let [ws-sa-email     (-> workspace :database_details :impersonate-service-account)
-        details         (driver.conn/effective-details database)
-        client          (ws-database-details->client details)
-        default-project (get-project-id details)]
-    (log/debugf "Granting dataset-level read access to %d namespaces for %s"
-                (count input) ws-sa-email)
-    (doseq [{:keys [db schema]} input
-            :let [project-id (or db default-project)
-                  dataset-id (DatasetId/of project-id schema)]]
+  [_driver database workspace schemas]
+  ;; `schemas` is a vector of BigQuery dataset names. The project comes from the
+  ;; connection's effective details — a Metabase `Database` row binds to one
+  ;; project. Grant dataViewer at the dataset level so future tables also gain
+  ;; access — matches the schema-wide semantics of the SQL drivers.
+  (let [ws-sa-email (-> workspace :database_details :impersonate-service-account)
+        details     (driver.conn/effective-details database)
+        client      (ws-database-details->client details)
+        project-id  (get-project-id details)]
+    (log/debugf "Granting dataset-level read access to %d datasets for %s"
+                (count schemas) ws-sa-email)
+    (doseq [dataset schemas
+            :let [dataset-id (DatasetId/of project-id dataset)]]
       (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataViewer"))))
 
 (def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
@@ -1510,10 +1508,10 @@
               workspace-with-details (merge test-workspace init-result)]
           (when test-table
             (try
-              ;; `grant-workspace-read-access!` takes a vector of `::table-namespace`
-              ;; maps `[{:db ?, :schema ?}]`. Pass the test-table's dataset.
+              ;; `grant-workspace-read-access!` takes a vector of schema-name strings.
+              ;; Pass the test-table's dataset.
               (driver/grant-workspace-read-access! driver database workspace-with-details
-                                                   [{:schema (:schema test-table)}])
+                                                   [(:schema test-table)])
               (catch Exception e
                 (throw (ex-info (tru "Failed to grant read access to dataset {0}: {1}"
                                      (:schema test-table) (ex-message e))

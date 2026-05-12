@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -10,26 +11,30 @@
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 (defn- schema-filter-entries
-  "Build `:schema-filters-*` keys for the workspace's input scope, or `{}`
-   for engines that don't have schemas at all (MySQL, ClickHouse-as-1-DB).
+  "Build sync-filter keys for the workspace's input scope. Per-engine:
 
-   On schema-having drivers (Postgres, Redshift, SQL Server, Snowflake), the
-   filter is what scopes sync to the workspace's input schemas. On no-schema
-   drivers, JDBC reports `TABLE_SCHEM` as null for every row — and
-   `metabase.driver.sync/schema-patterns->filter-fn*` documents that
-   inclusion patterns NEVER match a `nil` schema. Emitting an inclusion
-   filter on those drivers makes sync silently produce zero Tables.
-
-   Scoping on no-schema drivers is already enforced by the connection's
-   bound database (`:details.db`), which itself maps 1-to-1 with the
-   workspace's input. Nothing more to filter."
+   - schema-having JDBC drivers (Postgres, Redshift, SQL Server, Snowflake,
+     ClickHouse) emit `:schema-filters-*` — `metabase.driver.sync` reads these
+     to scope describe-database to the named schemas.
+   - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
+     instead (BQ doesn't go through `metabase.driver.sync`).
+   - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null
+     and `schema-patterns->filter-fn*` documents inclusion patterns NEVER
+     match a `nil` schema. Scoping on those is enforced by the connection's
+     bound database (`:details.db`)."
   [{:keys [engine] :as db} wsd]
-  (if (driver/database-supports? engine :schemas db)
-    {:schema-filters-type     "inclusion"
-     :schema-filters-patterns (->> (:input wsd)
-                                   (keep :schema)
-                                   (str/join ","))}
-    {}))
+  (let [patterns (str/join "," (:input_schemas wsd))]
+    (cond
+      (= engine :bigquery-cloud-sdk)
+      {:dataset-filters-type     "inclusion"
+       :dataset-filters-patterns patterns}
+
+      (driver/database-supports? engine :schemas db)
+      {:schema-filters-type     "inclusion"
+       :schema-filters-patterns patterns}
+
+      :else
+      {})))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -37,18 +42,6 @@
    :details (merge (:details db)
                    (:database_details wsd)
                    (schema-filter-entries db wsd))})
-
-(defn- db-position-value
-  "Connection-side value for the `:db` AST slot of `database`, or nil for engines
-   whose [[metabase.driver/qualified-name-components]] does not include `:db`
-   (Postgres, ClickHouse, Redshift, H2). Mirrors the per-engine logic in
-   [[metabase-enterprise.workspaces.table-remapping/db-position-value]] until the
-   planned driver multimethod subsumes both."
-  [database]
-  (case (:engine database)
-    (:mysql :snowflake :sqlserver) (:db (:details database))
-    :bigquery-cloud-sdk            (:project-id (:details database))
-    nil))
 
 (defn- table-namespace
   "Build a wire `::table-namespace` map (`{:db ?, :schema ?}`) for `database`
@@ -73,7 +66,7 @@
    rows only."
   [database ns-name]
   (let [components   (set (driver/qualified-name-components (:engine database)))
-        db-slot      (when (:db components) (db-position-value database))
+        db-slot      (when (:db components) (ws.table-remapping/db-position-value database))
         ;; If the driver has a schema slot, ns-name lives there. If it doesn't
         ;; but does have a db slot, ns-name IS the db name (= what JDBC
         ;; reports as TABLE_CAT). MySQL is the latter case.
@@ -84,18 +77,9 @@
       (and ns-in-db     (not (str/blank? ns-name)))   (assoc :db ns-name)
       (and ns-in-schema (not (str/blank? db-slot)))   (assoc :db db-slot))))
 
-(defn- prune-blank-slots
-  "Drop empty-string `:db` / `:schema` keys from a stored namespace map. Storage
-   reserves `\"\"` as a sentinel; the wire format reserves `\"\"` for storage
-   only and uses missing keys to indicate an absent slot."
-  [ns]
-  (cond-> ns
-    (str/blank? (:db ns))     (dissoc :db)
-    (str/blank? (:schema ns)) (dissoc :schema)))
-
 (defn- workspace-database-entry [wsd db]
-  [(:name db) {:input  (mapv prune-blank-slots (:input wsd))
-               :output (table-namespace db (:output_schema wsd))}])
+  [(:name db) {:input_schemas (vec (:input_schemas wsd))
+               :output        (table-namespace db (:output_namespace wsd))}])
 
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
@@ -103,17 +87,17 @@
     {:version 1
      :config  {:databases [...]
                :workspace {:name      <ws-name>
-                           :databases {<db-name> {:input  [{:db ?, :schema ?} ...]
-                                                  :output {:db ?, :schema ?}}}}}}
+                           :databases {<db-name> {:input_schemas [<schema-name> ...]
+                                                  :output        {:db ?, :schema ?}}}}}}
 
   Each database entry merges the underlying `metabase_database.details` with the
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
-  derived from `:input`. Per-database workspace entries carry
-  driver-agnostic `::table-namespace` maps (the AST level above `:table`); the
-  `:db` slot is populated only for 3-part engines (Snowflake, SQL Server,
-  BigQuery), the `:schema` slot is always populated when the storage row has it.
-  Returns nil when the workspace does not exist. Throws a 409 `ex-info` if any
-  of the workspace's databases is not `:provisioned`."
+  derived from `:input_schemas`. Per-database workspace entries carry plain
+  schema-name strings for `:input_schemas` (the 3-slot driver catalog is read
+  from `Database.details` at use time, not duplicated on each row), and a
+  driver-aware `::table-namespace` map for `:output`. Returns nil when the
+  workspace does not exist. Throws a 409 `ex-info` if any of the workspace's
+  databases is not `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
