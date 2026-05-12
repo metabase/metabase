@@ -198,7 +198,7 @@ describe("ChartSettings", () => {
         ],
       });
 
-      // Data is first in SECTION_PRIORITY, so its localized label ("Datos") is the active tab
+      // Data is first in the priority order, so its localized label ("Datos") is the active tab
       expect(screen.getByLabelText("Datos")).toBeChecked();
       expect(screen.getByLabelText("Ejes")).not.toBeChecked();
       expect(screen.getByLabelText("Formato")).not.toBeChecked();

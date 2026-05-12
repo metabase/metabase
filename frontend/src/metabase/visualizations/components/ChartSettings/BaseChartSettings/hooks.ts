@@ -5,76 +5,35 @@ import type { Widget } from "metabase/visualizations/types";
 
 import type { BaseChartSettingsProps } from "./types";
 
-// Stable IDs for the sections we render in a fixed order. Widgets still
-// declare `section` as a (localized) label string, so for sections actually
-// used in production we map the label back to its ID when matching. This
-// keeps the order working in any locale.
-const SectionId = {
-  Data: "data",
-  Columns: "columns",
-  Display: "display",
-  Axes: "axes",
-  Ranges: "ranges",
-  Formatting: "formatting",
-} as const;
-type SectionId = (typeof SectionId)[keyof typeof SectionId];
-
-const SECTION_PRIORITY: SectionId[] = [
-  SectionId.Data,
-  SectionId.Columns,
-  SectionId.Display,
-  SectionId.Axes,
-  SectionId.Ranges,
-  SectionId.Formatting,
+// Section labels in priority order. Evaluated at call time so the order works
+// in any locale — widgets store their `section` as a localized t`` string,
+// which we compare against this same set of t`` calls.
+const getSectionPriority = (): string[] => [
+  t`Data`,
+  t`Columns`,
+  t`Display`,
+  t`Axes`,
+  t`Ranges`,
+  t`Formatting`,
 ];
 
-// localized labels for each section ID, evaluated at call time so the
-// priority list works in any locale
-const getSectionLabel = (id: SectionId): string => {
-  switch (id) {
-    case SectionId.Data:
-      return t`Data`;
-    case SectionId.Columns:
-      return t`Columns`;
-    case SectionId.Display:
-      return t`Display`;
-    case SectionId.Axes:
-      return t`Axes`;
-    case SectionId.Ranges:
-      return t`Ranges`;
-    case SectionId.Formatting:
-      return t`Formatting`;
-  }
-};
-
 const orderSectionNames = (names: string[]): string[] => {
-  // precompute lowercase labels once so the inner loop is just string compares
-  const labelById = new Map<SectionId, string>();
-  for (const id of SECTION_PRIORITY) {
-    labelById.set(id, getSectionLabel(id).toLowerCase());
-  }
-  const matchesSectionId = (name: string, id: SectionId): boolean => {
-    const lower = name.toLowerCase();
-    return lower === id || lower === labelById.get(id);
-  };
-
-  const ordered: string[] = [];
-  const remaining = new Set(names);
-  // emit known sections in priority order
-  for (const id of SECTION_PRIORITY) {
-    const match = names.find((name) => matchesSectionId(name, id));
-    if (match) {
-      ordered.push(match);
-      remaining.delete(match);
-    }
-  }
-  // append unknown sections in their original (insertion) order
+  const priority = getSectionPriority();
+  const knownSections: (string | undefined)[] = new Array(priority.length);
+  const unrecognizedSections: string[] = [];
   for (const name of names) {
-    if (remaining.has(name)) {
-      ordered.push(name);
+    const idx = priority.indexOf(name);
+    if (idx >= 0) {
+      knownSections[idx] = name;
+    } else {
+      unrecognizedSections.push(name);
     }
   }
-  return ordered;
+  // known sections fill their priority slot; the rest keep insertion order
+  return [
+    ...knownSections.filter((n): n is string => n !== undefined),
+    ...unrecognizedSections,
+  ];
 };
 
 const groupWidgetsBySection = (widgets: Widget[]): Record<string, Widget[]> => {
@@ -120,7 +79,7 @@ export const useChartSettingsSections = ({
         sectionObj[orderedSectionNames[0]].unshift(...extras);
       }
 
-      // Data is first in SECTION_PRIORITY, so orderedSectionNames[0] is the natural default
+      // Data is first in the priority order, so orderedSectionNames[0] is the natural default
       const chartSettingCurrentSection =
         currentSection && sectionObj[currentSection]
           ? currentSection
