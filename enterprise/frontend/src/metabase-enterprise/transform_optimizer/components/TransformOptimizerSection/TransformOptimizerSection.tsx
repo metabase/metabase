@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Alert, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Box, Button, Divider, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 import {
@@ -14,6 +14,7 @@ import { useOptimizerStream } from "../../hooks/use-optimizer-stream";
 import type { Proposal } from "../../types";
 import { OptimizationDegreeDial } from "../OptimizationDegreeDial";
 import { ProposalCard } from "../ProposalCard";
+import { TargetIndexesSection } from "../TargetIndexesSection";
 
 type Props = {
   transform: Transform;
@@ -73,106 +74,114 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
     isDone && state.optimizationDegree === 100 && state.proposals.length === 0;
   const canTrigger = !isStreaming;
 
-  // Per the contract: when streaming finishes with score 100, collapse the
-  // panel to the "already optimized" affordance.
-  if (isCollapsed) {
-    return (
-      <Stack p="lg" gap="sm">
-        <Alert color="success" icon={<Icon name="check" />}>
-          <Text fw="bold">{t`Already optimized — nothing to suggest`}</Text>
-          {state.summary && (
-            <Text c="text-secondary" mt={4}>
-              {state.summary}
-            </Text>
-          )}
-        </Alert>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={handleStart}>
-            {t`Re-analyze`}
-          </Button>
-        </Group>
-      </Stack>
-    );
-  }
-
   return (
     <Stack p="lg" gap="md">
-      <Group justify="space-between" align="flex-start" gap="lg" wrap="nowrap">
-        <Stack gap={4} miw={0}>
-          <Text fw="bold">{t`Optimize this transform`}</Text>
-          <Text c="text-secondary">
-            {t`Analyze the current native SQL and propose equivalent transforms with better performance.`}
-          </Text>
-        </Stack>
-        <TriggerButton
-          status={state.status}
-          canTrigger={canTrigger}
-          onStart={handleStart}
-          onAbort={abort}
-        />
-      </Group>
-
-      {(isStreaming || isDone || isErrored) && (
-        <Stack gap="md">
-          {!isErrored && (
-            <OptimizationDegreeDial
-              status={isStreaming ? "streaming" : "done"}
-              score={state.optimizationDegree}
-            />
-          )}
-
-          {state.summary && !isErrored && (
-            <Box>
-              <Text c="text-secondary">{state.summary}</Text>
-            </Box>
-          )}
-
-          {isErrored && state.error && (
-            <Alert color="error" icon={<Icon name="warning" />}>
-              <Text fw="bold">{t`Couldn't analyze transform`}</Text>
+      {isCollapsed ? (
+        <>
+          <Alert color="success" icon={<Icon name="check" />}>
+            <Text fw="bold">{t`Already optimized — nothing to suggest`}</Text>
+            {state.summary && (
               <Text c="text-secondary" mt={4}>
-                {state.error.message}
+                {state.summary}
               </Text>
-              {state.error.retryable && (
-                <Group justify="flex-start" mt="sm">
-                  <Button size="xs" variant="default" onClick={handleStart}>
-                    {t`Retry`}
-                  </Button>
-                </Group>
-              )}
-            </Alert>
-          )}
+            )}
+          </Alert>
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={handleStart}>
+              {t`Re-analyze`}
+            </Button>
+          </Group>
+        </>
+      ) : (
+        <>
+          <Group
+            justify="space-between"
+            align="flex-start"
+            gap="lg"
+            wrap="nowrap"
+          >
+            <Stack gap={4} miw={0}>
+              <Text fw="bold">{t`Optimize this transform`}</Text>
+              <Text c="text-secondary">
+                {t`Analyze the current native SQL and propose equivalent transforms with better performance.`}
+              </Text>
+            </Stack>
+            <TriggerButton
+              status={state.status}
+              canTrigger={canTrigger}
+              onStart={handleStart}
+              onAbort={abort}
+            />
+          </Group>
 
-          <Stack gap="md">
-            {state.proposals.map((proposal) => (
-              <ProposalCard
-                key={proposal.id}
-                proposal={proposal}
-                actions={{
-                  accept: {
-                    kind: "accept",
-                    busy:
-                      busyProposalId === proposal.id && acceptResult.isLoading,
-                    disabled: readOnly,
-                    disabledReason: readOnly
-                      ? t`You don't have permission to create transforms here.`
-                      : undefined,
-                  },
-                  verify: {
-                    kind: "verify",
-                    busy:
-                      busyProposalId === proposal.id && verifyResult.isLoading,
-                  },
-                  dismiss: { kind: "dismiss" },
-                }}
-                onAccept={() => handleAccept(proposal)}
-                onVerify={() => handleVerify(proposal)}
-                onDismiss={() => dismissProposal(proposal.id)}
-              />
-            ))}
-          </Stack>
-        </Stack>
+          {(isStreaming || isDone || isErrored) && (
+            <Stack gap="md">
+              {!isErrored && (
+                <OptimizationDegreeDial
+                  status={isStreaming ? "streaming" : "done"}
+                  score={state.optimizationDegree}
+                />
+              )}
+
+              {state.summary && !isErrored && (
+                <Box>
+                  <Text c="text-secondary">{state.summary}</Text>
+                </Box>
+              )}
+
+              {isErrored && state.error && (
+                <Alert color="error" icon={<Icon name="warning" />}>
+                  <Text fw="bold">{t`Couldn't analyze transform`}</Text>
+                  <Text c="text-secondary" mt={4}>
+                    {state.error.message}
+                  </Text>
+                  {state.error.retryable && (
+                    <Group justify="flex-start" mt="sm">
+                      <Button size="xs" variant="default" onClick={handleStart}>
+                        {t`Retry`}
+                      </Button>
+                    </Group>
+                  )}
+                </Alert>
+              )}
+
+              <Stack gap="md">
+                {state.proposals.map((proposal) => (
+                  <ProposalCard
+                    key={proposal.id}
+                    proposal={proposal}
+                    actions={{
+                      accept: {
+                        kind: "accept",
+                        busy:
+                          busyProposalId === proposal.id &&
+                          acceptResult.isLoading,
+                        disabled: readOnly,
+                        disabledReason: readOnly
+                          ? t`You don't have permission to create transforms here.`
+                          : undefined,
+                      },
+                      verify: {
+                        kind: "verify",
+                        busy:
+                          busyProposalId === proposal.id &&
+                          verifyResult.isLoading,
+                      },
+                      dismiss: { kind: "dismiss" },
+                    }}
+                    onAccept={() => handleAccept(proposal)}
+                    onVerify={() => handleVerify(proposal)}
+                    onDismiss={() => dismissProposal(proposal.id)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          )}
+        </>
       )}
+
+      <Divider />
+      <TargetIndexesSection transform={transform} readOnly={readOnly} />
     </Stack>
   );
 }

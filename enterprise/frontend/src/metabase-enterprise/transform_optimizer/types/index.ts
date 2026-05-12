@@ -74,3 +74,38 @@ export type OptimizerStreamEvent =
   | { event: "proposal"; data: Proposal }
   | { event: "done"; data: { optimization_degree: number } }
   | { event: "error"; data: OptimizerStreamError };
+
+/**
+ * One row from `GET /api/ee/transform-optimizer/:id/indexes`. Matches the
+ * Postgres catalog shape returned by `index-introspection/fetch-indexes`,
+ * plus the `managed_by_optimizer` flag the BE adds by cross-referencing
+ * `transform.target.post_run_ddl`.
+ */
+export type TargetIndex = {
+  schema: string;
+  table: string;
+  name: string;
+  access_method: string;
+  is_unique: boolean;
+  is_primary: boolean;
+  is_valid: boolean;
+  partial_predicate: string | null;
+  index_expressions: string | null;
+  definition: string;
+  key_columns: string[];
+  include_columns: string[];
+  managed_by_optimizer: boolean;
+};
+
+export type DropIndexResult =
+  | { status: "dropped" }
+  | { status: "failed"; error_message: string; error?: string }
+  | {
+      status: "skipped";
+      reason:
+        | "index-not-on-target"
+        | "unsafe-name"
+        | "no-database"
+        | "not-postgres";
+      error?: string;
+    };
