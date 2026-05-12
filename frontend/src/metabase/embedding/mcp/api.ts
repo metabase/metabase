@@ -1,6 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
-import type { McpAppsFeedback } from "metabase-types/api";
+import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
@@ -13,11 +13,9 @@ type StoreDrillQueryResponse = {
   handle: string;
 };
 
-type SubmitMcpFeedbackRequest = {
+type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
   sessionToken: string;
-  mcpSessionId: string;
-  payload: McpAppsFeedback;
 };
 
 /**
@@ -58,7 +56,7 @@ export async function submitMcpFeedback({
   sessionToken,
   mcpSessionId,
   payload,
-}: SubmitMcpFeedbackRequest): Promise<void> {
+}: SubmitMcpFeedbackPayload): Promise<void> {
   const response = await fetch(`${instanceUrl}/api/embed-mcp/feedback`, {
     method: "POST",
     headers: {
