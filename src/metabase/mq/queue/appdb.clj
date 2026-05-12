@@ -100,21 +100,28 @@
         threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
         recovered   (atom 0)]
     (doseq [row (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold])]
-      (let [new-failures (inc (:failures row))]
-        (if (>= new-failures max-retries)
-          (do
-            (log/warnf "Processing batch %d on queue '%s' has reached max failures (%d), marking as failed"
-                       (:id row) (:queue_name row) max-retries)
-            (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (:queue_name row)})
-            (t2/update! :queue_message_batch (:id row)
-                        {:status "failed" :failures new-failures :status_heartbeat (mi/now) :owner nil}))
-          (do
-            (log/warnf "Recovering processing batch %d on queue '%s' (failures: %d -> %d)"
-                       (:id row) (:queue_name row) (:failures row) new-failures)
-            (analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})
-            (t2/update! :queue_message_batch (:id row)
-                        {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil})))
-        (swap! recovered inc)))
+      (let [new-failures (inc (:failures row))
+            ;; Guard on status + heartbeat so concurrent recovery attempts from another
+            ;; node only "win" once — the loser updates zero rows and skips its log/analytics.
+            where        {:id               (:id row)
+                          :status           "processing"
+                          :status_heartbeat [:< threshold]}
+            updated      (if (>= new-failures max-retries)
+                           (t2/update! :queue_message_batch where
+                                       {:status "failed" :failures new-failures :status_heartbeat (mi/now) :owner nil})
+                           (t2/update! :queue_message_batch where
+                                       {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil}))]
+        (when (pos? updated)
+          (if (>= new-failures max-retries)
+            (do
+              (log/warnf "Processing batch %d on queue '%s' has reached max failures (%d), marking as failed"
+                         (:id row) (:queue_name row) max-retries)
+              (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (:queue_name row)}))
+            (do
+              (log/warnf "Recovering processing batch %d on queue '%s' (failures: %d -> %d)"
+                         (:id row) (:queue_name row) (:failures row) new-failures)
+              (analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})))
+          (swap! recovered inc))))
     @recovered))
 
 (defn- cleanup-failed-batches! []

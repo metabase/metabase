@@ -84,6 +84,6 @@
                                                  :created-ms (System/currentTimeMillis)})
                                          (throw (ex-info "publish failed" {})))]
         (publish-buffer/flush-publish-buffer!)
-        (testing "Re-buffered messages are merged with new messages"
+        (testing "Re-buffered (older) messages are prepended so publish order is preserved across retries"
           (let [messages (get-in @publish-buffer/*publish-buffer* [:queue/test :messages])]
-            (is (= ["new1" "old1" "old2"] messages))))))))
+            (is (= ["old1" "old2" "new1"] messages))))))))

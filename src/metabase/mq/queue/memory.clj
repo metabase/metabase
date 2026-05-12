@@ -17,21 +17,25 @@
   (publish! [_this queue-name messages]
     (memory/publish! layer queue-name messages))
 
-  (batch-successful! [_this _queue-name batch-id]
-    (swap! (:batch-registry layer) dissoc batch-id))
+  (batch-successful! [_this queue-name batch-id]
+    (swap! (:batch-registry layer) dissoc batch-id)
+    (swap! (:channel-failures layer) dissoc queue-name))
 
   (batch-failed! [_this queue-name batch-id]
-    (let [registry (:batch-registry layer)]
+    (let [registry      (:batch-registry layer)
+          failures-atom (:channel-failures layer)]
       (when-let [{:keys [messages failures]} (get @registry batch-id)]
         (swap! registry dissoc batch-id)
         (let [new-failures (inc failures)]
           (if (>= new-failures (mq.settings/queue-max-retries))
             (do
+              (swap! failures-atom dissoc queue-name)
               (log/warnf "Batch %s has reached max failures (%d), dropping" batch-id (mq.settings/queue-max-retries))
               (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
             (do
+              (swap! failures-atom assoc queue-name new-failures)
               (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
-              ;; Re-queue messages for retry
+              ;; Re-queue messages for retry — register-batch! will pick up the bumped count
               (memory/publish! layer queue-name messages)))))))
 
   (start! [this]

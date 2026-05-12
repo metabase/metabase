@@ -21,10 +21,11 @@
   populated when the queue backend's `start!` runs so the poll loop knows which
   backend instance to hand to [[mq.impl/submit-delivery!]]."
   []
-  {:channels       (atom {})
-   :batch-registry (atom {})
-   :queue-backend  (atom nil)
-   :poll-state     (mq.polling/make-poll-state)})
+  {:channels         (atom {})
+   :batch-registry   (atom {})
+   :channel-failures (atom {})
+   :queue-backend    (atom nil)
+   :poll-state       (mq.polling/make-poll-state)})
 
 (defonce ^{:doc "Process-wide singleton layer shared by the production memory backends."}
   default-layer
@@ -65,9 +66,13 @@
           (vec batch))))))
 
 (defn- register-batch!
-  "Registers a batch in the layer's batch registry for retry tracking."
-  [{:keys [batch-registry]} batch-id messages]
-  (swap! batch-registry assoc batch-id {:messages messages :failures 0}))
+  "Registers a batch in the layer's batch registry for retry tracking.
+  Inherits the failure count tracked for the channel — `batch-failed!` re-publishes
+  the messages and bumps the counter, so a new batch on the same channel must see
+  the accumulated count rather than starting from zero."
+  [{:keys [batch-registry channel-failures]} batch-id channel-name messages]
+  (let [failures (get @channel-failures channel-name 0)]
+    (swap! batch-registry assoc batch-id {:messages messages :failures failures})))
 
 ;;; ------------------------------------------- Polling -------------------------------------------
 
@@ -81,7 +86,7 @@
     (when-let [messages (drain! layer channel-name)]
       (if (= "queue" (namespace channel-name))
         (let [batch-id (str (random-uuid))]
-          (register-batch! layer batch-id messages)
+          (register-batch! layer batch-id channel-name messages)
           (mq.impl/submit-delivery! channel-name messages batch-id @queue-backend
                                     {:batch-id batch-id}))
         (mq.impl/submit-delivery! channel-name messages nil nil nil)))))
@@ -93,8 +98,9 @@
 
 (defn shutdown!
   "Stops the polling thread and clears channel state."
-  [{:keys [poll-state channels batch-registry queue-backend]}]
+  [{:keys [poll-state channels batch-registry channel-failures queue-backend]}]
   (mq.polling/stop-polling! poll-state "Memory")
   (reset! channels {})
   (reset! batch-registry {})
+  (reset! channel-failures {})
   (reset! queue-backend nil))

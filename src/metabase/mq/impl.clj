@@ -133,15 +133,13 @@
    A generation counter prevents a completed future's cleanup from clobbering a
    re-submission that won the slot between the finally and the dissoc."
   [channel messages batch-id backend metadata]
-  (let [claimed? (atom false)
-        gen      (Object.)]
-    (swap! active-handlers
-           (fn [handlers]
-             (if (contains? handlers channel)
-               handlers
-               (do (reset! claimed? true)
-                   (assoc handlers channel {:future nil :metadata metadata :gen gen})))))
-    (if-not @claimed?
+  (let [gen     (Object.)
+        [old _] (swap-vals! active-handlers
+                            (fn [handlers]
+                              (if (contains? handlers channel)
+                                handlers
+                                (assoc handlers channel {:future nil :metadata metadata :gen gen}))))]
+    (if (contains? old channel)
       false
       (let [f (.submit ^ExecutorService @worker-pool
                        ^Callable (bound-fn []

@@ -79,7 +79,10 @@
                                       (fn [existing]
                                         (if existing
                                           (-> existing
-                                              (update :messages into messages)
+                                              ;; Prepend the failed batch so retried (older) messages
+                                              ;; are published before messages that arrived during the
+                                              ;; flush — preserves publish order across retries.
+                                              (update :messages #(into (vec messages) %))
                                               (update :retries (fnil max 0) retries))
                                           (assoc entry
                                                  :deadline-ms (+ (System/currentTimeMillis) *publish-buffer-ms*)

@@ -2,18 +2,16 @@
   "Initializes the MQ subsystem for test mode: memory backends, zero publish
   buffering, and registering all `def-listener!` implementations."
   (:require
-   [metabase.mq.listener :as listener]
-   [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.memory :as topic.memory]))
+   [metabase.mq.init :as mq.init]
+   [metabase.mq.publish-buffer :as publish-buffer]))
 
 (defn init! []
-  (alter-var-root #'q.backend/*backend* (constantly q.memory/backend))
-  (alter-var-root #'topic.backend/*backend* (constantly topic.memory/backend))
   (alter-var-root #'publish-buffer/*publish-buffer-ms* (constantly 0))
   ;; Load driver.init so namespaces containing def-listener! calls are loaded
-  ;; before register-listeners! iterates them. In production, core/init.clj loads these.
+  ;; before register-listeners! (called inside mq.init/start!) iterates them.
+  ;; In production, core/init.clj loads these.
   (require 'metabase.driver.init)
-  (listener/register-listeners!))
+  ;; Drive through mq.init/start! so the worker pool, publish-buffer flush thread,
+  ;; and the memory backend's polling loop all come up — otherwise MQ-driven behaviour
+  ;; outside `with-test-mq` would silently drop messages onto a non-polling queue.
+  (mq.init/start! :queue.backend/memory :topic.backend/memory))

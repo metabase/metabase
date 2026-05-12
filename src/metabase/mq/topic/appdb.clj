@@ -67,7 +67,13 @@
 
 (defn- poll-iteration!
   "One iteration of the polling loop: run periodic tasks, then poll all topics.
-  Returns true if any topic had messages delivered."
+  Returns true if any topic had messages delivered.
+
+  Note on offset semantics: the offset is advanced as soon as the batch is claimed
+  by [[mq.impl/submit-delivery!]], not when the listener completes. Topics do not
+  retry, so a listener that throws does not roll the offset back, and a graceful
+  `stop!`/`start!` within the same process will not re-deliver an in-flight batch
+  (offsets live in memory)."
   []
   (mq.polling/periodically! last-cleanup-ms   (* 10 60 1000) "topic cleanup"    cleanup-old-messages!)
   (mq.polling/periodically! last-lag-gauge-ms (* 30 1000)    "topic lag gauge"  update-lag-gauges!)

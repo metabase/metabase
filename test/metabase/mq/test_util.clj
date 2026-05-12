@@ -194,11 +194,11 @@
   exercise buffering behaviour must rebind it explicitly in the body."
   ([f] (do-with-test-mq! {} f))
   ([opts f]
-   (let [{:keys [kind listeners duplicate-delivery?] :or {kind :memory}} opts]
+   (let [{:keys [backend listeners duplicate-delivery?] :or {backend :memory}} opts]
      (binding [listener/*listeners*               (atom {})
                publish-buffer/*publish-buffer*    (atom {})
                publish-buffer/*publish-buffer-ms* 0]
-       (let [backends (make-fixture-backends kind)
+       (let [backends (make-fixture-backends backend)
              queue-be (cond-> (:queue-be backends)
                         duplicate-delivery? double-delivery-queue-backend!)
              topic-be (cond-> (:topic-be backends)

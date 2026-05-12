@@ -13,10 +13,12 @@ transports with a unified API.
 
 ;; Publish a message (inside a transaction — delivers after commit)
 (t2/with-transaction [_]
-  (mq/with-queue :queue/my-task {:key "value"}))
+  (mq/with-queue :queue/my-task [q]
+    (mq/put q {:key "value"})))
 
 ;; Publish to a topic (fan-out, at-most-once)
-(mq/with-topic :topic/settings-changed {:setting "site-name"})
+(mq/with-topic :topic/settings-changed [t]
+  (mq/put t {:setting "site-name"}))
 ```
 
 ## Publishing Semantics
