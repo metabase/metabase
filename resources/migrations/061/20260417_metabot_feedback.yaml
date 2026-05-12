@@ -7,13 +7,6 @@ databaseChangeLog:
       id: v61.2026-04-17T10:00:00
       author: sloansparger
       comment: metabot_feedback table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v60.2026-04-17T10:00:00
-              author: sloansparger
-              changeLogFile: migrations/060_update_migrations.yaml
       changes:
         - createTable:
             tableName: metabot_feedback
@@ -62,4 +55,3 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   remarks: 'When the feedback was last updated'
-      rollback: ""
