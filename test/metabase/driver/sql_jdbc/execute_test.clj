@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -214,3 +215,12 @@
                    (fn [_conn] nil)))
                 (is (pos? (mt/metric-value system :metabase-db-connection/write-op
                                            {:connection-type "write-data"})))))))))))
+
+(deftest bad-connection-details-throw-client-error-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (mt/with-temp [:model/Database tmp-db {:engine  driver/*driver*
+                                           :details (assoc (:details (mt/db)) :host "badhost")}]
+      (let [mp (mt/application-database-metadata-provider (:id tmp-db))
+            query (lib/native-query mp "SELECT 1")
+            response (mt/user-http-request :crowberto :post 400 "dataset" query)]
+        (is (= "unable-to-acquire-connection" (:error_type response)))))))
