@@ -1,20 +1,22 @@
 (ns metabase-enterprise.transform-optimizer.accept
-  "Materialise an accepted proposal (or proposal DAG) as new transforms.
+  "Materialise an accepted proposal (or proposal DAG) as new transforms
+  *and* run any validated `CREATE INDEX` statements that came with them.
 
   We create one new transform per proposal that has a non-nil `body`.
   Pure-`index` proposals (DDL only, no body) don't create a transform —
-  they show up in the response's `advisory_ddl` list so the user can run
-  them manually.
+  they only contribute DDL statements to the execution list.
 
-  In this branch we do *not* execute DDL. The accept response always
-  echoes the proposed DDL as advisory text — the user is expected to
-  inspect and apply it themselves. See PLAN.md → Phase 2 → DDL statements
-  for the rationale."
+  Every DDL statement was already validated server-side at proposal
+  generation time (`ddl.parse`); accept only executes statements with
+  `validation = :accepted`. Rejected statements are echoed back so the
+  UI can show the rejection reason alongside the failure."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transform-optimizer.ddl.execute :as ddl.execute]
    [metabase.lib.core :as lib]
    [metabase.transforms.crud :as transforms.crud]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,37 +77,48 @@
        :collection_id (or collection-id (:collection_id original))})))
 
 ;; ---------------------------------------------------------------------------
-;; Advisory DDL flattening
+;; DDL execution
 
-(defn- collect-advisory-ddl
-  "Walk every proposal's `ddl_statements`, return a flat list ready for the
-  UI to render. Keeps the per-DDL `:validation` tag from the proposal-stage
-  validator so the panel can show rejected statements with a reason."
-  [proposals]
-  (vec
-   (for [p proposals
-         d (or (:ddl_statements p) [])]
-     (merge
-      (select-keys d [:id :statement :target :rationale :validation
-                      :index_name :rejection])
-      {:proposal_id (:id p)}))))
+(defn- execute-ddl!
+  "Walk every proposal's `ddl_statements`. For each :accepted statement,
+  run it against the source DB and tag with its execution status. For
+  :rejected statements, pass through with the rejection reason so the UI
+  can render the failure alongside successful ones."
+  [original-transform proposals]
+  (let [db-id     (:source_database_id original-transform)
+        database  (when db-id (t2/select-one :model/Database :id db-id))
+        driver-kw (some-> database :engine keyword)]
+    (vec
+     (for [p proposals
+           d (or (:ddl_statements p) [])]
+       (let [base (-> (select-keys d [:id :statement :target :rationale
+                                      :validation :index_name :rejection])
+                      (assoc :proposal_id (:id p)))]
+         (if (= :accepted (:validation d))
+           (merge base (ddl.execute/execute! driver-kw database (:statement d)))
+           ;; Rejected at validation time — never reaches execution.
+           base))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn accept!
-  "Create one transform per proposal with a non-nil body. Returns:
+  "Apply a proposal set: create one new transform per proposal with a
+  body, then run every validated DDL statement against the source
+  database. Returns:
 
     {:created_transforms [{id, name, proposal_id, depends_on, kind} …]
-     :advisory_ddl       [{statement, target, rationale, validation, …} …]
+     :ddl_statements     [{statement, target, rationale,
+                            validation, status, error_message, …} …]
      :skipped_proposals  [proposal-id …]}
 
   The caller is responsible for permission checks (`create-transform!`
-  checks write permission on the target DB, and `read-check` should have
-  been called on the source transform already).
+  itself checks write permission on the target DB, and `read-check`
+  should have been called on the source transform already).
 
-  Proposals with no body (e.g. pure `:index` proposals) are recorded in
-  `:skipped_proposals` rather than failing the whole batch."
+  Proposals with no body (e.g. pure-`:index` proposals) are recorded in
+  `:skipped_proposals` — but their DDL still runs, since that's the whole
+  point of that proposal kind."
   [original-transform proposals collection-id]
   (let [proposals (vec (or proposals []))
         created   (->> proposals
@@ -126,7 +139,8 @@
                        vec)
         skipped   (->> proposals
                        (filter #(or (nil? (:body %)) (str/blank? (:body %))))
-                       (mapv :id))]
+                       (mapv :id))
+        ddl-results (execute-ddl! original-transform proposals)]
     {:created_transforms created
-     :advisory_ddl       (collect-advisory-ddl proposals)
+     :ddl_statements     ddl-results
      :skipped_proposals  skipped}))

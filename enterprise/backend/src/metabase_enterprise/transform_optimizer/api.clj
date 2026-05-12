@@ -77,10 +77,10 @@
    body :- [:maybe [:map [:analyze {:optional true} [:maybe :boolean]]]]]
   (let [transform (api/read-check :model/Transform id)
         analyze?  (boolean (:analyze body))]
-    (sr/streaming-response {:content-type "text/event-stream"
+    (sr/streaming-response {:content-type "text/event-stream; charset=UTF-8"
                             :headers      {"Cache-Control" "no-cache"
                                            "X-Accel-Buffering" "no"}}
-      [^OutputStream os canceled-chan]
+                           [^OutputStream os canceled-chan]
       (try
         (let [result (opt.core/optimize! (:id transform) :analyze? analyze?)]
           ;; Cache every proposal under (user, transform, proposal-id) so
@@ -151,17 +151,23 @@
 ;; Accept endpoint
 
 (api.macros/defendpoint :post "/:id/proposal/accept"
-  "Create the new transforms described by the proposal set. Single rewrites
-  pass an array of one id; precompute DAGs pass N ids in dependency order
-  (caller's responsibility — we create them in the order given).
+  "Apply the proposal set: create new transforms for proposals that
+  carry a body, *and* run every validated `CREATE INDEX` statement
+  attached to those proposals against the source database. Single
+  rewrites pass an array of one id; precompute DAGs pass N ids in
+  dependency order (caller's responsibility — we create them in the
+  order given).
 
   Each proposal payload is resolved server-side from the proposal cache
   populated by the streaming `/optimize` endpoint. If any id is missing,
-  the whole request is rejected (425) — partial accept is too easy to
+  the whole request is rejected (404) — partial accept is too easy to
   mis-handle on the FE.
 
-  DDL statements are returned as `advisory_ddl` for the user to run
-  manually; we do not execute DDL in this branch."
+  The response includes `ddl_statements` with per-statement execution
+  status (`:executed | :failed | :skipped`) plus the original
+  validation tag. Failed DDL does NOT roll back successfully-created
+  transforms — `CREATE INDEX IF NOT EXISTS` is idempotent, so the user
+  can re-run accept after fixing whatever the problem was."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map

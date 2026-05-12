@@ -80,7 +80,7 @@ Maps to the FE task list:
 ### Phase 5 — Polish & guardrails 🟡 **partial**
 
 - ✅ DDL validator (`ddl/parse.clj`) runs on every emitted statement.
-- ✅ Accept does **not** execute DDL; advisory text only.
+- ✅ Accept executes every `:validation = :accepted` `CREATE INDEX` statement against the source DB on an autocommit connection (so `CONCURRENTLY` works). Per-statement status (`:executed | :failed | :skipped`) is returned in `ddl_statements`. Rejected statements pass through with their rejection reason so the UI can render the failure inline.
 - ⛔ Permission-checking against source-DB write perms (only `read-check` so far).
 - ⛔ Cost guard (skip-EXPLAIN-ANALYZE on long-running transforms).
 - ⛔ Telemetry on acceptance / measured speedups beyond what metabot-self already exports.
@@ -354,20 +354,43 @@ Response (200):
     { "id": 89,  "name": "Original — customer_monthly_activity", "proposal_id": "p2", "kind": "precompute", "depends_on": [] },
     { "id": 90,  "name": "Original — cohort_retention",          "proposal_id": "p3", "kind": "precompute", "depends_on": ["p1","p2"] }
   ],
-  "advisory_ddl": [
+  "ddl_statements": [
     {
-      "id": "ddl1",
-      "proposal_id": "p1",
-      "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON shop.customer_first_purchase (customer_id);",
-      "target": { "precompute-of": "p1" },
-      "rationale": "Join key for the final query.",
-      "validation": "accepted",
-      "index_name": "idx_cfp_customer_id"
+      "id":            "ddl1",
+      "proposal_id":   "p1",
+      "statement":     "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cfp_customer_id ON shop.customer_first_purchase (customer_id);",
+      "target":        { "precompute-of": "p1" },
+      "rationale":     "Join key for the final query.",
+      "validation":    "accepted",
+      "index_name":    "idx_cfp_customer_id",
+      "status":        "executed"      // "executed" | "failed" | "skipped"
+    },
+    {
+      "id":            "ddl2",
+      "proposal_id":   "p2",
+      "statement":     "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_o ON shop.orders (customer_id)",
+      "target":        "source-db",
+      "validation":    "accepted",
+      "index_name":    "idx_o",
+      "status":        "failed",
+      "error_message": "ERROR: permission denied for table orders"
+    },
+    {
+      "id":            "ddl3",
+      "proposal_id":   "p3",
+      "statement":     "CREATE INDEX bad ON public.users (id)",
+      "validation":    "rejected",
+      "rejection":     { "reason": "unknown-table", "detail": "public.users is not in the referenced-tables set" }
+                       // no `status` — rejected statements never reach execution
     }
   ],
-  "skipped_proposals": []   // proposal ids that had no SQL body (kind=index); they appear here, plus their DDL is in advisory_ddl
+  "skipped_proposals": []   // proposal ids that had no SQL body (kind=index); their DDL still runs via ddl_statements above
 }
 ```
+
+Failed DDL does **not** roll back successfully-created transforms.
+`CREATE INDEX IF NOT EXISTS` is idempotent, so the user can re-run accept
+after fixing whatever the problem was (typically a permission grant).
 
 ---
 
