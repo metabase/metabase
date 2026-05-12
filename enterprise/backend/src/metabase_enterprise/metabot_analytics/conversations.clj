@@ -178,10 +178,35 @@
      :limit  limit
      :offset offset}))
 
-(defn- slack-permalink
-  "Best-effort Slack permalink for a Slack-originated conversation."
-  [{:keys [slack_channel_id slack_thread_ts]}]
-  (slackbot.api/conversation-permalink slack_channel_id slack_thread_ts))
+(defn fetch-or-compute-slack-permalink
+  "Return a cached Slack permalink for `conversation-id`, computing and persisting
+   it on first call when the conversation has Slack thread metadata.
+
+   This is the lazy-fill path for historical Slack conversations that were
+   persisted before the write-time precompute was wired up (BOT-1413).
+   Slack-failure result (nil permalink response) is NOT cached, so the next
+   request retries; subsequent successes UPDATE under a `WHERE
+   slack_permalink IS NULL` guard so the rare two-reader race converges
+   safely."
+  [conversation-id]
+  (let [{:keys [slack_permalink slack_channel_id slack_thread_ts]
+         :as conversation}
+        (t2/select-one :model/MetabotConversation :id conversation-id)]
+    (api/check-404 conversation)
+    (cond
+      slack_permalink
+      {:slack_permalink slack_permalink}
+
+      (and slack_channel_id slack_thread_ts)
+      (let [permalink (slackbot.api/conversation-permalink slack_channel_id slack_thread_ts)]
+        (when permalink
+          (t2/update! :model/MetabotConversation
+                      {:id conversation-id, :slack_permalink nil}
+                      {:slack_permalink permalink}))
+        {:slack_permalink permalink})
+
+      :else
+      {:slack_permalink nil})))
 
 (defn- fetch-conversation-feedback
   "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered
@@ -227,7 +252,9 @@
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
        :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
-       :slack_permalink (slack-permalink conversation)
+       :slack_permalink (:slack_permalink conversation)
+       :slack_originated (boolean (and (:slack_channel_id conversation)
+                                       (:slack_thread_ts conversation)))
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)
        :search_count    (analytics.queries/count-tool-invocations messages "search")

@@ -9,7 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts ip-address]}]
+  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts slack-permalink ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
@@ -19,6 +19,7 @@
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
                 slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
+                slack-permalink (assoc :slack_permalink slack-permalink)
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
@@ -335,6 +336,8 @@
                     :last_name  "Corv"}
                    (select-keys (:user response) [:id :email :first_name :last_name])))
             (is (nil? (:slack_permalink response)))
+            (is (false? (:slack_originated response))
+                "non-Slack conversation reports slack_originated=false")
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
             (is (= 2 (count (:chat_messages response))))
@@ -616,7 +619,7 @@
 
 (deftest get-conversation-detail-slack-permalink-test
   (mt/with-premium-features #{:audit-app}
-    (testing "GET /api/ee/metabot-analytics/conversations/:id returns a Slack permalink when metadata is present"
+    (testing "GET /api/ee/metabot-analytics/conversations/:id returns the cached permalink without calling Slack"
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :crowberto)
             permalink       "https://example.slack.com/archives/C123/p1712785577123456"]
@@ -626,16 +629,161 @@
                                  :summary          "Slack conversation"
                                  :slack-team-id    "T123"
                                  :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"
+                                 :slack-permalink  permalink})
+          (with-redefs [slackbot.api/conversation-permalink
+                        (fn [& _] (throw (ex-info "detail endpoint must not call Slack" {})))]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+              (is (= permalink (:slack_permalink response)))
+              (is (true? (:slack_originated response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest get-conversation-detail-slack-originated-without-permalink-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id reports slack_originated=true with null permalink before lazy-fill"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)]
+        (try
+          (insert-conversation! {:conversation-id  conversation-id
+                                 :user-id          user-id
+                                 :summary          "Slack conversation pending permalink"
+                                 :slack-team-id    "T123"
+                                 :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"})
+          (with-redefs [slackbot.api/conversation-permalink
+                        (fn [& _] (throw (ex-info "detail endpoint must not call Slack" {})))]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+              (is (nil? (:slack_permalink response)))
+              (is (true? (:slack_originated response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest slack-permalink-endpoint-precomputed-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink returns the cached value without calling Slack"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            permalink       "https://example.slack.com/archives/C123/p1712785577123456"]
+        (try
+          (insert-conversation! {:conversation-id  conversation-id
+                                 :user-id          user-id
+                                 :summary          "Slack conversation"
+                                 :slack-team-id    "T123"
+                                 :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"
+                                 :slack-permalink  permalink})
+          (with-redefs [slackbot.api/conversation-permalink
+                        (fn [& _] (throw (ex-info "must not call Slack when permalink is cached" {})))]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (= permalink (:slack_permalink response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest slack-permalink-endpoint-lazy-fill-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink lazy-fills NULL rows and caches the result"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            permalink       "https://example.slack.com/archives/C123/p1712785577123456"
+            call-count      (atom 0)]
+        (try
+          (insert-conversation! {:conversation-id  conversation-id
+                                 :user-id          user-id
+                                 :summary          "Slack conversation pending permalink"
+                                 :slack-team-id    "T123"
+                                 :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
           (with-redefs [slackbot.api/conversation-permalink (fn [channel ts]
+                                                              (swap! call-count inc)
                                                               (is (= "C123" channel))
                                                               (is (= "1712785577.123456" ts))
                                                               permalink)]
             (let [response (mt/user-http-request :crowberto :get 200
-                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
-              (is (= permalink (:slack_permalink response)))))
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (= permalink (:slack_permalink response)))
+              (is (= 1 @call-count)))
+            (is (= permalink
+                   (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id))
+                "row is updated with the resolved permalink")
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (= permalink (:slack_permalink response)))
+              (is (= 1 @call-count)
+                  "second request reads from the cache; no additional Slack call")))
           (finally
             (delete-conversations! [conversation-id])))))))
+
+(deftest slack-permalink-endpoint-failure-no-cache-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink does not cache a nil result from Slack so the next call retries"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            call-count      (atom 0)]
+        (try
+          (insert-conversation! {:conversation-id  conversation-id
+                                 :user-id          user-id
+                                 :summary          "Slack conversation - slack down"
+                                 :slack-team-id    "T123"
+                                 :slack-channel-id "C123"
+                                 :slack-thread-ts  "1712785577.123456"})
+          (with-redefs [slackbot.api/conversation-permalink (fn [& _]
+                                                              (swap! call-count inc)
+                                                              nil)]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (nil? (:slack_permalink response)))
+              (is (= 1 @call-count)))
+            (is (nil? (t2/select-one-fn :slack_permalink :model/MetabotConversation :id conversation-id))
+                "row remains NULL when Slack fails to resolve")
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (nil? (:slack_permalink response)))
+              (is (= 2 @call-count)
+                  "Slack is re-queried on the next request after a nil result")))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest slack-permalink-endpoint-non-slack-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink returns nil with no Slack call for non-Slack conversations"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :summary         "Web conversation"})
+          (with-redefs [slackbot.api/conversation-permalink
+                        (fn [& _] (throw (ex-info "must not call Slack for non-Slack conversations" {})))]
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                                         conversation-id))]
+              (is (nil? (:slack_permalink response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+
+(deftest ^:parallel slack-permalink-endpoint-404-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink 404s for unknown conversations"
+      (mt/user-http-request :crowberto :get 404
+                            (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                    (str (random-uuid)))))))
+
+(deftest ^:parallel slack-permalink-endpoint-requires-superuser-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /conversations/:id/slack-permalink requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403
+                                   (format "ee/metabot-analytics/conversations/%s/slack-permalink"
+                                           (str (random-uuid)))))))))
 
 (defn- with-ip-address-fixture!
   "Seed conversations with varying IP-address state so we can assert both list

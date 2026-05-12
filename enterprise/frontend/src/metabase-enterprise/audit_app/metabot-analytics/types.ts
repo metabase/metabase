@@ -87,6 +87,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
+  slack_originated: boolean;
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
@@ -97,6 +98,10 @@ export type ConversationDetail = {
   user_agent: string | null;
   sanitized_user_agent: string | null;
   feedback: ConversationFeedback[];
+};
+
+export type SlackPermalinkResponse = {
+  slack_permalink: string | null;
 };
 
 export type DataComplexityCatalogId = "library" | "universe" | "metabot";

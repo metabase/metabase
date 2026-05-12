@@ -23,7 +23,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (java.util.concurrent
     Callable
@@ -34,6 +35,18 @@
     ThreadFactory)))
 
 (set! *warn-on-reflection* true)
+
+(defn- conversation-permalink
+  "Resolve `slackbot.api/conversation-permalink` lazily to break the
+   `slackbot.api → slackbot.streaming` cycle. Returns nil on any failure
+   (Slack outage, token issues, slow network past the slack-get timeouts)."
+  [channel ts]
+  (try
+    (when-let [resolved (requiring-resolve 'metabase.slackbot.api/conversation-permalink)]
+      (resolved channel ts))
+    (catch Exception e
+      (log/warn e "Failed to resolve Slack permalink for slackbot conversation")
+      nil)))
 
 (def ^:private viz-prefetch-pool-size
   "Maximum number of visualization rendering threads. Limits concurrent query execution
@@ -180,6 +193,18 @@
         ;; Generated up front so it can be baked into feedback button payloads
         ;; at the same time the assistant message is persisted.
         external-id     (str (random-uuid))
+        ;; Precompute the Slack permalink for thread-start so the admin
+        ;; conversation-detail endpoint can serve it from a cached column instead
+        ;; of calling Slack at read time (BOT-1413). The select-one short-circuits
+        ;; on follow-up turns where the permalink is already cached; nil result
+        ;; from `conversation-permalink` is tolerated and lazy-filled later.
+        existing-permalink (t2/select-one-fn :slack_permalink
+                                             :model/MetabotConversation
+                                             :id conversation-id)
+        slack-permalink (when (and (nil? existing-permalink)
+                                   channel-id
+                                   req-slack-msg-id)
+                          (conversation-permalink channel-id req-slack-msg-id))
         ;; Persist the user message before setup so failed conversations are captured.
         ;; `:user-id` stamps the author on the message row so participation-based
         ;; conversation read permissions work for multi-user Slack threads.
@@ -188,6 +213,7 @@
                                                             :slack-team-id   team-id
                                                             :slack-thread-ts thread-ts
                                                             :slack-msg-id    req-slack-msg-id
+                                                            :slack-permalink slack-permalink
                                                             :user-id         api/*current-user-id*
                                                             :ai-proxy?       ai-proxy?)
         data-idx        (volatile! -1)

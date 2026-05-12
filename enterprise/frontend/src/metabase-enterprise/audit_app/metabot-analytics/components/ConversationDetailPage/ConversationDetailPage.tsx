@@ -39,8 +39,15 @@ import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
-import { useGetMetabotConversationQuery } from "../../api";
-import type { ConversationFeedback, GeneratedQuery } from "../../types";
+import {
+  useGetMetabotConversationQuery,
+  useGetMetabotConversationSlackPermalinkQuery,
+} from "../../api";
+import type {
+  ConversationDetail,
+  ConversationFeedback,
+  GeneratedQuery,
+} from "../../types";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { convertSlackChatMessage } from "./slack-mrkdwn";
@@ -118,11 +125,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         <Stack gap="md">
           <Flex align="baseline" justify="space-between">
             <Title order={3}>{t`Conversation`}</Title>
-            {conversation.slack_permalink && (
-              <ExternalLink href={conversation.slack_permalink}>
-                {t`Open in Slack`}
-              </ExternalLink>
-            )}
+            <SlackPermalinkLink conversation={conversation} />
           </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
@@ -149,6 +152,24 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
       </Stack>
     </MetabotAdminLayout>
   );
+}
+
+function SlackPermalinkLink({
+  conversation,
+}: {
+  conversation: ConversationDetail;
+}) {
+  const { conversation_id, slack_permalink, slack_originated } = conversation;
+  const shouldLazyFetch = slack_originated && !slack_permalink;
+  const { data } = useGetMetabotConversationSlackPermalinkQuery(
+    conversation_id,
+    { skip: !shouldLazyFetch },
+  );
+  const href = slack_permalink ?? data?.slack_permalink ?? null;
+  if (!href) {
+    return null;
+  }
+  return <ExternalLink href={href}>{t`Open in Slack`}</ExternalLink>;
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {

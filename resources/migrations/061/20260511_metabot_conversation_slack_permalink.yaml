@@ -1,0 +1,26 @@
+## BOT-1413 — Cached Slack permalink for Metabot conversations.
+##
+## Adds a column to store the originating Slack message permalink so the
+## admin conversation-detail endpoint never has to call Slack at read time.
+## Populated at write time by the slackbot streaming path; backfilled lazily
+## by a side endpoint for historical rows.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-05-11T21:35:00
+      author: tplude
+      comment: Add slack_permalink to metabot_conversation to cache Slack message URLs
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: slack_permalink
+                  type: varchar(512)
+                  remarks: Cached Slack permalink for the originating thread message. NULL until resolved.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: slack_permalink
