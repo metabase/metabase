@@ -172,9 +172,12 @@
 (deftest drain-tables-rejects-rows-missing-required-keys-test
   (try
     (p/clear-staging-tables!)
-    (testing "missing :id throws :invalid_input"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid_input"
-                            (p/drain-tables-batch! {} (batch [{:db_id 7 :name "no-id" :schema "public"}])))))
+    (testing "missing :id throws with :kind :invalid_input"
+      (is (= :invalid_input
+             (try
+               (p/drain-tables-batch! {} (batch [{:db_id 7 :name "no-id" :schema "public"}]))
+               nil
+               (catch clojure.lang.ExceptionInfo e (:kind (ex-data e)))))))
     (testing "no rows landed in staging on validation failure"
       (is (zero? (count (staging-tables)))))
     (finally (p/clear-staging-tables!))))
@@ -182,7 +185,10 @@
 (deftest drain-fields-rejects-rows-missing-required-keys-test
   (try
     (p/clear-staging-tables!)
-    (testing "missing :base_type throws :invalid_input"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid_input"
-                            (p/drain-fields-batch! (batch [{:id 1 :table_id 100 :name "x" :database_type "text"}])))))
+    (testing "missing :base_type throws with :kind :invalid_input"
+      (is (= :invalid_input
+             (try
+               (p/drain-fields-batch! (batch [{:id 1 :table_id 100 :name "x" :database_type "text"}]))
+               nil
+               (catch clojure.lang.ExceptionInfo e (:kind (ex-data e)))))))
     (finally (p/clear-staging-tables!))))

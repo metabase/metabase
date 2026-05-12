@@ -93,22 +93,26 @@
         databases-by-source-id (volatile! {})
         ds                     (mdb/data-source)]
     (with-open [^Connection conn (.getConnection ds)]
-      (let [prev-autocommit (.getAutoCommit conn)]
-        (.setAutoCommit conn false)
-        (try
-          (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
-                      ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
-            (parsers/stream-keyed-arrays!
-             file processors/import-batch-size
-             {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
-              :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
-              :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))}))
-          (.commit conn)
-          (catch Throwable t
-            (.rollback conn)
-            (throw t))
-          (finally
-            (.setAutoCommit conn prev-autocommit)))))
+      ;; Always normalize autoCommit on exit. c3p0's `autoCommitOnClose=false`
+      ;; means a connection returned to the pool keeps whatever autoCommit
+      ;; state we left it in; if we leave it `false` the next pool user
+      ;; inherits an open-transaction-capable connection without knowing it
+      ;; and can leak an idle-in-transaction backend.
+      (.setAutoCommit conn false)
+      (try
+        (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
+                    ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
+          (parsers/stream-keyed-arrays!
+           file processors/import-batch-size
+           {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
+            :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
+            :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))}))
+        (.commit conn)
+        (catch Throwable t
+          (try (.rollback conn) (catch Throwable _ nil))
+          (throw t))
+        (finally
+          (try (.setAutoCommit conn true) (catch Throwable _ nil)))))
     @matched-ids))
 
 ;;; ============================== Top-level orchestration ==============================
