@@ -16,6 +16,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.sql-tools.core :as sql-tools]
@@ -156,13 +157,6 @@
 ;;; quoting/case differences in driver-specific re-emission and verify the semantic
 ;;; rewrite directly.
 
-(defn- prune-no-level
-  "Mirrors `metabase-enterprise.workspaces.query-processor.middleware/prune-no-level`.
-   Production strips empty-string sentinels before handing the spec to SQLGlot -- SQLGlot
-   treats absent keys as wildcards but `\"\"` as a literal that won't match anything."
-  [m]
-  (into {} (remove (fn [[_ v]] (= "" v))) m))
-
 (defn- rewrite-and-parse
   "Run a remapping through the rewriter, then parse the result. Returns the set of
    `{:db?, :schema?, :table}` references in the rewritten SQL."
@@ -177,8 +171,8 @@
           (rewrite-and-parse
            :mysql
            "SELECT `admin_assert`.`assert_id` FROM `admin_assert`"
-           {(prune-no-level {:db "" :schema "" :table "admin_assert"})
-            (prune-no-level {:db "" :schema "ws_alice" :table "admin_assert"})})]
+           {(ws.table-remapping/prune-no-level {:db "" :schema "" :table "admin_assert"})
+            (ws.table-remapping/prune-no-level {:db "" :schema "ws_alice" :table "admin_assert"})})]
       (is (contains? tables {:schema "ws_alice" :table "admin_assert"})
           (str "expected workspace-qualified ref in parsed tables; got: " tables
                "\n  rewritten SQL: " rewritten))
@@ -191,8 +185,8 @@
           (rewrite-and-parse
            :clickhouse
            "SELECT `db_c6633c128ed24e74`.`pa_events`.`tag` FROM `db_c6633c128ed24e74`.`pa_events`"
-           {(prune-no-level {:db "" :schema "db_c6633c128ed24e74" :table "pa_events"})
-            (prune-no-level {:db "" :schema "ws_alice" :table "pa_events"})})]
+           {(ws.table-remapping/prune-no-level {:db "" :schema "db_c6633c128ed24e74" :table "pa_events"})
+            (ws.table-remapping/prune-no-level {:db "" :schema "ws_alice" :table "pa_events"})})]
       (is (contains? tables {:schema "ws_alice" :table "pa_events"})
           (str "expected workspace db-as-schema ref in parsed tables; got: " tables
                "\n  rewritten SQL: " rewritten))
@@ -212,8 +206,8 @@
           (rewrite-and-parse
            :bigquery-cloud-sdk
            "SELECT `bigquery-public-data.census_bureau_usa.population_by_zip_2010`.`geo_id` FROM `bigquery-public-data.census_bureau_usa.population_by_zip_2010`"
-           {(prune-no-level {:db "bigquery-public-data" :schema "census_bureau_usa" :table "population_by_zip_2010"})
-            (prune-no-level {:db "ws-project" :schema "ws_alice" :table "population_by_zip_2010"})})]
+           {(ws.table-remapping/prune-no-level {:db "bigquery-public-data" :schema "census_bureau_usa" :table "population_by_zip_2010"})
+            (ws.table-remapping/prune-no-level {:db "ws-project" :schema "ws_alice" :table "population_by_zip_2010"})})]
       ;; parsed table refs (no :db slot from the parser) -- confirms dataset+table swapped:
       (is (contains? tables {:schema "ws_alice" :table "population_by_zip_2010"})
           (str "expected workspace dataset+table in parsed refs; got: " tables
@@ -235,8 +229,8 @@
           (rewrite-and-parse
            :snowflake
            "SELECT \"ANALYTICS\".\"PUBLIC\".\"ORDERS\".\"ID\" FROM \"ANALYTICS\".\"PUBLIC\".\"ORDERS\""
-           {(prune-no-level {:db "ANALYTICS" :schema "PUBLIC" :table "ORDERS"})
-            (prune-no-level {:db "WS_DB"     :schema "WS_ALICE" :table "ORDERS"})})]
+           {(ws.table-remapping/prune-no-level {:db "ANALYTICS" :schema "PUBLIC" :table "ORDERS"})
+            (ws.table-remapping/prune-no-level {:db "WS_DB"     :schema "WS_ALICE" :table "ORDERS"})})]
       ;; parsed table refs (no :db slot from the parser) -- confirms schema+table swapped:
       (is (contains? tables {:schema "WS_ALICE" :table "ORDERS"})
           (str "expected workspace schema+table in parsed refs; got: " tables
@@ -362,8 +356,8 @@
                       to-spec    (merge from-spec ws-ns)
                       {:keys [tables rewritten]} (rewrite-and-parse
                                                   driver canonical-sql
-                                                  {(prune-no-level from-spec)
-                                                   (prune-no-level to-spec)})]
+                                                  {(ws.table-remapping/prune-no-level from-spec)
+                                                   (ws.table-remapping/prune-no-level to-spec)})]
                   (testing "atom output matches the loader's expansion of fixture's output_namespace"
                     (is (= expected-output ws-ns)
                         "db-workspace-namespace must return the loader's expanded :output map"))
