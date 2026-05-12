@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import { PLUGIN_INTROSPECTOR, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -108,6 +108,11 @@ export const AdminNavbar = ({
               needs a live query to show an active-advisories badge */}
           {PLUGIN_SECURITY_CENTER.isEnabled && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
+              currentPath={currentPath}
+            />
+          )}
+          {PLUGIN_INTROSPECTOR.isEnabled && (
+            <PLUGIN_INTROSPECTOR.IntrospectorNavItem
               currentPath={currentPath}
             />
           )}

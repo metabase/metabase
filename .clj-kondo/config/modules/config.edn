@@ -3064,6 +3064,12 @@
    :uses #{premium-features
            settings}}
 
+  enterprise/introspector
+  {:team "UX West"
+   :api  #{metabase-enterprise.introspector.content.api}
+   :uses #{api
+           util}}
+
   enterprise/library
   {:team "UX West"
    :api  #{metabase-enterprise.library.api}
