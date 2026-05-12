@@ -361,7 +361,12 @@
   (t2/query
    {:update :metabase_table_import
     :set    {:target_id
-             {:select [:t.id]
+             ;; MIN(t.id) collapses to one row when the appdb has multiple
+             ;; candidates. `metabase_database`'s unique constraint is
+             ;; `(router_database_id, name)`, and PG's default NULL-not-equal
+             ;; rule means two databases with NULL router can share a name —
+             ;; producing two `(db_name, schema, name)` matches. GHY-3549.
+             {:select [[[:min :t.id]]]
               :from   [[:metabase_table :t]]
               :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where  [:and
@@ -410,9 +415,15 @@
     ;; defeating the optimization).
     (t2/query
      {:update :metabase_table
-      :set    {:description {:select [:it.description]
-                             :from   [[:metabase_table_import :it]]
-                             :where  [:= :it.target_id :metabase_table.id]}
+      :set    {:description {;; ORDER BY :it.source_id + LIMIT 1 picks a
+                             ;; stable staging row when the file describes
+                             ;; the same live table twice. Same defense as
+                             ;; the resolve subqueries above; GHY-3549.
+                             :select   [:it.description]
+                             :from     [[:metabase_table_import :it]]
+                             :where    [:= :it.target_id :metabase_table.id]
+                             :order-by [[:it.source_id :asc]]
+                             :limit    1}
                :updated_at :%now}
       :where  [:and
                [:= :metabase_table.is_defective_duplicate [:inline false]]
@@ -681,11 +692,15 @@
 (defn- target-id-clobber-subquery
   "Correlated subquery for a single clobber column. The match is a single
   indexed lookup on `staging.target_id` (the per-depth resolve populates
-  it just before this UPDATE fires)."
+  it just before this UPDATE fires). ORDER BY :fi.source_id + LIMIT 1
+  keeps the subquery single-row when the wire format describes the same
+  live field more than once (GHY-3549)."
   [col]
-  {:select [(keyword (str "fi." (name col)))]
-   :from   [[:metabase_field_import :fi]]
-   :where  [:= :fi.target_id :metabase_field.id]})
+  {:select   [(keyword (str "fi." (name col)))]
+   :from     [[:metabase_field_import :fi]]
+   :where    [:= :fi.target_id :metabase_field.id]
+   :order-by [[:fi.source_id :asc]]
+   :limit    1})
 
 (def ^:private field-payload-changed-predicate
   "OR-block over the clobber-payload columns plus `active`. Used by the
@@ -770,7 +785,10 @@
   (t2/query
    {:update :metabase_field_import
     :set    {:target_id
-             {:select [:f.id]
+             ;; MIN(f.id) tiebreaker — same defense as the table resolve.
+             ;; metabase_field has no uniqueness on (table_id, name, parent_id),
+             ;; only is_defective_duplicate gating, so dupes can exist.
+             {:select [[[:min :f.id]]]
               :from   [[:metabase_field :f]]
               :where  [:and
                        [:= :f.table_id :metabase_field_import.target_table_id]
