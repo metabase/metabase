@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   useArchiveTransformMutation,
   useDeleteTransformTargetMutation,
 } from "metabase/api";
-import { Box, Button, Chip, Group, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Chip,
+  Group,
+  Icon,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import {
+  type DateFilter,
+  dateFilterOptions,
+  getDateFilterValue,
+  isDateFilter,
+} from "metabase-enterprise/clean_up/CleanupCollectionModal/utils";
 
 import { useListIntrospectorTransformsQuery } from "../api";
 import { BulkActionBar } from "../components/BulkActionBar";
@@ -45,11 +61,16 @@ function writeSuppressed(entries: SuppressEntry[]) {
   }
 }
 
+// Now that transforms have a real time-based stale signal (see
+// `transform-stale-cte` in queries.clj), the "Stale" pill maps to the
+// backend's actual stale condition rather than aliasing to unreferenced.
 function flagToConditions(flag: TransformsFlagFilter): string | undefined {
   switch (flag) {
     case "broken":
       return "broken";
     case "stale":
+      return "stale";
+    case "unreferenced":
       return "unreferenced";
     case "all":
     default:
@@ -57,7 +78,20 @@ function flagToConditions(flag: TransformsFlagFilter): string | undefined {
   }
 }
 
-export function TransformsTab() {
+interface TransformsTabProps {
+  /**
+   * Staleness threshold lifted to `IntrospectorPage` so all three entity
+   * tabs (Cards/Dashboards/Transforms) share the same cutoff and the
+   * StatStrip totals stay in sync with whatever's on screen.
+   */
+  staleFilter: DateFilter;
+  onStaleFilterChange: (next: DateFilter) => void;
+}
+
+export function TransformsTab({
+  staleFilter,
+  onStaleFilterChange,
+}: TransformsTabProps) {
   const [flag, setFlag] = useState<TransformsFlagFilter>("all");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -74,10 +108,13 @@ export function TransformsTab() {
     () => ({
       conditions: flagToConditions(flag),
       search: search || undefined,
+      // Same yyyy-MM-dd cutoff Cards/Dashboards pass — the backend matches
+      // against `transform.created_at` for transforms.
+      "stale-before": getDateFilterValue(staleFilter),
       limit: PAGE_SIZE,
       offset,
     }),
-    [flag, search, offset],
+    [flag, search, staleFilter, offset],
   );
 
   const { data, isFetching } = useListIntrospectorTransformsQuery(params);
@@ -220,8 +257,8 @@ export function TransformsTab() {
 
   return (
     <Stack gap="md">
-      {/* ── Filter pills + search row ─────────────────────────────────────── */}
-      <Group justify="space-between" wrap="wrap" gap="sm">
+      {/* ── Filter pills + staleness picker + search row ──────────────────── */}
+      <Group wrap="wrap" gap="sm">
         <Chip.Group
           value={flag}
           onChange={(v) => onFlagChange((v as TransformsFlagFilter) ?? null)}
@@ -236,8 +273,42 @@ export function TransformsTab() {
             <Chip value="stale" variant="outline">
               {t`Stale`}
             </Chip>
+            <Chip value="unreferenced" variant="outline">
+              {t`Unreferenced`}
+            </Chip>
           </Group>
         </Chip.Group>
+        {/*
+          Staleness picker — matches FilterRow.tsx for Cards/Dashboards.
+          For transforms the cutoff is matched against `transform.created_at`
+          rather than `last_used_at` (see `transform-stale-cte` in queries.clj):
+          a transform is stale when its target table is missing/inactive AND
+          it has never run AND it was created before this cutoff.
+        */}
+        <Text
+          size="sm"
+          c={flag === "stale" ? "text-primary" : "text-secondary"}
+          display="inline-flex"
+          style={{ alignItems: "center" }}
+        >
+          {c("{0} is a duration (e.g.: 3 months)").jt`Not used in over ${(
+            <Select
+              key="stale-select"
+              ml="xs"
+              leftSection={<Icon name="calendar" />}
+              data={dateFilterOptions}
+              value={staleFilter}
+              onChange={(next) => {
+                if (next && isDateFilter(next)) {
+                  onStaleFilterChange(next);
+                  setOffset(0);
+                }
+              }}
+              w={150}
+              data-testid="introspector-stale-threshold"
+            />
+          )}`}
+        </Text>
         {/* Search bar width matches Cards/Dashboards FilterRow exactly. */}
         <TextInput
           placeholder={t`Search name…`}

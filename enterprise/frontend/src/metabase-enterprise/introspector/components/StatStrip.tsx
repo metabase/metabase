@@ -14,23 +14,22 @@ type TileColor = "error" | "warning" | "brand" | "success";
 
 type Tile = { label: string; value: number; color: TileColor };
 
-export function StatStrip({ counts, isLoading, entityType }: Props) {
-  // For transforms, `stale` and `unreferenced` are the same concept on the wire
-  // (no time-based stale signal — see queries.clj :summary). Drop the redundant
-  // `Unreferenced` tile so we don't show the same number twice in the strip.
-  const isTransforms = entityType === "transforms";
+export function StatStrip({
+  counts,
+  isLoading,
+  entityType: _entityType,
+}: Props) {
+  // All three entity types now expose three distinct signals — Transforms got
+  // its own time-based stale via `transform-stale-cte`, so the previous
+  // collapse of stale==unreferenced is no longer needed.
   const tiles: Tile[] = [
     { label: t`Broken`, value: counts?.broken ?? 0, color: "error" },
     { label: t`Stale`, value: counts?.stale ?? 0, color: "warning" },
-    ...(isTransforms
-      ? []
-      : [
-          {
-            label: t`Unreferenced`,
-            value: counts?.unreferenced ?? 0,
-            color: "brand" as TileColor,
-          },
-        ]),
+    {
+      label: t`Unreferenced`,
+      value: counts?.unreferenced ?? 0,
+      color: "brand",
+    },
     { label: t`Healthy`, value: counts?.healthy ?? 0, color: "success" },
   ];
 

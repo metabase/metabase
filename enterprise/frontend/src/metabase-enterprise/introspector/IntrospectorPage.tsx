@@ -23,17 +23,15 @@ const TABS: { key: IntrospectorEntityType; label: string }[] = [
 /** Default staleness threshold; matches the CleanupCollectionModal default. */
 const DEFAULT_STALE_FILTER: DateFilter = "six-months";
 
-// For transforms, `stale` and `unreferenced` are the same wire value
-// (see StatStrip + queries.clj :summary) so we'd double-count if we summed all three.
+// Transforms now have three distinct signals (stale ≠ unreferenced after the
+// time-based stale rework in queries.clj) so we sum all three for every entity
+// type.
 function tabTotal(
-  key: IntrospectorEntityType,
+  _key: IntrospectorEntityType,
   counts: { broken: number; stale: number; unreferenced: number } | undefined,
 ): number | null {
   if (!counts) {
     return null;
-  }
-  if (key === "transforms") {
-    return counts.broken + counts.stale;
   }
   return counts.broken + counts.stale + counts.unreferenced;
 }
@@ -41,9 +39,9 @@ function tabTotal(
 export function IntrospectorPage() {
   const [activeTab, setActiveTab] = useState<IntrospectorEntityType>("cards");
   // Staleness threshold lives at the page level so the StatStrip totals stay
-  // in sync with whatever cutoff the active tab's list query is using.
-  // Transforms doesn't honor it server-side (no `last_used_at` to compare
-  // against) but holding it here keeps the tab switch trivial.
+  // in sync with whatever cutoff the active tab's list query is using. Honored
+  // by all three entity types: Cards/Dashboards filter on `last_used_at` /
+  // `last_viewed_at`, Transforms on `created_at` (see `transform-stale-cte`).
   const [staleFilter, setStaleFilter] =
     useState<DateFilter>(DEFAULT_STALE_FILTER);
   const { data: summary, isFetching: summaryLoading } =
@@ -102,7 +100,12 @@ export function IntrospectorPage() {
           onStaleFilterChange={setStaleFilter}
         />
       )}
-      {activeTab === "transforms" && <TransformsTab />}
+      {activeTab === "transforms" && (
+        <TransformsTab
+          staleFilter={staleFilter}
+          onStaleFilterChange={setStaleFilter}
+        />
+      )}
     </Box>
   );
 }

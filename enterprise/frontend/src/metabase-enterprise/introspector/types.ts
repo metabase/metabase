@@ -13,7 +13,7 @@ export type IntrospectorEntityType = "cards" | "dashboards" | "transforms";
  * `stale` → `unreferenced` (introspector's existing semantic for no-inbound-deps),
  * `all` → no `conditions` filter.
  */
-export type TransformsFlagFilter = "all" | "broken" | "stale";
+export type TransformsFlagFilter = "all" | "broken" | "stale" | "unreferenced";
 
 /**
  * Per-row reason for the Transforms tab. Populated by the backend for any transform
