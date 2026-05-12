@@ -15,7 +15,9 @@
 
   Optional columns (everything outside the always-present set per row type) are
   *omitted from the row* by the export's `remove-nils` step rather than emitted
-  as `null`. Schemas mark these as `{:optional true}`.
+  as `null`. Schemas mark these as `{:optional true} [:maybe T]` — absent and
+  `null` are accepted equivalently, so a hand-edited YAML with `parent_id: ~`
+  still validates.
 
   `:effective_type` is special-cased: emitted only when `≠ :base_type`. Importer
   treats absent as `≡ :base_type`."
@@ -51,13 +53,14 @@
    [:name :string]
    [:base_type :string]
    [:database_type :string]
-   [:parent_id {:optional true} :int]
-   [:fk_target_field_id {:optional true} :int]
-   [:description {:optional true} :string]
-   [:effective_type {:optional true} :string]
-   [:semantic_type {:optional true} :string]
-   [:coercion_strategy {:optional true} :string]
+   [:parent_id {:optional true} [:maybe :int]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]
+   [:description {:optional true} [:maybe :string]]
+   [:effective_type {:optional true} [:maybe :string]]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:nfc_path {:optional true}
-    [:fn {:error/message "must be a sequence of strings"}
-     (fn [x] (and (instance? java.util.List x)
-                  (every? string? x)))]]])
+    [:maybe
+     [:fn {:error/message "must be a sequence of strings"}
+      (fn [x] (and (instance? java.util.List x)
+                   (every? string? x)))]]]])

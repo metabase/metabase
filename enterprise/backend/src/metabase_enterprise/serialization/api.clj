@@ -350,8 +350,8 @@
         (throw t)))))
 
 (api.macros/defendpoint :post "/metadata/import"
-  :- [:map [:success :boolean]]
-  "Import warehouse metadata previously emitted by `GET /metadata/export`. The
+  :- [:map [:queued :boolean]]
+  "Import warehouse metadata previously emitted by `POST /metadata/export`. The
   request body is the JSON document `{databases, tables, fields}`; sections are
   parsed incrementally so memory stays bounded regardless of payload size.
 

@@ -214,8 +214,8 @@
                   (processors/merge-fields-by-depth!)
                   (mark-databases-sync-complete! matched-target-db-ids)
                   inserted))]
-          ;; Run perms outside the merge txn so the cluster lock isn't held
-          ;; across the long merge work.
+          ;; Permission grants run outside the merge txn — the cluster lock
+          ;; shouldn't be held across the long merge work.
           (doseq [[db-id rows] (group-by :db_id new-tables)]
             (schema.table/set-new-tables-permissions! db-id rows)))
         (log/infof "metadata-file-import: complete (matched-databases=%d)"
