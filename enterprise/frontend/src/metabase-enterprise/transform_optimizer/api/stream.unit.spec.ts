@@ -42,7 +42,7 @@ describe("runOptimizerStream", () => {
       'event: proposal\ndata: {"id":"p1","name":"Rewrite",',
       '"kind":"rewrite","severity":"high","rationale":"Avoid fan-out.",',
       '"expected_speedup":"100x","body":"SELECT 1",',
-      '"depends_on":[],"ddl_statements":[]}\n\n',
+      '"depends_on":[]}\n\n',
       'event: done\ndata: {"optimization_degree":40}\n\n',
     ]);
     mockFetchOnce(stream);

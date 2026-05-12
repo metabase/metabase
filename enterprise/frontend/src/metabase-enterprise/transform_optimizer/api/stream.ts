@@ -220,7 +220,12 @@ function isProposal(data: unknown): data is Proposal {
     typeof p.severity === "string" &&
     typeof p.rationale === "string" &&
     typeof p.expected_speedup === "string" &&
-    Array.isArray(p.depends_on) &&
-    Array.isArray(p.ddl_statements)
+    Array.isArray(p.depends_on)
+    // `ddl_statement` is optional (only present for kind="index") and
+    // `body` is optional (only present for kind="rewrite"|"precompute").
+    // We deliberately don't require either here — older responses
+    // emitted `ddl_statements: []` (plural) and rejecting on its absence
+    // would silently drop every modern proposal. ProposalCard tolerates
+    // both fields being absent.
   );
 }
