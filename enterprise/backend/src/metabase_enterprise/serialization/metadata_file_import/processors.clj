@@ -148,27 +148,6 @@
 
 ;;; ============================== tables — drain + merge ==============================
 
-(defn drain-tables-batch!
-  "Per-batch handler for `:tables`: validate each row, denormalize `db_name`
-  from the in-memory `databases-by-source-id` map (built by the databases
-  handler), and bulk-insert into `metabase_table_import`. Suitable as a
-  callback for `parsers/stream-keyed-arrays!` once partial-applied with
-  `databases-by-source-id`."
-  [databases-by-source-id batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/table-info ln line {:source-id (:id line)}))
-  (when (seq batch)
-    (let [rows (mapv (fn [[_ {:keys [id db_id schema name description]}]]
-                       {:source_id    id
-                        :source_db_id db_id
-                        :db_name      (get databases-by-source-id db_id)
-                        :schema       schema
-                        :name         name
-                        :description  description
-                        :display_name (humanization/name->human-readable-name name)})
-                     batch)]
-      (t2/insert! :metabase_table_import rows))))
-
 (defn- encode-path-or-nil
   "Encode an `:nfc_path` coll as a JSON string, matching the
   `metabase_field.nfc_path` storage convention. NULL for empty/nil;
@@ -475,36 +454,6 @@
                :from   [[:metabase_table :t]]
                :join   [[:metabase_table_import :it] [:= :it.target_id :t.id]]
                :where  [:in :it.source_id (vec insert-source-ids)]})))
-
-;;; ============================== fields — drain + merge ==============================
-
-(defn drain-fields-batch!
-  "Per-batch handler for `:fields`: validate each row, then bulk-insert into
-  `metabase_field_import`. Wire integer ids (`:id`, `:table_id`, `:parent_id`,
-  `:fk_target_field_id`) go into the matching `source_*_id` columns verbatim;
-  resolution to target ids happens later in the merge phase."
-  [batch]
-  (doseq [[ln line] batch]
-    (validate-line! ::schemas/field-info ln line {:source-id (:id line)}))
-  (when (seq batch)
-    (let [rows (mapv (fn [[_ {:keys [id table_id parent_id fk_target_field_id
-                                     name base_type database_type
-                                     effective_type semantic_type coercion_strategy
-                                     description nfc_path]}]]
-                       {:source_id           id
-                        :source_table_id     table_id
-                        :source_parent_id    parent_id
-                        :source_fk_target_id fk_target_field_id
-                        :name                name
-                        :base_type           base_type
-                        :database_type       database_type
-                        :effective_type      effective_type
-                        :semantic_type       semantic_type
-                        :coercion_strategy   coercion_strategy
-                        :description         description
-                        :nfc_path            (encode-path-or-nil nfc_path)})
-                     batch)]
-      (t2/insert! :metabase_field_import rows))))
 
 ;;; ============================== Pre-flight orphan check ==============================
 

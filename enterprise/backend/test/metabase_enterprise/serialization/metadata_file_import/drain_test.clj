@@ -1,8 +1,15 @@
 (ns metabase-enterprise.serialization.metadata-file-import.drain-test
   "Tests for the drain phase of the metadata file importer. Exercises
-  `process-databases!`, `drain-tables-batch!`, and `drain-fields-batch!`
-  directly against hand-built batches — bypassing the parser and orchestrator
-  — and asserts the resulting staging-table contents."
+  `process-databases!` and the per-batch drain handlers directly against
+  hand-built batches — bypassing the parser and orchestrator — and asserts
+  the resulting staging-table contents.
+
+  The production drain has two implementations: JDBC `executeBatch` for any
+  appdb (the portable path) and PG `CopyManager` for PostgreSQL (the perf
+  path). Per-batch tests below use the JDBC variant via the helpers
+  [[drain-tables!]] / [[drain-fields!]] (each opens its own connection +
+  PreparedStatement). The drain-paths-equivalence test below additionally
+  asserts the PG-COPY variant produces the same staging-table state."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as p]
@@ -42,6 +49,22 @@
   [rows]
   (mapv (fn [i row] [(inc i) row]) (range) rows))
 
+(defn- drain-tables!
+  "Open a connection + PreparedStatement and drain `tbl-batch` via the JDBC
+  variant. For tests that don't care which production path runs."
+  [databases-by-source-id tbl-batch]
+  (with-open [^Connection conn (.getConnection (mdb/data-source))
+              ^PreparedStatement ps (.prepareStatement conn p/tables-insert-sql)]
+    (p/drain-tables-batch-jdbc! ps databases-by-source-id tbl-batch)))
+
+(defn- drain-fields!
+  "Open a connection + PreparedStatement and drain `fld-batch` via the JDBC
+  variant. For tests that don't care which production path runs."
+  [fld-batch]
+  (with-open [^Connection conn (.getConnection (mdb/data-source))
+              ^PreparedStatement ps (.prepareStatement conn p/fields-insert-sql)]
+    (p/drain-fields-batch-jdbc! ps fld-batch)))
+
 ;;; ============================== process-databases! ==============================
 
 (deftest process-databases!-matches-by-name-and-engine-test
@@ -61,13 +84,13 @@
       (is (= 200 (:source-id (first results))))
       (is (= "nonexistent-db" (:name (first results)))))))
 
-;;; ============================== drain-tables-batch! ==============================
+;;; ============================== tables drain ==============================
 
 (deftest drain-tables-writes-source-and-target-columns-test
   (try
     (p/clear-staging-tables!)
     (let [databases-by-source-id {7 "warehouse-a" 9 "warehouse-b"}]
-      (p/drain-tables-batch!
+      (drain-tables!
        databases-by-source-id
        (batch [{:id 100 :db_id 7 :schema "public" :name "users"
                 :description "user table"}
@@ -91,12 +114,12 @@
           (is (every? nil? (map :target_id rows))))))
     (finally (p/clear-staging-tables!))))
 
-;;; ============================== drain-fields-batch! ==============================
+;;; ============================== fields drain ==============================
 
 (deftest drain-fields-writes-all-shapes-test
   (try
     (p/clear-staging-tables!)
-    (p/drain-fields-batch!
+    (drain-fields!
      (batch
       ;; Flat field — no parent, no FK, no nfc_path
       [{:id 1000 :table_id 100 :name "id"
@@ -168,14 +191,14 @@
 (deftest drain-tables-empty-batch-is-noop-test
   (try
     (p/clear-staging-tables!)
-    (p/drain-tables-batch! {} (batch []))
+    (drain-tables! {} (batch []))
     (is (zero? (count (staging-tables))))
     (finally (p/clear-staging-tables!))))
 
 (deftest drain-fields-empty-batch-is-noop-test
   (try
     (p/clear-staging-tables!)
-    (p/drain-fields-batch! (batch []))
+    (drain-fields! (batch []))
     (is (zero? (count (staging-fields))))
     (finally (p/clear-staging-tables!))))
 
@@ -187,7 +210,7 @@
     (testing "missing :id throws with :kind :invalid_input"
       (is (= :invalid_input
              (try
-               (p/drain-tables-batch! {} (batch [{:db_id 7 :name "no-id" :schema "public"}]))
+               (drain-tables! {} (batch [{:db_id 7 :name "no-id" :schema "public"}]))
                nil
                (catch clojure.lang.ExceptionInfo e (:kind (ex-data e)))))))
     (testing "no rows landed in staging on validation failure"
@@ -200,7 +223,7 @@
     (testing "missing :base_type throws with :kind :invalid_input"
       (is (= :invalid_input
              (try
-               (p/drain-fields-batch! (batch [{:id 1 :table_id 100 :name "x" :database_type "text"}]))
+               (drain-fields! (batch [{:id 1 :table_id 100 :name "x" :database_type "text"}]))
                nil
                (catch clojure.lang.ExceptionInfo e (:kind (ex-data e)))))))
     (finally (p/clear-staging-tables!))))
@@ -243,43 +266,35 @@
     (finally (p/clear-staging-tables!))))
 
 (deftest drain-paths-produce-identical-staging-test
-  (testing "the HoneySQL, JDBC, and PG-COPY drain paths each produce the
-            same staging-table contents for the same batch — guards against
-            silent drift if one path's row-shaping diverges from the others"
-    (let [tbl-batch (batch equivalence-table-batch-rows)
-          fld-batch (batch equivalence-field-batch-rows)
-          ;; Path 1: HoneySQL t2/insert!
-          honeysql  (snapshot-after!
-                     (fn []
-                       (p/drain-tables-batch! equivalence-databases-by-source-id tbl-batch)
-                       (p/drain-fields-batch! fld-batch)))
-          ;; Path 2: JDBC executeBatch
-          jdbc      (snapshot-after!
-                     (fn []
-                       (with-open [^Connection conn (.getConnection (mdb/data-source))
-                                   ^PreparedStatement tps (.prepareStatement conn p/tables-insert-sql)
-                                   ^PreparedStatement fps (.prepareStatement conn p/fields-insert-sql)]
-                         (p/drain-tables-batch-jdbc! tps equivalence-databases-by-source-id tbl-batch)
-                         (p/drain-fields-batch-jdbc! fps fld-batch))))
-          ;; Path 3: PG CopyManager (PG appdb only)
-          pg-copy   (when (= :postgres (mdb/db-type))
-                      (snapshot-after!
+  (testing "the JDBC and PG-COPY drain paths produce the same staging-table
+            contents for the same batch — guards against silent drift if
+            one path's row-shaping diverges from the other. Only meaningful
+            on a PG appdb (the JDBC variant runs on every appdb; the
+            PG-COPY variant runs only on PG)."
+    (when (= :postgres (mdb/db-type))
+      (let [tbl-batch (batch equivalence-table-batch-rows)
+            fld-batch (batch equivalence-field-batch-rows)
+            jdbc      (snapshot-after!
+                       (fn []
+                         (with-open [^Connection conn (.getConnection (mdb/data-source))
+                                     ^PreparedStatement tps (.prepareStatement conn p/tables-insert-sql)
+                                     ^PreparedStatement fps (.prepareStatement conn p/fields-insert-sql)]
+                           (p/drain-tables-batch-jdbc! tps equivalence-databases-by-source-id tbl-batch)
+                           (p/drain-fields-batch-jdbc! fps fld-batch))))
+            pg-copy   (snapshot-after!
                        (fn []
                          (with-open [^Connection conn (.getConnection (mdb/data-source))]
-                           (let [pg-conn  (.unwrap conn PGConnection)
+                           (let [^PGConnection pg-conn (.unwrap conn PGConnection)
                                  copy-mgr (.getCopyAPI pg-conn)
                                  t-ci     (.copyIn copy-mgr ^String p/tables-copy-sql)]
                              (try
                                (p/drain-tables-batch-pg-copy! t-ci equivalence-databases-by-source-id tbl-batch)
                                (finally (.endCopy ^CopyIn t-ci))))
-                           (let [pg-conn  (.unwrap conn PGConnection)
+                           (let [^PGConnection pg-conn (.unwrap conn PGConnection)
                                  copy-mgr (.getCopyAPI pg-conn)
                                  f-ci     (.copyIn copy-mgr ^String p/fields-copy-sql)]
                              (try
                                (p/drain-fields-batch-pg-copy! f-ci fld-batch)
-                               (finally (.endCopy ^CopyIn f-ci))))))))]
-      (is (= honeysql jdbc)
-          "HoneySQL drain produces the same staging rows as the JDBC drain")
-      (when pg-copy
+                               (finally (.endCopy ^CopyIn f-ci)))))))]
         (is (= jdbc pg-copy)
             "JDBC drain produces the same staging rows as the PG-COPY drain")))))
