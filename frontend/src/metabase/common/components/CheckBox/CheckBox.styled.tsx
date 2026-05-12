@@ -22,8 +22,8 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   appearance: none;
   display: block;
   position: absolute;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   width: ${(props) => `${props.size}px`};
   height: 100%;
   margin: 0;
@@ -78,7 +78,7 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`
   display: block;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   ${({ labelEllipsis }) =>
     labelEllipsis
       ? `;

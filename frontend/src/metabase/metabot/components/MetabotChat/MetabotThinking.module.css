@@ -1,6 +1,6 @@
 .toolCalls {
-  padding-left: 0.75rem;
-  border-left: 1px solid var(--mb-color-border);
+  padding-inline-start: 0.75rem;
+  border-inline-start: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
 }
 

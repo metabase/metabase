@@ -15,11 +15,11 @@
 
 .button {
   margin-bottom: 0.625rem;
-  margin-right: -0.125rem;
+  margin-inline-end: -0.125rem;
   background: var(--mb-color-brand);
   border-radius: 50%;
   align-self: flex-end;
-  margin-left: 2px;
+  margin-inline-start: 2px;
   width: 1.25rem;
   height: 1.25rem;
   display: flex;

@@ -139,10 +139,10 @@
 
 .ButtonGroup .Button {
   margin: 0;
-  float: left;
+  float: inline-start;
   border-top: none;
   border-bottom: none;
-  border-right: none;
+  border-inline-end: none;
   border-radius: 0;
   box-shadow: none;
 }
@@ -153,7 +153,7 @@
 }
 
 .ButtonGroup .Button:first-child {
-  border-left: none;
+  border-inline-start: none;
 }
 
 .ButtonGroupBrand {

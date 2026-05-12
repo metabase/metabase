@@ -13,8 +13,8 @@ export const OptionsRoot = styled.div`
   margin: auto 0.5rem;
 
   ${breakpointMinSmall} {
-    margin-left: 4rem;
-    margin-right: 4rem;
+    margin-inline-start: 4rem;
+    margin-inline-end: 4rem;
   }
 `;
 

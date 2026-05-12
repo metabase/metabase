@@ -1,7 +1,7 @@
 .CloseIconContainer {
   display: flex;
   align-items: center;
-  border-left: 1px solid color-mix(in srgb, var(--mb-color-brand) 80%, black);
+  border-inline-start: 1px solid color-mix(in srgb, var(--mb-color-brand) 80%, black);
 }
 
 .IconContainer {

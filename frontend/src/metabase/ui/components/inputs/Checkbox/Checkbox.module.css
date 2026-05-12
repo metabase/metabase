@@ -40,7 +40,7 @@
         border: rem(1) solid var(--mb-color-border);
         position: absolute;
         top: rem(-2);
-        left: rem(2);
+        inset-inline-start: rem(2);
         height: 100%;
         width: 100%;
         border-radius: var(--checkbox-radius);

@@ -9,7 +9,7 @@
   position: absolute;
   top: calc(var(--mantine-spacing-md) + var(--icon-size) / 2);
   bottom: calc(-1 * var(--mantine-spacing-md) - var(--icon-size) / 2);
-  left: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2 - 1px);
+  inset-inline-start: calc(var(--mantine-spacing-lg) + var(--icon-size) / 2 - 1px);
   border-inline-start: 2px dotted var(--mb-color-text-tertiary);
 }
 
@@ -47,7 +47,7 @@
 
 .iconCircle {
   position: absolute;
-  left: var(--mantine-spacing-lg);
+  inset-inline-start: var(--mantine-spacing-lg);
   z-index: 1;
   border-radius: 50%;
   flex-shrink: 0;

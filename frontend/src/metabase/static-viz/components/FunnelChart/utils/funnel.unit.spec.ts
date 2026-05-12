@@ -23,7 +23,7 @@ describe("calculateFunnelSteps", () => {
     expect(steps).toStrictEqual([
       {
         height: 100,
-        left: 0,
+        inset-inline-start: 0,
         measure: 100,
         percent: 1,
         step: "funnel step 1",
@@ -31,7 +31,7 @@ describe("calculateFunnelSteps", () => {
       },
       {
         height: 50,
-        left: 100,
+        inset-inline-start: 100,
         measure: 50,
         percent: 0.5,
         step: "funnel step 2",
@@ -39,7 +39,7 @@ describe("calculateFunnelSteps", () => {
       },
       {
         height: 0,
-        left: 200,
+        inset-inline-start: 200,
         measure: 0,
         percent: 0,
         step: "funnel step 3",
@@ -62,7 +62,7 @@ describe("calculateFunnelSteps", () => {
     expect(steps).toStrictEqual([
       {
         height: 0.5,
-        left: 0,
+        inset-inline-start: 0,
         measure: 50,
         percent: 1,
         step: "funnel step 1",
@@ -70,7 +70,7 @@ describe("calculateFunnelSteps", () => {
       },
       {
         height: 1,
-        left: 1,
+        inset-inline-start: 1,
         measure: 100,
         percent: 2,
         step: "funnel step 2",
@@ -78,7 +78,7 @@ describe("calculateFunnelSteps", () => {
       },
       {
         height: 0.25,
-        left: 2,
+        inset-inline-start: 2,
         measure: 25,
         percent: 0.5,
         step: "funnel step 3",
@@ -92,13 +92,13 @@ describe("calculateFunnelPolygonPoints", () => {
   it("calculates polygon points with respect to margin top", () => {
     const step = {
       top: 0,
-      left: 0,
+      inset-inline-start: 0,
       height: 100,
     };
 
     const nextStep = {
       top: 0,
-      left: 100,
+      inset-inline-start: 100,
       height: 50,
     };
 

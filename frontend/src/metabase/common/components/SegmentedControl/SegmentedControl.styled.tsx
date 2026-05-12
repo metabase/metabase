@@ -59,37 +59,37 @@ function getSpecialBorderStyles({
 }: BorderStyleProps) {
   if (isSelected) {
     return css`
-      border-right-width: 1px;
-      border-left-width: 1px;
+      border-inline-end-width: 1px;
+      border-inline-start-width: 1px;
     `;
   }
 
   const isBeforeSelected = index === selectedOptionIndex - 1;
   if (isBeforeSelected) {
     return css`
-      border-right-width: 0;
+      border-inline-end-width: 0;
     `;
   }
 
   const isAfterSelected = index === selectedOptionIndex + 1;
   if (isAfterSelected) {
     return css`
-      border-left-width: 0;
+      border-inline-start-width: 0;
     `;
   }
 
   const isFirst = index === 0;
   if (isFirst) {
     return css`
-      border-left-width: 1px;
-      border-right-width: 0;
+      border-inline-start-width: 1px;
+      border-inline-end-width: 0;
     `;
   }
   const isLast = index === total - 1;
   if (isLast) {
     return css`
-      border-right-width: 1px;
-      border-left-width: 0;
+      border-inline-end-width: 1px;
+      border-inline-start-width: 0;
     `;
   }
 }
@@ -142,7 +142,7 @@ export const SegmentedControlRadio = styled(
   width: 0;
   height: 0;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   margin: 0;
   padding: 0;
   z-index: 1;
@@ -153,7 +153,7 @@ function IconWrapper(props: IconProps & { iconOnly?: boolean }) {
 }
 
 export const ItemIcon = styled(IconWrapper)`
-  margin-right: ${(props) => (props.iconOnly ? 0 : "4px")};
+  margin-inline-end: ${(props) => (props.iconOnly ? 0 : "4px")};
 `;
 
 const BORDER_RADIUS = "8px";
@@ -163,13 +163,13 @@ export const SegmentedList = styled.ul`
 
   ${SegmentedItem} {
     &:first-of-type {
-      border-top-left-radius: ${BORDER_RADIUS};
-      border-bottom-left-radius: ${BORDER_RADIUS};
+      border-start-start-radius: ${BORDER_RADIUS};
+      border-end-start-radius: ${BORDER_RADIUS};
     }
 
     &:last-of-type {
-      border-top-right-radius: ${BORDER_RADIUS};
-      border-bottom-right-radius: ${BORDER_RADIUS};
+      border-start-end-radius: ${BORDER_RADIUS};
+      border-end-end-radius: ${BORDER_RADIUS};
     }
   }
 `;

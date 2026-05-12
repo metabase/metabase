@@ -65,7 +65,7 @@
   :global(.ProseMirror)
   :where(:global(ul), :global(ol)):not(:global(.editor-style-boundary) *) {
   margin: 0 0 1rem 0;
-  padding-left: 1.5rem;
+  padding-inline-start: 1.5rem;
 }
 
 .editorContent
@@ -154,13 +154,13 @@
 .editorContent
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border);
+  border-inline-start: 3px solid var(--mb-color-border);
   margin: 0 0 1rem 0;
   color: var(--mb-color-text-secondary);
   font-style: italic;
   background-color: var(--mb-color-background-secondary);
   padding: 1rem;
-  padding-left: 1.25rem;
+  padding-inline-start: 1.25rem;
   border-radius: var(--mantine-radius-xs);
 }
 

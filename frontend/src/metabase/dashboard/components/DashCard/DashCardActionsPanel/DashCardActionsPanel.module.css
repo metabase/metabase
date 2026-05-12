@@ -22,8 +22,8 @@
   /* left align on small cards on the left edge to not make the actions go out of the viewport */
   &.onLeftEdge {
     @container DashboardCard (max-width: 12rem) {
-      right: unset;
-      left: 20px;
+      inset-inline-end: unset;
+      inset-inline-start: 20px;
     }
   }
 

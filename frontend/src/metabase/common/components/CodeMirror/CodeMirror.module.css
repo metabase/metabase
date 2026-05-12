@@ -58,8 +58,8 @@
     }
 
     .cm-cursor {
-      border-left-width: 1.6px;
-      border-left-color: var(--mb-color-text-secondary);
+      border-inline-start-width: 1.6px;
+      border-inline-start-color: var(--mb-color-text-secondary);
     }
 
     .cm-tooltip:not(.cm-tooltip-autocomplete) {
@@ -87,7 +87,7 @@
     .cm-completionDetail {
       color: var(--mb-color-text-tertiary);
       font-style: normal;
-      text-align: right;
+      text-align: end;
       overflow: hidden;
       text-overflow: ellipsis;
     }

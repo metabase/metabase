@@ -26,7 +26,7 @@
 
 .dataReferenceSidebar {
   flex-shrink: 0;
-  border-left: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
   overflow: auto;
 }
 

@@ -63,7 +63,7 @@ export const AlertIcon = styled(BaseIcon)<BaseIconProps>`
 `;
 
 export const CloseIcon = styled(BaseIcon)<BaseIconProps>`
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 0.5rem 0.5rem 0.5rem 1rem;
   cursor: pointer;
 `;

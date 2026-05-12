@@ -28,7 +28,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
     position: relative;
     height: 2px;
     line-height: 0;
-    margin-left: -0.45em;
+    margin-inline-start: -0.45em;
     padding: 0 0.5em;
   }
 

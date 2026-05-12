@@ -9,7 +9,7 @@ export const HeaderLink = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;
-  margin-right: auto;
+  margin-inline-end: auto;
   color: var(--mb-color-text-primary);
   cursor: ${(props) => props.onClick && "pointer"};
 
@@ -25,11 +25,11 @@ export const HeaderTitle = styled(Ellipsified)`
 `;
 
 export const HeaderBackIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const HeaderMenu = styled.div`
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 `;
 
 /**

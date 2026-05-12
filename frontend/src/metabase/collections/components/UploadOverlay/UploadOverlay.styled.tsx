@@ -4,8 +4,8 @@ import styled from "@emotion/styled";
 export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   bottom: 0;
   z-index: 1;
   display: flex;

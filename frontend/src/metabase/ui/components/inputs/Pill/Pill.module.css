@@ -20,7 +20,7 @@
   [dir="ltr"] &,
   [dir="rtl"] & {
     padding: 0;
-    margin-left: var(--mantine-spacing-xs);
-    margin-right: var(--mantine-spacing-xs);
+    margin-inline-start: var(--mantine-spacing-xs);
+    margin-inline-end: var(--mantine-spacing-xs);
   }
 }

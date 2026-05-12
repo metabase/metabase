@@ -37,7 +37,7 @@
 }
 
 .TooltipFilterList .QuerySection {
-  margin-left: -0.5rem;
+  margin-inline-start: -0.5rem;
 }
 
 .SelectionList {
@@ -73,8 +73,8 @@
 }
 
 .SelectionItem :global(.Icon) {
-  margin-left: 0.5rem;
-  margin-right: 0.75rem;
+  margin-inline-start: 0.5rem;
+  margin-inline-end: 0.75rem;
   color: currentcolor;
 }
 
@@ -124,8 +124,8 @@
   flex-direction: column;
   justify-content: center;
   max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline-start: auto;
+  margin-inline-end: auto;
 }
 
 .QueryErrorImage {
@@ -170,18 +170,18 @@
   text-align: center;
   text-transform: uppercase;
   background-color: var(--mb-color-background-primary);
-  padding-left: var(--padding-1);
-  padding-right: var(--padding-1);
+  padding-inline-start: var(--padding-1);
+  padding-inline-end: var(--padding-1);
   position: absolute;
   top: -0.75em;
-  left: 50%;
-  margin-left: -41px; /* ugh */
+  inset-inline-start: 50%;
+  margin-inline-start: -41px; /* ugh */
 }
 
 .QueryError2 {
   padding-top: 4rem;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline-start: auto;
+  margin-inline-end: auto;
 }
 
 .QueryError2Details {
@@ -220,11 +220,11 @@
 }
 
 .GuiBuilderFilteredBy {
-  border-right: 1px solid transparent;
+  border-inline-end: 1px solid transparent;
 }
 
 .GuiBuilderView {
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 }
 
 /* expanded */
@@ -233,12 +233,12 @@
 }
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderRow:last-child {
-  border-right-color: transparent;
+  border-inline-end-color: transparent;
   border-bottom-color: var(--mb-color-border);
 }
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderFilteredBy {
-  border-right-color: var(--mb-color-border);
+  border-inline-end-color: var(--mb-color-border);
 }
 
 .GuiBuilderSection {
@@ -251,9 +251,9 @@
   background-color: var(--mb-color-background-primary);
   position: absolute;
   top: -7px;
-  left: 10px;
-  padding-left: 10px;
-  padding-right: 10px;
+  inset-inline-start: 10px;
+  padding-inline-start: 10px;
+  padding-inline-end: 10px;
 }
 
 /* VISUALIZATION SETTINGS */

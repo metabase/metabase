@@ -2,7 +2,7 @@
   overflow: hidden;
   position: absolute;
   bottom: 0;
-  left: 0;
+  inset-inline-start: 0;
   pointer-events: none;
   container-type: inline-size;
 
@@ -18,5 +18,5 @@
 .Image {
   position: absolute;
   bottom: 0;
-  right: 0;
+  inset-inline-end: 0;
 }

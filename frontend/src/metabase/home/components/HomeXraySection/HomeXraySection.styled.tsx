@@ -13,14 +13,14 @@ export const SectionBody = styled.div`
 export const DatabaseLink = styled(Link)`
   display: flex;
   align-items: center;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 `;
 
 export const DatabaseLinkIcon = styled(Icon)`
   color: var(--mb-color-focus);
   width: 1rem;
   height: 1rem;
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
 `;
 
 export const DatabaseLinkText = styled.span`
@@ -39,7 +39,7 @@ export const SchemaTriggerIcon = styled(Icon)`
   color: var(--mb-color-brand);
   width: 0.625rem;
   height: 0.625rem;
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
 `;
 
 export const SchemaTriggerText = styled.span`

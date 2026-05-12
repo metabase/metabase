@@ -24,7 +24,7 @@ export const PermissionPageSidebar = styled.aside`
   flex-direction: column;
   height: 100%;
   overflow: auto;
-  border-left: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
   max-width: 320px;
 `;
 
@@ -46,7 +46,7 @@ export const CloseSidebarButton = styled(
   }),
 )`
   top: 1.75rem;
-  right: 1.5rem;
+  inset-inline-end: 1.5rem;
   color: var(--mb-color-text-tertiary);
   position: absolute;
   cursor: pointer;

@@ -22,7 +22,7 @@ export const EditorContainer = styled.div`
   background-color: var(--mb-color-background-secondary);
 
   .ace_editor {
-    margin-left: var(--mantine-spacing-md);
+    margin-inline-start: var(--mantine-spacing-md);
   }
 `;
 
@@ -45,7 +45,7 @@ export const ModalLeft = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 `;
 
 export const ModalRight = styled.div`

@@ -18,7 +18,7 @@ interface FunnelStepProps {
 export const FunnelStep = styled.div<FunnelStepProps>`
   width: 100%;
   min-width: 20px;
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
   display: flex;
   flex-direction: column;
 
@@ -32,7 +32,7 @@ export const FunnelStep = styled.div<FunnelStepProps>`
 `;
 
 export const Head = styled.div<SharedProps>`
-  text-align: right;
+  text-align: end;
   padding: 0.5em;
   min-width: 0;
 
@@ -45,7 +45,7 @@ export const Head = styled.div<SharedProps>`
 `;
 
 export const Info = styled.div<SharedProps>`
-  text-align: right;
+  text-align: end;
   padding: 0.5em 0.5em 0 0.5em;
   font-size: ${(props) => (props.isNarrow ? "0.85em" : "1.15em")};
 
@@ -59,9 +59,9 @@ export const FunnelStart = styled.div<SharedProps>`
   display: flex;
   justify-content: center;
   flex-direction: column;
-  text-align: right;
+  text-align: end;
   flex-grow: 1;
-  padding-right: 0.5em;
+  padding-inline-end: 0.5em;
   font-size: 1.72em;
 
   ${Title} {

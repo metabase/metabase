@@ -69,8 +69,8 @@
     }
 
     .cm-cursor {
-      border-left-width: 1.6px;
-      border-left-color: var(--mb-color-text-secondary);
+      border-inline-start-width: 1.6px;
+      border-inline-start-color: var(--mb-color-text-secondary);
     }
 
     .cm-placeholder {

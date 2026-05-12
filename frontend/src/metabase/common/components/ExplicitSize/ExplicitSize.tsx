@@ -254,7 +254,7 @@ export function ExplicitSize<T>({
             >
               <ComposedComponent
                 ref={forwardedRef}
-                style={{ position: "absolute", top: 0, left: 0, width, height }}
+                style={{ position: "absolute", top: 0, inset-inline-start: 0, width, height }}
                 {...(rest as unknown as T)}
                 {...this.state}
               />

@@ -23,10 +23,10 @@
 }
 
 .filterButtonWithCount {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
 }
 
 .filterButtonAttachment {
-  border-left: 1px solid var(--mb-color-border-filter);
+  border-inline-start: 1px solid var(--mb-color-border-filter);
 }

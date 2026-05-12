@@ -15,7 +15,7 @@ export const TabRoot = styled.button<TabProps>`
   align-items: end;
   width: 100%;
   flex: 1;
-  text-align: left;
+  text-align: start;
   color: ${(props) =>
     props.isSelected ? color("brand") : color("text-primary")};
   background-color: ${(props) =>
@@ -23,7 +23,7 @@ export const TabRoot = styled.button<TabProps>`
   cursor: pointer;
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
-  margin-right: var(--mantine-spacing-sm);
+  margin-inline-end: var(--mantine-spacing-sm);
   border-radius: var(--mantine-spacing-xs);
 
   &:hover {
@@ -36,7 +36,7 @@ export const TabRoot = styled.button<TabProps>`
 export const TabIcon = styled(Icon)`
   width: 1rem;
   height: 1rem;
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const TabLabel = styled.div`

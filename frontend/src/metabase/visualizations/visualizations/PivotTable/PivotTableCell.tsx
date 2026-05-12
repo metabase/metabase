@@ -65,7 +65,7 @@ function ResizableHandle({
       ref={setNodeRef}
       data-testid="pivot-table-resize-handle"
       style={{
-        left: `${currentPosition}px`,
+        inset-inline-start: `${currentPosition}px`,
         cursor: "col-resize",
       }}
       {...listeners}

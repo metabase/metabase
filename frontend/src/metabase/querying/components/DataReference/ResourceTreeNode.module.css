@@ -1,6 +1,6 @@
 .ResourceListItem {
   &[data-is-root="false"] {
-    margin-left: 32px;
+    margin-inline-start: 32px;
 
     & svg {
       color: var(--mb-color-focus);
@@ -24,6 +24,6 @@
   & svg[data-role="chevron"] {
     width: 12px;
     height: 12px;
-    margin-right: 4px;
+    margin-inline-end: 4px;
   }
 }

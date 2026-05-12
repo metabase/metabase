@@ -57,7 +57,7 @@ export const DragHandleIcon = styled(Icon)`
 `;
 
 export const ExpandIcon = styled(Icon)`
-  margin-left: 8px;
+  margin-inline-start: 8px;
 `;
 
 export const RemoveIcon = styled(Icon)`

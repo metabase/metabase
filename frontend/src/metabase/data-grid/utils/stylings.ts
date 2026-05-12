@@ -13,7 +13,7 @@ export const getRowPositionStyles = <TData>(
   return {
     position: "absolute",
     top: 0,
-    left: 0,
+    inset-inline-start: 0,
     minHeight: `${row.height}px`,
     transform: `translateY(${row.virtualItem.start}px)`,
   };

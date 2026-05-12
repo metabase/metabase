@@ -11,7 +11,7 @@ export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   ${(props) =>
     props.hasLeftBorder &&
     css`
-      border-left: 1px solid var(--mb-color-border);
+      border-inline-start: 1px solid var(--mb-color-border);
     `}
 `;
 

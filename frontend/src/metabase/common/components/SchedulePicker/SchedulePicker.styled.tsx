@@ -13,7 +13,7 @@ export const PickerSpacedRow = styled(PickerRow)`
 export const PickerText = styled.span`
   font-weight: bold;
   min-width: 48px;
-  margin-right: 12px;
+  margin-inline-end: 12px;
   text-overflow: ellipsis;
   overflow: hidden;
 `;

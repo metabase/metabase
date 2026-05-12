@@ -14,7 +14,7 @@ export const SetupCardContainer = styled.div<SetupCardContainerProps>`
   ${breakpointMinLarge} {
     display: block;
     position: fixed;
-    right: 2em;
+    inset-inline-end: 2em;
     bottom: 2em;
     max-width: 20%;
     margin-bottom: 0;

@@ -45,6 +45,6 @@ export const SpinnerIcon = styled.div<SpinnerIconProps>`
     opacity: 0.25;
     position: relative;
     top: ${(props) => `-${props.borderWidth}px`};
-    left: ${(props) => `-${props.borderWidth}px`};
+    inset-inline-start: ${(props) => `-${props.borderWidth}px`};
   }
 `;

@@ -7,6 +7,6 @@ export const CardTitle = styled(Ellipsified)`
   color: var(--mb-color-text-primary);
   font-size: 1rem;
   font-weight: bold;
-  margin-left: 1rem;
+  margin-inline-start: 1rem;
   max-width: 100%;
 `;

@@ -34,7 +34,7 @@ export const useCellMeasure = (
         style={{
           position: "absolute",
           top: "-9999px",
-          left: "-9999px",
+          inset-inline-start: "-9999px",
           visibility: "hidden",
           pointerEvents: "none",
           zIndex: -999,

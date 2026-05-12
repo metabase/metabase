@@ -1,7 +1,7 @@
 .SidebarHeader {
   border-bottom: 1px solid var(--mb-color-border);
-  padding-left: 32px;
-  padding-right: 36px;
+  padding-inline-start: 32px;
+  padding-inline-end: 36px;
   margin-bottom: 16px;
 }
 
@@ -12,7 +12,7 @@
   /* increase specificity */
   .SelectedClickBehaviorItemIcon {
     border-color: transparent;
-    padding-left: 12px;
+    padding-inline-start: 12px;
   }
 }
 

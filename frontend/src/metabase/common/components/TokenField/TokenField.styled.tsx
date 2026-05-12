@@ -19,7 +19,7 @@ export const TokenInputItem = styled.li`
   display: flex;
   flex: 1 0 auto;
   align-items: center;
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
   height: 46px;
   background: none;
 `;

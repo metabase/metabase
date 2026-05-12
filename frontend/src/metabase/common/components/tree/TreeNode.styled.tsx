@@ -19,8 +19,8 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   color: ${(props) =>
     props.isSelected ? color("text-primary-inverse") : color("brand")};
   background-color: ${(props) => (props.isSelected ? color("brand") : "unset")};
-  padding-left: ${(props) => props.depth + 0.5}rem;
-  padding-right: 0.5rem;
+  padding-inline-start: ${(props) => props.depth + 0.5}rem;
+  padding-inline-end: 0.5rem;
   cursor: pointer;
   font-weight: 700;
 

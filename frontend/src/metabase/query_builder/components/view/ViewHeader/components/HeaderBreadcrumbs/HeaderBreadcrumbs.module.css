@@ -12,8 +12,8 @@
   color: var(--mb-color-text-tertiary);
   font-size: 0.8em;
   font-weight: bold;
-  padding-left: 0.5em;
-  padding-right: 0.5em;
+  padding-inline-start: 0.5em;
+  padding-inline-end: 0.5em;
   user-select: none;
 }
 
@@ -22,6 +22,6 @@
   .HeaderBadgeIcon {
     width: 1em;
     height: 1em;
-    margin-right: 0.5em;
+    margin-inline-end: 0.5em;
   }
 }

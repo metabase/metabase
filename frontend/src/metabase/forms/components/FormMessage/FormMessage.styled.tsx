@@ -12,7 +12,7 @@ export const FormMessageStyled = styled.span<{
 }>`
   color: ${({ hasSucceeded }) =>
     hasSucceeded ? "var(--mb-color-success)" : color("error")};
-  float: left;
+  float: inline-start;
   opacity: 0;
   padding-bottom: ${({ noPadding }) =>
     noPadding ? "" : "var(--mantine-spacing-md)"};

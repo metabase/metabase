@@ -2,7 +2,7 @@
   border-radius: 0;
   visibility: hidden;
   color: var(--mb-color-text-tertiary-inverse);
-  border-left: 2px solid var(--mb-color-border-subtle);
+  border-inline-start: 2px solid var(--mb-color-border-subtle);
 }
 
 *:hover > .triggerButton {
@@ -38,7 +38,7 @@
 .chevronDown {
   flex: 0 0 auto;
   width: 8px;
-  margin-left: 0.25em;
+  margin-inline-start: 0.25em;
   color: currentColor;
   opacity: 0.75;
 }

@@ -8,6 +8,6 @@ export const ChartSettingsFooterRoot = styled.div`
   justify-content: flex-end;
   padding: 1rem 2rem;
   ${Button} {
-    margin-left: 1rem;
+    margin-inline-start: 1rem;
   }
 `;

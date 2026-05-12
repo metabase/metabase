@@ -25,7 +25,7 @@ export function UpdatesNavItem() {
           disabled={!isNewVersionAvailable}
           styles={{
             indicator: {
-              right: "0.5rem",
+              inset-inline-end: "0.5rem",
             },
           }}
           size={7}

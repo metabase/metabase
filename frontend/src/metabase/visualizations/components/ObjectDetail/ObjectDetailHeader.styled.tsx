@@ -10,12 +10,12 @@ export const ObjectDetailHeaderWrapper = styled.div`
 
 export const ObjectIdLabel = styled.span`
   color: var(--mb-color-text-secondary);
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 `;
 
 export const CloseButton = styled.div`
   display: flex;
-  margin-left: 1rem;
-  padding-left: 1rem;
-  border-left: 1px solid var(--mb-color-border);
+  margin-inline-start: 1rem;
+  padding-inline-start: 1rem;
+  border-inline-start: 1px solid var(--mb-color-border);
 `;

@@ -67,7 +67,7 @@ export const SelectButtonIcon = styled(
   ),
 )`
   display: flex;
-  margin-left: auto;
+  margin-inline-start: auto;
   color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted
       ? color("text-primary-inverse")
@@ -75,5 +75,5 @@ export const SelectButtonIcon = styled(
 `;
 
 export const SelectButtonContent = styled.span`
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;

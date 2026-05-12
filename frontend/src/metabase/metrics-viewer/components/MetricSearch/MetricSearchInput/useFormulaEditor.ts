@@ -102,7 +102,7 @@ export function useFormulaEditor({
   // Pixel position (viewport-relative) of the current word's left edge and
   // line bottom — used to anchor the search dropdown at the cursor word.
   const [anchorRect, setAnchorRect] = useState<{ left: number; top: number }>({
-    left: 0,
+    inset-inline-start: 0,
     top: 0,
   });
 

@@ -34,31 +34,31 @@
 
 .flexContent :global(.node-cardEmbed) {
   height: 100%;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-inline-start: 0.5rem;
+  padding-inline-end: 0.5rem;
   caret-color: auto;
   transform: translateZ(0);
 }
 
 .flexContent :global(.node-cardEmbed):first-child {
-  padding-left: 0;
+  padding-inline-start: 0;
 }
 
 .flexContent :global(.node-cardEmbed):last-child {
-  padding-right: 0;
+  padding-inline-end: 0;
 }
 
 .flexContent :global(.node-supportingText) {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
+  margin-inline-start: 0.5rem;
+  margin-inline-end: 0.5rem;
 }
 
 .flexContent :global(.node-supportingText):first-child {
-  margin-left: 0;
+  margin-inline-start: 0;
 }
 
 .flexContent :global(.node-supportingText):last-child {
-  margin-right: 0;
+  margin-inline-end: 0;
 }
 
 /* Resize handles */
@@ -67,7 +67,7 @@
   top: calc(50% - 2rem);
   width: 0.25rem;
   height: 4rem;
-  margin-left: -0.125rem;
+  margin-inline-start: -0.125rem;
   cursor: col-resize;
   background-color: transparent;
   border-radius: 100px;

@@ -13,7 +13,7 @@
   &.isSmallScreen {
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     border-bottom: 1px solid var(--mb-color-border);
     overflow-y: auto;

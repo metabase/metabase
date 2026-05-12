@@ -545,7 +545,7 @@ export const PositiveNumberInput = ({
       min={1}
       styles={{
         input: {
-          // This is like `text-align: right` but it's RTL-friendly
+          // This is like `text-align: end` but it's RTL-friendly
           textAlign: "end",
           maxWidth: "4.5rem",
         },

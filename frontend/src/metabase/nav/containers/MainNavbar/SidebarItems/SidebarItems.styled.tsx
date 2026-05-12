@@ -52,7 +52,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
   color: ${(props) => getTextColor(props.isSelected)};
   background-color: ${(props) =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
-  padding-left: ${(props) => props.depth}rem;
+  padding-inline-start: ${(props) => props.depth}rem;
   border-radius: 4px;
 
   &:focus-within {

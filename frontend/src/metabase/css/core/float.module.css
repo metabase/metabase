@@ -1,7 +1,7 @@
 .floatLeft {
-  float: left;
+  float: inline-start;
 }
 
 .floatRight {
-  float: right;
+  float: inline-end;
 }

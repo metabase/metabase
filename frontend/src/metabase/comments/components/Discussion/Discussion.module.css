@@ -12,9 +12,9 @@
     content: "";
     display: block;
     position: absolute;
-    margin-left: -12px;
+    margin-inline-start: -12px;
     margin-top: -4px;
-    left: calc(-1 * var(--padding-h) / 2);
+    inset-inline-start: calc(-1 * var(--padding-h) / 2);
     top: calc(-1 * var(--padding-v) / 2);
     width: calc(100% + var(--padding-h) + 12.5px);
     height: calc(100% + var(--padding-v) + 4px);
@@ -34,7 +34,7 @@
 .actionPanel {
   position: absolute;
   top: -8px;
-  right: 0;
+  inset-inline-end: 0;
   z-index: 1;
   border: 1px solid var(--mb-color-border);
   visibility: hidden;

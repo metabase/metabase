@@ -37,19 +37,19 @@ export const PermissionsTableCell = styled.td`
 
   &:first-of-type {
     max-width: 300px;
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
     position: sticky;
-    padding-left: 0;
-    padding-right: 1.5rem;
+    padding-inline-start: 0;
+    padding-inline-end: 1.5rem;
     background: var(--mb-color-background-primary);
 
     &:after {
       position: absolute;
-      right: 0;
+      inset-inline-end: 0;
       top: 0;
       height: 100%;
-      border-right: ${() => getTableBorder()};
+      border-inline-end: ${() => getTableBorder()};
       content: " ";
     }
   }
@@ -98,7 +98,7 @@ export const HintIcon = styled(
   }),
 )`
   color: var(--mb-color-text-tertiary);
-  margin-left: 0.375rem;
+  margin-inline-start: 0.375rem;
   cursor: pointer;
 `;
 

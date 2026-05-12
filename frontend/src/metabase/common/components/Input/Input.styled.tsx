@@ -102,9 +102,9 @@ export const InputField = styled.input<InputProps>`
       line-height: 1rem;
     `};
 
-  padding-left: ${(props) =>
+  padding-inline-start: ${(props) =>
     getHorizontalPadding(props.fieldSize, props.hasLeftIcon)};
-  padding-right: ${(props) =>
+  padding-inline-end: ${(props) =>
     getHorizontalPadding(
       props.fieldSize,
       props.hasRightIcon,
@@ -136,11 +136,11 @@ const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
 `;
 
 export const InputLeftButton = styled(InputButton)<InputButtonProps>`
-  left: 0;
+  inset-inline-start: 0;
 `;
 
 export const InputRightButton = styled(InputButton)<InputButtonProps>`
-  right: 0;
+  inset-inline-end: 0;
 `;
 
 type InputResetButtonProps = {
@@ -151,14 +151,14 @@ type InputResetButtonProps = {
 export const InputResetButton = styled(InputButton, {
   shouldForwardProp: isPropValid,
 })<InputResetButtonProps>`
-  right: ${(props) => (props.hasRightIcon ? "1.25rem" : 0)};
+  inset-inline-end: ${(props) => (props.hasRightIcon ? "1.25rem" : 0)};
 `;
 
 export const InputSubtitle = styled.div`
   color: var(--mb-color-text-tertiary);
   position: absolute;
   top: 1.25em;
-  left: 1.25em;
+  inset-inline-start: 1.25em;
   font-family: ${monospaceFontFamily};
   font-size: 0.75em;
   text-overflow: ellipsis;

@@ -13,7 +13,7 @@
 .Sidebar {
   overflow-y: auto;
   flex-shrink: 0;
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 }
 
 .Content {

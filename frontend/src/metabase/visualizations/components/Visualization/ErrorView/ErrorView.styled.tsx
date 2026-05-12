@@ -11,8 +11,8 @@ export const Root = styled.div<{ isDashboard?: boolean }>`
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-inline-start: 0.5rem;
+  padding-inline-end: 0.5rem;
   padding-bottom: 0.5rem;
   color: ${({ isDashboard }) =>
     isDashboard ? color("text-secondary") : color("text-tertiary")};

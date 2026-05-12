@@ -11,7 +11,7 @@
   color: var(--mb-color-error);
   width: 1rem;
   height: 1rem;
-  margin-right: 0.75rem;
+  margin-inline-end: 0.75rem;
 }
 
 .QueryErrorMessage {

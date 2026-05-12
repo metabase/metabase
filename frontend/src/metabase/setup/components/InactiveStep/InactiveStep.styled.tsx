@@ -27,7 +27,7 @@ export const StepTitle = styled.div<Props>`
 export const StepLabel = styled.div<Props>`
   position: absolute;
   top: 50%;
-  left: 0;
+  inset-inline-start: 0;
   transform: translate(-50%, -50%);
   display: flex;
   justify-content: center;

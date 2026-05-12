@@ -36,7 +36,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   > .Icon {
     color: ${(props) =>
       color(props.disabled ? "text-tertiary" : props.color || "text-primary")};
-    margin-right: 0.65em;
+    margin-inline-end: 0.65em;
   }
 
   :hover > .Icon {
@@ -46,7 +46,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
 `;
 
 export const MenuItemIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 `;
 
 export const MenuItemTitle = styled.span`

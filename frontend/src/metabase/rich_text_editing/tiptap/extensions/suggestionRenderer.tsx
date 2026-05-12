@@ -90,7 +90,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
       }).then((pos) => {
         if (component?.element instanceof HTMLElement) {
           Object.assign(component.element.style, {
-            left: `${pos.x}px`,
+            inset-inline-start: `${pos.x}px`,
             top: `${pos.y}px`,
             position: "fixed",
             zIndex: 200,

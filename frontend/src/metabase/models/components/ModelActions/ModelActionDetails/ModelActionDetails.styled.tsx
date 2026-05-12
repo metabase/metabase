@@ -17,7 +17,7 @@ export const ActionsHeader = styled.div`
 `;
 
 export const ActionMenu = styled(EntityMenu)`
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 `;
 
 export const ActionList = styled.ul`

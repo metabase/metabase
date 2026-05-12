@@ -8,7 +8,7 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
 
   &:not(:first-of-type) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.25rem" : "")};
-    margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
+    margin-inline-start: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
   }
 `;
 
@@ -33,7 +33,7 @@ export const LegendItemTitle = styled.div<{
   color: var(--mb-color-text-primary);
   font-size: 0.928em;
   font-weight: 700;
-  margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
+  margin-inline-start: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   max-width: ${({ dotSize, isInsidePopover }) =>
