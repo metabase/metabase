@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
+import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
@@ -110,6 +110,7 @@ export const EmbeddingHub = () => {
         initialTab={
           openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
         }
+        fromEmbeddingSetupGuide
       />
       <CreateDashboardModal
         opened={openedModal?.type === "new-dashboard"}
@@ -118,6 +119,7 @@ export const EmbeddingHub = () => {
       <EmbeddingHubXrayPickerModal
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
+        fromEmbeddingSetupGuide
       />
       {openedModal?.type === "user-strategy" && (
         <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />

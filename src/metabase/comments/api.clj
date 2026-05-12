@@ -9,6 +9,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.render :as comments.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.users.core :as users]
@@ -52,7 +53,6 @@
    [:target_type [:enum "document"]]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
-   [:html        :string]
    [:child_target_id {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -60,7 +60,6 @@
   "Schema for updating a comment"
   [:map
    [:content {:optional true} CommentContent]
-   [:html    {:optional true} :string]
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
@@ -143,9 +142,9 @@
                     :document_href  (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
-                    :comment        (:content_html comment)
+                    :comment        (comments.render/content->html (:content comment))
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (:content_html parent)
+                    :parent_comment (some-> parent :content comments.render/content->html)
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
@@ -166,7 +165,7 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
+   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
   (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -184,7 +183,6 @@
                                                        :child_target_id   child_target_id
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
-                                                       :content_html      html
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
@@ -203,7 +201,7 @@
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [content html is_resolved]} :- UpdateComment]
+   {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
@@ -221,7 +219,7 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
+    (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))

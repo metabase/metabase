@@ -1,6 +1,7 @@
 (ns metabase.transforms.settings
   (:require
    [metabase.settings.core :as setting]
+   [metabase.transforms.usage :as transforms.usage]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
@@ -10,8 +11,9 @@
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
+  :doc        "Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
+  so make sure that value isn't lower, or it will timeout your transform."
   :feature    :transforms-basic
-  :doc        false
   :export?    false
   :encryption :no
   :audit      :getter)
@@ -23,3 +25,14 @@
   :default    false
   :export?    false
   :audit      :getter)
+
+(setting/defsetting transforms-meter-locked
+  (deferred-tru "True when the customer''s active transforms meter is locked (trial quota exhausted).")
+  :type       :boolean
+  :visibility :authenticated
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :default    false
+  :doc        false
+  :getter     transforms.usage/transforms-meter-locked?)

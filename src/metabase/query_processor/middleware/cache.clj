@@ -21,6 +21,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -151,8 +152,16 @@
 
         ([acc row]
          (if (map? row)
-           (vreset! final-metadata row)
-           (rf acc row)))))))
+           ;; The map-row is the cached final-metadata; stash it and preserve the fresh
+           ;; acc (returning `row` would clobber anything middlewares wrote at init,
+           ;; e.g. :viz-settings). `unreduced` strips any reduced marker so it doesn't
+           ;; leak out through the stashed handoff.
+           (do (vreset! final-metadata row) (unreduced acc))
+           ;; `reducible-rows` keeps reading past a reduced acc (see cache/impl.clj);
+           ;; propagate it here instead of calling `rf` past the short-circuit.
+           (if (reduced? acc)
+             acc
+             (rf acc row))))))))
 
 (mu/defn- maybe-reduce-cached-results :- [:tuple
                                           #_status
@@ -266,5 +275,6 @@
     (let [cacheable? (is-cacheable? query)]
       (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") (get-cache-eligibility-description query))
       (if cacheable?
-        (run-query-with-cache qp query rff)
+        (tracing/with-span :qp "qp.cache" {:cache/eligible true}
+          (run-query-with-cache qp query rff))
         (qp query rff)))))

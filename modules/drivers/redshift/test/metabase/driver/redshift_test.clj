@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
@@ -13,8 +14,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
@@ -354,9 +355,13 @@
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (is (contains?
-                   (set (map :name (:tables (driver/describe-database :redshift database))))
-                   mview-nm)))))))))
+              (u/auto-retry 3
+                (let [table-names (set (map :name (:tables (driver/describe-database :redshift database))))]
+                  (when-not (contains? table-names mview-nm)
+                    (Thread/sleep 1000)
+                    (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                    {:expected mview-nm :actual table-names})))
+                  (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
@@ -707,3 +712,21 @@
         (let [multi-field (nth fields 2)]
           (is (= "SUPER" (:database_type multi-field)))
           (is (= :type/JSON (:effective_type multi-field))))))))
+
+(deftest ^:parallel set-role-statement-test
+  (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
+    (mt/test-driver :redshift
+      (sql-jdbc.execute/do-with-connection-with-options
+       :redshift (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :redshift conn role))
+           "MY_ROLE"                      "SET SESSION AUTHORIZATION MY_ROLE;"
+           "ROLE123"                      "SET SESSION AUTHORIZATION ROLE123;"
+           "lowercase_role"               "SET SESSION AUTHORIZATION lowercase_role;"
+           "Role.123"                     "SET SESSION AUTHORIZATION \"Role.123\";"
+           "$role"                        "SET SESSION AUTHORIZATION \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET SESSION AUTHORIZATION none;"
+           "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))

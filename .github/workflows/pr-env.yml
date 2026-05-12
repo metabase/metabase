@@ -16,7 +16,7 @@ on:
         default: false
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     timeout-minutes: 60
@@ -28,13 +28,13 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: us-east-1
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
         with:
           registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
       - name: Retrieve uberjar artifact for ee
@@ -49,7 +49,7 @@ jobs:
           jar xf target/uberjar/metabase.jar
           mv target/uberjar/metabase.jar bin/docker/metabase.jar
       - name: Build container
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: bin/docker/
           platforms: linux/amd64
@@ -58,7 +58,7 @@ jobs:
           push: true
   deploy_pr:
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV
     permissions:
       id-token: write
@@ -67,7 +67,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
       - name: Tailscale
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
         with:
           oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
@@ -78,12 +78,14 @@ jobs:
         id: create-oidc-token
         shell: bash
         run: |
-          export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ secrets.PR_ENV_K8S_AUDIENCE }}"
+          export OIDC_URL_WITH_AUDIENCE="$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PR_ENV_K8S_AUDIENCE}"
           IDTOKEN=$(curl -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" -H "Accept: application/json; api-version=2.0" "$OIDC_URL_WITH_AUDIENCE" | jq -r .value)
           echo "::add-mask::${IDTOKEN}"
           echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
+        env:
+          PR_ENV_K8S_AUDIENCE: ${{ secrets.PR_ENV_K8S_AUDIENCE }}
       - name: Setup Kube Context
-        uses: azure/k8s-set-context@v2
+        uses: azure/k8s-set-context@0b53301dcc7ddd3f6d35f97fb67228ac4e5ab2fd # v2
         with:
           method: kubeconfig
           kubeconfig: |
@@ -106,7 +108,7 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -117,19 +119,24 @@ jobs:
           sudo apt-get install -y postgresql-client
       - name: Create app database if not exists
         run: |
-          export PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}'
-          export PGUSER=${{ secrets.PR_ENV_DB_USER }}
-          export PGHOST=${{ secrets.PR_ENV_DB_HOST }}
-          export PGDATABASE=${{ secrets.PR_ENV_DB_NAME }}
+          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
+          export PGUSER="${PR_ENV_DB_USER}"
+          export PGHOST="${PR_ENV_DB_HOST}"
+          export PGDATABASE="${PR_ENV_DB_NAME}"
           psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" \
           | grep -q 1 \
           || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
       - name: Download Deployment YAML template
         if: ${{ !inputs.self_hosting }}
         run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
       - name: Render Deployment YAML
         if: ${{ !inputs.self_hosting }}
-        uses: nowactions/envsubst@v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
         with:
           input: ./metabase.yml.tmpl
           output: ./metabase.yml
@@ -148,7 +155,7 @@ jobs:
         run: aws s3 cp s3://metabase-pr-env/values.yaml.tmpl ./values.yaml.tmpl
       - name: Render Helm values (self-hosting)
         if: ${{ inputs.self_hosting }}
-        uses: nowactions/envsubst@v1
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1
         with:
           input: ./values.yaml.tmpl
           output: ./values.yaml
@@ -168,15 +175,18 @@ jobs:
 
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: 'latest'
       - name: Login to Quay.io
         if: ${{ inputs.self_hosting }}
         run: |
           helm registry login quay.io \
-            --username ${{ secrets.QUAY_USERNAME }} \
-            --password ${{ secrets.QUAY_PASSWORD }}
+            --username "${QUAY_USERNAME}" \
+            --password "${QUAY_PASSWORD}"
+        env:
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
       - name: Deploy PR Review ENV (self-hosting)
         if: ${{ inputs.self_hosting }}
         run: |
@@ -188,10 +198,10 @@ jobs:
             --atomic \
             --timeout 10m
   preview_links:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [deploy_pr]
     steps:
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2
         with:
           recreate: true
           message: |

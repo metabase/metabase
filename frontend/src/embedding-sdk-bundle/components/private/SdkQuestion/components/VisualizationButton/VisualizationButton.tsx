@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   isQuestionDirty,
   isQuestionRunnable,
-} from "metabase/query_builder/utils/question";
+} from "metabase/querying/common/utils/question";
 import { Button } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";

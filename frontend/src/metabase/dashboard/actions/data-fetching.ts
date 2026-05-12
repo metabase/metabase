@@ -2,8 +2,10 @@ import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -21,18 +23,13 @@ import {
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
-  getDashboardType,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
-import { uuid } from "metabase/lib/uuid";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { addFields } from "metabase/redux/metadata";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -43,11 +40,17 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import {
+  getDashboardType,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import type { Deferred } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
+import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardId,
@@ -59,7 +62,6 @@ import type {
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -267,7 +269,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        equals(
+        _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
         )
@@ -278,6 +280,20 @@ export const fetchCardDataAction = createAsyncThunk<
           result: lastResult,
         };
       }
+
+      /**
+       * If a request for this card is already in-flight with the same parameters, let it finish rather than cancelling
+       * and restarting. This avoids re-executing slow queries (e.g. pivot tables) when switching dashboard tabs back
+       * and forth (#70534). When parameters differ (e.g. filter change), we fall through to the cancel-and-restart
+       * path below.
+       */
+      const inFlight = cardDataCancelDeferreds[`${dashcard.id},${card.id}`];
+      if (
+        inFlight &&
+        _.isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
+      ) {
+        return;
+      }
     }
 
     cancelFetchCardData(card.id, dashcard.id);
@@ -286,7 +302,7 @@ export const fetchCardDataAction = createAsyncThunk<
     // state so that the loader spinner shows as expected (#33767)
     const hasParametersChanged =
       !lastResult ||
-      !equals(
+      !_.isEqual(
         getDatasetQueryParams(lastResult.json_query),
         getDatasetQueryParams(datasetQuery),
       );
@@ -306,7 +322,12 @@ export const fetchCardDataAction = createAsyncThunk<
     }, DASHBOARD_SLOW_TIMEOUT);
 
     const deferred = defer();
-    setFetchCardDataCancel(card.id, dashcard.id, deferred);
+    setFetchCardDataCancel(
+      card.id,
+      dashcard.id,
+      deferred,
+      getDatasetQueryParams(datasetQuery),
+    );
 
     let cancelled = false;
     deferred.promise.then(() => {
@@ -318,18 +339,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled: deferred.promise,
     };
 
-    // make the actual request
-    if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
-        MetabaseApi.datasetEndpoint(
-          {
-            endpoint: datasetQuery.endpoint,
-            parameters: datasetQuery.parameters,
-          },
-          queryOptions,
-        ),
-      );
-    } else if (dashboardType === "public") {
+    if (dashboardType === "public") {
       result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,
@@ -447,6 +457,44 @@ export const fetchCardData =
     );
   };
 
+// Leave 1 connection free for interactive requests (browser HTTP/1.1 limit is 6)
+const HTTP1_CONCURRENT_CARD_FETCH_LIMIT = 5;
+
+function getCardsFetchingConcurrencyLimit(): number {
+  try {
+    const [navigationEntry] = performance.getEntriesByType(
+      "navigation",
+    ) as PerformanceNavigationTiming[];
+    const protocol = navigationEntry?.nextHopProtocol ?? "";
+    // HTTP/2 and HTTP/3 multiplex requests over a single connection,
+    // so the per-host connection limit does not apply
+    if (protocol === "h2" || protocol === "h2c" || protocol.startsWith("h3")) {
+      return Infinity;
+    }
+  } catch {
+    // Performance API unavailable; fall through to the conservative limit
+  }
+  return HTTP1_CONCURRENT_CARD_FETCH_LIMIT;
+}
+
+const CONCURRENT_CARD_FETCH_LIMIT = getCardsFetchingConcurrencyLimit();
+
+async function runWithConcurrencyLimit(
+  tasks: (() => Promise<void>)[],
+  limit: number,
+): Promise<void> {
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const taskIndex = index++;
+      await tasks[taskIndex]();
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, tasks.length) }, worker),
+  );
+}
+
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
@@ -486,10 +534,12 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
-      for (const id of loadingIds) {
-        const dashcard = getDashCardById(getState(), id);
-        dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
-      }
+      /**
+       * We intentionally do NOT cancel in-flight requests here. Each card's fetch (fetchCardDataAction) handles its
+       * own deduplication: it returns early when an identical request is already in-flight and cancels stale requests
+       * when parameters change. Batch-cancelling here would abort nearly-complete requests on tab switch, forcing
+       * slow queries (e.g. pivots) to restart from scratch. (#70534)
+       */
 
       dispatch(
         fetchDashboardCardDataAction({
@@ -499,20 +549,21 @@ export const fetchDashboardCardData =
       );
     }
 
-    const promises = nonVirtualDashcardsToFetch.map(
-      async ({ card, dashcard }) => {
-        await dispatch(
-          // TODO: fix the return type of getAllDashboardCards to make sure
-          // that the relationship between a dashcard and its card
-          // is actually reflected in the type system
-          fetchCardData(card as Card, dashcard, {
-            reload,
-            clearCache,
-            dashboardLoadId,
-          }),
-        );
-        await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
-      },
+    const tasks = nonVirtualDashcardsToFetch.map(
+      ({ card, dashcard }) =>
+        async () => {
+          await dispatch(
+            // TODO: fix the return type of getAllDashboardCards to make sure
+            // that the relationship between a dashcard and its card
+            // is actually reflected in the type system
+            fetchCardData(card as Card, dashcard, {
+              reload,
+              clearCache,
+              dashboardLoadId,
+            }),
+          );
+          await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+        },
     );
 
     if (nonVirtualDashcardsToFetch.length > 0) {
@@ -522,9 +573,11 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      return Promise.all(promises).then(() => {
-        dispatch(loadingComplete());
-      });
+      return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
+        () => {
+          dispatch(loadingComplete());
+        },
+      );
     }
   };
 
@@ -536,10 +589,10 @@ export const reloadDashboardCards =
       return;
     }
 
-    const reloads = getAllDashboardCards(dashboard)
+    const reloadTasks = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .map(({ card, dashcard }) =>
-        dispatch(
+      .map(({ card, dashcard }) => async () => {
+        await dispatch(
           // TODO: fix the return type of getAllDashboardCards to make sure
           // that the relationship between a dashcard and its card
           // is actually reflected in the type system
@@ -547,10 +600,10 @@ export const reloadDashboardCards =
             reload: true,
             ignoreCache: true,
           }),
-        ),
-      );
+        );
+      });
 
-    await Promise.all(reloads);
+    await runWithConcurrencyLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
   };
 
 export const cancelFetchDashboardCardData = createThunkAction(
@@ -568,26 +621,34 @@ export const cancelFetchDashboardCardData = createThunkAction(
   },
 );
 
+type InFlightEntry = {
+  deferred: Deferred;
+  queryParams: ReturnType<typeof getDatasetQueryParams>;
+};
+
 const cardDataCancelDeferreds: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
-  Deferred | null
+  InFlightEntry | null
 > = {};
 
 function setFetchCardDataCancel(
   card_id: DashboardCard["card_id"],
   dashcard_id: DashCardId,
   deferred: Deferred | null,
+  queryParams?: ReturnType<typeof getDatasetQueryParams>,
 ) {
-  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred;
+  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred
+    ? { deferred, queryParams: queryParams! }
+    : null;
 }
 
 // machinery to support query cancellation
 export const cancelFetchCardData = createAction(
   CANCEL_FETCH_CARD_DATA,
   (card_id, dashcard_id) => {
-    const deferred = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
-    if (deferred) {
-      deferred.resolve();
+    const entry = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
+    if (entry) {
+      entry.deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
     }
     return { payload: { dashcard_id, card_id } };

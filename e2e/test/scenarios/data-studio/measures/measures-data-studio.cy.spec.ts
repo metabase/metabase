@@ -11,7 +11,7 @@ describe("scenarios > data studio > data model > measures", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
     cy.intercept("PUT", "/api/measure/*").as("updateMeasure");
@@ -150,7 +150,7 @@ describe("scenarios > data studio > data model > measures", () => {
       verifyMeasureInQueryBuilder("Total Revenue");
     });
 
-    it("should add aggregation and show preview in menu", () => {
+    it("should add aggregation and show explore in menu", () => {
       visitDataStudioMeasures(PRODUCTS_ID);
 
       MeasureList.getNewMeasureLink().scrollIntoView().click();
@@ -164,9 +164,9 @@ describe("scenarios > data studio > data model > measures", () => {
         .findByText(/Average of Price/i)
         .should("exist");
 
-      cy.log("verify preview is available in menu");
+      cy.log("verify explore is available in menu");
       MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Preview").should("be.visible");
+      H.popover().findByText("Explore").should("be.visible");
     });
   });
 
@@ -319,7 +319,7 @@ describe("scenarios > data studio > data model > measures", () => {
         aggregation: ["count"],
       });
       cy.get<number>("@measureId").then((measureId) => {
-        // Fetch the measure to get the current pMBQL definition
+        // Fetch the measure to get the current MBQL 5 definition
         cy.request("GET", `/api/measure/${measureId}`).then(({ body }) => {
           const currentDefinition = body.definition;
 
@@ -340,7 +340,7 @@ describe("scenarios > data studio > data model > measures", () => {
           });
 
           cy.log("update measure aggregation");
-          // Update aggregation in the pMBQL definition
+          // Update aggregation in the MBQL 5 definition
           const updatedDefinition = {
             ...currentDefinition,
             stages: [
@@ -471,7 +471,7 @@ describe("scenarios > data studio > data model > measures", () => {
 
         cy.log("verify Remove measure option is hidden in actions menu");
         MeasureEditor.getActionsButton().click();
-        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Explore").should("be.visible");
         H.popover().findByText("Remove measure").should("not.exist");
         cy.realPress("Escape");
 

@@ -58,4 +58,5 @@
     :is-data-analyst? is-data-analyst?}
    {:perms/view-data :unrestricted
     :perms/create-queries :query-builder}
-   {:include-published-via-collection? true}))
+   {:include-published-via-collection? true
+    :active-only? true}))

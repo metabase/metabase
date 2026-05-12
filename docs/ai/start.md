@@ -4,20 +4,41 @@ title: "AI in Metabase"
 
 # AI in Metabase
 
-> Metabot is only available as an add-on for Metabase Cloud.
+> AI features are available on [Metabase Cloud](https://www.metabase.com/features/metabot-ai) and on self-hosted Metabase, using either the Metabase AI service or your own AI provider API key. Enable them from **Admin settings > AI**.
 
 ## [Metabot](./metabot.md)
 
 Metabot is an AI assistant that helps you explore and analyze your data.
 
-## [Setting up Metabot](./settings.md)
+## [AI settings](./settings.md)
 
-Admins can configure Metabot to focus on specific collections and manage example prompts.
+Connect an AI provider and configure AI features like Metabot.
 
-## [SQL generation](./sql-generation.md)
+## [AI usage controls](./usage-controls.md)
 
-Use your own API key to generate SQL from natural language on self-hosted Metabases.
+Control who can use Metabot, and set token and message limits.
+
+## [AI customization](./customization.md)
+
+Customize Metabot's name, icon, and illustrations.
+
+## [AI system prompts](./system-prompts.md)
+
+Add standing instructions for Metabot's tools.
 
 ## [Agent API](./agent-api.md)
 
 A REST API for building headless, agentic BI applications on top of Metabase's semantic layer.
+
+## [MCP server](./mcp.md)
+
+Connect MCP-compatible AI clients to your Metabase.
+
+## [Metabot in Slack](./metabot-slack.md)
+
+Chat with Metabot directly in Slack — ask questions, get charts, and manage subscriptions without leaving Slack.
+
+## [AI usage auditing](./usage-auditing.md)
+
+See how people are using the AI features in your Metabase.
+

@@ -65,6 +65,7 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
@@ -896,5 +897,65 @@ describe("getDependentErrorNodesLabel", () => {
 
   it("should default to plural form when called without arguments", () => {
     expect(getDependentErrorNodesLabel()).toBe("Broken dependents");
+  });
+});
+
+describe("getNodeDataSourceEntry", () => {
+  it.each<{
+    description: string;
+    node: DependencyNode;
+    expected: { id: number; type: string } | null;
+  }>([
+    {
+      description: "table node",
+      node: createMockTableDependencyNode({ id: 1 }),
+      expected: { id: 1, type: "table" },
+    },
+    {
+      description: "question card node",
+      node: createMockCardDependencyNode({
+        id: 2,
+        data: createMockCardDependencyNodeData({ type: "question" }),
+      }),
+      expected: { id: 2, type: "card" },
+    },
+    {
+      description: "model card node",
+      node: createMockCardDependencyNode({
+        id: 3,
+        data: createMockCardDependencyNodeData({ type: "model" }),
+      }),
+      expected: { id: 3, type: "card" },
+    },
+    {
+      description: "metric card node",
+      node: createMockCardDependencyNode({
+        id: 4,
+        data: createMockCardDependencyNodeData({ type: "metric" }),
+      }),
+      expected: null,
+    },
+    {
+      description: "dashboard node",
+      node: createMockDashboardDependencyNode({ id: 5 }),
+      expected: null,
+    },
+    {
+      description: "transform node",
+      node: createMockTransformDependencyNode({ id: 6 }),
+      expected: null,
+    },
+    {
+      description: "snippet node",
+      node: createMockSnippetDependencyNode({ id: 7 }),
+      expected: null,
+    },
+    {
+      description: "sandbox node",
+      node: createMockSandboxDependencyNode({ id: 8 }),
+      expected: null,
+    },
+  ])("should return $expected for $description", ({ node, expected }) => {
+    expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
 });

@@ -1,13 +1,14 @@
 {
   "teams": [
     {
-      "name": "Querying",
-      "label": ".Team/Querying",
+      "name": "Querying Platform",
+      "label": ".Team/QueryingPlatform",
       "members": [
         "bshepherdson",
         "metamben",
         "rileythomp",
-        "camsual"
+        "camsaul",
+        "technomancy"
       ]
     },
     {
@@ -15,12 +16,12 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "romeovs",
         "ericnormand",
         "galdre",
         "dpsutton",
         "escherize",
-        "bgrabow"
+        "bgrabow",
+        "alxnddr"
       ]
     },
     {
@@ -46,7 +47,8 @@
       "label": ".Team/DevEx",
       "members": [
         "fraserdrops",
-        "nemanjaglumac"
+        "nemanjaglumac",
+        "romeovs"
       ]
     },
     {
@@ -89,9 +91,9 @@
         "nvoxland",
         "edpaget",
         "deniskaber",
-        "alxnddr",
         "andsalves",
-        "kevinkelleher12"
+        "kevinkelleher12",
+        "AndreyChernykh"
       ]
     },
     {
@@ -106,7 +108,9 @@
         "kamilmielnik",
         "stasgavrylov",
         "uladzimirdev",
-        "egorgrushin"
+        "egorgrushin",
+        "metatyb",
+        "olehk-mb"
       ]
     },
     {

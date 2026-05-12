@@ -1,8 +1,8 @@
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
 
@@ -25,12 +25,13 @@ export const MigrationCreationError = ({
           <Text mt="1rem">
             {c("{0} is an email address")
               .jt`Please try again later, and reach out to us at ${
+              /* eslint-disable i18next/no-literal-string */
               (
-                // eslint-disable-next-line i18next/no-literal-string
                 <Link key="email" variant="brand" to="mailto:help@metabase.com">
                   help@metabase.com
                 </Link>
               )
+              /* eslint-enable i18next/no-literal-string */
             } if you need help.`}
           </Text>
         </Box>

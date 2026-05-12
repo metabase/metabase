@@ -1631,6 +1631,27 @@
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
 
+(deftest ^:parallel find-visible-column-for-ref-aggregation-test
+  (testing "find-visible-column-for-ref works with aggregation refs"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count)))
+          agg-cols (filter #(= :source/aggregations (:lib/source %))
+                           (lib/returned-columns query))
+          agg-ref  (lib/ref (first agg-cols))]
+      (is (=? {:lib/type     :metadata/column
+               :display-name "Count"}
+              (lib/find-visible-column-for-ref query agg-ref))))))
+
+(deftest ^:parallel find-visible-column-for-ref-multi-stage-test
+  (testing "2-arity find-visible-column-for-ref uses last stage"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        lib/append-stage)
+          cols      (lib/visible-columns query)
+          col       (first cols)
+          field-ref (lib/ref col)]
+      (is (some? (lib/find-visible-column-for-ref query field-ref))))))
+
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
     (let [base         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -2343,23 +2364,23 @@
               (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Year"} {}))))))
 
 (deftest ^:parallel display-info-propagate-join-aliases-test
-  (let [mp         (lib.tu/mock-metadata-provider
-                    meta/metadata-provider
-                    {:cards [{:id            1
-                              :dataset-query (lib.tu.macros/mbql-query venues
-                                               {:joins
-                                                [{:source-table $$categories
-                                                  :condition    [:= $category-id &c.categories.id]
-                                                  :fields       :all
-                                                  :alias        "c"}]})}]})
-        query      {:database (meta/id)
-                    :type     :query
-                    :query    {:source-table "card__1"}}
-        mlv2-query (lib/query mp query)
-        breakouts  (lib/breakoutable-columns mlv2-query)
-        agg-query  (-> mlv2-query
-                       (lib/breakout (second breakouts))
-                       (lib/breakout (last breakouts)))]
+  (let [mp          (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :dataset-query (lib.tu.macros/mbql-query venues
+                                                {:joins
+                                                 [{:source-table $$categories
+                                                   :condition    [:= $category-id &c.categories.id]
+                                                   :fields       :all
+                                                   :alias        "c"}]})}]})
+        query       {:database (meta/id)
+                     :type     :query
+                     :query    {:source-table "card__1"}}
+        mbql5-query (lib/query mp query)
+        breakouts   (lib/breakoutable-columns mbql5-query)
+        agg-query   (-> mbql5-query
+                        (lib/breakout (second breakouts))
+                        (lib/breakout (last breakouts)))]
     (testing "display name should be correct; inherited column status has to be detected correctly for this to work"
       (is (= [["Name"     true]         ; they're both inherited!
               ["c → Name" true]]

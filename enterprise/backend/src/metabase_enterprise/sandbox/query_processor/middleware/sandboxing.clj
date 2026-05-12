@@ -20,7 +20,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -94,7 +94,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-lite target-field-clause
+  (when-let [field-id (match/match-one target-field-clause
                         [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
@@ -120,9 +120,12 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   :category
+    {:type   (if (and field-base-type (isa? field-base-type :type/Number))
+               :number/=
+               :string/=)
      :target target
-     :value  (attr-value->param-value field-base-type attr-value)}))
+     ;; :number/= and :string/= are variadic operators that require a sequential value
+     :value  [(attr-value->param-value field-base-type attr-value)]}))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
@@ -281,7 +284,12 @@
         (keep (fn [table-col]
                 (when-let [native-col (m/find-first #(= (:name %) (:name table-col))
                                                     native-cols)]
-                  (merge native-col table-col))))
+                  (cond-> (merge native-col table-col)
+                    ;; If the table column would have had a coercion strategy applied, add some metadata keys to
+                    ;; ensure the strategy is propagated to the first MBQL stage.
+                    (:coercion-strategy table-col)
+                    (assoc :qp/native-sandbox-column.force-coercion-strategy (:coercion-strategy table-col)
+                           :qp/native-sandbox-column.propagate-coercion?     true)))))
         original-table-cols))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
@@ -401,8 +409,8 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
-                                                            {:query-permissions/sandboxed-table sandboxed?} sandboxed?)))
+    (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
+                                                            {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

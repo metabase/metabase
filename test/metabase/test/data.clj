@@ -48,7 +48,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -344,7 +344,10 @@
     (for [driver (tx.env/test-drivers)
           :let [driver (tx/the-driver-with-test-extensions driver)
                 conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
-                                  (into #{} (map :name (driver/connection-properties driver))))]
+                                  (->> (driver/connection-properties driver)
+                                       driver.u/collect-all-props-by-name
+                                       keys
+                                       (into #{})))]
           :when (driver/with-driver driver
                   (let [the-db (delay (db))]
                     (cond-> true

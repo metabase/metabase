@@ -195,7 +195,7 @@
                   "Matrix - Foreign__TEST_ME"]
                  [(-> (lib/query mp table-meta)
                       (lib/join (lib/join-clause table-meta [(lib/= (lib.metadata/field mp 1) (lib.metadata/field mp 1))])))
-                  "Matrix__TEST_ME"]
+                  "Matrix_2__TEST_ME"]
                  [(lib/query mp (:matrix mock-cards))
                   "TEST_ME"]
                  [(lib/query mp (:matrix/native mock-cards))

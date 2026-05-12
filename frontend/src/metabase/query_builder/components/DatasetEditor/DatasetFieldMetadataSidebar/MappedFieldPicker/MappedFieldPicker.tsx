@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { useGetFieldQuery } from "metabase/api";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
-import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
 import Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";

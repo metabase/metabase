@@ -54,14 +54,14 @@ describe("scenarios > question > filter", () => {
             [
               "between",
               ["field", PRODUCTS.CREATED_AT, null],
-              "2025-04-15",
-              "2025-04-15",
+              "2028-04-15",
+              "2028-04-15",
             ],
             [
               "between",
               ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-              "2025-04-15",
-              "2025-04-15",
+              "2028-04-15",
+              "2028-04-15",
             ],
           ],
           joins: [
@@ -153,7 +153,7 @@ describe("scenarios > question > filter", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
+            filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
             aggregation: [["count"]],
             breakout: [
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
@@ -499,7 +499,7 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Created At").click();
       cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
-      cy.findByText(/^Include/).click();
+      cy.findByLabelText(/^Include/).click();
       cy.button("Add filter").click();
     });
 

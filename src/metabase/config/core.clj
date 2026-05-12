@@ -64,7 +64,8 @@
    :mb-log-team-attribution         "false"
    :mb-qp-cache-backend             "db"
    :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
-   :mb-monitor-performance          ""})
+   :mb-monitor-performance           ""
+   :mb-monitor-performance-save-rate ""})
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults

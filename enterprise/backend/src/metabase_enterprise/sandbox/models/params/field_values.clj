@@ -3,8 +3,8 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
@@ -19,17 +19,20 @@
   (table/only-sandboxed-perms? (or table (field/table field))))
 
 (defn- table-id->sandbox
-  "Find the GTAP for current user that apply to table `table-id`."
+  "Find the GTAP for current user that apply to table `table-id`. Returns nil when there is no current user (e.g. when
+  called from a background sync), since sandboxes are scoped to a user's group memberships."
   [table-id]
-  (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        sandboxes (t2/select :model/Sandbox
-                             :group_id [:in group-ids]
-                             :table_id table-id)]
-    (when sandboxes
-      (sandboxing/assert-one-sandbox-per-table sandboxes)
-      ;; there should be only one gtap per table and we only need one table here
-      ;; see docs in [[metabase.permissions.models.permissions]] for more info
-      (t2/hydrate (first sandboxes) :card))))
+  (when api/*current-user-id*
+    (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+          sandboxes (when (seq group-ids)
+                      (t2/select :model/Sandbox
+                                 :group_id [:in group-ids]
+                                 :table_id table-id))]
+      (when sandboxes
+        (sandboxing/assert-one-sandbox-per-table sandboxes)
+        ;; there should be only one gtap per table and we only need one table here
+        ;; see docs in [[metabase.permissions.models.permissions]] for more info
+        (t2/hydrate (first sandboxes) :card)))))
 
 (defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
@@ -67,7 +70,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (lib.util.match/match-lite v
+                                         (match/match-one v
                                            ;; new style with {:stage-number }
                                            [:dimension [:field field-id _] _] field-id
                                            ;; old style without stage number

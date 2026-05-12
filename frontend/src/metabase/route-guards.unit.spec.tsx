@@ -1,11 +1,17 @@
 import { type Context, createContext } from "react";
+import { Route } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { metabaseReduxContext } from "metabase/redux/context";
+import { createMockState } from "metabase/redux/store/mocks";
 
-import { MetabaseReduxContext } from "./lib/redux";
+import {
+  IsAuthenticated,
+  IsNotAuthenticated,
+  isBackendOnlyPath,
+} from "./route-guards";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
@@ -19,7 +25,7 @@ describe("route-guards", () => {
       let selectorState: any;
       const RouteGuard = setupRouteGuard({
         // leverage the same context used by the main application
-        context: MetabaseReduxContext,
+        context: metabaseReduxContext,
         authenticatedSelector: (state) => {
           selectorState = state;
           return !!state.auth.VAL_ONLY_IN_THIS_CTX;
@@ -61,6 +67,72 @@ describe("route-guards", () => {
 
       expect(selectorState.auth.VAL_ONLY_IN_THIS_CTX).toBe(false);
       expect(screen.queryByText(text)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("redirect-after-login flow (UXW-3939)", () => {
+    it("UserIsAuthenticated should preserve original path as ?redirect= when sending logged-out user to /auth/login", async () => {
+      const settings = {
+        "has-user-setup": true,
+      } as any;
+      const state = createMockState({
+        currentUser: undefined,
+        settings: { values: settings } as any,
+      });
+
+      const Dashboard = () => <div>protected dashboard</div>;
+      const LoginPage = () => <div>login page</div>;
+
+      const { history } = renderWithProviders(
+        <>
+          <Route component={IsAuthenticated}>
+            <Route path="/dashboard/:slug" component={Dashboard} />
+          </Route>
+          <Route component={IsNotAuthenticated}>
+            <Route path="/auth/login" component={LoginPage} />
+          </Route>
+        </>,
+        {
+          storeInitialState: state,
+          withRouter: true,
+          initialRoute: "/dashboard/123",
+        },
+      );
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      const location = history!.getCurrentLocation();
+      expect(location.query).toEqual(
+        expect.objectContaining({ redirect: "/dashboard/123" }),
+      );
+      expect(location.search).toContain("redirect");
+    });
+  });
+
+  describe("isBackendOnlyPath", () => {
+    it("should return true for /oauth/ paths", () => {
+      expect(isBackendOnlyPath("/oauth/authorize")).toBe(true);
+      expect(isBackendOnlyPath("/oauth/authorize/decision")).toBe(true);
+      expect(isBackendOnlyPath("/oauth/token")).toBe(true);
+    });
+
+    it("should return true for /auth/sso/ paths", () => {
+      expect(isBackendOnlyPath("/auth/sso/slack-connect")).toBe(true);
+      expect(isBackendOnlyPath("/auth/sso/slack-connect/callback")).toBe(true);
+      expect(isBackendOnlyPath("/auth/sso/my-provider")).toBe(true);
+    });
+
+    it("should return false for frontend paths", () => {
+      expect(isBackendOnlyPath("/")).toBe(false);
+      expect(isBackendOnlyPath("/auth/login")).toBe(false);
+      expect(isBackendOnlyPath("/collection/root")).toBe(false);
+      expect(isBackendOnlyPath("/question/1")).toBe(false);
+    });
+
+    it("should not match partial prefixes", () => {
+      expect(isBackendOnlyPath("/oauthx/foo")).toBe(false);
     });
   });
 });

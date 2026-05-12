@@ -7,9 +7,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
-   [metabase.api.common
-    :as api
-    :refer [*current-user-id*]]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
@@ -174,6 +172,11 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
 
+(defn has-remote-synced-collection?
+  "Return true if any collections are marked remote-sync"
+  []
+  (pos-int? (t2/count :model/Collection :is_remote_synced true)))
+
 (defn library-collection
   "Get the 'library' collection, if it exists."
   []
@@ -188,6 +191,12 @@
 
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
+
+(def ^:private library-entity-id?
+  "Returns true if the given entity ID is one of the hard-coded Library keys."
+  #{library-entity-id
+    library-data-entity-id
+    library-metrics-entity-id})
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
@@ -223,16 +232,30 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
+(defn library-root-collection?
+  "Is this one of the immutable system-created Library collections (root, data, or metrics)?
+  Returns false for user-created subcollections that inherit a library type."
+  [collection]
+  (library-entity-id? (:entity_id collection)))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))
-    (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-data-collection? collection) (assoc :name (tru "Data"))
-    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
+    (is-trash? collection)
+    (assoc :name (tru "Trash"))
+
+    (and (is-library? collection) (library-root-collection? collection))
+    (assoc :name (tru "Library"))
+
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Data"))
+
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
+    (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -278,7 +301,7 @@
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
                     {:status-code 400, :errors {:name (tru "cannot be blank")}})))
-  (u/slugify collection-name collection-slug-max-length))
+  (u/slugify collection-name {:max-length collection-slug-max-length}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
@@ -516,6 +539,16 @@
                       :name collection-name
                       :slug (u/slugify collection-name))))) collections)))
 
+(defn maybe-mark-collection-as-library-root
+  "Given a collection, adds `:is_library_root true` to exactly those collections which have hard-coded Library
+  `:entity_id`s - the Library itself, and it's magic top-level collections.
+
+  This uses the `:entity_id`s rather than `:type`s because it only applies to those root collections at the top level,
+  not to all of them."
+  [{:keys [entity_id] :as collection}]
+  (cond-> collection
+    (library-entity-id? entity_id) (assoc :is_library_root true)))
+
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
   This is only used for displaying purposes, For insertion or updating  the name, use site's locale instead"
@@ -526,7 +559,7 @@
   "For tenant root collections, localize the name to the user's locale.
 
   OSS version: returns collections unchanged."
-  metabase-enterprise.tenants.model
+  metabase-enterprise.tenants.models
   [collections]
   collections)
 
@@ -566,9 +599,8 @@
 (mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
   "Is `collection` a Tenant Collection, or a descendant of one?"
   [collection :- CollectionWithNamespace]
-  (boolean
-   ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
-   (= (some-> (:namespace collection) name) "tenant-specific")))
+  ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
+  (= (some-> (:namespace collection) name) "tenant-specific"))
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
@@ -1075,7 +1107,7 @@
                        ;; cluttered with Personal Collections belonging to other users
                        [:or
                         [:= :personal_owner_id nil]
-                        [:= :personal_owner_id *current-user-id*]]
+                        [:= :personal_owner_id api/*current-user-id*]]
                        additional-honeysql-where-clauses)})
    []))
 
@@ -1149,13 +1181,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
-  {:select [:id :name :description]
+  {:select [:id :name :description :type]
    :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (t2/select [:model/Collection :id :name :description]
+  (set (t2/select [:model/Collection :id :name :description :type]
                   {:where (apply effective-children-where-clause
                                  collection
                                  (t2/table-name :model/Collection)
@@ -1553,7 +1585,14 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))
+                    {:archived true}))
+      (let [library-data-ids (t2/select-pks-set :model/Collection
+                                                :id   [:in affected-collection-ids]
+                                                :type library-data-collection-type)]
+        (when (seq library-data-ids)
+          (t2/update! :model/Table {:collection_id [:in library-data-ids]}
+                      {:collection_id nil
+                       :is_published  false}))))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
@@ -2068,8 +2107,13 @@
     (merge child-colls dashboards cards documents timelines tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (let [parental (get collections (:entity_id coll))]
-    (concat ["collections"] parental [(last parental)])))
+  (let [path      (get collections (:entity_id coll))
+        ns-folder (case (:namespace coll)
+                    :snippets   "snippets"
+                    :transforms "transforms"
+                    nil         "main"
+                    "main")]
+    (into [{:label "collections"} {:label ns-folder}] path)))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
@@ -2099,8 +2143,10 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)
-               :workspace_id      (serdes/fk :model/Workspace)}})
+               :personal_owner_id (serdes/fk :model/User)}
+   :defaults {:archived         false
+              :is_sample        false
+              :is_remote_synced false}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

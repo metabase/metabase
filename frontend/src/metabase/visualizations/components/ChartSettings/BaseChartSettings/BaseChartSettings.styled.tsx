@@ -7,14 +7,15 @@ export const SectionContainer = styled.div`
   width: 100%;
 
   ${Radio.RadioGroupVariants.join(", ")} {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding-top: 1rem;
+    padding-inline: 1.5rem;
     border-bottom: 1px solid var(--mb-color-border);
   }
 
   ${Radio.RadioContainerVariants.join(", ")} {
     padding-left: 1rem;
     padding-right: 1rem;
+    padding-block: 0.5rem;
   }
 
   ${Radio.RadioLabelVariants.join(", ")} {
@@ -31,7 +32,7 @@ export const SectionContainer = styled.div`
 
 export const ChartSettingsListContainer = styled.div`
   position: relative;
-  padding: 1.5rem 0;
+  padding: 1.5rem 0 0;
   flex: 1;
   overflow: auto;
 `;

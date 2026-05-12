@@ -6,10 +6,10 @@ import {
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";
 import { getDeletes, getDeletionError } from "../selectors";

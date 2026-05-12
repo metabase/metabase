@@ -6,8 +6,8 @@
    [metabase.analyze.query-results :as qr]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
@@ -85,7 +85,7 @@
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id), :type :native, :native {:query "select * from venues"}}}]
       (is (=? (assoc-in (mt/round-all-decimals 2 (app-db-venue-fingerprints))
                         [:category_id :type]
-                        #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 6.9, :q3 49.24, :sd 23.06}})
+                        #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06}})
               (->> (name->fingerprints (query->result-metadata (query-for-card card)))
                    (mt/round-all-decimals 2)))))))
 

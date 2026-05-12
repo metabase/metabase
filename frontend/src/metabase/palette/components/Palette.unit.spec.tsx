@@ -8,12 +8,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Palette } from "./Palette";
 
@@ -76,19 +76,51 @@ describe("command palette", () => {
     await userEvent.type(input, "dark mode");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    expect(
-      await fetchMock.callHistory
-        .lastCall(/\/api\/setting\/color-scheme/)
-        ?.request?.json(),
-    ).toEqual({ value: "dark" });
+    const calls = () =>
+      fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
+
+    expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    expect(
-      await fetchMock.callHistory
-        .lastCall(/\/api\/setting\/color-scheme/)
-        ?.request?.json(),
-    ).toEqual({ value: "auto" });
+    expect(await calls().at(-1)?.request?.json()).toEqual({
+      value: "auto",
+    });
+  });
+
+  it("should match the action with alias when typing original name", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    // Original shortcut name is "Create a question" but when registering action
+    // we rename it to "New question"
+    await userEvent.type(input, "create q");
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+  });
+
+  it("should match actions via verb-swap aliases", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    await userEvent.type(input, "add dashboard");
+
+    expect(await screen.findByText("New dashboard")).toBeInTheDocument();
+  });
+
+  it("should tolerate small typos in the search query", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    await userEvent.type(input, "creat q");
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
   });
 
   it("should preserve user navigation selection when search results load", async () => {

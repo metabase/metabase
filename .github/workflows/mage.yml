@@ -2,14 +2,11 @@ name: Mage Tests
 
 on:
   pull_request:
-    paths:
-      - "mage/**"
-      - "bb.edn"
 
 jobs:
   # run mage tests even if the rest of be isnt needed
   mage-tests:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Mage
     steps:
       - uses: actions/checkout@v4

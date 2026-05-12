@@ -31,11 +31,11 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up Slack")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/slack");
         cy.findByText("Add a webhook")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/webhooks");
       });
     });
 
@@ -162,7 +162,8 @@ describe("scenarios > alert", () => {
       const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
-        cy.findByRole("textbox").click().type(`${email}`).blur();
+        // Mantine Select has the role `textbox` 🤦
+        cy.findAllByRole("textbox").first().click().type(`${email}`).blur();
       }
 
       function setAllowedDomains() {

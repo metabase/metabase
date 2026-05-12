@@ -9,7 +9,7 @@
 ;;; TODO (Cam 6/12/25) -- update `ref-method` to take an options map instead of needing a dynamic variable for stuff
 ;;; like this.
 (def ^:dynamic *ref-style*
-  "The style of field ref to generate -- either the default MLv2-style (`:ref.style/default`) or the broken legacy style
+  "The style of field ref to generate -- either the default Lib-style (`:ref.style/default`) or the broken legacy style
   returned by the QP results (`:ref.style/broken-legacy-qp-results`). These broken refs are mostly generated for
   compatibility with legacy viz settings maps that used them as keys."
   :ref.style/default)
@@ -32,11 +32,23 @@
   (when (pos-int? id-or-name)
     id-or-name))
 
+(mu/defn with-field-ref-id :- :mbql.clause/field
+  "Return a new field ref with `field-id` as the identifier."
+  [[tag opts _id-or-name, :as _field-ref] :- :mbql.clause/field
+   field-id :- ::lib.schema.id/field]
+  [tag opts field-id])
+
 (mu/defn field-ref-name :- [:maybe :string]
   "If a `:field` ref uses a Field name, return that name."
   [[_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field]
   (when (string? id-or-name)
     id-or-name))
+
+(mu/defn with-field-ref-name :- :mbql.clause/field
+  "Return a new field ref with `field-name` as the identifier."
+  [[tag opts _id-or-name, :as _field-ref] :- :mbql.clause/field
+   field-name :- :string]
+  [tag opts field-name])
 
 (mu/defn expression-ref-name :- [:maybe :string]
   "Return the expression name from an `:expression` ref."

@@ -63,8 +63,9 @@ export const loadQuestionSdk =
 
     const metadata = getMetadata(getState());
 
-    const originalQuestion =
-      originalCard && new Question(originalCard, metadata);
+    const originalQuestion = originalCard
+      ? new Question(originalCard, metadata)
+      : undefined;
 
     let question = new Question(card, metadata);
     if (targetDashboardId) {

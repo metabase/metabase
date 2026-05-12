@@ -13,7 +13,8 @@ describe("scenarios > admin > transforms", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -98,25 +99,22 @@ describe("scenarios > admin > transforms", () => {
       query: "SELECT 1",
     })
       .then((query) =>
-        H.createTransform(
-          {
-            name: "MBQL",
-            source: {
-              type: "query",
-              query,
-            },
-            target: {
-              type: "table",
-              database: WRITABLE_DB_ID,
-              name: TARGET_TABLE,
-              schema: TARGET_SCHEMA,
-            },
+        H.createTransform({
+          name: "MBQL",
+          source: {
+            type: "query",
+            query,
           },
-          { wrapId: true },
-        ),
+          target: {
+            type: "table",
+            database: WRITABLE_DB_ID,
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+        }),
       )
-      .then((transformId) => {
-        cy.visit(`/data-studio/transforms/${transformId}`);
+      .then(({ body: transform }) => {
+        cy.visit(`/data-studio/transforms/${transform.id}`);
       });
 
     function testSimpleTemplateTag(

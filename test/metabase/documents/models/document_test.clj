@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as document]
+   [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -458,7 +460,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))
@@ -815,3 +817,19 @@
         (is (contains? descendants ["Card" 111]))
         (is (contains? descendants ["Dashboard" 222]))
         (is (contains? descendants ["Table" 333]))))))
+
+(deftest no-events-during-deserialization-test
+  (testing "Document after-update hook does not publish events during deserialization (#72293)"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"}]
+      (let [events-published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events-published conj [topic event]))]
+          (testing "events fire normally"
+            (t2/update! :model/Document doc-id {:name "Updated Name"})
+            (is (= 1 (count @events-published)))
+            (is (= :event/document-update (ffirst @events-published))))
+          (reset! events-published [])
+          (testing "events are suppressed during deserialization"
+            (binding [mi/*deserializing?* true]
+              (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
+            (is (empty? @events-published))))))))

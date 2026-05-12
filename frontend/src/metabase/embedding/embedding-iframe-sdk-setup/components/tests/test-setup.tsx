@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
@@ -12,6 +14,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
@@ -19,7 +22,6 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
@@ -29,6 +31,7 @@ export const setup = (options?: {
   showSimpleEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
+  hasEmailSetup?: boolean;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -52,6 +55,7 @@ export const setup = (options?: {
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
+    "jwt-enabled-and-configured": options?.jwtReady ?? false,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
@@ -65,7 +69,10 @@ export const setup = (options?: {
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints(
+    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+  );
+  fetchMock.get("path:/api/embed-theme", []);
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

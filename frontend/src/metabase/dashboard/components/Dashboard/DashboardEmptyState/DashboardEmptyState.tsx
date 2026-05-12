@@ -59,12 +59,12 @@ export function DashboardEmptyState({
 
           <Text ta="center" data-testid="dashboard-empty-state-copy">
             {isEditing
-              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${(<InlineIcon key="section-icon" name="section" />)} ${(
+              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${<InlineIcon key="section-icon" name="section" />} ${(
                   <b key="section">{c(
                     "Context for languages with declension: 'start [populating a dashboard] with some default layouts by adding >>a section<<",
                   ).t`a section`}</b>
                 )}.`
-              : jt`Click on the ${(<InlineIcon key="pencil-icon" name="pencil" />)} ${(<b key="edit">{c("The name of a button").t`Edit`}</b>)} button to add questions, filters, links, or text.`}
+              : jt`Click on the ${<InlineIcon key="pencil-icon" name="pencil" />} ${<b key="edit">{c("The name of a button").t`Edit`}</b>} button to add questions, filters, links, or text.`}
           </Text>
         </Stack>
         <Button

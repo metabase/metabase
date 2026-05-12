@@ -1,0 +1,24 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+entity_id: DBap2523KuN4Lt-cYrUjF
+name: Order Count
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+serdes/meta:
+- id: DBap2523KuN4Lt-cYrUjF
+  label: order_count
+  model: Measure

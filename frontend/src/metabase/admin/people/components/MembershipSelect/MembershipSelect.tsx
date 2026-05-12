@@ -7,10 +7,10 @@ import {
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
+} from "metabase/admin/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";

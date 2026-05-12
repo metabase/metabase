@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
-import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
@@ -30,6 +29,7 @@ import type {
   TimeFilterOperator,
 } from "../common";
 
+import type { DefinedClauseName } from "./clauses";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -596,6 +596,7 @@ export interface ClickObject {
   settings?: Record<string, unknown>;
   columnShortcuts?: boolean;
   origin?: {
+    rowIndex?: number;
     row: RowValue[];
     cols: DatasetColumn[];
   };
@@ -638,3 +639,9 @@ export type FieldItem = {
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ValidationError = { message: string };
+
+export type JsColumnTypeInfo = {
+  base_type?: string;
+  effective_type?: string;
+  semantic_type?: string | null;
+};

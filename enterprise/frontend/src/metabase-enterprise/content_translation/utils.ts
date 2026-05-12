@@ -13,32 +13,38 @@ import type {
   MaybeTranslatedSeries,
   RowValue,
   Series,
+  SeriesSettings,
 } from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
-export type TranslateContentStringFunction = <
-  MsgidType = string | boolean | null | undefined,
->(
-  dictionary: DictionaryArray | undefined,
-  locale: string | undefined,
-  /** This argument will be translated only if it is a string. If it is not a
-   * string, it will be returned untranslated. */
-  msgid: MsgidType,
-) => string | MsgidType;
+export type TranslateContentStringFunction = typeof translateContentString;
 
-/** Translate a user-generated string
+/**
+ * Translate a user-generated string
  *
  * Terminology: A "msgid" is a 'raw', untranslated string. A "msgstr" is a
  * translation of a msgid.
- * */
-export const translateContentString: TranslateContentStringFunction = (
-  dictionary,
-  locale,
-  rawMsgid,
-) => {
+ *
+ * @param dictionary - The dictionary to use for translations
+ * @param locale - The locale to translate string to
+ * @param rawMsgid -
+ *   The value to translate
+ *   This argument will be translated only if it is a string or boolean.
+ */
+export function translateContentString<T>(
+  dictionary: DictionaryArray | undefined,
+  locale: string | undefined,
+  rawMsgid: T,
+): string | T {
   if (!locale) {
     return rawMsgid;
+  }
+
+  if (Array.isArray(rawMsgid)) {
+    return rawMsgid.map((msgid) =>
+      translateContentString(dictionary, locale, msgid),
+    ) as T;
   }
 
   if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
@@ -64,7 +70,7 @@ export const translateContentString: TranslateContentStringFunction = (
   }
 
   return msgstr;
-};
+}
 
 /**
  * Translates a column display name by parsing it into translatable and static
@@ -203,93 +209,154 @@ export const useTranslateFieldValuesInHoveredObject = (
 };
 
 export const translateFieldValuesInSeries = (
-  series: Series,
   tc: ContentTranslationFunction,
-): MaybeTranslatedSeries => {
+): ((series: Series) => MaybeTranslatedSeries) => {
   if (!hasTranslations(tc)) {
-    return series;
+    return (series) => series;
   }
-  return series.map((singleSeries) => {
-    if (!singleSeries.data) {
-      return singleSeries;
+  return (series) =>
+    series.map((singleSeries) => {
+      if (!singleSeries.data) {
+        return singleSeries;
+      }
+      const untranslatedRows = singleSeries.data.rows.concat();
+
+      const defaultFn = () => {
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => tc(value)),
+        );
+      };
+
+      const translatedRows: RowValue[][] = match(singleSeries.card?.display)
+        .with("pie", () => {
+          const pieRows =
+            singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+          const keyToNameMap = Object.fromEntries(
+            pieRows.map((row) => [row.key, row.name]),
+          );
+
+          // The pie chart relies on the rows to generate its legend,
+          // which is why we need to translate them too
+          // They're in the format of:
+          // [
+          //   ["Doohickey", 123],
+          //   ["Widget", 456],
+          //   ...
+          // ]
+          //
+          return singleSeries.data.rows.map((row) =>
+            row.map((value) => {
+              if (
+                typeof value === "string" &&
+                keyToNameMap[value] !== undefined
+              ) {
+                return tc(keyToNameMap[value]);
+              }
+              return tc(value);
+            }),
+          );
+        })
+        .with(P.when(isCartesianChart), () => {
+          // cartesian charts have series settings that can provide display names
+          // for fields, which we should translate if available
+          const seriesSettings =
+            singleSeries.card.visualization_settings?.series_settings ?? {};
+
+          return singleSeries.data.rows.map((row) =>
+            row.map((value) => {
+              if (
+                typeof value === "string" &&
+                seriesSettings[value]?.title !== undefined
+              ) {
+                return tc(seriesSettings[value].title);
+              }
+              return tc(value);
+            }),
+          );
+        })
+        .otherwise(defaultFn);
+
+      return {
+        ...singleSeries,
+        data: {
+          ...singleSeries.data,
+          untranslatedRows,
+          rows: translatedRows,
+        },
+      };
+    });
+};
+
+export const translateCardNames = (tc: ContentTranslationFunction) => {
+  if (!hasTranslations(tc)) {
+    return (series: Series) => series;
+  }
+  return (series: Series) =>
+    series.map((s) =>
+      s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
+    );
+};
+
+/** Translate the `title` in each metric's `series_settings` entry.
+ *
+ * Only keys listed in `graph.metrics` are translated; other
+ * `series_settings` entries (e.g. dimension keys) are left untouched.
+ *
+ * @example
+ * // Given series_settings: { revenue: { title: "Revenue" } }
+ * // and graph.metrics: ["revenue"]
+ * // ➜ series_settings: { revenue: { title: tc("Revenue") } }
+ */
+export const translateSeriesNames = (tc: ContentTranslationFunction) => {
+  return (series: Series) => {
+    if (!hasTranslations(tc)) {
+      return series;
     }
-    const untranslatedRows = singleSeries.data.rows.concat();
 
-    const defaultFn = () => {
-      return singleSeries.data.rows.map((row) => row.map((value) => tc(value)));
-    };
+    return series.map((singleSeries) => {
+      const seriesSettings =
+        singleSeries.card?.visualization_settings?.series_settings;
+      const metrics =
+        singleSeries.card?.visualization_settings["graph.metrics"];
 
-    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
-      .with("pie", () => {
-        const pieRows =
-          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
-        const keyToNameMap = Object.fromEntries(
-          pieRows.map((row) => [row.key, row.name]),
-        );
+      if (!seriesSettings || !metrics) {
+        return singleSeries;
+      }
 
-        // The pie chart relies on the rows to generate its legend,
-        // which is why we need to translate them too
-        // They're in the format of:
-        // [
-        //   ["Doohickey", 123],
-        //   ["Widget", 456],
-        //   ...
-        // ]
-        //
-        return singleSeries.data.rows.map((row) =>
-          row.map((value) => {
-            if (
-              typeof value === "string" &&
-              keyToNameMap[value] !== undefined
-            ) {
-              return tc(keyToNameMap[value]);
-            }
-            return tc(value);
-          }),
-        );
-      })
-      .with(P.when(isCartesianChart), () => {
-        // cartesian charts have series settings that can provide display names
-        // for fields, which we should translate if available
-        const seriesSettings =
-          singleSeries.card.visualization_settings?.series_settings ?? {};
+      const translated = Object.fromEntries(
+        metrics
+          .filter((metric) => seriesSettings[metric])
+          .map((metric) => [
+            metric,
+            {
+              ...seriesSettings[metric],
+              title: tc(seriesSettings[metric]!.title),
+            },
+          ]),
+      );
 
-        return singleSeries.data.rows.map((row) =>
-          row.map((value) => {
-            if (
-              typeof value === "string" &&
-              seriesSettings[value]?.title !== undefined
-            ) {
-              return tc(seriesSettings[value].title);
-            }
-            return tc(value);
-          }),
-        );
-      })
-      .otherwise(defaultFn);
-
-    return {
-      ...singleSeries,
-      data: {
-        ...singleSeries.data,
-        untranslatedRows,
-        rows: translatedRows,
-      },
-    };
-  });
+      return I.updateIn(
+        singleSeries,
+        ["card", "visualization_settings", "series_settings"],
+        (settings: Record<string, SeriesSettings>) => ({
+          ...settings,
+          ...translated,
+        }),
+      );
+    });
+  };
 };
 
-export const translateCardNames = (
-  series: Series,
+const curriedTranslatedDisplayNames = (
   tc: ContentTranslationFunction,
+  locale: string,
 ) => {
-  if (!hasTranslations(tc)) {
-    return series;
-  }
-  return series.map((s) =>
-    s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
-  );
+  return (series: Series) => {
+    return translateDisplayNames({ obj: series, tc, locale });
+  };
 };
+
+const identity = (series: Series) => series;
 
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
@@ -299,24 +366,16 @@ export const useTranslateSeries = (series: Series) => {
     if (!hasTranslations(tc)) {
       return series;
     }
-    const withTranslatedDisplayNames = translateDisplayNames({
-      obj: series,
-      tc,
-      locale,
-    });
 
-    const withTranslatedCardNames = translateCardNames(
-      withTranslatedDisplayNames,
-      tc,
-    );
+    const isMap = series?.[0]?.card?.display === "map";
 
-    // Do not translate field values here if display is a map, since this can
-    // break the map
-    if (series?.[0]?.card?.display === "map") {
-      return withTranslatedCardNames;
-    }
-
-    return translateFieldValuesInSeries(withTranslatedCardNames, tc);
+    return [
+      curriedTranslatedDisplayNames(tc, locale),
+      translateCardNames(tc),
+      translateSeriesNames(tc),
+      // Do not translate field values for maps, since this can break the map
+      isMap ? identity : translateFieldValuesInSeries(tc),
+    ].reduce((result, fn) => fn(result), series);
   }, [series, tc, locale]);
 };
 

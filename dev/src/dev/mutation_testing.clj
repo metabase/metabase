@@ -230,8 +230,13 @@
     (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
-  "Create and checkout a new branch from the base branch for mutation testing a function."
+  "Create and checkout a new branch from the base branch for mutation testing a function.
+   Fails early if there are uncommitted changes."
   [target-ns fn-name]
+  (let [status (:out (sh "git" "status" "--porcelain" "-uno"))]
+    (when-not (str/blank? status)
+      (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
+                      {:status status}))))
   (let [branch (branch-name target-ns fn-name)]
     (sh "git" "checkout" (base-branch))
     (sh "git" "pull")
@@ -441,19 +446,22 @@
         test-path-base (-> test-ns
                            (str/replace "." "/")
                            (str/replace "-" "_"))
-        source-ext (cond
-                     (.exists (io/file (str "src/" ns-path ".cljc"))) ".cljc"
-                     (.exists (io/file (str "src/" ns-path ".clj"))) ".clj"
-                     :else ".cljc")
-        test-ext (cond
-                   (.exists (io/file (str "test/" test-path-base ".cljc"))) ".cljc"
-                   (.exists (io/file (str "test/" test-path-base ".clj"))) ".clj"
-                   :else ".cljc")]
+        source-prefixes ["src/" "enterprise/backend/src/"]
+        test-prefixes   ["test/" "enterprise/backend/test/"]
+        find-file (fn [prefixes base exts]
+                    (first (for [prefix prefixes, ext exts
+                                 :let [path (str prefix base ext)]
+                                 :when (.exists (io/file path))]
+                             {:prefix prefix :ext ext :path path})))
+        source-match (or (find-file source-prefixes ns-path [".cljc" ".clj"])
+                         {:prefix "src/" :ext ".cljc" :path (str "src/" ns-path ".cljc")})
+        test-match   (or (find-file test-prefixes test-path-base [".cljc" ".clj"])
+                         {:prefix "test/" :ext ".cljc" :path (str "test/" test-path-base ".cljc")})]
     {:target-ns (symbol target-ns)
      :test-ns (symbol test-ns)
      :short-name short-name
-     :source-path (str "src/" ns-path source-ext)
-     :test-path (str "test/" test-path-base test-ext)
+     :source-path (:path source-match)
+     :test-path (:path test-match)
      :report-path (str "mutation-testing-report." target-ns ".before.md")}))
 
 (defn group-functions
@@ -717,6 +725,70 @@
         (println "  " (:primary-fn r) "-" (:error r))))
     (println "========================================")))
 
+(defn run-one!
+  "Run mutation testing for a single function. No branching or PR creation.
+   Generates a report, invokes Claude to write tests, and verifies mutations are killed.
+
+   Arguments:
+   - fq-fn-sym  — fully-qualified function symbol (e.g. 'my.ns/my-fn)
+   - test-ns-sym — test namespace symbol (e.g. 'my.ns-test)
+
+   Options:
+   - :max-retries — max Claude retries for surviving mutations (default 2)"
+  ([fq-fn-sym test-ns-sym] (run-one! fq-fn-sym test-ns-sym {}))
+  ([fq-fn-sym test-ns-sym opts]
+   (let [fq-fn-name   (symbol fq-fn-sym)
+         target-ns    (symbol (namespace fq-fn-name))
+         test-ns      (symbol (str test-ns-sym))
+         parsed       (parse-namespace target-ns)
+         {:keys [source-path test-path report-path]} parsed
+         max-retries  (get opts :max-retries 2)]
+
+     ;; 1. Generate report
+     (println "Generating mutation testing report for" (str target-ns) "...")
+     (coverage/generate-report target-ns [test-ns] report-path)
+     (println "Report written to" report-path)
+
+     ;; 2. Run coverage for the single function
+     (println "Running coverage for" (str fq-fn-name) "...")
+     (let [coverage-results (coverage/test-namespace target-ns [test-ns])
+           fn-data          (get coverage-results fq-fn-name)]
+       (when-not fn-data
+         (throw (ex-info (str "Function not found in coverage results: " fq-fn-name)
+                         {:available (keys coverage-results)})))
+       (let [mutations (:survived fn-data)]
+         (if (empty? mutations)
+           (do (println "No surviving mutations for" (str fq-fn-name) "— nothing to do.")
+               {:status :success :killed [] :survived []})
+
+           (do
+             (println (count mutations) "surviving mutations")
+
+             ;; 3. Invoke Claude
+             (println "Invoking Claude to write tests...")
+             (let [prompt (build-test-prompt {:target-ns   target-ns
+                                              :test-ns     test-ns
+                                              :source-path source-path
+                                              :test-path   test-path
+                                              :fn-names    [fq-fn-name]
+                                              :mutations   mutations})]
+               (invoke-claude! prompt))
+
+             ;; 4. Verify and retry
+             (println "Verifying mutations killed...")
+             (let [result (verify-and-retry! {:fn-names    [fq-fn-name]
+                                              :test-ns     test-ns
+                                              :test-path   test-path
+                                              :max-retries max-retries})]
+               (println "\nResult:" (:status result))
+               (println "  Killed:" (count (:killed result)))
+               (println "  Survived:" (count (:survived result)))
+               (when (seq (:survived result))
+                 (println "\n  Surviving mutations:")
+                 (doseq [{:keys [description]} (:survived result)]
+                   (println "   -" description)))
+               result))))))))
+
 (defn run!
   "Main entry point. Runs the full mutation testing workflow for a namespace.
 
@@ -735,6 +807,11 @@
      (set-config! {:base-branch bb}))
    (when-let [pid (:project-id opts)]
      (set-config! {:project-id pid}))
+   ;; 0. Fail early if working tree is dirty
+   (let [status (:out (sh "git" "status" "--porcelain" "-uno"))]
+     (when-not (str/blank? status)
+       (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
+                       {:status status}))))
    (let [parsed (parse-namespace target-ns-sym)
          {:keys [target-ns test-ns report-path]} parsed]
      ;; 1. Generate report
@@ -767,7 +844,15 @@
                             (try
                               (process-group! parsed group)
                               (catch Exception e
-                                (println "ERROR:" (.getMessage e))
+                                (let [log-file (str "mutation-testing-error-"
+                                                    (name (:primary-fn group))
+                                                    ".log")]
+                                  (with-open [w (io/writer log-file)]
+                                    (.write w (str "Error processing group: " (:primary-fn group) "\n"))
+                                    (.write w (str "Message: " (.getMessage e) "\n\n"))
+                                    (.printStackTrace e (java.io.PrintWriter. w)))
+                                  (println "ERROR:" (.getMessage e))
+                                  (println "  Full stack trace logged to" log-file))
                                 (try (return-to-base!) (catch Exception _))
                                 {:error (.getMessage e)
                                  :primary-fn (:primary-fn group)})))))]

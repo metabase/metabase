@@ -1,10 +1,9 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type { IconName } from "metabase/ui";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -12,10 +11,12 @@ import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
   Dashboard,
+  DashboardCardSize,
   DashboardId,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -32,7 +33,7 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { SmartScalarComparison } from "./visualization-settings";
+import type { PieRow, SmartScalarComparison } from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -40,8 +41,9 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;
@@ -73,6 +75,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   parameter_usage_count?: number | null;
 
   result_metadata: Field[] | null;
+  param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
@@ -171,7 +174,7 @@ export type ColumnSingleFormattingSetting = {
   operator: ColumnFormattingOperator;
   color: string;
   highlight_row: boolean;
-  value: string | number;
+  value: RowValue;
 };
 export type ColumnRangeFormattingSetting = {
   columns: string[];
@@ -297,6 +300,9 @@ export type VisualizationSettings = {
   // Trend
   "graph.show_trendline"?: boolean;
 
+  // Split panels
+  "graph.split_panels"?: boolean;
+
   // Series
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
@@ -402,7 +408,7 @@ export interface ListCardsRequest {
 }
 
 export interface GetCardRequest {
-  id: CardId;
+  id: CardId | EntityToken;
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
@@ -424,6 +430,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
+  size?: DashboardCardSize;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -447,7 +454,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;

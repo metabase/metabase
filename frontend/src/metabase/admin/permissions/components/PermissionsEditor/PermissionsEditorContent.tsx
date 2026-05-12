@@ -5,8 +5,8 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Input } from "metabase/common/components/Input";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Text } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type {
   PermissionEditorBreadcrumb,
@@ -47,6 +47,11 @@ export function PermissionsEditorContent({
   preHeaderContent: PreHeaderContent = () => null,
 }: PermissionsEditorContentProps) {
   const [filter, setFilter] = useState("");
+  //this needs to be state to trigger a rerender when it's set
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const filteredEntities = useMemo(() => {
@@ -92,13 +97,14 @@ export function PermissionsEditorContent({
         />
       </EditorFilterContainer>
 
-      <PermissionTableWrapper>
+      <PermissionTableWrapper ref={setScrollElement}>
         <PermissionsTable
           entities={filteredEntities || entities}
           columns={columns}
           onSelect={onSelect}
           onChange={onChange}
           onAction={onAction}
+          scrollElement={scrollElement}
           emptyState={
             <EditorEmptyStateContainer>
               <EmptyState message={t`Nothing here`} icon="folder" />

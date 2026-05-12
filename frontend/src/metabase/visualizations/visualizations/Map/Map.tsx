@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import MetabaseSettings from "metabase/lib/settings";
+import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
+import MetabaseSettings from "metabase/utils/settings";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -128,7 +128,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Map type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -144,7 +144,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           },
           { name: "Grid map", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ card, data }], settings) => {
         const display = card.display as string;
         switch (display) {
@@ -188,7 +188,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Pin type`;
       },
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -204,7 +204,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           },
           { name: "Grid", value: "grid" },
         ],
-      },
+      }),
       getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
@@ -318,7 +318,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Color`;
       },
       widget: ColorRangeSelector,
-      props: {
+      getProps: () => ({
         colors: getAccentColors(),
         colorMapping: Object.fromEntries(
           getAccentColors().map((color) => [
@@ -327,9 +327,13 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           ]),
         ),
         isQuantile: true,
-      },
-      default: getColorplethColorScale(getAccentColors()[0]),
+      }),
+      getDefault: (_series, vizSettings) =>
+        getColorplethColorScale(
+          getPreferredColor(vizSettings["map.metric"]) ?? getAccentColors()[0],
+        ),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
+      readDependencies: ["map.metric"],
     },
     "map.zoom": {},
     "map.center_latitude": {},
@@ -339,7 +343,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Radius`;
       },
       widget: "number",
-      default: 30,
+      getDefault: () => 30,
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
@@ -347,7 +351,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Blur`;
       },
       widget: "number",
-      default: 60,
+      getDefault: () => 60,
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
@@ -355,7 +359,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Min Opacity`;
       },
       widget: "number",
-      default: 0,
+      getDefault: () => 0,
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
@@ -363,7 +367,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Max Zoom`;
       },
       widget: "number",
-      default: 1,
+      getDefault: () => 1,
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
   },

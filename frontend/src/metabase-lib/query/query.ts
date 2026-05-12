@@ -1,10 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
-import { metadataProvider } from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { type Metadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
+  ConcreteTableId,
   DatasetQuery,
+  FieldId,
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
@@ -39,10 +40,6 @@ export function queryFromTableOrCardMetadata(
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
-}
-
-export function withDifferentTable(query: Query, tableId: TableId): Query {
-  return ML.with_different_table(query, tableId);
 }
 
 export function suggestedName(query: Query): string {
@@ -116,6 +113,18 @@ export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
+export function allSourceTableIds(query: Query): ConcreteTableId[] {
+  return ML.all_source_table_ids(query);
+}
+
+export function allSourceCardIds(query: Query): CardId[] {
+  return ML.all_source_card_ids(query);
+}
+
+export function allFieldIds(query: Query): FieldId[] {
+  return ML.all_field_ids(query);
+}
+
 export function canRun(query: Query, cardType: CardType): boolean {
   return ML.can_run(query, cardType);
 }
@@ -171,4 +180,18 @@ export function createTestNativeQuery(
   nativeQuerySpec: TestNativeQuerySpec,
 ): Query {
   return ML.test_native_query(metadataProvider, nativeQuerySpec);
+}
+
+export function createTestJsQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: TestQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestQuery(metadataProvider, querySpec));
+}
+
+export function createTestJsNativeQuery(
+  metadataProvider: MetadataProvider,
+  nativeQuerySpec: TestNativeQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestNativeQuery(metadataProvider, nativeQuerySpec));
 }

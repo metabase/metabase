@@ -12,10 +12,11 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
+import { useTableInteractiveContext } from "../TableInteractiveContext";
+
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
-  getInfoPopoversDisabled: () => boolean;
   timezone?: string;
   question: Question;
   column: DatasetColumn;
@@ -35,7 +36,6 @@ export const HeaderCellWithColumnInfo = memo(
     align,
     sort,
     variant = "light",
-    getInfoPopoversDisabled,
     question,
     timezone,
     column,
@@ -44,6 +44,8 @@ export const HeaderCellWithColumnInfo = memo(
     className,
     renderTableHeader,
   }: HeaderCellWithColumnInfoProps) {
+    const { infoPopoversDisabled } = useTableInteractiveContext();
+
     const headerCellOverride = useMemo(() => {
       return renderTableHeader != null
         ? renderTableHeader(column, columnIndex, theme)
@@ -62,7 +64,7 @@ export const HeaderCellWithColumnInfo = memo(
 
     let headerContent: React.ReactNode;
 
-    if (getInfoPopoversDisabled()) {
+    if (infoPopoversDisabled) {
       headerContent = cellContent;
     } else {
       // question.query will throw when used in the visualizer

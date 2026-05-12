@@ -21,7 +21,7 @@ concurrency:
 jobs:
   workflow-summary:
     name: Log inputs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -37,7 +37,7 @@ jobs:
   send-slack-notification-start:
     name: "Send Slack notification: SDK release started"
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
@@ -96,7 +96,7 @@ jobs:
         "publish-npm",
         "git-tag",
       ]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -134,7 +134,7 @@ jobs:
     name: "Send Slack notification: SDK release successful"
     needs:
       ["determine-sdk-version", "send-slack-notification-start", "publish-npm"]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -168,7 +168,7 @@ jobs:
             });
 
   determine-sdk-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     outputs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
@@ -219,7 +219,7 @@ jobs:
 
   check-git-tag:
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
@@ -243,7 +243,7 @@ jobs:
 
   test:
     needs: check-git-tag
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -262,7 +262,7 @@ jobs:
 
   build-sdk:
     needs: [test, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -297,8 +297,12 @@ jobs:
 
   publish-npm:
     needs: [build-sdk, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
+    permissions:
+      id-token: write # OIDC handshake for npm trusted publishing
+      actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
+      pull-requests: write # gh pr review --approve step uses GITHUB_TOKEN
     env:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
@@ -380,15 +384,20 @@ jobs:
             echo "masterTag=nightly" >> $GITHUB_OUTPUT
           fi
 
+      # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
+      # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
+      - name: Setup Node.js for npm publish with trusted publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-
           TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
-
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
       # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
@@ -398,7 +407,7 @@ jobs:
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}

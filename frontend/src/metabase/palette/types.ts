@@ -2,8 +2,8 @@ import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { ModerationReviewStatus } from "metabase-types/api";
 
 import type { GROUP_LABELS } from "./constants";
@@ -29,12 +29,14 @@ export type PaletteAction = Action &
   PaletteActionExtras & {
     subtitle?: Action["subtitle"];
     icon?: IconName;
+    iconUrl?: string;
   };
 
 export type PaletteActionImpl = ActionImpl &
   PaletteActionExtras & {
     subtitle?: Action["subtitle"];
     icon?: IconName;
+    iconUrl?: string;
   };
 
 export type ShortcutGroup = keyof typeof GROUP_LABELS;

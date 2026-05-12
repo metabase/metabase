@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { UpsellPill } from "./components";
-import { UPGRADE_URL } from "./constants";
+import { UpsellPill } from "metabase/common/components/upsells/components";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 
 export const UpsellSemanticSearchPill = ({ source }: { source: string }) => {
   return (

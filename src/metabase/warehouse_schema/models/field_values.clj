@@ -339,7 +339,7 @@
 
 (defenterprise hash-input-for-database-routing
   "Returns a hash input that will be used for fields subject to database routing"
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_field]
   nil)
 
@@ -451,7 +451,8 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-ids]
   (delete-duplicates-and-return-latest!
-   (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil)))
+   (when (seq field-ids)
+     (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
@@ -570,9 +571,8 @@
 (defmethod serdes/entity-id "FieldValues" [_ _] nil)
 
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (let [field (t2/select-one 'Field :id field_id)]
-    (conj (serdes/generate-path "Field" field)
-          {:model "FieldValues" :id "0"})))
+  (conj (serdes/generate-path "Field" {:id field_id})
+        {:model "FieldValues" :id "0"}))
 
 (defmethod serdes/dependencies "FieldValues" [fv]
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
@@ -600,7 +600,8 @@
                               :export     (constantly ::serdes/skip)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
-                                                       (serdes/*import-field-fk* field-ref)))}}})
+                                                       (serdes/*import-field-fk* field-ref)))}}
+   :defaults {:has_more_values false}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
@@ -618,4 +619,5 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path)) str field-values-slug)))
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

@@ -8,7 +8,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
@@ -21,6 +21,9 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+
+    cy.log("0. select custom colors");
+    cy.findByTestId("theme-card-Custom").click();
 
     cy.log("1. change brand color to red");
     cy.findByTestId("brand-color-picker").findByRole("button").click();

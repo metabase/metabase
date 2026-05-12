@@ -41,11 +41,6 @@
   (eval . (put-clojure-indent 'c/step                          1))
   (eval . (put-clojure-indent 'impl/test-migrations            2))
   (eval . (put-clojure-indent 'let-404                         0))
-  (eval . (put-clojure-indent 'lib.schema.match/match          '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/match-one      '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/replace        '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/replace-in     '(:defn)))
-  (eval . (put-clojure-indent 'lib.util.match/replace          '(:defn)))
   (eval . (put-clojure-indent 'macros/case                     0))
   (eval . (put-clojure-indent 'match                           1))
   (eval . (put-clojure-indent 'mt/dataset                      1))
@@ -86,6 +81,8 @@
   (cider-preferred-build-tool . clojure-cli)
   (cider-default-cljs-repl . shadow-select)
   (cider-shadow-default-options . "app"))
+
+ (makefile-mode (indent-tabs-mode . t))
 
  ("bin"
   (clojure-mode

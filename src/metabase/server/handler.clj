@@ -18,6 +18,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.server.middleware.ssl :as mw.ssl]
+   [metabase.server.middleware.trace :as mw.trace]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.core.protocols :as ring.protocols]
@@ -62,14 +63,24 @@
           (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]}))))
     (catch Exception _ nil)))
 
+(def wrap-remote-api-proxy-dev-mw
+  "In dev, optionally proxy `/api` calls to a remote backend. Returns nil in prod."
+  (try
+    (when (and config/dev-available? (not *compile-files*))
+      (requiring-resolve 'dev.server.middleware.proxy/wrap-remote-api-proxy))
+    (catch Exception e
+      (log/warn e "Failed to load dev remote API proxy middleware")
+      nil)))
+
 (def ^:private middleware
   "Ring async middleware has the form
 
     (defn middleware-fn [handler]
       (fn handler' [request respond raise]
         (handler request respond raise)))"
-  ;; ▼▼▼ Middleware is APPLIED from TOP-TO-BOTTOM, but the returned `handlers` will see the requests in order from BOTTOM-TO-TOP. ▼▼▼
-  (->> [#'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
+  ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
+  (->> [        ;; Inside of the middleware onion
+        #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
@@ -80,6 +91,7 @@
         #'mw.mp-cache/wrap-metadata-provider-cache   ; initializes the Lib-BE metadata provider cache
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
+        #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
@@ -94,10 +106,13 @@
         #'mw.misc/add-content-type                   ; Adds a Content-Type header for any response that doesn't already have one
         #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so nginx doesn't buffer keepalive bytes
         #'wrap-gzip                                  ; GZIP response if client can handle it
+        #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
+        wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
+        ;; Outside of middleware onion
         ]
        (remove nil?)))
 

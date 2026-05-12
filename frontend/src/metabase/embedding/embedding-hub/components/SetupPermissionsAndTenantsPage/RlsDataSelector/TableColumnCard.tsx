@@ -106,10 +106,20 @@ export const TableColumnCard = ({
     ? { model: "table" as const, id: selection.tableId }
     : undefined;
 
-  // Hide tables that are already selected in other cards
   const shouldHidePickerItem = useCallback(
-    (pickerItem: MiniPickerItem | OmniPickerItem) =>
-      pickerItem.model === "table" && selectedTableIds.includes(pickerItem.id),
+    (pickerItem: MiniPickerItem | OmniPickerItem) => {
+      const isAlreadySelected =
+        pickerItem.model === "table" &&
+        selectedTableIds.includes(pickerItem.id);
+      const isOurAnalytics =
+        pickerItem.model === "collection" && pickerItem.id === "root";
+      const isSampleDatabase =
+        pickerItem.model === "database" &&
+        "is_sample" in pickerItem &&
+        pickerItem.is_sample === true;
+
+      return isAlreadySelected || isOurAnalytics || isSampleDatabase;
+    },
     [selectedTableIds],
   );
 

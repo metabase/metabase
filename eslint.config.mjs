@@ -22,7 +22,12 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
+import boundaries from "eslint-plugin-boundaries";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import {
+  elements as boundaryElements,
+  enforcedRules as boundaryRules,
+} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +47,7 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/lib/redux` instead.",
+      message: "Please import from `metabase/redux` instead.",
     },
     {
       name: "@mantine/core",
@@ -70,10 +75,13 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
+      "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
+      "e2e/tmp/**",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -118,7 +126,7 @@ const configs = [
     },
     settings: {
       "import-x/internal-regex":
-        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
+        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/|^docs/",
       "import-x/resolver": {
         node: true,
         webpack: {
@@ -215,7 +223,12 @@ const configs = [
 
       // React Hooks rules
       ...reactHooksPlugin.configs.recommended.rules,
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": [
+        "warn",
+        {
+          additionalHooks: "(useRegisterMetabotContextProvider)",
+        },
+      ],
 
       "no-only-tests/no-only-tests": [
         "error",
@@ -244,6 +257,7 @@ const configs = [
       "metabase/no-color-literals": "error",
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
+      "metabase/no-analytics-import-outside-analytics-files": "error",
 
       "depend/ban-dependencies": [
         "error",
@@ -263,6 +277,34 @@ const configs = [
       ],
 
       ...i18nextPlugin.configs["flat/recommended"].rules,
+    },
+  },
+  {
+    files: [
+      "frontend/src/**/*.{js,jsx,ts,tsx}",
+      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+    ],
+    plugins: {
+      boundaries,
+    },
+    settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": [
+        "**/*.unit.spec.*",
+        "**/e2e/**",
+        "*.stories.*",
+        "test/**",
+      ],
+    },
+    rules: {
+      "boundaries/element-types": [
+        "error",
+        {
+          default: "disallow",
+          rules: boundaryRules,
+          message: "${file.type} cannot import from ${dependency.type}",
+        },
+      ],
     },
   },
   {
@@ -306,7 +348,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",
@@ -470,7 +512,7 @@ const configs = [
           patterns: [
             {
               // There might be things that we might benefit from importing, like `defer`, in those cases we can change the regex here to allow them
-              regex: "^metabase/(?!lib/promise$|embedding-sdk/test/).*",
+              regex: "^metabase/(?!utils/promise$|embedding-sdk/test/).*",
               allowTypeImports: true,
               message:
                 "We should avoid importing `metabase/` code in the component tests, we might accidentally include CLJS in the dependencies and that can create issues. Component tests should only use the code it needs to test, which is in the package.",
@@ -542,7 +584,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/lib/redux/hooks.ts"],
+    files: ["frontend/src/metabase/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -604,7 +646,7 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/lib/redux` instead.",
+              message: "Please import from `metabase/redux` instead.",
             },
             {
               name: "@mantine/core",
@@ -643,23 +685,22 @@ const configs = [
               group: [
                 "metabase/*",
                 "!metabase/env",
-                "!metabase/lib",
+                "!metabase/utils",
                 "!metabase/querying",
                 "!metabase/services",
               ],
             },
             {
               group: [
-                "metabase/lib/*",
-                "!metabase/lib/colors",
-                "!metabase/lib/encoding",
-                "!metabase/lib/formatting",
-                "!metabase/lib/number",
-                "!metabase/lib/time",
-                "!metabase/lib/time-dayjs",
-                "!metabase/lib/types",
-                "!metabase/lib/urls",
-                "!metabase/lib/utils",
+                "metabase/utils/*",
+                "!metabase/utils/encoding",
+                "!metabase/utils/formatting",
+                "!metabase/utils/number",
+                "!metabase/utils/time",
+                "!metabase/utils/time-dayjs",
+                "!metabase/utils/types",
+                "!metabase/urls",
+                "!metabase/utils/clone",
               ],
             },
           ],
@@ -832,7 +873,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/lib/redux",
+              name: "metabase/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },
@@ -931,6 +972,23 @@ const configs = [
     },
   },
   {
+    files: ["frontend/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "custom-viz",
+              allowTypeImports: true,
+              message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",
@@ -943,6 +1001,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {

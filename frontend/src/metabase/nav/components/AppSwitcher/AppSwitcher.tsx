@@ -14,9 +14,7 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import type { ColorName } from "metabase/lib/colors/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import { getUser } from "metabase/selectors/user";
@@ -33,6 +31,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import * as Urls from "metabase/urls";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

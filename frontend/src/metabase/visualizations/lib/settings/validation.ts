@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -22,7 +22,7 @@ export const validateDatasetRows = (series: Series) => {
   };
 
   if (_.every(series, singleSeriesHasNoRows)) {
-    throw new MinRowsError(1, 0);
+    throw new MinRowsError(0);
   }
 };
 

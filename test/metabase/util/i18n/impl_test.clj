@@ -64,6 +64,20 @@
       (is (= expected
              (i18n.impl/available-locale? locale))))))
 
+(deftest ^:parallel available-locale?-accepts-pseudo-locale-test
+  (testing "The `en_ZZ` pseudo-locale is accepted"
+    (doseq [[locale expected] {"en_ZZ" true
+                               "en-ZZ" true
+                               "en-zz" true
+                               "EN-ZZ" true
+                               ;; Unrelated unknown locales are still rejected
+                               "zz"    false
+                               "xx_YY" false
+                               "en_XX" false}]
+      (testing (pr-str (list 'available-locale? locale))
+        (is (= expected
+               (i18n.impl/available-locale? locale)))))))
+
 (deftest ^:parallel fallback-locale-test
   (doseq [[locale expected] {nil                             nil
                              :es                             nil

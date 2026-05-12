@@ -11,10 +11,10 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -28,7 +28,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)))
+   (com.google.cloud.bigquery BigQuery TableResult)
+   (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
 
@@ -1290,7 +1291,8 @@
             (let [query  {:database (mt/id)
                           :type "native"
                           :native {:query (format "select * from `%s.orders` limit 100" (get-test-data-name))}}
-                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+                  expected-status (if (and (= :exception stop-tag) (= :initial-query tag)) 400 500)
+                  result (mt/user-http-request :crowberto :post expected-status "dataset" query)]
               (is (= "failed" (:status result)))
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
@@ -1323,7 +1325,7 @@
     (testing "Read timeout is configured as the query-timeout-ms setting"
       (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
             options (.getOptions client)
-            transport-options (.getTransportOptions options)]
+            ^HttpTransportOptions transport-options (.getTransportOptions options)]
         (is (= driver.settings/*query-timeout-ms*
                (.getReadTimeout transport-options)))))))
 

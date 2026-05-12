@@ -16,6 +16,8 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{:model/Channel
+    ;; CustomVizPlugins have unique identifiers.
+    :model/CustomVizPlugin
     ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
@@ -32,7 +34,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
@@ -48,16 +51,23 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
     :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotFeedback
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
     :model/MetabotMessage
+    :model/MetabotPermissions
+    :model/MetabotSourceFeedback
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -66,6 +76,10 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
+    :model/OAuthAccessToken
+    :model/OAuthAuthorizationCode
+    :model/OAuthClient
+    :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup
@@ -83,6 +97,7 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/Revision
@@ -108,22 +123,10 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models here as Workspace was present. I believe
-    ;; going forward all of that will be available for export. We should revisit this later in the project.
-    :model/Workspace
-    :model/WorkspaceInput
-    :model/WorkspaceInputExternal
-    :model/WorkspaceInputTransform
-    :model/WorkspaceLog
-    :model/WorkspaceMerge
-    :model/WorkspaceMergeTransform
-    :model/WorkspaceGraph
-    :model/WorkspaceOutput
-    :model/WorkspaceOutputExternal
-    :model/WorkspaceTransform})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

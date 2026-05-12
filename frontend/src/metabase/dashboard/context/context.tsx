@@ -14,7 +14,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
 import type {
   Dashboard,
   DashboardCard,
@@ -33,14 +33,12 @@ import {
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
-  CancelledFetchDashboardResult,
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedDisplayParams,
   EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
-  SuccessfulFetchDashboardResult,
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
@@ -483,23 +481,10 @@ export function useDashboardContext() {
   return context;
 }
 
-export function isSuccessfulFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is SuccessfulFetchDashboardResult {
-  const hasError = "error" in result;
-  return !hasError;
-}
-
 export function isFailedFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is FailedFetchDashboardResult {
   return (
     isObject(result.payload) && !result.payload.isCancelled && "error" in result
   );
-}
-
-export function isCancelledFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is CancelledFetchDashboardResult {
-  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }

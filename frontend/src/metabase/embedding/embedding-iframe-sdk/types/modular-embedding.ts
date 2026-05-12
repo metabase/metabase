@@ -90,6 +90,13 @@ export interface MetabaseDashboardAttributes {
    * @remarks Pro/Enterprise
    */
   "enable-entity-navigation"?: boolean;
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -104,7 +111,8 @@ export interface MetabaseQuestionAttributes {
   /**
    * The ID of the question to embed. Can be a regular ID or an
    * [entity ID](https://www.metabase.com/docs/latest/installation-and-operation/serialization#entity-ids-work-with-embedding).
-   * Use `"new"` to embed the query builder. Only for SSO embeds — guest embeds use `token`.
+   * Use `"new"` to embed the query builder, or `"new-native"` to embed the SQL editor.
+   * Only for SSO embeds — guest embeds use `token`.
    */
   "question-id": number | string;
 
@@ -185,6 +193,13 @@ export interface MetabaseQuestionAttributes {
    * @remarks Pro/Enterprise, Guest embed
    */
   "entity-types"?: ("model" | "table")[];
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -247,7 +262,7 @@ export interface MetabaseBrowserAttributes {
   "data-picker-entity-types"?: ("model" | "table")[];
 
   /**
-   * Whether to show the "New exploration" button.
+   * Whether to show the "New question" button.
    *
    * @defaultValue true
    */

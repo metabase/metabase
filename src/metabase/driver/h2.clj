@@ -21,6 +21,7 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -548,7 +549,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (driver-api/spec :h2 (cond-> details
+  (driver-api/spec :h2 (cond-> (driver/sanitize-db-details details)
                          (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
@@ -733,19 +734,22 @@
 (defmethod driver/grant-workspace-read-access! :h2
   [_driver database workspace tables]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
+        qu       (sql.u/quote-name :h2 :field username)
         schemas  (distinct (map :schema tables))]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON SCHEMA \"%s\" TO \"%s\"" schema username)))
+                     ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
+                                     (sql.u/quote-name :h2 :schema schema) qu)))
         ;; Also grant on individual tables for more fine-grained access
         (doseq [table tables]
           (.addBatch ^Statement stmt
-                     ^String (format "GRANT SELECT ON \"%s\".\"%s\" TO \"%s\""
-                                     (:schema table) (:name table) username)))
+                     ^String (format "GRANT SELECT ON %s.%s TO %s"
+                                     (sql.u/quote-name :h2 :schema (:schema table))
+                                     (sql.u/quote-name :h2 :table (:name table)) qu)))
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
-  "llm/prompts/dialects/h2.md")
+  "metabot/prompts/dialects/h2.md")

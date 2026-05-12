@@ -1,14 +1,13 @@
 (ns metabase-enterprise.tenants.api
   (:require
    [malli.util]
-   [metabase-enterprise.tenants.model :as tenant]
+   [metabase-enterprise.tenants.models :as tenant]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -50,9 +49,9 @@
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
-  (u/prog1 (present-tenant
-            (t2/insert-returning-instance! :model/Tenant tenant))
-    (events/publish-event! :event/tenant-create {:object <>})))
+  (let [new-tenant (t2/insert-returning-instance! :model/Tenant tenant)]
+    (events/publish-event! :event/tenant-create {:object new-tenant})
+    (present-tenant new-tenant)))
 
 (api.macros/defendpoint :post "/" :- Tenant
   "Create a new Tenant"

@@ -1,11 +1,13 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetFieldQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
+import { CheckpointValue } from "../../../../components/CheckpointValue";
 import {
   formatRunMethod,
   formatStatus,
@@ -19,6 +21,12 @@ type InfoSectionProps = {
 };
 
 export function InfoSection({ run }: InfoSectionProps) {
+  const { data: checkpointField } = useGetFieldQuery(
+    run.checkpoint_filter_field_id
+      ? { id: run.checkpoint_filter_field_id }
+      : skipToken,
+  );
+
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <InfoSectionItem label={t`Started at`}>
@@ -37,6 +45,27 @@ export function InfoSection({ run }: InfoSectionProps) {
       <InfoSectionItem label={t`Trigger`}>
         {formatRunMethod(run.run_method)}
       </InfoSectionItem>
+      {checkpointField != null && (
+        <InfoSectionItem label={t`Checkpoint field`}>
+          {checkpointField.display_name}
+        </InfoSectionItem>
+      )}
+      {run.checkpoint_lo_value != null && (
+        <InfoSectionItem label={t`Checkpoint from`}>
+          <CheckpointValue
+            value={run.checkpoint_lo_value}
+            checkpointField={checkpointField}
+          />
+        </InfoSectionItem>
+      )}
+      {run.checkpoint_hi_value != null && (
+        <InfoSectionItem label={t`Checkpoint to`}>
+          <CheckpointValue
+            value={run.checkpoint_hi_value}
+            checkpointField={checkpointField}
+          />
+        </InfoSectionItem>
+      )}
     </Card>
   );
 }
@@ -47,9 +76,23 @@ type InfoSectionItemProps = {
 };
 
 function InfoSectionItem({ label, children }: InfoSectionItemProps) {
+  const labelId = useId();
+
   return (
-    <Stack className={S.section} p="md" gap="xs">
-      <Box className={CS.textWrap} c="text-secondary" fz="sm" lh="h5">
+    <Stack
+      className={S.section}
+      p="md"
+      gap="xs"
+      role="group"
+      aria-labelledby={labelId}
+    >
+      <Box
+        id={labelId}
+        className={CS.textWrap}
+        c="text-secondary"
+        fz="sm"
+        lh="h5"
+      >
         {label}
       </Box>
       <Box lh="h4">{children}</Box>

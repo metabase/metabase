@@ -2,11 +2,10 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
 import { Databases } from "metabase/entities/databases";
-import { combineReducers } from "metabase/lib/redux";
+import { combineReducers } from "metabase/redux";
+import { createDatabase } from "metabase/redux/databases";
+import type { Dispatch } from "metabase/redux/store";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
-
-import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
   "metabase/admin/databases/DELETE_DATABASE",
@@ -18,22 +17,6 @@ const DELETE_DATABASE_FAILED = createAction<{
   databaseId: DatabaseId;
   error: unknown;
 }>("metabase/admin/databases/DELETE_DATABASE_FAILED");
-
-export const createDatabase = function (inputDatabase: DatabaseData) {
-  const database = editParamsForUserControlledScheduling(inputDatabase);
-
-  return async function (dispatch: Dispatch) {
-    try {
-      const action = await dispatch(Databases.actions.create(database));
-      const savedDatabase = Databases.HACK_getObjectFromAction(action);
-
-      return savedDatabase;
-    } catch (error) {
-      console.error("error creating a database", error);
-      throw error;
-    }
-  };
-};
 
 export const updateDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {

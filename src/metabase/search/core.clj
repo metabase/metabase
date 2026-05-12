@@ -1,8 +1,8 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -10,6 +10,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -50,30 +51,39 @@
   to-tsquery-expr
   weighted-tsvector])
 
-(defmethod analytics/known-labels :metabase-search/index-updates
+(defmethod analytics.core/known-labels :metabase-search/index-updates
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/index-reindexes
+(defmethod analytics.core/known-labels :metabase-search/index-reindexes
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/engine-default
+(defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
   [_]
-  (analytics/known-labels :metabase-search/engine-active))
+  [{:table-type :active} {:table-type :pending}])
 
-(defmethod analytics/known-labels :metabase-search/engine-active
+(defmethod analytics.core/known-labels :metabase-search/index-documents-skipped
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-default
+  [_]
+  (analytics.core/known-labels :metabase-search/engine-active))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-active
   [_]
   (for [e (search.engine/known-engines)]
     {:engine (name e)}))
 
-(defmethod analytics/initial-value :metabase-search/engine-default
+(defmethod analytics.core/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
   (if (= engine (name (search.engine/default-engine))) 1 0))
 
-(defmethod analytics/initial-value :metabase-search/engine-active
+(defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
   (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 
@@ -87,48 +97,50 @@
   [& {:as opts}]
   (when (supports-index?)
     (log/info "Initializing search indexes")
-    (lib-be/with-metadata-provider-cache
-      ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-      (try
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/init! e opts)))
-              duration (u/since-ms timer)]
-          (if (seq report)
-            (do
-              (analytics/inc! :metabase-search/index-reindex-ms duration)
-              (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-              (doseq [[model cnt] report]
-                (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-              (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
-              report)
-            (log/info "Found existing search index, and using it.")))
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+    (tracing/with-span :search "search.init-index" {}
+      (lib-be/with-metadata-provider-cache
+        ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+        (try
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e (search.engine/active-engines)]
+                                   (search.engine/init! e opts)))
+                duration (u/since-ms timer)]
+            (if (seq report)
+              (do
+                (analytics/inc! :metabase-search/index-reindex-ms duration)
+                (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+                (doseq [[model cnt] report]
+                  (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+                (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
+                report)
+              (log/info "Found existing search index, and using it.")))
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn- reindex-logic! [opts]
   (when (supports-index?)
-    (lib-be/with-metadata-provider-cache
-      (try
-        (log/info "Reindexing searchable entities")
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/reindex! e opts)))
-              duration (u/since-ms timer)]
-          (analytics/inc! :metabase-search/index-reindex-ms duration)
-          (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-          (doseq [[model cnt] report]
-            (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-          (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-          report)
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+    (tracing/with-span :search "search.reindex" {}
+      (lib-be/with-metadata-provider-cache
+        (try
+          (log/info "Reindexing searchable entities")
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e (search.engine/active-engines)]
+                                   (search.engine/reindex! e opts)))
+                duration (u/since-ms timer)]
+            (analytics/inc! :metabase-search/index-reindex-ms duration)
+            (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+            (doseq [[model cnt] report]
+              (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+            (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+            report)
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
@@ -153,6 +165,14 @@
   (when (supports-index?)
     (doseq [e (search.engine/active-engines)]
       (search.engine/reset-tracking! e))))
+
+(defn sync-from-restored-db!
+  "Reconcile all search engine state with the current database.
+   Use after snapshot restore instead of reindex! to avoid redundant work."
+  []
+  (when (supports-index?)
+    (doseq [e (search.engine/active-engines)]
+      (search.engine/sync-from-restored-db! e))))
 
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."

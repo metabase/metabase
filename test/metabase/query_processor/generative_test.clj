@@ -7,7 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.generators :as lib.tu.gen]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.gentest :as gt]
    [metabase.test.util.generators.jvm :as tu.gen.jvm]

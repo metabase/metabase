@@ -11,6 +11,9 @@ Object.assign(navigator, {
 
 beforeEach(() => {
   fetchMock.mockGlobal();
+  // Always mock the error reporting endpoint — it's fire-and-forget
+  // and should never affect test behavior
+  fetchMock.post("path:/api/frontend-errors", 200);
 });
 
 afterEach(async () => {

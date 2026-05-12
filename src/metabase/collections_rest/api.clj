@@ -27,6 +27,7 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
@@ -173,9 +174,21 @@
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
-           (dissoc collection ::collection.root/is-root?))
+           (-> collection
+               (dissoc ::collection.root/is-root?)
+               collection/maybe-mark-collection-as-library-root))
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
+
+(defn- prep-collection-for-export
+  "Given a collection, tweaks it to be ready for returning to the FE.
+
+  These same functions were called in several places in this namespace, so they're combined here to keep it DRY."
+  [coll]
+  (-> coll
+      collection/personal-collection-with-ui-details
+      collection/maybe-localize-tenant-collection-name
+      collection/maybe-mark-collection-as-library-root))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -193,8 +206,7 @@
   ```"
   [colls]
   (->> colls
-       (map (comp collection/maybe-localize-tenant-collection-name
-                  collection/personal-collection-with-ui-details))
+       (map prep-collection-for-export)
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -281,9 +293,7 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map (comp collection/maybe-localize-tenant-collection-name
-                                                collection/personal-collection-with-ui-details)
-                                          collections)]
+            collections-with-details (map prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -302,7 +312,8 @@
     "no_models"
     "timeline"
     "table"
-    "transform"})
+    "transform"
+    "measure"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -430,6 +441,7 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
+               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
@@ -885,6 +897,7 @@
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-system-collection-name
             collection/maybe-localize-tenant-collection-name
+            collection/maybe-mark-collection-as-library-root
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
@@ -894,8 +907,12 @@
             update-personal-collection)))))
 
 (defmethod post-process-collection-children :table
-  [_ _ _collection rows]
-  (map #(update % :archived api/bit->boolean) rows))
+  [_ {:keys [models]} _collection rows]
+  (let [tables (map #(-> (t2/instance :model/Table %)
+                         (update :archived api/bit->boolean)) rows)]
+    (if (contains? models :measure)
+      (t2/hydrate tables :measures)
+      tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
@@ -1102,11 +1119,13 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (mdb/query limit-query)
+        rows        (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
+                      (mdb/query limit-query))
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
-                               (post-process-rows options collection rows))
+                               (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
+                                 (post-process-rows options collection rows)))
                      :models models}
         limit-res   (assoc res
                            :limit  (request/limit)
@@ -1142,8 +1161,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      collection/personal-collection-with-ui-details
-      collection/maybe-localize-tenant-collection-name
+      prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
                   [:effective_ancestors :can_write]
@@ -1420,7 +1438,8 @@
       (malli.util/assoc :location [:maybe ms/NonBlankString])
       (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
       (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/optional-keys [:location])
+      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics"])
+      (malli.util/optional-keys [:location :type])
       (malli.util/closed-schema)))
 
 (mu/defn- apply-defaults-to-collection :- NewCollectionArguments
@@ -1432,7 +1451,9 @@
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
                (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
-          parent-coll (assoc :location (collection/children-location parent-coll)))
+          parent-coll (assoc :location (collection/children-location parent-coll))
+          (and (:type parent-coll)
+               (not= (:type parent-coll) "trash")) (assoc :type (:type parent-coll)))
         (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
         (select-keys (malli.util/keys NewCollectionArguments)))))
 

@@ -13,6 +13,7 @@
   current-database]
  [metabase.upload.impl
   can-create-upload?
+  create-csv-upload!
   delete-upload!
   model-hydrate-based-on-upload
   update-action-schema

@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.analytics.sdk :as sdk]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -74,8 +73,7 @@
                     created   (mt/user-http-request :rasta :post 200 "comment/"
                                                     {:target_type "document"
                                                      :target_id   doc-id
-                                                     :content     content
-                                                     :html        "<p>New comment</p>"})
+                                                     :content     content})
                     expected1 {:id          int?
                                :content     content
                                :target_type "document"
@@ -103,8 +101,7 @@
                                                         {:target_type       "document"
                                                          :target_id         doc-id
                                                          :parent_comment_id (:id created)
-                                                         :content           content2
-                                                         :html              "<p>Other comment</p>"})
+                                                         :content           content2})
                         expected2 {:id                int?
                                    :content           content2
                                    :target_type       "document"
@@ -129,8 +126,7 @@
                                                        {:target_type       "document"
                                                         :target_id         doc-id
                                                         :parent_comment_id (:id created)
-                                                        :content           (tiptap [:p "Third comment in a thread"])
-                                                        :html              "<p>Third comment in a thread</p>"})]
+                                                        :content           (tiptap [:p "Third comment in a thread"])})]
                     (is (=? {(:email (mt/fetch-user :rasta))
                              [{:subject "Comment on New Document"
                                :body    [{:content (relaxed-re
@@ -147,8 +143,7 @@
                                                   {:target_type     "document"
                                                    :target_id       doc-id
                                                    :child_target_id part-id
-                                                   :content         (tiptap [:p "Part comment"])
-                                                   :html            "<p>Part comment</p>"})]
+                                                   :content         (tiptap [:p "Part comment"])})]
                 (is (=? {:id              int?
                          :content         {:type "doc"}
                          :target_type     "document"
@@ -172,11 +167,58 @@
                                                     :target_id   doc-id
                                                     :content     (tiptap
                                                                   [:smartLink {:model    "user"
-                                                                               :entityId (mt/user->id :crowberto)}])
-                                                    :html        "<p>Mention of @crowberto :)</p>"})]
+                                                                               :entityId (mt/user->id :crowberto)}])})]
                 (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
                          (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
                         (first (swap-vals! mt/inbox empty))))))))))))
+
+(deftest email-renders-safe-html-test
+  (testing "Notification emails render server-side HTML from content JSON, not client-supplied HTML"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temp [:model/Document {doc-id :id} {:name       "Test Doc"
+                                                   :creator_id (mt/user->id :lucky)}]
+        (mt/with-model-cleanup [:model/Comment :model/Notification]
+          (mt/with-fake-inbox
+            (notification.seed/seed-notification!)
+            (testing "script tags in text are escaped in email"
+              (mt/user-http-request :rasta :post 200 "comment/"
+                                    {:target_type "document"
+                                     :target_id   doc-id
+                                     :content     (tiptap [:p "<script>alert('xss')</script>"])})
+              (let [email-body (-> @mt/inbox vals first first :body first :content)]
+                (is (not (str/includes? email-body "<script>")))
+                (is (str/includes? email-body "&lt;script&gt;")))
+              (swap! mt/inbox empty))
+
+            (testing "javascript: links in content are stripped in email"
+              (mt/user-http-request :rasta :post 200 "comment/"
+                                    {:target_type "document"
+                                     :target_id   doc-id
+                                     :content     {:type    "doc"
+                                                   :content [{:type    "paragraph"
+                                                              :content [{:type  "text"
+                                                                         :text  "click here"
+                                                                         :marks [{:type  "link"
+                                                                                  :attrs {:href "javascript:alert(1)"}}]}]}]}})
+              (let [email-body (-> @mt/inbox vals first first :body first :content)]
+                (is (not (str/includes? email-body "javascript:")))
+                (is (str/includes? email-body "click here")))
+              (swap! mt/inbox empty))
+
+            (testing "unknown node types are dropped in email"
+              (mt/user-http-request :rasta :post 200 "comment/"
+                                    {:target_type "document"
+                                     :target_id   doc-id
+                                     :content     {:type    "doc"
+                                                   :content [{:type "paragraph"
+                                                              :content [{:type "text" :text "safe text"}]}
+                                                             {:type "iframe"
+                                                              :attrs {:src "https://evil.example"}}]}})
+              (let [email-body (-> @mt/inbox vals first first :body first :content)]
+                (is (str/includes? email-body "safe text"))
+                (is (not (str/includes? email-body "iframe")))
+                (is (not (str/includes? email-body "evil.example"))))
+              (swap! mt/inbox empty))))))))
 
 (deftest update-comment-test
   (testing "PUT /api/comment/:comment-id"
@@ -269,8 +311,7 @@
                    (mt/user-http-request :lucky :post 403 "comment/"
                                          {:target_type "document"
                                           :target_id   restricted-doc-id
-                                          :content     (tiptap "Comment by lucky")
-                                          :html        "You shall not pass"}))))
+                                          :content     (tiptap "Comment by lucky")}))))
 
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
@@ -309,10 +350,10 @@
         (is (=? {:comments []
                  :disabled true}
                 (mt/user-http-request :rasta :get 200 "comment/"
-                                      {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}}
+                                      {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}}
                                       :target_type "document"
                                       :target_id doc-id))))
       (testing "Users mentions are not available either"
         (is (= "Not found."
                (mt/user-http-request :rasta :get 404 "comment/mentions"
-                                     {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}})))))))
+                                     {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}})))))))

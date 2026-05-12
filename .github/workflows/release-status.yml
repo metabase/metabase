@@ -9,7 +9,7 @@ jobs:
   check-release-status:
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           });
 
   open-backport-reminder:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4

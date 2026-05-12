@@ -62,6 +62,10 @@ export function setupUpdateTransformJobEndpoint(job: TransformJob) {
   fetchMock.put(`path:/api/transform-job/${job.id}`, job);
 }
 
+export function setupBulkUpdateTransformJobsActiveEndpoint(updated: number) {
+  fetchMock.put("path:/api/transform-job/active", { updated });
+}
+
 export function setupRunTransformJobEndpoint(jobId: TransformJobId) {
   fetchMock.post(`path:/api/transform-job/${jobId}/run`, 200);
 }
@@ -82,7 +86,7 @@ export function setupRunInspectorQueryEndpoint(
   response: Dataset,
 ) {
   fetchMock.post(
-    `path:/api/transform/${transformId}/inspect/${lensId}/query`,
+    `path:/api/ee/transforms/${transformId}/inspect/${lensId}/query`,
     response,
   );
 }

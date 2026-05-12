@@ -17,12 +17,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every? mapv select-keys update-keys some get-in #?(:clj for)]]))
 
 #?(:clj
@@ -275,7 +275,7 @@
   MBQL 5 query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
   and so forth, you have a vector of `:stages` where each stage serves as the source query for the next stage.
   Initially this was an implementation detail of a few functions, but it's easier to visualize and manipulate, so now
-  all of MLv2 deals with MBQL 5. See this Slack thread
+  all of Lib deals with MBQL 5. See this Slack thread
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
@@ -502,13 +502,13 @@
         query     (fresh-uuids query (fn [old-uuid new-uuid]
                                        (vswap! remapping assoc! old-uuid new-uuid)))
         remapping (persistent! @remapping)]
-    (lib.util.match/replace-lite query
+    (match/replace query
       [:aggregation opts old-uuid]
       [:aggregation opts (or (remapping old-uuid)
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
                                              {:aggregation &match})))])))
 
-(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+(mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)

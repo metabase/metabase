@@ -4,6 +4,7 @@ import {
   isMultipleOf,
   precision,
 } from "metabase/visualizations/lib/numeric";
+import type { RowValues } from "metabase-types/api";
 
 describe("visualization.lib.numeric", () => {
   describe("precision", () => {
@@ -47,7 +48,7 @@ describe("visualization.lib.numeric", () => {
   });
 
   describe("computeNumericDataInterval", () => {
-    const CASES = [
+    const CASES: [RowValues, number][] = [
       [[0], 1],
       [[1], 1],
       [[0, 1], 1],
@@ -64,7 +65,7 @@ describe("visualization.lib.numeric", () => {
   });
 
   describe("isMultipleOf", () => {
-    [
+    const CASES: [number, number, boolean][] = [
       [1, 0.1, true],
       [1, 1, true],
       [10, 1, true],
@@ -75,7 +76,9 @@ describe("visualization.lib.numeric", () => {
       [0.000000001, 0.0000000001, true],
       [0.0000000001, 0.000000001, false],
       [100, 1e-14, true],
-    ].map(([value, base, expected]) =>
+    ];
+
+    CASES.map(([value, base, expected]) =>
       it(`${value} ${expected ? "is" : "is not"} a multiple of ${base}`, () =>
         expect(isMultipleOf(value, base)).toBe(expected)),
     );

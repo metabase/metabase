@@ -8,9 +8,7 @@ redirect_from:
 
 # Full app embedding
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true %}
-
-{% include shared/in-page-promo-embedding-workshop.html %}
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true %}
 
 **Full app embedding** lets you embed the entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
@@ -75,7 +73,7 @@ To embed a specific Metabase dashboard, you'll want to use the dashboard's Entit
 src="https://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
 
-To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then in your iframe's `src` attribute to:
+To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then set your iframe's `src` attribute to:
 
 ```
 src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b

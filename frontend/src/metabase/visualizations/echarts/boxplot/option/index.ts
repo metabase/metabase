@@ -79,8 +79,7 @@ export const getBoxPlotOption = (
     return {};
   }
 
-  const { adjustedPadding, sideLabelOverflow, xAxisOffset, chartMeasurements } =
-    layoutModel;
+  const { adjustedPadding, sideLabelOverflow, xAxisOffset } = layoutModel;
 
   const hasTimelineEvents = timelineEventsModel != null;
   const timelineEventsSeries = hasTimelineEvents
@@ -153,7 +152,7 @@ export const getBoxPlotOption = (
       datasetLength: xValues.length,
     },
     settings,
-    chartMeasurements,
+    layoutModel,
     renderingContext,
   );
 
@@ -165,7 +164,7 @@ export const getBoxPlotOption = (
     settings,
     renderingContext,
     "left",
-    chartMeasurements.ticksDimensions.yTicksWidthLeft,
+    layoutModel.ticksDimensions.yTicksWidthLeft,
     true,
     sideLabelOverflow.leftYAxisOffset,
   );
@@ -175,7 +174,7 @@ export const getBoxPlotOption = (
     settings,
     renderingContext,
     "right",
-    chartMeasurements.ticksDimensions.yTicksWidthRight,
+    layoutModel.ticksDimensions.yTicksWidthRight,
     !hasDualYAxis,
     sideLabelOverflow.rightYAxisOffset,
   );
@@ -221,7 +220,7 @@ export const getBoxPlotOption = (
   }
 
   return {
-    ...getSharedEChartsOptions(isAnimated),
+    ...getSharedEChartsOptions(isAnimated, renderingContext),
     grid: {
       ...adjustedPadding,
       outerBoundsMode: "none",

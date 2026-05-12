@@ -12,7 +12,7 @@ env:
   MB_EDITION: ee
 jobs:
   get-sample-apps-data:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       # we must support the last two stable releases
@@ -94,7 +94,7 @@ jobs:
         environment: ["production", "development"]
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
@@ -106,6 +106,8 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +116,7 @@ jobs:
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v1
+        uses: docker/setup-compose-action@2fe291b7677a45ee1269ec56a42604c143505e7e # v1
         with:
           version: latest
 
@@ -201,7 +203,7 @@ jobs:
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
     env:
@@ -213,6 +215,8 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -264,7 +268,7 @@ jobs:
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-shoppy-synthetic-monitoring-tests
     env:
@@ -277,6 +281,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -354,7 +359,7 @@ jobs:
             "angular-20-host-app-e2e",
           ]
         environment: ["production", "development"]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
@@ -362,6 +367,8 @@ jobs:
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4

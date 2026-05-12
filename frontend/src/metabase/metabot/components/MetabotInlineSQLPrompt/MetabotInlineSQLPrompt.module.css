@@ -15,18 +15,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.tableBar {
-  border-bottom: 1px dashed var(--mb-color-border);
-  margin: 0 -0.75rem;
-  padding: 0 0.75rem 0.5rem;
-}
-
 .inputContainer {
   min-height: 1.5rem;
 }
 
 .inputContainer :global(.ProseMirror) {
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
   font-size: 0.75rem;
   min-height: 1.25rem;
   padding: 0.25rem 0.125rem;

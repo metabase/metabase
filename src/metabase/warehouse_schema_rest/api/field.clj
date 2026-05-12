@@ -35,6 +35,9 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
+(def ^:private max-field-ids-for-table-id-lookup
+  1000)
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -50,6 +53,32 @@
    {include-editable-data-model? :include_editable_data_model} :- [:map
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
+
+(api.macros/defendpoint :post "/table-ids" :- [:map
+                                               [:table_ids [:sequential ms/PositiveInt]]]
+  "Get unique Table IDs for a list of Field IDs."
+  [_route-params
+   _query-params
+   {:keys [field_ids]} :- [:map
+                           [:field_ids [:sequential ms/PositiveInt]]]]
+  (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
+                 (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
+  {:table_ids (schema.field/field-ids->table-ids field_ids)})
+
+(defn- check-field-in-same-database!
+  "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
+   the target field does not exist or belongs to a different database. Uses a single query."
+  [source-field-id target-field-id param-name]
+  (let [result (first (t2/query {:select [[:source_t.db_id :source_db_id]
+                                          [:target_t.db_id :target_db_id]]
+                                 :from   [[(t2/table-name :model/Field) :sf]]
+                                 :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
+                                          [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
+                                          [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
+                                 :where  [:= :sf.id source-field-id]}))]
+    (api/checkp result param-name "Invalid target field")
+    (api/checkp (= (:source_db_id result) (:target_db_id result))
+                param-name "Target field must belong to the same database")))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -149,11 +178,9 @@
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
-    ;; validate that fk_target_field_id is a valid Field
-    ;; TODO - we should also check that the Field is within the same database as our field
+    ;; validate that fk_target_field_id is a valid Field in the same database
     (when fk-target-field-id
-      (api/checkp (t2/exists? :model/Field :id fk-target-field-id)
-                  :fk_target_field_id "Invalid target field"))
+      (check-field-in-same-database! id fk-target-field-id :fk_target_field_id))
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
@@ -223,6 +250,8 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
+  (when human-readable-field-id
+    (check-field-in-same-database! id human-readable-field-id :human_readable_field_id))
   (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
     (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type

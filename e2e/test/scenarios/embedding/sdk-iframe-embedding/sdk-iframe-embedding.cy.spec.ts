@@ -110,15 +110,20 @@ describe("scenarios > embedding > modular embedding", () => {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
-        // clientWidth excludes the scrollbar gutter, giving us the actual content area
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area.
+        // Use .should() instead of .then() so Cypress retries until the
+        // async column-expansion cycle has finished painting.
         H.tableInteractive()
           .findByTestId("table-scroll-container")
-          .then(($scrollContainer) => {
+          .should(($scrollContainer) => {
             const contentWidth = $scrollContainer[0].clientWidth;
+            expect(contentWidth).to.be.greaterThan(0);
 
             const $headerCells = $scrollContainer.find(
               '[data-testid="header-cell"]',
             );
+            expect($headerCells.length).to.be.greaterThan(0);
+
             let totalHeaderWidth = 0;
             $headerCells.each((_, el) => {
               totalHeaderWidth += el.getBoundingClientRect().width;
@@ -518,7 +523,7 @@ describe("scenarios > embedding > modular embedding", () => {
       });
 
       frame.within(() => {
-        cy.findByText("Order 448").click();
+        cy.findByText("Order 1").click();
       });
 
       cy.log("Verify handleLink was called with the correct URL");
@@ -526,7 +531,7 @@ describe("scenarios > embedding > modular embedding", () => {
         .its("handleLinkCalls")
         .should("have.length", 1)
         .its(0)
-        .should("include", "https://example.org/order/448");
+        .should("include", "https://example.org/order/1");
 
       cy.log("Verify that no default navigation happened");
       cy.get("iframe")
@@ -591,59 +596,223 @@ describe("scenarios > embedding > modular embedding", () => {
         event: "setup",
         global: {
           auth_method: "sso",
+          locale_used: false,
         },
-        dashboard: {
-          with_title: {
-            false: 0,
-            true: 1,
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-          with_downloads: {
-            false: 1,
-            true: 0,
+          {
+            name: "question",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_alerts",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-          drills: {
-            false: 0,
-            true: 1,
+          {
+            name: "exploration",
+            properties: [
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new_native",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+            ],
           },
-          with_subscriptions: {
-            false: 0,
-            true: 1,
+          {
+            name: "browser",
+            properties: [
+              {
+                name: "read_only",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
+        ],
+      });
+    });
+
+    it("should send locale_used=true when locale is configured", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+        metabaseConfig: {
+          locale: "de",
         },
-        question: {
-          drills: {
-            false: 0,
-            true: 1,
-          },
-          with_downloads: {
-            false: 1,
-            true: 0,
-          },
-          with_title: {
-            false: 0,
-            true: 1,
-          },
-          is_save_enabled: {
-            false: 1,
-            true: 0,
-          },
-          with_alerts: {
-            false: 1,
-            true: 0,
-          },
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "setup",
+        global: {
+          auth_method: "sso",
+          locale_used: true,
         },
-        exploration: {
-          is_save_enabled: {
-            false: 1,
-            true: 0,
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-        },
-        browser: {
-          read_only: {
-            false: 0,
-            true: 1,
-          },
-        },
+        ],
       });
     });
 
@@ -663,7 +832,9 @@ describe("scenarios > embedding > modular embedding", () => {
           event: "setup",
           global: {
             auth_method: "session",
+            locale_used: false,
           },
+          components: [],
         },
         // Expect that the usage event shouldn't be sent
         0,

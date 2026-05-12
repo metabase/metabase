@@ -1,17 +1,19 @@
 import cx from "classnames";
 import _ from "underscore";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { IconProps } from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
 
-export interface SelectListItemProps
-  extends Omit<BaseSelectListItemProps, "children"> {
+export interface SelectListItemProps extends Omit<
+  BaseSelectListItemProps,
+  "children"
+> {
   name: string;
-  icon?: string | IconProps;
+  icon?: string | IconProps | (IconProps & { iconUrl?: string });
   rightIcon?: string | IconProps;
   children?: React.ReactNode;
   classNames?: {
@@ -34,6 +36,8 @@ export function SelectListItem({
 }: SelectListItemProps) {
   const iconProps = getIconProps(icon);
   const rightIconProps = getIconProps(rightIcon);
+  const iconUrl =
+    _.isObject(icon) && "iconUrl" in icon ? icon.iconUrl : undefined;
 
   return (
     <BaseSelectListItem
@@ -46,7 +50,11 @@ export function SelectListItem({
       hasRightIcon={!!rightIcon}
     >
       {icon && (
-        <ItemIcon className={classNames.icon} c="brand" {...iconProps} />
+        <ItemIcon
+          iconUrl={iconUrl}
+          className={classNames.icon}
+          {...iconProps}
+        />
       )}
       <ItemTitle
         className={classNames.label}

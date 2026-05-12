@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -12,7 +13,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -20,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [every?]]))
 
 (set! *warn-on-reflection* true)
@@ -55,8 +56,9 @@
    param-value
    a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
   (cond
-    ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
-    ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
+    ;; LEGACY: :id and :category are widget-types misused as parameter types.
+    ;; New code uses explicit types, but stored parameters may still have these.
+    ;; Infer numeric vs string from the target field. See QUE2-326.
     (and (#{:id :category} param-type)
          (let [base-type (or (field-type query stage-path a-ref)
                              (expression-type query a-ref))]
@@ -75,9 +77,9 @@
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
-  (let [a-ref (lib.util.match/match-lite target
+  (let [a-ref (match/match-one target
                 [#{:field :expression} & _]
-                (lib/->pMBQL &match))]
+                (lib/->mbql5 &match))]
     (cond
       (params.ops/operator? param-type)
       (params.ops/to-clause param)
@@ -114,7 +116,7 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace-lite stage
+  (match/replace stage
     [#{:field :expression}
      (opts :guard (= (:temporal-unit opts) temporal-unit))
      (id-or-name :guard (= id-or-name target-column))]
@@ -152,7 +154,7 @@
 
         ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
         ;; then replaced it with an MBQL source card.
-        (lib.util.match/match-lite target [:template-tag & _] &match)
+        (match/match-one target [:template-tag & _] &match)
         (do
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)
@@ -178,5 +180,5 @@
         :else
         (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
                                 (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str param)))
-              stage'        (lib/add-filter-to-stage stage filter-clause)]
+              stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))

@@ -14,8 +14,6 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
@@ -23,8 +21,10 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   Database,
   DatasetQuery,
@@ -32,7 +32,6 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import {
   TransformEditor,
   type TransformEditorProps,
@@ -131,8 +130,6 @@ function TransformQueryPageBody({
 
   useRegisterMetabotTransformContext(transform, source, lastRunError);
 
-  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
-
   const {
     checkData,
     isCheckingDependencies,
@@ -186,13 +183,6 @@ function TransformQueryPageBody({
     if (!isCompleteSource(source)) {
       return;
     }
-    if ("source-incremental-strategy" in source) {
-      const confirmed = await confirmIfQueryIsComplex(source);
-      if (!confirmed) {
-        return;
-      }
-    }
-
     await handleInitialSave({ id: transform.id, source });
   };
 
@@ -289,7 +279,6 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
-      {modal}
     </>
   );
 }
@@ -311,7 +300,6 @@ export type TransformQueryPageEditorProps = {
   uiOptions?: TransformEditorProps["uiOptions"];
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler for Python transforms (used in workspace for dry-run) */
   onRun?: () => void;
 };
 

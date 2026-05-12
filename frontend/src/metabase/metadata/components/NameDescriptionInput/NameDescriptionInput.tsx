@@ -1,7 +1,7 @@
 import { useElementSize } from "@mantine/hooks";
 import type { ReactNode } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Ellipsified } from "metabase/ui";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
 
 import { Input } from "./Input";

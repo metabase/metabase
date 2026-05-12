@@ -1,0 +1,140 @@
+name: Nested Query
+entity_id: 1t9TE-8T-AlaM19nx3yQV
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    breakout:
+    - - field
+      - {}
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  - filters:
+    - - '>'
+      - {}
+      - - field
+        - base-type: type/Integer
+          lib/uuid: 95bea6bf-64d4-4603-b47d-437d22bf6cab
+        - count
+      - 5
+    limit: 20
+    order-by:
+    - - desc
+      - {}
+      - - field
+        - base-type: type/Float
+          lib/uuid: 4726a0dd-12b3-4721-8941-c2ec9510dac1
+        - sum
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: INTEGER
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - USER_ID
+  - null
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - USER_ID
+  name: USER_ID
+  position: 1
+  semantic_type: type/FK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  visibility_type: normal
+  lib/breakout?: false
+  lib/deduplicated-name: USER_ID
+  lib/desired-column-alias: USER_ID
+  lib/original-display-name: User ID
+  lib/original-name: USER_ID
+  lib/source: source/previous-stage
+  lib/source-column-alias: USER_ID
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - count
+  - base-type: type/Integer
+  name: count
+  semantic_type: type/Quantity
+  source: fields
+  lib/breakout?: false
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/previous-stage
+  lib/source-column-alias: count
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - sum
+  - base-type: type/Float
+  name: sum
+  source: fields
+  lib/breakout?: false
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/previous-stage
+  lib/source-column-alias: sum
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: 1t9TE-8T-AlaM19nx3yQV
+  label: nested_query
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

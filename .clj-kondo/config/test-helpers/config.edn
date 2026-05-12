@@ -110,6 +110,7 @@
      metabase.settings.models.setting-test/test-user-local-allowed-setting!
      metabase.settings.models.setting-test/test-user-local-only-setting!
      metabase.settings.models.setting.cache/restore-cache!
+     metabase.settings.models.setting/log-deprecated-env-var-usage!
      metabase.settings.models.setting/set!
      metabase.settings.models.setting/validate-settings-formatting!
      metabase.setup.core/create-token!

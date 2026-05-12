@@ -1,21 +1,24 @@
-import type { ComponentType, ReactNode } from "react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type {
   ColorRangeSelectorAttributes,
   ColorRangeSelectorProps,
 } from "metabase/common/components/ColorRangeSelector/ColorRangeSelector";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconName, IconProps } from "metabase/ui";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
+} from "metabase/utils/measure-text";
 import type {
   ClickActionModeGetter,
   ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -27,6 +30,7 @@ import type {
   DatasetData,
   RawSeries,
   RowValue,
+  RowValues,
   Series,
   SeriesSettings,
   SingleSeries,
@@ -36,9 +40,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
-import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
-import type { ChartSettingEnumToggleProps } from "../components/settings/ChartSettingEnumToggle";
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
 import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
@@ -59,16 +61,23 @@ export interface Padding {
   right: number;
 }
 
-export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type Formatter = (
+  value: RowValue,
+  options?: OptionsType,
+) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
-export type ColorGetter = (colorName: string) => string;
+export type Extent = [number, number];
+
+export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export interface RenderingContext {
   getColor: ColorGetter;
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
+  /** Defaults to "light" when not provided. */
+  colorScheme?: "light" | "dark";
 
   theme: VisualizationTheme;
 }
@@ -155,6 +164,7 @@ export interface VisualizationProps {
   // Is this visualization made by the visualizer
   isVisualizerCard: boolean;
   isEditing: boolean;
+  isMetricsViewer: boolean;
   isMobile: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
@@ -275,7 +285,6 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
   widget?: string | ComponentType<any>;
-  default?: TValue;
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
@@ -342,13 +351,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
-  getDisabled?: (
-    object: T,
-    settings: T extends DatasetColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => boolean;
   getSection?: (
     object: T,
     settings: T extends DatasetColumn
@@ -356,23 +358,18 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string;
-  autoOpenWhenUnset?: boolean;
-  disabled?: boolean;
-  default?: TValue;
-  marginBottom?: string;
-  noPadding?: boolean;
-  value?: TValue;
-  set?: boolean;
-  getMarginBottom?: (
+  getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => CSSProperties | undefined;
+  autoOpenWhenUnset?: boolean;
+  value?: TValue;
+  set?: boolean;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: Partial<TProps>;
   getProps?: (
     object: T,
     vizSettings: T extends DatasetColumn
@@ -397,8 +394,13 @@ export type CompleteVisualizationSettingDefinition<
   T = unknown,
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
-> = VisualizationSettingDefinition<T, TValue, TProps> & {
+> = Omit<
+  VisualizationSettingDefinition<T, TValue, TProps>,
+  "getProps" | "getWrapperStyle"
+> & {
   id: string;
+  style?: CSSProperties;
+  props: Partial<TProps>;
 };
 
 export type DatasetColumnSettingDefinition<
@@ -421,17 +423,15 @@ type Value = unknown;
 type Props = Record<string, unknown>;
 
 /** Object keys are kept in alphabetical order */
-export type VisualizationSettingsDefinitions<
-  LabelValueFrequencyWidgetProps extends Props =
-    | ChartSettingEnumToggleProps<"fit" | "all">
-    | ChartSettingSegmentedControlProps,
-> = {
+export type VisualizationSettingsDefinitions = {
   _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
   _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
   _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
   axis?: SingleSeriesSettingDefinition<Value, Props>;
   "boxplot.points_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "boxplot.show_values_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.whisker_type"?: SeriesSettingDefinition<Value, Props>;
   "card.description"?: SeriesSettingDefinition<Value, Props>;
   "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
   "card.title"?: SeriesSettingDefinition<Value, Props>;
@@ -439,6 +439,7 @@ export type VisualizationSettingsDefinitions<
   color?: SingleSeriesSettingDefinition<Value, Props>;
   column?: DatasetColumnSettingDefinition<Value, Props>;
   column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
@@ -454,10 +455,21 @@ export type VisualizationSettingsDefinitions<
   >;
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
+  /**
+   * "graph.label_value_frequency" key is used for 2 different settings:
+   *   - in waterfall viz and every cartesian viz - as a segmented toggle
+   *   - in boxplot viz - as a switch (on/off)
+   *
+   * It's the only case in VisualizationSettingsDefinitions where 1 setting key has 2 meanings.
+   * For simplicity, we're defaulting to segmented toggle widget in types,
+   * and we make an exception for the boxplot with a cast.
+   */
   "graph.label_value_frequency"?: SeriesSettingDefinition<
     Value,
-    LabelValueFrequencyWidgetProps
+    ChartSettingSegmentedControlProps
   >;
   "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
   "graph.max_categories"?: SeriesSettingDefinition<
@@ -473,10 +485,12 @@ export type VisualizationSettingsDefinitions<
     ChartSettingSeriesOrderProps
   >;
   "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.split_panels"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
@@ -502,6 +516,8 @@ export type VisualizationSettingsDefinitions<
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "link.text"?: SeriesSettingDefinition<Value, Props>;
+  "link.url"?: SeriesSettingDefinition<Value, Props>;
   "map.pin_type"?: SeriesSettingDefinition<Value, Props>;
   "map.type"?: SeriesSettingDefinition<Value, Props>;
   "map.region"?: SeriesSettingDefinition<Value, Props>;
@@ -563,6 +579,11 @@ export type VisualizationSettingsDefinitions<
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  view_as?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.total_color"?: SeriesSettingDefinition<Value, Props>;
   /**
    * TODO: next line should be removed when VisualizationSettingsDefinitions and VisualizationSettings are complete.
    * Once that happens, it should be possible to safely use VisualizationSettingKey for
@@ -603,7 +624,9 @@ export type VisualizationDefinition = {
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  iconUrl?: string;
   hasEmptyState?: boolean;
+  isDev?: boolean; // is custom viz in dev mode
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;
@@ -617,13 +640,13 @@ export type VisualizationDefinition = {
   supportsVisualizer?: boolean;
   disableVisualizer?: boolean;
 
-  minSize: VisualizationGridSize;
-  defaultSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings?: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  isSensible: (data: DatasetData) => boolean;
+  isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
     | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
@@ -634,4 +657,12 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+};
+
+export type PivotedRowValues = RowValues & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
+};
+
+export type PivotedDatasetColumn = DatasetColumn & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };

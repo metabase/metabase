@@ -325,11 +325,17 @@ export const moveColumnDown = (column, distance) => {
  * @param {Object} options
  * @param {number} options.startIndex - The index of the element to drag
  * @param {number} options.dropIndex - The index where the element should be dropped
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitListElement = (
   dataTestId,
-  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+  {
+    startIndex,
+    dropIndex,
+    onBeforeDragEnd = () => {},
+    useMouseEvents = false,
+  } = {},
 ) => {
   const selector = new RegExp(dataTestId);
   const getElement = () =>
@@ -350,6 +356,7 @@ export const moveDnDKitListElement = (
     moveDnDKitElementByGetter(getElement, {
       vertical: dropPoint.clientY - dragPoint.clientY,
       horizontal: dropPoint.clientX - dragPoint.clientX,
+      useMouseEvents,
       onBeforeDragEnd,
     });
   });
@@ -362,6 +369,7 @@ export const moveDnDKitListElement = (
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitElementByAlias = (alias, options) => {
@@ -378,45 +386,58 @@ export const moveDnDKitElementByAlias = (alias, options) => {
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 const moveDnDKitElementByGetter = (
   getElement,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
+  {
+    horizontal = 0,
+    vertical = 0,
+    useMouseEvents = false,
+    onBeforeDragEnd = () => {},
+  } = {},
 ) => {
+  const down = useMouseEvents ? "mousedown" : "pointerdown";
+  const move = useMouseEvents ? "mousemove" : "pointermove";
+  const up = useMouseEvents ? "mouseup" : "pointerup";
+  const extraProps = useMouseEvents
+    ? { eventConstructor: "MouseEvent" }
+    : { isPrimary: true };
+
   getElement()
-    .trigger("pointerdown", 0, 0, {
+    .trigger(down, 0, 0, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   // This initial move needs to be greater than the activation constraint
-  // of the pointer sensor
+  // of the sensor
   getElement()
-    .trigger("pointermove", 20, 20, {
+    .trigger(move, 20, 20, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   getElement()
-    .trigger("pointermove", horizontal, vertical, {
+    .trigger(move, horizontal, vertical, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   onBeforeDragEnd();
 
   cy.document()
-    .trigger("pointerup", {
+    .trigger(up, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 };

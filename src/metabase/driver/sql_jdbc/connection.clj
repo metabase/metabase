@@ -1,7 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
-  (:refer-clojure :exclude [get-in some select-keys])
+  (:refer-clojure :exclude [get-in select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in select-keys some]]
+   [metabase.util.performance :refer [get-in select-keys]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -174,9 +174,8 @@
     (driver-api/connection-pool-spec spec pool-properties)))
 
 (defn ^:private default-ssh-tunnel-target-port [driver]
-  (when-let [port-info (some
-                        #(when (= "port" (:name %)) %)
-                        (driver/connection-properties driver))]
+  (let [conn-props (driver.u/collect-all-props-by-name (driver/connection-properties driver))
+        port-info (get conn-props "port")]
     (or (:default port-info)
         (:placeholder port-info))))
 
@@ -510,7 +509,9 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
-  (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
+  (let [details (-> details
+                    (update :port #(or % (default-ssh-tunnel-target-port driver)))
+                    (ssh/resolve-known-hosts driver))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver

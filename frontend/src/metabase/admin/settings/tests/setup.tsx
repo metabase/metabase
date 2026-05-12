@@ -1,4 +1,6 @@
+import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 import { Route } from "react-router";
 
 import {
@@ -13,6 +15,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
+  setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
@@ -20,15 +23,15 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 type RouteMap = Record<
   string,
@@ -39,7 +42,11 @@ export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
-  notifications: { path: "/notifications", testPattern: /Connect to Slack/i },
+  slack: {
+    path: "/slack",
+    testPattern: /Create a Slack app and connect to it/i,
+  },
+  webhooks: { path: "/webhooks", testPattern: /Configure webhooks/i },
   authentication: {
     path: "/authentication",
     testPattern: /Sign in with Google/i,
@@ -137,6 +144,7 @@ export const setup = async ({
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
   setupSlackManifestEndpoint();
+  setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -151,7 +159,7 @@ export const setup = async ({
     is_superuser: isAdmin,
   });
 
-  const store = createMockState({
+  const initialState = createMockState({
     currentUser: user,
     settings: mockSettings(settings),
   });
@@ -165,13 +173,21 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  renderWithProviders(
-    <Route path="admin/settings">{getSettingsRoutes()}</Route>,
-    {
-      storeInitialState: store,
-      withRouter: true,
-      initialRoute: `/admin/settings${initialRoute}`,
-    },
+  const { wrapper, store } = getTestStoreAndWrapper({
+    storeInitialState: initialState,
+    withRouter: true,
+    initialRoute: `/admin/settings${initialRoute}`,
+  });
+
+  const PassThroughGuard = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+
+  testingLibraryRender(
+    <Route path="admin/settings">
+      {getSettingsRoutes(store, PassThroughGuard)}
+    </Route>,
+    { wrapper },
   );
 
   await screen.findByTestId("admin-layout-content");

@@ -13,46 +13,50 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import {
   trackDocumentAddSupportingText,
   trackDocumentReplaceCard,
 } from "metabase/documents/analytics";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
+import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
+import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
-import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { useDispatch, useSelector } from "metabase/redux";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import { getUrl } from "metabase-lib/v1/urls";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
@@ -65,9 +69,10 @@ import CS from "../extensions.module.css";
 import { NativeQueryModal } from "../shared/NativeQueryModal";
 import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 
+import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
-import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
@@ -173,24 +178,13 @@ export const CardEmbedComponent = memo(
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
-    const { publicDocumentUuid } = usePublicDocumentContext();
-    const { data: commentsData } = useListCommentsQuery(
-      getListCommentsQuery(document),
-    );
-
-    const comments = commentsData?.comments;
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
+    const externalCardData = useExternalCardData();
     const { _id } = node.attrs;
+    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+
+    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const threads = useMemo(
-      () => getTargetChildCommentThreads(comments, _id),
-      [comments, _id],
-    );
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
@@ -208,16 +202,13 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use public hook when viewing a public document, otherwise use regular hook
-    const isPublicDocument = Boolean(publicDocumentUuid);
+    // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
+    const isExternalDocument = externalCardData != null;
     const regularCardData = useCardData({ id });
-    const publicCardData = usePublicDocumentCardData({
-      cardId: id,
-      documentUuid: publicDocumentUuid || "",
-    });
+    const externalCardDataResult = useExternalCardDataLoader(id);
 
-    const { card, dataset, isLoading, series, error } = isPublicDocument
-      ? publicCardData
+    const { card, dataset, isLoading, series, error } = isExternalDocument
+      ? externalCardDataResult
       : regularCardData;
 
     const metadata = useSelector(getMetadata);
@@ -372,7 +363,7 @@ export const CardEmbedComponent = memo(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
-          const url = getUrl(question, { includeDisplayIsLocked: true });
+          const url = Urls.question(question);
           dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
@@ -437,17 +428,14 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-primary" fw={700}>
+                  <Text size="md" c="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
               </Flex>
             </Box>
-            <Box className={styles.questionResults}>
-              <Box className={styles.loadingContainer}>
-                <Loader />
-              </Box>
-            </Box>
+
+            <CardEmbedLoadingState />
           </Box>
         </NodeViewWrapper>
       );
@@ -560,10 +548,10 @@ export const CardEmbedComponent = memo(
                           fw={700}
                           truncate="end"
                           onClick={
-                            isPublicDocument ? undefined : handleTitleClick
+                            isExternalDocument ? undefined : handleTitleClick
                           }
                           style={{
-                            cursor: isPublicDocument ? undefined : "pointer",
+                            cursor: isExternalDocument ? undefined : "pointer",
                           }}
                         >
                           {displayName}
@@ -600,9 +588,9 @@ export const CardEmbedComponent = memo(
                       </Box>
                     )}
                   {!isEditingTitle &&
-                    (isPublicDocument && dataset && !canWrite ? (
-                      <PublicDocumentCardMenu card={card} dataset={dataset} />
-                    ) : !isPublicDocument && (canWrite || dataset) ? (
+                    (isExternalDocument && dataset && !canWrite ? (
+                      <ExternalDocumentCardMenu card={card} dataset={dataset} />
+                    ) : !isExternalDocument && (canWrite || dataset) ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
@@ -664,13 +652,13 @@ export const CardEmbedComponent = memo(
                       metadata={metadata}
                       mode={DocumentMode}
                       onChangeCardAndRun={
-                        isPublicDocument ? undefined : handleChangeCardAndRun
+                        isExternalDocument ? undefined : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
-                        isPublicDocument ? undefined : handleUpdateQuestion
+                        isExternalDocument ? undefined : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
-                        isPublicDocument
+                        isExternalDocument
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }

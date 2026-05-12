@@ -1,7 +1,7 @@
 (ns metabase.sql-tools.metrics-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.test :as mt]))
@@ -73,11 +73,11 @@
 (deftest pool-metrics-registered-test
   (testing "Pool metrics are registered in prometheus"
     (mt/with-prometheus-system! [_ system]
-      (prometheus/inc! :metabase-sql-parsing/context-timeouts)
+      (analytics/inc! :metabase-sql-parsing/context-timeouts)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-timeouts)))
-      (prometheus/inc! :metabase-sql-parsing/context-acquisitions)
+      (analytics/inc! :metabase-sql-parsing/context-acquisitions)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-acquisitions)))
-      (prometheus/inc! :metabase-sql-parsing/context-creations)
+      (analytics/inc! :metabase-sql-parsing/context-creations)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-creations)))
-      (prometheus/inc! :metabase-sql-parsing/context-disposals-expired)
+      (analytics/inc! :metabase-sql-parsing/context-disposals-expired)
       (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-expired))))))

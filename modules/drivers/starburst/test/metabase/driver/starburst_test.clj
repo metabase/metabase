@@ -10,8 +10,8 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -366,7 +366,7 @@
        driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [stmt (.prepareStatement conn "select 1" ResultSet/TYPE_FORWARD_ONLY ResultSet/CONCUR_READ_ONLY)
-               prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
+               ^PreparedStatement prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
            (is (false? (.isClosed prepared-stmt)))
            (.close stmt)
            (is (true? (.isClosed prepared-stmt)))))))))

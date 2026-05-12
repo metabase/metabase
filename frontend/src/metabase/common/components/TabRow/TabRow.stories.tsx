@@ -4,7 +4,7 @@ import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
 import { Sortable } from "../Sortable";
 import type { TabButtonMenuAction, TabButtonMenuItem } from "../TabButton";

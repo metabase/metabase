@@ -22,13 +22,14 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { CheckBox } from "metabase/common/components/CheckBox";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
+import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import * as Urls from "metabase/lib/urls";
 import type { IconName, IconProps } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
@@ -41,7 +42,7 @@ import {
 
 type EntityIconCheckBoxProps = {
   variant?: string;
-  icon: IconProps;
+  icon: IconProps | IconData;
   pinned?: boolean;
   selectable?: boolean;
   selected?: boolean;
@@ -79,9 +80,9 @@ const EntityIconCheckBox = ({
       {selectable ? (
         <Swapper
           defaultElement={
-            <Icon
-              name={icon.name}
-              c={icon.color ?? "inherit"}
+            <EntityIcon
+              {...icon}
+              color={icon.color ?? "inherit"}
               size={iconSize}
             />
           }
@@ -89,7 +90,7 @@ const EntityIconCheckBox = ({
           isSwapped={selected || showCheckbox}
         />
       ) : (
-        <Icon name={icon.name} c={icon.color ?? "inherit"} size={iconSize} />
+        <EntityIcon {...icon} color={icon.color ?? "inherit"} size={iconSize} />
       )}
     </EntityIconWrapper>
   );
@@ -232,9 +233,9 @@ function EntityItemMenu({
         title: t`Delete permanently`,
         icon: "trash",
         action: onDeletePermanently,
-        color: "danger",
-        hoverColor: "danger",
-        hoverBgColor: "background-error",
+        color: "danger" as const,
+        hoverColor: "danger" as const,
+        hoverBgColor: "background-error" as const,
       });
     }
 
@@ -263,10 +264,9 @@ function EntityItemMenu({
     <EntityMenuContainer style={{ textAlign: "center" }}>
       <EntityMenu
         triggerAriaLabel={t`Actions`}
-        className={className}
-        closedClassNames={cx(CS.hoverChild, CS.hoverChildSmooth)}
         triggerIcon="ellipsis"
         items={actions}
+        className={className}
       />
     </EntityMenuContainer>
   );
@@ -341,7 +341,6 @@ export const EntityItem = ({
           onMove={onMove}
           onCopy={onCopy}
           onArchive={onArchive}
-          className={CS.ml1}
         />
       </EntityItemActions>
     </EntityItemWrapper>

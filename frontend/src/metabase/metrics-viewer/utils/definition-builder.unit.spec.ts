@@ -19,6 +19,7 @@ import {
   getDefinitionName,
   getProjectionInfo,
 } from "./definition-builder";
+import { buildDimensionFilterClause, parseFilter } from "./dimension-filters";
 
 const metadata = createMetricMetadata([REVENUE_METRIC]);
 
@@ -231,6 +232,54 @@ describe("buildExecutableDefinition", () => {
       const bucket = LibMetric.temporalBucket(resultProjections[0]);
       expect(LibMetric.displayInfo(result, bucket!).shortName).toBe("year");
     });
+  });
+
+  it("preserves global filters when tab-level filter targets the same dimension", () => {
+    const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+    const dimensions = LibMetric.projectionableDimensions(definition);
+    const categoryDimension = dimensions.find(
+      (dimension) =>
+        LibMetric.displayInfo(definition, dimension).displayName === "Category",
+    )!;
+
+    const globalFilterClause = buildDimensionFilterClause(categoryDimension, {
+      type: "string",
+      operator: "=",
+      values: ["Gadget"],
+      options: {},
+    });
+    const definitionWithGlobalFilter = LibMetric.filter(
+      definition,
+      globalFilterClause,
+    );
+
+    expect(LibMetric.filters(definitionWithGlobalFilter)).toHaveLength(1);
+
+    const result = buildExecutableDefinition(
+      definitionWithGlobalFilter,
+      categoryDimension,
+      {
+        dimensionFilter: {
+          type: "string",
+          operator: "=",
+          values: ["Widget"],
+          options: {},
+        },
+      },
+    )!;
+
+    const resultFilters = LibMetric.filters(result);
+    expect(resultFilters).toHaveLength(2);
+
+    const parsedFilters = resultFilters.map(
+      (filter) => parseFilter(result, filter)!.value,
+    );
+    expect(parsedFilters).toEqual(
+      expect.arrayContaining([
+        { type: "string", operator: "=", values: ["Gadget"], options: null },
+        { type: "string", operator: "=", values: ["Widget"], options: null },
+      ]),
+    );
   });
 });
 

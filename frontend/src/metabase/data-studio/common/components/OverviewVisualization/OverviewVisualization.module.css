@@ -5,7 +5,8 @@
 .visualization {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--default-border-radius);
+  border-top-left-radius: var(--default-border-radius);
+  border-bottom-left-radius: var(--default-border-radius);
   overflow: hidden;
   flex: 1;
 }

@@ -2,13 +2,11 @@ import dayjs from "dayjs";
 
 import {
   DATE_PICKER_EXTRACTION_UNITS,
-  DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
 } from "metabase/querying/common/constants";
 import type {
   DateFilterValue,
   DatePickerExtractionUnit,
-  DatePickerOperator,
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
@@ -25,13 +23,6 @@ export {
   getDateFilterDisplayName,
   type DateFilterDisplayOpts,
 } from "metabase/querying/common/utils/dates";
-
-export function isDatePickerOperator(
-  operator: string,
-): operator is DatePickerOperator {
-  const operators: ReadonlyArray<string> = DATE_PICKER_OPERATORS;
-  return operators.includes(operator);
-}
 
 export function isDatePickerUnit(unit: string): unit is DatePickerUnit {
   return isDatePickerTruncationUnit(unit) || isDatePickerExtractionUnit(unit);

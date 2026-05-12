@@ -457,9 +457,9 @@
                                           "    # Return processed dataframe\n"
                                           "    return df")
 
-                      source-tables (cond-> [{:alias source-table-name :table_id source-table-id}]
+                      source-tables (cond-> [(transforms.tu/source-table-entry source-table-name source-table-id)]
                                       exotic-table-id
-                                      (conj {:alias (str source-table-name "_exotic") :table_id exotic-table-id}))
+                                      (conj (transforms.tu/source-table-entry (str source-table-name "_exotic") exotic-table-id)))
 
                       result (execute-e2e-transform! table-name transform-code source-tables)
                       {:keys [columns] result-rows :rows} result

@@ -4,9 +4,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import _ from "underscore";
 
-import { alpha, color, darken } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { alpha, color, darken } from "metabase/ui/colors";
 
 type SegmentedControlVariant = "fill-text" | "fill-background" | "fill-all";
 
