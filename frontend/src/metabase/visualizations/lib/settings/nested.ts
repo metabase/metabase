@@ -157,7 +157,7 @@ export function nestedSettings<
   type Value = VisualizationSettingsDefinitions[Key];
 
   const idDef: SeriesSettingDefinition<Value, TProps & { id: string }> = {
-    section: t`Display`,
+    getSection: () => t`Display`,
     getDefault: () => ({}),
     getProps: (series, settings, onChange, extra) => {
       const objects = getObjects(series, settings);
