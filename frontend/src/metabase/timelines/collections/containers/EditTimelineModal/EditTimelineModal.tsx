@@ -1,50 +1,55 @@
-import type { ComponentProps } from "react";
 import { push } from "react-router-redux";
-import _ from "underscore";
 
+import {
+  skipToken,
+  useGetTimelineQuery,
+  useUpdateTimelineMutation,
+} from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { Timelines } from "metabase/entities/timelines";
-import { connect, useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import { useDispatch } from "metabase/redux";
 import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
 
-interface EditTimelineModalProps {
-  params: ModalParams;
-}
-
-const timelineProps = {
-  id: (state: State, props: EditTimelineModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-  LoadingAndErrorWrapper,
-};
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline) => {
-    await dispatch(Timelines.actions.update(timeline));
-    dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-});
-
-function EditTimelineModalContainer(
-  props: ComponentProps<typeof EditTimelineModal>,
-) {
-  const archive = useSetArchive();
+function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   const dispatch = useDispatch();
-  const onArchive = async (timeline: Timeline) => {
+  const archive = useSetArchive();
+  const [updateTimeline] = useUpdateTimelineMutation();
+  const id = Urls.extractEntityId(params.timelineId);
+  const {
+    data: timeline,
+    isLoading,
+    error,
+  } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
+
+  if (isLoading || error || !timeline) {
+    return (
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+    );
+  }
+
+  const handleSubmit = async (timeline: Timeline) => {
+    await updateTimeline(timeline).unwrap();
+    dispatch(push(Urls.timelineInCollection(timeline)));
+  };
+
+  const handleArchive = async (timeline: Timeline) => {
     await archive({ id: timeline.id, model: "timeline" }, true);
     dispatch(push(Urls.timelinesInCollection(timeline.collection)));
   };
-  return <EditTimelineModal {...props} onArchive={onArchive} />;
+
+  return (
+    <EditTimelineModal
+      {...props}
+      timeline={timeline}
+      onSubmit={handleSubmit}
+      onArchive={handleArchive}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.load(timelineProps),
-  connect(null, mapDispatchToProps),
-)(EditTimelineModalContainer);
+export default EditTimelineModalContainer;

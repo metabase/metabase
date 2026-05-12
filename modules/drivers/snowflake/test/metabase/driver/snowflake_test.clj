@@ -166,15 +166,19 @@
                                                                                             (assoc :host alternative-host)
                                                                                             (assoc :use-hostname use-hostname))]
                                                                             (sql-jdbc.conn/connection-details->spec :snowflake details))))
-        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        true "snowflake.example.com/" "//snowflake.example.com/"
-        true "snowflake.example.com" "//snowflake.example.com/"
-        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        true "snowflake.example.com/" "//snowflake.example.com/?enablePutGet=false"
+        true "snowflake.example.com" "//snowflake.example.com/?enablePutGet=false"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/?enablePutGet=false"))
+    (testing "Unsafe options are removed"
+      (let [details (assoc details :additional-options "enablePutGet=true")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (re-find #"enablePutGet=false" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -987,11 +991,14 @@
   (testing "set-role-statement should return a parameterized USE ROLE command"
     (are [role expected] (= expected
                             (driver.sql-jdbc/set-role-statement :snowflake nil role))
-      "MY_ROLE"        ["USE ROLE identifier(?);" "MY_ROLE"]
-      "ROLE123"        ["USE ROLE identifier(?);" "ROLE123"]
-      "lowercase_role" ["USE ROLE identifier(?);" "lowercase_role"]
-      "Role.123"       ["USE ROLE identifier(?);" "Role.123"]
-      "$role"          ["USE ROLE identifier(?);" "$role"])))
+      "MY_ROLE"                          ["USE ROLE identifier(?);" "MY_ROLE"]
+      "ROLE123"                          ["USE ROLE identifier(?);" "ROLE123"]
+      "lowercase_role"                   ["USE ROLE identifier(?);" "lowercase_role"]
+      "Role.123"                         ["USE ROLE identifier(?);" "\"Role.123\""]
+      "$role"                            ["USE ROLE identifier(?);" "\"$role\""]
+      "Role-X"                           ["USE ROLE identifier(?);" "\"Role-X\""]
+      ;; should escape quotes in role name
+      "Role-X\"); DROP * FROM TABLE; --" ["USE ROLE identifier(?);" "\"Role-X\"\"); DROP * FROM TABLE; --\""])))
 
 (deftest remark-test
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"

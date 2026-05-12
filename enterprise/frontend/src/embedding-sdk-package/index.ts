@@ -126,6 +126,8 @@ export type {
   MetabotErrorMessage,
   MetabotMessage,
   MetabotUserTextMessage,
+  ParameterChangeSource,
+  ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
   SdkCollectionId,
@@ -139,6 +141,8 @@ export type {
   SdkQuestionId,
   SdkQuestionEntityPublicProps,
   SdkQuestionTitleProps,
+  SqlParameterChangeSource,
+  SqlParameterChangePayload,
   SdkUserId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";

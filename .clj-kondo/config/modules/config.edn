@@ -212,6 +212,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -362,6 +363,7 @@
                     :model/Channel
                     :model/Collection
                     :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/Database
                     :model/Document
@@ -1059,6 +1061,7 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
+           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1082,8 +1085,7 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util}
    :uses #{config
            graph
            legacy-mbql
@@ -1095,7 +1097,6 @@
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
-
 
   lib-be
   {:team "Querying Platform"
@@ -1148,7 +1149,7 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1254,7 +1255,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
@@ -1758,6 +1758,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
+              metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
@@ -2038,7 +2039,6 @@
               analytics-interface
               api
               channel
-              config
               formatter
               lib
               metabot
@@ -2054,8 +2054,7 @@
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
-                    :model/MetabotMessage
-                    :model/User}}
+                    :model/MetabotMessage}}
 
   source-swap
   {:team "Graphy"
@@ -2281,8 +2280,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2315,8 +2313,7 @@
            lib-be
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2490,6 +2487,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be
@@ -2851,6 +2849,20 @@
   {:team "DevEx"
    :api  #{metabase-enterprise.core.init}
    :uses :any}
+
+  enterprise/custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.init}
+   :uses #{api
+           config
+           events
+           models
+           premium-features
+           server
+           settings
+           util}
+   :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/dashboard-subscription-filters
   {:team "Graphy"
@@ -3301,7 +3313,6 @@
            lib
            logger
            models
-           permissions
            plugins
            premium-features
            search

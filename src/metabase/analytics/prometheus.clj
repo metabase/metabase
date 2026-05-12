@@ -301,6 +301,12 @@
                         :labels      [:model]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
+   (prometheus/counter :metabase-search/appdb-index-batches-skipped
+                       {:description "Number of search index batches skipped because the upsert errored."
+                        :labels      [:table-type]})
+   (prometheus/counter :metabase-search/index-documents-skipped
+                       {:description "Number of individual search documents skipped because building the document errored."
+                        :labels      [:model]})
    (prometheus/counter :metabase-search/index-update-ms
                        {:description "Total number of ms updating the index"})
    (prometheus/histogram :metabase-search/index-update-duration-ms
@@ -608,6 +614,12 @@
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
                         :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
+                       {:description "LLM cache creation input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
+   (prometheus/counter :metabase-metabot/llm-cache-read-tokens
+                       {:description "LLM cache read input tokens (Anthropic prompt caching)"
+                        :labels [:model :source]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
                           :labels [:model :source]
@@ -646,7 +658,30 @@
                        {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
-                        :labels [:format]})])
+                        :labels [:format]})
+
+   ;; experiment metrics
+   (prometheus/counter :experiment/runs-total
+                       {:description "Number of experiment candidate runs."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/matches-total
+                       {:description "Number of experiment runs where control and candidate matched."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/mismatches-total
+                       {:description "Number of experiment runs where control and candidate differed."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/errors-total
+                       {:description "Number of experiment runs where the candidate threw."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/control-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment control code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path."
+                        :labels [:experiment]})
+   (prometheus/counter :experiment/candidate-error-duration-ms
+                       {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
+                        :labels [:experiment]})])
 
 (defn- quartz-collectors
   []

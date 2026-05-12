@@ -55,6 +55,8 @@ type StaticQuestionBaseProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "sqlParameters"
+    | "onSqlParametersChange"
     | "hiddenParameters"
     | "withDownloads"
     | "withAlerts"
@@ -120,6 +122,8 @@ const StaticQuestionInner = (
     className,
     style,
     initialSqlParameters,
+    sqlParameters,
+    onSqlParametersChange,
     hiddenParameters,
     withDownloads,
     withAlerts,
@@ -158,6 +162,8 @@ const StaticQuestionInner = (
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      sqlParameters={sqlParameters}
+      onSqlParametersChange={onSqlParametersChange}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
       withAlerts={withAlerts}

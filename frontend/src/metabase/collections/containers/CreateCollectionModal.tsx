@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
@@ -14,13 +15,15 @@ import type { Collection } from "metabase-types/api";
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
+import { getCollectionPathAsArray } from "../utils";
 
-interface CreateCollectionModalOwnProps extends Omit<
+export interface CreateCollectionModalOwnProps extends Omit<
   CreateCollectionFormOwnProps,
   "onCancel" | "onSubmit"
 > {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
+  shouldNavigateOnCreate?: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -42,21 +45,46 @@ function CreateCollectionModal({
   onChangeLocation,
   onClose,
   handleCreateCollection,
+  shouldNavigateOnCreate = true,
   ...props
 }: Props) {
   const handleCreate = useCallback(
     async (values: CreateCollectionProperties) => {
       const action = await handleCreateCollection(values);
-      const collection = Collections.HACK_getObjectFromAction(action);
+      const collection: Collection =
+        Collections.HACK_getObjectFromAction(action);
 
       if (typeof onCreate === "function") {
         onCreate(collection);
+        onClose();
       } else {
         onClose();
-        onChangeLocation(Urls.collection(collection));
+
+        if (!shouldNavigateOnCreate) {
+          return;
+        }
+
+        let visitUrl = Urls.collection(collection);
+
+        if (
+          PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
+          collection.namespace === "snippets"
+        ) {
+          visitUrl = Urls.dataStudioLibrary({
+            expandedIds: getCollectionPathAsArray(collection),
+          });
+        }
+
+        onChangeLocation(visitUrl);
       }
     },
-    [onCreate, onChangeLocation, onClose, handleCreateCollection],
+    [
+      handleCreateCollection,
+      onCreate,
+      onClose,
+      onChangeLocation,
+      shouldNavigateOnCreate,
+    ],
   );
 
   useEscapeToCloseModal(onClose);

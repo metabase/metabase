@@ -4,7 +4,7 @@ import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CacheableModel } from "metabase-types/api";
@@ -29,6 +29,7 @@ export const TableRowForCacheableItem = ({
   updateTarget: UpdateTarget;
   isFormDirty: boolean;
 }) => {
+  const getIcon = useGetIcon();
   const { name, id, collection, model, strategy, iconModel } = item;
 
   const iconName = iconModel

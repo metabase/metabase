@@ -112,7 +112,7 @@
     (testing "Reads CSV with invalid header row and throws informative error"
       (let [file (.getBytes "Language,String,\"Translation\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Row 1.*CSV error.*unexpected character.*X"
+             Exception #"Error parsing CSV at row 1.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))
     (testing "Reads CSV with invalid header name and throws informative error"
       (let [file (.getBytes "Loca,String,Translation\nes-mx,hello,hola")] ; bad header
@@ -122,7 +122,13 @@
     (testing "Reads CSV with invalid data row and throws informative error"
       (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Row 3.*CSV error.*unexpected character.*X"
+             Exception #"Error parsing CSV at row 3.*unexpected character.*X"
+             (dictionary/read-and-import-csv! file)))))
+    (testing "Parse-error row number counts logical rows, not physical lines (a quoted multi-line row counts as 1)"
+      ;; Header (row 1) + a 2-physical-line quoted row (row 2) + a broken row (row 3) → error should name row 3.
+      (let [file (.getBytes "Language,String,Translation\nde,\"line one\nline two\",Titel\nde,Vendor,\"Anbieter\"X")]
+        (is (thrown-with-msg?
+             Exception #"Error parsing CSV at row 3.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))))
 
 (deftest read-and-import-csv-with-and-without-header-test
@@ -156,6 +162,25 @@
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
             (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))))
+
+(deftest read-and-import-csv-multiline-fields-test
+  (ct-utils/with-clean-translations!
+    (testing "CSV with newlines inside quoted fields is imported with the newlines preserved (EMB-1654)"
+      (mt/with-premium-features #{:content-translation}
+        ;; The msgid mirrors the shape of a multi-line markdown text card: a heading followed by
+        ;; an image link, separated by a real newline. Before the fix, the file-level reader split
+        ;; on every physical newline and each half failed to parse as its own CSV row.
+        (let [msgid "##### in partnership with ▸\n[![Logo](https://example.com/logo.png)](https://example.com)"
+              msgstr "##### en partenariat avec ▸\n[![Logo](https://example.com/logo.png)](https://example.com)"
+              csv (str "Language,String,Translation\n"
+                       "fr,\"" msgid "\",\"" msgstr "\"")
+              file (.getBytes csv)]
+          (dictionary/read-and-import-csv! file)
+          (is (= 1 (count-translations)))
+          (let [translation (first (get-translations))]
+            (is (= "fr" (:locale translation)))
+            (is (= msgid (:msgid translation)))
+            (is (= msgstr (:msgstr translation)))))))))
 
 (deftest read-and-import-csv-different-locale-headers-test
   (ct-utils/with-clean-translations!

@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
 import {
   IndexRedirect,
@@ -81,7 +82,7 @@ import {
 } from "./utils";
 
 export const getRoutes = (
-  store: { getState: () => State },
+  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -242,7 +243,7 @@ export const getRoutes = (
 
         {/* SETTINGS */}
         <Route path="settings" component={createAdminRouteGuard("settings")}>
-          {getSettingsRoutes()}
+          {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" component={IsAdmin}>
@@ -268,9 +269,23 @@ export const getRoutes = (
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
-          <Route key="layout" component={MetabotAdminLayout}>
+          <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="metabot" path=":metabotId" component={AISettingsPage} />
+          </Route>
+          <Route
+            key="layout"
+            component={(props) => (
+              <MetabotAdminLayout
+                {...props}
+                fullWidth={!PLUGIN_AI_CONTROLS.isEnabled}
+                innerContentProps={{
+                  fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+                  fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
+                }}
+              />
+            )}
+          >
             {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
           </Route>
         </Route>
