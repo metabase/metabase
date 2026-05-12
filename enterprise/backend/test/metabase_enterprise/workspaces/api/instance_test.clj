@@ -28,12 +28,19 @@
       (is (nil? (mt/user-http-request :crowberto :get 204 "ee/workspace-instance/current"))))))
 
 (deftest current-with-workspace-test
-  (testing "GET /ee/workspace-instance/current returns only the workspace name"
+  (testing "GET /ee/workspace-instance/current returns the workspace name + per-database info"
     (with-redefs [ws/instance-workspace (constantly {:name      "Current Test"
-                                                     :databases {(mt/id) {:input_schemas ["PUBLIC"]
-                                                                          :output_schema "ws_alice"}}})]
-      (is (= {:name "Current Test"}
-             (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))
+                                                     :databases {(mt/id) {:input  [{:schema "PUBLIC"}]
+                                                                          :output {:schema "ws_alice"}}}})]
+      (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")]
+        (is (= "Current Test" (:name result)))
+        (testing "databases is a list with id + name + input/output schemas"
+          (is (= 1 (count (:databases result))))
+          (let [[db] (:databases result)]
+            (is (= (mt/id) (:id db)))
+            (is (string? (:name db)))
+            (is (= ["PUBLIC"] (:input_schemas db)))
+            (is (= "ws_alice" (:output_schema db)))))))))
 
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires superuser"

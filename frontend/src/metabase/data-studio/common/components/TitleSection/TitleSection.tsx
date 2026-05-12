@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Card, Group, Stack, Text, Title } from "metabase/ui";
 
 type TitleSectionProps = {
-  label: string;
+  label: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
 };

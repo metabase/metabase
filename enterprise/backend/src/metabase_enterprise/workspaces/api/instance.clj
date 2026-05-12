@@ -6,13 +6,22 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
+(def ^:private WorkspaceInstanceDatabase
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          :string]
+   [:input_schemas [:sequential :string]]
+   [:output_schema :string]])
+
 (def ^:private WorkspaceInstance
   [:map
-   [:name ms/NonBlankString]])
+   [:name      ms/NonBlankString]
+   [:databases [:sequential WorkspaceInstanceDatabase]]])
 
 (def ^:private TableRemapping
   [:map
@@ -34,6 +43,25 @@
                     :to_db :to_schema :to_table_name
                     :created_at]))
 
+(defn- present-workspace-instance-database [db-id wsd dbs-by-id]
+  {:id            db-id
+   :name          (get-in dbs-by-id [db-id :name] "")
+   :input_schemas (vec (keep :schema (:input wsd)))
+   :output_schema (or (:schema (:output wsd)) "")})
+
+(defn- present-workspace-instance [workspace]
+  (let [db-ids    (sort (keys (:databases workspace)))
+        dbs-by-id (when (seq db-ids)
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Database :id :name] :id [:in db-ids])))]
+    {:name      (:name workspace)
+     :databases (mapv (fn [db-id]
+                        (present-workspace-instance-database
+                         db-id
+                         (get-in workspace [:databases db-id])
+                         dbs-by-id))
+                      db-ids)}))
+
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/current" :- [:maybe WorkspaceInstance]
@@ -45,7 +73,7 @@
   []
   (api/check-superuser)
   (when-let [workspace (ws/instance-workspace)]
-    {:name (:name workspace)}))
+    (present-workspace-instance workspace)))
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
   "Return all table remappings, ordered by id."
