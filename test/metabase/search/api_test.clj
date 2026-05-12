@@ -58,10 +58,10 @@
    :dashboardcard_count        nil
    :database_name              nil
    :description                nil
-   :display                    nil   :id                         true
-   :initial_sync_status        nil   :model_name
-
-   nil
+   :display                    nil
+   :id                         true
+   :initial_sync_status        nil
+   :model_name                 nil
    :moderated_status           nil
    :last_editor_common_name    nil
    :last_editor_id             false
