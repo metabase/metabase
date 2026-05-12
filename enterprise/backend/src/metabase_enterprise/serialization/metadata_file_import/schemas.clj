@@ -32,9 +32,8 @@
    [:engine :string]])
 
 (mr/def ::table-info
-  "Table row. `:id`, `:db_id`, and `:name` always present. `:schema` is emitted
-  even when null (no `metadata-query-format` on Table strips nils). `:description`
-  may be present-and-null or absent."
+  "Table row. `:id`, `:db_id`, and `:name` always present. `:schema` and
+  `:description` are optional and may be nil."
   [:map
    [:id :int]
    [:db_id :int]

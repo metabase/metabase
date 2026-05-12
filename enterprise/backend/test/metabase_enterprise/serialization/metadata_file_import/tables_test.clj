@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.metadata-file-import.tables-test
   "Tests for `resolve-target-table-ids-in-staging!` and `merge-tables!` —
-  the table-merge half of the I4 pipeline. These functions key on the
+  the table-merge half of the pipeline. These functions key on the
   natural-key tuple (db_name, schema, name) against `metabase_table`,
   filtered to active non-defective rows."
   (:require

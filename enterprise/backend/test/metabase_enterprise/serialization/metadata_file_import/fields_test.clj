@@ -288,8 +288,6 @@
       (finally (p/clear-staging-tables!)))))
 
 (deftest insert-new-preserves-null-effective-type-test
-  ;; Wire row omits :effective_type when it equals :base_type (export's
-  ;; remove-nils). Staging carries NULL. INSERT passes NULL through.
   ;; The application reads NULL effective_type as "equal to base_type" at
   ;; use sites, so the stored NULL is correct.
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
@@ -322,10 +320,9 @@
       (finally (p/clear-staging-tables!)))))
 
 (deftest update-matched-skip-if-unchanged-handles-effective-type-coalesce-test
-  ;; skip-if-unchanged compares COALESCE(effective_type, base_type) on both
-  ;; sides. So if target has effective_type explicitly set to its base_type,
-  ;; and staging has NULL effective_type, the COALESCED values match — and
-  ;; the UPDATE doesn't fire.
+  ;; Cross-checks the COALESCE branch in field-payload-changed-predicate:
+  ;; target.effective_type explicitly == base_type, staging.effective_type
+  ;; NULL → COALESCED values match → skip-if-unchanged fires.
   (mt/with-temp [:model/Database {db-id :id}     {:engine :h2}
                  :model/Table    {t-id :id}      {:db_id db-id :schema "PUBLIC" :name "t"}
                  :model/Field    {target-id :id} {:table_id        t-id :name "x"
