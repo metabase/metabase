@@ -6,6 +6,7 @@
    - (grid from to opts)      -> {:cells [...] :scale_max n :scheduler_status \"running|stopped\"}
    - (slot from to opts)      -> [{:type :entity_id :entity_name :cron :fire_at :weight :settings_url}...]"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.introspector.workload.weights :as weights]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -210,31 +211,67 @@
     :persisted-refresh      (when id (str "/admin/databases/" id))
     nil))
 
-(defn- entity-name-for
-  "Always returns a non-nil string for known trigger types — if the underlying entity row
-   has been deleted (orphan trigger), we still return a synthetic id-based label so the
-   UI shows what the trigger points at, not just `(orphaned)`."
+(defn- creator-label
+  "Render a creator user id as a human label. Falls back to '#<id>' if the user
+   is deleted, nil if no creator is associated."
+  [user-id]
+  (when user-id
+    (or (when-let [u (t2/select-one [:model/User :first_name :last_name :email]
+                                    :id user-id)]
+          (let [name (str/trim (str (:first_name u) " " (:last_name u)))]
+            (if (str/blank? name) (:email u) name)))
+        (str "User #" user-id))))
+
+(defn- entity-meta-for
+  "Look up display metadata for a parsed trigger. Returns a map with :name (always
+   non-nil for known types), :updated_at, and :creator. Uses a synthetic id-based
+   fallback name when the underlying row has been deleted (orphan trigger)."
   [{:keys [type id]}]
   (when id
     (case type
-      :sync                   (or (:name (t2/select-one [:model/Database :name] :id id))
-                                  (str "Database #" id " (deleted)"))
-      :transform-job          (or (:name (t2/select-one [:model/TransformJob :name] :id id))
-                                  (str "Transform job #" id " (deleted)"))
-      :alert                  (or (when-let [notif-id (t2/select-one-fn :notification_id
-                                                                        :model/NotificationSubscription
-                                                                        :id id)]
-                                    (when-let [card-id (t2/select-one-fn :card_id
-                                                                         :model/NotificationCard
-                                                                         {:where [:in :id {:select [:payload_id]
-                                                                                           :from   [:notification]
-                                                                                           :where  [:= :id notif-id]}]})]
-                                      (:name (t2/select-one [:model/Card :name] :id card-id))))
-                                  (str "Alert · subscription #" id " (deleted)"))
-      :dashboard-subscription (or (:name (t2/select-one [:model/Pulse :name] :id id))
-                                  (str "Dashboard subscription #" id " (deleted)"))
-      :persisted-refresh      (or (:name (t2/select-one [:model/Database :name] :id id))
-                                  (str "DB #" id " (deleted)"))
+      :sync
+      (if-let [db (t2/select-one [:model/Database :name :updated_at] :id id)]
+        {:name (:name db) :updated_at (:updated_at db) :creator nil}
+        {:name (str "Database #" id " (deleted)") :updated_at nil :creator nil})
+
+      :transform-job
+      (if-let [job (t2/select-one [:model/TransformJob :name :updated_at]
+                                  :id id)]
+        ;; TransformJob doesn't carry a creator column — leave nil.
+        {:name (:name job) :updated_at (:updated_at job) :creator nil}
+        {:name (str "Transform job #" id " (deleted)") :updated_at nil :creator nil})
+
+      :alert
+      (if-let [notif-id (t2/select-one-fn :notification_id
+                                          :model/NotificationSubscription
+                                          :id id)]
+        (let [notif (t2/select-one [:model/Notification :creator_id :updated_at]
+                                   :id notif-id)
+              card-id (t2/select-one-fn :card_id :model/NotificationCard
+                                        {:where [:in :id {:select [:payload_id]
+                                                          :from   [:notification]
+                                                          :where  [:= :id notif-id]}]})
+              card-name (when card-id
+                          (:name (t2/select-one [:model/Card :name] :id card-id)))]
+          {:name (or card-name (str "Alert · notification #" notif-id))
+           :updated_at (:updated_at notif)
+           :creator (creator-label (:creator_id notif))})
+        {:name (str "Alert · subscription #" id " (deleted)") :updated_at nil :creator nil})
+
+      :dashboard-subscription
+      (if-let [p (t2/select-one [:model/Pulse :name :updated_at :creator_id]
+                                :id id)]
+        {:name (:name p)
+         :updated_at (:updated_at p)
+         :creator (creator-label (:creator_id p))}
+        {:name (str "Dashboard subscription #" id " (deleted)")
+         :updated_at nil :creator nil})
+
+      :persisted-refresh
+      (if-let [db (t2/select-one [:model/Database :name :updated_at] :id id)]
+        {:name (:name db) :updated_at (:updated_at db) :creator nil}
+        {:name (str "DB #" id " (deleted)") :updated_at nil :creator nil})
+
       nil)))
 
 (defn slot
@@ -250,10 +287,13 @@
              :when (and parsed (keep-type? type))
              ^Instant fire (fires-of trig from to)
              :let [cron (when (instance? CronTrigger trig)
-                          (.getCronExpression ^CronTrigger trig))]]
+                          (.getCronExpression ^CronTrigger trig))
+                   meta (entity-meta-for parsed)]]
          {:type         type
           :entity_id    id
-          :entity_name  (entity-name-for parsed)
+          :entity_name  (:name meta)
+          :updated_at   (some-> (:updated_at meta) str)
+          :creator      (:creator meta)
           :cron         cron
           :fire_at      (str fire)
           :weight       (weights/weight-for type id)

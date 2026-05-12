@@ -25,6 +25,8 @@ export type WorkloadSlotRow = {
   type: WorkloadJobType;
   entity_id: number | null;
   entity_name: string | null;
+  updated_at: string | null;
+  creator: string | null;
   cron: string | null;
   fire_at: string;
   weight: number;

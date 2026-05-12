@@ -10,12 +10,18 @@ import type {
 const TAG_GRID = { type: "workload-grid", id: "ALL" } as const;
 const TAG_SLOT = { type: "workload-slot", id: "ALL" } as const;
 
-type SpreadJobsRequest = {
-  slot: string;
+type PauseJobsRequest = {
   jobs: { type: WorkloadJobType; entity_id: number | null }[];
 };
 
-type SpreadJobsResponse = { status: "ok"; count: number };
+type PauseJobsResponse = {
+  status: "ok";
+  paused: number;
+  skipped: number;
+  unsupported: number;
+  not_found: number;
+  error: number;
+};
 
 export const workloadApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -35,21 +41,19 @@ export const workloadApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: [TAG_SLOT],
     }),
-    spreadWorkloadJobs: builder.mutation<SpreadJobsResponse, SpreadJobsRequest>(
-      {
-        query: (body) => ({
-          method: "POST",
-          url: "/api/ee/introspector/workload/spread",
-          body,
-        }),
-        invalidatesTags: [TAG_GRID, TAG_SLOT],
-      },
-    ),
+    pauseWorkloadJobs: builder.mutation<PauseJobsResponse, PauseJobsRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/introspector/workload/pause",
+        body,
+      }),
+      invalidatesTags: [TAG_GRID, TAG_SLOT],
+    }),
   }),
 });
 
 export const {
   useGetWorkloadGridQuery,
   useGetWorkloadSlotQuery,
-  useSpreadWorkloadJobsMutation,
+  usePauseWorkloadJobsMutation,
 } = workloadApi;

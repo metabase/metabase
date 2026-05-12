@@ -10,16 +10,18 @@ import {
   Button,
   Checkbox,
   Group,
+  Icon,
   Paper,
   Skeleton,
   Stack,
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 
-import { useSpreadWorkloadJobsMutation } from "./api";
+import { usePauseWorkloadJobsMutation } from "./api";
 import type { WorkloadJobType, WorkloadSlotRow } from "./types";
 
 type Props = {
@@ -31,7 +33,7 @@ type Props = {
   rangeTo: string;
 };
 
-type SortKey = "type" | "entity" | "fires" | "weight";
+type SortKey = "type" | "entity" | "fires" | "weight" | "updated";
 type SortDir = "asc" | "desc";
 
 type SlotGroup = {
@@ -39,6 +41,8 @@ type SlotGroup = {
   type: WorkloadJobType;
   entity_id: number | null;
   entity_name: string | null;
+  updated_at: string | null;
+  creator: string | null;
   cron: string | null;
   settings_url: string | null;
   fires: number;
@@ -120,6 +124,8 @@ function groupRows(rows: WorkloadSlotRow[]): SlotGroup[] {
         type: r.type,
         entity_id: r.entity_id,
         entity_name: r.entity_name,
+        updated_at: r.updated_at,
+        creator: r.creator,
         cron: r.cron,
         settings_url: r.settings_url,
         fires: 1,
@@ -146,6 +152,8 @@ function sortGroups(
         return sign * (a.fires - b.fires);
       case "weight":
         return sign * (a.totalWeight - b.totalWeight);
+      case "updated":
+        return sign * (a.updated_at ?? "").localeCompare(b.updated_at ?? "");
     }
   };
   return [...groups].sort(cmp);
@@ -166,6 +174,21 @@ function formatSlotTitle(slot: string, timezone: string): string {
     timeZone: timezone,
   });
   return `${datePart} · ${timePart} ${timezone}`;
+}
+
+function formatUpdated(iso: string | null): string {
+  if (!iso) {
+    return "—";
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return iso;
+  }
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function countsByType(
@@ -211,8 +234,7 @@ export function SlotExpansion({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const [spreadMut, { isLoading: isSpreading }] =
-    useSpreadWorkloadJobsMutation();
+  const [pauseMut, { isLoading: isPausing }] = usePauseWorkloadJobsMutation();
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -276,30 +298,36 @@ export function SlotExpansion({
     }
   };
 
-  const onSpread = async () => {
-    if (!slot) {
+  const pauseJobs = async (
+    jobs: { type: WorkloadJobType; entity_id: number | null }[],
+  ) => {
+    if (jobs.length === 0) {
       return;
     }
-    const jobs = visibleGroups
-      .filter((g) => selectedIds.has(g.id))
-      .map((g) => ({ type: g.type, entity_id: g.entity_id }));
     try {
-      await spreadMut({ slot, jobs }).unwrap();
-      dispatch(
-        addUndo({
-          message: t`Spread ${jobs.length} jobs across this hour`,
-          toastColor: "success",
-        }),
-      );
+      const result = await pauseMut({ jobs }).unwrap();
+      const skipped = jobs.length - result.paused;
+      const msg =
+        skipped === 0
+          ? t`Paused ${result.paused} jobs`
+          : t`Paused ${result.paused} jobs · ${skipped} skipped (not supported yet)`;
+      dispatch(addUndo({ message: msg, toastColor: "success" }));
       setSelectedIds(new Set());
     } catch {
       dispatch(
         addUndo({
-          message: t`Couldn't spread those jobs — please try again`,
+          message: t`Couldn't pause those jobs — please try again`,
           toastColor: "error",
         }),
       );
     }
+  };
+
+  const onPauseSelected = () => {
+    const jobs = visibleGroups
+      .filter((g) => selectedIds.has(g.id))
+      .map((g) => ({ type: g.type, entity_id: g.entity_id }));
+    pauseJobs(jobs);
   };
 
   if (isLoading) {
@@ -395,6 +423,13 @@ export function SlotExpansion({
               () => toggleSort("entity"),
               t`Entity`,
             )}
+            <th style={headerStyleBase}>{t`Created by`}</th>
+            {sortableHeader(
+              sortKey === "updated",
+              sortDir,
+              () => toggleSort("updated"),
+              t`Updated`,
+            )}
             <th style={headerStyleBase}>{t`Schedule`}</th>
             {sortableHeader(
               sortKey === "fires",
@@ -408,6 +443,7 @@ export function SlotExpansion({
               () => toggleSort("weight"),
               t`Weight`,
             )}
+            <th style={{ ...headerStyleBase, width: 64 }} />
           </tr>
         </thead>
         <tbody>
@@ -448,6 +484,20 @@ export function SlotExpansion({
                   )}
                 </td>
                 <td style={cellStyle}>
+                  {g.creator ? (
+                    <Text size="sm">{g.creator}</Text>
+                  ) : (
+                    <Text size="sm" c="text-secondary">
+                      —
+                    </Text>
+                  )}
+                </td>
+                <td style={cellStyle}>
+                  <Text size="sm" c="text-secondary">
+                    {formatUpdated(g.updated_at)}
+                  </Text>
+                </td>
+                <td style={cellStyle}>
                   {g.cron ? (
                     <Text size="xs">
                       {getScheduleExplanation(g.cron) ?? g.cron}
@@ -466,13 +516,44 @@ export function SlotExpansion({
                   </Text>
                 </td>
                 <td style={cellStyle}>{g.totalWeight}</td>
+                <td style={cellStyle}>
+                  <Group gap={4} justify="flex-end" wrap="nowrap">
+                    <Tooltip label={t`Pause this job`}>
+                      <Button
+                        variant="subtle"
+                        size="compact-xs"
+                        color="error"
+                        onClick={() =>
+                          pauseJobs([{ type: g.type, entity_id: g.entity_id }])
+                        }
+                        disabled={isPausing || g.entity_id == null}
+                        aria-label={t`Pause`}
+                      >
+                        <Icon name="pause" size={12} />
+                      </Button>
+                    </Tooltip>
+                    {g.settings_url ? (
+                      <Tooltip label={t`Reschedule on settings page`}>
+                        <Button
+                          component="a"
+                          href={g.settings_url}
+                          variant="subtle"
+                          size="compact-xs"
+                          aria-label={t`Reschedule`}
+                        >
+                          <Icon name="clock" size={12} />
+                        </Button>
+                      </Tooltip>
+                    ) : null}
+                  </Group>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      {selectedIds.size > 0 && slot && (
+      {selectedIds.size > 0 && (
         <Paper withBorder p="sm" mt="md" shadow="sm" pos="sticky" bottom={16}>
           <Group justify="space-between">
             <Text fw={500} size="sm">
@@ -483,18 +564,19 @@ export function SlotExpansion({
                 variant="subtle"
                 size="xs"
                 onClick={() => setSelectedIds(new Set())}
-                disabled={isSpreading}
+                disabled={isPausing}
               >
                 {t`Cancel`}
               </Button>
               <Button
                 variant="filled"
-                color="brand"
+                color="error"
                 size="xs"
-                onClick={onSpread}
-                loading={isSpreading}
+                onClick={onPauseSelected}
+                loading={isPausing}
+                leftSection={<Icon name="pause" size={12} />}
               >
-                {t`Spread across this hour`}
+                {t`Pause selected`}
               </Button>
             </Group>
           </Group>
