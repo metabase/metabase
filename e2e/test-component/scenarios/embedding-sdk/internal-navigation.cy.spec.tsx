@@ -701,6 +701,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                         click_behavior: {
                           type: "link",
                           linkType: "dashboard",
+                          linkTextTemplate: "Go to Tab 2",
                           targetId: dashboard.id,
                           tabId: resolvedTab2.id,
                           parameterMapping: {
@@ -762,8 +763,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // with a parameter mapping that should pass the cell's value to the
         // dashboard's ID filter.
         H.getDashboardCard()
-          .findByTestId("visualization-root")
-          .findAllByRole("gridcell", { name: "1" })
+          .findAllByText("Go to Tab 2")
           .first()
           .click();
 
@@ -806,6 +806,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                       click_behavior: {
                         type: "link",
                         linkType: "dashboard",
+                        linkTextTemplate: "Self link (no-op)",
                         targetId: dashboard.id,
                         parameterMapping: {},
                       },
@@ -838,10 +839,9 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
 
-        // Click the first ID cell — it has self-linking click_behavior.
+        // Click the self-linking link — it has self-linking click_behavior.
         H.getDashboardCard()
-          .findByTestId("visualization-root")
-          .findAllByRole("gridcell", { name: "1" })
+          .findAllByText("Self link (no-op)")
           .first()
           .click();
 
