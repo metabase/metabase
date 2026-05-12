@@ -281,9 +281,17 @@ data: {"optimization_degree":55}
 POST /api/ee/transform-optimizer/:id/proposal/verify
 ```
 
-Body: none. The proposal payload (including its `body` and any
-`depends_on` precompute bodies) is retrieved server-side from the same
-streamed payload the panel rendered.
+Request body — just the proposal id from the streamed `proposal` event:
+
+```json
+{ "proposal_id": "p1" }
+```
+
+The full proposal payload (body, kind, depends_on, ddl_statements) is
+resolved server-side from the optimizer's per-user proposal cache,
+populated by the streaming `/optimize` endpoint. The cache TTL is
+1 hour and is process-local — if the FE gets a `404` here, the panel
+should silently re-run `/optimize`.
 
 Response (200):
 
@@ -296,6 +304,12 @@ Response (200):
   "diff_rows": 0,
   "sample_diff": null               // when equivalent=false, ≤10 row sample (each direction)
 }
+```
+
+Response (404) when the proposal id is no longer cached:
+
+```json
+{ "error": "proposal_not_found", "detail": "...re-run /optimize..." }
 ```
 
 Response (422) for known failure modes (e.g. schema mismatch — different
@@ -315,20 +329,21 @@ Creates the proposal's transforms (1 for `rewrite` / `index`, N for
 `precompute`) in `depends_on` order. The DDL list is returned for the
 user to inspect / copy — Metabase does **not** execute DDL in this branch.
 
-Request body:
+Request body — just the proposal ids from the streamed `proposal` events,
+in dependency order (single rewrites: one id; precompute DAGs: N ids,
+roots first):
 
 ```json
 {
-  "proposals": [
-    { "id": "p1", "name": "customer_first_purchase",   "kind": "precompute", "body": "SELECT ...", "depends_on": [],         "ddl_statements": [...] },
-    { "id": "p2", "name": "customer_monthly_activity", "kind": "precompute", "body": "SELECT ...", "depends_on": [],         "ddl_statements": [...] },
-    { "id": "p3", "name": "cohort_retention",          "kind": "precompute", "body": "SELECT ...", "depends_on": ["p1","p2"],"ddl_statements": [] }
-  ],
-  "collection_id": 42       // where to put the new transforms; optional, defaults to source transform's collection
+  "proposal_ids":  ["p1", "p2", "p3"],
+  "collection_id": 42                    // optional, defaults to the source transform's collection
 }
 ```
 
-Single rewrites send `proposals` with one element.
+Server resolves each id against the optimizer's per-user proposal
+cache. If any id is missing, the **entire request** fails with `404
+proposal_not_found` listing the missing ids — there is no partial
+accept.
 
 Response (200):
 
