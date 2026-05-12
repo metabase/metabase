@@ -531,8 +531,22 @@
                                     (let [rows (set (mt/rows (mt/process-query (:dataset_query card))))]
                                       (testing "querying the isolation table directly works like querying any other table"
                                         (is (= #{[1 "a"] [2 "b"] [3 "c"]} rows)))))
-                              ;; NOTE: native sql w/ default from-schema fails for now.
-                              ;; More info: https://gist.github.com/escherize/721764240c300e995c54add2d71ff356
+                              ;; INTENTIONALLY DISABLED (GHY-3576): bare-table-name SQL.
+                              ;;
+                              ;; The two `mt/with-temp` blocks immediately above and below this one cover
+                              ;; the qualified-name flows:
+                              ;;   - above: `SELECT * FROM iso_schema.table` (workspace-side identifier)
+                              ;;   - below: `SELECT * FROM main_schema.table` (canonical identifier;
+                              ;;     Phase 2 rewrites it to iso)
+                              ;; The skipped variant covers `SELECT * FROM table` -- bare, unqualified.
+                              ;; That shape isn't supported yet because the Phase 2 SQLGlot rewriter keys
+                              ;; on `(schema, table)` pairs, and an unqualified ref carries no schema slot
+                              ;; for the lookup to match. Re-enabling needs the rewriter to attribute
+                              ;; bare refs to the connection's default schema before lookup. See gist
+                              ;; https://gist.github.com/escherize/721764240c300e995c54add2d71ff356 for the
+                              ;; repro and proposed approach.
+                              ;;
+                              ;; Re-enable when GHY-3576 lands: delete the `#_`, run the test.
                                   #_(mt/with-temp [:model/Card card
                                                    {:name          (str "ws-e2e-card-native-" run-id)
                                                     :database_id   (:id ws-db)
