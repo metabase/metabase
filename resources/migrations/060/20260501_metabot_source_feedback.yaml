@@ -1,10 +1,17 @@
 ## Persist Metabot source feedback
 
 databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
   - changeSet:
       id: v60.srcefb
       author: undrfined
       comment: metabot_source_feedback table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_source_feedback
       changes:
         - createTable:
             tableName: metabot_source_feedback
@@ -70,6 +77,12 @@ databaseChangeLog:
       id: v60.srcefu
       author: undrfined
       comment: Unique constraint on metabot_source_feedback source rating
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_source_feedback
+                indexName: uq_metabot_source_feedback_message_user_source
       changes:
         - addUniqueConstraint:
             tableName: metabot_source_feedback
@@ -84,6 +97,12 @@ databaseChangeLog:
       id: v60.srcefm
       author: undrfined
       comment: Index on metabot_source_feedback.message_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_source_feedback
+                indexName: idx_metabot_source_feedback_message_id
       changes:
         - createIndex:
             tableName: metabot_source_feedback
@@ -100,6 +119,11 @@ databaseChangeLog:
       id: v60.srcefk
       author: undrfined
       comment: Foreign key from metabot_source_feedback.message_id to metabot_message.id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_source_feedback_message_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_source_feedback
