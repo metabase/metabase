@@ -1,0 +1,40 @@
+.wrap {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mb-color-bg-light);
+  max-height: 360px;
+  overflow: auto;
+}
+
+.pre {
+  margin: 0;
+  padding: var(--mantine-spacing-sm);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.context {
+  color: var(--mb-color-text-primary);
+  display: inline;
+}
+
+.added {
+  display: inline;
+  background: color-mix(in srgb, var(--mb-color-success) 18%, transparent);
+  color: var(--mb-color-success);
+}
+
+.removed {
+  display: inline;
+  background: color-mix(in srgb, var(--mb-color-error) 14%, transparent);
+  color: var(--mb-color-error);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--mb-color-error) 60%,
+    transparent
+  );
+}

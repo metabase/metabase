@@ -16,6 +16,7 @@ import type { DdlStatement, Proposal, ProposalSeverity } from "../../types";
 
 import { IndexChangesSection } from "./IndexChangesSection";
 import S from "./ProposalCard.module.css";
+import { SqlDiff } from "./SqlDiff";
 
 type Action =
   | { kind: "accept"; busy?: boolean; disabled?: boolean; disabledReason?: string }
@@ -24,6 +25,12 @@ type Action =
 
 type Props = {
   proposal: Proposal;
+  /**
+   * Current SQL of the transform being optimised. When present and the
+   * proposal has a `body`, the card renders a line-diff instead of the
+   * raw proposed SQL.
+   */
+  currentSql?: string | null;
   actions: {
     accept?: Action & { kind: "accept" };
     verify?: Action & { kind: "verify" };
@@ -36,6 +43,7 @@ type Props = {
 
 export function ProposalCard({
   proposal,
+  currentSql,
   actions,
   onAccept,
   onVerify,
@@ -64,11 +72,17 @@ export function ProposalCard({
         {proposal.body && (
           <Box>
             <Text fz="sm" c="text-secondary" mb={4}>
-              {t`Proposed transform`}
+              {currentSql
+                ? t`Proposed changes`
+                : t`Proposed transform`}
             </Text>
-            <Code block className={S.codeBlock}>
-              {proposal.body}
-            </Code>
+            {currentSql ? (
+              <SqlDiff before={currentSql} after={proposal.body} />
+            ) : (
+              <Code block className={S.codeBlock}>
+                {proposal.body}
+              </Code>
+            )}
           </Box>
         )}
       </Stack>

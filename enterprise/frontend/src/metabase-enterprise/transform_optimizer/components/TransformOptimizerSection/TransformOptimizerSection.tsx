@@ -21,6 +21,7 @@ type Props = {
 };
 
 export function TransformOptimizerSection({ transform, readOnly }: Props) {
+  const currentSql = getNativeSql(transform);
   const { state, start, abort, dismissProposal } = useOptimizerStream({
     transformId: transform.id,
   });
@@ -148,6 +149,7 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
               <ProposalCard
                 key={proposal.id}
                 proposal={proposal}
+                currentSql={currentSql}
                 actions={{
                   accept: {
                     kind: "accept",
@@ -205,6 +207,53 @@ function TriggerButton({
       {status === "idle" ? t`Suggest optimizations` : t`Re-analyze`}
     </Button>
   );
+}
+
+/**
+ * Pull the current native SQL off a transform so the proposal card can diff
+ * against it. Handles two on-the-wire shapes for the same thing:
+ *   - legacy `DatasetQuery`:  source.query.native.query  (string)
+ *   - new MBQL stages:        source.query.stages[i].native  where
+ *                             the stage's `lib/type` is "mbql.stage/native"
+ *
+ * We don't rely on a `type` discriminator because `DatasetQuery` is
+ * declared opaque to TS — those fields exist on the wire but are hidden
+ * from the type system.
+ */
+function getNativeSql(transform: Transform): string | null {
+  const source = transform.source as unknown as {
+    type?: string;
+    query?: {
+      native?: { query?: unknown };
+      stages?: Array<{ "lib/type"?: string; native?: unknown }>;
+    };
+  };
+  if (source?.type === "python") {
+    return null;
+  }
+  const query = source?.query;
+  if (!query) {
+    return null;
+  }
+
+  // Legacy: { native: { query: "..." } }
+  const legacy = query.native?.query;
+  if (typeof legacy === "string" && legacy.trim().length > 0) {
+    return legacy;
+  }
+
+  // New MBQL stages: pick the first native stage.
+  if (Array.isArray(query.stages)) {
+    const nativeStage = query.stages.find(
+      (s) => s?.["lib/type"] === "mbql.stage/native",
+    );
+    const stageSql = nativeStage?.native;
+    if (typeof stageSql === "string" && stageSql.trim().length > 0) {
+      return stageSql;
+    }
+  }
+
+  return null;
 }
 
 /**
