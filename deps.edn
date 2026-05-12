@@ -664,10 +664,8 @@
   ;;
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
   :eastwood/test
-  {:exec-fn   metabase.linters.eastwood/eastwood
-   :exec-args {:source-paths ["test"
-                              "enterprise/backend/test"]
-               :linters      [:reflection]
+  {:exec-fn   metabase.linters.eastwood/eastwood-tests
+   :exec-args {:linters      [:reflection]
                :exclude-namespaces
                [;; byte/1 dispatch value trips up Eastwood's reader
                 metabase.test.http-client

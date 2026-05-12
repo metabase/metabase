@@ -2485,6 +2485,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be
