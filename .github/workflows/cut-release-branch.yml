@@ -140,7 +140,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
-          gh workflow run check-milestone.yml \
+          gh workflow run set-milestone.yml \
             -f version=${{ steps.preflight.outputs.next }} \
             --repo "${{ github.repository }}"
 
@@ -180,8 +180,8 @@ jobs:
                 ? `:warning: Creating milestone \`0.${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/milestones/new|New milestone>`
                 : null,
               triggerMilestonesFailed
-                ? `:warning: Triggering milestone backfill failed — please run it manually: <https://github.com/${owner}/${repo}/actions/workflows/check-milestone.yml|Set milestone workflow>`
-                : `Milestone backfill triggered — wait for it to finish before running release notes preview: <https://github.com/${owner}/${repo}/actions/workflows/check-milestone.yml|Set milestone runs>.`,
+                ? `:warning: Triggering milestone backfill failed — please run it manually: <https://github.com/${owner}/${repo}/actions/workflows/set-milestone.yml|Set milestone workflow>`
+                : `Milestone backfill triggered — wait for it to finish before running release notes preview: <https://github.com/${owner}/${repo}/actions/workflows/set-milestone.yml|Set milestone runs>.`,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
                 : null,
