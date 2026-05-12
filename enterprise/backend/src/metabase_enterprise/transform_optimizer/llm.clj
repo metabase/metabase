@@ -68,6 +68,12 @@
                 :expected_speedup {:type "string"}
                 :body             {:type ["string" "null"]
                                    :description "SQL body for kind = rewrite | precompute; null for kind = index"}
+                :target_table     {:type ["string" "null"]
+                                   :description (str "Literal bare table name (no schema, snake_case) the BE should "
+                                                     "materialize this precompute into. Required when kind = "
+                                                     "precompute. Any dependent proposal MUST reference this "
+                                                     "table via `<original transform's schema>.<target_table>` "
+                                                     "verbatim — names cannot drift between proposals.")}
                 :ddl_statement    (merge ddl-statement-schema
                                          {:description "Single CREATE INDEX for kind = index; omit for kind = rewrite | precompute"})
                 :ddl_statements   {:type "array"

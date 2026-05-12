@@ -148,6 +148,34 @@ reads from the new rollup tables and produces the final result — is a
 not a `precompute`. Only the intermediate rollup tables are
 `precompute`.
 
+### Precompute naming contract (READ THIS BEFORE WRITING ANY BODY)
+
+Every `:precompute` proposal **must** include a `target_table` field — a
+bare snake_case identifier (no schema prefix, no spaces, no quotes,
+≤ 56 chars). The BE materialises the precompute into a table at
+`<original transform's target schema>.<target_table>`. Any dependent
+proposal that reads from it **must reference that exact string** in its
+FROM clauses.
+
+Concretely, the workflow is:
+
+1. Pick a `target_table` for the precompute, e.g. `daily_events_rollup`.
+2. Use **the same identifier verbatim** in any dependent rewrite or
+   precompute body — qualified with the original transform's target
+   schema (shown in the context block, usually `public.`):
+
+   ```sql
+   FROM public.daily_events_rollup d
+   ```
+
+3. Never invent a different name in the FROM clause. Renaming between
+   proposals breaks acceptance — the precompute creates one table, the
+   rewrite SELECTs from another, Postgres returns `relation does not
+   exist`, the user's run fails.
+
+If you cannot commit to a single name across the proposals, do not emit
+the precompute split — fall back to a single-step rewrite or an index.
+
 ### When to use `depends_on`
 
 `depends_on` is **a materialisation order constraint**, not a logical
@@ -190,6 +218,12 @@ Emit JSON matching exactly this shape:
         "statement": "CREATE INDEX IF NOT EXISTS idx_… ON schema.table (col1, col2) ...",
         "rationale": "what this index supports"
       },
+
+      "target_table": "snake_case_table_name",  /* REQUIRED for kind = precompute. The literal
+                                                   bare table name the BE will materialize this
+                                                   precompute into. Dependent rewrites/precomputes
+                                                   MUST reference it as `<original schema>.<target_table>`
+                                                   verbatim. Omit for kind = rewrite | index. */
 
       "depends_on": []   /* ids of earlier proposals this depends on */
     }
@@ -464,6 +498,7 @@ own `:index` proposal that `depends_on` the precompute it supports.
       "severity": "medium",
       "rationale": "Compact rollup, reusable.",
       "expected_speedup": "≥10×",
+      "target_table": "customer_first_purchase",
       "body": "SELECT customer_id, DATE_TRUNC('month', MIN(ordered_at))::DATE AS cohort_month FROM shop.orders WHERE status IN ('paid','shipped','delivered') GROUP BY customer_id",
       "depends_on": []
     },
@@ -472,11 +507,11 @@ own `:index` proposal that `depends_on` the precompute it supports.
       "name": "Index on customer_first_purchase(customer_id)",
       "kind": "index",
       "severity": "low",
-      "rationale": "Backs the join in p3.",
+      "rationale": "Backs the join in p5.",
       "expected_speedup": "10×",
       "ddl_statement": {
         "target": "transform-target",
-        "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON shop.customer_first_purchase (customer_id)",
+        "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON public.customer_first_purchase (customer_id)",
         "rationale": "Join key for the final query."
       },
       "depends_on": ["p1"]
@@ -488,6 +523,7 @@ own `:index` proposal that `depends_on` the precompute it supports.
       "severity": "medium",
       "rationale": "Distinct (customer, month) pairs.",
       "expected_speedup": "≥10×",
+      "target_table": "customer_monthly_activity",
       "body": "SELECT DISTINCT customer_id, DATE_TRUNC('month', ordered_at)::DATE AS activity_month FROM shop.orders WHERE status IN ('paid','shipped','delivered')",
       "depends_on": []
     },
@@ -500,7 +536,7 @@ own `:index` proposal that `depends_on` the precompute it supports.
       "expected_speedup": "10×",
       "ddl_statement": {
         "target": "transform-target",
-        "statement": "CREATE INDEX IF NOT EXISTS idx_cma_customer_id ON shop.customer_monthly_activity (customer_id)",
+        "statement": "CREATE INDEX IF NOT EXISTS idx_cma_customer_id ON public.customer_monthly_activity (customer_id)",
         "rationale": "Join key for the final query."
       },
       "depends_on": ["p3"]
@@ -510,9 +546,9 @@ own `:index` proposal that `depends_on` the precompute it supports.
       "name": "Cohort retention from rollups",
       "kind": "rewrite",
       "severity": "medium",
-      "rationale": "Reads the two small rollups instead of re-scanning orders.",
+      "rationale": "Reads the two small rollups instead of re-scanning orders. Note the FROM clauses reference `public.customer_first_purchase` and `public.customer_monthly_activity` — the literal target_table values from p1 and p3.",
       "expected_speedup": "≥10×",
-      "body": "SELECT c.cohort_month, a.activity_month, count(*) AS active_customers, … FROM shop.customer_first_purchase c JOIN shop.customer_monthly_activity a ON a.customer_id = c.customer_id GROUP BY c.cohort_month, a.activity_month",
+      "body": "SELECT c.cohort_month, a.activity_month, count(*) AS active_customers FROM public.customer_first_purchase c JOIN public.customer_monthly_activity a ON a.customer_id = c.customer_id GROUP BY c.cohort_month, a.activity_month",
       "depends_on": ["p1", "p3"]
     }
   ]
