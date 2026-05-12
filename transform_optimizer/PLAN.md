@@ -281,10 +281,20 @@ Properties this gives us:
 The LLM is given an explicit severity rubric in the system prompt:
 
 - **high**: ≥100× speedup expected, or removes an unbounded-time risk
-  (e.g. NOT-IN-on-nullable, full-table LIKE-search).
+  (e.g. full-table LIKE-search).
 - **medium**: 10–100× speedup, or eliminates re-computation by adding
   a precompute step.
 - **low**: <10× speedup, cosmetic rewrite, or speculative.
+
+**Severity cap on conditional rewrites** — when a proposed rewrite is
+only equivalent under a schema-level precondition (e.g. inner column is
+`NOT NULL` for a `NOT IN → NOT EXISTS` rewrite, or the partition key is
+unique for a particular precompute split), the LLM must state the
+precondition in `rationale` and cap severity at `:medium` regardless of
+expected speedup. The prelude lists the recurring equivalence pitfalls
+the optimizer has hit so far (NULL semantics, multi-aggregate rollup
+divergence, top-N LATERAL scale-dependence, COUNT-vs-SUM type
+mismatch).
 
 #### Streaming order
 
@@ -382,7 +392,10 @@ designed.
 ## Open questions (deferred)
 
 - Are some optimizations safe to apply automatically (e.g. `NOT IN` →
-  `NOT EXISTS` when the column is nullable)? Probably out of scope here.
+  `NOT EXISTS` when the column is nullable)? **Settled: no.** The
+  rewrite is unsafe on nullable columns and the verifier confirmed
+  this in practice — see "Lessons learned" below. Auto-apply would
+  silently corrupt user-visible results.
 - DAG persistence: do proposed transforms form a real linked sub-DAG in the
   jobs system, or are they just N independent transforms the user wires up?
   Lean toward the latter for hackathon.
@@ -402,6 +415,36 @@ designed.
   prefer this in the proposal), or (b) ship a smarter materialization
   strategy ("CREATE TABLE … AS … then CREATE INDEX … once" vs. "TRUNCATE
   + INSERT" to keep indexes). Out of scope this branch.
+
+## Lessons learned (folded into the prelude)
+
+These are concrete failure modes the verifier flagged during Phase-0
+harness shake-down. Each is now encoded in
+`resources/transform_optimizer/prelude.md` as an "equivalence pitfall"
+the LLM must check before emitting a rewrite — and locked in by
+anchor-string tests in `prelude_test.clj`:
+
+1. **`NOT IN → NOT EXISTS` is unsafe on nullable columns** (NULL in the
+   subquery turns the `NOT IN` outer comparison into UNKNOWN ⇒ excluded
+   row). Only safe when the inner column is `NOT NULL`-declared or the
+   subquery filters NULLs explicitly.
+2. **Multi-aggregate rollup via `array_agg(DISTINCT) FILTER` + `UNNEST`**
+   diverges from the original `GROUP BY` on empty-array / NULL days.
+   Prefer multiple independent rollups joined `FULL OUTER JOIN` at the
+   final query.
+3. **Top-N per group via `LATERAL` + index is scale-dependent** —
+   regresses against the window-function plan when per-group cardinality
+   is small. Severity should reflect what the EXPLAIN plan actually says.
+4. **Type compatibility** between `COUNT(bigint) → bigint` and
+   `SUM(bigint) → numeric` will trip `EXCEPT ALL`; the LLM must add
+   explicit casts when swapping these.
+5. **CTE inlining** in modern Postgres (≥12) makes "wrap in `WITH foo`"
+   a no-op — don't claim CTE wrapping itself as an optimization.
+
+Severity policy: any rewrite whose equivalence depends on a schema-level
+precondition (e.g. `NOT NULL`, uniqueness, sortedness) caps at
+`:medium` regardless of expected speedup, and the precondition must be
+stated explicitly in the proposal's `rationale`.
 
 ## Phase 0 deliverables (this commit)
 
