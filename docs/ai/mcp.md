@@ -78,7 +78,8 @@ Some clients (like Claude Desktop) will ask you to approve each tool the first t
 - **construct_query**: Construct a query against a table or metric. Returns an opaque query string that can be executed with `execute_query`.
 - **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
 - **query**: Query a table or metric and return results.
-- **create_question**:
+- **create_question**: Create questions.
+- **create_dashboard**: Create dashboards.
 
 ## Use the MCP server with file-based development
 
