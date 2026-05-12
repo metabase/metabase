@@ -157,6 +157,10 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       });
 
       H.entityPickerModal().within(() => {
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .click();
+
         cy.findByText("Select a chart").should("be.visible");
         cy.findByText(FIRST_QUESTION_NAME).click();
       });
@@ -314,7 +318,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
           cy.findAllByText(SECOND_QUESTION_NAME).first().click();
         });
 
@@ -343,7 +349,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
           cy.findAllByText(FIRST_QUESTION_NAME).first().click();
         });
 

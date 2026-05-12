@@ -180,8 +180,15 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
-      cy.findByText("Our analytics").click();
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
+
+      // The picker opens on "Recent items" by default. Navigate via the
+      // root sidebar to disambiguate from any matching recent entries.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findByText(SECOND_DASHBOARD_NAME)
+        .click();
     });
 
     cy.log("button reflects the newly selected dashboard");
@@ -245,7 +252,15 @@ describe(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").should("be.visible");
-      cy.findByText("First collection").click();
+
+      // The picker opens on "Recent items" by default. Navigate via the
+      // root sidebar to disambiguate from any matching recent entries.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findByText("First collection")
+        .click();
       cy.findByText("Select").click();
     });
 
