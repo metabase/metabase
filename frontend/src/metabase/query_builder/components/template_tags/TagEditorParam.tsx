@@ -2,7 +2,6 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
