@@ -118,13 +118,15 @@ export function TargetIndexesSection({ transform, readOnly }: Props) {
                 <Text fw="bold" size="sm" ff="monospace">
                   {schema}.{table}
                 </Text>
-                <Badge
-                  color={isTarget ? "brand" : "gray"}
-                  variant="light"
-                  size="sm"
-                >
-                  {isTarget ? t`Target` : t`Source`}
-                </Badge>
+                {isTarget ? (
+                  <Badge color="brand" variant="light" size="sm">
+                    {t`Target`}
+                  </Badge>
+                ) : (
+                  <Badge variant="default" size="sm">
+                    {t`Source`}
+                  </Badge>
+                )}
               </Group>
               {rows.map((idx) => (
                 <IndexRow
@@ -188,16 +190,16 @@ function IndexRow({
           <Text fw="bold" ff="monospace">
             {index.name}
           </Text>
-          <Badge color="gray" variant="light" size="sm">
+          <Badge variant="default" size="sm">
             {index.access_method}
           </Badge>
           {index.is_primary && (
-            <Badge color="blue" variant="light" size="sm">
+            <Badge color="info" variant="light" size="sm">
               {t`Primary key`}
             </Badge>
           )}
           {!index.is_primary && index.is_unique && (
-            <Badge color="violet" variant="light" size="sm">
+            <Badge color="brand" variant="light" size="sm">
               {t`Unique`}
             </Badge>
           )}
