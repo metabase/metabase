@@ -38,6 +38,7 @@ export function PythonTransformEditor({
 
   useEffect(() => {
     onDryRunErrorChange?.(executionResult?.error?.message);
+    return () => onDryRunErrorChange?.(undefined);
   }, [executionResult, onDryRunErrorChange]);
 
   const wasRunning = usePrevious(isRunning);
