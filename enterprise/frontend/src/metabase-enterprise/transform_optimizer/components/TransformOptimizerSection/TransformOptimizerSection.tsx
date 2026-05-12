@@ -110,19 +110,12 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
 
       {(isStreaming || isDone || isErrored) && (
         <Stack gap="md">
-          <OptimizationDegreeDial
-            status={
-              isStreaming
-                ? "streaming"
-                : isErrored
-                  ? "error"
-                  : isDone
-                    ? "done"
-                    : "idle"
-            }
-            score={state.optimizationDegree}
-            errorMessage={state.error?.message}
-          />
+          {!isErrored && (
+            <OptimizationDegreeDial
+              status={isStreaming ? "streaming" : "done"}
+              score={state.optimizationDegree}
+            />
+          )}
 
           {state.summary && !isErrored && (
             <Box>
