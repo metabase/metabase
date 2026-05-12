@@ -17,6 +17,7 @@ import type {
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { State } from "metabase/redux/store";
+import type { DashboardTabId } from "metabase-types/api";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
@@ -44,6 +45,7 @@ export type SdkState = {
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
   pluginsReady: boolean;
+  initialDashboardTabId: DashboardTabId | null;
 };
 
 export interface SdkStoreState extends State {

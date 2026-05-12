@@ -3,22 +3,20 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { setInitialDashboardTabId } from "embedding-sdk-bundle/store/reducer";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import { Stack } from "metabase/ui";
-import type { DashboardTabId } from "metabase-types/api";
 
 import { SdkQuestion } from "../../public/SdkQuestion";
 import type {
@@ -79,6 +77,9 @@ const SdkInternalNavigationProviderInner = ({
         }
         return;
       }
+      if (entry.type === "dashboard") {
+        dispatch(setInitialDashboardTabId(entry.tabId ?? null));
+      }
       setStack((prev) => [...prev, entry]);
     },
     [dispatch, currentDashboard],
@@ -106,36 +107,6 @@ const SdkInternalNavigationProviderInner = ({
     },
     [stack.length],
   );
-
-  const currentEntry = stack.at(-1);
-  const pendingInitialTabId =
-    currentEntry?.type === "dashboard" ? currentEntry.tabId : undefined;
-
-  // After a navigation that requested a specific tab on the destination
-  // dashboard, dispatch selectTab once that dashboard finishes loading and
-  // exposes the requested tab. Tracked via a ref so we only dispatch once
-  // per (dashboard, tab) pair.
-  const appliedInitialTabRef = useRef<{
-    dashboardId: number | string;
-    tabId: DashboardTabId;
-  } | null>(null);
-  useEffect(() => {
-    if (
-      currentDashboard != null &&
-      pendingInitialTabId != null &&
-      currentEntry?.type === "dashboard" &&
-      currentDashboard.id === currentEntry.id &&
-      currentDashboard.tabs?.some((tab) => tab.id === pendingInitialTabId) &&
-      (appliedInitialTabRef.current?.dashboardId !== currentDashboard.id ||
-        appliedInitialTabRef.current?.tabId !== pendingInitialTabId)
-    ) {
-      appliedInitialTabRef.current = {
-        dashboardId: currentDashboard.id,
-        tabId: pendingInitialTabId,
-      };
-      dispatch(selectTab({ tabId: pendingInitialTabId }));
-    }
-  }, [currentDashboard, currentEntry, pendingInitialTabId, dispatch]);
 
   const value = useMemo(
     () => ({

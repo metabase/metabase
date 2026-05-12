@@ -10,7 +10,10 @@ import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-tes
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import type { Parameter } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 const { H } = cy;
 
@@ -633,8 +636,8 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
 
     it("should switch tab and pass parameters when click behavior points to a different tab on the same dashboard", () => {
-      const TAB_1 = { id: -1, name: "Tab 1" };
-      const TAB_2 = { id: -2, name: "Tab 2" };
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
 
       const ID_FILTER: Parameter = createMockActionParameter({
         id: "tabbed-id-filter",
@@ -657,21 +660,17 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
             parameters: [ID_FILTER],
             tabs: [TAB_1, TAB_2],
             dashcards: [
-              {
-                id: -10,
+              createMockDashboardCard({
+                id: -1,
                 card_id: tabOneCard.id,
                 dashboard_tab_id: TAB_1.id,
-                row: 0,
-                col: 0,
                 size_x: 12,
                 size_y: 6,
-              },
-              {
-                id: -11,
+              }),
+              createMockDashboardCard({
+                id: -2,
                 card_id: tabTwoCard.id,
                 dashboard_tab_id: TAB_2.id,
-                row: 0,
-                col: 0,
                 size_x: 12,
                 size_y: 6,
                 parameter_mappings: [
@@ -681,7 +680,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                     target: ["dimension", ["field", ORDERS.ID, null]],
                   },
                 ],
-              },
+              }),
             ],
           }).then((dashboard) => {
             // After creation, tabs and dashcards have real ids; wire the
@@ -776,6 +775,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           "aria-selected",
           "true",
         );
+        cy.findByText("Orders on Tab 2").should("be.visible");
 
         // The dashboard's ID filter widget should reflect the value passed by
         // the click behavior's parameterMapping.
@@ -796,9 +796,8 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
             H.addOrUpdateDashboardCard({
               card_id: card.id,
               dashboard_id: dashboard.id,
-              card: {
-                row: 0,
-                col: 0,
+              card: createMockDashboardCard({
+                card_id: card.id,
                 size_x: 24,
                 size_y: 8,
                 visualization_settings: {
@@ -813,7 +812,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                     },
                   },
                 },
-              },
+              }),
             });
             cy.wrap(dashboard.id).as("selfDashboardId");
           },
@@ -837,6 +836,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
       getSdkRoot().within(() => {
         cy.findByText("Self-linking Dashboard").should("be.visible");
+        cy.findByText("Self-linking card").should("be.visible");
 
         // Click the first ID cell — it has self-linking click_behavior.
         H.getDashboardCard()
@@ -852,6 +852,126 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // back-button "Back to Self-linking Dashboard" appears.
         cy.findByText(/Back to/).should("not.exist");
         cy.findByText("Self-linking Dashboard").should("be.visible");
+        cy.findByText("Self-linking card").should("be.visible");
+      });
+    });
+  });
+
+  describe("cross-dashboard navigation with tabId", () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+    });
+
+    it("should open the target dashboard on the requested tab", () => {
+      const TARGET_TAB_1 = { id: 1, name: "Target Tab 1" };
+      const TARGET_TAB_2 = { id: 2, name: "Target Tab 2" };
+
+      H.createQuestion({
+        name: "Card on Target Tab 1",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: targetTab1Card }) => {
+        H.createQuestion({
+          name: "Card on Target Tab 2",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: targetTab2Card }) => {
+          H.createDashboardWithTabs({
+            name: "Target Dashboard",
+            tabs: [TARGET_TAB_1, TARGET_TAB_2],
+            dashcards: [
+              createMockDashboardCard({
+                id: -1,
+                card_id: targetTab1Card.id,
+                dashboard_tab_id: TARGET_TAB_1.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+              createMockDashboardCard({
+                id: -2,
+                card_id: targetTab2Card.id,
+                dashboard_tab_id: TARGET_TAB_2.id,
+                size_x: 12,
+                size_y: 6,
+              }),
+            ],
+          }).then((targetDashboard) => {
+            const resolvedTargetTab2 = (targetDashboard.tabs ?? [])[1];
+
+            H.createQuestion({
+              name: "Source Card",
+              query: { "source-table": ORDERS_ID, limit: 5 },
+            }).then(({ body: sourceCard }) => {
+              H.createDashboard({ name: "Source Dashboard" }).then(
+                ({ body: sourceDashboard }) => {
+                  H.addOrUpdateDashboardCard({
+                    card_id: sourceCard.id,
+                    dashboard_id: sourceDashboard.id,
+                    card: createMockDashboardCard({
+                      card_id: sourceCard.id,
+                      size_x: 24,
+                      size_y: 8,
+                      visualization_settings: {
+                        column_settings: {
+                          [`["ref",["field",${ORDERS.ID},null]]`]: {
+                            click_behavior: {
+                              type: "link",
+                              linkType: "dashboard",
+                              linkTextTemplate: "Go to Target Tab 2",
+                              targetId: targetDashboard.id,
+                              tabId: resolvedTargetTab2.id,
+                              parameterMapping: {},
+                            },
+                          },
+                        },
+                      },
+                    }),
+                  });
+                  cy.wrap(sourceDashboard.id).as("sourceDashboardId");
+                },
+              );
+            });
+          });
+        });
+      });
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.get<number>("@sourceDashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            enableEntityNavigation
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Source Dashboard").should("be.visible");
+
+        H.getDashboardCard()
+          .findAllByText("Go to Target Tab 2")
+          .first()
+          .click();
+
+        cy.wait("@getDashboard");
+
+        cy.findByText("Target Dashboard").should("be.visible");
+        cy.findByRole("tab", { name: "Target Tab 2" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText("Card on Target Tab 2").should("be.visible");
+
+        cy.findByText("Back to Source Dashboard").should("be.visible");
       });
     });
   });
