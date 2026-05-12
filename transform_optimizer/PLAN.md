@@ -61,12 +61,8 @@ files we'll hook into):
   — **already** extracts referenced tables/columns from a native SQL string
   via Macaw + `sql-tools`. We call it directly; we do not write our own parser.
 - `metabase.sync.fetch-metadata/index-metadata` and
-  `driver/describe-table-indexes` — pulled at optimizer-request time for
-  index detail beyond the `Field.database_indexed` bool that sync persists.
-- `metabase.transforms-base.query/run-query-transform!` (a second mention)
-  — we add a small "post-materialization DDL" hook here that runs the
-  index DDLs attached to an accepted precompute transform after the
-  target table is rebuilt.
+  `driver/describe-table-indexes` — existing index metadata sources used as
+  inputs/fallbacks. Full Postgres index shape comes from new catalog queries.
 
 ### New code
 
@@ -75,14 +71,14 @@ Roughly:
 ```
 src/metabase/transform_optimizer/
   core.clj                  ; public entry: optimize-transform!
-  index_introspection.clj   ; thin layer over driver/describe-table-indexes,
-                            ;  caches per-request; complements appdb FK/PK
+  index_introspection.clj   ; Postgres catalog queries for composite indexes,
+                            ;  INCLUDE columns, predicates, and index types
   explain.clj               ; run EXPLAIN (FORMAT JSON, VERBOSE) safely
   context.clj               ; wraps transforms-inspector.context/build-context,
                             ;  adds indexes + EXPLAIN + run history
   prelude.clj               ; embed the curated pre→post examples corpus
   scoring.clj               ; proposals → optimization_degree (deterministic)
-  verify.clj                ; pre/post equivalence check (EXCEPT both ways)
+  verify.clj                ; bounded pre/post equivalence check
   ddl/
     parse.clj               ; validate CREATE INDEX statements (allowlist)
     execute.clj             ; run a single DDL on the right connection
@@ -107,13 +103,16 @@ frontend/src/metabase/transform_optimizer/
                             ;  the optimization_degree + proposals
 ```
 
-We do **not** write our own `pg_introspection` or `sql_extraction`:
+We do **not** write our own SQL parser, but we do write Postgres-specific
+index introspection:
 - Table / column / FK info comes from the appdb (`Table`, `Field` with
   `fk_target_field_id`) which sync already populates.
 - "Is this column indexed?" comes from `Field.database_indexed`.
 - "What's the full shape of the index (composite columns, INCLUDE list,
-  partial predicate, GIN/BRIN type)?" is the only piece sync does *not*
-  persist; we call `driver/describe-table-indexes` at request time.
+  partial predicate, GIN/BRIN type)?" is the piece sync does *not*
+  persist. The existing `driver/describe-table-indexes` default is too
+  lossy for this feature, so `index_introspection.clj` queries Postgres
+  catalogs directly and treats `driver/describe-table-indexes` as a fallback.
 - Native SQL parsing reuses `transforms-inspector.query-analysis`.
 
 ## Phased delivery
@@ -142,13 +141,15 @@ What we add is index detail, EXPLAIN output, and recent-run timing.
   `Field.fk_target_field_id` (a Toucan2 hydration step) and the
   `Field.database_indexed` boolean (populated by `sync.sync-metadata.indexes`).
 - **`index_introspection.clj`** is the only new introspection code we write.
-  It calls `driver/describe-table-indexes` at request time for each
+  For Postgres, it queries `pg_index`, `pg_class`, `pg_namespace`,
+  `pg_attribute`, `pg_am`, and `pg_get_expr` at request time for each
   referenced table to recover the shape sync drops on the floor:
-  composite column order, `INCLUDE` payload, partial predicate, index type
-  (btree / gin / brin / hash). Cached for the duration of one optimizer
-  request. Falls back gracefully on drivers that don't implement the
-  multimethod (the LLM is told "index detail unavailable" rather than
-  hallucinating).
+  composite key column order, `INCLUDE` payload, partial predicates,
+  uniqueness, and index type (btree / gin / brin / hash). Cached for the
+  duration of one optimizer request. If catalog introspection fails, it
+  falls back to the simplified `driver/describe-table-indexes` output and
+  marks the context as partial rather than pretending full index detail is
+  available.
 - **`explain.clj`**: `EXPLAIN (FORMAT JSON, VERBOSE)` against the source
   DB. No `ANALYZE` by default — running the slow query is exactly what
   we're trying to avoid. `:analyze?` opt-in flag for advanced callers.
@@ -201,17 +202,18 @@ What we add is index detail, EXPLAIN output, and recent-run timing.
                :precompute}       ; DAG; DDL on precompute targets is common
   severity ∈ #{:high :medium :low}  ; required on every proposal
   ```
-  We instruct the LLM to *not* propose indexes the user can't create
-  (target DB write permissions are required; see Phase 5). We also
-  explicitly allow `proposals` to be empty when the transform is already
-  optimal.
+  We instruct the LLM to annotate proposed indexes with any requirements
+  or caveats it depends on. We also explicitly allow `proposals` to be empty
+  when the transform is already optimal.
 
 #### DDL statements
 
 The LLM may decide that the best optimization is a new index — either on
 a source-DB table (q04: monthly revenue) or on a transform's
-target/precompute target (q07: cohort rollups). DDL is therefore a
-first-class proposal artifact, not a bullet in the rationale.
+target/precompute target (q07: cohort rollups). For this branch, DDL is a
+first-class **advisory** proposal artifact, not something Metabase executes.
+The UI shows the statement, rationale, target, and caveats so the user can
+review or copy it.
 
 **Constraints applied to every emitted statement** (enforced in
 `ddl/parse.clj`, not trusted from the LLM):
@@ -334,35 +336,39 @@ The agent emits, in order:
 
 ### Phase 4 — Equivalence verification (optional, user-triggered)
 
-For a single-transform proposal:
+For a single-transform proposal, first compare the output schemas. Column
+count, names, and compatible database types must match before row comparison
+starts.
+
+Then materialize both sides into bounded temp tables using scratch target
+names, with a timeout and cleanup in `finally`. The row comparison should
+preserve duplicate row multiplicity. On Postgres, prefer `EXCEPT ALL`:
+
 ```sql
 SELECT count(*) FROM (
-  (SELECT * FROM <slow_result>  EXCEPT SELECT * FROM <fast_result>)
+  (SELECT * FROM <slow_result>  EXCEPT ALL SELECT * FROM <fast_result>)
   UNION ALL
-  (SELECT * FROM <fast_result>  EXCEPT SELECT * FROM <slow_result>)
+  (SELECT * FROM <fast_result>  EXCEPT ALL SELECT * FROM <slow_result>)
 ) d;
 ```
-Materialize both sides to temp tables (or use the existing transform
-execution path against scratch target names). Surface 0 rows = equivalent;
-otherwise show a row-sample diff. Also record both durations so the user
-sees the *actual* speedup vs the LLM's estimate.
 
-For DAG proposals: same approach but `<fast_result>` is the leaf of the
-proposed DAG, executed in order.
+Surface 0 rows = equivalent; otherwise show a row-sample diff. Also record
+both durations so the user sees the *actual* speedup vs the LLM's estimate.
+Queries using volatile functions such as `now()` or `random()` are marked
+with a verification caveat because repeated execution can produce different
+results even when a rewrite is logically valid.
+
+For DAG proposals, verification is deferred until DAG creation/acceptance is
+designed.
 
 ### Phase 5 — Polish & guardrails
 
 - **Permission check for proposing**: the optimizer can always *propose*
   DDL — but the proposal API marks each `ddl_statement` with
-  `executable_by_caller?`. The UI's "Run DDL" / "Accept" buttons are
-  disabled (with a tooltip explaining why) when the current user lacks
-  write privileges on the target database. We do *not* hide the
-  proposals — read-only users can still see what their team should run.
-- **Permission check at execution**: the execute endpoint re-checks
-  privileges server-side. The frontend disable is convenience, not the
-  authorization boundary.
+  `advisory_only?`. We do *not* hide the proposals — read-only users can
+  still see what their team should run.
 - **DDL validator** (`ddl/parse.clj`): runs on every statement before
-  it's executed, regardless of how it got into the system. Reject
+  it's shown, regardless of how it got into the system. Reject
   anything that isn't `CREATE INDEX [CONCURRENTLY] [IF NOT EXISTS]` on a
   schema-qualified table belonging to the referenced set. This is the
   primary defence against prompt injection coercing the LLM into
@@ -370,8 +376,8 @@ proposed DAG, executed in order.
 - **Cost guard**: skip / warn on transforms whose latest run took longer
   than a threshold (we should not run EXPLAIN ANALYZE against the
   30-minute job).
-- **Telemetry**: log proposal acceptance rate, DDL execution rate, and
-  measured speedups; this feeds the prelude over time.
+- **Telemetry**: log proposal acceptance rate and measured speedups; this
+  feeds the prelude over time.
 
 ## Open questions (deferred)
 
@@ -390,11 +396,6 @@ proposed DAG, executed in order.
 - Should the severity rubric also factor in the EXPLAIN cost ratio between
   the slow and proposed plans, so the LLM has a less subjective anchor?
   Worth a small experiment in Phase 2.
-- Index revert UX: an executed `CREATE INDEX` is durable on purpose, but
-  some users may want a one-click "drop the index I just created" if they
-  dismiss the proposal afterwards. For hackathon: surface the index name
-  only and let them DROP manually. Worth revisiting if usage suggests
-  otherwise.
 - Post-materialization DDL on very large precompute targets: rebuilding a
   GIN index on each transform run is expensive. Two ways out: (a) push
   the user toward incremental transforms for these cases (we already
