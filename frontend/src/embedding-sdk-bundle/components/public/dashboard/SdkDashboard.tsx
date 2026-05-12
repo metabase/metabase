@@ -144,13 +144,6 @@ export type SdkDashboardProps = PropsWithChildren<
      * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
      * <br/>
      * <br/>
-     * Examples:
-     * <br/>
-     * - Passing an empty object `{}` resets every parameter to its default.
-     * <br/>
-     * - Passing an object with every slug set to `null` clears all parameter values.
-     * <br/>
-     * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
@@ -165,13 +158,6 @@ export type SdkDashboardProps = PropsWithChildren<
      * - a parameter set to `null` is cleared, even if it has a default.
      * <br/>
      * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
-     * <br/>
-     * <br/>
-     * Examples:
-     * <br/>
-     * - Passing an empty object `{}` resets every parameter to its default.
-     * <br/>
-     * - Passing an object with every slug set to `null` clears all parameter values.
      * <br/>
      * <br/>
      * Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with user edits.

@@ -49,14 +49,7 @@ type SdkQuestionConfig = {
    * <br/>
    * - set to `null`: strictly cleared, ignoring the parameter's default.
    * <br/>
-   * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if there is no default).
-   * <br/>
-   * <br/>
-   * Examples:
-   * <br/>
-   * - Passing an empty object `{}` resets every parameter to its default.
-   * <br/>
-   * - Passing an object with every slug set to `null` clears all parameter values.
+   * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
    **/
   initialSqlParameters?: SqlParameterValues;
 
@@ -68,13 +61,6 @@ type SdkQuestionConfig = {
    * - a parameter set to `null` is cleared, even if it has a default.
    * <br/>
    * - a parameter omitted from the object (or set to `undefined`) uses its default (or `null` if it has no default).
-   * <br/>
-   * <br/>
-   * Examples:
-   * <br/>
-   * - Passing an empty object `{}` resets every parameter to its default.
-   * <br/>
-   * - Passing an object with every slug set to `null` clears all parameter values.
    * <br/>
    * <br/>
    * Pair with `onSqlParametersChange` to stay in sync with user edits.
