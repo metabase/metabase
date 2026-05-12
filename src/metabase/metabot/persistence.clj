@@ -9,6 +9,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZoneOffset)))
@@ -65,8 +66,7 @@
 (defn throwable->error-payload
   "Coerce a `Throwable` into the same JSON-encodable map shape a streamed
   `:error` part carries, so a turn that fails by *throwing* persists in the
-  same column shape as one that fails by emitting an `:error` part. The FE
-  renders both via the `turn_errored` alert path with no branching."
+  same column shape as one that fails by emitting an `:error` part."
   [^Throwable t]
   (let [data (ex-data t)]
     (cond-> {:message (or (ex-message t) (.toString t))
@@ -438,7 +438,10 @@
   (cond
     (instance? Instant v)        v
     (instance? OffsetDateTime v) (.toInstant ^OffsetDateTime v)
-    (instance? LocalDateTime v)  (.toInstant ^LocalDateTime v ZoneOffset/UTC)))
+    (instance? LocalDateTime v)  (.toInstant ^LocalDateTime v ZoneOffset/UTC)
+    :else                        (do (log/warnf "Unhandled created_at type %s; cannot apply placeholder grace window"
+                                                (some-> v class .getName))
+                                     nil)))
 
 (defn- placeholder-still-active?
   "True if `row` is an in-flight placeholder created by [[start-turn!]] for a
