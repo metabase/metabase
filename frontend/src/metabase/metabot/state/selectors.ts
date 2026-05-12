@@ -3,18 +3,23 @@ import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
-import * as Urls from "metabase/lib/urls";
+import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
+import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
+  type MetabotProfileId,
 } from "../constants";
 
-import type { MetabotAgentId, MetabotUserChatMessage } from "./types";
+import type {
+  MetabotAgentId,
+  MetabotChatMessage,
+  MetabotUserChatMessage,
+} from "./types";
 
 /*
  * Top Level Selectors
@@ -96,18 +101,9 @@ export const getMetabotVisible = createSelector(
   (convo) => convo.visible,
 );
 
-const getInternalMessages = createSelector(
+export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
-);
-
-export const getMessages = createSelector(
-  [getInternalMessages, getDebugMode],
-  (messages, debugMode) => {
-    return debugMode
-      ? messages
-      : messages.filter((msg) => msg.type !== "tool_call");
-  },
 );
 
 export const getDeveloperMessage = createSelector(
@@ -122,6 +118,29 @@ export const getActiveToolCalls = createSelector(
 
 export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
+);
+
+const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
+  messages.reduce<MetabotChatMessage[][]>((turns, m) => {
+    if (m.role === "user" || turns.length === 0) {
+      turns.push([m]);
+    } else {
+      turns[turns.length - 1].push(m);
+    }
+    return turns;
+  }, []);
+
+export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+  getMessages,
+  (messages) =>
+    new Set(
+      splitByTurn(messages).flatMap((turn) => {
+        const lastNav = turn.findLast(
+          (m) => m.type === "data_part" && m.part.type === "navigate_to",
+        );
+        return lastNav ? [lastNav.id] : [];
+      }),
+    ),
 );
 
 export const getAgentErrorMessages = createSelector(
@@ -196,9 +215,10 @@ export const getProfileOverride = createSelector(
 
 export const getProfile = createSelector(
   [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location) => {
+  (profileOverride, debugMode, location): MetabotProfileId | undefined => {
     const isTransformsPage = location.pathname.startsWith(Urls.transformList());
     return match({ debugMode, isTransformsPage })
+      .returnType<MetabotProfileId | undefined>()
       .with(
         { debugMode: false, isTransformsPage: true },
         () => "transforms_codegen",

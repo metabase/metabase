@@ -33,3 +33,15 @@
   (when (seq ids)
     (-> (filter mi/can-read? (t2/select :model/Field :id [:in ids]))
         (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))))
+
+(defn field-ids->table-ids
+  "Get sorted unique table IDs for readable Fields with IDs in `ids`."
+  [ids]
+  (->> (when (seq ids)
+         (t2/hydrate (t2/select [:model/Field :id :table_id] :id [:in ids])
+                     :table))
+       (filter mi/can-read?)
+       (keep :table_id)
+       set
+       sort
+       vec))

@@ -1,16 +1,17 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { cardApi, dashboardApi, datasetApi } from "metabase/api";
+import { cardApi, dashboardApi, datasetApi, segmentApi } from "metabase/api";
 import { Databases } from "metabase/entities/databases";
 import { Fields } from "metabase/entities/fields";
-import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction, fetchData } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/redux";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+export * from "metabase/redux/metadata-typed";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
@@ -20,15 +21,22 @@ const deprecated = (message) => {
   }
 };
 
-export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
-export const fetchSegments = (reload = false) => {
+export const fetchSegments = () => (dispatch) => {
   deprecated("metabase/redux/metadata fetchSegments");
-  return Segments.actions.fetchList(null, { reload });
+  return entityCompatibleQuery(
+    undefined,
+    dispatch,
+    segmentApi.endpoints.listSegments,
+  );
 };
 
-export const updateSegment = (segment) => {
+export const updateSegment = (segment) => (dispatch) => {
   deprecated("metabase/redux/metadata updateSegment");
-  return Segments.actions.update(segment);
+  return entityCompatibleQuery(
+    segment,
+    dispatch,
+    segmentApi.endpoints.updateSegment,
+  );
 };
 
 export const fetchRealDatabases = (reload = false) => {
@@ -112,34 +120,15 @@ export const updateFieldDimension = (fieldId, dimension) => {
 };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
-export const fetchRevisions = createThunkAction(
-  FETCH_REVISIONS,
-  (type, id, reload = false) => {
-    return async (dispatch, getState) => {
-      const requestStatePath = ["revisions", type, id];
-      const existingStatePath = ["revisions"];
-      const getData = async () => {
-        return {
-          type,
-          id,
-          revisions: await RevisionsApi.get({
-            id,
-            entity: type === "metric" ? "legacy-metric" : type,
-          }),
-        };
-      };
-
-      return await fetchData({
-        dispatch,
-        getState,
-        requestStatePath,
-        existingStatePath,
-        getData,
-        reload,
-      });
-    };
-  },
-);
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id) => {
+  return async () => {
+    const revisions = await RevisionsApi.get({
+      id,
+      entity: type === "metric" ? "legacy-metric" : type,
+    });
+    return { type, id, revisions };
+  };
+});
 
 export const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
 export const fetchSegmentFields = createThunkAction(

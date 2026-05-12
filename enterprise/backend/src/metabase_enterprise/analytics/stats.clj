@@ -15,7 +15,7 @@
   []
   [{:name      :sso-jwt
     :available (premium-features/enable-sso-jwt?)
-    :enabled   (ee-sso-settings/jwt-enabled)}
+    :enabled   (ee-sso-settings/jwt-enabled-and-configured)}
    {:name      :sso-saml
     :available (premium-features/enable-sso-saml?)
     :enabled   (ee-sso-settings/saml-enabled)}
@@ -28,7 +28,7 @@
     :enabled   (t2/exists? :model/Sandbox)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}
+    :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
     :enabled   (semantic-search/supported?)}])

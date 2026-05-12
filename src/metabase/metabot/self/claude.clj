@@ -1,18 +1,55 @@
 (ns metabase.metabot.self.claude
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [metabase.llm.anthropic :as anthropic]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
+
+(defn- claude-usage->aisdk-usage
+  "Convert an Anthropic `usage` block into the AISDK `:usage` shape.
+
+  Anthropic reports three disjoint input-token buckets; the total input sent to
+  the model is the sum of all three:
+
+      input_tokens                 — fresh (non-cached) input
+      cache_creation_input_tokens  — input written to the provider cache
+      cache_read_input_tokens      — input served from the provider cache
+
+  We pre-sum these into :promptTokens so downstream analytics and ai_usage_log
+  see a provider-neutral total-input count, matching OpenAI's prompt_tokens
+  semantic (where cache counts are a subset breakdown of the total).
+
+  ai_usage_log column mapping:
+
+    without Anthropic prompt caching:
+      prompt_tokens     := input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := input_tokens + output_tokens
+
+    with Anthropic prompt caching:
+      prompt_tokens     := input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := prompt_tokens + completion_tokens
+
+  The two are equivalent when caching is inactive (both cache buckets are 0),
+  so one unified formula is used in code; the split above is purely for reader
+  clarity."
+  [u]
+  {:promptTokens        (+ (:input_tokens u 0)
+                           (:cache_creation_input_tokens u 0)
+                           (:cache_read_input_tokens u 0))
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (:cache_creation_input_tokens u 0)
+   :cacheReadTokens     (:cache_read_input_tokens u 0)})
 
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
@@ -57,10 +94,9 @@
          (cond-> result
            ;; close up latest type if incomplete
            @current-type (close!)
-           ;; flush last-known usage if stream ended before message_delta
+           ;; flush last-known usage if stream ended before message_delta.
            @last-usage   (rf {:type  :usage
-                              :usage {:promptTokens     (:input_tokens @last-usage 0)
-                                      :completionTokens (:output_tokens @last-usage 0)}
+                              :usage (claude-usage->aisdk-usage @last-usage)
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
@@ -105,6 +141,7 @@
              ;; but message_delta values are cumulative and include the earlier
              ;; counts.
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
+             ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
                                           (vreset! last-usage (:usage chunk)))
              ;; end of message
@@ -168,9 +205,7 @@
        merge-consecutive
        vec))
 
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Tool definition format
-;;; ──────────────────────────────────────────────────────────────────
 
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
@@ -186,43 +221,97 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
+(defn- add-tools-cache-breakpoint
+  "Attach an ephemeral cache_control marker to the last tool in `tools`.
+  Anthropic caches everything in the request up to and including the block with
+  `cache_control`, so a single breakpoint on the final tool covers the whole
+  tool list."
+  [tools]
+  (if (seq tools)
+    (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
+    tools))
+
+(def ^:private system-cache-breakpoint-sentinel
+  "Literal marker placed in selmer templates to indicate where the static cacheable
+  prefix ends and the dynamic per-request suffix begins. Anthropic-only; ignored
+  by other provider adapters."
+  "<<<METABOT_CACHE_BREAKPOINT>>>")
+
+(defn- system->cached-content-blocks
+  "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
+
+  If `system` contains the cache breakpoint sentinel, split it into two content
+  blocks: a cached static prefix and an uncached dynamic suffix. The model sees
+  the concatenation; the split is purely a wire-protocol device for caching.
+
+  If the sentinel is absent, fall back to a single cached content block covering
+  the whole prompt."
+  [system]
+  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
+    (if (neg? idx)
+      [{:type          "text"
+        :text          system
+        :cache_control {:type "ephemeral"}}]
+      (let [prefix (str/trimr (subs system 0 idx))
+            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
+        [{:type          "text"
+          :text          prefix
+          :cache_control {:type "ephemeral"}}
+         {:type "text"
+          :text suffix}]))))
+
+(defn- anthropic-errors [res]
+  (let [status    (long (:status res 0))
+        error-msg (get-in res [:body :error :message])]
+    (case status
+      401 (tru "Anthropic API key expired or invalid")
+      403 (tru "Anthropic API key has insufficient permissions")
+      404 (tru "Anthropic API endpoint is unavailable or the model was not found")
+      413 (tru "Anthropic API rejected our request because it was too large")
+      429 (tru "Anthropic API has rate limited us")
+      500 (tru "Anthropic API is not working but not saying why")
+      529 (tru "Anthropic API is overloaded and is asking us to wait")
+      (if error-msg
+        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
+        (tru "Anthropic API error (HTTP {0})" status)))))
+
 (defn list-models
-  "List available Anthropic models using the configured API key."
-  ([]
-   (list-models (llm/llm-anthropic-api-key)))
-  ([api-key]
-   (when (str/blank? api-key)
-     (throw (ex-info "No Anthropic API key is set" {:api-error true})))
+  "List available Anthropic models.
+  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  ([] (list-models {}))
+  ([{:keys [api-key ai-proxy?]}]
+   (when (and api-key (str/blank? api-key))
+     (throw (core/missing-api-key-ex "Anthropic")))
    (try
-     (anthropic/list-models {:api-key     api-key
-                             :api-url     (llm/llm-anthropic-api-base-url)
-                             :api-version "2023-06-01"})
+     (let [auth   (core/resolve-auth "anthropic" "Anthropic"
+                                     (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
+                                       {:url     (llm/llm-anthropic-api-base-url)
+                                        :headers {"x-api-key" k}})
+                                     ai-proxy?)
+           res    (core/request auth {:method  :get
+                                      :url     "/v1/models"
+                                      :headers {"anthropic-version" "2023-06-01"}})
+           body   (json/decode+kw (:body res))
+           models (reverse (sort-by :created_at (:data body)))]
+       {:models (map #(select-keys % [:id :display_name]) models)})
      (catch Exception e
-       (if-let [status (some-> e ex-data :status)]
-         (let [msg (case (int status)
-                     401 "Anthropic API key expired or invalid"
-                     403 "Anthropic API key has not enough permissions"
-                     404 "Anthropic API is telling us we cannot access this URL anymore?"
-                     429 "Anthropic API has rate limited us"
-                     500 "Anthropic API is not working but not saying why"
-                     529 "Anthropic API is overloaded and is asking us to wait"
-                     "Unhandled error accessing Anthropic API")]
-           (throw (ex-info msg (assoc (ex-data e) :api-error true) e)))
-         (throw e))))))
+       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (when-not (llm/llm-anthropic-api-key)
-    (throw (ex-info "No Anthropic API key is set" {:api-error true})))
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
-        req       (cond-> {:model      model
-                           :max_tokens (or max-tokens 4096)
-                           :stream     true
-                           :messages   messages}
-                    system            (assoc :system system)
+        all-tools (if (and all-tools (not schema))
+                    (add-tools-cache-breakpoint all-tools)
+                    all-tools)
+        req       (cond-> {:model         model
+                           :max_tokens    (or max-tokens 4096)
+                           :stream        true
+                           :cache_control {:type "ephemeral"}
+                           :messages      messages}
+                    system            (assoc :system (system->cached-content-blocks system))
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
                          tool_choice) (assoc :tool_choice (case (name tool_choice)
@@ -239,33 +328,32 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [res (http/post (str (llm/llm-anthropic-api-base-url) "/v1/messages")
-                             {:as      :stream
-                              :headers {"x-api-key"         (llm/llm-anthropic-api-key)
-                                        "anthropic-version" "2023-06-01"
-                                        "content-type"      "application/json"}
-                              :body    (json/encode req)})]
-          (core/sse-reducible (:body res)))
+        (let [api-key  (not-empty (llm/llm-anthropic-api-key))
+              auth     (core/resolve-auth "anthropic" "Anthropic"
+                                          (when api-key
+                                            {:url     (llm/llm-anthropic-api-base-url)
+                                             :headers {"x-api-key" api-key}})
+                                          ai-proxy?)
+              response (core/request auth
+                                     {:method  :post
+                                      :url     "/v1/messages"
+                                      :as      :stream
+                                      :headers {"anthropic-version" "2023-06-01"
+                                                "content-type"      "application/json"}
+                                      :body    (json/encode req)})]
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "anthropic"
+                                     :model    model
+                                     :url      "/v1/messages"
+                                     :request  req})))
         (catch Exception e
-          (if-let [res (some-> (ex-data e)
-                               json/decode-body)]
-            (let [status (:status res)
-                  msg    (case (int status)
-                           401 "Anthropic API key expired or invalid"
-                           403 "Anthropic API key has not enough permissions"
-                           404 "Anthropic API is telling us we cannot access this URL anymore?"
-                           413 "Anthropic API is not happy with our request being too big"
-                           429 "Anthropic API has rate limited us"
-                           500 "Anthropic API is not working but not saying why"
-                           529 "Anthropic API is overloaded and is asking us to wait"
-                           "Unhandled error accessing Anthropic API")]
-              (throw (ex-info msg (assoc res :api-error true) e)))
-            (throw e)))))))
+          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
   [& args]
-  (eduction (claude->aisdk-chunks-xf) (apply claude-raw args)))
+  (let [raw (apply claude-raw args)]
+    (eduction (claude->aisdk-chunks-xf) raw)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!

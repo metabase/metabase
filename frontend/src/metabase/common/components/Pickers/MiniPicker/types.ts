@@ -1,16 +1,25 @@
 import type {
   CollectionId,
   CollectionItem,
+  CollectionType,
   DatabaseId,
+  MeasureId,
   SchemaName,
   TableId,
 } from "metabase-types/api";
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "display" | "collection"
+  "name" | "model" | "here" | "below" | "display" | "collection" | "type"
 > & {
   id: CollectionItem["id"] | CollectionId;
+  sourceCollectionId?: CollectionItem["id"] | CollectionId;
+  /** When set, CollectionItemList only shows children whose type matches */
+  childTypeFilter?: NonNullable<CollectionType>;
+};
+
+export type MiniPickerCollectionFolderItem = MiniPickerCollectionItem & {
+  model: "collection";
 };
 
 export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
@@ -50,6 +59,14 @@ export type MiniPickerDatabaseItem = {
   name: string;
 };
 
+export type MiniPickerMeasureItem = {
+  model: "measure";
+  id: MeasureId;
+  name: string;
+  table_name?: string;
+  table_display_name?: string;
+};
+
 export enum MiniPickerFolderModel {
   Database = "database",
   Schema = "schema",
@@ -61,21 +78,24 @@ export type MiniPickerItem =
   | MiniPickerCollectionItem
   | MiniPickerSchemaItem
   | MiniPickerTableItem
-  | MiniPickerDatabaseItem;
+  | MiniPickerDatabaseItem
+  | MiniPickerMeasureItem;
 
 // this is only the intermediate/folder types that cannot ultimately be picked
 export type MiniPickerFolderItem =
   | MiniPickerDatabaseItem
   | MiniPickerSchemaItem
-  | (MiniPickerCollectionItem & { model: "collection" });
+  | MiniPickerCollectionFolderItem;
 
 // this omits intermediate/folder types that cannot ultimately be picked
 export type MiniPickerPickableItem =
   | MiniPickerPickableCollectionItem
-  | MiniPickerTableItem;
+  | MiniPickerTableItem
+  | MiniPickerMeasureItem;
 
 // can't get schemas in search results
 export type SearchableMiniPickerItem =
   | MiniPickerPickableCollectionItem
   | MiniPickerTableItem
-  | MiniPickerDatabaseItem;
+  | MiniPickerDatabaseItem
+  | MiniPickerMeasureItem;

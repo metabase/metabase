@@ -1,15 +1,17 @@
 import { useCallback } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useGetCollectionQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   useBookmarkListQuery,
-  useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Databases } from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
@@ -36,7 +38,7 @@ export function CollectionContent({
       "exclude-archived": true,
     });
 
-  const { data: collection, error: collectionError } = useCollectionQuery({
+  const { data: collection, error: collectionError } = useGetCollectionQuery({
     id: collectionId,
   });
 
@@ -88,7 +90,6 @@ export function CollectionContent({
       databases={databases}
       bookmarks={bookmarks}
       collection={collection}
-      collections={collections}
       collectionId={collectionId}
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}

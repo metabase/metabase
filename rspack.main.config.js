@@ -77,20 +77,23 @@ const SWC_LOADER = {
 };
 
 class OnScriptError {
-  apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
-        "OnScriptError",
-        (data, cb) => {
-          // Manipulate the content
-          data.assetTags.scripts.forEach((script) => {
-            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
-          });
-          // Tell webpack to move on
-          cb(null, data);
-        },
-      );
-    });
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "OnScriptError",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+          "OnScriptError",
+          (data, cb) => {
+            // Manipulate the content
+            data.assetTags.scripts.forEach((script) => {
+              script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+            });
+            // Tell webpack to move on
+            cb(null, data);
+          },
+        );
+      },
+    );
   }
 }
 
@@ -115,7 +118,6 @@ const config = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -226,24 +228,28 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
-          chunks: "all",
+          test: /[\\/]node_modules[\\/]/,
+          chunks: "initial",
           name: "vendor",
+          priority: -10,
         },
         sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
+          priority: 10,
         },
         jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          test: /[\\/]jspdf[\\/]/,
           chunks: "all",
           name: "jspdf",
+          priority: 10,
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
+          test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
+          priority: 10,
         },
       },
     },
@@ -383,11 +389,16 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
+  if (!process.env.DISABLE_BUILD_NOTIFICATIONS) {
+    config.plugins.push(
+      new WebpackNotifierPlugin({
+        excludeWarnings: true,
+        skipFirstNotification: true,
+      }),
+    );
+  }
+
   config.plugins.push(
-    new WebpackNotifierPlugin({
-      excludeWarnings: true,
-      skipFirstNotification: true,
-    }),
     new CssVarsDeclarationPlugin({
       frontendSrcPath: __dirname + "/frontend/src",
       rootPath: __dirname,

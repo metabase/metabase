@@ -1,17 +1,24 @@
 (ns metabase.metabot.self.claude-test
   (:require
+   [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.test-util :as test-util]))
+   [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
 (defn- fixture
   "Load cached Claude raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (test-util/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -26,26 +33,34 @@
     (testing "through full pipeline produces text + usage"
       (is (=? [{:type :start :id string?}
                {:type :text :id string? :text string?}
-               {:type :usage :id string? :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :id string? :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "tool input chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
     (testing "through full pipeline produces tool-input + usage"
       (is (=? [{:type :start}
                {:type :tool-input :arguments map?}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-text-and-tool-input-conv-test
   (let [raw-chunks (fixture "claude-text-and-tool-input"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "text + tool input chunks are mapped correctly"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}
@@ -56,21 +71,75 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel claude-lite-aisdk-xf-test
   (let [raw-chunks (fixture "claude-text-and-tool-input"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [(test-util/get-time-tool)]})
+                             :tools [(metabot.tu/get-time-tool)]})
         res        (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/lite-aisdk-xf)) raw-chunks)]
     (testing "lite-aisdk-xf collects tool inputs"
       (is (=? [{:type :start}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
-               {:type :usage :model string? :usage {:promptTokens pos-int?}}]
+               {:type :usage :model string?
+                :usage {:promptTokens pos-int?
+                        :completionTokens nat-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens nat-int?}}]
               (remove #(= :text (:type %)) res))))
     (testing "lite-aisdk-xf streams text deltas"
       (is (< 10 (count (filter #(= :text (:type %)) res)))))))
+
+(deftest ^:parallel claude-usage-chunk-cache-fields-test
+  (testing "cache_creation_input_tokens / cache_read_input_tokens from Claude are surfaced on the :usage chunk;
+            :promptTokens is the total input (fresh + cache_creation + cache_read)"
+    (let [events [{:type "message_start"
+                   :message {:id    "msg-1"
+                             :model "claude-haiku-4-5"
+                             :usage {:input_tokens                100
+                                     :output_tokens               0
+                                     :cache_creation_input_tokens 250
+                                     :cache_read_input_tokens     4200}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text" :id "text-1"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "ok"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "message_delta"
+                   :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens                100
+                           :output_tokens               7
+                           :cache_creation_input_tokens 250
+                           :cache_read_input_tokens     4200}}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) events)
+          usage  (first (filter #(= :usage (:type %)) chunks))]
+      ;; promptTokens = 100 fresh + 250 cache_creation + 4200 cache_read = 4550
+      (is (=? {:type  :usage
+               :id    "msg-1"
+               :model "claude-haiku-4-5"
+               :usage {:promptTokens        4550
+                       :completionTokens    7
+                       :cacheCreationTokens 250
+                       :cacheReadTokens     4200}}
+              usage))))
+
+  (testing "missing cache fields default to 0"
+    (let [events [{:type "message_start"
+                   :message {:id    "msg-2"
+                             :model "claude-haiku-4-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "message_delta"
+                   :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens 10 :output_tokens 3}}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) events)
+          usage  (first (filter #(= :usage (:type %)) chunks))]
+      (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
+             (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests
@@ -158,3 +227,187 @@
              [{:type :text :text ""}
               {:type :text :text "Hello"}
               {:type :text :text ""}])))))
+
+(deftest claude-auth-preferences-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
+                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
+        (testing "Prefers BYOK over ai proxy"
+          (with-redefs [self.core/sse-reducible identity
+                        debug/capture-stream    (fn [r _] r)
+                        http/request            (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://api.anthropic.com/v1/messages"
+                     :headers {"x-api-key" "sk-ant-byok"}
+                     :body    string?}
+                    (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+
+        (testing "Uses ai proxy when explicitly requested"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
+                        self.core/sse-reducible             identity
+                        debug/capture-stream                (fn [r _] r)
+                        http/request                        (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://proxy.example/anthropic/v1/messages"
+                     :headers {"x-metabase-instance-token" "proxy-token"}
+                     :body    string?}
+                    (claude/claude-raw {:input [{:role :user :content "hi"}]
+                                        :ai-proxy? true})))))
+
+        (testing "Does not fall back to ai proxy when BYOK is missing"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+
+        (testing "Throws an error if nothing is defined"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"No Anthropic API key is set"
+                   (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))))
+
+(defn- capture-claude-request-body!
+  "Invoke `claude-raw` with stubbed HTTP, returning the decoded request body map."
+  [opts]
+  (let [captured (atom nil)]
+    (with-redefs [self.core/sse-reducible identity
+                  http/request            (fn [req]
+                                            (reset! captured (json/decode+kw (:body req)))
+                                            {:body req})]
+      (claude/claude-raw opts))
+    @captured))
+
+(deftest claude-tools-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [tools [(metabot.tu/get-time-tool) (metabot.tu/convert-currency-tool)]
+          input [{:role :user :content "hi"}]]
+      (testing "cache_control is attached to the last tool only"
+        (let [body    (capture-claude-request-body! {:input input :tools tools})
+              [t1 t2] (:tools body)]
+          (is (= 2 (count (:tools body))))
+          (is (not (contains? t1 :cache_control)))
+          (is (= {:type "ephemeral"} (:cache_control t2)))))
+
+      (testing "no :tools key in request when no tools passed"
+        (let [body (capture-claude-request-body! {:input input})]
+          (is (not (contains? body :tools)))))
+
+      (testing "no cache_control on structured-output path (schema set)"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (= 1 (count (:tools body))))
+          (is (= "structured_output" (-> body :tools first :name)))
+          (is (not (contains? (-> body :tools first) :cache_control))))))))
+
+(deftest claude-auto-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [input [{:role :user :content "hi"}]]
+      (testing "top-level cache_control is set on every request (enables automatic caching of message history)"
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body! {:input input}))))
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body!
+                                {:input  input
+                                 :system "You are a helpful assistant."
+                                 :tools  [(metabot.tu/get-time-tool)]})))))
+
+      (testing "top-level cache_control is set on the structured-output path too"
+        (is (= {:type "ephemeral"}
+               (:cache_control (capture-claude-request-body!
+                                {:input  input
+                                 :schema {:type "object" :properties {:answer {:type "string"}}}}))))))))
+
+(deftest claude-system-cache-breakpoint-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [input [{:role :user :content "hi"}]]
+      (testing "system prompt without sentinel is wrapped as a single cached content block"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system "You are a helpful assistant."})]
+          (is (= [{:type          "text"
+                   :text          "You are a helpful assistant."
+                   :cache_control {:type "ephemeral"}}]
+                 (:system body)))))
+
+      (testing "system prompt with sentinel is split into cached prefix + uncached suffix"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."})]
+          (is (= [{:type          "text"
+                   :text          "Stable prefix content."
+                   :cache_control {:type "ephemeral"}}
+                  {:type "text"
+                   :text "Dynamic suffix content."}]
+                 (:system body)))))
+
+      (testing "no :system key when system is not provided"
+        (let [body (capture-claude-request-body! {:input input})]
+          (is (not (contains? body :system))))))))
+
+(deftest system-templates-cache-breakpoint-presence-test
+  (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
+    (let [system-dir (io/file (io/resource "metabot/prompts/system"))
+          templates  (->> (.listFiles system-dir)
+                          (filter #(re-find #"\.selmer$" (.getName ^java.io.File %))))]
+      (doseq [^java.io.File f templates]
+        (let [body  (slurp f)
+              n     (count (re-seq #"<<<METABOT_CACHE_BREAKPOINT>>>" body))
+              has-volatile? (some #(re-find % body)
+                                  [#"\{\{\s*current_time\s*\}\}"
+                                   #"\{%\s*if\s+recent_views\s*%\}"
+                                   #"\{%\s*if\s+current_user_info\s*%\}"
+                                   #"\{%\s*if\s+viewing_context\s*%\}"
+                                   #"\{\{\s*viewing_context"
+                                   #"\{\{\s*first_day_of_week\s*\}\}"])]
+          (testing (.getName f)
+            (if has-volatile?
+              (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")
+              (is (zero? n) "no sentinel expected when template has no volatile context vars"))))))))
+
+(deftest claude-list-models-auth-preferences-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
+                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
+        (testing "Prefers BYOK over ai proxy"
+          (with-redefs [http/request (fn [req]
+                                       (is (=? {:method  :get
+                                                :url     "https://api.anthropic.com/v1/models"
+                                                :headers {"anthropic-version" "2023-06-01"
+                                                          "x-api-key"        "sk-ant-byok"}}
+                                               req))
+                                       {:body "{\"data\":[]}"})]
+            (is (= {:models []}
+                   (claude/list-models {})))))
+
+        (testing "Uses ai proxy when explicitly requested"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
+                        http/request                        (fn [req]
+                                                              (is (=? {:method  :get
+                                                                       :url     "https://proxy.example/anthropic/v1/models"
+                                                                       :headers {"anthropic-version"         "2023-06-01"
+                                                                                 "x-metabase-instance-token" "proxy-token"}}
+                                                                      req))
+                                                              {:body "{\"data\":[]}"})]
+            (is (= {:models []}
+                   (claude/list-models {:ai-proxy? true})))))
+
+        (testing "Does not fall back to ai proxy when BYOK is missing"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/list-models {})))))
+
+        (testing "Throws an error if nothing is defined"
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"No Anthropic API key is set"
+                   (claude/list-models {}))))))))))

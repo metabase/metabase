@@ -146,11 +146,13 @@
                            :hard-ttl        (t/seconds 1)})]
       (with-redefs [mdb/db-is-set-up? (constantly false)]
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token)))
         (dotimes [_ 50] (token-check/-check-token checker token))
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
@@ -210,11 +212,94 @@
             (age-cache-entry! token (+ (u/hours->ms 36) 1000) local-cache)
             (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
+                    :canonical?    false
                     :status        "Unable to validate token"
                     :error-details "network failure!"}
                    (token-check/check-token checker token)))))
         (finally
           (token-check/-clear-cache! checker))))))
+
+(deftest ^:parallel extract-locks-test
+  (testing "empty :meters map yields empty result"
+    (is (= {} (#'token-check/extract-locks {}))))
+  (testing "meters without :is-locked are filtered out"
+    (is (= {:transform-basic-runs true}
+           (#'token-check/extract-locks {:transform-basic-runs    {:is-locked    true
+                                                                   :meter-value  10}
+                                         :transform-advanced-runs {:meter-value  5}}))))
+  (testing "false :is-locked is preserved (only nil/missing is dropped)"
+    (is (= {:transform-basic-runs    false
+            :transform-advanced-runs true}
+           (#'token-check/extract-locks {:transform-basic-runs    {:is-locked false}
+                                         :transform-advanced-runs {:is-locked true}}))))
+  (testing "non-transform meter keys pass through (e.g. :metabase-ai-tokens)"
+    (is (= {:transform-basic-runs true
+            :metabase-ai-tokens    false}
+           (#'token-check/extract-locks {:transform-basic-runs {:is-locked true}
+                                         :metabase-ai-tokens   {:is-locked false}})))))
+
+(deftest do-refresh-writes-locked-meters-test
+  (testing "do-refresh! mirrors :meters → :locked-meters setting on every successful refresh"
+    (mt/with-temporary-setting-values [locked-meters {}]
+      (let [token       (tu/random-token)
+            response    (atom {:valid true :status "ok" :canonical? true})
+            local-cache (atom {})
+            checker     (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker {:local-ttl           (t/millis 50)
+                                                     :soft-ttl            (t/hours 12)
+                                                     :hard-ttl            (t/hours 36)
+                                                     :db-hash-local-cache local-cache}))]
+        (try
+          (with-redefs [token-check/http-fetch
+                        (fn [& _] {:status 200 :body (json/encode @response)})]
+            (testing "successful response with :meters writes through"
+              (reset! response {:valid true :status "ok"
+                                :meters {:transform-basic-runs    {:is-locked true}
+                                         :transform-advanced-runs {:is-locked false}}})
+              (token-check/check-token checker token)
+              (is (= {:transform-basic-runs    true
+                      :transform-advanced-runs false}
+                     (premium-features/locked-meters))))
+
+            (testing "successful response WITHOUT :meters leaves the setting untouched"
+              (reset! response {:valid true :status "ok"})
+              (token-check/-clear-cache! checker)
+              (reset! local-cache {})
+              (token-check/check-token checker token)
+              (is (= {:transform-basic-runs    true
+                      :transform-advanced-runs false}
+                     (premium-features/locked-meters))
+                  "Setting should retain previous value when response omits :meters"))
+
+            (testing "successful response with empty :meters {} writes empty map (legitimate unlock)"
+              (reset! response {:valid true :status "ok" :meters {}})
+              (token-check/-clear-cache! checker)
+              (reset! local-cache {})
+              (token-check/check-token checker token)
+              (is (= {} (premium-features/locked-meters)))))
+          (finally
+            (token-check/-clear-cache! checker)))))))
+
+(deftest do-refresh-failure-leaves-locked-meters-untouched-test
+  (testing "Outage / 5xx / circuit breaker open → :locked-meters survives unchanged.
+            (Critical correctness property: a network blip MUST NOT accidentally unlock.)"
+    (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+      (let [token       (tu/random-token)
+            local-cache (atom {})
+            checker     (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker {:local-ttl           (t/millis 50)
+                                                     :soft-ttl            (t/hours 12)
+                                                     :hard-ttl            (t/hours 36)
+                                                     :db-hash-local-cache local-cache}))]
+        (try
+          (with-redefs [token-check/http-fetch
+                        (fn [& _] (throw (ex-info "network failure!" {})))]
+            (token-check/check-token checker token)
+            (is (= {:transform-basic-runs true}
+                   (premium-features/locked-meters))
+                "Failed refresh must not touch :locked-meters"))
+          (finally
+            (token-check/-clear-cache! checker)))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
@@ -314,6 +399,31 @@
                   "Request body should include mb-version")
               (is (contains? body "users")
                   "Request body should include users count"))))))))
+
+(deftest send-metering-events-preserves-value-types-test
+  (testing "metering values are not converted to strings before sending"
+    (let [fake-usage {"anthropic:claude-sonnet-4-6:tokens" 500
+                      "openai:gpt-4:tokens"                300}
+          request-data (atom nil)]
+      (mt/with-random-premium-token! [_token]
+        (with-redefs [token-check/metering-stats (constantly {:users          10
+                                                              :external-users 2
+                                                              :internal-users 8
+                                                              :domains        1
+                                                              :metabot-usage  fake-usage
+                                                              :metabot-tokens 800})
+                      http/post                 (fn [_url opts]
+                                                  (reset! request-data opts)
+                                                  {:status 200 :body "{}"})]
+          (token-check/send-metering-events!)
+          (let [body (json/decode (:body @request-data) keyword)]
+            (is (= 10 (:users body))
+                "numeric values should remain numeric after JSON round-trip")
+            (is (map? (:metabot-usage body))
+                "map values should remain maps after JSON round-trip")
+            (is (= fake-usage
+                   (update-keys (:metabot-usage body) name))
+                "nested map values should round-trip intact")))))))
 
 (deftest send-metering-events-error-handling-test
   (testing "send-metering-events! handles errors gracefully"
@@ -557,6 +667,7 @@
           token   (tu/random-token)]
       ;; error-catching wraps it, so we get the error-details response
       (is (= {:valid false
+              :canonical? false
               :status "Unable to validate token"
               :error-details "MetaStore unreachable"}
              (token-check/-check-token checker token))))))

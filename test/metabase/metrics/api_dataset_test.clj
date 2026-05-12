@@ -650,11 +650,11 @@
   (testing "POST /api/metric/dataset with source-measure count"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
             (is (= "completed" (:status response)))
@@ -665,11 +665,11 @@
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
           price-col      (lib.metadata/field mp (mt/id :venues :price))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/sum price-col)))]
       (mt/with-temp [:model/Measure measure {:name       "Total Price"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
             (is (= "completed" (:status response)))
@@ -680,11 +680,11 @@
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :products))
           rating-col     (lib.metadata/field mp (mt/id :products :rating))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/avg (lib/case [[(lib/>= rating-col 4) 1]] 0))))]
       (mt/with-temp [:model/Measure measure {:name       "High Rating Ratio"
                                              :table_id   (mt/id :products)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
             (is (= "completed" (:status response)))
@@ -710,11 +710,11 @@
   (testing "POST /api/metric/dataset with source-measure and filter"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")]
@@ -728,11 +728,11 @@
   (testing "POST /api/metric/dataset with source-measure and projection"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")]
@@ -746,11 +746,11 @@
   (testing "POST /api/metric/dataset with source-measure and temporal bucket"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :checkins))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Checkin Count"
                                              :table_id   (mt/id :checkins)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
                 date-dim (find-measure-dimension-by-name hydrated "DATE")]
@@ -764,11 +764,11 @@
   (testing "POST /api/metric/dataset with source-measure and binning"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated (hydrate-measure (:id measure))
                 lat-dim  (find-measure-dimension-by-name hydrated "LATITUDE")]
@@ -782,11 +782,11 @@
   (testing "POST /api/metric/dataset with source-measure combining filter and projection"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Venue Count"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [hydrated  (hydrate-measure (:id measure))
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")
@@ -836,11 +836,11 @@
   (testing "POST /api/metric/dataset respects measure data permissions"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (dataset-request-error 403 {:expression [:measure {:lib/uuid "a"} (:id measure)]}))))))))
@@ -859,11 +859,11 @@
   (testing "POST /api/metric/dataset allows measure execution when user has data perms"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Accessible Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (dataset-request {:expression [:measure {:lib/uuid "a"} (:id measure)]})]
             (is (= "completed" (:status response)))
@@ -887,11 +887,11 @@
   (testing "POST /api/metric/dataset allows admin to execute measures regardless of data perms"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-query    (-> (lib/query mp table-metadata)
+          mbql5-query    (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Protected Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-query}]
+                                             :definition mbql5-query}]
         ;; crowberto is admin and can bypass data perms
         (let [response (mt/user-http-request :crowberto :post 202 "metric/dataset"
                                              {:definition {:expression [:measure {:lib/uuid "a"} (:id measure)]}})]
@@ -1018,7 +1018,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- create-orders-products-join-query
-  "Create a pMBQL query joining Orders with Products on product_id."
+  "Create a MBQL 5 query joining Orders with Products on product_id."
   []
   (let [mp             (mt/metadata-provider)
         orders-table   (lib.metadata/table mp (mt/id :orders))
@@ -1134,7 +1134,7 @@
                 "should have 49 months of order data")))))))
 
 (defn- create-orders-products-join-sum-price-query
-  "Create a pMBQL query joining Orders with Products, aggregating SUM(Products.PRICE).
+  "Create a MBQL 5 query joining Orders with Products, aggregating SUM(Products.PRICE).
    This exercises the case where the aggregation references a column from the joined table,
    which requires the join's fields to be visible across the two-stage query boundary."
   ([]
@@ -1256,3 +1256,27 @@
           (is (= "completed" (:status response)))
           (is (= 49 (:row_count response))
               "should have 49 months of order data, same as table-based metric"))))))
+
+(deftest dataset-source-card-expression-dimension-projection-test
+  (testing "POST /api/metric/dataset with source-card metric, projecting on a custom column dimension"
+    (mt/with-temp [:model/Card model  {:name          "Orders Model with Expression"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query orders
+                                                        {:expressions {"Discount Plus One"
+                                                                       [:+ $discount 1]}})}
+                   :model/Card metric {:name          "Model Count Metric"
+                                       :type          :metric
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [hydrated  (hydrate-metric (:id metric))
+            expr-dim  (find-dimension-by-name hydrated "Discount Plus One")]
+        (is (some? expr-dim) "Expression dimension should exist for model-based metric")
+        (when expr-dim
+          (let [response (dataset-request
+                          {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                           :projections [{:type :metric :id (:id metric) :lib/uuid "a"
+                                          :projection [[:dimension {} (:id expr-dim)]]}]})]
+            (is (= "completed" (:status response)))
+            (is (< 1 (:row_count response)))))))))

@@ -26,6 +26,7 @@ export * from "./components/public/debug/SdkDebugInfo";
 export { useApplicationName } from "./hooks/public/use-application-name";
 export { useAvailableFonts } from "./hooks/public/use-available-fonts";
 export { useCurrentUser } from "./hooks/public/use-current-user";
+export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
 
@@ -118,6 +119,16 @@ export type {
   MetabaseTheme,
   MetabaseThemePreset,
   MetabaseUser,
+  MetabotAgentChartMessage,
+  MetabotAgentMessage,
+  MetabotAgentTextMessage,
+  MetabotChartProps,
+  MetabotErrorMessage,
+  MetabotMessage,
+  MetabotUserTextMessage,
+  ParameterChangeSource,
+  ParameterChangePayload,
+  UseMetabotResult,
   SdkEntityToken,
   SdkCollectionId,
   SdkDashboardId,
@@ -130,6 +141,8 @@ export type {
   SdkQuestionId,
   SdkQuestionEntityPublicProps,
   SdkQuestionTitleProps,
+  SqlParameterChangeSource,
+  SqlParameterChangePayload,
   SdkUserId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
@@ -137,7 +150,7 @@ export type {
 export type {
   EmbeddingEntityType,
   EmbeddingDataPicker,
-} from "metabase-types/store/embedding-data-picker";
+} from "metabase/redux/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";

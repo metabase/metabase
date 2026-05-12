@@ -38,11 +38,14 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  batch-delete-permissions!
+  batch-insert-permissions!
   disable-perms-cache
   download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  index-database-permissions
   is-superuser?
   is-data-analyst?
   most-permissive-database-permission-for-user
@@ -52,9 +55,6 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
-  set-external-group-permissions!
-  set-new-database-permissions!
-  set-new-table-permissions!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
@@ -66,7 +66,12 @@
   with-additional-table-permission
   with-relevant-permissions-for-user
   has-any-transforms-permission?
-  has-db-transforms-permission?]
+  has-db-transforms-permission?
+  set-default-group-permissions!
+  set-default-database-permissions!
+  set-default-table-permissions!
+  with-global-permissions-lock
+  with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping

@@ -553,33 +553,40 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("font", () => {
-    const font = "Open Sans";
-
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
     });
 
     it("should apply correct font", () => {
-      setApplicationFontTo(font);
+      setApplicationFontTo("Open Sans");
       cy.signInAsNormalUser();
       cy.visit("/");
-      cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
+      cy.get("body").should(
+        "have.css",
+        "font-family",
+        '"Open Sans", Lato, sans-serif',
+      );
     });
 
     it("should be able to make multiple font changes (metabase#45486)", () => {
       cy.intercept("PUT", "/api/setting/application-font").as("saveFont");
-      const fonts = ["Lora", "Merriweather", "Montserrat", "Lato"];
+      const fontsWithExpectedFallback = [
+        ["Lora", "serif"],
+        ["Merriweather", "Lora, serif"],
+        ["Montserrat", "sans-serif"],
+        ["Lato", "Arial, sans-serif"],
+      ];
       cy.visit("/admin/settings/whitelabel/branding");
 
-      fonts.forEach((newFont) => {
+      fontsWithExpectedFallback.forEach(([newFont, fallback]) => {
         cy.findByLabelText("Font").click();
         H.selectDropdown().findByText(newFont).click();
         cy.wait("@saveFont");
         cy.get("body").should(
           "have.css",
           "font-family",
-          `${newFont}, sans-serif`,
+          `${newFont}, ${fallback}`,
         );
       });
     });

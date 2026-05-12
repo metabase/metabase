@@ -1,24 +1,21 @@
 import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import { singularize } from "metabase/lib/formatting";
-import type { NormalizedTable } from "metabase-types/api";
+import { singularize } from "metabase/utils/formatting";
+import type { Measure, NormalizedTable, Segment } from "metabase-types/api";
 
 import Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
 import type ForeignKey from "./ForeignKey";
-import type Measure from "./Measure";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
-import type Segment from "./Segment";
 
-interface Table
-  extends Omit<
-    NormalizedTable,
-    "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
-  > {
+interface Table extends Omit<
+  NormalizedTable,
+  "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
+> {
   db?: Database;
   schema?: Schema;
   fields?: Field[];

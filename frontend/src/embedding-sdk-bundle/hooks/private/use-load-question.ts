@@ -16,8 +16,8 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
-import { type Deferred, defer } from "metabase/lib/promise";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
+import { type Deferred, defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -149,9 +149,12 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return { ...results, originalQuestion };
     } catch (err) {
-      // Ignore cancelled requests (e.g. when the component unmounts).
-      // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
+      // Ignore cancelled requests (e.g. when the component unmounts, or when a
+      // controlled `sqlParameters` push cancels the in-flight load query via the
+      // shared `deferredRef`). React simulates unmounting on strict mode,
+      // therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
+        setIsQuestionLoading(false);
         return {};
       }
 

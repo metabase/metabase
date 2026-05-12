@@ -1,5 +1,8 @@
+agent-api-enabled?: null
 aggregated-query-row-limit: null
+ai-features-enabled?: null
 allowed-iframe-hosts: null
+analytics-pii-retention-enabled: null
 application-colors: null
 application-favicon-url: null
 application-font: null
@@ -16,6 +19,7 @@ custom-geojson: null
 custom-geojson-enabled: null
 custom-homepage: null
 custom-homepage-dashboard: null
+custom-viz-enabled: null
 default-maps-enabled: null
 disable-cors-on-localhost: null
 email-max-recipients-per-second: null
@@ -39,13 +43,18 @@ landing-page-illustration-custom: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null
+metabot-advanced-permissions: null
 metabot-chat-system-prompt: null
 metabot-enabled?: null
 metabot-icon: null
+metabot-limit-reset-rate: null
+metabot-limit-unit: null
 metabot-name: null
 metabot-nlq-system-prompt: null
+metabot-quota-reached-message: null
 metabot-show-illustrations: null
 metabot-sql-system-prompt: null
+mcp-enabled?: null
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null

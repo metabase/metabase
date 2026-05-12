@@ -1,12 +1,13 @@
 (ns metabase.metabot.self.openai
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -103,7 +104,9 @@
                                                                       :inputTextDelta delta}))
              (= (:type chunk)
                 "response.completed")           (rf {:type  :usage
-                                                     :usage (:usage response)
+                                                     :usage (let [u (:usage response)]
+                                                              {:promptTokens     (:input_tokens u 0)
+                                                               :completionTokens (:output_tokens u 0)})
                                                      ;; non-standard extension, not in AISDK5
                                                      :id    (:id response)
                                                      :model @model-name})
@@ -157,41 +160,47 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
+(defn- openai-errors [res]
+  (let [status    (long (:status res 0))
+        error-msg (get-in res [:body :error :message])]
+    (case status
+      401 (tru "OpenAI API key expired or invalid")
+      403 (tru "OpenAI API key has insufficient permissions")
+      404 (tru "OpenAI API endpoint or model listing is unavailable")
+      429 (tru "OpenAI API has rate limited us")
+      500 (tru "OpenAI API is not working but not saying why")
+      (if error-msg
+        (tru "OpenAI API error (HTTP {0}): {1}" status error-msg)
+        (tru "OpenAI API error (HTTP {0})" status)))))
+
 (defn list-models
-  "List available OpenAI models using the configured API key."
-  ([]
-   (list-models (llm/llm-openai-api-key)))
-  ([api-key]
-   (when (str/blank? api-key)
-     (throw (ex-info "No OpenAI API key is set" {:api-error true})))
+  "List available OpenAI models.
+  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  ([] (list-models {}))
+  ([{:keys [api-key ai-proxy?]}]
+   (when (and api-key (str/blank? api-key))
+     (throw (core/missing-api-key-ex "OpenAI")))
    (try
-     (let [res (http/get (str (llm/llm-openai-api-base-url) "/v1/models")
-                         {:as      :json
-                          :headers {"Authorization" (str "Bearer " api-key)
-                                    "Content-Type"  "application/json"}})]
+     (let [auth (core/resolve-auth "openai" "OpenAI"
+                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openai-api-key)))]
+                                     {:url     (llm/llm-openai-api-base-url)
+                                      :headers {"Authorization" (str "Bearer " k)}})
+                                   ai-proxy?)
+           res  (core/request auth {:method  :get
+                                    :url     "/v1/models"
+                                    :as      :json
+                                    :headers {"Content-Type" "application/json"}})]
        {:models (mapv (fn [model]
                         {:id           (:id model)
                          :display_name (:id model)})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (if-let [res (some-> (ex-data e) json/decode-body)]
-         (let [status (:status res)
-               msg    (case (int status)
-                        401 "OpenAI API key expired or invalid"
-                        403 "OpenAI API key has insufficient permissions"
-                        404 "OpenAI API endpoint or model listing is unavailable"
-                        429 "OpenAI API has rate limited us"
-                        500 "OpenAI API is not working but not saying why"
-                        "Unhandled error accessing OpenAI API")]
-           (throw (ex-info msg (assoc res :api-error true) e)))
-         (throw e))))))
+       (core/rethrow-api-error! "openai" openai-errors e)))))
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
-  (when-not (llm/llm-openai-api-key)
-    (throw (ex-info "No OpenAI API key is set" {:api-error true})))
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
@@ -212,18 +221,28 @@
                     temperature (assoc :temperature temperature)
                     max-tokens  (assoc :max_tokens max-tokens))]
     (try
-      (let [res (http/post (str (llm/llm-openai-api-base-url) "/v1/responses")
-                           {:as      :stream
-                            :headers {"Authorization" (str "Bearer " (llm/llm-openai-api-key))
-                                      "Content-Type"  "application/json"}
-                            :body    (json/encode req)})]
-        (core/sse-reducible (:body res)))
+      (let [api-key  (not-empty (llm/llm-openai-api-key))
+            auth     (core/resolve-auth "openai" "OpenAI"
+                                        (when api-key
+                                          {:url     (llm/llm-openai-api-base-url)
+                                           :headers {"Authorization" (str "Bearer " api-key)}})
+                                        ai-proxy?)
+            response (core/request auth
+                                   {:method  :post
+                                    :url     "/v1/responses"
+                                    :as      :stream
+                                    :headers {"Content-Type" "application/json"}
+                                    :body    (json/encode req)})]
+        (-> (core/sse-reducible (:body response))
+            (debug/capture-stream {:provider "openai"
+                                   :model    model
+                                   :url      "/v1/responses"
+                                   :request  req})))
       (catch Exception e
-        (if-let [res (ex-data e)]
-          (throw (ex-info (.getMessage e) (json/decode-body res)))
-          (throw e))))))
+        (core/rethrow-api-error! "openai" openai-errors e)))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."
   [& args]
-  (eduction (openai->aisdk-chunks-xf) (apply openai-raw args)))
+  (let [raw (apply openai-raw args)]
+    (eduction (openai->aisdk-chunks-xf) raw)))

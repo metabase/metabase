@@ -10,6 +10,10 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
@@ -211,7 +215,7 @@
             (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
-            (storage/store! (seq @extraction) dump-dir)
+            (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
 
             (testing "for Actions"
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
@@ -447,7 +451,7 @@
                              :values_source_type   :card}]}
                          (set (map :parameters (by-model extraction "Card")))))
 
-                  (storage/store! (seq extraction) dump-dir)))
+                  (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
 
               (testing "ingest and load"
                 (ts/with-db dest-db
@@ -555,7 +559,7 @@
                           {:model "Table"    :id "Linked table"}]}
                        (set (serdes/dependencies extracted-dashboard))))
 
-                (storage/store! (seq extraction) dump-dir)))
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
 
             (testing "ingest and load"
               ;; ingest
@@ -615,7 +619,7 @@
                       hydrated-dashcards))))
           (testing "extract and store"
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir)))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
           (testing "ingest and load"
             (ts/with-db dest-db
               (testing "doing ingestion"
@@ -672,7 +676,7 @@
                                                                     :card_id          card-id-2
                                                                     :dashboard_tab_id tab-id-2}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
 
             (testing "ingest and load"
               (ts/with-db dest-db
@@ -725,7 +729,7 @@
              :model/Card      {card-eid :entity_id}    {:name         "Card on the Dashboard"
                                                         :dashboard_id dashboard-id}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
 
             (testing "ingest and load"
               (ts/with-db dest-db
@@ -754,7 +758,7 @@
              :model/Database _ {:router_database_id router-db-id
                                 :name "Destination"}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-              (storage/store! (seq extraction) dump-dir))
+              (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
               (ts/with-db dest-db
                 (testing "doing ingestion"
@@ -837,7 +841,7 @@
                                    :products.title    %products.title
                                    :orders.product_id %orders.product_id})
                   (reset! card1s card)
-                  (storage/store! (extract/extract {}) dump-dir)))))
+                  (storage/store! (extract/extract {}) (storage.files/file-writer dump-dir))))))
 
           (ts/with-db dest-db
             ;; ensure there is something in db so that test-data gets different field ids for sure
@@ -849,11 +853,11 @@
               (mt/db)
               (mt/$ids nil
                 (testing "Column ids are different in different dbs")
-                (is (not= @old-ids
-                          {:people.name       %people.name
+                (is (not= {:people.name       %people.name
                            :orders.user_id    %orders.user_id
                            :products.title    %products.title
-                           :orders.product_id %orders.product_id}))
+                           :orders.product_id %orders.product_id}
+                          @old-ids))
 
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
 
@@ -876,7 +880,7 @@
         (let [coll (ts/create! :model/Collection :name "coll")
               _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
           (storage/store! (extract/extract {:no-settings   true
-                                            :no-data-model true}) dump-dir)
+                                            :no-data-model true}) (storage.files/file-writer dump-dir))
 
           (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
 
@@ -900,7 +904,7 @@
         (let [coll (ts/create! :model/Collection :name "coll")
               _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
           (storage/store! (extract/extract {:no-settings   true
-                                            :no-data-model true}) dump-dir)
+                                            :no-data-model true}) (storage.files/file-writer dump-dir))
           (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
 
           (testing "continue-on-error false (default) — throws on ingestion errors"
@@ -927,7 +931,7 @@
                                :type :channel/http
                                :details {:url         "http://example.com"
                                          :auth-method :none}}]
-            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))
             (ts/with-db dest-db
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
@@ -956,7 +960,7 @@
                                                                {:aggregation [[:metric metric-id]]
                                                                 :breakout    [[:field %orders.user_id nil]]})}]
           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-            (storage/store! (seq extraction) dump-dir))
+            (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
           (testing "ingest and load"
             (ts/with-db dest-db
               (testing "doing ingestion"
@@ -988,7 +992,7 @@
           (serdes/with-cache
             (-> (extract/extract {:no-settings   true
                                   :no-data-model true})
-                (storage/store! dump-dir))))
+                (storage/store! (storage.files/file-writer dump-dir)))))
         (testing "loads well too"
           (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
               "ingested successfully"))))))
@@ -1014,3 +1018,23 @@
                   "ingestion should succeed")
               (is (t2/exists? :model/Collection :entity_id coll-eid)
                   "collection should have been imported from old-format path"))))))))
+
+(deftest query-with-missing-table-and-field-test
+  (testing "An exported query whose table/field have been deleted re-imports by synthesizing inactive rows"
+    (mt/with-temp
+      [:model/Database {db-id :id} {}
+       :model/Table    {table-id :id, table-name :name, table-schema :schema} {:db_id db-id}
+       :model/Field    {field-id :id, field-name :name} {:table_id table-id :base_type :type/Text}]
+      (let [mp       (lib-be/application-database-metadata-provider db-id)
+            query    (-> (lib/query mp (lib.metadata/table mp table-id))
+                         (lib/with-fields [(lib.metadata/field mp field-id)]))
+            exported (serdes/export-mbql query)
+            _        (t2/delete! :model/Field :id field-id)
+            _        (t2/delete! :model/Table :id table-id)
+            imported (serdes/import-mbql exported)
+            table    (t2/select-one :model/Table :db_id db-id :schema table-schema :name table-name)
+            field    (t2/select-one :model/Field :table_id (:id table) :name field-name)]
+        (is (=? {:db_id db-id :schema table-schema :name table-name :active false} table))
+        (is (=? {:table_id (:id table) :name field-name :active false}             field))
+        (is (= (:id table) (lib/primary-source-table-id imported)))
+        (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))

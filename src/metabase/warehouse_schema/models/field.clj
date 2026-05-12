@@ -15,6 +15,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -420,8 +421,8 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field]
-  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
@@ -460,18 +461,18 @@
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:fingerprint :fingerprint_version :last_analyzed]
+   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         (serdes/nested :model/Dimension :field_id opts)}
-   :defaults {:active                     true
-              :database_is_auto_increment false
-              :database_required          false
-              :is_defective_duplicate     false
-              :json_unfolding             false
-              :preview_display            true}})
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
@@ -479,3 +480,42 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
+
+(defmethod serdes/metadata-query :model/Field
+  [model opts]
+  (t2/reducible-query
+   {:select [[:f.id :id]
+             [:f.table_id :table_id]
+             [:f.name :name]
+             [:f.parent_id :parent_id]
+             [:f.fk_target_field_id :fk_target_field_id]
+             [:f.description :description]
+             [:f.base_type :base_type]
+             [:f.database_type :database_type]
+             [:f.effective_type :effective_type]
+             [:f.semantic_type :semantic_type]
+             [:f.coercion_strategy :coercion_strategy]
+             [:f.nfc_path :nfc_path]]
+    :from   [[(t2/table-name model) :f]]
+    :join   [[(t2/table-name :model/Table) :t]    [:= :f.table_id :t.id]
+             [(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
+    :where  [:and
+             (serdes/metadata-query-filter :model/Database :db opts)
+             (serdes/metadata-query-filter :model/Table :t opts)
+             (serdes/metadata-query-filter model :f opts)]}))
+
+(defmethod serdes/metadata-query-filter :model/Field
+  [_model alias {:keys [field-ids]}]
+  (cond-> [:and
+           [:= (u/qualified-key alias :active) true]
+           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
+    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
+
+(defmethod serdes/metadata-query-format :model/Field
+  [_model {:keys [base_type effective_type nfc_path] :as row}]
+  (-> row
+      (assoc :effective_type (when (not= base_type effective_type) effective_type))
+      (assoc :nfc_path (cond-> nfc_path
+                         (string? nfc_path) json/decode
+                         nfc_path           seq))
+      u/remove-nils))

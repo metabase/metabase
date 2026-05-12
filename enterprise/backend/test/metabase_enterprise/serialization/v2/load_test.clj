@@ -8,10 +8,12 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -590,6 +592,7 @@
           field1s    (atom nil)
           field2s    (atom nil)
           field3s    (atom nil)
+          field4s    (atom nil)
           dash1s     (atom nil)
           dash2s     (atom nil)
           tab2s      (atom nil)
@@ -618,6 +621,7 @@
             (reset! field1s  (ts/create! :model/Field :name "subtotal" :table_id (:id @table1s)))
             (reset! field2s  (ts/create! :model/Field :name "invoice" :table_id (:id @table1s)))
             (reset! field3s  (ts/create! :model/Field :name "discount" :table_id (:id @table1s)))
+            (reset! field4s  (ts/create! :model/Field :name "quantity" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! :model/Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! dash2s   (ts/create! :model/Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
@@ -674,7 +678,12 @@
                                                  :parameterMapping
                                                  {"qweqwe" {:id     "qweqwe"
                                                             :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                            :target {:id "amount_between" :type "variable"}}}}}}
+                                                            :target {:id "amount_between" :type "variable"}}}}}
+                                               (json/encode [:ref [:field (:id @field4s) nil]])
+                                               {:click_behavior
+                                                {:type     "link"
+                                                 :linkType "url"
+                                                 :linkTemplate "https://example.com/order/{{QUANTITY}}"}}}
                                               :click_behavior     {:type     "link"
                                                                    :linkType "question"
                                                                    :targetId (:id @card1s)}}
@@ -747,7 +756,13 @@
                                                   :parameterMapping
                                                   {"qweqwe" {:id "qweqwe"
                                                              :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                             :target {:id "amount_between" :type "variable"}}}}))]
+                                                             :target {:id "amount_between" :type "variable"}}}})
+                                       (assoc-in [:column_settings
+                                                  (json/encode [:ref [:field [:my-db nil :orders :quantity] nil]])
+                                                  :click_behavior]
+                                                 {:type     "link"
+                                                  :linkType "url"
+                                                  :linkTemplate "https://example.com/order/{{QUANTITY}}"}))]
                   (is (= exp-card
                          (:visualization_settings card)))
                   (is (= exp-dashcard
@@ -1511,6 +1526,23 @@
             (is (= (str "qwe_" (:name coll))
                    (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
 
+(deftest path-error-data-handles-lookup-failure-test
+  (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
+            (e.g. because the outer load transaction is already poisoned by the real failure).
+            This is what lets the caller's ex-info still chain the original cause instead of
+            being replaced by a `current transaction is aborted` error from the enrichment lookup."
+    (with-redefs [serdes/load-find-local (fn [_] (throw (ex-info "current transaction is aborted" {})))]
+      (let [path   [{:model "Card" :id "some-entity-id"}]
+            result (#'serdes.load/path-error-data
+                    :metabase-enterprise.serialization.v2.load/load-failure
+                    #{}
+                    path)]
+        (is (nil? (:local-id result))
+            "local-id is nil when the lookup fails")
+        (is (= "Card" (:model result)))
+        (is (= :metabase-enterprise.serialization.v2.load/load-failure (:error result)))
+        (is (= [{:model "Card" :id "some-entity-id"}] (:path result)))))))
+
 (deftest circular-links-test
   (ts/with-dbs [source-db dest-db]
     (ts/with-db source-db
@@ -2157,3 +2189,112 @@
             (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
               (is (some? metabot))
               (is (= "Minimal Bot" (:name metabot))))))))))
+
+(deftest library-subcollection-round-trip-test
+  (testing "Library subcollection structure and types are preserved through serdes round-trip"
+    (let [serialized (atom nil)
+          library    (atom nil)
+          data-root  (atom nil)
+          metrics-root (atom nil)
+          data-sub   (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extraction of library hierarchy"
+          (ts/with-db source-db
+            (reset! library      (ts/create! :model/Collection
+                                             :name      "Library"
+                                             :type      collection/library-collection-type
+                                             :location  "/"
+                                             :entity_id @#'collection/library-entity-id))
+            (reset! data-root    (ts/create! :model/Collection
+                                             :name      "Data"
+                                             :type      collection/library-data-collection-type
+                                             :location  (format "/%d/" (:id @library))
+                                             :entity_id @#'collection/library-data-entity-id))
+            (reset! metrics-root (ts/create! :model/Collection
+                                             :name      "Metrics"
+                                             :type      collection/library-metrics-collection-type
+                                             :location  (format "/%d/" (:id @library))
+                                             :entity_id @#'collection/library-metrics-entity-id))
+            (reset! data-sub     (ts/create! :model/Collection
+                                             :name     "Sales Tables"
+                                             :type     collection/library-data-collection-type
+                                             :location (format "/%d/%d/" (:id @library) (:id @data-root))))
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
+                        (and (= model "Collection") (= id (:entity_id @library))))
+                      @serialized))))
+
+        (testing "loading into destination preserves library structure"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [lib-dest     (t2/select-one :model/Collection :entity_id (:entity_id @library))
+                  data-dest    (t2/select-one :model/Collection :entity_id (:entity_id @data-root))
+                  metrics-dest (t2/select-one :model/Collection :entity_id (:entity_id @metrics-root))
+                  sub-dest     (t2/select-one :model/Collection :entity_id (:entity_id @data-sub))]
+              (testing "all collections exist"
+                (is (some? lib-dest))
+                (is (some? data-dest))
+                (is (some? metrics-dest))
+                (is (some? sub-dest)))
+              (testing "types are preserved"
+                (is (= collection/library-collection-type (:type lib-dest)))
+                (is (= collection/library-data-collection-type (:type data-dest)))
+                (is (= collection/library-metrics-collection-type (:type metrics-dest)))
+                (is (= collection/library-data-collection-type (:type sub-dest))))
+              (testing "parent-child hierarchy is correct"
+                (is (= "/" (:location lib-dest)))
+                (is (= (format "/%d/" (:id lib-dest)) (:location data-dest)))
+                (is (= (format "/%d/" (:id lib-dest)) (:location metrics-dest)))
+                (is (= (format "/%d/%d/" (:id lib-dest) (:id data-dest)) (:location sub-dest)))))))))))
+
+(deftest library-import-preserves-existing-permissions-test
+  (testing "Importing library subcollections does not overwrite existing permissions on destination"
+    (let [serialized (atom nil)
+          eid-data   "testdataeid0000000000"
+          eid-sub    "testsubeid00000000000"]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extract from source"
+          (ts/with-db source-db
+            (let [data-coll (ts/create! :model/Collection
+                                        :name      "Data"
+                                        :type      collection/library-data-collection-type
+                                        :location  "/"
+                                        :entity_id eid-data)
+                  _sub-coll (ts/create! :model/Collection
+                                        :name     "Sales Tables"
+                                        :type     collection/library-data-collection-type
+                                        :location (format "/%d/" (:id data-coll))
+                                        :entity_id eid-sub)]
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+
+        (testing "pre-populate dest with same collections and custom permissions"
+          (ts/with-db dest-db
+            (let [data-dest (ts/create! :model/Collection
+                                        :name      "Data"
+                                        :type      collection/library-data-collection-type
+                                        :location  "/"
+                                        :entity_id eid-data)
+                  sub-dest  (ts/create! :model/Collection
+                                        :name     "Sales Tables"
+                                        :type     collection/library-data-collection-type
+                                        :location (format "/%d/" (:id data-dest))
+                                        :entity_id eid-sub)
+                  group     (ts/create! :model/PermissionsGroup :name "Custom Group")]
+              (perms/grant-collection-readwrite-permissions! group data-dest)
+              (perms/grant-collection-read-permissions! group sub-dest)
+              (let [perms-before (set (map #(select-keys % [:group_id :object])
+                                           (t2/select :model/Permissions
+                                                      :object [:like (format "/collection/%d/%%" (:id data-dest))])))]
+                (testing "custom permissions exist before import"
+                  (is (seq perms-before)))
+
+                (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+                (let [data-after (t2/select-one :model/Collection :entity_id eid-data)
+                      perms-after (set (map #(select-keys % [:group_id :object])
+                                            (t2/select :model/Permissions
+                                                       :object [:like (format "/collection/%d/%%" (:id data-after))])))]
+                  (testing "collection still exists with same ID"
+                    (is (= (:id data-dest) (:id data-after))))
+                  (testing "permissions are unchanged after import"
+                    (is (= perms-before perms-after))))))))))))

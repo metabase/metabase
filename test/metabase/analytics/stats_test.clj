@@ -558,6 +558,7 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :data-complexity-score
     :development-mode
     :library
     :embedding
@@ -567,10 +568,14 @@
     :enhancements
     :etl-connections
     :etl-connections-pg
+    :offer-metabase-ai-managed
     :query-reference-validation
+    :metabase-ai-managed
+    :metabot-v3
     :cloud-custom-smtp
     :session-timeout-config
-    :sso-oidc})
+    :sso-oidc
+    :admin-security-center})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

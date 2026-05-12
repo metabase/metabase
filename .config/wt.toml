@@ -1,0 +1,10 @@
+# worktrunk project config — https://worktrunk.dev
+# Hooks run when switching, creating, merging, or removing worktrees.
+
+# Setup tasks for newly-created worktrees. Run once, blocking, in the
+# new worktree's cwd before post-start background tasks kick off.
+[pre-start]
+# Trust mise config so it loads the project's tool versions without prompting.
+trust-mise = "mise trust"
+# Install JS deps so husky git hooks get wired up in the new worktree.
+bun-install = "bun install"

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
-import type { Deferred } from "metabase/lib/promise";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { QueryParams } from "metabase/query_builder/actions";
+import type { Deferred } from "metabase/utils/promise";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card, ParameterValuesMap } from "metabase-types/api";
@@ -52,6 +53,7 @@ export type SdkQuestionEntityPublicProps =
        */
       questionId: SdkQuestionId | null;
       token?: never;
+      query?: never;
     }
   | {
       questionId?: never;
@@ -59,6 +61,19 @@ export type SdkQuestionEntityPublicProps =
        * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
+      query?: never;
+    };
+
+/**
+ * Internal type that adds the `query` prop used by the `useMetabot` hook. Not
+ * re-exported from the public SDK package entry point.
+ */
+export type SdkQuestionEntityInternalProps =
+  | SdkQuestionEntityPublicProps
+  | {
+      questionId?: never;
+      token?: never;
+      query: string;
     };
 
 export interface SdkQuestionState {
@@ -128,3 +143,27 @@ export type SqlParameterValues = Record<
   | null
   | undefined
 >;
+
+/**
+ * Source of a sql-parameter-change event:
+ * - `initial-state` - first applied state, fired once per question load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
+
+/**
+ * Payload passed to `onSqlParametersChange` callback
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangePayload = {
+  source: SqlParameterChangeSource;
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+};

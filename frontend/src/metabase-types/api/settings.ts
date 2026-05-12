@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { CurrencyStyle } from "metabase/lib/formatting";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -229,7 +231,13 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "paused" | "error";
+  status:
+    | "not-connected"
+    | "initializing"
+    | "syncing"
+    | "active"
+    | "paused"
+    | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -253,6 +261,7 @@ const tokenStatusFeatures = [
   "content-management",
   "content-translation",
   "content-verification",
+  "data-complexity-score",
   "dashboard-subscription-filters",
   "database-auth-providers",
   "disable-password-login",
@@ -263,7 +272,10 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
   "metabase-store-managed",
+  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -321,11 +333,17 @@ export const tokenFeatures = [
   "cloud_custom_smtp",
   "content_translation",
   "content_verification",
+  "custom-viz",
+  "custom-viz-available",
+  "data-complexity-score",
   "disable_password_login",
   "embedding",
   "embedding_sdk",
   "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",
@@ -361,8 +379,8 @@ export const tokenFeatures = [
   "library",
   "support-users",
   "tenants",
-  "workspaces",
   "writable_connection",
+  "admin_security_center",
   "ai_controls",
 ] as const;
 
@@ -476,6 +494,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
@@ -502,6 +521,9 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -510,6 +532,7 @@ interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "llm-openai-api-key"?: string;
   "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
@@ -525,6 +548,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -579,6 +604,7 @@ interface PublicSettings {
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -594,6 +620,9 @@ interface PublicSettings {
   "metabot-name": string;
   "metabot-icon": string | null;
   "metabot-show-illustrations": boolean;
+  "metabot-limit-unit": MetabotLimitType;
+  "metabot-limit-reset-rate": MetabotLimitPeriod;
+  "metabot-quota-reached-message": string | null;
   "metabot-chat-system-prompt": string | null;
   "metabot-nlq-system-prompt": string | null;
   "metabot-sql-system-prompt": string | null;
@@ -612,6 +641,8 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "custom-viz-enabled": boolean;
+  "custom-viz-plugin-dev-mode-enabled": boolean;
   "non-table-chart-generated": boolean;
   "use-tenants": boolean;
 }
@@ -728,6 +759,7 @@ export interface EnterpriseSettings extends Settings {
   "send-new-sso-user-admin-email?"?: boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
   "jwt-user-provisioning-enabled?": boolean;
   "jwt-identity-provider-uri": string | null;
   "jwt-shared-secret": string | null;
@@ -761,6 +793,7 @@ export interface EnterpriseSettings extends Settings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;
@@ -776,12 +809,14 @@ export interface EnterpriseSettings extends Settings {
   "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
+  "transforms-meter-locked": boolean | null;
   /**
    * @deprecated
    */

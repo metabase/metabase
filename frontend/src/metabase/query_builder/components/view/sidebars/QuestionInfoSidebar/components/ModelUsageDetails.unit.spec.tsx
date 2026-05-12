@@ -14,9 +14,13 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -34,10 +38,6 @@ import {
   createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { DEFAULT_LIST_LIMIT } from "./hooks";
@@ -209,7 +209,7 @@ describe("ModelUsageDetails", () => {
         for (const q of usedByQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         expect(
@@ -235,7 +235,7 @@ describe("ModelUsageDetails", () => {
         for (const q of slicedQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         // Expect sixth card to be hidden

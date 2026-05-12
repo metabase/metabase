@@ -94,14 +94,6 @@
                     [:= :search_index.model [:inline "table"]]
                     clause]]))))
 
-(def null-collection-id-should-be-ignored-for-unpublished-tables-clause
-  "For every model except tables, a null collection ID means the thing is in Our Analytics.
-
-  For tables, this means there is no associated collection and the collection_id should be completely ignored."
-  [:and
-   [:= :model [:inline "table"]]
-   [:= :is_published false]])
-
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -109,10 +101,11 @@
   (let [collection-id-col :search_index.collection_id
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
-        excluded-models   (search.filter/models-without-collection)
+        ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
+        ;; permissions and published-via-collection access, so we exclude them from collection filtering here.
+        excluded-models   (conj (vec (search.filter/models-without-collection)) "table")
         or-null           #(vector :or
                                    [:in :search_index.model excluded-models]
-                                   null-collection-id-should-be-ignored-for-unpublished-tables-clause
                                    %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])

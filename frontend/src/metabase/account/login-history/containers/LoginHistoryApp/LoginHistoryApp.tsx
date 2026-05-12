@@ -1,5 +1,5 @@
 import { useGetLoginHistoryQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
 import LoginHistoryList from "../../components/LoginHistory";
 

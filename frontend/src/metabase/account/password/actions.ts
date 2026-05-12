@@ -1,10 +1,10 @@
 import { getIn } from "icepick";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { UtilApi } from "metabase/services";
+import { passwordComplexityDescription } from "metabase/utils/password";
 
 export const validatePassword = async (password: string) => {
-  const error = MetabaseSettings.passwordComplexityDescription(password);
+  const error = passwordComplexityDescription(password);
   if (error) {
     return error;
   }

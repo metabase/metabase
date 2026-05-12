@@ -50,17 +50,21 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Install the SDK in your React application
 
-You can install the modular embedding SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 56-stable for Metabase 56:
+Install the SDK Package matching your Metabase major with the `@{major}-stable` dist-tag, so the package's TypeScript types and exported components stay in sync with your instance's SDK Bundle:
 
 ```bash
-npm install @metabase/embedding-sdk-react@56-stable
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
+
+On **Metabase 56 or earlier**, the SDK major _must_ match your Metabase major. On **Metabase 57 and later**, you can also install without a dist-tag to track the latest published SDK major.
+
+See [SDK versions](./version.md) for more on compatibility.
 
 ### Resolving `@types/react` version mismatches
 
@@ -129,7 +133,7 @@ The SDK doesn't support:
 
 Other limitations:
 
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- You can only have one dashboard per application page. You can, however, embed multiple questions on the same app page, or use [dashboard tabs](../../dashboards/introduction.md#dashboard-tabs) to create multiple different card layouts on one dashboard.
 - If you have Leaflet 1.x as a dependency in your app, you may run into compatibility issues. You can try using Leaflet 2.x instead.
 
 ## Issues, feature requests and support

@@ -14,7 +14,7 @@ import {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";

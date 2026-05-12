@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -174,6 +175,7 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
                   :data_layer   :internal}]
+    (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -188,6 +190,11 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
+
+    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+    ;; Tables can be moved out of any collection, however.
+    (when (:collection_id changes)
+      (collection/check-allowed-content :table (:collection_id changes)))
 
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
@@ -223,28 +230,36 @@
 
         :else (merge table changes)))))
 
+(defn- group-perm-defaults
+  "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
+  [table all-users-group non-magic-groups non-admin-groups]
+  (let [au-id    (u/the-id all-users-group)
+        is-audit (= (:db_id table) audit/audit-db-id)
+        defaults (fn [groups perm-type value]
+                   (mapv (fn [g] {:group-id (u/the-id g) :perm-type perm-type :default-value value}) groups))]
+    (concat
+     ;; view-data: all non-admin → :unrestricted
+     (defaults non-admin-groups :perms/view-data :unrestricted)
+     ;; create-queries
+     (if is-audit
+       (defaults non-admin-groups :perms/create-queries :no)
+       (concat [{:group-id au-id :perm-type :perms/create-queries :default-value :query-builder}]
+               (defaults non-magic-groups :perms/create-queries :no)))
+     ;; download-results
+     [{:group-id au-id :perm-type :perms/download-results :default-value :one-million-rows}]
+     (defaults non-magic-groups :perms/download-results :no)
+     ;; manage-table-metadata
+     (defaults non-admin-groups :perms/manage-table-metadata :no))))
+
 (defn- set-new-table-permissions!
   [table]
-  (t2/with-transaction [_conn]
+  (perms/with-db-scoped-permissions-lock (:db_id table)
     (let [all-users-group  (perms/all-users-group)
           non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
-      ;; Data access permissions
-      (if (= (:db_id table) audit/audit-db-id)
-        (do
-         ;; Tables in audit DB should start out with no query access in all groups
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
-        (do
-          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
-      ;; Download permissions
-      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
-      ;; Table metadata management
-      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-default-table-permissions!
+       table
+       (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -379,122 +394,17 @@
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
    & [{:keys [include-published-via-collection? active-only?]}]]
-  (let [opts (cond-> {}
-               (some? active-only?) (assoc :active-only? active-only?))
-        {:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping opts)]
-    (if-let [published-clause (and include-published-via-collection?
-                                   (perms/published-table-visible-clause column-or-exp user-info))]
-      {:clause [:or clause
-                [:and
-                 [:in column-or-exp (perms/visible-table-filter-select
-                                     :id
-                                     user-info
-                                     {:perms/view-data :unrestricted}
-                                     opts)]
-                 published-clause]]
-       :with with}
-      {:clause clause
-       :with with})))
+  (perms/visible-table-filter-with-cte
+   column-or-exp user-info permission-mapping
+   (cond-> {}
+     (some? active-only?) (assoc :active-only? active-only?)
+     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
-
-;;; ----------------------------------------- Transform Target Tables -----------------------------------------------
-
-(defn upsert-transform-target-table!
-  "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
-   If the table doesn't exist, creates it as a transform target (inactive, not yet physically materialized).
-   If it already exists (active or inactive), returns its id without modification.
-   Returns the table id.
-
-   The `transform_target` column is **conservative**: it is set eagerly to `true` when a transform is
-   configured to target this table (synchronous, never stale), and cleared asynchronously when no
-   transforms reference it anymore. This means the column may have false positives (a table marked as
-   a target when no transform actually targets it) but **never false negatives** (a targeted table
-   will always have `transform_target = true`)."
-  [db-id schema table-name]
-  (app-db/update-or-insert!
-   :model/Table
-   {:db_id db-id :schema schema :name table-name}
-   (fn [existing]
-     (when-not existing
-       {:display_name        (humanization/name->human-readable-name table-name)
-        :active              false
-        :transform_target    true
-        :data_source         :metabase-transform
-        :data_authority      :computed
-        :initial_sync_status "complete"}))))
-
-(defn delete-orphaned-provisional-table!
-  "If `table-id` points at an inactive provisional table that is not referenced by any other
-   transform or workspace row (excluding `exclude-transform-id`), delete it."
-  [table-id exclude-transform-id]
-  (when table-id
-    (when-let [table (t2/select-one :model/Table :id table-id
-                                    :active false :transform_target true :deactivated_at nil
-                                    :data_source :metabase-transform)]
-      (let [referenced?
-            (seq
-             (t2/query {:union
-                        (cons
-                         {:select [[[:inline 1] :ref]]
-                          :from   [:transform]
-                          :where  [:and
-                                   [:= :target_table_id (:id table)]
-                                   [:not= :id exclude-transform-id]]}
-                         (for [[table-name column-name]
-                               [["workspace_input" "table_id"]
-                                ["workspace_output" "global_table_id"]
-                                ["workspace_output" "isolated_table_id"]
-                                ["workspace_output_external" "global_table_id"]
-                                ["workspace_output_external" "isolated_table_id"]
-                                ["workspace_input_external" "table_id"]]]
-                           {:select [[[:inline 1] :ref]]
-                            :from   [(keyword table-name)]
-                            :where  [:= (keyword column-name) (:id table)]}))}))]
-        (when-not referenced?
-          (t2/delete! :model/Table :id (:id table)))))))
-
-(defn gc-transform-target-tables!
-  "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or workspace table. Safe because these rows were never active,
-   so they have no child records.
-
-   Note: this only handles *inactive* provisional tables. Active tables that were previously
-   targeted by a transform retain `transform_target = true` even after the transform is deleted.
-   A separate process to reset `transform_target` on active, unreferenced tables is not yet
-   implemented.
-
-   Uses FK-based NOT IN queries rather than scanning JSON columns."
-  []
-  (let [candidate-ids (t2/select-fn-set :id :model/Table
-                                        :active false :transform_target true :deactivated_at nil
-                                        :data_source :metabase-transform)]
-    (when (seq candidate-ids)
-      (let [referenced-ids
-            (into #{}
-                  (map :id)
-                  (t2/query {:union
-                             (for [[table-name column-name]
-                                   [["transform" "target_table_id"]
-                                    ["workspace_input" "table_id"]
-                                    ["workspace_output" "global_table_id"]
-                                    ["workspace_output" "isolated_table_id"]
-                                    ["workspace_output_external" "global_table_id"]
-                                    ["workspace_output_external" "isolated_table_id"]
-                                    ["workspace_input_external" "table_id"]]]
-                               {:select [[(keyword column-name) :id]]
-                                :from   [(keyword table-name)]
-                                :where  [:and
-                                         [:not= (keyword column-name) nil]
-                                         [:in (keyword column-name) candidate-ids]]})}))
-            dead-ids (into [] (remove referenced-ids) candidate-ids)]
-        (when (seq dead-ids)
-          (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
-          (t2/delete! :model/Table :id [:in dead-ids]))))))
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -700,7 +610,7 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false
@@ -711,6 +621,36 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (conj (serdes/storage-path-prefixes (serdes/path table))
         {:label (:name table) :key (:name table)}))
+
+(defmethod serdes/metadata-query :model/Table
+  [model opts]
+  (t2/reducible-query
+   {:select [[:t.id :id]
+             [:t.db_id :db_id]
+             [:t.name :name]
+             [:t.schema :schema]
+             [:t.description :description]]
+    :from   [[(t2/table-name model) :t]]
+    :join   [[(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
+    :where  [:and
+             (serdes/metadata-query-filter :model/Database :db opts)
+             (serdes/metadata-query-filter model :t opts)]}))
+
+(defmethod serdes/metadata-query-filter :model/Table
+  [_model alias {:keys [user-info table-ids schema-ids]}]
+  (let [perm-mapping {:perms/view-data      :unrestricted
+                      :perms/create-queries :query-builder}]
+    (cond-> [:and
+             [:= (u/qualified-key alias :active) true]
+             [:= (u/qualified-key alias :visibility_type) nil]
+             [:in (u/qualified-key alias :id)
+              (perms/visible-table-filter-select :id user-info perm-mapping)]]
+      (seq schema-ids) (conj (into [:or]
+                                   (for [[db-id schemas] schema-ids]
+                                     [:and
+                                      [:= (u/qualified-key alias :db_id) db-id]
+                                      [:in (u/qualified-key alias :schema) schemas]])))
+      (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

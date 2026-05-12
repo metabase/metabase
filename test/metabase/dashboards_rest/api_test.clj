@@ -15,6 +15,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -44,6 +45,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -687,6 +689,43 @@
                                                                       :position         0}]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
+
+(deftest put-dashboard-hides-unreadable-cards-test
+  (testing "PUT /api/dashboard/:id should hide card details from collections the user cannot access (#UXW-3571)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {accessible-coll-id :id} {:name "Accessible Collection"}
+                     :model/Collection    {restricted-coll-id :id} {:name "Restricted Collection"}
+                     :model/Card          {readable-card-id :id}   {:name          "Readable Card"
+                                                                    :collection_id accessible-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Card          {restricted-card-id :id} {:name          "Restricted Card"
+                                                                    :collection_id restricted-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard     {dashboard-id :id}       {:name          "Test Dashboard"
+                                                                    :collection_id accessible-coll-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      readable-card-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      restricted-card-id}]
+        ;; Grant read+write to accessible collection, no access to restricted collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) accessible-coll-id)
+        (let [get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+              put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                 {:name "Test Dashboard"})
+              get-cards    (set (map :card (:dashcards get-response)))
+              put-cards    (set (map :card (:dashcards put-response)))]
+          (letfn [(restricted-card [cards]
+                    (first (filter #(= (:id %) restricted-card-id) cards)))
+                  (sensitive-keys [card]
+                    (select-keys card [:name :dataset_query :collection_id :creator_id :result_metadata :database_id]))]
+            (testing "GET hides restricted card details"
+              (is (empty? (sensitive-keys (restricted-card get-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT hides restricted card details the same way as GET"
+              (is (empty? (sensitive-keys (restricted-card put-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT and GET return the same card representations for restricted cards"
+              (is (= (restricted-card get-cards) (restricted-card put-cards))))))))))
 
 (deftest fetch-dashboard-in-personal-collection-test
   (testing "GET /api/dashboard/:id"
@@ -3508,14 +3547,14 @@
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest parameter-values-from-card-test-4
-  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by MLv2,
+  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by Lib,
   ;; the FE does not use the /api/table/:card__id/query_metadata API call to determine the fields which can be filtered
   ;; on a saved question. It uses `Lib.filterableColumns` instead, which given a saved question with aggregations in the
   ;; last stage will return the pre-aggregation columns on that last stage. That allows linking the dashboard filter not
   ;; to the aggregations and breakouts, but to the pre-aggregation columns which feed into the aggregations.
   ;; This is typically what's wanted for filtering an aggregated query in a dashboard: filtering SUM(subtotal) to a
   ;; time range, product category, etc.
-  ;; This test should either (1) be rehabilitated to use MLv2 to get the set of columns for filtering a dashcard (like
+  ;; This test should either (1) be rehabilitated to use Lib to get the set of columns for filtering a dashcard (like
   ;; the FE); or (2) just be dropped if it's not providing value.
   #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
     ;; FE use the id returned by /api/table/:card__id/query_metadata
@@ -3561,7 +3600,7 @@
 (deftest ^:parallel valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(result= [expected {:keys [filtered filtering]}]
-              (testing (format "\nGET dashboard/params/valid-filter-fields")
+              (testing "\nGET dashboard/params/valid-filter-fields"
                 (is (= expected
                        (mt/user-http-request :rasta :get 200 "dashboard/params/valid-filter-fields"
                                              :filtered filtered :filtering filtering)))))]
@@ -3620,6 +3659,48 @@
                                                                 "_text_"
                                                               ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
+
+(deftest field-filter-uuid-operator-dashboard-test
+  (testing "Dashboard ID filter with operator parameter type on a UUID native field filter (#73758)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                                     :test/uuids-in-create-table-statements)
+      (mt/dataset uuid-dogs
+        (let [uuid-value "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+          (doseq [param-type ["string/=" "number/="]]
+            (testing (str "param type " (pr-str param-type))
+              (mt/with-temp
+                [:model/Card {card-id :id}
+                 {:dataset_query {:database (mt/id)
+                                  :type     :native
+                                  :native   (assoc (mt/count-with-field-filter-query
+                                                    driver/*driver* :people :id uuid-value)
+                                                   :template-tags
+                                                   {"id" {:name         "id"
+                                                          :display-name "id"
+                                                          :type         :dimension
+                                                          :widget-type  :id
+                                                          :dimension    [:field (mt/id :people :id) nil]}})}}
+                 :model/Dashboard {dashboard-id :id}
+                 {:parameters [{:name "id" :slug "id" :id "_id_" :type param-type}]}
+                 :model/DashboardCard {dashcard-id :id}
+                 {:dashboard_id       dashboard-id
+                  :card_id            card-id
+                  :parameter_mappings [{:parameter_id "_id_"
+                                        :card_id      card-id
+                                        :target       [:dimension [:template-tag "id"]]}]}]
+                ;; In production, malli checks are switched off (see metabase.util.malli.fn/instrument-ns?), and
+                ;; this code path produces a non-final intermediate value that doesn't satisfy the legacy
+                ;; ::mbql.s/Filter schema. We disable enforcement here to match production runtime.
+                (mu/disable-enforcement
+                  (is (=? {:row_count 1
+                           :data      {:rows [[1]]}}
+                          (mt/user-http-request :rasta :post 202
+                                                (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                        dashboard-id dashcard-id card-id)
+                                                {:parameters [{:id    "_id_"
+                                                               :type  param-type
+                                                               :target [:dimension [:template-tag "id"]]
+                                                               :value [uuid-value]}]}))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -4644,9 +4725,9 @@
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
 
-(deftest run-mlv2-dashcard-query-test
+(deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
-    (testing "Should be able to run a query for a DashCard with an MLv2 query (#39024)"
+    (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -5491,3 +5572,115 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)       |
+;;; +--------------------------------------------------------------------------------------------------+
+
+(deftest parameterized-mbql-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — MBQL card with parameters should not update result_metadata"
+    (mt/with-temp [:model/Card          {card-id :id}
+                   {:dataset_query (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})}
+                   :model/Dashboard     {dashboard-id :id}
+                   {:parameters [{:name "Product ID"
+                                  :slug "product_id"
+                                  :id   "_PRODUCT_ID_"
+                                  :type :id}]}
+                   :model/DashboardCard {dashcard-id :id}
+                   {:card_id            card-id
+                    :dashboard_id       dashboard-id
+                    :parameter_mappings [{:parameter_id "_PRODUCT_ID_"
+                                          :card_id      card-id
+                                          :target       [:dimension (mt/$ids orders $product_id)]}]}]
+      ;; Run without parameters to establish baseline metadata
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+        (mt/user-http-request :rasta :post 202 url)
+        (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (is (some? baseline-metadata)
+              "Baseline metadata should be established by non-parameterized run")
+          ;; Run with a parameter value — metadata should NOT be updated
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 1}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should not change when MBQL dashcard is run with parameters")
+          ;; Run with a different parameter value — metadata should still not change
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 50}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should remain stable across different parameter values"))))))
+
+(deftest parameterized-native-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with non-default parameters should not update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+          ;; Run without parameters to establish baseline metadata (uses template tag default)
+          (mt/user-http-request :rasta :post 202 url)
+          (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (is (some? baseline-metadata)
+                "Baseline metadata should be established by default-value run")
+            ;; Run with a non-default parameter value — metadata should NOT be updated
+            (mt/user-http-request :rasta :post 202 url
+                                  {:parameters [{:id "_DASH_PRODUCT_ID_" :value "50"}]})
+            (is (= baseline-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id card-id))
+                "result_metadata should not change when native dashcard is run with non-default parameter values")))))))
+
+(deftest native-dashcard-with-default-parameters-persists-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with default parameter values SHOULD update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        ;; Run with the default value passed explicitly (as the frontend does)
+        (mt/user-http-request :rasta :post 202
+                              (dashboard-card-query-url dashboard-id card-id dashcard-id)
+                              {:parameters [{:id "_DASH_PRODUCT_ID_" :value "1"}]})
+        (is (some? (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            "result_metadata should be persisted when native dashcard runs with default parameter values")))))

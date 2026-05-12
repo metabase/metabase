@@ -4,8 +4,8 @@ import {
   type ModalRootProps,
 } from "@mantine/core";
 
-import { useDisableCommandPalette } from "metabase/palette/hooks/useDisableCommandPalette";
 import { PreventEagerPortal } from "metabase/ui";
+import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
 export type { ModalProps } from "@mantine/core";
 export { useModalsStack } from "@mantine/core";

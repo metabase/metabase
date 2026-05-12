@@ -9,14 +9,17 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store])
+   [oidc-provider.store :as oidc.store]
+   [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -72,7 +75,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {}}
+    :capabilities    {:tools {} :resources {}}
     :serverInfo      server-info}))
 
 (defn- handle-tools-list [id _params token-scopes]
@@ -82,6 +85,20 @@
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
+
+(defn- handle-resources-list [id _params token-scopes]
+  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
+
+(defn- handle-resources-read [id params token-scopes]
+  (let [uri (:uri params)]
+    (if (or (not (string? uri)) (str/blank? uri))
+      (jsonrpc-error id -32602 "Missing required parameter: uri")
+      (let [{:keys [status contents]} (mcp.resources/read-resource uri token-scopes {})]
+        ;; :not-found and :scope-denied collapse to the same generic error so we
+        ;; don't leak resource existence to callers without scope.
+        (case status
+          (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
+          :ok                        (jsonrpc-response id {:contents contents}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -97,6 +114,8 @@
         "notifications/initialized" nil
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
+        "resources/list"            (handle-resources-list id params token-scopes)
+        "resources/read"            (handle-resources-read id params token-scopes)
         "ping"                      (handle-ping id params)
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -246,10 +265,38 @@
     (or session-err
         {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
 
+;;; -------------------------------------------------- Throttling --------------------------------------------------
+
+;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
+;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check counts every
+;; request (not just failures) which is correct here — we want to cap total throughput
+;; regardless of success to prevent resource exhaustion from a compromised token.
+(def ^:private one-minute-ms (* 60 1000))
+
+(def ^:private mcp-throttler
+  (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms one-minute-ms))
+
+(defn- check-throttle
+  "Returns a 429 JSON-RPC response if rate-limited, nil otherwise."
+  [user-id]
+  (try
+    (throttle/check mcp-throttler user-id)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (let [message       (ex-message e)
+            retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+          retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
   (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+
+(def +mcp-enabled
+  "Wrap routes so they may only be accessed when the MCP server is enabled."
+  mcp.validation/+mcp-enabled)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint.
@@ -261,15 +308,17 @@
            session-auth    api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
-                   (try
-                     (let [request (assoc request :token-scopes token-scopes)]
-                       (case (:request-method request)
-                         :post   (respond (handle-post user-id request))
-                         :get    (handle-get user-id request respond raise)
-                         :delete (respond (handle-delete user-id request))
-                         (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
-                     (catch Throwable e
-                       (raise e)))))]
+                   (if-let [throttle-err (check-throttle user-id)]
+                     (respond throttle-err)
+                     (try
+                       (let [request (assoc request :token-scopes token-scopes)]
+                         (case (:request-method request)
+                           :post   (respond (handle-post user-id request))
+                           :get    (handle-get user-id request respond raise)
+                           :delete (respond (handle-delete user-id request))
+                           (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                       (catch Throwable e
+                         (raise e))))))]
          (cond
            (some? origin-error)
            (respond origin-error)

@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
@@ -55,8 +56,9 @@
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
         (t2/update! :model/Metabot id metabot-updates)
-        (metabot.suggested-prompts/delete-all-metabot-prompts id)
-        (metabot.suggested-prompts/generate-sample-prompts id))
+        (when-not (metabot.usage/managed-free-limit-reached?)
+          (metabot.suggested-prompts/delete-all-metabot-prompts id)
+          (metabot.suggested-prompts/generate-sample-prompts id)))
       (t2/select-one :model/Metabot :id id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -69,6 +71,7 @@
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
+    (metabot.usage/check-metabase-managed-free-limit!)
     (metabot.suggested-prompts/delete-all-metabot-prompts id)
     (metabot.suggested-prompts/generate-sample-prompts id))
   api/generic-204-no-content)

@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getTimelineName } from "metabase/lib/timelines";
+import { getTimelineName } from "metabase/common/utils/timelines";
 import { Ellipsified } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

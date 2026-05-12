@@ -14,7 +14,10 @@ import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/priva
 import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -36,7 +39,10 @@ import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/c
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { getLastVisibleStageIndex } from "../utils/stages";
 
 import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
 
@@ -68,6 +74,8 @@ export const SdkQuestionProvider = ({
   dataPicker,
   targetCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads,
   withAlerts,
@@ -83,6 +91,11 @@ export const SdkQuestionProvider = ({
   const [isFirstRender, setIsFirstRender] = useState(true);
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
+
+  const effectiveInitialSqlParameters = getEffectiveParameterValues(
+    sqlParameters,
+    initialSqlParameters,
+  );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
@@ -174,8 +187,23 @@ export const SdkQuestionProvider = ({
     token,
     options,
     deserializedCard,
-    initialSqlParameters,
+    initialSqlParameters: effectiveInitialSqlParameters,
     targetDashboardId,
+  });
+
+  useWarnConflictingParameterProps({
+    initialParameters: initialSqlParameters,
+    parameters: sqlParameters,
+    initialParameterPropName: "initialSqlParameters",
+    parameterPropName: "sqlParameters",
+  });
+
+  useSdkControlledSqlParameters({
+    sqlParameters,
+    onSqlParametersChange,
+    question,
+    parameterValues: parameterValues ?? {},
+    updateParameterValues,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -219,8 +247,24 @@ export const SdkQuestionProvider = ({
     [navigateToNewCard, navigation, question, loadAndQueryQuestion],
   );
 
+  const query = question?.query();
+  const lastVisibleStageIndex = useMemo(
+    () => getLastVisibleStageIndex(query),
+    [query],
+  );
+
+  const updateAndNormalizeQuestion = useCallback(
+    (nextQuestion: Question, options?: { run?: boolean }) =>
+      updateQuestion(
+        nextQuestion.setQuery(Lib.dropEmptyStages(nextQuestion.query())),
+        options,
+      ),
+    [updateQuestion],
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    lastVisibleStageIndex,
     token,
     isQuestionLoading,
     isQueryRunning,
@@ -230,6 +274,7 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
+    updateAndNormalizeQuestion,
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
@@ -264,15 +309,10 @@ export const SdkQuestionProvider = ({
   // Push the question name to the stack if the stack is empty (ie: this is the root question)
   // We need to wait for the question to load to have the name
   useEffect(() => {
-    if (
-      question &&
-      !!questionId &&
-      navigation &&
-      navigation.stack.length === 0
-    ) {
+    if (question && navigation && navigation.stack.length === 0) {
       navigation.push({
         type: "question",
-        id: questionId,
+        id: questionId ?? null,
         name: question.displayName() || t`Question`,
       });
     }

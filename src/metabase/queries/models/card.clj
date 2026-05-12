@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
@@ -366,7 +366,7 @@
            (when table-id
              {:table_id table-id}))))))))
 
-;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
+;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
 ;;;
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
@@ -736,7 +736,7 @@
     (log/infof "Card %d has a blank :dataset_query - this indicates a Metabase issue. Legacy MBQL: %s"
                (:id card) (:legacy_query card))
     (let [uniques (swap! unique-cards-with-blank-dataset-query conj (:id card))]
-      (analytics/set! :metabase-card/unique-cards-failed-conversion (count uniques))))
+      (analytics/set-gauge! :metabase-card/unique-cards-failed-conversion (count uniques))))
   ;; Always returns the original card.
   card)
 
@@ -847,7 +847,16 @@
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id))
+  (t2/delete! :model/Revision :model "Card", :model_id id)
+  ;; delete any card-type notifications for this card — must materialize IDs first because
+  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
+  ;; return empty by the time the actual DELETE executes.
+  (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
+                                                      :payload_type :notification/card
+                                                      :payload_id [:in {:select [:id]
+                                                                        :from   [:notification_card]
+                                                                        :where  [:= :card_id id]}]))]
+    (t2/delete! :model/Notification :id [:in notification-ids])))
 
 (defmethod serdes/hash-fields :model/Card
   [_card]
@@ -859,7 +868,7 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
@@ -869,7 +878,11 @@
             cards-on-first-tab (or (when first-tab
                                      (:cards first-tab))
                                    dashcards)
-            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
+            new-spot (if-let [{:keys [size_x size_y]} size]
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab (:display card)))]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :dashboard_tab_id (some-> first-tab :id)
                                                 :card_id (:id card)
@@ -924,7 +937,7 @@
                (not new-dashboard-id))))
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
 
     (when (and
            ;; we start out as a DQ, and
@@ -1004,7 +1017,7 @@
                                                   (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
-         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -1248,14 +1261,18 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- export-result-metadata [metadata]
-  (when metadata
-    (for [m metadata]
-      (-> (dissoc m :fingerprint)
-          (m/update-existing :table_id  serdes/*export-table-fk*)
-          (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)
-          (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))))
+(defn- export-result-metadata [card _k metadata]
+  (if (and (seq metadata) (model? card))
+    (let [native?   (lib/native? (:dataset_query card))
+          keep-keys (into #{:name}
+                          (map u/->snake_case_en)
+                          (lib/model-preserved-keys native?))]
+      (mapv (fn [m]
+              (-> (select-keys m keep-keys)
+                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
+                  (m/update-existing :id serdes/*export-field-fk*)))
+            metadata))
+    ::serdes/skip))
 
 (defn- import-result-metadata [metadata]
   (when metadata
@@ -1311,15 +1328,13 @@
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
           :cache_ttl
-          ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
-          :dependency_analysis_version
           ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
+    :database_id            (serdes/fk :model/Database)
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
@@ -1331,7 +1346,7 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}
+    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}}
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true
@@ -1387,30 +1402,31 @@
         ;; Dimensions are columns that are not aggregations
         (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
-(defn- extract-non-temporal-dimension-ids
-  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)
-        dim-ids    (->> dimensions
-                        (remove lib.types/temporal?)
-                        (keep :id)
-                        sort)]
-    (json/encode (or dim-ids []))))
-
-(defn- has-temporal-dimension?
-  "Return true if the query has any temporal dimensions. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)]
-    (boolean (some lib.types/temporal? dimensions))))
+(defn- extract-temporal-info
+  "Compute has-temporal-dim and non-temporal-dim-ids in a single dataset-query->dimensions call.
+  Returns a map with snake_case keys so the ingestion layer can merge them directly into the document,
+  avoiding the cost of calling dataset-query->dimensions twice per card. See PR 60912.
+  Short-circuits for native queries: they have no returnable column metadata so temporal dims are always absent."
+  [{:keys [dataset_query query_type]}]
+  (if (= query_type "native")
+    {:has_temporal_dim false :non_temporal_dim_ids "[]"}
+    (let [dimensions   (dataset-query->dimensions dataset_query)
+          non-temp-ids (->> dimensions
+                            (remove lib.types/temporal?)
+                            (keep :id)
+                            sort)]
+      {:has_temporal_dim     (boolean (some lib.types/temporal? dimensions))
+       :non_temporal_dim_ids (json/encode (or (seq non-temp-ids) []))})))
 
 (defn- maybe-extract-native-query
-  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil."
-  [{query :dataset_query, :as _card}]
-  (let [query ((:out lib-be/transform-query) query)
-        query-text (when (lib/native-only-query? query)
-                     (:native (lib/query-stage query 0)))]
-    (when query-text
-      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil.
+  Uses `query_type` to short-circuit without parsing JSON for non-native cards."
+  [{:keys [dataset_query query_type]}]
+  (when (= query_type "native")
+    (let [query      ((:out lib-be/transform-query) dataset_query)
+          query-text (:native (lib/query-stage query 0))]
+      (when query-text
+        (subs query-text 0 (min (count query-text) search/max-searchable-value-length))))))
 
 (defn ^:private base-search-spec
   []
@@ -1425,7 +1441,7 @@
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
-                                         :fields [:dataset_query]}
+                                         :fields [:dataset_query :query_type]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
@@ -1435,10 +1451,9 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
-                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :fields [:dataset_query]}
-                  :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :fields [:dataset_query]}}
+                  :temporal-info        {:fn       extract-temporal-info
+                                         :fields   [:dataset_query :query_type]
+                                         :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
@@ -234,6 +235,25 @@
                (->> emails
                     (map (comp set :recipients))
                     set))))})))
+
+(deftest deactivated-user-recipients-are-not-emailed-test
+  (testing "card alert emails are not sent to deactivated user recipients (GDGT-1927)"
+    (mt/with-temp [:model/User {deactivated-id :id} {:email "deactivated@metabase.com" :is_active false}
+                   :model/User {active-id :id}      {:email "active@metabase.com"      :is_active true}]
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type :channel/email
+                                   :recipients   [{:type :notification-recipient/user :user_id deactivated-id}
+                                                  {:type :notification-recipient/user :user_id active-id}
+                                                  {:type :notification-recipient/raw-value :details {:value "external@metabase.com"}}]}]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (let [all-recipients (into #{} (mapcat :recipients) emails)]
+              (is (contains? all-recipients "active@metabase.com"))
+              (is (contains? all-recipients "external@metabase.com"))
+              (is (not (contains? all-recipients "deactivated@metabase.com"))
+                  "deactivated user must not receive the alert")))})))))
 
 (deftest send-condition-has-result-test
   (testing "no result should skip sending"
@@ -554,6 +574,35 @@
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
               (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
                          {:order-by [[:started_at :asc]]}))))))
+
+(deftest orphaned-notification-deactivates-on-send-test
+  (testing "A notification whose card no longer exists should deactivate itself instead of crashing forever"
+    (notification.tu/with-notification-cleanup!
+      (mt/with-temp [:model/Card {card-id :id} {:name          notification.tu/default-card-name
+                                                :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+        (let [notification (models.notification/create-notification!
+                            {:payload_type :notification/card
+                             :payload      {:card_id card-id}
+                             :creator_id   (mt/user->id :crowberto)}
+                            []
+                            [@notification.tu/default-email-handler])]
+          (testing "sanity: notification is active"
+            (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))
+          ;; Simulate an orphaned notification: delete the NotificationCard directly.
+          ;; This mirrors what happens in prod when there is no Malli validation and a card is deleted (FK cascade deletes NotificationCard)
+          ;; but the Notification row itself survives.
+          (t2/delete! :model/NotificationCard (:payload_id notification))
+          (testing "sanity: notification still exists but its payload record is gone"
+            (is (t2/exists? :model/Notification (:id notification)))
+            (is (not (t2/exists? :model/NotificationCard (:payload_id notification)))))
+          (testing "sending the orphaned notification should delete it rather than crash forever"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Card no longer exists"
+                 (#'notification.send/send-notification-sync!
+                  (t2/select-one :model/Notification (:id notification))))))
+          (testing "the notification should be deleted"
+            (is (not (t2/exists? :model/Notification (:id notification))))))))))
 
 (defn- email->attachment-line-count
   [email]

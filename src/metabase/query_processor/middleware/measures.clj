@@ -14,13 +14,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys some]]))
 
 (defn- contains-metric-reference?
@@ -78,7 +78,7 @@
   "Replace :measure clauses in a stage with their actual aggregation expressions."
   [stage        :- ::lib.schema/stage
    id->measure  :- [:map-of pos-int? :map]]
-  (lib.util.match/replace-lite stage
+  (match/replace stage
     [:measure opts (id :guard pos-int?)]
     (b/cond
       :let [measure (get id->measure id)]

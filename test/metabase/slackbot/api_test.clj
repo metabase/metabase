@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.server.settings :as server.settings]
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.persistence :as slackbot.persistence]
@@ -422,43 +423,82 @@
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"
     (let [slack-id "U12345SLACK"]
-      (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
-                                                               :is_active  true
-                                                               :sso_source "slack"}
-                     :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
-                                                               :is_active  false
-                                                               :sso_source "slack"}
-                     :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
-                                                               :is_active  true
-                                                               :sso_source "google"}]
-        (testing "returns user ID for active user with sso_source 'slack'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (= active-slack-user-id
-                   (#'slackbot/slack-id->user-id slack-id)))))
+      (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+        (mt/with-temp [:model/User {active-slack-user-id :id}   {:email      "active-slack@example.com"
+                                                                 :is_active  true
+                                                                 :sso_source "slack"}
+                       :model/User {inactive-slack-user-id :id} {:email      "inactive-slack@example.com"
+                                                                 :is_active  false
+                                                                 :sso_source "slack"}
+                       :model/User {active-google-user-id :id}  {:email      "active-google@example.com"
+                                                                 :is_active  true
+                                                                 :sso_source "google"}]
+          (testing "returns user ID for active user with sso_source 'slack'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-slack-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (= active-slack-user-id
+                     (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns user ID for active user with sso_source 'google'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (= active-google-user-id
-                   (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns user ID for active user with sso_source 'google'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (= active-google-user-id
+                     (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil for inactive user with sso_source 'slack'"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
-                                                :provider    "slack-connect"
-                                                :provider_id slack-id}]
-            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns nil for inactive user with sso_source 'slack'"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 0}}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil for active user with different provider"
-          (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
-                                                :provider    "google"
-                                                :provider_id slack-id}]
-            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
+          (testing "returns nil for active user with different provider"
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
+                                                  :provider    "google"
+                                                  :provider_id slack-id}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
 
-        (testing "returns nil when no AuthIdentity exists"
-          (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))
+          (testing "returns nil when no AuthIdentity exists"
+            (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))
+
+(deftest slack-id->user-id-signing-secret-version-test
+  (testing "slack-id->user-id respects signing secret version"
+    (let [slack-id "U12345VERSION"]
+      (mt/with-temp [:model/User {user-id :id} {:email     "version-test@example.com"
+                                                :is_active true}]
+        (testing "identity with current version is accepted"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 1}}]
+              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "identity with old version is rejected after rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 2]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id
+                                                  :metadata    {:signing_secret_version 1}}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "legacy identity with no version is accepted before any rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
+              (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
+
+        (testing "legacy identity with no version is rejected after rotation"
+          (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
+            (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
+                                                  :provider    "slack-connect"
+                                                  :provider_id slack-id}]
+              (is (nil? (#'slackbot/slack-id->user-id slack-id))))))))))
 
 (deftest channel-message-without-mention-no-auth-test
   (testing "POST /events with channel message (no @mention) from unlinked user should NOT send auth message"
@@ -676,6 +716,35 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
 
+(deftest put-slack-settings-signing-secret-version-test
+  (testing "resaving the same signing secret does not increment the version"
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id "old-id"
+                                             slack-connect-client-secret "old-secret"
+                                             metabot-slack-signing-secret "same-signing-secret"]
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                     {:slack-connect-client-id "new-id"
+                                      :slack-connect-client-secret "new-secret"
+                                      :metabot-slack-signing-secret "same-signing-secret"})))
+        (is (= 7
+               (server.settings/slack-connect-signing-secret-version))))))
+
+  (testing "changing the signing secret increments the version"
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id "old-id"
+                                             slack-connect-client-secret "old-secret"
+                                             metabot-slack-signing-secret "old-signing-secret"]
+        (is (= {:ok true}
+               (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                     {:slack-connect-client-id "new-id"
+                                      :slack-connect-client-secret "new-secret"
+                                      :metabot-slack-signing-secret "new-signing-secret"})))
+        (is (= 8
+               (server.settings/slack-connect-signing-secret-version)))))))
+
 (deftest feedback-modal-view-test
   (testing "positive feedback modal has no issue type dropdown"
     (let [view (#'slackbot/feedback-modal-view true {:conversation_id "c1"})]
@@ -690,17 +759,13 @@
       (is (= "freeform_feedback" (:block_id (second (:blocks view))))))))
 
 (deftest handle-feedback-action-authenticated-test
-  (testing "feedback action opens modal with correct private_metadata but does not submit to harbormaster"
-    (let [conversation-id    "conv-123"
-          harbormaster-calls (atom [])
-          open-view-calls    (atom [])]
-      (with-redefs [slackbot/slack-id->user-id                  (constantly (mt/user->id :rasta))
-                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                (swap! harbormaster-calls conj feedback)
-                                                                true)
-                    slackbot.client/open-view                    (fn [_ params]
-                                                                   (swap! open-view-calls conj params)
-                                                                   {:ok true})]
+  (testing "feedback action opens modal with correct private_metadata"
+    (let [conversation-id "conv-123"
+          open-view-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
+                    slackbot.client/open-view  (fn [_ params]
+                                                 (swap! open-view-calls conj params)
+                                                 {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id conversation-id :positive true})}]
           (#'slackbot/handle-feedback-action
@@ -718,9 +783,7 @@
               (is (= conversation-id (:conversation_id pm)))
               (is (true? (:positive pm)))
               (is (= "C123" (:channel_id pm)))
-              (is (= "123.456" (:message_ts pm)))))
-          (testing "harbormaster was NOT called on button click"
-            (is (= 0 (count @harbormaster-calls)))))))))
+              (is (= "123.456" (:message_ts pm))))))))))
 
 (deftest handle-feedback-action-negative-test
   (testing "negative feedback action opens modal with issue type dropdown"
@@ -743,15 +806,11 @@
 
 (deftest handle-feedback-action-unauthenticated-test
   (testing "feedback action is silently skipped for unauthenticated user"
-    (let [harbormaster-calls (atom [])
-          open-view-calls    (atom [])]
-      (with-redefs [slackbot/slack-id->user-id                  (constantly nil)
-                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                (swap! harbormaster-calls conj feedback)
-                                                                true)
-                    slackbot.client/open-view                    (fn [_ params]
-                                                                   (swap! open-view-calls conj params)
-                                                                   {:ok true})]
+    (let [open-view-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id (constantly nil)
+                    slackbot.client/open-view  (fn [_ params]
+                                                 (swap! open-view-calls conj params)
+                                                 {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id "conv-456" :positive false})}
               result (#'slackbot/handle-feedback-action
@@ -762,141 +821,275 @@
                        :message-ts    "123.456"})]
           (is (nil? result) "should return nil when user is not found")
           (testing "nothing was called"
-            (is (= 0 (count @harbormaster-calls)))
             (is (= 0 (count @open-view-calls)))))))))
 
+(defn- setup-slackbot-feedback!
+  "Insert a `metabot_conversation` with `user-id` as originator and one
+  assistant message with a fresh `external_id`. Returns `{:conv-id
+  :external-id :message-id}`. Caller must `tear-down-slackbot-feedback!`."
+  [user-id]
+  (let [conv-id     (str (random-uuid))
+        external-id (str (random-uuid))]
+    (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+    (let [msg-id (first (t2/insert-returning-pks!
+                         :model/MetabotMessage
+                         {:conversation_id conv-id
+                          :role            "assistant"
+                          :profile_id      "slackbot"
+                          :external_id     external-id
+                          :total_tokens    5
+                          :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
+      {:conv-id conv-id :external-id external-id :message-id msg-id})))
+
+(defn- tear-down-slackbot-feedback!
+  [conv-id]
+  (t2/delete! :model/MetabotMessage :conversation_id conv-id)
+  (t2/delete! :model/MetabotConversation :id conv-id))
+
+(defn- modal-submission-payload
+  "Build a Slack view_submission payload for the feedback modal. Includes
+  `:message_external_id` only when `external-id` is non-nil; that mirrors the
+  legacy-button code path in production."
+  [{:keys [conv-id external-id user-id positive issue-type freeform
+           channel-id message-ts]
+    :or   {channel-id "C123" message-ts "123.456"}}]
+  {:type "view_submission"
+   :view {:callback_id      "metabot_feedback_modal"
+          :private_metadata (json/encode (cond-> {:conversation_id conv-id
+                                                  :positive        positive
+                                                  :user_id         user-id
+                                                  :channel_id      channel-id
+                                                  :message_ts      message-ts}
+                                           external-id (assoc :message_external_id external-id)))
+          :state            {:values (cond-> {:freeform_feedback {:freeform_input {:value freeform}}}
+                                       issue-type
+                                       (assoc :issue_type
+                                              {:issue_type_select {:selected_option {:value issue-type}}}))}}})
+
 (deftest handle-feedback-modal-submission-test
-  (testing "modal submission sends feedback to harbormaster"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        false
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:issue_type        {:issue_type_select {:selected_option {:value "not-factual"}}}
-                                               :freeform_feedback {:freeform_input {:value "The answer was wrong"}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback          {:positive          false
-                                       :message_id        "conv-123"
-                                       :issue_type        "not-factual"
-                                       :freeform_feedback "The answer was wrong"}
-                   :source            "slack"
-                   :conversation_data {:messages []}}
-                  (first @harbormaster-calls)))))))
+  (let [rasta-id (mt/user->id :rasta)]
+    (testing "negative feedback with issue_type and freeform writes a row"
+      (let [{:keys [conv-id message-id external-id]} (setup-slackbot-feedback! rasta-id)]
+        (try
+          (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                   :external-id external-id
+                                                   :user-id     rasta-id
+                                                   :positive    false
+                                                   :issue-type  "not-factual"
+                                                   :freeform    "The answer was wrong"})
+                result  (#'slackbot/handle-feedback-modal-submission payload)]
+            @result
+            (testing "local metabot_feedback row is written under the submitter's user_id"
+              (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+                (is (some? row))
+                (is (false? (:positive row)))
+                (is (= "not-factual" (:issue_type row)))
+                (is (= "The answer was wrong" (:freeform_feedback row))))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with only freeform text submits"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        true
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:freeform_feedback {:freeform_input {:value "Great response!"}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive          true
-                              :freeform_feedback "Great response!"}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "positive feedback with only freeform text submits"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
+        (try
+          (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                   :external-id external-id
+                                                   :user-id     rasta-id
+                                                   :positive    true
+                                                   :freeform    "Great response!"})
+                result  (#'slackbot/handle-feedback-modal-submission payload)]
+            @result
+            (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with no details still submits basic feedback"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        true
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:freeform_feedback {:freeform_input {:value nil}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive          true
-                              :freeform_feedback ""}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "positive feedback with nil freeform is stored as nil locally"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
+        (try
+          (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                   :external-id external-id
+                                                   :user-id     rasta-id
+                                                   :positive    true
+                                                   :freeform    nil})
+                result  (#'slackbot/handle-feedback-modal-submission payload)]
+            @result
+            (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+              (is (some? row))
+              (is (nil? (:freeform_feedback row)))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with only issue type submits"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        false
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:issue_type        {:issue_type_select {:selected_option {:value "ui-bug"}}}
-                                               :freeform_feedback {:freeform_input {:value nil}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive   false
-                              :issue_type "ui-bug"}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "negative feedback with only issue type submits"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
+        (try
+          (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                   :external-id external-id
+                                                   :user-id     rasta-id
+                                                   :positive    false
+                                                   :issue-type  "ui-bug"
+                                                   :freeform    nil})
+                result  (#'slackbot/handle-feedback-modal-submission payload)]
+            @result
+            (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))))
 
-  (testing "feedback includes conversation messages from the database"
-    (let [conv-id            (str (random-uuid))
-          harbormaster-calls (atom [])]
-      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+(deftest handle-feedback-modal-submission-multi-user-test
+  (testing "two users in the same conversation can submit independent feedback on the same assistant message"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          {:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
+      (try
+        ;; lucky becomes a participant by authoring a user-turn message in the thread
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :role            "user"
                      :profile_id      "slackbot"
+                     :user_id         lucky-id
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
-        (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    10
-                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
-        (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                 (swap! harbormaster-calls conj feedback)
-                                                                 true)]
-          (let [payload {:type "view_submission"
-                         :view {:callback_id      "metabot_feedback_modal"
-                                :private_metadata (json/encode {:conversation_id conv-id
-                                                                :positive        true
-                                                                :user_id         (mt/user->id :rasta)
-                                                                :channel_id      "C123"
-                                                                :message_ts      "123.456"})
-                                :state {:values {:freeform_feedback {:freeform_input {:value "Great!"}}}}}}
-                result (#'slackbot/handle-feedback-modal-submission payload)]
-            @result
-            (is (= 1 (count @harbormaster-calls)))
-            (is (=? {:feedback          {:positive          true
-                                         :message_id        conv-id
-                                         :freeform_feedback "Great!"}
-                     :source            "slack"
-                     :conversation_data {:messages [{:role        :user
-                                                     :data        [{:_type "TEXT" :role "user" :content "What is revenue?"}]
-                                                     :profile_id  "slackbot"}
-                                                    {:role        :assistant
-                                                     :data        [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
-                                                     :profile_id  "slackbot"}]}}
-                    (first @harbormaster-calls)))))))))
+                     :data            [{:_type "TEXT" :role "user" :content "+1"}]})
+        (let [rasta-result (#'slackbot/handle-feedback-modal-submission
+                            (modal-submission-payload {:conv-id     conv-id
+                                                       :external-id external-id
+                                                       :user-id     rasta-id
+                                                       :positive    true
+                                                       :freeform    "nice"}))
+              lucky-result (#'slackbot/handle-feedback-modal-submission
+                            (modal-submission-payload {:conv-id     conv-id
+                                                       :external-id external-id
+                                                       :user-id     lucky-id
+                                                       :positive    false
+                                                       :issue-type  "ui-bug"
+                                                       :freeform    "not for me"}))]
+          @rasta-result
+          @lucky-result)
+        (let [rows    (t2/select :model/MetabotFeedback :message_id message-id
+                                 {:order-by [[:user_id :asc]]})
+              by-user (into {} (map (juxt :user_id identity)) rows)]
+          (is (= 2 (count rows)) "both submissions produce distinct rows")
+          (is (true?  (:positive (get by-user rasta-id))))
+          (is (= "nice" (:freeform_feedback (get by-user rasta-id))))
+          (is (false? (:positive (get by-user lucky-id))))
+          (is (= "ui-bug" (:issue_type (get by-user lucky-id))))
+          (is (= "not for me" (:freeform_feedback (get by-user lucky-id)))))
+        (finally (tear-down-slackbot-feedback! conv-id))))))
+
+(deftest handle-feedback-modal-submission-unresolvable-external-id-test
+  (testing "modal submission drops cleanly (no local write) when external_id cannot be resolved"
+    (let [rasta-id (mt/user->id :rasta)
+          payload  (modal-submission-payload {:conv-id     (str (random-uuid))
+                                              :external-id nil
+                                              :user-id     rasta-id
+                                              :positive    true
+                                              :freeform    "orphaned"
+                                              :channel-id  "C-missing"
+                                              :message-ts  "0.000"})
+          result   (#'slackbot/handle-feedback-modal-submission payload)]
+      (is (nil? result) "handler returns nil and does not schedule async work")
+      (is (zero? (t2/count :model/MetabotFeedback :user_id rasta-id
+                           {:where [:in :message_id
+                                    {:select [:id] :from [:metabot_message]
+                                     :where [:= :external_id "nothing-to-match"]}]}))
+          "no feedback row written for unresolvable submissions"))))
+
+(deftest handle-feedback-modal-submission-lurker-test
+  (testing "modal submission from a non-participant is rejected locally"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          {:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
+      (try
+        ;; lucky has authored no messages, so can-read? on the conversation rejects
+        (let [result (#'slackbot/handle-feedback-modal-submission
+                      (modal-submission-payload {:conv-id     conv-id
+                                                 :external-id external-id
+                                                 :user-id     lucky-id
+                                                 :positive    true
+                                                 :freeform    "lurking"}))]
+          @result)
+        (is (nil? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id lucky-id))
+            "no feedback row is written for a lurker")
+        (finally (tear-down-slackbot-feedback! conv-id))))))
+
+(deftest handle-feedback-modal-submission-resolves-via-channel-and-ts-fallback-test
+  (testing "buttons predating :message_external_id still resolve via (channel_id, message_ts)"
+    (let [rasta-id    (mt/user->id :rasta)
+          conv-id     (str (random-uuid))
+          external-id (str (random-uuid))
+          channel-id  "C-FALLBACK"
+          message-ts  "1700000000.123456"]
+      (try
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id rasta-id})
+        (let [message-id (first (t2/insert-returning-pks!
+                                 :model/MetabotMessage
+                                 {:conversation_id conv-id
+                                  :role            "assistant"
+                                  :profile_id      "slackbot"
+                                  :external_id     external-id
+                                  :channel_id      channel-id
+                                  :slack_msg_id    message-ts
+                                  :total_tokens    5
+                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))
+              ;; external-id intentionally omitted from the button payload — only channel + ts are present
+              payload    (modal-submission-payload {:conv-id     conv-id
+                                                    :external-id nil
+                                                    :user-id     rasta-id
+                                                    :positive    true
+                                                    :freeform    "from a legacy button"
+                                                    :channel-id  channel-id
+                                                    :message-ts  message-ts})
+              result     (#'slackbot/handle-feedback-modal-submission payload)]
+          @result
+          (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+            (is (some? row) "fallback resolved the message and persisted feedback")
+            (is (true? (:positive row)))
+            (is (= "from a legacy button" (:freeform_feedback row)))))
+        (finally (tear-down-slackbot-feedback! conv-id))))))
+
+;; -------------------------------- conversation-permalink ---------------------------------------
+
+(deftest conversation-permalink-returns-nil-when-slack-not-configured-test
+  (testing "conversation-permalink does not call Slack when slack-configured? is false"
+    (let [client-calls (atom 0)]
+      (with-redefs [channel.settings/slack-configured?     (constantly false)
+                    slackbot.client/get-permalink          (fn [& _]
+                                                             (swap! client-calls inc)
+                                                             {:ok true :permalink "should-not-be-returned"})]
+        (is (nil? (slackbot/conversation-permalink "C123" "1.0")))
+        (is (zero? @client-calls)
+            "no slack client call when not configured")))))
+
+(deftest conversation-permalink-returns-nil-when-channel-or-ts-missing-test
+  (testing "conversation-permalink short-circuits to nil when channel or ts is missing — no client call"
+    (let [client-calls (atom 0)]
+      (with-redefs [channel.settings/slack-configured?     (constantly true)
+                    channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                    slackbot.client/get-permalink          (fn [& _]
+                                                             (swap! client-calls inc)
+                                                             {:ok true})]
+        (is (nil? (slackbot/conversation-permalink nil "1.0")))
+        (is (nil? (slackbot/conversation-permalink "C123" nil)))
+        (is (zero? @client-calls))))))
+
+(deftest conversation-permalink-happy-path-test
+  (testing "conversation-permalink returns the Slack permalink string when ok is true"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink (fn [_client {:keys [channel ts]}]
+                                                  {:ok        true
+                                                   :permalink (format "https://slack.example/%s/%s" channel ts)})]
+      (is (= "https://slack.example/C123/1.0"
+             (slackbot/conversation-permalink "C123" "1.0"))))))
+
+(deftest conversation-permalink-returns-nil-when-slack-says-not-ok-test
+  (testing "conversation-permalink returns nil when Slack responds with {:ok false}"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink          (fn [& _]
+                                                           {:ok false :error "channel_not_found"})]
+      (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
+
+(deftest conversation-permalink-swallows-client-exception-test
+  (testing "exceptions from the Slack client are caught — function returns nil rather than propagating"
+    (with-redefs [channel.settings/slack-configured?     (constantly true)
+                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                  slackbot.client/get-permalink          (fn [& _]
+                                                           (throw (ex-info "slack down" {})))]
+      (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
 

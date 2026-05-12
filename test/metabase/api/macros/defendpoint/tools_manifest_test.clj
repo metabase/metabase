@@ -8,24 +8,37 @@
 
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :get nil))))
   (testing "DELETE defaults"
-    (is (= {:destructiveHint true
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint true :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :delete nil))))
   (testing "PUT defaults"
-    (is (= {:destructiveHint false
-            :idempotentHint  true}
+    (is (= {:annotations {:destructiveHint false :idempotentHint true}
+            :redundant   {}}
            (tools-manifest/infer-annotations :put nil))))
-  (testing "POST defaults (empty — MCP defaults apply)"
-    (is (= {}
-           (tools-manifest/infer-annotations :post nil))))
-  (testing "Explicit annotations override defaults"
-    (is (= {:readOnlyHint   true
-            :idempotentHint true}
-           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true})))))
+  (testing "POST defaults to non-destructive (opt in with :destructive? true)"
+    (is (= {:annotations {:destructiveHint false} :redundant {}}
+           (tools-manifest/infer-annotations :post nil)))
+    (is (= {:destructive? false}
+           (:redundant (tools-manifest/infer-annotations :post {:destructive? false})))))
+  (testing "destructiveHint is dropped from output when readOnlyHint is true (per MCP spec it's only meaningful for non-read-only tools)"
+    (is (= {:readOnlyHint true}
+           (:annotations (tools-manifest/infer-annotations :post {:read-only? true})))))
+  (testing "Flags :contradictory? when readOnlyHint and destructiveHint would both be true before the cleanup"
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :get {:destructive? true}))))
+    (is (true? (:contradictory? (tools-manifest/infer-annotations :delete {:read-only? true})))))
+  (testing "Explicit annotations are merged on top of method defaults"
+    (is (= {:annotations {:readOnlyHint true :idempotentHint true}
+            :redundant   {}}
+           (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true}))))
+  (testing "Reports redundant pairs that match what we'd already infer (using developer-facing keys)"
+    (is (= {:read-only? true}
+           (:redundant (tools-manifest/infer-annotations :get {:read-only? true}))))
+    (is (= {:destructive? false}
+           (:redundant (tools-manifest/infer-annotations :put {:destructive? false}))))))
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
@@ -213,6 +226,7 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
       (is (= {:name           "get_table"
+              :title          "Get Table"
               :description    "Get a table."
               :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
               :inputSchema    {:type       "object"
@@ -245,6 +259,36 @@
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/test" {:form form})]
       (is (nil? (:scope result))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-title-test
+  (testing "Throws when an explicit :title matches the title we'd infer from :name"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name  "get_table"
+                                  :title "Get Table"}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :title"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
+
+(deftest ^:parallel endpoint->tool-definition-redundant-annotations-test
+  (testing "Throws when explicit :annotations restate an HTTP-method default (e.g. :read-only? on GET)"
+    (let [form {:method   :get
+                :route    {:path "/v1/table/:id"}
+                :params   {:route {:binding '{:keys [id]}
+                                   :schema  [:map [:id :int]]}}
+                :docstr   "Get a table."
+                :metadata {:tool {:name        "get_table"
+                                  :annotations {:read-only? true}}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"redundant :annotations"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.
@@ -296,6 +340,7 @@
   :- [:map [:id :int] [:status ::test-status]]
   "Perform an action on a resource."
   {:tool {:name "test_resource_action"
+          :annotations {:read-only? true}
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
@@ -364,6 +409,7 @@
 
 (deftest ^:parallel generate-tools-manifest-get-with-route-params-test
   (is (= {:name           "test_get_thing"
+          :title          "Test Get Thing"
           :description    "A test endpoint for tools manifest generation."
           :annotations    {:readOnlyHint true :idempotentHint true}
           :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
@@ -374,6 +420,7 @@
 
 (deftest ^:parallel generate-tools-manifest-post-with-annotation-override-test
   (is (= {:name           "test_action"
+          :title          "Test Action"
           :description    "A test POST action."
           :annotations    {:readOnlyHint true}
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
@@ -384,6 +431,7 @@
 
 (deftest ^:parallel generate-tools-manifest-delete-test
   (is (= {:name           "delete_test"
+          :title          "Delete Test"
           :description    "Delete a test resource."
           :annotations    {:destructiveHint true :idempotentHint true}
           :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
@@ -394,6 +442,7 @@
 
 (deftest ^:parallel generate-tools-manifest-get-with-query-params-test
   (is (= {:name           "test_search"
+          :title          "Test Search"
           :description    "Search for things."
           :annotations    {:readOnlyHint true :idempotentHint true}
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
@@ -409,7 +458,9 @@
 
 (deftest ^:parallel generate-tools-manifest-post-with-task-support-test
   (is (= {:name           "test_resource_action"
+          :title          "Test Resource Action"
           :description    "Perform an action on a resource."
+          :annotations    {:readOnlyHint true}
           :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}
@@ -425,6 +476,7 @@
 
 (deftest ^:parallel generate-tools-manifest-put-with-three-way-merge-test
   (is (= {:name           "test_resource"
+          :title          "Test Resource"
           :description    "Update a test resource."
           :annotations    {:destructiveHint false :idempotentHint true}
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}

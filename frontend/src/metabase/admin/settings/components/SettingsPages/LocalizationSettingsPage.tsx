@@ -7,7 +7,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
 
@@ -25,6 +25,7 @@ export function LocalizationSettingsPage() {
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
+          searchable
           options={_.sortBy(availableLocales || [], ([, label]) => label).map(
             ([code, label]) => ({ label, value: code }),
           )}

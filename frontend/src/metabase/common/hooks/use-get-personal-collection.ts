@@ -1,5 +1,5 @@
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 /**

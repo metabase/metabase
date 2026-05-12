@@ -13,7 +13,7 @@ You can embed an interactive, editable, or static dashboard.
 
 ## Embedding a dashboard
 
-You can embed a dashboard using the one of the dashboard components:
+You can embed a dashboard using one of the dashboard components:
 
 ### `StaticDashboard`
 
@@ -59,6 +59,10 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/interactive-dashboard.tsx" %}
 ```
+
+## Pass parameter values to a dashboard
+
+See [Modular embedding parameters](../parameters.md#pass-parameter-values-to-a-dashboard).
 
 ## Customizing dashboard height
 

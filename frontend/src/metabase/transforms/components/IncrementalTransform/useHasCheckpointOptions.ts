@@ -5,7 +5,7 @@ import {
   useGetAdhocQueryMetadataQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";

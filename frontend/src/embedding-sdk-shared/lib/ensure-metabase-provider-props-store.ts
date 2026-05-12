@@ -30,7 +30,6 @@ export type MetabaseProviderPropsStoreInternalProps = {
 export type MetabaseProviderPropsStore = {
   getState(): MetabaseProviderPropsStoreState;
   subscribe(listener: () => void): () => void;
-  initialize(initialProps: MetabaseProviderPropsStoreExternalProps): void;
   updateInternalProps(
     internalProps: Partial<MetabaseProviderPropsStoreInternalProps>,
   ): void;
@@ -77,15 +76,6 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
 
       return () => listeners.delete(listener);
     },
-    initialize(initialProps) {
-      state = {
-        ...state,
-        props: {
-          ...getDefaultProps(),
-          ...initialProps,
-        },
-      } as MetabaseProviderPropsStoreState;
-    },
     updateInternalProps(internalProps) {
       state = {
         ...state,
@@ -109,8 +99,13 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       listeners.forEach((callback) => callback());
     },
     cleanup() {
-      listeners.clear();
-      delete win[KEY];
+      // Reset state in place rather than dropping the singleton. Subscribers
+      // (e.g. consumers of `useMetabaseAuthStatus` rendered as siblings of
+      // `<MetabaseProvider>`) keep their useSyncExternalStore subscriptions —
+      // a deleted-singleton cleanup orphans them on the abandoned store and
+      // they never see updates from the next mount cycle.
+      state = getInitialState();
+      listeners.forEach((callback) => callback());
     },
   };
 

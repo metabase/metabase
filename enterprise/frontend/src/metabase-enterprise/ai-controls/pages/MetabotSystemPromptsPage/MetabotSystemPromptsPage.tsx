@@ -4,26 +4,28 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
+import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
 import S from "./MetabotSystemPromptsPage.module.css";
-import type { SystemPromptSettingKey } from "./hooks/useSystemPromptInput";
-import { useSystemPromptInput } from "./hooks/useSystemPromptInput";
 
-interface SystemPromptPageProps {
+type SystemPromptSettingKey =
+  | "metabot-chat-system-prompt"
+  | "metabot-nlq-system-prompt"
+  | "metabot-sql-system-prompt";
+
+type SystemPromptPageProps = {
   title: string;
   description: string;
   settingKey: SystemPromptSettingKey;
-}
+};
 
-function SystemPromptPage({
-  title,
-  description,
-  settingKey,
-}: SystemPromptPageProps) {
-  const { inputText, onInputChange } = useSystemPromptInput(settingKey);
+function SystemPromptPage(props: SystemPromptPageProps) {
+  const { title, description, settingKey } = props;
+  const { handleInputChange, handleBlur, inputValue } =
+    useAdminSettingWithBlurInput(settingKey);
 
   return (
     <SettingsPageWrapper title={title} mt="sm">
@@ -34,9 +36,10 @@ function SystemPromptPage({
         <Textarea
           aria-label={title}
           className={S.textareaWrapper}
-          onChange={onInputChange}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onBlur={handleBlur}
           placeholder={getPlaceholder()}
-          value={inputText}
+          value={inputValue || ""}
         />
       </SettingsSection>
     </SettingsPageWrapper>
@@ -68,7 +71,7 @@ export function MetabotChatPromptPage() {
 
   return (
     <SystemPromptPage
-      title={t`Metabot chat prompt instructions`}
+      title={t`AI chat prompt instructions`}
       description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />

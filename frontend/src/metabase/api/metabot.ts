@@ -5,13 +5,12 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
-  MetabotPermissionsResponse,
   MetabotProvider,
   MetabotSettingsResponse,
   MetabotSlackSettings,
+  MetabotSourceFeedback,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotPermissionsRequest,
   UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
@@ -114,7 +113,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "POST",
-        url: "/api/metabot/document/native-generate-content",
+        url: "/api/metabot/document/generate-content",
         body: params,
       }),
     }),
@@ -122,6 +121,13 @@ export const metabotApi = Api.injectEndpoints({
       query: (params) => ({
         method: "POST",
         url: "/api/metabot/feedback",
+        body: params,
+      }),
+    }),
+    submitMetabotSourceFeedback: builder.mutation<void, MetabotSourceFeedback>({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/source-feedback",
         body: params,
       }),
     }),
@@ -136,13 +142,6 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["session-properties"],
     }),
-    getMetabotPermissions: builder.query<MetabotPermissionsResponse, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/ai-controls/permissions",
-      }),
-      providesTags: () => [listTag("metabot-permissions")],
-    }),
     getUserMetabotPermissions: builder.query<
       UserMetabotPermissionsResponse,
       void
@@ -152,17 +151,6 @@ export const metabotApi = Api.injectEndpoints({
         url: "/api/metabot/permissions/user-permissions",
       }),
       providesTags: () => [listTag("metabot-permissions")],
-    }),
-    updateMetabotPermissions: builder.mutation<
-      void,
-      UpdateMetabotPermissionsRequest
-    >({
-      query: (body) => ({
-        method: "PUT",
-        url: "/api/ee/ai-controls/permissions",
-        body,
-      }),
-      invalidatesTags: [listTag("metabot-permissions")],
     }),
   }),
 });
@@ -177,8 +165,7 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
+  useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
-  useGetMetabotPermissionsQuery,
   useGetUserMetabotPermissionsQuery,
-  useUpdateMetabotPermissionsMutation,
 } = metabotApi;

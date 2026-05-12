@@ -31,7 +31,7 @@ type MetabaseBrowserView =
   | { type: "collection"; id: SdkCollectionId }
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
-  | { type: "exploration" }
+  | { type: "new-question" }
   | { type: "create-dashboard" };
 
 const BREADCRUMB_HEIGHT = "3.5rem";
@@ -51,6 +51,8 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     type: "collection",
     id: initialCollection,
   });
+
+  const [newQuestionKey, setNewQuestionKey] = useState(0);
 
   useMount(() => {
     if (navigationContext.stack.length === 0) {
@@ -81,9 +83,10 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const viewContent = hasNavigatedAway
     ? null
     : match(currentView)
-        .with({ type: "exploration" }, () => (
+        .with({ type: "new-question" }, () => (
           <Box px="xl" h="100%">
             <InteractiveQuestion
+              key={newQuestionKey}
               questionId="new"
               height="100%"
               withDownloads
@@ -198,12 +201,13 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         ))
         .otherwise(() => null);
 
-  const handleNewExploration = () => {
-    setCurrentView({ type: "exploration" });
+  const handleNewQuestion = () => {
+    setCurrentView({ type: "new-question" });
+    reportLocation({ type: "question", id: "new", name: "New question" });
   };
 
-  // Only show "New exploration" button if user has write access and it's enabled
-  const showNewExplorationButton =
+  // Only show "New question" button if user has write access and it's enabled
+  const showNewQuestionButton =
     (settings.withNewQuestion ?? true) && canWriteToInitialCollection;
 
   // Only show "New dashboard" button if not read-only and user has write access
@@ -237,6 +241,12 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                   for (let i = 0; i < count; i++) {
                     navigationContext.pop();
                   }
+                } else if (item.type === "question" && item.id === "new") {
+                  // EMB-1118 / EMB-1610: bump key to remount
+                  // InteractiveQuestion so the editor reopens fresh after
+                  // Visualize, with no stale queryResults.
+                  setNewQuestionKey((previousKey) => previousKey + 1);
+                  setCurrentView({ type: "new-question" });
                 }
               }}
             />
@@ -244,9 +254,9 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
           {currentView.type === "collection" && (
             <Group gap="sm">
-              {showNewExplorationButton && (
-                <Button justify="center" onClick={handleNewExploration}>
-                  {t`New exploration`}
+              {showNewQuestionButton && (
+                <Button justify="center" onClick={handleNewQuestion}>
+                  {t`New question`}
                 </Button>
               )}
 

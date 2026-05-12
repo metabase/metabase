@@ -4,20 +4,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports
-import {
-  type SerializeCardOptions,
-  serializeCardForUrl,
-} from "metabase/lib/card";
-import { equals } from "metabase/lib/utils";
-import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
-import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -28,7 +15,6 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardDisplayType,
@@ -42,7 +28,6 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
-  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValuesMap,
@@ -51,7 +36,6 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../query/types";
 
@@ -98,9 +82,9 @@ class Question {
    */
   _parameterValues: ParameterValuesMap;
 
-  private __mlv2Query: Lib.Query | undefined;
+  private __libQuery: Lib.Query | undefined;
 
-  private __mlv2MetadataProvider: Lib.MetadataProvider | undefined;
+  private __libMetadataProvider: Lib.MetadataProvider | undefined;
 
   /**
    * Question constructor
@@ -136,6 +120,16 @@ class Question {
     return this._doNotCallSerializableCard();
   }
 
+  /**
+   * returns the card but normalizes the dataset_query field.
+   */
+  cardWithNormalizedQuery() {
+    return {
+      ...this.card(),
+      dataset_query: Lib.toJsQuery(this.query()),
+    };
+  }
+
   _doNotCallSerializableCard() {
     return this._card;
   }
@@ -154,21 +148,6 @@ class Question {
         .dissoc("description")
         .value(),
     );
-  }
-
-  omitTransientCardIds() {
-    let question = this;
-
-    const card = question.card();
-    const { id, original_card_id } = card;
-    if (isTransientId(id)) {
-      question = question.setCard(_.omit(question.card(), "id"));
-    }
-    if (isTransientId(original_card_id)) {
-      question = question.setCard(_.omit(question.card(), "original_card_id"));
-    }
-
-    return question;
   }
 
   /**
@@ -396,45 +375,6 @@ class Question {
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
-  }
-
-  /**
-   * Returns the type of alert that current question supports
-   *
-   * The `visualization_settings` in card object doesn't contain default settings,
-   * so you can provide the complete visualization settings object to `alertType`
-   * for taking those into account
-   */
-  alertType(visualizationSettings): NotificationTriggerType | null {
-    const display = this.display();
-
-    if (!this.canRun()) {
-      return null;
-    }
-
-    const isLineAreaBar =
-      display === "line" || display === "area" || display === "bar";
-
-    if (display === "progress") {
-      return ALERT_TYPE_PROGRESS_BAR_GOAL;
-    } else if (isLineAreaBar) {
-      const vizSettings = visualizationSettings
-        ? visualizationSettings
-        : this.card().visualization_settings;
-      const goalEnabled = vizSettings["graph.show_goal"];
-      const hasSingleYAxisColumn =
-        vizSettings["graph.metrics"] &&
-        vizSettings["graph.metrics"].length === 1;
-
-      // We don't currently support goal alerts for multiseries question
-      if (goalEnabled && hasSingleYAxisColumn) {
-        return ALERT_TYPE_TIMESERIES_GOAL;
-      } else {
-        return ALERT_TYPE_ROWS;
-      }
-    } else {
-      return ALERT_TYPE_ROWS;
-    }
   }
 
   /**
@@ -685,7 +625,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!equals(originalCard, currentCard)) {
+      if (!_.isEqual(originalCard, currentCard)) {
         return true;
       }
 
@@ -720,17 +660,6 @@ class Question {
     );
   }
 
-  serializeForUrl(opts: SerializeCardOptions = {}) {
-    const card = {
-      ...this.card(),
-      dataset_query: Lib.toJsQuery(this.query()),
-    };
-    return serializeCardForUrl(card, {
-      ...opts,
-      parameterValues: this._parameterValues,
-    });
-  }
-
   // Internal methods
   _getValueForComparison() {
     const value = {
@@ -760,77 +689,32 @@ class Question {
     return res;
   }
 
-  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
-    const query = this.query();
-    const { isNative } = Lib.queryDisplayInfo(query);
-
-    if (isNative) {
-      return this;
-    }
-
-    // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
-    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
-    const queryWithExtraStage =
-      !isComposed && this.display() !== "pivot"
-        ? Lib.ensureFilterStage(query)
-        : query;
-    const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
-      const stageIndex =
-        isDimensionTarget(parameter.target) && !isComposed
-          ? getParameterDimensionTargetStageIndex(parameter.target)
-          : -1;
-      return applyParameter(
-        newQuery,
-        stageIndex,
-        parameter.type,
-        parameter.target,
-        parameter.value,
-      );
-    }, queryWithExtraStage);
-    const queryWithFiltersWithoutExtraStage =
-      Lib.dropEmptyStages(queryWithFilters);
-
-    const newQuestion = this.setQuery(queryWithFiltersWithoutExtraStage)
-      .setParameters(undefined)
-      .setParameterValues(undefined);
-
-    const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
-    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
-
-    function getParameterDimensionTargetStageIndex(
-      target: ParameterDimensionTarget,
-    ) {
-      const [_type, _variableTarget, options] = target;
-      return options?.["stage-number"] ?? -1;
-    }
-  }
-
   query(): Query {
     if (InternalQuery.isDatasetQueryType(this.datasetQuery())) {
-      throw new Error("Internal query is not supported by MLv2");
+      throw new Error("Internal query is not supported by Lib");
     }
 
-    this.__mlv2Query ??= Lib.fromJsQuery(
+    this.__libQuery ??= Lib.fromJsQuery(
       this.metadataProvider(),
       this.datasetQuery(),
     );
 
     // Helpers for working with the current query from CLJS REPLs.
     if (process.env.NODE_ENV === "development") {
-      window.__MLv2_metadata = this.__mlv2MetadataProvider;
-      window.__MLv2_query = this.__mlv2Query;
+      window.__lib_metadata = this.__libMetadataProvider;
+      window.__lib_query = this.__libQuery;
       window.Lib = Lib;
     }
 
-    return this.__mlv2Query;
+    return this.__libQuery;
   }
 
   private metadataProvider(): Lib.MetadataProvider {
-    this.__mlv2MetadataProvider ??= Lib.metadataProvider(
+    this.__libMetadataProvider ??= Lib.metadataProvider(
       this.datasetQuery()?.database,
       this.metadata(),
     );
-    return this.__mlv2MetadataProvider;
+    return this.__libMetadataProvider;
   }
 
   setQuery(query: Query): Question {

@@ -3,9 +3,9 @@ import { useMemo } from "react";
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 

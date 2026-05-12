@@ -1,20 +1,22 @@
 import { withRouter } from "react-router";
 import _ from "underscore";
 
+import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
 } from "metabase/documents/selectors";
-import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
 import { getMetabotVisible } from "metabase/metabot/state";
+import { connect } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
   getIsAppSwitcherVisible,
   getIsCollectionPathVisible,
   getIsLogoVisible,
+  getIsMetricsViewer,
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
@@ -23,13 +25,12 @@ import {
 } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
 
 import AppBar from "../../components/AppBar";
+import type { AppBarProps } from "../../components/AppBar/AppBar";
 
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
-  collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isMetabotVisible: getMetabotVisible(state, "omnibot"),
@@ -43,6 +44,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),
+  isMetricsViewer: getIsMetricsViewer(state, props),
 });
 
 const mapDispatchToProps = {
@@ -50,8 +52,13 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
+function AppBarContainer(props: AppBarProps & RouterProps) {
+  const collectionId = useInitialCollectionId(props) ?? undefined;
+  return <AppBar {...props} collectionId={collectionId} />;
+}
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   withRouter,
   connect(mapStateToProps, mapDispatchToProps),
-)(AppBar);
+)(AppBarContainer);

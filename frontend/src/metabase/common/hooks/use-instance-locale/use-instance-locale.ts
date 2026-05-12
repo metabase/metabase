@@ -1,4 +1,4 @@
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 
 export const useInstanceLocale = () => {

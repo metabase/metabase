@@ -8,8 +8,8 @@ import {
   useUpdateSegmentMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
 import type { SegmentTabUrls } from "../types";

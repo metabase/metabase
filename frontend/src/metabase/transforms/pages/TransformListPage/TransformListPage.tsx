@@ -20,16 +20,14 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/redux";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
@@ -47,6 +45,8 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import * as Urls from "metabase/urls";
+import { type NamedUser, getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -55,7 +55,7 @@ import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
-  getIncrementalWarning,
+  useGetTransformWarnings,
 } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
@@ -113,6 +113,7 @@ export const TransformListPage = ({
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const isMeterLocked = useSetting("transforms-meter-locked");
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -138,29 +139,18 @@ export const TransformListPage = ({
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
-  const metadata = useSelector(getMetadata);
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
 
-  const warningsByTransformId = useMemo(() => {
-    const warnings = new Map<number, string>();
-    for (const transform of transforms ?? []) {
-      const warning = getIncrementalWarning(transform, metadata);
-      if (warning) {
-        warnings.set(transform.id, warning);
-      }
-    }
-    return warnings;
-  }, [transforms, metadata]);
+  const warningsByTransformId = useGetTransformWarnings(transforms);
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
-    // Only show Python library item if there's at least one item in the table
+
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
-      data.length > 0 &&
-      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
+      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
     if (shouldShowPythonLibraryRow) {
       data.push({
@@ -269,8 +259,7 @@ export const TransformListPage = ({
         cell: ({ row }) =>
           isCollectionNode(row.original) ? (
             <CollectionRowMenu
-              collectionId={row.original.collectionId}
-              collectionName={row.original.name}
+              collection={row.original.collection}
               transformCount={countTransforms(row.original)}
             />
           ) : null,
@@ -342,6 +331,7 @@ export const TransformListPage = ({
         py={0}
       />
       <Stack className={CS.overflowHidden}>
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="md">
           <TextInput
             placeholder={t`Search...`}

@@ -13,6 +13,9 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.core :as metabot]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -90,16 +93,19 @@
                                   [:display_name :string]]]]]
   "List available LLM models from the configured provider.
 
-   Requires LLM to be configured (Anthropic API key set in admin settings)."
+   Requires LLM to be configured for the selected provider in admin settings."
   [_route-params
    _query-params]
-  (when-not (llm.settings/llm-anthropic-api-key)
-    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+  (when-not (metabot.settings/llm-metabot-configured?)
+    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (llm.anthropic/list-models))
+  (let [provider-and-model (metabot.settings/llm-metabot-provider)
+        ai-proxy?          (metabot/metabase-provider? provider-and-model)
+        provider           (metabot/provider-and-model->provider provider-and-model)]
+    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
-  "Schema for table metadata with columns returned by /extract-tables."
+  "Schema for table metadata with columns returned by /extract-sources."
   [:map
    [:id pos-int?]
    [:name :string]
@@ -118,24 +124,36 @@
                  [:table_name :string]
                  [:field_name :string]]]]]]])
 
-(api.macros/defendpoint :post "/extract-tables"
-  :- [:map [:tables [:sequential table-with-columns-schema]]]
-  "Parse SQL and return referenced tables with their columns.
+(def ^:private template-tags-schema
+  [:map-of :string
+   [:map
+    [:type :string]
+    [:card-id {:optional true} pos-int?]]])
 
-   Uses Macaw to parse the SQL, resolves table names to IDs,
-   and returns permission-filtered tables with column metadata.
+(api.macros/defendpoint :post "/extract-sources"
+  :- [:map
+      [:tables [:sequential table-with-columns-schema]]
+      [:card_ids [:sequential pos-int?]]]
+  "Parse native query sources and return referenced tables and cards/models.
 
-   This is a lightweight endpoint that does not trigger fingerprinting
-   or field value fetching."
+    Uses Macaw to parse the SQL, resolves table names to IDs,
+    and returns permission-filtered tables with column metadata. Card and model
+    references are extracted from native query template tags.
+
+    This is a lightweight endpoint that does not trigger fingerprinting
+    or field value fetching."
   [_route-params
    _query-params
    body :- [:map
             [:database_id pos-int?]
-            [:sql :string]]]
-  (let [{:keys [database_id sql]} body
+            [:sql :string]
+            [:template_tags {:optional true} template-tags-schema]]]
+  (let [{:keys [database_id sql template_tags]} body
         table-ids (llm.context/extract-tables-from-sql database_id sql)
+        card-ids  (llm.context/extract-card-ids-from-template-tags template_tags)
         tables    (llm.context/get-tables-with-columns database_id table-ids)]
-    {:tables (or tables [])}))
+    {:tables   (or tables [])
+     :card_ids (sort (or (llm.context/get-accessible-card-ids card-ids) #{}))}))
 
 (api.macros/defendpoint :post "/generate-sql"
   :- [:map
@@ -181,6 +199,8 @@
   (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
+  (when-let [limit-msg (metabot/check-usage-limits!)]
+    (throw (ex-info limit-msg {:status-code 429})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
@@ -231,6 +251,11 @@
                 ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
+              (metabot/log-ai-usage!
+               {:source             "sql-gen"
+                :model              (:model usage)
+                :prompt-tokens      (:prompt usage)
+                :completion-tokens  (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"

@@ -1,4 +1,4 @@
-import { getEngineNativeType } from "metabase/lib/engine";
+import { getEngineNativeType } from "metabase/databases/utils/engine";
 import type DatabaseEntity from "metabase-lib/v1/metadata/Database";
 import type { Database } from "metabase-types/api";
 

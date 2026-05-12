@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -18,6 +17,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys]])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
@@ -227,7 +227,7 @@
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
-  (lib.util.match/match-lite clause
+  (match/match-one clause
     ;; two literals
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) (y :guard raw-value?)]
     (let [x-type (lib.schema.expression/type-of-resolved x)
@@ -277,15 +277,6 @@
 ;;; Tangentially-related nonsense not used by the middleware
 ;;;
 
-;;; TODO (Cam 8/22/25) FIXME: This is used in exactly one place: the SQL QP... so why does it live in a QP middleware
-;;; namespace? Nobody knows.
-(defn unwrap-value-literal
-  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
-  [maybe-value-form]
-  (lib.util.match/match-lite maybe-value-form
-    [:value x & _] x
-    _              maybe-value-form))
-
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."
@@ -303,7 +294,7 @@
      {:base-type      expr-type
       :effective-type expr-type})))
 
-(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
+(mu/defn wrap-value-literals-in-mbql5 :- [:cat :keyword [:* :any]]
   "Given a normalized legacy MBQL query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains
   ...]]`), walks over the clause and annotates literals with type information.
 
@@ -321,7 +312,7 @@
   {:deprecated "0.57.0"}
   [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
-      lib/->pMBQL
+      lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (type-info-no-query clause))]
@@ -329,5 +320,12 @@
                          [$mbql]
                          (fn [clause]
                            (wrap-value-literals-in-clause nil nil clause)))
-                        first)))
-      lib/->legacy-MBQL))
+                        first)))))
+
+(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
+  "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
+  DEPRECATED: This is for legacy compatibility and should not be used in new code."
+  {:deprecated "0.57.0"}
+  [mbql :- [:cat :keyword [:* :any]]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (lib/->legacy-MBQL (wrap-value-literals-in-mbql5 mbql)))

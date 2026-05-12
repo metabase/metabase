@@ -1,5 +1,5 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
 import registerVisualizations from "metabase/visualizations/register";
 

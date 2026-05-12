@@ -268,7 +268,7 @@
                 (->> (map (fn [expr] (lib/display-info (lib.tu/venues-query) expr))))))))
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
-  ;; QP code, and it should be powered by MLv2 in due course.
+  ;; QP code, and it should be powered by Lib in due course.
   #_(testing "collisions with other column names are detected and rejected"
       (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
             ex    (try
@@ -494,7 +494,7 @@
   (testing "correct expression are accepted silently"
     (are [mode expr] (nil? (lib.expression/diagnose-expression
                             (lib.tu/venues-query) 0 mode
-                            (lib.convert/->pMBQL expr)
+                            (lib.convert/->mbql5 expr)
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
       :aggregation [:sum [:field 1 {:base-type :type/Integer}]]
@@ -506,7 +506,7 @@
                               :friendly true}
                              (lib.expression/diagnose-expression
                               (lib.tu/venues-query) 0 mode
-                              (lib.convert/->pMBQL expr)
+                              (lib.convert/->mbql5 expr)
                               #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number as the 1st parameter."
       ;; To make this test case work, the aggregation schema has to be
@@ -527,7 +527,7 @@
                                 "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]
                                 "circular-c" [:+ [:expression "x"] 1]
                                 "non-circular-c" [:+ [:expression "a"] 1]}
-                               lib.convert/->pMBQL)
+                               lib.convert/->mbql5)
             query (reduce-kv (fn [query expr-name expr]
                                (lib/expression query 0 expr-name expr))
                              (lib.tu/venues-query)
@@ -586,7 +586,7 @@
         str-expr  [:value "foo" nil]
         bool-expr [:value true nil]
         diagnose-expr (fn [mode expr]
-                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->pMBQL expr) nil))]
+                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->mbql5 expr) nil))]
     (testing "valid literal expressions are accepted"
       (are [mode expr] (nil? (diagnose-expr mode expr))
         :expression  int-expr
@@ -601,7 +601,7 @@
 (deftest ^:parallel diagnose-expression-nested-aggregation-test
   (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
         diagnose-expr (fn [expr]
-                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->mbql5 expr) nil))]
     (testing "valid aggregation expressions are accepted"
       (are [expr] (nil? (diagnose-expr expr))
         [:avg [:field 1]]
@@ -633,7 +633,7 @@
                         :friendly true}
                        (lib.expression/diagnose-expression
                         (lib.tu/venues-query) 0 :expression
-                        (lib.convert/->pMBQL expr)
+                        (lib.convert/->mbql5 expr)
                         #?(:clj nil :cljs js/undefined)))
       ;; basic checks with different types
       [:+ 1 true]  "Types are incompatible: + expects a number as the 2nd parameter."

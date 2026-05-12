@@ -7,6 +7,7 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
+import { getGroupNameLocalized } from "metabase/admin/utils/groups";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -18,16 +19,16 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getGroupNameLocalized } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
+import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
@@ -71,6 +72,13 @@ import {
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
+
+    PLUGIN_TENANTS.useListActiveTenants = () => {
+      const { data, isLoading, error } = useListTenantsQuery({
+        status: "active",
+      });
+      return { data: data?.data, isLoading, error };
+    };
 
     // Register tenant collection permissions tabs and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
