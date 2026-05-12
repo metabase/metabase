@@ -63,6 +63,10 @@ files we'll hook into):
 - `metabase.sync.fetch-metadata/index-metadata` and
   `driver/describe-table-indexes` — pulled at optimizer-request time for
   index detail beyond the `Field.database_indexed` bool that sync persists.
+- `metabase.transforms-base.query/run-query-transform!` (a second mention)
+  — we add a small "post-materialization DDL" hook here that runs the
+  index DDLs attached to an accepted precompute transform after the
+  target table is rebuilt.
 
 ### New code
 
@@ -79,10 +83,17 @@ src/metabase/transform_optimizer/
   prelude.clj               ; embed the curated pre→post examples corpus
   scoring.clj               ; proposals → optimization_degree (deterministic)
   verify.clj                ; pre/post equivalence check (EXCEPT both ways)
+  ddl/
+    parse.clj               ; validate CREATE INDEX statements (allowlist)
+    execute.clj             ; run a single DDL on the right connection
+                            ;  (autocommit handling for CONCURRENTLY)
   models/
     proposal.clj            ; persisted proposal (1..N proposed transforms,
-                            ;  + optimization_degree of the original)
+                            ;  + optimization_degree, + ddl_statements,
+                            ;  + per-DDL execution status)
   api.clj                   ; POST /api/transform/:id/optimize + GET proposals
+                            ; + POST /…/proposal/:pid/ddl/:did/execute
+                            ; + POST /…/proposal/:pid/accept
 
 src/metabase/metabot/tools/
   transform_optimizer.clj   ; deftool wrapping core/optimize-transform!
@@ -169,16 +180,78 @@ What we add is index detail, EXPLAIN output, and recent-run timing.
   ```
   {optimization_degree    ; integer in [0, 100]
    summary                ; one-paragraph diagnosis
-   proposals [{name, depends_on [], body, rationale,
-               kind, severity, expected_speedup}]}
+   proposals [{id              ; stable per-stream id
+               name
+               kind            ; see below
+               severity        ; :high | :medium | :low
+               rationale
+               expected_speedup
+               body            ; SQL of the new transform, nil for pure-DDL
+               depends_on []   ; ids of sibling proposals in the same DAG
+               ddl_statements  ; 0..N — see "DDL statements" subsection
+                 [{id
+                   target       ; :source-db | :transform-target
+                                ;  | {:precompute-of <sibling proposal id>}
+                   statement    ; CREATE INDEX … (validated server-side)
+                   rationale}]}]}
 
-  kind     ∈ #{:rewrite :rewrite+index :precompute}
+  kind     ∈ #{:rewrite           ; new body, no DDL
+               :index             ; no body change, DDL only
+               :rewrite+index     ; new body and DDL
+               :precompute}       ; DAG; DDL on precompute targets is common
   severity ∈ #{:high :medium :low}  ; required on every proposal
   ```
   We instruct the LLM to *not* propose indexes the user can't create
   (target DB write permissions are required; see Phase 5). We also
   explicitly allow `proposals` to be empty when the transform is already
   optimal.
+
+#### DDL statements
+
+The LLM may decide that the best optimization is a new index — either on
+a source-DB table (q04: monthly revenue) or on a transform's
+target/precompute target (q07: cohort rollups). DDL is therefore a
+first-class proposal artifact, not a bullet in the rationale.
+
+**Constraints applied to every emitted statement** (enforced in
+`ddl/parse.clj`, not trusted from the LLM):
+
+- Must be a single `CREATE INDEX` statement (parsed; reject `DROP`,
+  `ALTER`, `GRANT`, multi-statement, etc.).
+- Must include `IF NOT EXISTS` so accept is idempotent.
+- For `target = :source-db`, prefer `CONCURRENTLY` so we don't lock the
+  source table out from under other readers. The LLM prompt requests
+  this; the validator does not require it.
+- Fully-qualified schema + table name. The schema must be one of those
+  reachable from the transform's referenced tables.
+- Index name follows a convention (`idx_<table>_<cols>_<hash>`) so we
+  can detect duplicates the LLM may suggest across proposals.
+
+**Execution semantics** (`ddl/execute.clj`):
+
+- One statement runs against one connection. `CREATE INDEX CONCURRENTLY`
+  cannot run inside a transaction; we use a fresh connection with
+  `setAutoCommit(true)` for that path.
+- Failures are surfaced to the UI with the Postgres error message;
+  partial execution of a multi-DDL proposal does *not* roll back the
+  succeeded statements (idempotent re-execution is the recovery path).
+- Each executed statement is recorded on the `Proposal` row
+  (`ddl_status[ddl_id] = :executed | :failed | :skipped`).
+
+**DDL targeting `transform-target`** has a known wrinkle: the standard
+transform flow recreates the target table on each run, so an index
+created post-materialization would be lost. We address this in two
+ways:
+
+1. The optimizer prefers proposing precompute splits as **incremental**
+   transforms (`:type :table-incremental`) when the inner SQL is
+   amenable. Incremental targets retain their indexes across runs.
+2. For non-incremental targets we register the DDL as
+   *post-materialization* on the new transform — the transform pipeline
+   runs the `CREATE INDEX IF NOT EXISTS` statements after each
+   materialization. Cheap if nothing changed; rebuilds when the table is
+   recreated. (Open question if this is enough for very large precompute
+   targets — see Open Questions.)
 
 #### Optimization degree
 
@@ -235,9 +308,29 @@ The agent emits, in order:
     is hidden.
   - **Proposals list**: each proposal renders as it arrives, as a card
     with: severity badge, kind tag, diff (or full new SQL), rationale,
-    expected speedup, accept / verify / dismiss actions.
+    expected speedup.
+    - When `ddl_statements` is non-empty, an "Index changes" subsection
+      lists each statement with its rationale, the formatted DDL, and
+      per-statement state: `pending → running → executed | failed`.
+      Failed statements show the Postgres error inline with a "Retry"
+      button.
+    - Per-card actions:
+      - **Run DDL** — executes the proposal's DDL statements only.
+        Useful when the user wants the index but isn't ready to commit
+        to the rewrite. Pure-`:index` proposals: this is the primary
+        action.
+      - **Accept** — for `:rewrite` / `:rewrite+index`: creates the new
+        transform(s), then runs the DDL. For `:precompute`: creates the
+        whole DAG (in `depends_on` order), then runs the per-target DDL
+        (incremental targets up front, post-materialization DDL stored
+        on the transform).
+      - **Verify** — opens the equivalence-check flow (Phase 4).
+      - **Dismiss** — drops the proposal locally; can be re-fetched.
 - "Accept" creates N new transforms (linked through `depends_on`) and routes
-  the user to the first one. Original transform is untouched.
+  the user to the first one. Original transform is untouched. Executed
+  DDL is not auto-reverted on dismiss — CREATE INDEX is durable on
+  purpose; the panel surfaces the resulting index name so the user can
+  drop it manually if they change their mind.
 
 ### Phase 4 — Equivalence verification (optional, user-triggered)
 
@@ -259,13 +352,26 @@ proposed DAG, executed in order.
 
 ### Phase 5 — Polish & guardrails
 
-- Permission check: optimizer requires `:write` on the source DB (because
-  `CREATE INDEX` may be proposed) — or, if the user lacks it, the optimizer
-  is constrained to `:rewrite` kinds only.
-- Cost guard: skip / warn on transforms whose latest run took longer than a
-  threshold (we should not run EXPLAIN ANALYZE against the 30-minute job).
-- Telemetry: log proposal acceptance rate + measured speedups; this feeds the
-  prelude over time.
+- **Permission check for proposing**: the optimizer can always *propose*
+  DDL — but the proposal API marks each `ddl_statement` with
+  `executable_by_caller?`. The UI's "Run DDL" / "Accept" buttons are
+  disabled (with a tooltip explaining why) when the current user lacks
+  write privileges on the target database. We do *not* hide the
+  proposals — read-only users can still see what their team should run.
+- **Permission check at execution**: the execute endpoint re-checks
+  privileges server-side. The frontend disable is convenience, not the
+  authorization boundary.
+- **DDL validator** (`ddl/parse.clj`): runs on every statement before
+  it's executed, regardless of how it got into the system. Reject
+  anything that isn't `CREATE INDEX [CONCURRENTLY] [IF NOT EXISTS]` on a
+  schema-qualified table belonging to the referenced set. This is the
+  primary defence against prompt injection coercing the LLM into
+  emitting an `ALTER USER … SUPERUSER`.
+- **Cost guard**: skip / warn on transforms whose latest run took longer
+  than a threshold (we should not run EXPLAIN ANALYZE against the
+  30-minute job).
+- **Telemetry**: log proposal acceptance rate, DDL execution rate, and
+  measured speedups; this feeds the prelude over time.
 
 ## Open questions (deferred)
 
@@ -284,6 +390,17 @@ proposed DAG, executed in order.
 - Should the severity rubric also factor in the EXPLAIN cost ratio between
   the slow and proposed plans, so the LLM has a less subjective anchor?
   Worth a small experiment in Phase 2.
+- Index revert UX: an executed `CREATE INDEX` is durable on purpose, but
+  some users may want a one-click "drop the index I just created" if they
+  dismiss the proposal afterwards. For hackathon: surface the index name
+  only and let them DROP manually. Worth revisiting if usage suggests
+  otherwise.
+- Post-materialization DDL on very large precompute targets: rebuilding a
+  GIN index on each transform run is expensive. Two ways out: (a) push
+  the user toward incremental transforms for these cases (we already
+  prefer this in the proposal), or (b) ship a smarter materialization
+  strategy ("CREATE TABLE … AS … then CREATE INDEX … once" vs. "TRUNCATE
+  + INSERT" to keep indexes). Out of scope this branch.
 
 ## Phase 0 deliverables (this commit)
 
