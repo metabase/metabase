@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -561,7 +562,7 @@
   (testing "PUT /api/ee/remote-sync/settings refuses with 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (java.time.OffsetDateTime/now)
+                                            :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [check-git-call-count (atom 0)]
         (with-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
@@ -1140,7 +1141,7 @@
   (testing "POST /api/ee/remote-sync/import returns 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (java.time.OffsetDateTime/now)
+                                            :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [mock-source     (test-helpers/create-mock-source)
             tasks-before    (t2/count :model/RemoteSyncTask)]
@@ -1158,7 +1159,7 @@
   (testing "POST /api/ee/remote-sync/export returns 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (java.time.OffsetDateTime/now)
+                                            :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [mock-source  (test-helpers/create-mock-source)
             tasks-before (t2/count :model/RemoteSyncTask)]
@@ -1177,7 +1178,7 @@
   (testing "POST /api/ee/remote-sync/create-branch returns 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (java.time.OffsetDateTime/now)
+                                            :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [mock-source      (test-helpers/create-mock-source)
             initial-branches @(:branches-atom mock-source)]
@@ -1199,7 +1200,7 @@
   (testing "POST /api/ee/remote-sync/stash returns 400 when a RemoteSyncTask is active"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                             :initiated_by   (mt/user->id :rasta)
-                                            :started_at     (java.time.OffsetDateTime/now)
+                                            :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [mock-source      (test-helpers/create-mock-source)
             initial-branches @(:branches-atom mock-source)
