@@ -7,11 +7,14 @@ import {
   Code,
   Divider,
   Group,
+  Icon,
+  Menu,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
 
+import type { AcceptMode } from "../../api";
 import type { DdlStatement, Proposal, ProposalSeverity } from "../../types";
 
 import { IndexChangesSection } from "./IndexChangesSection";
@@ -36,7 +39,14 @@ type Props = {
     verify?: Action & { kind: "verify" };
     dismiss?: Action & { kind: "dismiss" };
   };
-  onAccept?: () => void;
+  /**
+   * Invoked when the user accepts the proposal. The `mode` argument
+   * controls how the BE materialises it:
+   *   "new"      — create a sibling transform (the default)
+   *   "replace"  — update the original transform's source in place
+   *                (only offered for `kind: "rewrite"`)
+   */
+  onAccept?: (mode: AcceptMode) => void;
   onVerify?: () => void;
   onDismiss?: () => void;
 };
@@ -100,7 +110,14 @@ export function ProposalCard({
       <Group justify="flex-end" gap="sm" p="md">
         <DismissButton action={actions.dismiss} onClick={onDismiss} />
         <VerifyButton action={actions.verify} onClick={onVerify} />
-        <AcceptButton action={actions.accept} onClick={onAccept} />
+        <AcceptButton
+          action={actions.accept}
+          // Only `:rewrite` supports replace-in-place — precompute DAGs
+          // can't be folded back into a single transform, and indices
+          // don't change the source body.
+          allowReplace={proposal.kind === "rewrite"}
+          onClick={onAccept}
+        />
       </Group>
     </Box>
   );
@@ -152,10 +169,13 @@ function kindLabel(kind: Proposal["kind"]): string {
 
 function AcceptButton({
   action,
+  allowReplace,
   onClick,
 }: {
   action?: Action & { kind: "accept" };
-  onClick?: () => void;
+  /** When true, render a split menu offering replace-in-place too. */
+  allowReplace?: boolean;
+  onClick?: (mode: AcceptMode) => void;
 }) {
   // Show the control iff the parent supplied an action entry. The
   // callback is always non-null because TransformOptimizerSection wires
@@ -163,20 +183,53 @@ function AcceptButton({
   if (!action || !onClick) {
     return null;
   }
-  const button = (
+  if (!allowReplace) {
+    const button = (
+      <Button
+        variant="filled"
+        loading={action.busy}
+        disabled={action.disabled}
+        onClick={() => onClick("new")}
+      >
+        {t`Accept`}
+      </Button>
+    );
+    return action.disabled && action.disabledReason ? (
+      <Tooltip label={action.disabledReason}>{button}</Tooltip>
+    ) : (
+      button
+    );
+  }
+  // Rewrite proposals get a menu so the user picks `new` vs `replace`.
+  const trigger = (
     <Button
       variant="filled"
       loading={action.busy}
       disabled={action.disabled}
-      onClick={onClick}
+      rightSection={<Icon name="chevrondown" />}
     >
       {t`Accept`}
     </Button>
   );
-  if (action.disabled && action.disabledReason) {
-    return <Tooltip label={action.disabledReason}>{button}</Tooltip>;
-  }
-  return button;
+  return (
+    <Menu shadow="md" disabled={action.disabled}>
+      <Menu.Target>
+        {action.disabled && action.disabledReason ? (
+          <Tooltip label={action.disabledReason}>{trigger}</Tooltip>
+        ) : (
+          trigger
+        )}
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item onClick={() => onClick("new")}>
+          {t`Create as a new transform`}
+        </Menu.Item>
+        <Menu.Item onClick={() => onClick("replace")}>
+          {t`Replace this transform's source`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
 }
 
 function VerifyButton({

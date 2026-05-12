@@ -55,18 +55,38 @@ export type AcceptDdlStatement = {
   error_message?: string;
 };
 
-export type AcceptResponse = {
-  created_transforms: Array<{
-    id: number;
-    name: string;
-    proposal_id: string;
-    kind: string;
-    depends_on: string[];
-    pending_ddl?: number;
-  }>;
-  ddl_statements: AcceptDdlStatement[];
-  skipped_proposals: string[];
-};
+/**
+ * Accept mode. `"new"` creates fresh transforms for each body-bearing
+ * proposal (default). `"replace"` updates the *original* transform's
+ * source in place; only valid for a single-proposal accept of
+ * kind=rewrite.
+ */
+export type AcceptMode = "new" | "replace";
+
+export type AcceptResponse =
+  | {
+      created_transforms: Array<{
+        id: number;
+        name: string;
+        proposal_id: string;
+        kind: string;
+        depends_on: string[];
+        pending_ddl?: number;
+      }>;
+      ddl_statements: AcceptDdlStatement[];
+      skipped_proposals: string[];
+    }
+  | {
+      replaced_transform: {
+        id: number;
+        name: string;
+        proposal_id: string;
+        kind: string;
+        pending_ddl?: number;
+      };
+      ddl_statements: AcceptDdlStatement[];
+      skipped_proposals: string[];
+    };
 
 export type ListIndexesResponse = {
   transform: { id: number; target: unknown };
@@ -105,14 +125,22 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
          * DAG, every ancestor of the chosen proposal must precede it.
          */
         proposalIds: string[];
+        /**
+         * `"new"` (default) creates fresh transforms. `"replace"` updates
+         * the original transform's source in place — only valid when the
+         * batch contains exactly one body-bearing proposal of
+         * kind="rewrite".
+         */
+        mode?: AcceptMode;
         collectionId?: number;
       }
     >({
-      query: ({ transformId, proposalIds, collectionId }) => ({
+      query: ({ transformId, proposalIds, mode, collectionId }) => ({
         method: "POST",
         url: `/api/ee/transform-optimizer/${transformId}/proposal/accept`,
         body: {
           proposal_ids: proposalIds,
+          ...(mode != null ? { mode } : {}),
           ...(collectionId != null ? { collection_id: collectionId } : {}),
         },
       }),

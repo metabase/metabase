@@ -134,15 +134,25 @@ real structural change.
 `ddl_statement`, no `body`). Never both. This lets the user accept and
 verify each change independently.
 
-When a rewrite needs a supporting index, emit them as **two proposals**
-linked via `depends_on`:
+### When to use `depends_on`
 
-- proposal A: `kind: "rewrite"` with the new SQL `body`
-- proposal B: `kind: "index"` with the `CREATE INDEX` statement, and
-  `depends_on: ["A"]`
+`depends_on` is **a materialisation order constraint**, not a logical
+hint. Use it only when accepting the dependent proposal requires the
+listed proposals to be accepted first because the table doesn't exist
+yet:
 
-The user can then accept just A, just B, or both. The server takes care
-of running them in dependency order when both are selected.
+| Situation | `depends_on` |
+|---|---|
+| Rewrite proposal | `[]` (rewrites stand alone) |
+| Precompute proposal | `[]` or other precomputes whose target tables it reads from |
+| Index on `source-db` (table already exists) | **`[]` always** — even if the index supports another proposal's rewrite. The user must be able to accept the index alone without dragging the rewrite into the accept. |
+| Index on `transform-target` (table doesn't exist yet) | `[<id of the proposal that creates the target table>]` |
+
+When a rewrite has a supporting source-DB index, emit them as **two
+independent proposals**, both with `depends_on: []`. The user accepts
+each one independently and the order doesn't matter. Cross-reference
+them in `rationale` text if useful — that doesn't trigger any
+materialisation coupling.
 
 Emit JSON matching exactly this shape:
 
@@ -286,8 +296,11 @@ FROM (
 WHERE rn <= 5;
 ```
 
-**Two independent proposals**, linked by `depends_on` so the user can
-accept the rewrite alone, the index alone, or both:
+**Two fully independent proposals** — both with `depends_on: []` because
+the source-DB index can be created at any time, regardless of whether the
+rewrite is in place. Cross-reference them in `rationale` text instead so
+the user understands the relationship; the wire-level `depends_on` is
+reserved for *materialisation* order (see the table above), not for hints.
 
 ```json
 {

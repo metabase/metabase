@@ -120,18 +120,32 @@
    _query-params
    body :- [:map
             [:proposal_ids  [:sequential :string]]
+            [:mode          {:optional true} [:maybe [:enum "new" "replace"]]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (let [transform                  (api/read-check :model/Transform id)
         [proposals missing]        (opt.cache/get-many api/*current-user-id*
                                                        (:id transform)
-                                                       (:proposal_ids body))]
-    (if (seq missing)
+                                                       (:proposal_ids body))
+        mode                       (keyword (or (:mode body) "new"))]
+    (cond
+      (seq missing)
       {:status 404
        :body   {:error              "proposal_not_found"
                 :detail             (str "These proposal ids are not in the optimizer cache "
                                          "(expired or never seen); re-run /optimize.")
                 :missing_proposal_ids missing}}
-      (opt.accept/accept! transform proposals (:collection_id body)))))
+
+      :else
+      (try
+        (opt.accept/accept! transform proposals (:collection_id body) mode)
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (if-let [code (:status-code data)]
+              {:status code
+               :body   (-> data
+                           (dissoc :status-code)
+                           (assoc :detail (ex-message e)))}
+              (throw e))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Index management on a transform's target + source tables

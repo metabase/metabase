@@ -162,55 +162,135 @@
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
+;; ---------------------------------------------------------------------------
+;; Replace mode — swap the original transform's source in place
+
+(defn- replace-in-place!
+  "Update `original-transform`'s `:source.query` to the proposal's body
+  (anchored to the original's `source_database_id`) and merge any
+  deferred DDL into its existing `:target.post_run_ddl`. Returns the
+  updated transform map."
+  [original-transform proposal deferred-ddl]
+  (let [original-query (-> original-transform :source :query)
+        db-id          (:source_database_id original-transform)
+        new-query      (cond-> (lib/with-native-query original-query (:body proposal))
+                         (some? db-id) (assoc :database db-id))
+        existing-ddl   (get-in original-transform [:target :post_run_ddl] [])
+        merged-ddl     (vec (concat existing-ddl deferred-ddl))
+        new-target     (cond-> (:target original-transform)
+                         (seq merged-ddl) (assoc :post_run_ddl merged-ddl))
+        body           (cond-> {:source {:type :query :query new-query}}
+                         (seq merged-ddl) (assoc :target new-target))]
+    (transforms.crud/update-transform! (:id original-transform) body)))
+
+(defn- body-bearing? [p]
+  (and (:body p) (not (str/blank? (:body p)))))
+
+(defn- single-rewrite-or-throw
+  "Replace mode is only valid when the batch contains exactly one
+  body-bearing proposal of kind 'rewrite'. For precompute DAGs and
+  pure-index batches we have no sensible 'replace' semantic."
+  [proposals]
+  (let [bodies (filter body-bearing? proposals)]
+    (cond
+      (zero? (count bodies))
+      (throw (ex-info "replace mode needs exactly one body-bearing proposal; got none"
+                      {:status-code 400 :error "replace_needs_body"}))
+
+      (> (count bodies) 1)
+      (throw (ex-info (str "replace mode needs exactly one body-bearing proposal; got "
+                           (count bodies))
+                      {:status-code 400 :error "replace_multiple_bodies"}))
+
+      (not= "rewrite" (some-> (first bodies) :kind name))
+      (throw (ex-info (str "replace mode is only valid for kind=rewrite proposals; got kind="
+                           (or (some-> (first bodies) :kind name) "?"))
+                      {:status-code 400 :error "replace_unsupported_kind"}))
+
+      :else (first bodies))))
+
+;; ---------------------------------------------------------------------------
+;; Public API
+
 (defn accept!
-  "Apply a proposal set:
+  "Apply a proposal set. `mode` selects how body-bearing proposals are
+  materialised:
 
-    - For each proposal with a body → create a new transform. If any
-      `:index` proposal `depends_on` this one and is targeting
-      `transform-target`, its DDL is embedded in the new transform's
-      `:target.post_run_ddl` so the optimizer's event handler replays it
-      after every transform run.
-    - For each `:index` proposal with `target = 'source-db'` → execute
-      the DDL immediately against the source database.
+    :new (default) — Each body-bearing proposal becomes a *new* transform.
+                     Pure-index proposals contribute DDL only.
+    :replace       — The single body-bearing proposal in the batch
+                     replaces the original transform's source in place
+                     instead of creating a new transform. Any
+                     `transform-target` DDL attached via `depends_on` is
+                     merged into the original transform's
+                     `target.post_run_ddl`. Source-db DDL runs as in
+                     `:new`. Only valid when the batch contains exactly
+                     one body-bearing proposal of kind=rewrite.
 
-  Returns:
-
+  Returns (mode :new):
     {:created_transforms [{id, name, proposal_id, kind, depends_on, …}]
      :ddl_statements     [{proposal_id, target, status, …}]
+     :skipped_proposals  [proposal-id …]}
+
+  Returns (mode :replace):
+    {:replaced_transform {id, name, proposal_id, kind}
+     :ddl_statements     [{proposal_id, target, status, …}]
      :skipped_proposals  [proposal-id …]}"
-  [original-transform proposals collection-id]
-  (let [proposals       (vec (or proposals []))
-        deferred-by-dep (group-deferred-ddl-by-dep proposals)
-        source-db-out   (run-source-db-ddl! original-transform proposals)
-        created
-        (->> proposals
-             (keep
-              (fn [p]
-                (when-let [body (proposal->create-body original-transform p collection-id)]
-                  (let [deferred (get deferred-by-dep (:id p))
-                        body+ddl (cond-> body
-                                   (seq deferred)
-                                   (assoc-in [:target :post_run_ddl] (vec deferred)))]
-                    (try
-                      (let [new (transforms.crud/create-transform! body+ddl)]
-                        {:id          (:id new)
-                         :name        (:name new)
-                         :proposal_id (:id p)
-                         :kind        (some-> (:kind p) name)
-                         :depends_on  (or (:depends_on p) [])
-                         :pending_ddl (count deferred)})
-                      (catch Exception e
-                        (log/warnf e "accept!: create-transform! failed for proposal %s" (:id p))
-                        {:proposal_id (:id p)
-                         :error       (or (ex-message e) "create failed")}))))))
-             vec)
-        ;; Build the DDL response rows by walking proposals (preserves order).
-        ddl-rows  (vec (keep #(ddl-row % (get source-db-out (:id %))) proposals))
-        ;; Proposals are "skipped" only when they have a body that didn't
-        ;; produce a transform — i.e. nothing actually got created.
-        skipped   (->> proposals
-                       (filter #(or (nil? (:body %)) (str/blank? (:body %))))
-                       (mapv :id))]
-    {:created_transforms created
-     :ddl_statements     ddl-rows
-     :skipped_proposals  skipped}))
+  ([original-transform proposals collection-id]
+   (accept! original-transform proposals collection-id :new))
+  ([original-transform proposals collection-id mode]
+   (let [proposals       (vec (or proposals []))
+         mode            (or mode :new)
+         deferred-by-dep (group-deferred-ddl-by-dep proposals)
+         source-db-out   (run-source-db-ddl! original-transform proposals)
+         ddl-rows        (vec (keep #(ddl-row % (get source-db-out (:id %))) proposals))
+         skipped         (->> proposals
+                              (remove body-bearing?)
+                              (mapv :id))]
+     (case mode
+       :replace
+       (let [target-proposal (single-rewrite-or-throw proposals)
+             deferred        (get deferred-by-dep (:id target-proposal))
+             updated         (try
+                               (replace-in-place! original-transform target-proposal deferred)
+                               (catch Exception e
+                                 (log/warnf e "accept! replace failed for proposal %s"
+                                            (:id target-proposal))
+                                 (throw (ex-info (or (ex-message e) "replace failed")
+                                                 {:status-code 500
+                                                  :error "replace_failed"
+                                                  :proposal_id (:id target-proposal)}))))]
+         {:replaced_transform {:id          (:id updated)
+                               :name        (:name updated)
+                               :proposal_id (:id target-proposal)
+                               :kind        (some-> (:kind target-proposal) name)
+                               :pending_ddl (count (or deferred []))}
+          :ddl_statements     ddl-rows
+          :skipped_proposals  skipped})
+
+       :new
+       (let [created
+             (->> proposals
+                  (keep
+                   (fn [p]
+                     (when-let [body (proposal->create-body original-transform p collection-id)]
+                       (let [deferred (get deferred-by-dep (:id p))
+                             body+ddl (cond-> body
+                                        (seq deferred)
+                                        (assoc-in [:target :post_run_ddl] (vec deferred)))]
+                         (try
+                           (let [new (transforms.crud/create-transform! body+ddl)]
+                             {:id          (:id new)
+                              :name        (:name new)
+                              :proposal_id (:id p)
+                              :kind        (some-> (:kind p) name)
+                              :depends_on  (or (:depends_on p) [])
+                              :pending_ddl (count deferred)})
+                           (catch Exception e
+                             (log/warnf e "accept!: create-transform! failed for proposal %s" (:id p))
+                             {:proposal_id (:id p)
+                              :error       (or (ex-message e) "create failed")}))))))
+                  vec)]
+         {:created_transforms created
+          :ddl_statements     ddl-rows
+          :skipped_proposals  skipped})))))

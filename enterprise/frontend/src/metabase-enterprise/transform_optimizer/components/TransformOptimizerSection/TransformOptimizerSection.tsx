@@ -6,6 +6,7 @@ import { Alert, Box, Button, Divider, Group, Icon, Stack, Text } from "metabase/
 import type { Transform } from "metabase-types/api";
 
 import {
+  type AcceptMode,
   type VerifyResponse,
   useAcceptProposalMutation,
   useVerifyProposalMutation,
@@ -51,35 +52,41 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
   );
 
   const handleAccept = useCallback(
-    async (proposal: Proposal) => {
-      const proposalIds = topoOrderForAccept(proposal, state.proposals);
+    async (proposal: Proposal, mode: AcceptMode = "new") => {
+      // Replace mode is single-proposal: never drag ancestors in,
+      // since `update-transform!` only touches the original transform.
+      const proposalIds =
+        mode === "replace"
+          ? [proposal.id]
+          : topoOrderForAccept(proposal, state.proposals);
       setBusyProposalId(proposal.id);
       const { data, error } = await accept({
         transformId: transform.id,
         proposalIds,
+        mode,
       });
       setBusyProposalId(null);
       if (error) {
         sendErrorToast(t`Failed to accept proposal`);
         return;
       }
-      // Toast only when we actually created a transform — index-only
-      // accepts run DDL but don't materialise a new transform, so
-      // "Transform created" would be misleading. Fall back to a quieter
-      // confirmation for those.
-      const createdCount = data?.created_transforms?.length ?? 0;
-      if (createdCount > 0) {
+      if (data && "replaced_transform" in data) {
         sendSuccessToast(
-          createdCount === 1
-            ? t`New transform created`
-            : t`${createdCount} new transforms created`,
+          t`Replaced source of "${data.replaced_transform.name}"`,
         );
       } else {
-        sendSuccessToast(t`Index changes applied`);
+        const createdCount = data?.created_transforms?.length ?? 0;
+        if (createdCount > 0) {
+          sendSuccessToast(
+            createdCount === 1
+              ? t`New transform created`
+              : t`${createdCount} new transforms created`,
+          );
+        } else {
+          sendSuccessToast(t`Index changes applied`);
+        }
       }
-      // Remove every proposal we just accepted (the target + all
-      // ancestors we topo-included) from the list so the user can move
-      // on to the next decision.
+      // Remove every proposal we just accepted from the list.
       for (const id of proposalIds) {
         dismissProposal(id);
       }
@@ -205,7 +212,7 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
                           : undefined,
                         dismiss: { kind: "dismiss" },
                       }}
-                      onAccept={() => handleAccept(proposal)}
+                      onAccept={(mode) => handleAccept(proposal, mode)}
                       onVerify={() => handleVerify(proposal)}
                       onDismiss={() => dismissProposal(proposal.id)}
                     />
@@ -308,11 +315,27 @@ function getNativeSql(transform: Transform): string | null {
  * from the cache, so a missing ancestor in the client state is dropped
  * here — the user will see a 404 with the offending ids if that ever
  * happens.
+ *
+ * Exception: a `:index` proposal whose DDL targets `source-db` doesn't
+ * actually need its `depends_on` ancestors to exist at accept time —
+ * the index runs against tables that already exist in the source
+ * database. The LLM sometimes tags those indices with `depends_on`
+ * pointing at the rewrite they support (a *logical* link, not a
+ * *materialisation* link). Topo-including the rewrite there would
+ * silently accept the rewrite alongside, which is not what the user
+ * asked for.
  */
 function topoOrderForAccept(
   target: Proposal,
   available: Proposal[],
 ): string[] {
+  if (
+    target.kind === "index" &&
+    target.ddl_statement?.target === "source-db"
+  ) {
+    return [target.id];
+  }
+
   const byId = new Map(available.map((p) => [p.id, p]));
   const visited = new Set<string>();
   const order: string[] = [];
