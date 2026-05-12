@@ -192,91 +192,119 @@
 
 ;;; ---------------------------------------------------------------- slot
 
-(defn- ^String settings-url-for [{:keys [type id]}]
-  (case type
-    :sync                   (when id (str "/admin/databases/" id))
-    :transform-job          (when id (str "/data-studio/transforms/jobs/" id))
-    ;; Dashboard subscription id is a pulse_id; resolve to the dashboard the pulse targets.
-    :dashboard-subscription (when id
-                              (when-let [dash-id (t2/select-one-fn :dashboard_id
-                                                                   :model/Pulse :id id)]
-                                (str "/dashboard/" dash-id)))
-    ;; Alert id is a notification_subscription_id; resolve to the card via notification_card.
-    :alert                  (when id
-                              (when-let [notif-id (t2/select-one-fn :notification_id
-                                                                    :model/NotificationSubscription
-                                                                    :id id)]
-                                (when-let [card-id (t2/select-one-fn :card_id
-                                                                     :model/NotificationCard
-                                                                     {:where [:in :id {:select [:payload_id]
-                                                                                       :from   [:notification]
-                                                                                       :where  [:= :id notif-id]}]})]
-                                  (str "/question/" card-id))))
-    :persisted-refresh      (when id (str "/admin/databases/" id))
-    nil))
+(defn- creator-display-name
+  "Render a user row as a label: 'First Last' if available, else email."
+  [{:keys [first_name last_name email]}]
+  (let [n (str/trim (str (or first_name "") " " (or last_name "")))]
+    (if (str/blank? n) email n)))
 
-(defn- creator-label
-  "Render a creator user id as a human label. Falls back to '#<id>' if the user
-   is deleted, nil if no creator is associated."
-  [user-id]
-  (when user-id
-    (or (when-let [u (t2/select-one [:model/User :first_name :last_name :email]
-                                    :id user-id)]
-          (let [name (str/trim (str (:first_name u) " " (:last_name u)))]
-            (if (str/blank? name) (:email u) name)))
-        (str "User #" user-id))))
+(defn- bulk-creator-labels
+  "Map of `user-id → label`. Missing users (deleted accounts) fall back to 'User #<id>'."
+  [user-ids]
+  (let [ids (->> user-ids (filter some?) distinct)]
+    (when (seq ids)
+      (let [rows  (t2/query {:select [:id :first_name :last_name :email]
+                             :from   [:core_user]
+                             :where  [:in :id ids]})
+            by-id (into {} (map (juxt :id creator-display-name)) rows)]
+        (reduce (fn [m id] (assoc m id (or (get by-id id) (str "User #" id))))
+                {} ids)))))
 
-(defn- entity-meta-for
-  "Look up display metadata for a parsed trigger. Returns a map with :name (always
-   non-nil for known types), :updated_at, and :creator. Uses a synthetic id-based
-   fallback name when the underlying row has been deleted (orphan trigger)."
-  [{:keys [type id]}]
-  (when id
-    (case type
-      :sync
-      (if-let [db (t2/select-one [:model/Database :name :updated_at] :id id)]
-        {:name (:name db) :updated_at (:updated_at db) :creator nil}
-        {:name (str "Database #" id " (deleted)") :updated_at nil :creator nil})
+(defn- bulk-entity-info
+  "Resolve display metadata + settings URL for every (type, id) pair at once.
+   Returns `{[type id] {:name :updated_at :creator :settings_url}}`.
 
-      :transform-job
-      (if-let [job (t2/select-one [:model/TransformJob :name :updated_at]
-                                  :id id)]
-        ;; TransformJob doesn't carry a creator column — leave nil.
-        {:name (:name job) :updated_at (:updated_at job) :creator nil}
-        {:name (str "Transform job #" id " (deleted)") :updated_at nil :creator nil})
+   One query per entity table (4 total), then one query to resolve creator labels.
+   Replaces the per-row N+1 in the old `entity-meta-for` (`:alert` was 3 sequential
+   single-row SELECTs per id; on a 200-alert hour that's 600 round-trips)."
+  [pairs]
+  (let [pairs   (->> pairs distinct (filter (comp some? second)))
+        by-type (group-by first pairs)
+        ids-of  (fn [t] (vec (distinct (map second (get by-type t)))))
+        db-ids       (vec (distinct (concat (ids-of :sync)
+                                            (ids-of :persisted-refresh))))
+        job-ids      (ids-of :transform-job)
+        alert-ids    (ids-of :alert)
+        sub-ids      (ids-of :dashboard-subscription)
+        dbs-f    (future (when (seq db-ids)
+                           (->> (t2/query {:select [:id :name :updated_at]
+                                           :from   [:metabase_database]
+                                           :where  [:in :id db-ids]})
+                                (into {} (map (juxt :id identity))))))
+        jobs-f   (future (when (seq job-ids)
+                           (->> (t2/query {:select [:id :name :updated_at]
+                                           :from   [:transform_job]
+                                           :where  [:in :id job-ids]})
+                                (into {} (map (juxt :id identity))))))
+        alerts-f (future (when (seq alert-ids)
+                           (->> (t2/query
+                                 {:select    [[:ns.id        :subscription_id]
+                                              [:n.id         :notification_id]
+                                              [:n.creator_id :creator_id]
+                                              [:n.updated_at :updated_at]
+                                              [:c.id         :card_id]
+                                              [:c.name       :card_name]]
+                                  :from      [[:notification_subscription :ns]]
+                                  :left-join [[:notification :n]      [:= :n.id :ns.notification_id]
+                                              [:notification_card :nc] [:= :nc.id :n.payload_id]
+                                              [:report_card :c]        [:= :c.id :nc.card_id]]
+                                  :where     [:in :ns.id alert-ids]})
+                                (into {} (map (juxt :subscription_id identity))))))
+        pulses-f (future (when (seq sub-ids)
+                           (->> (t2/query {:select [:id :name :updated_at :creator_id :dashboard_id]
+                                           :from   [:pulse]
+                                           :where  [:in :id sub-ids]})
+                                (into {} (map (juxt :id identity))))))
+        dbs    @dbs-f
+        jobs   @jobs-f
+        alerts @alerts-f
+        pulses @pulses-f
+        labels (bulk-creator-labels (concat (map :creator_id (vals alerts))
+                                            (map :creator_id (vals pulses))))]
+    (into {}
+          (map (fn [[t id :as pair]]
+                 (let [info (case t
+                              (:sync :persisted-refresh)
+                              (if-let [db (get dbs id)]
+                                {:name (:name db) :updated_at (:updated_at db)
+                                 :creator nil
+                                 :settings_url (str "/admin/databases/" id)}
+                                {:name (str (if (= t :sync) "Database" "DB")
+                                            " #" id " (deleted)")
+                                 :updated_at nil :creator nil :settings_url nil})
 
-      :alert
-      (if-let [notif-id (t2/select-one-fn :notification_id
-                                          :model/NotificationSubscription
-                                          :id id)]
-        (let [notif (t2/select-one [:model/Notification :creator_id :updated_at]
-                                   :id notif-id)
-              card-id (t2/select-one-fn :card_id :model/NotificationCard
-                                        {:where [:in :id {:select [:payload_id]
-                                                          :from   [:notification]
-                                                          :where  [:= :id notif-id]}]})
-              card-name (when card-id
-                          (:name (t2/select-one [:model/Card :name] :id card-id)))]
-          {:name (or card-name (str "Alert · notification #" notif-id))
-           :updated_at (:updated_at notif)
-           :creator (creator-label (:creator_id notif))})
-        {:name (str "Alert · subscription #" id " (deleted)") :updated_at nil :creator nil})
+                              :transform-job
+                              (if-let [job (get jobs id)]
+                                ;; TransformJob doesn't carry a creator column.
+                                {:name (:name job) :updated_at (:updated_at job)
+                                 :creator nil
+                                 :settings_url (str "/data-studio/transforms/jobs/" id)}
+                                {:name (str "Transform job #" id " (deleted)")
+                                 :updated_at nil :creator nil :settings_url nil})
 
-      :dashboard-subscription
-      (if-let [p (t2/select-one [:model/Pulse :name :updated_at :creator_id]
-                                :id id)]
-        {:name (:name p)
-         :updated_at (:updated_at p)
-         :creator (creator-label (:creator_id p))}
-        {:name (str "Dashboard subscription #" id " (deleted)")
-         :updated_at nil :creator nil})
+                              :alert
+                              (if-let [r (get alerts id)]
+                                {:name (or (:card_name r)
+                                           (str "Alert · notification #" (:notification_id r)))
+                                 :updated_at (:updated_at r)
+                                 :creator (get labels (:creator_id r))
+                                 :settings_url (when-let [card-id (:card_id r)]
+                                                 (str "/question/" card-id))}
+                                {:name (str "Alert · subscription #" id " (deleted)")
+                                 :updated_at nil :creator nil :settings_url nil})
 
-      :persisted-refresh
-      (if-let [db (t2/select-one [:model/Database :name :updated_at] :id id)]
-        {:name (:name db) :updated_at (:updated_at db) :creator nil}
-        {:name (str "DB #" id " (deleted)") :updated_at nil :creator nil})
+                              :dashboard-subscription
+                              (if-let [p (get pulses id)]
+                                {:name (:name p) :updated_at (:updated_at p)
+                                 :creator (get labels (:creator_id p))
+                                 :settings_url (when-let [dash-id (:dashboard_id p)]
+                                                 (str "/dashboard/" dash-id))}
+                                {:name (str "Dashboard subscription #" id " (deleted)")
+                                 :updated_at nil :creator nil :settings_url nil})
 
-      nil)))
+                              nil)]
+                   [pair info])))
+          pairs)))
 
 (defn slot
   "Enumerate the jobs scheduled in [from, to) — typically a single hour."
@@ -285,16 +313,22 @@
     []
     (let [keep-type? (type-filter-fn types)
           weight-for (memoize weights/weight-for)
-          entity-meta (memoize entity-meta-for)]
+          matched    (into []
+                           (keep (fn [t]
+                                   (when-let [parsed (parse-trigger t)]
+                                     (when (keep-type? (:type parsed))
+                                       {:trigger t :parsed parsed}))))
+                           (all-triggers))
+          info       (bulk-entity-info
+                      (map (fn [{:keys [parsed]}] [(:type parsed) (:id parsed)])
+                           matched))]
       (vec
-       (for [trig (all-triggers)
-             :let [parsed (parse-trigger trig)
-                   {:keys [type id]} parsed]
-             :when (and parsed (keep-type? type))
-             ^Instant fire (fires-of trig from to)
-             :let [cron (when (instance? CronTrigger trig)
-                          (.getCronExpression ^CronTrigger trig))
-                   meta (entity-meta parsed)]]
+       (for [{:keys [trigger parsed]} matched
+             :let [{:keys [type id]} parsed]
+             ^Instant fire (fires-of trigger from to)
+             :let [cron (when (instance? CronTrigger trigger)
+                          (.getCronExpression ^CronTrigger trigger))
+                   meta (get info [type id])]]
          {:type         type
           :entity_id    id
           :entity_name  (:name meta)
@@ -303,4 +337,4 @@
           :cron         cron
           :fire_at      (str fire)
           :weight       (weight-for type id)
-          :settings_url (settings-url-for parsed)})))))
+          :settings_url (:settings_url meta)})))))

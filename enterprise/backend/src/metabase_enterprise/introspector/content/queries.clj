@@ -556,33 +556,39 @@
           ;; `analysis_finding_error` references entities directly via (analyzed_entity_type,
           ;; analyzed_entity_id) — there is no FK back to `analysis_finding`. Combine the
           ;; error rows for this transform into individual reasons.
-          analysis-rows       (t2/query
-                               {:select [[:afe.analyzed_entity_id :transform_id]
-                                         [:afe.error_type :error_type]
-                                         [:afe.error_detail :error_detail]]
-                                :from   [[:analysis_finding_error :afe]]
-                                :where  [:and
-                                         [:= :afe.analyzed_entity_type (h2x/literal "transform")]
-                                         [:in :afe.analyzed_entity_id ids]]})
-          target-missing-rows (t2/query
-                               (-> (transform-target-missing-cte)
-                                   (update :where conj [:in :transform.id ids])))
-          latest-failed-rows  (t2/query
-                               {:with   [[:finished_runs
-                                          {:select [:transform_id :status :message
-                                                    [[:over [[:row_number]
-                                                             {:partition-by :transform_id
-                                                              :order-by     [[:start_time :desc]]}]]
-                                                     :rn]]
-                                           :from   [:transform_run]
-                                           :where  [:and
-                                                    [:in :transform_id ids]
-                                                    [:= :is_active nil]]}]]
-                                :select [:transform_id :message]
-                                :from   [:finished_runs]
-                                :where  [:and
-                                         [:= :rn [:inline 1]]
-                                         [:= :status (h2x/literal "failed")]]})
+          analysis-f          (future
+                                (t2/query
+                                 {:select [[:afe.analyzed_entity_id :transform_id]
+                                           [:afe.error_type :error_type]
+                                           [:afe.error_detail :error_detail]]
+                                  :from   [[:analysis_finding_error :afe]]
+                                  :where  [:and
+                                           [:= :afe.analyzed_entity_type (h2x/literal "transform")]
+                                           [:in :afe.analyzed_entity_id ids]]}))
+          target-missing-f    (future
+                                (t2/query
+                                 (-> (transform-target-missing-cte)
+                                     (update :where conj [:in :transform.id ids]))))
+          latest-failed-f     (future
+                                (t2/query
+                                 {:with   [[:finished_runs
+                                            {:select [:transform_id :status :message
+                                                      [[:over [[:row_number]
+                                                               {:partition-by :transform_id
+                                                                :order-by     [[:start_time :desc]]}]]
+                                                       :rn]]
+                                             :from   [:transform_run]
+                                             :where  [:and
+                                                      [:in :transform_id ids]
+                                                      [:= :is_active nil]]}]]
+                                  :select [:transform_id :message]
+                                  :from   [:finished_runs]
+                                  :where  [:and
+                                           [:= :rn [:inline 1]]
+                                           [:= :status (h2x/literal "failed")]]}))
+          analysis-rows       @analysis-f
+          target-missing-rows @target-missing-f
+          latest-failed-rows  @latest-failed-f
           push                (fn [m id reason]
                                 (update m id (fnil conj []) reason))]
       (as-> {} reasons
@@ -630,11 +636,19 @@
   [rows]
   (let [ids         (mapv :id rows)
         broken-ids  (mapv :id (filter #(pos? (:is_broken %)) rows))
-        tables      (transform-target-tables ids)
-        latest      (transform-latest-runs ids)
-        reasons     (transform-reasons broken-ids)
-        creators    (transform-creators ids)
-        dep-counts  (transform-dependent-counts ids)]
+        ;; 5 independent reads against the app DB — fan out so wall time is
+        ;; max(...) instead of sum(...). transform-reasons itself fans out
+        ;; another 3 internally.
+        tables-f     (future (transform-target-tables ids))
+        latest-f     (future (transform-latest-runs ids))
+        reasons-f    (future (transform-reasons broken-ids))
+        creators-f   (future (transform-creators ids))
+        dep-counts-f (future (transform-dependent-counts ids))
+        tables       @tables-f
+        latest       @latest-f
+        reasons      @reasons-f
+        creators     @creators-f
+        dep-counts   @dep-counts-f]
     (mapv (fn [{:keys [id is_broken is_stale is_unreferenced source_json] :as row}]
             (let [flags (cond-> []
                           (pos? (or is_broken 0))       (conj "broken")
@@ -676,77 +690,77 @@
   "Subquery selecting ids of all archived (trashed) collections."
   {:select [:id] :from [:collection] :where [:= :collection.archived true]})
 
-(defn- count-cards
-  "Count cards whose ids match `ids-cte`, applying the same archive/trash filters as the
-   federated list query so summary counts line up with the list."
-  [ids-cte]
-  (-> {:select [[:%count.* :total]]
-       :from   [:report_card]
-       :where  [:and
-                [:in :report_card.id {:select [:id] :from [[ids-cte :ids]]}]
-                [:= :report_card.archived false]
-                [:or
-                 [:= :report_card.collection_id nil]
-                 [:not-in :report_card.collection_id archived-collection-ids-subq]]]}
-      t2/query first :total))
+(defn- cards-summary-query
+  "Single aggregated query returning broken/stale/unreferenced/healthy counts.
+   COUNT() of each CTE join column counts non-null matches; COUNT(*) gives the
+   total of all unarchived/visible rows (the existing `:healthy` semantics).
+   Replaces 4 sequential round-trips per entity type."
+  [cutoff]
+  {:with [[:stale  (card-stale-cte cutoff)]
+          [:broken (broken-ids-cte "card")]
+          [:unref  (unreferenced-cards-cte)]]
+   :select    [[[:count :broken.id] :broken]
+               [[:count :stale.id]  :stale]
+               [[:count :unref.id]  :unreferenced]
+               [:%count.*           :healthy]]
+   :from      [:report_card]
+   :left-join [[:stale :stale]   [:= :stale.id :report_card.id]
+               [:broken :broken] [:= :broken.id :report_card.id]
+               [:unref :unref]   [:= :unref.id :report_card.id]]
+   :where     [:and
+               [:= :report_card.archived false]
+               [:or
+                [:= :report_card.collection_id nil]
+                [:not-in :report_card.collection_id archived-collection-ids-subq]]]})
 
-(defn- count-dashboards [ids-cte]
-  (-> {:select [[:%count.* :total]]
-       :from   [:report_dashboard]
-       :where  [:and
-                [:in :report_dashboard.id {:select [:id] :from [[ids-cte :ids]]}]
-                [:= :report_dashboard.archived false]
-                [:or
-                 [:= :report_dashboard.collection_id nil]
-                 [:not-in :report_dashboard.collection_id archived-collection-ids-subq]]]}
-      t2/query first :total))
+(defn- dashboards-summary-query [cutoff]
+  {:with [[:stale  (dashboard-stale-cte cutoff)]
+          [:broken (broken-ids-cte "dashboard")]
+          [:unref  (unreferenced-dashboards-cte)]]
+   :select    [[[:count :broken.id] :broken]
+               [[:count :stale.id]  :stale]
+               [[:count :unref.id]  :unreferenced]
+               [:%count.*           :healthy]]
+   :from      [:report_dashboard]
+   :left-join [[:stale :stale]   [:= :stale.id :report_dashboard.id]
+               [:broken :broken] [:= :broken.id :report_dashboard.id]
+               [:unref :unref]   [:= :unref.id :report_dashboard.id]]
+   :where     [:and
+               [:= :report_dashboard.archived false]
+               [:or
+                [:= :report_dashboard.collection_id nil]
+                [:not-in :report_dashboard.collection_id archived-collection-ids-subq]]]})
 
-(defn- count-transforms [ids-cte]
-  (-> {:select [[:%count.* :total]]
-       :from   [:transform]
-       :where  [:in :transform.id {:select [:id] :from [[ids-cte :ids]]}]}
-      t2/query first :total))
+(defn- transforms-summary-query []
+  {:with [[:broken (broken-transforms-cte)]
+          [:unref  (unreferenced-transforms-cte)]]
+   :select    [[[:count :broken.id] :broken]
+               [[:count :unref.id]  :unreferenced]
+               [:%count.*           :healthy]]
+   :from      [:transform]
+   :left-join [[:broken :broken] [:= :broken.id :transform.id]
+               [:unref :unref]   [:= :unref.id :transform.id]]})
 
 (defn summary
   "Per-entity-type, per-condition counts for the stat strip."
   []
-  (let [cutoff (t/minus (t/local-date) (t/months 6))]
-    {:cards      {:broken       (count-cards (broken-ids-cte "card"))
-                  :stale        (count-cards (card-stale-cte cutoff))
-                  :unreferenced (count-cards (unreferenced-cards-cte))
-                  :healthy      (-> {:select [[:%count.* :total]]
-                                     :from   [:report_card]
-                                     :where  [:and
-                                              [:= :report_card.archived false]
-                                              [:or
-                                               [:= :report_card.collection_id nil]
-                                               [:not-in :report_card.collection_id
-                                                archived-collection-ids-subq]]]}
-                                    t2/query first :total)}
-     :dashboards {:broken       (count-dashboards (broken-ids-cte "dashboard"))
-                  :stale        (count-dashboards (dashboard-stale-cte cutoff))
-                  :unreferenced (count-dashboards (unreferenced-dashboards-cte))
-                  :healthy      (-> {:select [[:%count.* :total]]
-                                     :from   [:report_dashboard]
-                                     :where  [:and
-                                              [:= :report_dashboard.archived false]
-                                              [:or
-                                               [:= :report_dashboard.collection_id nil]
-                                               [:not-in :report_dashboard.collection_id
-                                                archived-collection-ids-subq]]]}
-                                    t2/query first :total)}
-     ;; Transforms have no `last_used_at`, so the existing introspector "stale =
-     ;; time-based" concept doesn't apply. The spike (transforms-admin-cleanup-spike.md)
-     ;; instead reuses "stale" to mean "orphaned output / no downstream dependents" —
-     ;; i.e. exactly what introspector elsewhere calls `:unreferenced`. Report the same
-     ;; value under both keys so the FE filter pill (Stale → ?conditions=unreferenced)
-     ;; and the StatStrip tile agree. `broken` uses the combined CTE so the count
-     ;; reflects analysis-finding errors *plus* target-table-missing *plus*
-     ;; latest-run-failed, matching the list endpoint.
-     :transforms (let [orphaned (count-transforms (unreferenced-transforms-cte))]
-                   {:broken       (count-transforms (broken-transforms-cte))
-                    :stale        orphaned
-                    :unreferenced orphaned
-                    :healthy      (-> {:select [[:%count.* :total]]
-                                       :from   [:transform]}
-                                      t2/query first :total)})}))
+  (let [cutoff       (t/minus (t/local-date) (t/months 6))
+        cards-f      (future (first (t2/query (cards-summary-query cutoff))))
+        dashboards-f (future (first (t2/query (dashboards-summary-query cutoff))))
+        transforms-f (future (first (t2/query (transforms-summary-query))))
+        cards        @cards-f
+        dashboards   @dashboards-f
+        transforms   @transforms-f
+        ;; Transforms have no `last_used_at`, so the existing introspector "stale =
+        ;; time-based" concept doesn't apply. The spike (transforms-admin-cleanup-spike.md)
+        ;; instead reuses "stale" to mean "orphaned output / no downstream dependents" —
+        ;; i.e. exactly what introspector elsewhere calls `:unreferenced`. Report the same
+        ;; value under both keys so the FE filter pill (Stale → ?conditions=unreferenced)
+        ;; and the StatStrip tile agree.
+        orphaned     (or (:unreferenced transforms) 0)]
+    {:cards      cards
+     :dashboards dashboards
+     :transforms {:broken       (or (:broken transforms) 0)
+                  :stale        orphaned
+                  :unreferenced orphaned
+                  :healthy      (or (:healthy transforms) 0)}}))
