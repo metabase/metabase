@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -91,7 +92,11 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
 
 const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
 
-export function SegmentListApp() {
+type SegmentListAppProps = {
+  location: Location<{ table?: string }>;
+};
+
+export function SegmentListApp({ location }: SegmentListAppProps) {
   const { isLoading, error } = useListSegmentsQuery();
   const segments = useSelector((state: State) =>
     Object.values(getMetadata(state).segments),
@@ -101,5 +106,5 @@ export function SegmentListApp() {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <FilteredSegmentList segments={segments} />;
+  return <FilteredSegmentList location={location} segments={segments} />;
 }
