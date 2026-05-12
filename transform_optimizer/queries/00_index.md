@@ -25,7 +25,7 @@ LLM (Phase 2).
 | #   | Pattern                                | Kind            | Target speedup |
 |-----|----------------------------------------|-----------------|----------------|
 | q01 | `NOT IN` → `NOT EXISTS` antijoin       | rewrite         | ≥100×          |
-| q02 | Correlated subqueries → group + join   | rewrite         | ≥100×          |
+| q02 | Correlated subqueries → group + join   | rewrite         | ≥50×           |
 | q03 | OR over multiple columns → `UNION ALL` | rewrite (+idx)  | ≥50×           |
 | q04 | Full scan filter → status/date index   | index           | ≥100×          |
 | q05 | `ILIKE '%…%'` → `pg_trgm` GIN          | rewrite+index   | ≥100×          |
