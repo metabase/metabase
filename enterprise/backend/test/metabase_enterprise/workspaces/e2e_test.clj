@@ -294,8 +294,13 @@
                                          :bigquery-cloud-sdk ((bq-util 'list-tables) admin-spec
                                                                                      ((bq-util 'project-id) admin-details)
                                                                                      main-schema)
+                                         ;; No LIMIT/TOP — the source table is seeded with 3
+                                         ;; rows above (`create-source-table!`); the assertion
+                                         ;; below only needs >= 1 row, and avoiding `LIMIT`
+                                         ;; keeps this portable across SQL Server (`TOP`) and
+                                         ;; the LIMIT-aware drivers.
                                          (jdbc/query admin-spec
-                                                     [(format "SELECT 1 FROM %s LIMIT 1"
+                                                     [(format "SELECT 1 FROM %s"
                                                               (qualified-table-sql admin-driver admin-details main-schema src-name))]))]
                   (is (>= (count warehouse-tables) 1)
                       (str "warehouse source table " main-schema "." src-name " is not queryable")))
