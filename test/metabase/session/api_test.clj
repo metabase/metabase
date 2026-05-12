@@ -50,6 +50,20 @@
     (is (malli= SessionResponse
                 (mt/client :post 200 "session" (mt/user->credentials :rasta))))))
 
+(deftest login-logs-user-id-test
+  (testing "POST /api/session log line includes the user ID after login (#74017)"
+    (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+      (is (malli= SessionResponse
+                  (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+      (let [rasta-id (test.users/user->id :rasta)
+            log-line (->> (messages)
+                          (m/find-first (fn [{:keys [message]}]
+                                          (and (string? message)
+                                               (re-find #"POST /api/session" message)))))]
+        (is (some? log-line))
+        (is (re-find (re-pattern (str ":metabase-user-id " rasta-id))
+                     (:message log-line)))))))
+
 (deftest login-mixed-case-email-test
   (testing "POST /api/session - login with email of mixed case"
     (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
@@ -634,6 +648,29 @@
                                                  "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:_error "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+
+(deftest google-auth-logs-user-id-test
+  (testing "POST /api/session/google_auth log line includes the user ID after login (#74017)"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temp [:model/User {user-id :id} {:email "test@metabase.com"
+                                                :is_active true}]
+        (with-redefs [http/post (constantly
+                                 {:status 200
+                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                               "\"email_verified\":\"true\","
+                                               "\"given_name\":\"test\","
+                                               "\"family_name\":\"user\","
+                                               "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session/google_auth" {:token "foo"})))
+            (let [log-line (->> (messages)
+                                (m/find-first (fn [{:keys [message]}]
+                                                (and (string? message)
+                                                     (re-find #"POST /api/session/google_auth" message)))))]
+              (is (some? log-line))
+              (is (re-find (re-pattern (str ":metabase-user-id " user-id))
+                           (:message log-line))))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 

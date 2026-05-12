@@ -130,7 +130,8 @@
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
                        (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-key)}]
+                             response                        (vary-meta {:id (str session-key)}
+                                                                        assoc :metabase-user-id (:user_id session))]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -241,10 +242,11 @@
                        :provider/emailed-secret-password-reset]
                       request-body)]
     (if (:success? auth-result)
-      (request/set-session-cookies request
-                                   {:success true :session_id (get-in auth-result [:session :key])}
-                                   (:session auth-result)
-                                   (t/zoned-date-time (t/zone-id "GMT")))
+      (let [session  (:session auth-result)
+            response (vary-meta {:success true :session_id (str (:key session))}
+                                assoc :metabase-user-id (:user_id session))]
+        (request/set-session-cookies request response session
+                                     (t/zoned-date-time (t/zone-id "GMT"))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -298,8 +300,9 @@
               (cond
                 ;; Login succeeded
                 (:success? login-result)
-                (let [session (:session login-result)
-                      response {:id (str (:key session))}]
+                (let [session  (:session login-result)
+                      response (vary-meta {:id (str (:key session))}
+                                          assoc :metabase-user-id (:user_id session))]
                   (request/set-session-cookies request
                                                response
                                                session
