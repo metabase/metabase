@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.provisioning
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -107,6 +108,13 @@
                          :schema           (:output_namespace wsd)
                          :database_details (:database_details wsd)}]
           (destroy! provisioner driver db workspace)
+          ;; Clear `TableRemapping` rows whose `to_*` matches this workspace's iso
+          ;; namespace. The unique constraint on `(database_id, from_*)` prevents
+          ;; two workspaces on the same DB from remapping the same canonical
+          ;; table, so scoping by iso namespace alone is correct.
+          (ws.remapping-cleanup/clear-mappings-for-iso! db
+                                                        (:database_id wsd)
+                                                        (:output_namespace wsd))
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
                       {:output_namespace ""
