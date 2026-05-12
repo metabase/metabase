@@ -10,6 +10,11 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (thunk))))
+
 (defn- staging-tables
   "Return the contents of `metabase_table_import` ordered by `source_id`."
   []
