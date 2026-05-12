@@ -1,10 +1,10 @@
 ## Track per-assistant-turn outcome on metabot_message: was the turn aborted (finished=false) or did it error (error text set).
 
 databaseChangeLog:
-  - logicalFilePath: migrations/062_update_migrations.yaml
+  - logicalFilePath: migrations/061_update_migrations.yaml
 
   - changeSet:
-      id: v62.2026-05-08T10:00:00
+      id: v61.2026-05-08T10:00:00
       author: sloansparger
       comment: Add finished column to metabot_message to flag client-aborted assistant turns
       changes:
@@ -20,7 +20,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.2026-05-08T10:00:01
+      id: v61.2026-05-08T10:00:01
       author: sloansparger
       comment: Add error column to metabot_message capturing the failure reason for errored assistant turns
       changes:
