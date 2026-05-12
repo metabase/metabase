@@ -47,6 +47,7 @@ export const snippetApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("snippet")]),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
     updateSnippet: builder.mutation<NativeQuerySnippet, UpdateSnippetRequest>({
       query: ({ id, ...body }) => ({
@@ -56,6 +57,7 @@ export const snippetApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("snippet"), idTag("snippet", id)]),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
   }),
 });
