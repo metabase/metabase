@@ -127,22 +127,23 @@
             (throw e)))))))
 
 ;; ---------------------------------------------------------------------------
-;; Accept endpoint (BE-5 stub)
+;; Accept endpoint
 
 (api.macros/defendpoint :post "/:id/proposal/accept"
-  "Create the new transforms described by the proposal. Returns the created
-  transform records plus the advisory DDL list (DDL is not executed in this
-  branch — the user is expected to run it manually).
+  "Create the new transforms described by the proposal set. Single rewrites
+  pass an array of one element; precompute DAGs pass N elements in
+  dependency order (caller's responsibility — we create them in the order
+  given).
 
-  Phase-5 stub — returns 501 until BE-5 lands."
+  DDL statements are returned as `advisory_ddl` for the user to run
+  manually; we do not execute DDL in this branch."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   _body :- [:map
-             [:proposal :map]
-             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/read-check :model/Transform id)
-  {:status 501
-   :body   {:error "accept endpoint not yet implemented (BE-5)"}})
+   body :- [:map
+            [:proposals    [:sequential :map]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (opt.accept/accept! transform (:proposals body) (:collection_id body))))
 
 ;; ---------------------------------------------------------------------------
 ;; Route bundle

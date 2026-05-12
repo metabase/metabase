@@ -3403,7 +3403,11 @@
 
   enterprise/transforms-inspector
   {:team "Gadget"
-   :api  #{metabase-enterprise.transforms-inspector.api}
+   :api  #{metabase-enterprise.transforms-inspector.api
+           ;; Exposed for transform-optimizer (Phase 1 context builder reuses
+           ;; build-context + analyze-native-query). Keep API surface narrow.
+           metabase-enterprise.transforms-inspector.context
+           metabase-enterprise.transforms-inspector.query-analysis}
    :uses #{analytics-interface
            api
            driver
@@ -3421,6 +3425,23 @@
                     :model/Field
                     :model/Table
                     :model/Transform}}
+
+  enterprise/transform-optimizer
+  {:team "Gadget"
+   :api  #{metabase-enterprise.transform-optimizer.api}
+   :uses #{api
+           driver
+           enterprise/transforms-inspector
+           metabot
+           server
+           transforms
+           transforms-base
+           util}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform
+                    :model/TransformRun}}
 
   enterprise/transforms-python
   {:team "Graphy"

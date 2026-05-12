@@ -26,21 +26,33 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 | `explain` | `explain.clj` | `EXPLAIN (FORMAT JSON, VERBOSE)`. No `ANALYZE` by default. Postgres only. |
 | `context` | `context.clj` | Top-level builder. Wraps `transforms-inspector.context/build-context`, resolves FK edges via `Field.fk_target_field_id`, attaches indexes + EXPLAIN + last-10 runs with durations. |
 
-### Phase 2 — Deterministic plumbing 🟡 **partial** (everything but the LLM call)
+### Phase 2 — Prompt + LLM wiring ✅ **done**
 
-| Namespace | File | What it does | Status |
-|---|---|---|---|
-| `prelude` | `prelude.clj` + `resources/transform_optimizer/prelude.md` | Static system prompt (output schema, severity rubric, DDL constraints, 4 worked examples — one per `kind`). Loaded once and cached. | ✅ |
-| `prompt` | `prompt.clj` | Renders context map to markdown for the user-side of the prompt. | ✅ |
-| `scoring` | `scoring.clj` | Pure `proposals → optimization_degree` per the rubric (`100 − Σ severity_weights`; high=30, med=15, low=5). | ✅ |
-| `ddl.parse` | `ddl/parse.clj` | Allowlist validator. Strips strings/comments, rejects multi-statement, rejects forbidden keywords, regex-matches canonical `CREATE INDEX`, asserts schema-qualified target is in referenced-tables set. | ✅ |
-| `core` | `core.clj` | Public entry `optimize!`. Stitches everything together. **LLM call is a stub.** Server-side proposal post-processing (DDL validation tag + scoring) is wired in. | 🟡 LLM stubbed |
+| Namespace | File | What it does |
+|---|---|---|
+| `prelude` | `prelude.clj` + `resources/transform_optimizer/prelude.md` | Static prelude (output schema, severity rubric, DDL constraints, 4 worked examples — one per `kind`). Loaded once and cached. |
+| `prompt` | `prompt.clj` | Renders context map to markdown for the user-side of the prompt. |
+| `scoring` | `scoring.clj` | Pure `proposals → optimization_degree` per the rubric (`100 − Σ severity_weights`; high=30, med=15, low=5). |
+| `ddl.parse` | `ddl/parse.clj` | Allowlist validator. Strips strings/comments, rejects multi-statement, rejects forbidden keywords, regex-matches canonical `CREATE INDEX`, asserts schema-qualified target is in referenced-tables set. |
+| `llm` | `llm.clj` | Calls `metabot.self/call-llm-structured` with our prelude+context as the user message and the proposals JSON schema. Inherits the metabot client's retry / telemetry / provider abstraction. Default model: `anthropic/claude-sonnet-4-6`. |
+| `core` | `core.clj` | Public entry `optimize!`. Stitches everything together. Server-side proposal post-processing (DDL validation tag + scoring) is wired in. |
+| `api` | `api.clj` | HTTP endpoints mounted at `/api/ee/transform-optimizer`. |
 
 ### Phase 3 — UI ⛔ **not started**
 
-### Phase 4 — Equivalence verification ⛔ **not started**
+### Phase 4 — Equivalence verification ✅ **done**
 
-### Phase 5 — Polish & guardrails ⛔ **not started**
+| Namespace | File | What it does |
+|---|---|---|
+| `verify` | `verify.clj` | Materialises slow + proposal SQL into a scratch schema, schema-compatibility check, `EXCEPT ALL` diff in both directions, sample-diff capture. Postgres only. |
+
+### Phase 5 — Polish & guardrails 🟡 **partial**
+
+- ✅ DDL validator (`ddl/parse.clj`) runs on every emitted statement.
+- ✅ Accept does **not** execute DDL; advisory text only.
+- ⛔ Permission-checking against source-DB write perms (only `read-check` so far).
+- ⛔ Cost guard (skip-EXPLAIN-ANALYZE on long-running transforms).
+- ⛔ Telemetry on acceptance / measured speedups beyond what metabot-self already exports.
 
 ---
 
@@ -48,14 +60,16 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 
 | # | Task | Depends on | Notes |
 |---|---|---|---|
-| BE-1 | Wire Metabot deftool `propose-transform-optimizations` | — | Replace `core/call-llm-stub`. Tool takes `{transform_id, opts}`, calls `core/build-prompt`, hands the rendered prompt to the Claude client in `metabase.metabot.self.claude`, parses streamed JSON, runs `core/finalise-proposals`. |
-| BE-2 | HTTP streaming endpoint `POST /api/ee/transform-optimizer/:id/optimize` | BE-1 | Reuses Metabot's SSE-streaming-writer-rf. See **Streaming endpoint** below for the wire contract. |
-| BE-3 | `GET /api/ee/transform-optimizer/:id/optimize/proposals` | persistence | Fetch persisted proposals (most recent first). Only needed if we persist; otherwise the panel runs the optimizer each time. |
-| BE-4 | `POST /api/ee/transform-optimizer/:id/proposal/verify` | none of BE-1..3 | Equivalence check. Pure server-side work; can be developed in parallel with BE-1. |
-| BE-5 | `POST /api/ee/transform-optimizer/:id/proposal/accept` | none | Creates the new transforms in `depends_on` order. DDL is advisory in this branch — *not* executed by Metabase; the response includes the validated DDL list for the user to copy. |
-| BE-6 | Persistence model `:model/TransformOptimizerProposal` | none | Liquibase migration + Toucan2 model. Stores the streamed payload + per-DDL `:validation` tags. Optional for the hackathon walking skeleton; required before merge. |
-| BE-7 | `clj-kondo` module config entry for `enterprise/transform-optimizer` | none | We currently cross `transforms-inspector`'s API boundary (`context/build-context`); will trip lint until registered. Either add `context` and `query-analysis` to the inspector's `:api` set or re-export them via `transforms-inspector.api`. |
-| BE-8 | Tests | BE-1..5 | Per-namespace unit tests. The harness from Phase 0 covers integration (equivalence + speedup) for the corpus of examples. |
+| BE-1 | ✅ Wire LLM call | — | `llm.clj` calls `metabot.self/call-llm-structured` with the structured-output schema. Default model `anthropic/claude-sonnet-4-6`. Prelude + context concatenated into a single user message (call-llm-structured has no separate system slot). |
+| BE-2 | ✅ HTTP streaming endpoint | — | `api.clj`: `POST /api/ee/transform-optimizer/:id/optimize` emits the SSE events per the **Streaming endpoint** contract below. |
+| BE-3 | `GET /api/ee/transform-optimizer/:id/proposals` | BE-6 | Fetch persisted proposals (most recent first). Only needed once we persist; today the panel re-runs the optimizer each time. |
+| BE-4 | ✅ Verify endpoint | — | `verify.clj` materialises both sides into a scratch schema and EXCEPT-ALL diffs both directions. Single-transform proposals only — precompute DAGs deferred. |
+| BE-5 | ✅ Accept endpoint | — | `accept.clj` creates a transform per proposal that has a body; pure-`:index` proposals are skipped. DDL returned as advisory. |
+| BE-6 | Persistence model `:model/TransformOptimizerProposal` | — | Liquibase migration + Toucan2 model. Stores the streamed payload + per-DDL `:validation` tags. Optional for the walking skeleton; required before merge. |
+| BE-7 | ✅ `clj-kondo` module config | — | `enterprise/transform-optimizer` registered; `inspector.context` + `inspector.query-analysis` added to `enterprise/transforms-inspector`'s `:api` set. |
+| BE-8 | Integration tests | — | Pure-unit tests for scoring/ddl/prompt/prelude/core ✅. End-to-end tests against a seeded Postgres still to write (verify + accept) — best done as a follow-up after the FE is connected. |
+| BE-9 | Permission-check at accept-time | — | Today only `read-check` runs on the source transform. Accept should also assert write permission on the target DB. |
+| BE-10 | Cost guard | — | Skip EXPLAIN ANALYZE / verify materialisation for transforms whose latest run exceeded N minutes. |
 
 ## Open FE tasks
 
@@ -232,26 +246,38 @@ Request body:
 
 ```json
 {
+  "proposals": [
+    { "id": "p1", "name": "customer_first_purchase",   "kind": "precompute", "body": "SELECT ...", "depends_on": [],         "ddl_statements": [...] },
+    { "id": "p2", "name": "customer_monthly_activity", "kind": "precompute", "body": "SELECT ...", "depends_on": [],         "ddl_statements": [...] },
+    { "id": "p3", "name": "cohort_retention",          "kind": "precompute", "body": "SELECT ...", "depends_on": ["p1","p2"],"ddl_statements": [] }
+  ],
   "collection_id": 42       // where to put the new transforms; optional, defaults to source transform's collection
 }
 ```
 
-Response (201):
+Single rewrites send `proposals` with one element.
+
+Response (200):
 
 ```json
 {
   "created_transforms": [
-    { "id": 88,  "name": "customer_first_purchase",   "kind": "precompute", "depends_on": [] },
-    { "id": 89,  "name": "customer_monthly_activity", "kind": "precompute", "depends_on": [] },
-    { "id": 90,  "name": "cohort_retention",          "kind": "precompute", "depends_on": [88, 89] }
+    { "id": 88,  "name": "Original — customer_first_purchase",   "proposal_id": "p1", "kind": "precompute", "depends_on": [] },
+    { "id": 89,  "name": "Original — customer_monthly_activity", "proposal_id": "p2", "kind": "precompute", "depends_on": [] },
+    { "id": 90,  "name": "Original — cohort_retention",          "proposal_id": "p3", "kind": "precompute", "depends_on": ["p1","p2"] }
   ],
   "advisory_ddl": [
     {
+      "id": "ddl1",
+      "proposal_id": "p1",
       "statement": "CREATE INDEX IF NOT EXISTS idx_cfp_customer_id ON shop.customer_first_purchase (customer_id);",
       "target": { "precompute-of": "p1" },
-      "rationale": "Join key for the final query."
+      "rationale": "Join key for the final query.",
+      "validation": "accepted",
+      "index_name": "idx_cfp_customer_id"
     }
-  ]
+  ],
+  "skipped_proposals": []   // proposal ids that had no SQL body (kind=index); they appear here, plus their DDL is in advisory_ddl
 }
 ```
 

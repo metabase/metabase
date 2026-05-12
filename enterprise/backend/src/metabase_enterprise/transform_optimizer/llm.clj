@@ -1,21 +1,23 @@
 (ns metabase-enterprise.transform-optimizer.llm
-  "Calls the Anthropic / Claude client with our prelude + per-transform
-  context and a structured-output JSON schema, returning the proposal payload
-  as parsed Clojure data.
+  "Calls the LLM with our prelude + per-transform context and a
+  structured-output JSON schema, returning the parsed proposal payload.
 
-  We don't go through Metabot's agent loop here — there is no tool dispatch
-  and no multi-turn reasoning, just one prompt → one structured response.
-  The `:schema` option on `claude-raw` forces Claude to call a synthetic
-  `structured_output` tool whose arguments match our schema; we pull the
-  parsed arguments out of the AISDK stream.
+  We use `metabot.self/call-llm-structured` rather than calling the Claude
+  client directly — it gives us retry-with-exponential-backoff, token-usage
+  telemetry, and provider abstraction (we can swap to OpenAI / OpenRouter
+  via the provider-and-model string).
+
+  Trade-off: `call-llm-structured` doesn't support a separate `system` field,
+  so we concatenate prelude + context into one user message. Cache utility
+  is slightly worse than a dedicated system prompt would give us, but this
+  keeps the dependency surface narrow.
 
   Today the call is buffered (we consume the whole stream before returning).
-  The HTTP streaming endpoint then re-emits the parts on the wire with
-  small artificial gaps. We can upgrade to incremental JSON parsing later
-  without changing the endpoint contract."
+  The HTTP streaming endpoint then re-emits the parts as SSE events. The
+  client-facing contract stays the same when we upgrade to incremental
+  streaming later."
   (:require
-   [metabase.metabot.self.claude :as claude]
-   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self :as metabot.self]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -23,15 +25,15 @@
 ;; ---------------------------------------------------------------------------
 ;; JSON Schema for the structured output
 ;;
-;; This is fed to Anthropic as `input_schema` of a forced tool call.
-;; The shape must match what `core/finalise-proposals` expects.
+;; Fed to the provider as the `schema` arg to `call-llm-structured`. The
+;; shape must match what `core/finalise-proposals` expects.
 
 (def ^:private ddl-target-schema
   ;; "source-db" | "transform-target" | { "precompute-of": "<sibling id>" }
   {:oneOf [{:type "string" :enum ["source-db" "transform-target"]}
            {:type "object"
-            :properties   {:precompute-of {:type "string"}}
-            :required     ["precompute-of"]
+            :properties           {:precompute-of {:type "string"}}
+            :required             ["precompute-of"]
             :additionalProperties false}]})
 
 (def ^:private ddl-statement-schema
@@ -63,8 +65,7 @@
               "depends_on" "ddl_statements"]})
 
 (def output-schema
-  "JSON Schema for the LLM's structured response — `{summary, proposals[]}`.
-  Public so the agent endpoint can include the same shape in its OpenAPI docs."
+  "JSON Schema for the LLM's structured response — `{summary, proposals[]}`."
   {:type "object"
    :additionalProperties false
    :properties {:summary   {:type "string"}
@@ -72,50 +73,33 @@
    :required ["summary" "proposals"]})
 
 ;; ---------------------------------------------------------------------------
-;; Model selection
-;;
-;; Optimizer reasoning over SQL benefits from a stronger model. We default to
-;; Sonnet (good balance of latency / quality / cost); callers can override
-;; per-request when we want to test with Opus.
+;; Defaults
 
-(def ^:private default-model "claude-sonnet-4-6")
+(def ^:private default-provider-and-model
+  "Optimizer reasoning over SQL benefits from a stronger model; Sonnet is a
+  good balance of latency / quality / cost for the hackathon. Override per
+  call via the `:provider-and-model` option."
+  "anthropic/claude-sonnet-4-6")
 
-;; ---------------------------------------------------------------------------
-;; Stream consumption
-
-(defn- collect-parts
-  "Reduce the AISDK stream into a vector of parts. The buffered approach lets
-  us inspect the full response (text, tool-input, errors) before returning."
-  [stream]
-  (into [] (self.core/aisdk-xf) stream))
-
-(defn- pick-structured-output
-  "From the AISDK parts, pull the one tool-input emitted by Claude's forced
-  `structured_output` tool call. Throws with diagnostic context if the LLM
-  failed to emit one (rate-limit, schema violation, finished early)."
-  [parts]
-  (or (some (fn [{:keys [type function arguments]}]
-              (when (and (= type :tool-input)
-                         (or (= function "structured_output")
-                             (= function :structured_output)))
-                arguments))
-            parts)
-      (throw (ex-info "LLM did not emit structured_output"
-                      {:status-code 502
-                       :parts       (mapv #(select-keys % [:type :function :text]) parts)}))))
-
-(defn- check-no-error
-  "If the stream surfaced an `:error` part, rethrow with its details."
-  [parts]
-  (when-let [err (some #(when (= :error (:type %)) %) parts)]
-    (throw (ex-info (or (:errorText err) "LLM stream errored")
-                    {:status-code 502 :error err}))))
+(def ^:private default-temperature 0.2)
+(def ^:private default-max-tokens  4096)
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
+(defn- compose-user-message
+  "Combine the prelude and the per-transform context into a single string.
+  The `call-llm-structured` API doesn't expose a separate system slot, so
+  we use a clear delimiter and let the model treat the prelude as
+  authoritative instructions."
+  [{:keys [system user]}]
+  (str (or system "")
+       "\n\n---\n\n"
+       "# Transform to optimise\n\n"
+       (or user "")))
+
 (defn propose-optimizations
-  "Call Claude with the optimizer prelude + rendered context and return the
+  "Call the LLM with the optimizer prelude + rendered context and return the
   parsed `{summary, proposals[]}` map.
 
   `prompt-map` is the output of `core/build-prompt`:
@@ -124,23 +108,33 @@
      :context <raw context, unused here>}
 
   Options:
-    :model       — model id (defaults to claude-sonnet-4-6)
-    :max-tokens  — defaults to 4096; raise for deeply-nested DAG proposals
-    :temperature — defaults to 0.2 (we want consistency, not creativity)"
-  [{:keys [system user]} & {:keys [model max-tokens temperature]
-                            :or   {model       default-model
-                                   max-tokens  4096
-                                   temperature 0.2}}]
-  (let [opts   {:model       model
-                :system      system
-                :input       [{:role "user" :content user}]
-                :schema      output-schema
-                :temperature temperature
-                :max-tokens  max-tokens}
-        stream (claude/claude opts)
-        parts  (collect-parts stream)]
-    (check-no-error parts)
-    (let [result (pick-structured-output parts)]
-      (log/debugf "transform-optimizer: LLM returned %d proposals"
-                  (count (:proposals result)))
-      result)))
+    :provider-and-model — defaults to `anthropic/claude-sonnet-4-6`
+    :temperature         — defaults to 0.2
+    :max-tokens          — defaults to 4096
+    :tracking            — extra map merged into the telemetry tracking-opts
+                           (see metabase.metabot.self/call-llm)"
+  [prompt-map & {:keys [provider-and-model temperature max-tokens tracking]
+                 :or   {provider-and-model default-provider-and-model
+                        temperature        default-temperature
+                        max-tokens         default-max-tokens}}]
+  (let [messages [{:role "user" :content (compose-user-message prompt-map)}]
+        track    (merge {:source "transform-optimizer"
+                         :tag    "optimize-proposals"} tracking)]
+    (try
+      (let [result (metabot.self/call-llm-structured
+                    provider-and-model
+                    messages
+                    output-schema
+                    temperature
+                    max-tokens
+                    track)]
+        (log/debugf "transform-optimizer: LLM returned %d proposals"
+                    (count (:proposals result)))
+        result)
+      (catch Exception e
+        (log/errorf e "transform-optimizer: LLM call failed")
+        (throw (ex-info "LLM call failed"
+                        {:status-code 502
+                         :cause       (ex-message e)
+                         :retryable   (boolean (-> e ex-data :status (#{408 409 429 502 503 504})))}
+                        e))))))
