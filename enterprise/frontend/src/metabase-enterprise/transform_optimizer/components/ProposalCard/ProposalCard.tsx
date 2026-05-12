@@ -157,20 +157,23 @@ function AcceptButton({
   action?: Action & { kind: "accept" };
   onClick?: () => void;
 }) {
-  if (!onClick) {
+  // Show the control iff the parent supplied an action entry. The
+  // callback is always non-null because TransformOptimizerSection wires
+  // them up unconditionally, so don't gate on it.
+  if (!action || !onClick) {
     return null;
   }
   const button = (
     <Button
       variant="filled"
-      loading={action?.busy}
-      disabled={action?.disabled}
+      loading={action.busy}
+      disabled={action.disabled}
       onClick={onClick}
     >
       {t`Accept`}
     </Button>
   );
-  if (action?.disabled && action.disabledReason) {
+  if (action.disabled && action.disabledReason) {
     return <Tooltip label={action.disabledReason}>{button}</Tooltip>;
   }
   return button;
@@ -183,32 +186,33 @@ function VerifyButton({
   action?: Action & { kind: "verify" };
   onClick?: () => void;
 }) {
-  if (!onClick) {
+  if (!action || !onClick) {
     return null;
   }
   const button = (
     <Button
       variant="default"
-      loading={action?.busy}
-      disabled={action?.disabled}
+      loading={action.busy}
+      disabled={action.disabled}
       onClick={onClick}
     >
       {t`Verify`}
     </Button>
   );
-  if (action?.disabled && action.disabledReason) {
+  if (action.disabled && action.disabledReason) {
     return <Tooltip label={action.disabledReason}>{button}</Tooltip>;
   }
   return button;
 }
 
 function DismissButton({
+  action,
   onClick,
 }: {
   action?: Action & { kind: "dismiss" };
   onClick?: () => void;
 }) {
-  if (!onClick) {
+  if (!action || !onClick) {
     return null;
   }
   return (
