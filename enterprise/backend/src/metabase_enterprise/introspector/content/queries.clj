@@ -187,11 +187,18 @@
        [:not= :unref.id nil]]
       (into [:or] parts))))
 
-(defn- sort-clause [sort-column sort-direction]
+(defn- sort-clause
+  "ORDER BY clause for the federated card/dashboard queries.
+
+  `name-col` is the *fully qualified* name column for the entity table (e.g.
+  `:report_card.name`). Required because we now LEFT JOIN `collection` to
+  surface `collection.name`, so an unqualified `name` reference is ambiguous
+  to Postgres."
+  [name-col sort-column sort-direction]
   (let [col (case sort-column
-              :name         :%lower.name
+              :name         [:lower name-col]
               :last_used_at :last_used_at
-              :%lower.name)
+              [:lower name-col])
         dir (case sort-direction
               :desc :desc
               :asc)]
@@ -227,6 +234,7 @@
                       :report_card.name
                       :report_card.description
                       :report_card.collection_id
+                      [:collection.name :collection_name]
                       :report_card.dashboard_id
                       :report_card.last_used_at
                       :report_card.display
@@ -241,7 +249,12 @@
              :from   [:report_card]
              :left-join [[:stale :stale]   [:= :stale.id :report_card.id]
                          [:broken :broken] [:= :broken.id :report_card.id]
-                         [:unref :unref]   [:= :unref.id :report_card.id]]
+                         [:unref :unref]   [:= :unref.id :report_card.id]
+                         ;; Pull the parent collection's name for display. LEFT JOIN
+                         ;; so cards in the root (collection_id IS NULL) still come
+                         ;; back — `:collection_name` is then nil and the FE shows
+                         ;; "Our analytics" / similar root label.
+                         [:collection :collection] [:= :collection.id :report_card.collection_id]]
              :where  [:and
                       [:= :report_card.archived false]
                       ;; Exclude cards living in an archived/trashed collection.
@@ -252,7 +265,7 @@
                          :from   [:collection]
                          :where  [:= :collection.archived true]}]]
                       (conditions-filter-clause conditions)]
-             :order-by (sort-clause sort-column sort-direction)
+             :order-by (sort-clause :report_card.name sort-column sort-direction)
              :limit    limit
              :offset   offset}
 
@@ -302,6 +315,7 @@
                       :report_dashboard.name
                       :report_dashboard.description
                       :report_dashboard.collection_id
+                      [:collection.name :collection_name]
                       [:report_dashboard.last_viewed_at :last_used_at]
                       :report_dashboard.archived
                       :report_dashboard.creator_id
@@ -313,7 +327,9 @@
              :from   [:report_dashboard]
              :left-join [[:stale :stale]   [:= :stale.id :report_dashboard.id]
                          [:broken :broken] [:= :broken.id :report_dashboard.id]
-                         [:unref :unref]   [:= :unref.id :report_dashboard.id]]
+                         [:unref :unref]   [:= :unref.id :report_dashboard.id]
+                         ;; Same display-only join as cards-federated-query.
+                         [:collection :collection] [:= :collection.id :report_dashboard.collection_id]]
              :where  [:and
                       [:= :report_dashboard.archived false]
                       ;; Exclude dashboards living in an archived/trashed collection.
@@ -324,7 +340,7 @@
                          :from   [:collection]
                          :where  [:= :collection.archived true]}]]
                       (conditions-filter-clause conditions)]
-             :order-by (sort-clause sort-column sort-direction)
+             :order-by (sort-clause :report_dashboard.name sort-column sort-direction)
              :limit    limit
              :offset   offset}
 
@@ -753,9 +769,14 @@
                [:unref :unref]   [:= :unref.id :transform.id]]})
 
 (defn summary
-  "Per-entity-type, per-condition counts for the stat strip."
-  []
-  (let [cutoff       (t/minus (t/local-date) (t/months 6))
+  "Per-entity-type, per-condition counts for the stat strip. `:cutoff-date`
+  (LocalDate) is the staleness threshold for cards/dashboards; defaults to
+  6 months ago when not supplied. The user-chosen value flows through here so
+  the StatStrip totals agree with the row list (otherwise you'd see, say,
+  '8758 stale' in the strip while the table — filtered with a different
+  cutoff — shows a different subset)."
+  [& {:keys [cutoff-date]}]
+  (let [cutoff       (or cutoff-date (t/minus (t/local-date) (t/months 6)))
         cards-f      (future (first (t2/query (cards-summary-query cutoff))))
         dashboards-f (future (first (t2/query (dashboards-summary-query cutoff))))
         transforms-f (future (first (t2/query (transforms-summary-query))))

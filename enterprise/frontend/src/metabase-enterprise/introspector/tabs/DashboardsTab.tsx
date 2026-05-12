@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 
 import { useUpdateDashboardMutation } from "metabase/api";
 import { Box } from "metabase/ui";
+import {
+  type DateFilter,
+  getDateFilterValue,
+} from "metabase-enterprise/clean_up/CleanupCollectionModal/utils";
 
 import { useListIntrospectorDashboardsQuery } from "../api";
 import { BulkActionBar } from "../components/BulkActionBar";
@@ -12,7 +16,16 @@ import type { IntrospectorCondition, IntrospectorRow } from "../types";
 
 const PAGE_SIZE = 50;
 
-export function DashboardsTab() {
+interface DashboardsTabProps {
+  /** See CardsTab — staleness is lifted to IntrospectorPage. */
+  staleFilter: DateFilter;
+  onStaleFilterChange: (next: DateFilter) => void;
+}
+
+export function DashboardsTab({
+  staleFilter,
+  onStaleFilterChange,
+}: DashboardsTabProps) {
   const [conditions, setConditions] = useState<Set<IntrospectorCondition>>(
     new Set(["broken", "stale", "unreferenced"]),
   );
@@ -24,10 +37,11 @@ export function DashboardsTab() {
     () => ({
       conditions: Array.from(conditions).join(","),
       search: search || undefined,
+      "stale-before": getDateFilterValue(staleFilter),
       limit: PAGE_SIZE,
       offset,
     }),
-    [conditions, search, offset],
+    [conditions, search, staleFilter, offset],
   );
 
   const { data, isFetching } = useListIntrospectorDashboardsQuery(params);
@@ -96,6 +110,13 @@ export function DashboardsTab() {
         onToggleCondition={toggleCondition}
         search={search}
         onSearchChange={onSearchChange}
+        staleness={{
+          value: staleFilter,
+          onChange: (next) => {
+            onStaleFilterChange(next);
+            setOffset(0);
+          },
+        }}
       />
       <ContentTable
         entityType="dashboards"

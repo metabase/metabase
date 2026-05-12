@@ -75,6 +75,12 @@ export interface IntrospectorRow {
   name: string;
   description: string | null;
   collection_id: number | null;
+  /**
+   * Parent collection's display name (from the LEFT JOIN on `collection`).
+   * `null` when the row lives in the root (collection_id IS NULL) or when the
+   * row's entity type doesn't carry a collection (transforms today).
+   */
+  collection_name: string | null;
   last_used_at: string | null;
   is_stale: number;
   is_broken: number;

@@ -105,10 +105,15 @@
                        :offset         (or offset 0)}))
 
 (api.macros/defendpoint :get "/summary"
-  "Per-entity-type, per-condition counts for the stat strip."
-  [_route _query]
+  "Per-entity-type, per-condition counts for the stat strip. Accepts the same
+  `?stale-before=yyyy-MM-dd` query param the list endpoints take, so the strip
+  shows the same counts the user sees after filtering by their chosen
+  staleness threshold."
+  [_route
+   {:keys [stale-before]} :- [:map
+                              [:stale-before {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (q/summary))
+  (q/summary :cutoff-date (parse-cutoff stale-before)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/introspector/content` routes."

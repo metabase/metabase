@@ -160,7 +160,10 @@ export function ContentTable({
               <th style={headStyle}>{t`Last run`}</th>
             </>
           ) : (
-            <th style={headStyle}>{t`Last used`}</th>
+            <>
+              <th style={headStyle}>{t`Collection`}</th>
+              <th style={headStyle}>{t`Last used`}</th>
+            </>
           )}
           <th style={{ ...headStyle, width: 140 }} />
         </tr>
@@ -225,11 +228,32 @@ export function ContentTable({
                   </td>
                 </>
               ) : (
-                <td style={cellStyle}>
-                  <Text size="sm" c="text-secondary">
-                    {formatDate(row.last_used_at)}
-                  </Text>
-                </td>
+                <>
+                  <td style={cellStyle}>
+                    {row.collection_name ? (
+                      <Group gap={4} wrap="nowrap">
+                        <Icon name="folder" size={12} c="text-secondary" />
+                        <Text
+                          size="sm"
+                          c="text-secondary"
+                          lineClamp={1}
+                          title={row.collection_name}
+                        >
+                          {row.collection_name}
+                        </Text>
+                      </Group>
+                    ) : (
+                      <Text size="sm" c="text-secondary">
+                        {t`(Root)`}
+                      </Text>
+                    )}
+                  </td>
+                  <td style={cellStyle}>
+                    <Text size="sm" c="text-secondary">
+                      {formatDate(row.last_used_at)}
+                    </Text>
+                  </td>
+                </>
               )}
               <td style={cellStyle}>
                 <Group gap="xs" justify="flex-end">

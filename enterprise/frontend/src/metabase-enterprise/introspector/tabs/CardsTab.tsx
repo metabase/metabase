@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { Box } from "metabase/ui";
+import {
+  type DateFilter,
+  getDateFilterValue,
+} from "metabase-enterprise/clean_up/CleanupCollectionModal/utils";
 
 import { useListIntrospectorCardsQuery } from "../api";
 import { BulkActionBar } from "../components/BulkActionBar";
@@ -12,7 +16,17 @@ import type { IntrospectorCondition, IntrospectorRow } from "../types";
 
 const PAGE_SIZE = 50;
 
-export function CardsTab() {
+interface CardsTabProps {
+  /**
+   * Staleness threshold owned by `IntrospectorPage` so the StatStrip totals
+   * and the list query stay in sync. Setter is wired into the `FilterRow`
+   * staleness picker.
+   */
+  staleFilter: DateFilter;
+  onStaleFilterChange: (next: DateFilter) => void;
+}
+
+export function CardsTab({ staleFilter, onStaleFilterChange }: CardsTabProps) {
   const [conditions, setConditions] = useState<Set<IntrospectorCondition>>(
     new Set(["broken", "stale", "unreferenced"]),
   );
@@ -24,10 +38,14 @@ export function CardsTab() {
     () => ({
       conditions: Array.from(conditions).join(","),
       search: search || undefined,
+      // Always pass the cutoff so the backend's :stale CTE uses the user-chosen
+      // threshold even when `:stale` is in the requested conditions; harmless
+      // when it isn't (the CTE result just goes unused).
+      "stale-before": getDateFilterValue(staleFilter),
       limit: PAGE_SIZE,
       offset,
     }),
-    [conditions, search, offset],
+    [conditions, search, staleFilter, offset],
   );
 
   const { data, isFetching } = useListIntrospectorCardsQuery(params);
@@ -95,6 +113,13 @@ export function CardsTab() {
         onToggleCondition={toggleCondition}
         search={search}
         onSearchChange={onSearchChange}
+        staleness={{
+          value: staleFilter,
+          onChange: (next) => {
+            onStaleFilterChange(next);
+            setOffset(0);
+          },
+        }}
       />
       <ContentTable
         entityType="cards"

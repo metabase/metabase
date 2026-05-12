@@ -12,10 +12,14 @@ const tagFor = (kind: "cards" | "dashboards" | "transforms") =>
 
 export const introspectorApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getIntrospectorSummary: builder.query<IntrospectorSummary, void>({
-      query: () => ({
+    getIntrospectorSummary: builder.query<
+      IntrospectorSummary,
+      { "stale-before"?: string } | void
+    >({
+      query: (params) => ({
         method: "GET",
         url: "/api/ee/introspector/content/summary",
+        params: params ?? undefined,
       }),
       providesTags: [TAG_SUMMARY],
     }),
