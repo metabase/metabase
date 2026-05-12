@@ -53,7 +53,7 @@
                        (log/error e "Failed to submit MCP feedback to Harbormaster")
                        (api/check false [502 (tru "Could not submit feedback.")])))]
     (api/check-400 submitted?
-                   "Cannot submit feedback. The license token and/or Store API URL are missing!")))
+                   (tru "Cannot submit feedback. The license token and/or Store API URL are missing!"))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"

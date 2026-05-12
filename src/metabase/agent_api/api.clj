@@ -378,22 +378,32 @@
   in-process evaluation context."
   agent-lib/program-schema)
 
+(def ^:private construct-query-prompt-max-length
+  10000)
+
+(def ^:private ConstructQueryPrompt
+  (mut/update-properties
+   [:and
+    ms/NonBlankString
+    [:string {:max construct-query-prompt-max-length}]]
+   merge
+   {:json-schema {:type        "string"
+                  :minLength   1
+                  :maxLength   construct-query-prompt-max-length
+                  :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}))
+
 (mr/def ::construct-query-request
   "Request body for /v2/construct-query. Same as program-request, with an optional prompt
   capturing the user's original intent when a caller has one."
   (mut/merge agent-lib/program-schema
              [:map
-              [:prompt {:optional true} [:and
-                                         {:json-schema {:type        "string"
-                                                        :minLength   1
-                                                        :description "The user's exact original message, when available. Pass it as-is without summarizing or rewriting."}}
-                                         ms/NonBlankString]]]))
+              [:prompt {:optional true} ConstructQueryPrompt]]))
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query and, when supplied, the original prompt for use with /v1/execute."
   [:map
    [:query ms/NonBlankString]
-   [:prompt {:optional true} ms/NonBlankString]])
+   [:prompt {:optional true} ConstructQueryPrompt]])
 
 (def ^:private allowed-program-source-types
   "Top-level program source types that the HTTP boundary accepts. `context` and

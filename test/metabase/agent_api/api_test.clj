@@ -274,6 +274,12 @@
       (is (string? (:query response)) "Response should contain a query string")
       (is (not (contains? response :prompt)) "Response should only echo prompt when supplied")))
 
+  (testing "Rejects oversized prompts before they can be persisted on MCP query handles"
+    (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                          {:source     {:type "table" :id (mt/id :orders)}
+                           :operations []
+                           :prompt     (apply str (repeat 10001 "x"))}))
+
   (testing "Respects explicit limit operation"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
