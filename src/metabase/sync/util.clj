@@ -91,6 +91,24 @@
 ;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
 
+;; Extension point for processes that should pause sync while they are in flight (e.g.,
+;; enterprise metadata-file-import). Each registered predicate is a 0-arity fn returning
+;; either `nil` (proceed with sync) or `{:reason "..."}` (skip the sync, log at WARN).
+;; In-JVM only, same scope as `operation->db-ids`.
+(defonce ^:private external-busy-predicates (atom []))
+
+(defn register-busy-predicate!
+  "Register `pred` (a 0-arity fn) to be checked before each `do-sync-operation` runs.
+  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it. Intended
+  for in-process coordination with other appdb-wide write processes."
+  [pred]
+  (swap! external-busy-predicates conj pred))
+
+(defn- external-busy
+  "Return the first non-nil result from registered busy predicates, or nil."
+  []
+  (some (fn [p] (p)) @external-busy-predicates))
+
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
   given `operation`. This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user
@@ -266,24 +284,27 @@
    message   :- ms/NonBlankString
    f         :- fn?]
   (when (database/should-sync? database)
-    (let [run-type (operation->run-type operation)]
-      (task-history/with-task-run (when run-type
-                                    {:run_type    run-type
-                                     :entity_type :database
-                                     :entity_id   (u/the-id database)})
-        (let [sync-fn (with-duplicate-ops-prevented
-                       operation database
-                       (with-sync-events
-                        operation database
-                        (with-start-and-finish-logging
-                         message
-                         (with-db-logging-disabled
-                          (sync-in-context database
-                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (sync-fn)]
-          (when (instance? Throwable result)
-            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
-          result)))))
+    (if-let [busy (external-busy)]
+      (log/warnf "Skipping %s for database %d: %s"
+                 (name operation) (u/the-id database) (:reason busy))
+      (let [run-type (operation->run-type operation)]
+        (task-history/with-task-run (when run-type
+                                      {:run_type    run-type
+                                       :entity_type :database
+                                       :entity_id   (u/the-id database)})
+          (let [sync-fn (with-duplicate-ops-prevented
+                         operation database
+                         (with-sync-events
+                          operation database
+                          (with-start-and-finish-logging
+                           message
+                           (with-db-logging-disabled
+                            (sync-in-context database
+                                             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
+                result (sync-fn)]
+            (when (instance? Throwable result)
+              (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+            result))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things

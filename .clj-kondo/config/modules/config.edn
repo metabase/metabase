@@ -3338,6 +3338,7 @@
            search
            server
            setup
+           sync
            util}
    :model-imports :bypass}
 

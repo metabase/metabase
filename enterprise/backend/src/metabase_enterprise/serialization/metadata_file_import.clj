@@ -25,11 +25,13 @@
    [metabase-enterprise.serialization.metadata-file-import.parsers :as parsers]
    [metabase-enterprise.serialization.metadata-file-import.processors :as processors]
    [metabase.app-db.core :as mdb]
+   [metabase.sync.util :as sync.util]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.sql Connection PreparedStatement)
+   (java.time Instant)
    (org.postgresql PGConnection)
    (org.postgresql.copy CopyIn CopyManager)))
 
@@ -213,16 +215,95 @@
                    (count matched-target-db-ids))))
     :ok))
 
+;;; ============================== Concurrency guard ==============================
+;;;
+;;; All imports flow through a single Clojure agent so that no two run at
+;;; once within a JVM. Boot path and HTTP route both call `enqueue-import!`;
+;;; the agent's `send-off` thread executes them in arrival order. In-JVM
+;;; only, same scope as `metabase.sync.util/operation->db-ids`. No cluster-
+;;; wide coordination (consistent with sync's existing protections).
+
+(defonce ^:private import-state
+  (atom {:status :idle :file nil :since nil :last-result nil}))
+
+(defonce ^:private import-agent
+  (agent ::serializer :error-mode :continue))
+
+(defn import-running?
+  "Truthy iff a metadata-file-import is currently in flight on this JVM."
+  []
+  (= :running (:status @import-state)))
+
+(defn- import-busy-reason
+  "Predicate registered with `metabase.sync.util/register-busy-predicate!`.
+  Returns nil unless an import is running; when running, returns a map the
+  sync side logs at WARN before skipping its operation."
+  []
+  (let [{:keys [status file since]} @import-state]
+    (when (= :running status)
+      {:reason (format "metadata-file-import in progress (file=%s, since=%s)"
+                       file since)})))
+
+(defonce ^:private _busy-predicate-registered
+  (do (sync.util/register-busy-predicate! import-busy-reason) true))
+
+(defn- run-import*
+  "Agent body. Runs the import, updating `import-state` so observers see
+  `:running`. Always returns `::serializer`; `:error-mode :continue` plus an
+  inner try/catch means a failing import never poisons the agent."
+  [_serializer ^File file {:keys [delete-after?]}]
+  (let [path (.getAbsolutePath file)
+        t0   (System/nanoTime)]
+    (swap! import-state assoc :status :running :file path :since (Instant/now))
+    (log/infof "metadata-file-import: starting (file=%s)" path)
+    (try
+      (import-metadata-file! file)
+      (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
+        (log/infof "metadata-file-import: complete (file=%s, wall-ms=%.0f)" path wall-ms)
+        (swap! import-state assoc
+               :status :idle :file nil :since nil
+               :last-result {:status :ok
+                             :file path
+                             :wall-ms wall-ms
+                             :finished-at (Instant/now)}))
+      (catch Throwable t
+        (let [wall-ms (/ (- (System/nanoTime) t0) 1e6)]
+          (log/errorf t "metadata-file-import: failed (file=%s, wall-ms=%.0f)" path wall-ms)
+          (swap! import-state assoc
+                 :status :idle :file nil :since nil
+                 :last-result {:status :error
+                               :file path
+                               :wall-ms wall-ms
+                               :ex (str t)
+                               :finished-at (Instant/now)})))
+      (finally
+        (when delete-after?
+          (try (.delete file) (catch Throwable _ nil)))))
+    ::serializer))
+
+(defn enqueue-import!
+  "Submit `file` to the import agent. Returns immediately. Imports execute in
+  arrival order. Options:
+
+    :delete-after? — delete `file` from disk after the import completes
+                     (success or failure). For HTTP callers that spool the
+                     request body to a temp file."
+  ([^File file]
+   (enqueue-import! file {}))
+  ([^File file opts]
+   (log/infof "metadata-file-import: queued (file=%s)" (.getAbsolutePath file))
+   (send-off import-agent run-import* file opts)
+   :queued))
+
 (defn initialize-from-env!
-  "If `MB_TABLE_METADATA_PATH` is set in the environment, run the import
-  pipeline against the referenced file. Returns `:ok` on success, including
-  the no-env-vars case (silent no-op).
+  "If `MB_TABLE_METADATA_PATH` is set in the environment, enqueue an import of
+  the referenced file. Returns `:ok` on success, including the no-env-vars
+  case (silent no-op). Does not block on the import completing.
 
   Hard-fails if the referenced file doesn't exist or isn't readable."
   []
-  (if-let [metadata-path (env-path table-metadata-path-key)]
+  (when-let [metadata-path (env-path table-metadata-path-key)]
     (let [metadata-file (assert-file-readable! metadata-path)]
       (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-      (import-metadata-file! metadata-file)
-      :ok)
-    :ok))
+      (enqueue-import! metadata-file)))
+  :ok)
