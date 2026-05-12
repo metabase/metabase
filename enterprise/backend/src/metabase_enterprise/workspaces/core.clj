@@ -43,15 +43,18 @@
 
   Shape:
     {:name <workspace-name>
-     :databases {<database-id> {:input  [{:db ?, :schema ?}, ...]
-                                :output {:db ?, :schema ?}}
+     :databases {<database-id> {:input_schemas [<schema-name>, ...]
+                                :output        {:db ?, :schema ?}}
                  ...}}
 
-  `:input` and `:output` are `::table-namespace` maps (the level above
-  `:table` in the canonical addressing scheme). Each slot is a string when
-  the driver populates it and absent (or `nil`) otherwise. Empty string
-  `\"\"` is reserved for storage rows; the atom carries `nil`/missing for
-  absent slots. See `ai-reports/2026-05-04-table-namespace-mapping-spec.md`."}
+  `:input_schemas` is a vector of driver-opaque schema strings. For 3-slot
+  drivers (Snowflake, SQL Server, BigQuery) the warehouse catalog/project is
+  derived from the canonical `Database.details` at use time, not duplicated
+  on each row.
+
+  `:output` is a `::table-namespace` map — the loader expands the stored
+  `output_namespace` string into `{:db (db-position-value db) :schema ns}`
+  at boot so QP middleware can read both slots without a per-query case."}
   *workspace-instance-config*
   (atom nil))
 
@@ -68,12 +71,13 @@
     (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
 
 (mr/def ::workspace-database-config
-  "Per-database workspace config: `:input` is a non-empty vector of namespaces
-   (the source schemas the workspace reads from), `:output` is a single
-   namespace (the workspace's isolation schema)."
+  "Per-database workspace config: `:input_schemas` is a non-empty vector of
+   driver-opaque schema names (the source schemas the workspace reads from);
+   `:output` is a single namespace map (the workspace's isolation schema,
+   expanded with the warehouse catalog at boot)."
   [:map
-   [:input  [:vector {:min 1} ::table-namespace]]
-   [:output ::table-namespace]])
+   [:input_schemas [:vector {:min 1} :string]]
+   [:output        ::table-namespace]])
 
 (mr/def ::workspace-instance-config
   "Shape stored in [[workspace-instance-config]] after the `:workspace` config.yml
@@ -140,10 +144,10 @@
                       {:status-code 404 :workspace_id workspace-id}))))
 
 (defn- assert-input-present!
-  "Throw 400 if `input` is empty. At least one source namespace required."
-  [input]
-  (when (empty? input)
-    (throw (ex-info "input is required: at least one source namespace must be specified"
+  "Throw 400 if `input-schemas` is empty. At least one source schema required."
+  [input-schemas]
+  (when (empty? input-schemas)
+    (throw (ex-info "input_schemas is required: at least one source schema must be specified"
                     {:status-code 400}))))
 
 (defn- find-wsd
@@ -175,20 +179,20 @@
 
 (defn add-database!
   "Add a database to a workspace and provision it immediately (blocking).
-   `input` is a vector of `::table-namespace` maps (`{:db ?, :schema ?}`).
+   `input-schemas` is a vector of driver-opaque schema name strings.
    Returns the updated workspace, hydrated."
-  [workspace-id database-id input]
+  [workspace-id database-id input-schemas]
   (let [ws (assert-workspace-exists workspace-id)]
-    (assert-input-present! input)
+    (assert-input-present! input-schemas)
     (when (some #(= database-id (:database_id %)) (:databases ws))
       (throw (ex-info "Database already in workspace"
                       {:status-code 409 :workspace_id workspace-id :database_id database-id})))
     (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
                                           {:workspace_id     workspace-id
                                            :database_id      database-id
-                                           :input             input
+                                           :input_schemas    input-schemas
                                            :database_details {}
-                                           :output_schema    ""})]
+                                           :output_namespace ""})]
       (try
         (provisioning/provision-single! wsd-id)
         (catch Throwable t
@@ -198,16 +202,16 @@
 
 (defn update-database!
   "Update a database's config in a workspace: deprovision the existing one (if provisioned),
-   update `input`, then reprovision (blocking). `input` is a vector of `::table-namespace`
-   maps (`{:db ?, :schema ?}`). Returns the updated workspace, hydrated."
-  [workspace-id database-id input]
+   update `input-schemas`, then reprovision (blocking). `input-schemas` is a vector of
+   driver-opaque schema name strings. Returns the updated workspace, hydrated."
+  [workspace-id database-id input-schemas]
   (let [ws  (assert-workspace-exists workspace-id)
         wsd (find-wsd ws database-id)]
-    (assert-input-present! input)
+    (assert-input-present! input-schemas)
     (when (= :provisioned (:status wsd))
       (provisioning/deprovision-single! (:id wsd)))
     (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                {:input input})
+                {:input_schemas input-schemas})
     (provisioning/provision-single! (:id wsd))
     (workspace/get-workspace workspace-id)))
 

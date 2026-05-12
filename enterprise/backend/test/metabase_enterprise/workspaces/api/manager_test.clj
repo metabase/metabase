@@ -85,9 +85,9 @@
                    :model/WorkspaceDatabase _          {:workspace_id     ws-id
                                                         :database_id      db-id
                                                         :database_details {}
-                                                        :output_schema    ""
+                                                        :output_namespace ""
                                                         ;; schema-2 is deliberately excluded
-                                                        :input            [{:schema "schema-1"}]
+                                                        :input_schemas    ["schema-1"]
                                                         :status           :provisioned}]
       ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
       ;; Length mismatch in any section would fail `=?` — that's how we assert the
@@ -160,8 +160,8 @@
             ;; Attach `other-db-id` so we can target it on PUT / DELETE too.
             (mt/with-temp [:model/WorkspaceDatabase _ {:workspace_id ws-id
                                                        :database_id  other-db-id
-                                                       :input        [{:schema "PUBLIC"}]
-                                                       :status       :provisioned}]
+                                                       :input_schemas ["PUBLIC"]
+                                                       :status        :provisioned}]
               (testing "PUT /:id/database/:db-id — 403 against the no-perm DB"
                 (mt/user-http-request :rasta :put 403
                                       (str "ee/workspace-manager/" ws-id "/database/" other-db-id)

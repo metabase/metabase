@@ -1121,28 +1121,26 @@
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :snowflake
-  [_driver database workspace input]
-  (let [conn-spec    (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-        default-db   (:db (driver.conn/effective-details database))
-        role-name    (-> workspace :database_details :role)]
+  [_driver database workspace schemas]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        db-name   (:db (driver.conn/effective-details database))
+        role-name (-> workspace :database_details :role)]
     (when-not role-name
       (throw (ex-info (tru "Workspace isolation is not properly initialized - missing role name")
                       {:workspace-id (:id workspace) :step :grant})))
-    ;; Per-namespace shape: `{:db ?, :schema ?}`. Each input requires a
-    ;; database (input's `:db` if present, otherwise connection's bound `:db`)
-    ;; and a schema. Grants are schema-wide (all + future tables) — matches the
-    ;; Postgres semantics that workspace-scoped users receive whole-schema SELECT.
-    (let [qr (sql.u/quote-name :snowflake :field role-name)]
-      (doseq [{:keys [db schema] :as ns} input
-              :let [db-name (or db default-db)]]
-        (when (str/blank? db-name)
-          (throw (ex-info (tru "Snowflake workspace input namespace is missing :db")
-                          {:database-id (:id database) :namespace ns :step :grant})))
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Snowflake workspaces require an explicit database in connection details")
+                      {:database-id (:id database) :step :grant})))
+    ;; Each entry in `schemas` is a Snowflake schema in the bound database. The
+    ;; catalog (`:db`) comes from connection details rather than per-input — a
+    ;; Metabase `Database` row binds to one Snowflake database.
+    (let [qr  (sql.u/quote-name :snowflake :field role-name)
+          qdb (sql.u/quote-name :snowflake :schema db-name)]
+      (doseq [schema schemas]
         (when (str/blank? schema)
-          (throw (ex-info (tru "Snowflake workspace input namespace is missing :schema")
-                          {:database-id (:id database) :namespace ns :step :grant})))
-        (let [qdb (sql.u/quote-name :snowflake :schema db-name)
-              qs  (sql.u/quote-name :snowflake :schema schema)]
+          (throw (ex-info (tru "Snowflake workspace input schema is blank")
+                          {:database-id (:id database) :step :grant})))
+        (let [qs (sql.u/quote-name :snowflake :schema schema)]
           (doseq [sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" qdb qr)
                        (format "GRANT USAGE ON SCHEMA %s.%s TO ROLE %s" qdb qs qr)
                        (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s.%s TO ROLE %s" qdb qs qr)

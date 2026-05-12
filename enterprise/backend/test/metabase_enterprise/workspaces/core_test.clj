@@ -59,27 +59,27 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws  (ws/create-workspace! {:name "Add DB" :creator_id (mt/user->id :crowberto)})
             ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                  (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"} {:schema "ANALYTICS"}]))]
+                  (ws/add-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))]
         (is (= 1 (count (:databases ws'))))
-        (is (= [{:schema "PUBLIC"} {:schema "ANALYTICS"}]
-               (:input (first (:databases ws')))))
+        (is (= ["PUBLIC" "ANALYTICS"]
+               (:input_schemas (first (:databases ws')))))
         (is (= :provisioned (:status (first (:databases ws'))))))))
 
   (testing "input required on add"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "No Schema Add" :creator_id (mt/user->id :crowberto)})]
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"input is required"
+             clojure.lang.ExceptionInfo #"input_schemas is required"
              (ws/add-database! (:id ws) (mt/id) []))))))
 
   (testing "duplicate database throws 409"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Dup DB" :creator_id (mt/user->id :crowberto)})]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}]))
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Database already in workspace"
-             (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}]))))))
+             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))))
 
   (testing "provisioning failure rolls the row back so the caller can retry cleanly"
     (mt/with-model-cleanup [:model/Workspace]
@@ -90,7 +90,7 @@
                                   (destroy! [_ _ _ _]   nil))]
         (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                                (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}]))))
+                                (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))
         (is (empty? (:databases (ws/get-workspace (:id ws))))
             "the failed add must not leave a workspace_database row behind")))))
 
@@ -99,7 +99,7 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Remove DB" :creator_id (mt/user->id :crowberto)})]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}])
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
           (let [ws' (ws/remove-database! (:id ws) (mt/id))]
             (is (empty? (:databases ws'))))))))
 
@@ -115,10 +115,10 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Update DB" :creator_id (mt/user->id :crowberto)})]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}])
-          (let [ws' (ws/update-database! (:id ws) (mt/id) [{:schema "PUBLIC"} {:schema "ANALYTICS"}])]
-            (is (= [{:schema "PUBLIC"} {:schema "ANALYTICS"}]
-                   (:input (first (:databases ws')))))
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
+          (let [ws' (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"])]
+            (is (= ["PUBLIC" "ANALYTICS"]
+                   (:input_schemas (first (:databases ws')))))
             (is (= :provisioned (:status (first (:databases ws')))))))))))
 
 ;;; ----------------------------------------- Delete Workspace ------------------------------------------------
@@ -128,7 +128,7 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) [{:schema "PUBLIC"}]))
+          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (ws/delete-workspace! (:id ws)))
         (is (nil? (ws/get-workspace (:id ws)))))))

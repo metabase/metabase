@@ -58,8 +58,8 @@
   [output-schema body-fn]
   (try
     (ws/set-instance-workspace! {:name "test-ws"
-                                 :databases {(mt/id) {:input  [{:schema "_"}]
-                                                      :output {:schema output-schema}}}})
+                                 :databases {(mt/id) {:input_schemas ["_"]
+                                                      :output        {:schema output-schema}}}})
     (body-fn)
     (finally
       (ws/clear-instance-workspace!))))

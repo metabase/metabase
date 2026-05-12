@@ -58,21 +58,14 @@
   [driver]
   (boolean (some #{:db} (driver/qualified-name-components driver))))
 
-(defn- workspace-input-namespace
-  "Build a `::table-namespace` map for `add-database!` that matches what each
-   driver's `qualified-name-components` says about how the canonical input
-   namespace is addressed.
-
-   - 3-slot drivers (Snowflake, SQL Server) populate both `:db` and `:schema`.
-   - 2-slot schema-having drivers (Postgres, Redshift, ClickHouse) populate
-     `:schema` only.
-   - MySQL has `qualified-name-components` `[]`; the canonical schema string
-     IS the database name and lands in `:db`."
-  [driver admin-details main-schema]
-  (cond-> {}
-    (three-slot-driver? driver) (assoc :db (:db admin-details))
-    (= :mysql driver)           (assoc :db main-schema)
-    (not= :mysql driver)        (assoc :schema main-schema)))
+(defn- workspace-input-schema
+  "Canonical input schema string for `add-database!`. For 2-slot drivers (and
+   ClickHouse) it's the schema name. For MySQL — which has no schema layer —
+   the same string is interpreted as the database name. For 3-slot drivers
+   (Snowflake, SQL Server, BigQuery) the catalog is read from `Database.details`
+   inside the driver's `grant!` impl; only the schema is supplied here."
+  [_driver _admin-details main-schema]
+  main-schema)
 
 (defn- qualified-table-sql
   "Return the dialect-correct schema-qualified table reference for a native SQL
@@ -242,19 +235,19 @@
                   ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                   ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
                   ;; multimethods, but through `provisioning/provision-single!`, which writes
-                  ;; the resulting `:database_details` and `:output_schema` back to the
+                  ;; the resulting `:database_details` and `:output_namespace` back to the
                   ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
                       (ws/add-database! ws-id (:id ws-db)
-                                        [(workspace-input-namespace admin-driver admin-details main-schema)])
-                  ;; Diagnostic: provisioning must have populated :output_schema and flipped
+                                        [(workspace-input-schema admin-driver admin-details main-schema)])
+                  ;; Diagnostic: provisioning must have populated :output_namespace and flipped
                   ;; status to :provisioned. If empty, the workspace driver impl is broken.
                       (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
                         (is (= :provisioned (:status wsd))
                             "WorkspaceDatabase provisioning did not reach :provisioned status")
-                        (is (and (string? (:output_schema wsd))
-                                 (seq (:output_schema wsd)))
-                            (str "provisioning did not write a non-empty :output_schema (got "
-                                 (pr-str (:output_schema wsd)) ")")))
+                        (is (and (string? (:output_namespace wsd))
+                                 (seq (:output_namespace wsd)))
+                            (str "provisioning did not write a non-empty :output_namespace (got "
+                                 (pr-str (:output_namespace wsd)) ")")))
                   ;; --- Stage 2: build the canonical config.yml-shaped map and round-trip
                   ;; through YAML, the same way a child instance receives the file from disk.
                   ;; The round-trip is load-bearing: `build-workspace-config` returns
@@ -267,7 +260,7 @@
                         ;; Read the provisioned isolation schema name back from the WSD row;
                         ;; `provision-single!` derives it from the WSD id, not the workspace id.
                             wsd      (-> (ws/get-workspace ws-id) :databases first)
-                            isolation-schema (:output_schema wsd)]
+                            isolation-schema (:output_namespace wsd)]
                     ;; --- Stage 3: bind `*config*` and run the file loader. This invokes
                     ;; `init-from-config-file!` for the `:databases` section (updates the
                     ;; existing Database row with merged workspace creds + schema-filters)
@@ -597,7 +590,7 @@
                                                        :creator_id (mt/user->id :crowberto)})]
                 (try
                   (ws/add-database! ws-id (:id ws-db)
-                                    [(workspace-input-namespace admin-driver admin-details main-schema)])
+                                    [(workspace-input-schema admin-driver admin-details main-schema)])
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]

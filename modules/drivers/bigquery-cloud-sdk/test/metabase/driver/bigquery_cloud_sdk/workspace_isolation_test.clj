@@ -234,7 +234,7 @@
                 user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)
                 out-dataset     (:schema ws-with-details)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [{:schema in-dataset :name src-name}])
+                                                 [in-dataset])
             (testing "workspace SA can SELECT from a granted input table"
               (let [result (run-sql user-client
                                     (format "SELECT id, v FROM %s ORDER BY id" (qual in-dataset src-name)))
@@ -268,7 +268,7 @@
               ;; INSERT. Catches both noisy re-grant failures and silent IAM-binding
               ;; escalation.
               (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                   [{:schema in-dataset :name src-name}])
+                                                   [in-dataset])
               (let [result (run-sql user-client (format "SELECT id FROM %s" (qual in-dataset src-name)))
                     rows   (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
                                  (.iterateAll ^TableResult result))]
@@ -385,9 +385,9 @@
                 b-client     (bq-impersonated-client admin-creds b-sa-email project-id)
                 out-b-ds     (:schema ws-b-full)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-a-full
-                                                 [{:schema in-dataset :name src-a-name}])
+                                                 [in-dataset])
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-b-full
-                                                 [{:schema in-dataset :name src-b-name}])
+                                                 [in-dataset])
             ;; B populates its own output dataset with a table A should never reach.
             (run-sql b-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-b-ds b-secret)))
             (run-sql b-client (format "INSERT INTO %s (id, v) VALUES (1, 'b-only')" (qual out-b-ds b-secret)))
@@ -479,7 +479,7 @@
                 user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [{:schema in-dataset :name src-a-name}])
+                                                 [in-dataset])
             (testing "after first grant, A is readable and B is not"
               (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-a-name)))))
               (expect-bq-write-denied! user-client
@@ -488,7 +488,7 @@
             ;; Second grant: only B. The additive contract means A's grant must
             ;; still be in effect afterward.
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [{:schema in-dataset :name src-b-name}])
+                                                 [in-dataset])
             (testing "after second grant, both A and B are readable (A's binding accumulated)"
               (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-a-name)))))
               (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-dataset src-b-name)))))))
@@ -544,7 +544,7 @@
                 ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
                 user-client     (bq-impersonated-client admin-creds ws-sa-email project-id)]
             (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
-                                                 [{:schema in-dataset :name src-name}])
+                                                 [in-dataset])
             (testing "init succeeded against the pre-existing dataset"
               (is (some? init-result)))
             (testing "workspace SA has full read+write access to its output dataset post-collision"

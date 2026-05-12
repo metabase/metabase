@@ -25,7 +25,6 @@ config:
     name: New workspace
     databases:
       test-data (clickhouse):
-        input:
-        - schema: prod_events
-        output:
-          schema: ws_alice
+        input_schemas:
+        - prod_events
+        output_namespace: ws_alice

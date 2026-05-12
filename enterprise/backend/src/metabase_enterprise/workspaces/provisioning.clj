@@ -18,9 +18,10 @@
    Tests can reify custom implementations that fail on demand, count calls, etc."
   (init!    [this driver database workspace]
     "Create isolated schema + user. Returns {:schema ... :database_details ...}.")
-  (grant!   [this driver database workspace input]
-    "Grant read access on input namespaces to the workspace user/role. `input`
-     is a vector of `::table-namespace` maps `[{:db ?, :schema ?}]`.")
+  (grant!   [this driver database workspace schemas]
+    "Grant read access on `schemas` to the workspace user/role. `schemas` is a
+     vector of driver-opaque schema-name strings. 3-slot drivers (Snowflake,
+     SQL Server, BigQuery) derive the catalog from `database.details`.")
   (destroy! [this driver database workspace]
     "Tear down isolated schema + user. Should be idempotent."))
 
@@ -67,18 +68,15 @@
               workspace   {:id workspace-database-id :name (str "wsd-" workspace-database-id)}
               init-result (init! provisioner driver db workspace)
               ws-details  (merge workspace init-result)
-              ;; `:input` is a vector of `::table-namespace` maps `[{:db ?, :schema ?}]`.
-              ;; Driver `grant!` impls receive them directly — 3-slot drivers (Snowflake,
-              ;; SQL Server) read `:db`; schema-having drivers read `:schema`.
-              input       (vec (:input wsd))]
+              schemas     (vec (:input_schemas wsd))]
           (try
-            (grant! provisioner driver db ws-details input)
+            (grant! provisioner driver db ws-details schemas)
             (catch Throwable t
               (destroy! provisioner driver db ws-details)
               (throw t)))
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
-                      {:output_schema    (:schema init-result)
+                      {:output_namespace (:schema init-result)
                        :database_details (:database_details init-result)
                        :status           :provisioned}))))
     (catch Throwable t
@@ -106,12 +104,12 @@
               driver    (driver.u/database->driver db)
               workspace {:id               workspace-database-id
                          :name             (str "wsd-" workspace-database-id)
-                         :schema           (:output_schema wsd)
+                         :schema           (:output_namespace wsd)
                          :database_details (:database_details wsd)}]
           (destroy! provisioner driver db workspace)
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
-                      {:output_schema    ""
+                      {:output_namespace ""
                        :database_details {}
                        :status           :unprovisioned}))))
     (catch Throwable t

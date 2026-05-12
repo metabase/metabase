@@ -13,8 +13,8 @@
   ([overrides]
    (merge {:database_id      (mt/id)
            :database_details {:user "alice" :password "s3cr3t"}
-           :output_schema    "ws_out"
-           :input             [{:schema "public"} {:schema "analytics"}]}
+           :output_namespace    "ws_out"
+           :input_schemas            ["public" "analytics"]}
           overrides)))
 
 (defn- create-ws!
@@ -39,16 +39,16 @@
                        {:name      "With DBs"
                         :databases [(ws-db-attrs)
                                     (ws-db-attrs {:database_id   db2-id
-                                                  :output_schema "other_out"
-                                                  :input         [{:schema "raw"}]})]})
+                                                  :output_namespace "other_out"
+                                                  :input_schemas        ["raw"]})]})
               dbs     (:databases created)]
           (is (= 2 (count dbs)))
-          (is (= #{"ws_out" "other_out"} (into #{} (map :output_schema) dbs)))
+          (is (= #{"ws_out" "other_out"} (into #{} (map :output_namespace) dbs)))
           (testing "JSON columns round-trip with keywordized keys"
-            (let [first-db (first (filter #(= "ws_out" (:output_schema %)) dbs))]
+            (let [first-db (first (filter #(= "ws_out" (:output_namespace %)) dbs))]
               (is (= {:user "alice" :password "s3cr3t"} (:database_details first-db)))
-              (is (= [{:schema "public"} {:schema "analytics"}]
-                     (:input first-db))))))))))
+              (is (= ["public" "analytics"]
+                     (:input_schemas first-db))))))))))
 
 (deftest get-workspace-test
   (testing "get-workspace returns a hydrated workspace"
@@ -83,26 +83,26 @@
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
         (let [{id :id} (create-ws!
                         {:name      "Before"
-                         :databases [(ws-db-attrs {:output_schema "keep_out"
-                                                   :input         [{:schema "keep"}]})
+                         :databases [(ws-db-attrs {:output_namespace "keep_out"
+                                                   :input_schemas        ["keep"]})
                                      (ws-db-attrs {:database_id   db2-id
-                                                   :output_schema "drop_out"
-                                                   :input         [{:schema "drop"}]})]})
+                                                   :output_namespace "drop_out"
+                                                   :input_schemas        ["drop"]})]})
               updated  (workspace/update-workspace!
                         id
                         {:name      "After"
-                         :databases [(ws-db-attrs {:output_schema "keep_out"
-                                                   :input         [{:schema "keep"}]})
+                         :databases [(ws-db-attrs {:output_namespace "keep_out"
+                                                   :input_schemas        ["keep"]})
                                      (ws-db-attrs {:database_id   db2-id
-                                                   :output_schema "new_out"
-                                                   :input         [{:schema "new"}]})]})]
+                                                   :output_namespace "new_out"
+                                                   :input_schemas        ["new"]})]})]
           (is (= "After" (:name updated)))
           (is (= #{"keep_out" "new_out"}
-                 (into #{} (map :output_schema) (:databases updated))))
+                 (into #{} (map :output_namespace) (:databases updated))))
           (testing "the removed workspace_database is gone from the database"
             (is (not (t2/exists? :model/WorkspaceDatabase
                                  :workspace_id id
-                                 :output_schema "drop_out")))))))))
+                                 :output_namespace "drop_out")))))))))
 
 (deftest update-workspace-can-clear-databases-test
   (testing "update-workspace! with empty :databases removes all children"
@@ -164,22 +164,22 @@
                    {:workspace_id     ws-id
                     :database_id      (mt/id)
                     :database_details {:user "keep-me" :password "keep-pw"}
-                    :output_schema    "keep_schema"
-                    :input             [{:schema "public"}]
+                    :output_namespace    "keep_schema"
+                    :input_schemas            ["public"]
                     :status           :provisioned}]
       (let [updated (workspace/update-workspace!
                      ws-id
                      {:name      "Renamed"
-                      :databases [{:database_id (mt/id) :input [{:schema "public"}]}]})
+                      :databases [{:database_id (mt/id) :input_schemas ["public"]}]})
             row     (t2/select-one :model/WorkspaceDatabase :id init-id)]
         (testing "name update takes effect"
           (is (= "Renamed" (:name updated))))
         (testing "the initialized row was not deleted + reinserted (its id is the same)"
           (is (some? row))
           (is (= :provisioned (:status row))))
-        (testing "credentials and output_schema are preserved verbatim"
+        (testing "credentials and output_namespace are preserved verbatim"
           (is (= {:user "keep-me" :password "keep-pw"} (:database_details row)))
-          (is (= "keep_schema" (:output_schema row))))))))
+          (is (= "keep_schema" (:output_namespace row))))))))
 
 (deftest update-rejects-dropping-initialized-test
   (testing "update-workspace! refuses to drop an :provisioned row"
@@ -189,25 +189,25 @@
                    {:workspace_id     ws-id
                     :database_id      (mt/id)
                     :database_details {:user "u"}
-                    :output_schema    "sch"
-                    :input             [{:schema "public"}]
+                    :output_namespace    "sch"
+                    :input_schemas            ["public"]
                     :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
            #"provisioned"
            (workspace/update-workspace!
             ws-id
-            {:name "WS" :databases [{:database_id db2-id :input [{:schema "public"}]}]}))))))
+            {:name "WS" :databases [{:database_id db2-id :input_schemas ["public"]}]}))))))
 
 (deftest update-rejects-changing-initialized-input-test
-  (testing "update-workspace! refuses to change :input of an :provisioned row"
+  (testing "update-workspace! refuses to change :input_schemasof an :provisioned row"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
                     :database_id      (mt/id)
                     :database_details {:user "u"}
-                    :output_schema    "sch"
-                    :input             [{:schema "public"}]
+                    :output_namespace    "sch"
+                    :input_schemas            ["public"]
                     :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
@@ -215,7 +215,7 @@
            (workspace/update-workspace!
             ws-id
             {:name      "WS"
-             :databases [{:database_id (mt/id) :input [{:schema "analytics"}]}]}))))))
+             :databases [{:database_id (mt/id) :input_schemas ["analytics"]}]}))))))
 
 (deftest cascade-delete-database-test
   (testing "Deleting an underlying Database cascades to workspace_database rows"

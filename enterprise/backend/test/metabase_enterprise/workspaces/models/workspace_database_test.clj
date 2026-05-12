@@ -57,8 +57,8 @@
                                                 {:workspace_id ws-id
                                                  :database_id  db-id
                                                  :database_details {}
-                                                 :output_schema ""
-                                                 :input            []
+                                                 :output_namespace ""
+                                                 :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :model/Database :id db-id) nil
@@ -92,8 +92,8 @@
                                                 {:workspace_id ws-id
                                                  :database_id  db-id
                                                  :database_details {}
-                                                 :output_schema ""
-                                                 :input            []
+                                                 :output_namespace ""
+                                                 :input_schemas    []
                                                  :status :unprovisioned})]
             (track-wsd! wsd-id)
             (t2/delete! :model/Database :id db-id)
@@ -123,8 +123,8 @@
                                                 {:workspace_id ws-id
                                                  :database_id  db-id
                                                  :database_details {}
-                                                 :output_schema ""
-                                                 :input            []
+                                                 :output_namespace ""
+                                                 :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :metabase_database :id db-id) nil

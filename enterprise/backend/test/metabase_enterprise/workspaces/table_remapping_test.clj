@@ -32,8 +32,8 @@
   [db-id output-schema f]
   (try
     (ws/set-instance-workspace! {:name "table-remapping-test-ws"
-                                 :databases {db-id {:input  [{:schema "_"}]
-                                                    :output {:schema output-schema}}}})
+                                 :databases {db-id {:input_schemas ["_"]
+                                                    :output        {:schema output-schema}}}})
     (f)
     (finally
       (ws/clear-instance-workspace!))))
@@ -488,7 +488,7 @@
       (is (= "" schema)))))
 
 ;; The clickhouse / bigquery `spec-for-table` tests below exercise the per-driver branches
-;; of `schema-position-value` / `db-position-value`. They require the driver to be loaded —
+;; of `engine-namespace-positions`. They require the driver to be loaded —
 ;; not for warehouse interaction, but because `(driver/qualified-name-components engine)`
 ;; triggers driver lazy-load via `dispatch-on-initialized-driver`. Skipped when the driver
 ;; isn't on the test classpath.

@@ -1319,7 +1319,7 @@
      ;; need to read from the canonical input DB (granted via `GRANT SELECT
      ;; ON <input-db>.*`) while output writes go to `db-name` via fully
      ;; qualified `INSERT INTO <db-name>.<table>`. The output DB lives in
-     ;; the WSD row's `:output_schema`, not in connection details.
+     ;; the WSD row's `:output_namespace`, not in connection details.
      :database_details {:user user, :password password}}))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
@@ -1335,27 +1335,39 @@
         (.executeBatch ^Statement stmt)))))
 
 (defn- grant-workspace-read-access-sqls
-  "Build SQL statements that grant `username` SELECT on all tables in each source
-  database referenced by `input`. MySQL has no schema layer — `qualified-name-components`
-  is `[]` — and the workspace input namespace puts the database name in the `:db`
-  slot. Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
-  [username input]
+  "Build SQL statements that grant `username` SELECT on all tables in each database
+  named in `schemas`. MySQL has no schema layer — `qualified-name-components`
+  is `[]` — so each entry in `schemas` is interpreted as a database name.
+  Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
+  [username schemas]
   (let [qu               (sql.u/quote-name :mysql :field username)
-        source-databases (into #{} (keep :db) input)]
+        source-databases (set schemas)]
     (perf/mapv (fn [db]
                  (format "GRANT SELECT ON %s.* TO %s@'%%'"
                          (sql.u/quote-name :mysql :schema db) qu))
                source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
-  [_driver database workspace input]
-  (let [username (-> workspace :database_details :user)
-        sqls     (grant-workspace-read-access-sqls username input)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+  [_driver database workspace schemas]
+  (let [username      (-> workspace :database_details :user)
+        bound-db      (:db (:details database))
+        allowed-set   #{bound-db}
+        incoming-set  (set schemas)]
+    ;; MySQL `Database` rows bind to one MySQL database via `:details.db`. Reject
+    ;; any input that names something else — silently ignoring caller intent has
+    ;; bitten this codebase before. Empty input is fine (no-op grant).
+    (when (and (seq incoming-set)
+               (not= incoming-set allowed-set))
+      (throw (ex-info "MySQL workspace input must equal the bound database name"
+                      {:database-id (:id database)
+                       :bound       bound-db
+                       :incoming    (vec schemas)})))
+    (let [sqls (grant-workspace-read-access-sqls username schemas)]
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql sqls]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))))
 
 ;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
 ;; to manually clean up after testing rather than relying on transaction rollback.

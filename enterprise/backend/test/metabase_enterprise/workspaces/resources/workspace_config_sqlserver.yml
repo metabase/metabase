@@ -24,9 +24,6 @@ config:
     name: New workspace
     databases:
       test-data (sqlserver):
-        input:
-        - db: AnalyticsDB
-          schema: dbo
-        output:
-          db: AnalyticsDB
-          schema: ws_alice
+        input_schemas:
+        - dbo
+        output_namespace: ws_alice

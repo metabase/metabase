@@ -732,10 +732,10 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/grant-workspace-read-access! :h2
-  [_driver database workspace input]
+  [_driver database workspace schemas]
   (let [username (-> workspace :database_details :db get-user-from-connection-string)
         qu       (sql.u/quote-name :h2 :field username)
-        schemas  (distinct (keep :schema input))]
+        schemas  (distinct schemas)]
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
     ;; Schema-wide grant covers existing + future tables. Per-table grants
     ;; are not emitted: workspace input shape is per-namespace, not per-table.

@@ -85,34 +85,60 @@
 
 ;;; ---------------------------------------- Driver-aware resolution ----------------------------------------
 
-(defn- schema-position-value
-  "Value to put in the `:schema` slot of a `::table-spec` for a Table row in `database`.
-   Most drivers use the table's own `:schema` column. ClickHouse-style drivers don't
-   have warehouse schemas — what they call \"database\" sits at the schema position in
-   compiled SQL, so we read it from `database.:name` instead."
-  [database table]
-  (case (:engine database)
-    :clickhouse (:name database)
-    (:schema table)))
+(defn engine-namespace-positions
+  "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
+   `:schema` AST slots for a Table row in `database`. `table` is optional; pass
+   it when you want the schema position derived from the Table's `:schema`
+   column (the normal `spec-for-table` case). Pass nil for `table` when you only
+   need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
 
-(defn- db-position-value
-  "Value to put in the `:db` slot of a `::table-spec` for a Table row in `database`.
-   Only called for drivers whose `qualified-name-components` includes `:db` —
-   currently MySQL, Snowflake, SQL Server, and BigQuery.
+   Each engine is spelled out explicitly. Verbose, but obvious at a glance —
+   no more cross-referencing two `case` fns to figure out where each driver
+   reads from.
 
-   MySQL, Snowflake, and SQL Server all store the warehouse database name in
-   `details.:db`. BigQuery puts the project ID in `details.:project-id`.
+   `nil` for either slot means \"this driver doesn't emit this AST level.\"
+   Empty-string sentinel coercion happens at the storage boundary, not here."
+  ([database]       (engine-namespace-positions database nil))
+  ([database table]
+   (case (:engine database)
+     ;; 2-slot, schema-from-table
+     :postgres   {:db nil
+                  :schema (:schema table)}
+     :redshift   {:db nil
+                  :schema (:schema table)}
+     :h2         {:db nil
+                  :schema (:schema table)}
 
-   Returns nil when the connection doesn't carry the expected key. For BigQuery
-   that means service-account-derived projects are not resolved here — that lives
-   in `bigquery.common/database-details->credential-project-id` which we can't
-   reach from this module without a circular dep. Route through a driver
-   multimethod when BigQuery workspace remapping lands."
+     ;; 2-slot, schema-from-database-name (ClickHouse calls its top level
+     ;; \"database\" but emits it at the schema position in compiled SQL).
+     :clickhouse {:db nil
+                  :schema (:name database)}
+
+     ;; 1-slot (db only); MySQL has no schema layer.
+     :mysql      {:db (:db (:details database))
+                  :schema nil}
+
+     ;; 3-slot
+     :snowflake  {:db (:db (:details database))
+                  :schema (:schema table)}
+     :sqlserver  {:db (:db (:details database))
+                  :schema (:schema table)}
+     :bigquery-cloud-sdk
+     {:db (:project-id (:details database))
+      :schema (:schema table)}
+
+     ;; Unknown engine: degrade to the table's own schema column. Anything
+     ;; calling this for a 3-slot driver we haven't enumerated is a bug;
+     ;; surface it loudly at the call site (downstream `:db` lookup yields nil).
+     {:db nil
+      :schema (:schema table)})))
+
+(defn db-position-value
+  "Value to put in the `:db` slot for `database`. Convenience accessor over
+   [[engine-namespace-positions]]. Only meaningful for drivers whose
+   `qualified-name-components` includes `:db`."
   [database]
-  (case (:engine database)
-    (:mysql :snowflake :sqlserver) (:db (:details database))
-    :bigquery-cloud-sdk            (:project-id (:details database))
-    nil))
+  (:db (engine-namespace-positions database)))
 
 (mu/defn spec-for-table :- ::table-spec
   "Return `{:db, :schema, :table}` for `table` in `database`, populating only the
@@ -133,9 +159,10 @@
      ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
   [database :- [:map [:engine :keyword]]
    table    :- [:map [:name :string]]]
-  (let [components (set (driver/qualified-name-components (:engine database)))]
-    {:db     (normalize-level (when (:db components) (db-position-value database)))
-     :schema (normalize-level (when (:schema components) (schema-position-value database table)))
+  (let [components (set (driver/qualified-name-components (:engine database)))
+        positions  (engine-namespace-positions database table)]
+    {:db     (normalize-level (when (:db components)     (:db positions)))
+     :schema (normalize-level (when (:schema components) (:schema positions)))
      :table  (:name table)}))
 
 (defn- short-hash
