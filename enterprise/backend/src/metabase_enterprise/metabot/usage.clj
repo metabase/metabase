@@ -27,6 +27,7 @@
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
+    "transform-optimizer"
     "unknown"
     "user-intent-classification"})
 
