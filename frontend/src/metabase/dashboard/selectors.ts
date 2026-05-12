@@ -573,8 +573,8 @@ export const getSelectedTabId = createSelector(
     getDashboard,
     (state) => state.dashboard.selectedTabId,
     (state: State) =>
-      (state as State & { sdk?: { initialDashboardTabId?: number | null } })
-        .sdk?.initialDashboardTabId,
+      (state as State & { sdk?: { initialDashboardTabId?: number | null } }).sdk
+        ?.initialDashboardTabId,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {

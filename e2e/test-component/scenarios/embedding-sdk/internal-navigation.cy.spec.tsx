@@ -762,10 +762,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         // Click the first ID cell on Tab 1 — it has click_behavior to Tab 2
         // with a parameter mapping that should pass the cell's value to the
         // dashboard's ID filter.
-        H.getDashboardCard()
-          .findAllByText("Go to Tab 2")
-          .first()
-          .click();
+        H.getDashboardCard().findAllByText("Go to Tab 2").first().click();
 
         // Expected: Tab 2 becomes the active tab on the same dashboard.
         // On master this fails: SDK pushes a new dashboard entry, re-mounts on
@@ -840,10 +837,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText("Self-linking card").should("be.visible");
 
         // Click the self-linking link — it has self-linking click_behavior.
-        H.getDashboardCard()
-          .findAllByText("Self link (no-op)")
-          .first()
-          .click();
+        H.getDashboardCard().findAllByText("Self link (no-op)").first().click();
 
         // Expected: clicking a same-dashboard, no-tab link is a no-op — we are
         // already on the only view there is. No back-button frame should be
