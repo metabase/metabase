@@ -99,10 +99,18 @@
           ;; QP's Phase 2 rewriter never sees their SQL -- apply the equivalent rewrite
           ;; here so canonical refs resolve to workspace-isolation tables. No-op when no
           ;; workspace is active. See `metabase.transforms-base.workspace-hooks`.
-          compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
-                             (update :query
-                                     #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
-                                       driver db %)))
+          ;;
+          ;; MBQL sources are deliberately excluded: `qp.compile/compile` runs them
+          ;; through the full QP pipeline, including the Phase 2 rewriter. Re-applying
+          ;; the rewriter here would be a no-op in the happy case but risks failing an
+          ;; otherwise-valid MBQL transform on a SQLGlot parse edge produced by QP
+          ;; emission (window fns, dialect-specific CTAS, etc).
+          source-is-native? (= :native (keyword (get-in source [:query :type])))
+          compiled-query (cond-> (transforms-base.u/compile-source transform source-range-params)
+                           source-is-native?
+                           (update :query
+                                   #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
+                                     driver db %)))
           transform-details {:db-id db
                              :database database
                              :transform-id   id
