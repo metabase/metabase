@@ -50,6 +50,10 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
+  "introspector-summary",
+  "introspector-list",
+  "workload-grid",
+  "workload-slot",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
