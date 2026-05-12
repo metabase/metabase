@@ -206,4 +206,54 @@ describe("getEventDimensions", () => {
       { column: sourceColumn, value: "Affiliate" },
     ]);
   });
+
+  it("includes the x-axis breakout when clicking a bar with only metric data (#73448)", () => {
+    const categoryColumn = createMockColumn({
+      name: "CATEGORY",
+      display_name: "Product → Category",
+      source: "breakout",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    });
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      source: "aggregation",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+    });
+    const countKey = `${CARD_ID}:count`;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "Doohickey",
+      [countKey]: 3976,
+    };
+    const chartModel = createMockCartesianChartModel({
+      columnByDataKey: {
+        [countKey]: countColumn,
+      },
+    });
+    const categoryDimensionModel: DimensionModel = {
+      column: categoryColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: categoryColumn },
+    };
+    const seriesModel = createMockSeriesModel({
+      dataKey: countKey,
+      column: countColumn,
+      columnIndex: 1,
+      cardId: CARD_ID,
+      vizSettingsKey: "count",
+    });
+
+    const dimensions = getEventDimensions(
+      chartModel,
+      datum,
+      categoryDimensionModel,
+      seriesModel,
+    );
+
+    expect(dimensions).toEqual([
+      { column: categoryColumn, value: "Doohickey" },
+    ]);
+  });
 });

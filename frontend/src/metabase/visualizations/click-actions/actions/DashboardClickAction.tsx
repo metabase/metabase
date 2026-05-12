@@ -91,9 +91,18 @@ function getAction(
 
 export const DashboardClickAction: LegacyDrill = ({
   question,
+  settings,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {
-  const type = getDashboardDrillType(clicked);
+  // ECharts-driven visualizations attach `settings` to the click object, but
+  // legacy visualizations (Scalar, Smart Scalar, Progress, Gauge, etc.) don't.
+  // Fall back to the computed settings injected by `Mode.actionsForClick` so we
+  // can resolve column-scoped click behaviors regardless of the source.
+  const enrichedClicked: ClickObject = clicked.settings
+    ? clicked
+    : { ...clicked, settings };
+
+  const type = getDashboardDrillType(enrichedClicked);
   if (!type) {
     return [];
   }
@@ -102,7 +111,7 @@ export const DashboardClickAction: LegacyDrill = ({
     {
       name: "click_behavior",
       defaultAlways: true,
-      ...getAction(type, question, clicked),
+      ...getAction(type, question, enrichedClicked),
     },
   ];
 };

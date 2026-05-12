@@ -12,6 +12,7 @@ import * as Urls from "metabase/urls";
 import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 import { getStructuredQuestionUrlWithParameters } from "./question-url";
@@ -163,14 +164,26 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
 
 export function getClickBehavior(clicked) {
   const settings = (clicked && clicked.settings) || {};
-  const columnSettings =
-    (clicked &&
-      clicked.column &&
-      settings.column &&
-      settings.column(clicked.column)) ||
-    {};
+  const columnClickBehavior = getColumnClickBehavior(settings, clicked?.column);
+  if (columnClickBehavior) {
+    return columnClickBehavior;
+  }
 
-  return columnSettings.click_behavior || settings.click_behavior;
+  const dimensionClickBehavior = (clicked?.dimensions || [])
+    .map((dimension) => getColumnClickBehavior(settings, dimension.column))
+    .find(Boolean);
+
+  return dimensionClickBehavior || settings.click_behavior;
+}
+
+function getColumnClickBehavior(settings, column) {
+  if (!column) {
+    return undefined;
+  }
+  return (
+    getObjectColumnSettings(settings.column_settings, column)?.click_behavior ??
+    settings.column?.(column)?.click_behavior
+  );
 }
 
 export function getClickBehaviorData(clicked, clickBehavior) {
