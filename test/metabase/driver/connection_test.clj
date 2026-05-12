@@ -136,7 +136,7 @@
                       (driver.conn/effective-details database))))))))))
 
 (deftest effective-details-admin-without-feature-test
-  (testing "without :admin-connection feature, with-admin-connection falls back to main connection details"
+  (testing "without :workspaces feature, with-admin-connection falls back to main connection details"
     (mt/with-premium-features #{}
       (let [details       {:host "read-host" :port 5432}
             admin-details {:host "admin-host" :port 5432 :user "root"}
