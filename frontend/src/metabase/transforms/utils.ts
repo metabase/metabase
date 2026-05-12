@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
@@ -32,6 +32,41 @@ export function parseTimestampWithTimezone(
   } catch {
     return date;
   }
+}
+
+/**
+ * Format a run's wall-clock duration as a compact "Xms" / "Xs" / "Xm Ys" /
+ * "Xh Ym" string. Returns null if either endpoint is missing or non-positive.
+ */
+export function formatRunDuration(
+  startTime: string | null | undefined,
+  endTime: string | null | undefined,
+): string | null {
+  if (!startTime || !endTime) {
+    return null;
+  }
+  const start = parseTimestamp(startTime);
+  const end = parseTimestamp(endTime);
+  const ms = end.diff(start);
+  if (!Number.isFinite(ms) || ms < 0) {
+    return null;
+  }
+  if (ms < 1000) {
+    return c("Sub-second run duration").t`${ms}ms`;
+  }
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) {
+    return c("Run duration in seconds").t`${totalSeconds}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) {
+    return c("Run duration in minutes and seconds")
+      .t`${minutes}m ${seconds}s`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return c("Run duration in hours and minutes").t`${hours}h ${remMinutes}m`;
 }
 
 export function formatStatus(status: TransformRunStatus | null) {
