@@ -53,7 +53,13 @@ export function IntrospectorPage() {
         <Tabs.List>
           {TABS.map((tab) => {
             const c = summary?.[tab.key];
-            const total = c ? c.broken + c.stale + c.unreferenced : null;
+            // For transforms, `stale` and `unreferenced` mirror the same wire
+            // value (see StatStrip + queries.clj :summary). Don't double-count.
+            const total = c
+              ? tab.key === "transforms"
+                ? c.broken + c.stale
+                : c.broken + c.stale + c.unreferenced
+              : null;
             return (
               <Tabs.Tab key={tab.key} value={tab.key}>
                 {tab.label}
@@ -68,7 +74,11 @@ export function IntrospectorPage() {
         </Tabs.List>
       </Tabs>
 
-      <StatStrip counts={counts} isLoading={summaryLoading} />
+      <StatStrip
+        counts={counts}
+        isLoading={summaryLoading}
+        entityType={activeTab}
+      />
 
       {activeTab === "cards" && <CardsTab />}
       {activeTab === "dashboards" && <DashboardsTab />}

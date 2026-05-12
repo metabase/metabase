@@ -19,7 +19,10 @@
    [java-time.api :as t]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.time Duration LocalDateTime OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -99,13 +102,68 @@
             [:= :report_dashboard.archived false]
             [:= :dependency.id nil]]})
 
-(defn- unreferenced-transforms-cte []
+(defn- unreferenced-transforms-cte
+  "A transform is unreferenced when no `dependency` row points at either the transform itself
+  or its `target_table_id`. Broader than the card/dashboard equivalents because consumers of
+  a transform's output table show up as edges on the table, not the transform."
+  []
   {:select-distinct [[:transform.id :id]]
    :from   [:transform]
-   :left-join [:dependency [:and
-                            [:= :dependency.to_entity_id :transform.id]
-                            [:= :dependency.to_entity_type (h2x/literal "transform")]]]
-   :where  [:= :dependency.id nil]})
+   :left-join [[:dependency :dep_xform]
+               [:and
+                [:= :dep_xform.to_entity_id :transform.id]
+                [:= :dep_xform.to_entity_type (h2x/literal "transform")]]
+               [:dependency :dep_table]
+               [:and
+                [:not= :transform.target_table_id nil]
+                [:= :dep_table.to_entity_id :transform.target_table_id]
+                [:= :dep_table.to_entity_type (h2x/literal "table")]]]
+   :where  [:and
+            [:= :dep_xform.id nil]
+            [:= :dep_table.id nil]]})
+
+(defn- transform-target-missing-cte
+  "Transforms whose `target_table_id` is set but the referenced `metabase_table` row is
+  inactive — the warehouse table was dropped externally or removed from sync."
+  []
+  {:select [[:transform.id :id]]
+   :from   [:transform]
+   :join   [:metabase_table [:= :metabase_table.id :transform.target_table_id]]
+   :where  [:and
+            [:not= :transform.target_table_id nil]
+            [:= :metabase_table.active false]]})
+
+(defn- transform-latest-failed-cte
+  "Transforms whose most recent finished run (`is_active IS NULL`) ended in `:failed` status.
+  Captures Python and SQL runtime errors that surface only at execution time.
+
+  Uses a derived table rather than a `WITH` clause so the result composes inside a
+  `UNION ALL` (some dialects, including H2, reject `WITH ... SELECT` as a UNION arm)."
+  []
+  {:select-distinct [[:fr.transform_id :id]]
+   :from   [[{:select [:transform_id :status
+                       [[:over [[:row_number]
+                                {:partition-by :transform_id
+                                 :order-by     [[:start_time :desc]]}]]
+                        :rn]]
+              :from   [:transform_run]
+              :where  [:= :is_active nil]}
+             :fr]]
+   :where  [:and
+            [:= :fr.rn [:inline 1]]
+            [:= :fr.status (h2x/literal "failed")]]})
+
+(defn- broken-transforms-cte
+  "Combined broken signal for transforms: analysis-finding error OR target table missing OR
+  latest finished run failed. Matches `docs/developers-guide/transforms-admin-cleanup-spike.md`.
+
+  Uses `:union` (deduplicating) rather than `:union-all` so a transform that trips multiple
+  broken signals appears once — keeps the outer LEFT JOIN cardinality-preserving and lets us
+  drop the SELECT DISTINCT that H2 rejects when combined with `ORDER BY LOWER(name)`."
+  []
+  {:union [(broken-ids-cte "transform")
+           (transform-target-missing-cte)
+           (transform-latest-failed-cte)]})
 
 (defn- conditions-filter-clause
   "Given a set of requested conditions (e.g. #{:broken :stale}), return a HoneySQL clause
@@ -297,8 +355,11 @@
 ;; based on `transform_run.last_run` or "enabled but never ran").
 
 (defn transforms-federated-query
-  "Federated query for the Transforms tab. Surfaces `:broken` and `:unreferenced` only;
-  `:stale` is dropped if requested (transforms have no `last_used_at`)."
+  "Federated query for the Transforms tab. Surfaces `:broken` and `:unreferenced`; `:stale` is
+  dropped if requested (transforms have no `last_used_at`).
+
+  Broken signals union analysis-finding errors, missing/inactive target tables, and the most
+  recent finished run failing — see `broken-transforms-cte`."
   [{:keys [conditions search sort-column sort-direction limit offset]
     :or   {conditions     #{:broken :unreferenced}
            sort-column    :name
@@ -306,18 +367,25 @@
            limit          50
            offset         0}}]
   (let [conditions (disj conditions :stale)]
-    (cond-> {:with [[:broken (broken-ids-cte "transform")]
+    (cond-> {:with [[:broken (broken-transforms-cte)]
                     [:unref  (unreferenced-transforms-cte)]]
              :select [:transform.id
                       :transform.name
                       :transform.description
                       :transform.source_database_id
+                      :transform.target_table_id
                       :transform.creator_id
                       :transform.created_at
                       :transform.updated_at
+                      ;; Raw JSON; parsed in `attach-transform-extras` to extract :type
+                      ;; (query / native / python) for the "Target table" column.
+                      [:transform.source :source_json]
                       [[:inline 0] :is_stale]
-                      [[:case [:not= :broken.id nil] 1 :else 0] :is_broken]
-                      [[:case [:not= :unref.id nil] 1 :else 0] :is_unreferenced]]
+                      ;; H2 infers the union-of-CTEs `broken.id` as VARCHAR, which then makes
+                      ;; the CASE expression return strings ("1"/"0") instead of ints. Cast
+                      ;; the result so the wire row shape matches the cards/dashboards rows.
+                      [[:cast [:case [:not= :broken.id nil] 1 :else 0] :integer] :is_broken]
+                      [[:cast [:case [:not= :unref.id nil] 1 :else 0] :integer] :is_unreferenced]]
              :from   [:transform]
              :left-join [[:broken :broken] [:= :broken.id :transform.id]
                          [:unref :unref]   [:= :unref.id :transform.id]]
@@ -341,6 +409,252 @@
               [:like [:lower :transform.name]
                (str "%" (u/lower-case-en search) "%")]))))
 
+(defn- transform-target-tables
+  "Map of `transform-id → {:id ... :name ... :schema ... :db_id ... :db_name ... :active ...}`
+  for the given transform ids. The db name lets the FE render the `db · type` subtitle in
+  the Target-table column without a second roundtrip."
+  [transform-ids]
+  (when (seq transform-ids)
+    (let [rows (t2/query
+                {:select [[:t.id :transform_id]
+                          [:mt.id :table_id]
+                          [:mt.name :table_name]
+                          [:mt.schema :schema]
+                          [:mt.db_id :db_id]
+                          [:mt.active :active]
+                          [:db.name :db_name]]
+                 :from   [[:transform :t]]
+                 :join   [[:metabase_table :mt] [:= :mt.id :t.target_table_id]]
+                 :left-join [[:metabase_database :db] [:= :db.id :mt.db_id]]
+                 :where  [:and
+                          [:in :t.id transform-ids]
+                          [:not= :t.target_table_id nil]]})]
+      (into {}
+            (map (fn [r]
+                   [(:transform_id r) {:id      (:table_id r)
+                                       :name    (:table_name r)
+                                       :schema  (:schema r)
+                                       :db_id   (:db_id r)
+                                       :db_name (:db_name r)
+                                       :active  (:active r)}]))
+            rows))))
+
+(defn- transform-creators
+  "Map of `transform-id → {:id ... :common_name ...}` for the given transform ids. Uses the
+  same fallback logic as `metabase.users.models.user/common-name` (first + last, falling back
+  to email when name parts are blank)."
+  [transform-ids]
+  (when (seq transform-ids)
+    (let [rows (t2/query
+                {:select [[:t.id :transform_id]
+                          [:u.id :user_id]
+                          [:u.first_name :first_name]
+                          [:u.last_name :last_name]
+                          [:u.email :email]]
+                 :from   [[:transform :t]]
+                 :left-join [[:core_user :u] [:= :u.id :t.creator_id]]
+                 :where  [:in :t.id transform-ids]})
+          common-name (fn [{:keys [first_name last_name email]}]
+                        (let [name (str/trim (str (or first_name "") " " (or last_name "")))]
+                          (if (str/blank? name) email name)))]
+      (into {}
+            (map (fn [r]
+                   [(:transform_id r) (when (:user_id r)
+                                        {:id          (:user_id r)
+                                         :common_name (common-name r)})]))
+            rows))))
+
+(defn- transform-dependent-counts
+  "Map of `transform-id → integer dependent count`. Counts `dependency` rows whose
+  `(to_entity_type, to_entity_id)` points at either the transform itself or its
+  `target_table_id`. Matches the spike's stale signal — a transform is stale iff this count
+  is zero (and it isn't otherwise broken)."
+  [transform-ids]
+  (if-not (seq transform-ids)
+    {}
+    (let [rows (t2/query
+                {:with [[:edges
+                         {:union-all
+                          [{:select [[:t.id :transform_id]]
+                            :from   [[:transform :t]]
+                            :join   [[:dependency :d]
+                                     [:and
+                                      [:= :d.to_entity_id :t.id]
+                                      [:= :d.to_entity_type (h2x/literal "transform")]]]
+                            :where  [:in :t.id transform-ids]}
+                           {:select [[:t.id :transform_id]]
+                            :from   [[:transform :t]]
+                            :join   [[:dependency :d]
+                                     [:and
+                                      [:not= :t.target_table_id nil]
+                                      [:= :d.to_entity_id :t.target_table_id]
+                                      [:= :d.to_entity_type (h2x/literal "table")]]]
+                            :where  [:in :t.id transform-ids]}]}]]
+                 :select   [:transform_id [:%count.* :dep_count]]
+                 :from     [:edges]
+                 :group-by [:transform_id]})]
+      (into {}
+            (map (juxt :transform_id (comp long :dep_count)))
+            rows))))
+
+(defn- transform-latest-runs
+  "Map of `transform-id → latest finished `transform_run` row` for the given transform ids.
+  Only considers rows with `is_active IS NULL` (finished — succeeded, failed, canceled,
+  timed-out)."
+  [transform-ids]
+  (when (seq transform-ids)
+    (let [rows (t2/query
+                {:with [[:finished_runs
+                         {:select [:*
+                                   [[:over [[:row_number]
+                                            {:partition-by :transform_id
+                                             :order-by     [[:start_time :desc]]}]]
+                                    :rn]]
+                          :from   [:transform_run]
+                          :where  [:and
+                                   [:in :transform_id transform-ids]
+                                   [:= :is_active nil]]}]]
+                 :select [:transform_id :status :start_time :end_time :message]
+                 :from   [:finished_runs]
+                 :where  [:= :rn [:inline 1]]})]
+      (into {}
+            (map (fn [r]
+                   (let [^java.time.temporal.Temporal s (:start_time r)
+                         ^java.time.temporal.Temporal e (:end_time r)
+                         duration-ms (when (and s e)
+                                       ;; Both H2 and Postgres return timestamps as Local- or
+                                       ;; OffsetDateTime; compute against UTC instants to be
+                                       ;; safe across both.
+                                       (let [s* (cond
+                                                  (instance? OffsetDateTime s) (.toInstant ^OffsetDateTime s)
+                                                  (instance? LocalDateTime s)  (.toInstant ^LocalDateTime s ZoneOffset/UTC))
+                                             e* (cond
+                                                  (instance? OffsetDateTime e) (.toInstant ^OffsetDateTime e)
+                                                  (instance? LocalDateTime e)  (.toInstant ^LocalDateTime e ZoneOffset/UTC))]
+                                         (when (and s* e*)
+                                           (.toMillis (Duration/between s* e*)))))]
+                     [(:transform_id r) (-> r
+                                            (dissoc :transform_id)
+                                            ;; status is stored as a keyword by the model layer;
+                                            ;; raw rows come back as strings — normalize.
+                                            (update :status (fn [s] (cond-> s (keyword? s) name)))
+                                            (assoc :duration_ms duration-ms))])))
+            rows))))
+
+(defn- transform-reasons
+  "Returns `transform-id → [{:flag :code :detail} …]` for the given broken transform ids.
+
+  Each broken signal contributes 0+ reasons:
+  - analysis-finding errors: the message from `analysis_finding_error.message` (one per error
+    row, deduplicated by error id).
+  - target-table-missing: a single synthetic reason per affected transform.
+  - latest-run-failed: a single reason with the run's `message` (truncated by the FE)."
+  [transform-ids]
+  (if-not (seq transform-ids)
+    {}
+    (let [ids                 (vec transform-ids)
+          ;; `analysis_finding_error` references entities directly via (analyzed_entity_type,
+          ;; analyzed_entity_id) — there is no FK back to `analysis_finding`. Combine the
+          ;; error rows for this transform into individual reasons.
+          analysis-rows       (t2/query
+                               {:select [[:afe.analyzed_entity_id :transform_id]
+                                         [:afe.error_type :error_type]
+                                         [:afe.error_detail :error_detail]]
+                                :from   [[:analysis_finding_error :afe]]
+                                :where  [:and
+                                         [:= :afe.analyzed_entity_type (h2x/literal "transform")]
+                                         [:in :afe.analyzed_entity_id ids]]})
+          target-missing-rows (t2/query
+                               (-> (transform-target-missing-cte)
+                                   (update :where conj [:in :transform.id ids])))
+          latest-failed-rows  (t2/query
+                               {:with   [[:finished_runs
+                                          {:select [:transform_id :status :message
+                                                    [[:over [[:row_number]
+                                                             {:partition-by :transform_id
+                                                              :order-by     [[:start_time :desc]]}]]
+                                                     :rn]]
+                                           :from   [:transform_run]
+                                           :where  [:and
+                                                    [:in :transform_id ids]
+                                                    [:= :is_active nil]]}]]
+                                :select [:transform_id :message]
+                                :from   [:finished_runs]
+                                :where  [:and
+                                         [:= :rn [:inline 1]]
+                                         [:= :status (h2x/literal "failed")]]})
+          push                (fn [m id reason]
+                                (update m id (fnil conj []) reason))]
+      (as-> {} reasons
+        (reduce (fn [m {:keys [transform_id error_type error_detail]}]
+                  (let [detail (cond
+                                 (and (seq error_type) (seq error_detail))
+                                 (str error_type ": " error_detail)
+                                 (seq error_type)   error_type
+                                 (seq error_detail) error_detail
+                                 :else              "Analysis finding reported an error.")]
+                    (push m transform_id
+                          {:flag   "broken"
+                           :code   "analysis-finding-error"
+                           :detail detail})))
+                reasons analysis-rows)
+        (reduce (fn [m {:keys [id]}]
+                  (push m id
+                        {:flag   "broken"
+                         :code   "target-table-missing"
+                         :detail "Target table is inactive or has been dropped."}))
+                reasons target-missing-rows)
+        (reduce (fn [m {:keys [transform_id message]}]
+                  (push m transform_id
+                        {:flag   "broken"
+                         :code   "latest-run-failed"
+                         :detail (or message "Most recent run failed.")}))
+                reasons latest-failed-rows)))))
+
+(defn- parse-transform-type
+  "Read the `:type` out of a transform.source JSON blob. Falls back to nil rather than
+  throwing so a malformed row doesn't tank the whole page response."
+  [source-json]
+  (when (some? source-json)
+    (try
+      (-> source-json json/decode (get "type"))
+      (catch Throwable _ nil))))
+
+(defn- attach-transform-extras
+  "Decorate transform rows with the spike's wire shape: `:target_table` (incl. db_name),
+  `:last_run` (with `:duration_ms`), `:reasons`, `:creator`, `:dependent_count`,
+  `:transform_type` (extracted from `transform.source`), `:flags` array (derived from the
+  legacy `is_*` ints so the FE can match `docs/developers-guide/transforms-admin-cleanup-spike.md`
+  without a wire-format break), and `:can_write`/`:can_delete` (constant true — the endpoint
+  is superuser-only, so per-row perm checks add latency for no signal in v1)."
+  [rows]
+  (let [ids         (mapv :id rows)
+        broken-ids  (mapv :id (filter #(pos? (:is_broken %)) rows))
+        tables      (transform-target-tables ids)
+        latest      (transform-latest-runs ids)
+        reasons     (transform-reasons broken-ids)
+        creators    (transform-creators ids)
+        dep-counts  (transform-dependent-counts ids)]
+    (mapv (fn [{:keys [id is_broken is_stale is_unreferenced source_json] :as row}]
+            (let [flags (cond-> []
+                          (pos? (or is_broken 0))       (conj "broken")
+                          ;; For transforms the spike folds "no dependents" into the Stale
+                          ;; bucket; introspector tracks the same signal as `is_unreferenced`.
+                          (pos? (or is_unreferenced 0)) (conj "stale")
+                          (pos? (or is_stale 0))        (conj "stale"))]
+              (-> row
+                  (dissoc :source_json)
+                  (assoc :target_table    (get tables id))
+                  (assoc :last_run        (get latest id))
+                  (assoc :reasons         (get reasons id []))
+                  (assoc :creator         (get creators id))
+                  (assoc :dependent_count (get dep-counts id 0))
+                  (assoc :transform_type  (parse-transform-type source_json))
+                  (assoc :flags           (distinct flags))
+                  (assoc :can_write       true)
+                  (assoc :can_delete      true))))
+          rows)))
+
 (defn transforms-total
   "Total Transforms count for the same filter set."
   [opts]
@@ -349,9 +663,11 @@
       (assoc :select [[:%count.* :total]])))
 
 (defn fetch-transforms
-  "Run the federated Transforms query and return `{:rows ... :total ...}`."
+  "Run the federated Transforms query and return `{:rows ... :total ...}`. Rows are
+  decorated with `:target_table`, `:last_run`, and `:reasons` so the UI can render the
+  spike's row shape (see `docs/developers-guide/transforms-admin-cleanup-spike.md`)."
   [opts]
-  {:rows  (t2/query (transforms-federated-query opts))
+  {:rows  (attach-transform-extras (t2/query (transforms-federated-query opts)))
    :total (-> (t2/query (transforms-total opts)) first :total)})
 
 ;;; -------------------------------------- summary --------------------------------------
@@ -419,9 +735,18 @@
                                                [:not-in :report_dashboard.collection_id
                                                 archived-collection-ids-subq]]]}
                                     t2/query first :total)}
-     :transforms {:broken       (count-transforms (broken-ids-cte "transform"))
-                  :stale        0
-                  :unreferenced (count-transforms (unreferenced-transforms-cte))
-                  :healthy      (-> {:select [[:%count.* :total]]
-                                     :from   [:transform]}
-                                    t2/query first :total)}}))
+     ;; Transforms have no `last_used_at`, so the existing introspector "stale =
+     ;; time-based" concept doesn't apply. The spike (transforms-admin-cleanup-spike.md)
+     ;; instead reuses "stale" to mean "orphaned output / no downstream dependents" —
+     ;; i.e. exactly what introspector elsewhere calls `:unreferenced`. Report the same
+     ;; value under both keys so the FE filter pill (Stale → ?conditions=unreferenced)
+     ;; and the StatStrip tile agree. `broken` uses the combined CTE so the count
+     ;; reflects analysis-finding errors *plus* target-table-missing *plus*
+     ;; latest-run-failed, matching the list endpoint.
+     :transforms (let [orphaned (count-transforms (unreferenced-transforms-cte))]
+                   {:broken       (count-transforms (broken-transforms-cte))
+                    :stale        orphaned
+                    :unreferenced orphaned
+                    :healthy      (-> {:select [[:%count.* :total]]
+                                       :from   [:transform]}
+                                      t2/query first :total)})}))

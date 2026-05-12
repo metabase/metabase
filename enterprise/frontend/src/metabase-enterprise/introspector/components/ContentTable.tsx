@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Badge,
   Box,
   Checkbox,
   Group,
@@ -11,9 +12,69 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import type { IntrospectorEntityType, IntrospectorRow } from "../types";
+import type {
+  IntrospectorEntityType,
+  IntrospectorRow,
+  TransformLastRun,
+  TransformTargetTable,
+} from "../types";
 
 import { ConditionBadges } from "./ConditionBadges";
+
+const STATUS_COLOR: Record<string, "error" | "warning" | "success" | "brand"> =
+  {
+    failed: "error",
+    timeout: "error",
+    canceled: "warning",
+    succeeded: "success",
+  };
+
+function LastRunCell({ lastRun }: { lastRun: TransformLastRun | null }) {
+  if (!lastRun) {
+    return (
+      <Text size="sm" c="text-secondary">
+        —
+      </Text>
+    );
+  }
+  const color = STATUS_COLOR[lastRun.status] ?? "brand";
+  const ended = lastRun.end_time ?? lastRun.start_time;
+  return (
+    <Stack gap={2}>
+      <Badge color={color} variant="light">
+        {lastRun.status}
+      </Badge>
+      {ended && (
+        <Text size="xs" c="text-secondary">
+          {new Date(ended).toLocaleString()}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+function TargetTableCell({
+  table,
+}: {
+  table: TransformTargetTable | null | undefined;
+}) {
+  if (!table) {
+    return (
+      <Text size="sm" c="text-secondary">
+        —
+      </Text>
+    );
+  }
+  const qualified = table.schema ? `${table.schema}.${table.name}` : table.name;
+  return (
+    <Stack gap={2}>
+      <Text size="sm" ff="monospace">
+        {qualified}
+      </Text>
+      {!table.active && <Text size="xs" c="error">{t`inactive`}</Text>}
+    </Stack>
+  );
+}
 
 interface Props {
   entityType: IntrospectorEntityType;
@@ -78,6 +139,8 @@ export function ContentTable({
     );
   }
 
+  const isTransforms = entityType === "transforms";
+
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
@@ -91,13 +154,21 @@ export function ContentTable({
           </th>
           <th style={headStyle}>{t`Name`}</th>
           <th style={headStyle}>{t`Status`}</th>
-          <th style={headStyle}>{t`Last used`}</th>
+          {isTransforms ? (
+            <>
+              <th style={headStyle}>{t`Target table`}</th>
+              <th style={headStyle}>{t`Last run`}</th>
+            </>
+          ) : (
+            <th style={headStyle}>{t`Last used`}</th>
+          )}
           <th style={{ ...headStyle, width: 140 }} />
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => {
           const isSelected = selectedIds.has(row.id);
+          const reasons = row.reasons ?? [];
           return (
             <tr
               key={row.id}
@@ -122,16 +193,44 @@ export function ContentTable({
                       {row.description}
                     </Text>
                   )}
+                  {isTransforms && reasons.length > 0 && (
+                    <Stack gap={2} mt={4}>
+                      {reasons.map((r, i) => (
+                        <Text
+                          key={`${r.code}-${i}`}
+                          size="xs"
+                          c="text-secondary"
+                        >
+                          <Text component="span" c="error" fw={500}>
+                            {r.code}
+                          </Text>
+                          {": "}
+                          {r.detail}
+                        </Text>
+                      ))}
+                    </Stack>
+                  )}
                 </Stack>
               </td>
               <td style={cellStyle}>
                 <ConditionBadges row={row} />
               </td>
-              <td style={cellStyle}>
-                <Text size="sm" c="text-secondary">
-                  {formatDate(row.last_used_at)}
-                </Text>
-              </td>
+              {isTransforms ? (
+                <>
+                  <td style={cellStyle}>
+                    <TargetTableCell table={row.target_table ?? null} />
+                  </td>
+                  <td style={cellStyle}>
+                    <LastRunCell lastRun={row.last_run ?? null} />
+                  </td>
+                </>
+              ) : (
+                <td style={cellStyle}>
+                  <Text size="sm" c="text-secondary">
+                    {formatDate(row.last_used_at)}
+                  </Text>
+                </td>
+              )}
               <td style={cellStyle}>
                 <Group gap="xs" justify="flex-end">
                   <Tooltip label={t`Open`}>
