@@ -859,7 +859,7 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres-mbql5 :breakout]
   [driver clause honeysql-form query]
-  ((get-method sql.qp/->honeysql [:postgres :breakout])
+  ((get-method sql.qp/apply-top-level-clause [:postgres :breakout])
    driver clause honeysql-form (update query :breakout #(for [[a b c] %] [a c b]))))
 
 (defn- order-by-is-json-field?
