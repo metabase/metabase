@@ -44,6 +44,13 @@ type Props = {
    * raw proposed SQL.
    */
   currentSql?: string | null;
+  /**
+   * Resolved display names for each id in `proposal.depends_on`. Rendered
+   * as a small "Depends on" line so the user can see the materialisation
+   * order linkage between proposals. The parent passes this in because
+   * the card itself doesn't have access to the full proposal set.
+   */
+  dependencyNames?: Array<{ id: string; name: string }>;
   actions: {
     accept?: Action & { kind: "accept" };
     verify?: Action & { kind: "verify" };
@@ -64,6 +71,7 @@ type Props = {
 export function ProposalCard({
   proposal,
   currentSql,
+  dependencyNames,
   actions,
   onAccept,
   onVerify,
@@ -86,6 +94,23 @@ export function ProposalCard({
               {proposal.name}
             </Text>
             <Text c="text-secondary">{proposal.rationale}</Text>
+            {dependencyNames && dependencyNames.length > 0 && (
+              <Group gap={4} wrap="wrap" mt={4}>
+                <Text c="text-secondary" fz="xs">
+                  {t`Depends on:`}
+                </Text>
+                {dependencyNames.map((dep) => (
+                  <Badge
+                    key={dep.id}
+                    variant="default"
+                    size="sm"
+                    radius="sm"
+                  >
+                    {dep.name}
+                  </Badge>
+                ))}
+              </Group>
+            )}
           </Stack>
         </Group>
 

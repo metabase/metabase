@@ -209,11 +209,16 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
                   // `:index` proposals don't change the query result, so
                   // there's nothing to EXCEPT-ALL against.
                   const canVerify = proposal.kind !== "index";
+                  const dependencyNames = resolveDependencyNames(
+                    proposal,
+                    state.proposals,
+                  );
                   return (
                     <ProposalCard
                       key={proposal.id}
                       proposal={proposal}
                       currentSql={currentSql}
+                      dependencyNames={dependencyNames}
                       actions={{
                         accept: {
                           kind: "accept",
@@ -374,6 +379,30 @@ function topoOrderForAccept(target: Proposal, available: Proposal[]): string[] {
 
   visit(target.id);
   return order;
+}
+
+/**
+ * Resolve each id in `proposal.depends_on` against the current proposal
+ * list. Returns `[{id, name}…]` so the card can render readable badges
+ * rather than opaque ids. Missing ancestors (already dismissed,
+ * unknown id) are dropped silently — the BE rejects accept calls that
+ * reference missing proposals so the user will see an explicit error
+ * if it matters.
+ */
+function resolveDependencyNames(
+  proposal: Proposal,
+  available: Proposal[],
+): Array<{ id: string; name: string }> {
+  if (!proposal.depends_on || proposal.depends_on.length === 0) {
+    return [];
+  }
+  const byId = new Map(available.map((p) => [p.id, p]));
+  return proposal.depends_on
+    .map((id) => {
+      const dep = byId.get(id);
+      return dep ? { id: dep.id, name: dep.name } : null;
+    })
+    .filter((x): x is { id: string; name: string } => x !== null);
 }
 
 function reportVerify(

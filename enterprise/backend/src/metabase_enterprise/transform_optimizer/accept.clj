@@ -187,28 +187,36 @@
 (defn- body-bearing? [p]
   (and (:body p) (not (str/blank? (:body p)))))
 
-(defn- single-rewrite-or-throw
-  "Replace mode is only valid when the batch contains exactly one
-  body-bearing proposal of kind 'rewrite'. For precompute DAGs and
-  pure-index batches we have no sensible 'replace' semantic."
+(defn- one-rewrite-and-precomputes-or-throw
+  "Replace mode requires **exactly one** body-bearing `:rewrite` proposal in
+  the batch (that's the one whose body replaces the original transform's
+  source). Any number of `:precompute` proposals are also OK — those are
+  still materialised as *new* intermediate transforms; replace only ever
+  targets the original. Returns `[the-rewrite the-precomputes]`."
   [proposals]
-  (let [bodies (filter body-bearing? proposals)]
+  (let [bodies      (filter body-bearing? proposals)
+        rewrites    (filter #(= "rewrite" (some-> (:kind %) name)) bodies)
+        precomputes (filter #(= "precompute" (some-> (:kind %) name)) bodies)
+        unknown     (remove (fn [p] (#{"rewrite" "precompute"}
+                                     (some-> (:kind p) name)))
+                            bodies)]
     (cond
-      (zero? (count bodies))
-      (throw (ex-info "replace mode needs exactly one body-bearing proposal; got none"
-                      {:status-code 400 :error "replace_needs_body"}))
+      (zero? (count rewrites))
+      (throw (ex-info "replace mode needs exactly one body-bearing :rewrite proposal; got none"
+                      {:status-code 400 :error "replace_needs_rewrite"}))
 
-      (> (count bodies) 1)
-      (throw (ex-info (str "replace mode needs exactly one body-bearing proposal; got "
-                           (count bodies))
-                      {:status-code 400 :error "replace_multiple_bodies"}))
+      (> (count rewrites) 1)
+      (throw (ex-info (str "replace mode needs exactly one body-bearing :rewrite proposal; got "
+                           (count rewrites))
+                      {:status-code 400 :error "replace_multiple_rewrites"}))
 
-      (not= "rewrite" (some-> (first bodies) :kind name))
-      (throw (ex-info (str "replace mode is only valid for kind=rewrite proposals; got kind="
-                           (or (some-> (first bodies) :kind name) "?"))
+      (seq unknown)
+      (throw (ex-info (str "replace mode only accepts :rewrite + :precompute body-bearing "
+                           "proposals; got " (vec (map (comp name :kind) unknown)))
                       {:status-code 400 :error "replace_unsupported_kind"}))
 
-      :else (first bodies))))
+      :else
+      [(first rewrites) precomputes])))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
@@ -250,24 +258,54 @@
                               (mapv :id))]
      (case mode
        :replace
-       (let [target-proposal (single-rewrite-or-throw proposals)
-             deferred        (get deferred-by-dep (:id target-proposal))
-             updated         (try
-                               (replace-in-place! original-transform target-proposal deferred)
-                               (catch Exception e
-                                 (log/warnf e "accept! replace failed for proposal %s"
-                                            (:id target-proposal))
-                                 (throw (ex-info (or (ex-message e) "replace failed")
-                                                 {:status-code 500
-                                                  :error "replace_failed"
-                                                  :proposal_id (:id target-proposal)}))))]
-         {:replaced_transform {:id          (:id updated)
-                               :name        (:name updated)
-                               :proposal_id (:id target-proposal)
-                               :kind        (some-> (:kind target-proposal) name)
-                               :pending_ddl (count (or deferred []))}
-          :ddl_statements     ddl-rows
-          :skipped_proposals  skipped})
+       (let [[rewrite-proposal precompute-proposals]
+             (one-rewrite-and-precomputes-or-throw proposals)
+             ;; First: create every precompute as a new transform (the
+             ;; rewrite's body will reference their target tables). Any
+             ;; deferred transform-target DDL routes to its precompute,
+             ;; same as in :new mode.
+             created-precomputes
+             (->> precompute-proposals
+                  (keep
+                   (fn [p]
+                     (when-let [body (proposal->create-body original-transform p collection-id)]
+                       (let [deferred (get deferred-by-dep (:id p))
+                             body+ddl (cond-> body
+                                        (seq deferred)
+                                        (assoc-in [:target :post_run_ddl] (vec deferred)))]
+                         (try
+                           (let [new (transforms.crud/create-transform! body+ddl)]
+                             {:id          (:id new)
+                              :name        (:name new)
+                              :proposal_id (:id p)
+                              :kind        "precompute"
+                              :depends_on  (or (:depends_on p) [])
+                              :pending_ddl (count deferred)})
+                           (catch Exception e
+                             (log/warnf e "accept! replace: precompute create failed for proposal %s" (:id p))
+                             {:proposal_id (:id p)
+                              :error       (or (ex-message e) "precompute create failed")}))))))
+                  vec)
+             ;; Then: replace the original's source with the rewrite body.
+             rewrite-deferred (get deferred-by-dep (:id rewrite-proposal))
+             updated          (try
+                                (replace-in-place! original-transform rewrite-proposal rewrite-deferred)
+                                (catch Exception e
+                                  (log/warnf e "accept! replace failed for proposal %s"
+                                             (:id rewrite-proposal))
+                                  (throw (ex-info (or (ex-message e) "replace failed")
+                                                  {:status-code 500
+                                                   :error "replace_failed"
+                                                   :proposal_id (:id rewrite-proposal)}))))]
+         (cond-> {:replaced_transform {:id          (:id updated)
+                                       :name        (:name updated)
+                                       :proposal_id (:id rewrite-proposal)
+                                       :kind        "rewrite"
+                                       :pending_ddl (count (or rewrite-deferred []))}
+                  :ddl_statements    ddl-rows
+                  :skipped_proposals skipped}
+           (seq created-precomputes)
+           (assoc :created_transforms created-precomputes)))
 
        :new
        (let [created

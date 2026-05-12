@@ -134,16 +134,31 @@ real structural change.
 `ddl_statement`, no `body`). Never both. This lets the user accept and
 verify each change independently.
 
+### Kind semantics — what each kind *means*
+
+| Kind | Meaning | Accept behaviour |
+|---|---|---|
+| `rewrite` | A **new shape for the original transform's query**. May replace the original transform's source in place, **or** be created as a sibling. May reference tables produced by `:precompute` proposals in the same batch (use `depends_on` to point at them). | User picks "Replace source" or "Create as new transform". |
+| `precompute` | A **brand-new intermediate transform** the user didn't have before — typically a per-day / per-customer / per-bucket rollup that other queries can read from. **Never replaces** the original. | Always "Create as new transform". |
+| `index` | A single `CREATE INDEX` against the source DB or a transform target. | Single "Run index" action. |
+
+⚠ **Common mistake**: the *leaf* of a precompute DAG — the query that
+reads from the new rollup tables and produces the final result — is a
+`rewrite` (it replaces or shadows the original transform's query),
+not a `precompute`. Only the intermediate rollup tables are
+`precompute`.
+
 ### When to use `depends_on`
 
 `depends_on` is **a materialisation order constraint**, not a logical
 hint. Use it only when accepting the dependent proposal requires the
-listed proposals to be accepted first because the table doesn't exist
-yet:
+listed proposals to be accepted first because the target table doesn't
+exist yet:
 
 | Situation | `depends_on` |
 |---|---|
-| Rewrite proposal | `[]` (rewrites stand alone) |
+| Rewrite proposal that stands alone | `[]` |
+| Rewrite leaf of a precompute DAG (reads from new rollup tables) | `[<precompute ids>]` |
 | Precompute proposal | `[]` or other precomputes whose target tables it reads from |
 | Index on `source-db` (table already exists) | **`[]` always** — even if the index supports another proposal's rewrite. The user must be able to accept the index alone without dragging the rewrite into the accept. |
 | Index on `transform-target` (table doesn't exist yet) | `[<id of the proposal that creates the target table>]` |
@@ -492,8 +507,8 @@ own `:index` proposal that `depends_on` the precompute it supports.
     },
     {
       "id": "p5",
-      "name": "cohort_retention final",
-      "kind": "precompute",
+      "name": "Cohort retention from rollups",
+      "kind": "rewrite",
       "severity": "medium",
       "rationale": "Reads the two small rollups instead of re-scanning orders.",
       "expected_speedup": "≥10×",
@@ -504,10 +519,11 @@ own `:index` proposal that `depends_on` the precompute it supports.
 }
 ```
 
-Accepting `p5` topo-orders the whole DAG. Accepting just `p1` creates
-the customer_first_purchase precompute without its index. Accepting
-just `p2` would fail because `p2` depends on `p1` — the FE walks
-`depends_on` and includes ancestors automatically.
+Accepting `p5` (the rewrite leaf) topo-orders the whole DAG: it creates
+`p1`/`p3` as new precompute transforms, then either creates `p5` as a
+new transform *or* — if the user picks "Replace source" — replaces the
+original transform's source with `p5.body`. The precomputes always go
+in as new transforms (replace mode only ever targets the original).
 
 ## Final reminders
 
