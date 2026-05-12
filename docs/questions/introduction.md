@@ -39,7 +39,7 @@ Questions saved to a collection can be added to multiple dashboards. Moving a qu
 
 ### Checking for breaking changes
 
-{% include plans-blockquote.html feature="Checking for breaking changes" %}
+> **Plans:** Checking for breaking changes is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 When a question, model, or metric is saved, Metabase will try to detect whether the changes you made would break any dependent entities. For example, if you removed a column from a question that other questions rely on, Metabase will warn you that those downstream questions will break.
 
@@ -92,7 +92,7 @@ You can turn a question saved to a collection into a model to let others know th
 
 ## Caching question results
 
-{% include plans-blockquote.html feature="Caching question results" %}
+> **Plans:** Caching question results is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 See [caching per question](../configuring-metabase/caching.md#question-caching-policy).
 

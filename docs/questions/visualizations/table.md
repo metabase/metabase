@@ -176,7 +176,7 @@ If you select link, you can also change the text displayed, and use parameters f
 For example, you could create a dynamic URL using a parameter from another column in the results:
 
 ```html
-{% raw %} https://www.example.com/{{category}} {% endraw %}
+ https://www.example.com/{{category}} 
 ```
 
 In the above example, Metabase would take the value for the `category` column for that row (in this case `widget`), and insert it into the URL:

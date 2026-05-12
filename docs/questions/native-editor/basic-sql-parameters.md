@@ -9,19 +9,19 @@ summary: Text, number, and date variables let you plug basic values into your SQ
 
 Text, number, and date variables let you plug basic values into your SQL code.
 
-To add a basic variable to a SQL query, enclose the variable in double braces: `{% raw %}{{variable_name}}{% endraw %}`.
+To add a basic variable to a SQL query, enclose the variable in double braces: `{{variable_name}}`.
 
 This example defines a **Text** variable called `category_filter` (but you can call the variable whatever you want):
 
 ```sql
-{% raw %}
+
 SELECT
   count(*)
 FROM
   products
 WHERE
   category = {{category_filter}};
-{% endraw %}
+
 ```
 
 These basic variables simply plug in the values set by the widget into the placeholder in the code. Basic variables have a different syntax than [field filters](./sql-parameters.md).
@@ -29,19 +29,19 @@ These basic variables simply plug in the values set by the widget into the place
 Here's the [field filter](./field-filters.md) syntax:
 
 ```sql
-{% raw %}
+
 WHERE
   {{category}}
-{% endraw %}
+
 ```
 
 Whereas the basic variable syntax includes an `=` operator:
 
 ```sql
-{% raw %}
+
 WHERE
   category = {{category}};
-{% endraw %}
+
 ```
 
 Here, we don't connect the variable to a database field; we merely insert the value into the variable.
@@ -60,7 +60,7 @@ WHERE
 If you're writing a native MongoDB query, your query would look more like this, with the `category` variable being defined inside the `match` clause:
 
 ```
-{% raw %}[{ $match: { category: {{category}} } }]{% endraw %}
+[{ $match: { category: {{category}} } }]
 ```
 
 ## Basic variable that allows people to select multiple values
@@ -70,14 +70,14 @@ If you're writing a native MongoDB query, your query would look more like this, 
 To let people plug multiple values into your variable, you'll need to write the code in such a way that multiple values will make sense when interpolated into your code. The most common way to do this would be to use an `WHERE` clause with `IN`:
 
 ```sql
-{% raw %}
+
 SELECT
   *
 FROM
   products
 WHERE
   category IN ({{category_vars}});
-{% endraw %}
+
 ```
 
 With your code in place, you'll need to set the **People can pick** setting to multiple values. In this case, however, you're probably better off using a [field filter](./field-filters.md).

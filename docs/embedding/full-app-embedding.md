@@ -8,7 +8,7 @@ redirect_from:
 
 # Full app embedding
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true %}
+> **Plans:** Full app embedding is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 **Full app embedding** lets you embed the entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 

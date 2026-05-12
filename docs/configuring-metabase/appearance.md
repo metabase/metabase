@@ -12,7 +12,7 @@ summary: Configure colors, fonts, and illustrations in your Metabase.
 
 # Appearance
 
-{% include plans-blockquote.html feature="Custom appearance" %}
+> **Plans:** Custom appearance is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Admin > Settings > Appearance_
 

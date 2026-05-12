@@ -5,7 +5,7 @@ summary: "Change how Metabot appears in Metabase for a branded look."
 
 # AI customization
 
-{% include plans-blockquote.html feature="AI customization" %}
+> **Plans:** AI customization is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Admin > AI > Customization_
 

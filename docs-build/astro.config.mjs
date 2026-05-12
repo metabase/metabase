@@ -3,7 +3,8 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeExternalLinks from "rehype-external-links";
-import { remarkLiquidIncludes } from "./src/plugins/remark-liquid-includes.mjs";
+import { remarkDocsVersion } from "./src/plugins/remark-docs-version.mjs";
+import { remarkIncludeFile } from "./src/plugins/remark-include-file.mjs";
 import { rehypeBlockquoteClasses } from "./src/plugins/rehype-blockquote-classes.mjs";
 import { rehypeInternalLinks } from "./src/plugins/rehype-internal-links.mjs";
 
@@ -18,7 +19,7 @@ export default defineConfig({
     format: "file",
   },
   markdown: {
-    remarkPlugins: [remarkGfm, remarkLiquidIncludes],
+    remarkPlugins: [remarkGfm, remarkDocsVersion, remarkIncludeFile],
     rehypePlugins: [
       rehypeSlug,
       [rehypeAutolinkHeadings, { behavior: "wrap" }],

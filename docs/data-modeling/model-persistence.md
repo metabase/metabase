@@ -58,7 +58,7 @@ By default, new models on the database will _not_ be persisted. You need to [Tur
 
 ## Turn on model persistence for individual models
 
-{% include plans-blockquote.html feature="Individual model persistence" %}
+> **Plans:** Individual model persistence is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../permissions/collections.md#curate-access) to the model's collection to do this).
 

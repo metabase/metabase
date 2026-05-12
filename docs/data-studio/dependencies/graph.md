@@ -7,7 +7,7 @@ redirect_from:
 
 # Dependency graph
 
-{% include plans-blockquote.html feature="Dependency graph" %}
+> **Plans:** Dependency graph is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ![Dependency graph](../images/dependency-graph.png)
 

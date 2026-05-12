@@ -5,7 +5,7 @@ summary: Learn about Modular embedding SDK versioning and compatibility with Met
 
 # Modular embedding SDK - versions
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ## Metabase 57 and later
 

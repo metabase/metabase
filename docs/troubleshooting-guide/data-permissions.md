@@ -51,7 +51,7 @@ Remember that everyone is a member of the **All Users** group. We recommend you 
 
 ## A user group can view collections that contain restricted data
 
-{% include plans-blockquote.html %}
+> **Plans:** This feature is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 1. Go to **Admin** > **Permissions** and select the user group.
 2. Select the database or table that you want to restrict.

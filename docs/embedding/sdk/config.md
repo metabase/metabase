@@ -5,7 +5,7 @@ summary: Configure the Metabase modular embedding SDK with MetabaseProvider, set
 
 # Modular embedding SDK - config
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ## Passing a configuration object to `MetabaseProvider`
 

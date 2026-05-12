@@ -8,7 +8,7 @@ redirect_from:
 
 # Row and column security
 
-{% include plans-blockquote.html feature="Row and column security" %}
+> **Plans:** Row and column security is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Row and column security lets you give granular permissions for different groups of people. You can change what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
@@ -148,7 +148,7 @@ If you set up column security, you can also restrict different rows for each per
 
 1. Make sure you've done all the [prerequisites for column-level security](#prerequisites-for-column-level-security).
 2. Go to the SQL question that will be displayed to the people in place of the table.
-3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}WHERE plan = {{ plan_variable }} {%endraw%}`.
+3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `WHERE plan = {{ plan_variable }} `.
 4. Save the SQL question.
 5. Go to **Admin** > **Permissions**.
 6. Find the group and table you want to secure.
@@ -171,7 +171,7 @@ WHERE column_name = column_value
 In step 2 of the [row restriction setup](#restricting-rows-with-user-attributes-using-a-sql-variable) above, you'll add a SQL variable so that the `WHERE` clause will accept a dynamic value. The [SQL variable type](../questions/native-editor/sql-parameters.md#sql-variable-types) must be text, number, or date:
 
 ```sql
-WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}
+WHERE plan = {{ plan_variable }}
 ```
 
 In steps 9-10 of the [row restriction setup](#restricting-rows-with-user-attributes-using-a-sql-variable) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will use the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the secured table, they'll see the query result that is filtered on:
@@ -183,9 +183,9 @@ WHERE plan = "Basic"
 Note that the parameters must be required for SQL questions used to create custom views. For example, you can't use an optional parameter; the following won't work:
 
 ```sql
-{%raw%}
+
 [[WHERE plan = {{ plan_variable }}]]
-{%endraw%}
+
 ```
 
 Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
@@ -208,11 +208,11 @@ If you want to give someone access to multiple user IDs (e.g., the person should
 1. Create a SQL question that parses the comma-separated string and filters the table:
 
     ```sql
-    {%raw%}
+    
     SELECT *
     FROM users_with_values
     WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
-    {% endraw %}
+    
     ```
     
     This query:

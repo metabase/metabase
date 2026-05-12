@@ -56,7 +56,7 @@ To add a value to the URL, follow this syntax:
 ?variable_name=value
 ```
 
-For example, to set the `{% raw %}{{category}}{%endraw%}` variable on a question to the value "Gizmo", your URL would look something like:
+For example, to set the `{{category}}` variable on a question to the value "Gizmo", your URL would look something like:
 
 ```
 https://metabase.example.com/question/42-eg-question?category=Gizmo
@@ -72,7 +72,7 @@ https://metabase.example.com/question/42-eg-question?category=Gizmo&maxprice=50
 
 In order for a SQL/native question to be usable with a [dashboard filter](../../dashboards/filters.md), the question must contain at least one variable or parameter.
 
-The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a field with State semantic type, you can map a location dashboard filter to your SQL question. In this example, you'd:
+The kind of dashboard filter that can be used with the SQL question depends on the field. For example, if you have a field filter called `{{var}}` and you map it to a field with State semantic type, you can map a location dashboard filter to your SQL question. In this example, you'd:
 
 1. Create a new dashboard (or go to an existing dashboard).
 2. Click the **Pencil icon** to enter **Dashboard edit mode**.

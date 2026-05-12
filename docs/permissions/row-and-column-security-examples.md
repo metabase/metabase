@@ -6,7 +6,7 @@ redirect_from:
 
 # Row and column security examples
 
-{% include plans-blockquote.html feature="Row and column security" %}
+> **Plans:** Row and column security is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 [Row and column security](./row-and-column-security.md) let you:
 
@@ -114,7 +114,7 @@ If we want to specify which columns _and_ rows people can view, we can apply row
 Here's the code:
 
 ```sql
-{% raw %}
+
 SELECT
   id,
   created_at,
@@ -126,7 +126,7 @@ FROM
   orders
 WHERE
   user_id = {{user_id}}
-{% endraw %}
+
 ```
 
 Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).

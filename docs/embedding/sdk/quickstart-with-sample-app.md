@@ -5,11 +5,11 @@ summary: Set up the Modular embedding SDK with a sample React app and JWT authen
 
 # Modular embedding SDK - quickstart with sample app
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
-This guide sets up the modular embedding SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
+This guide sets up the modular embedding SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{SAMPLE_APP_BRANCH}), but you can follow along with your own application.
 
-{% include youtube.html id='AtMn-G-Al80' %}
+<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/AtMn-G-Al80" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 ## Prerequisites
 
@@ -20,16 +20,16 @@ This guide sets up the modular embedding SDK with a [sample React app](https://g
 
 ## Clone the sample app repo
 
-1. Clone the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).
+1. Clone the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{SAMPLE_APP_BRANCH}).
 
 ```bash
 git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
 ```
 
-2. Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable) repo that corresponds to your Metabase version.
+2. Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{SAMPLE_APP_BRANCH}) repo that corresponds to your Metabase version.
 
 ```bash
-git checkout {{page.version | remove: "v0."}}-stable
+git checkout {SAMPLE_APP_BRANCH}
 ```
 
 E.g., if you're running Metabase 1.57 make sure the sample app repo is on the `57-stable` branch. You can find your Metabase version in the Metabase UI by clicking the **grid icon** in the upper right, selecting **Help**, then choosing **About Metabase**.

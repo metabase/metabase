@@ -44,7 +44,7 @@ If you have text, like an image URL, you may need to change the semantic type be
 - Link. You can optionally change the text that you want to display in the **Link text** input field. For example, if you set the **Link URL** for an "Adjective" column to:
 
 ```
-https://www.google.com/search?q={% raw %}{{adjective}}{% endraw %}
+https://www.google.com/search?q={{adjective}}
 ```
 
 When someone clicks on the value "askew" in the "Adjective" column, they'll be taken to the Google search URL:

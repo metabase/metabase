@@ -65,7 +65,7 @@ We recommend first creating a subscription with a test email/channel, then using
 
 ### Set filter values for when this gets sent
 
-{% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
+> **Plans:** Dashboard subscription filter customization is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can set filters to apply when Metabase sends the subscription to send "views" of the dashboard to different people. See [Customize filter values for each dashboard subscription](#customize-filter-values-for-each-dashboard-subscription).
 
@@ -114,13 +114,13 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 ## Viewing existing dashboard subscriptions
 
-{% include plans-blockquote.html feature="Usage analytics" %}
+> **Plans:** Usage analytics is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 
-{% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
+> **Plans:** Dashboard subscription filter customization is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can customize which filter values to apply to each dashboard subscription. That way you can send  an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 

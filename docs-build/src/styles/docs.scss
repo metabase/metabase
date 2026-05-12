@@ -157,6 +157,20 @@ article.docs-content {
   blockquote.warning { border-left-color: $yellow-50; background: $yellow-95; }
   blockquote.danger  { border-left-color: $red-40;    background: $red-95; }
 
+  .youtube-embed {
+    position: relative;
+    margin: 16px 0;
+    padding-top: 56.25%; // 16:9
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      border-radius: 6px;
+    }
+  }
+
   table {
     border-collapse: collapse;
     margin: 16px 0;

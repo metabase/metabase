@@ -51,25 +51,25 @@ On Metabase Cloud, you need the **Transforms** add-on to create query-based tran
 
 ## Variables in SQL transforms
 
-SQL transforms support [variables](../../questions/native-editor/sql-parameters.md) (`{% raw %}{{my_variable}} {% endraw %}`), which are only useful when combined with [snippets](../../questions/native-editor/snippets.md).
+SQL transforms support [variables](../../questions/native-editor/sql-parameters.md) (`{{my_variable}} `), which are only useful when combined with [snippets](../../questions/native-editor/snippets.md).
 
-For (a really simple) example, let's say you want to count rows per week across several tables. You could create a snippet called "rows per week" containing the full query with a `{% raw %}{{table}}{% endraw %}` variable:
+For (a really simple) example, let's say you want to count rows per week across several tables. You could create a snippet called "rows per week" containing the full query with a `{{table}}` variable:
 
 ```sql
-{% raw %}
+
 SELECT
   date_trunc('week', created_at) AS week,
   count(*) AS row_count
 FROM {{table}}
 GROUP BY week
 ORDER BY week
-{% endraw %}
+
 ```
 
 That way you can use the snippet to create multiple transforms, each sourced from different tables. Each transform's entire SQL is just:
 
 ```sql
-{% raw %}{{snippet: rows per week}}{% endraw %}
+{{snippet: rows per week}}
 ```
 
 In each transform's variable panel, set the default value of `table` to the target table (e.g., `orders`, `returns`, `subscriptions`). See [table variables](../../questions/native-editor/table-variables.md).
@@ -85,7 +85,7 @@ Parameters in transforms must either:
 
 The reason transform variables must have a default value (or be optional) is that transforms run on a schedule, so there's no way to pass a value to the variable when the job runs the transform.
 
-The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
+The incremental `[[WHERE id > {{checkpoint}}]]` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
 
 ## Run a query transform
 

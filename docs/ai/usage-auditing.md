@@ -5,7 +5,7 @@ summary: "See token and message counts, chat logs, and more."
 
 # AI usage auditing
 
-{% include plans-blockquote.html feature="AI usage auditing" %}
+> **Plans:** AI usage auditing is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Admin > AI > Usage auditing_
 

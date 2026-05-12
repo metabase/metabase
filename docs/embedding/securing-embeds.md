@@ -163,7 +163,7 @@ The flow might look something like this:
 
 ## Modular and full app embedding auth with JWT or SAML
 
-{% include plans-blockquote.html feature="Authenticated embeds" is_plural=true %}
+> **Plans:** Authenticated embeds are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Modular embedding (including using the [SDK](./sdk/introduction.md)), and [full-app embedding](./full-app-embedding.md) integrate with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 

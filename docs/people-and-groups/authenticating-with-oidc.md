@@ -5,7 +5,7 @@ summary: Set up OIDC single sign-on in Metabase.
 
 # OIDC-based authentication
 
-{% include plans-blockquote.html feature="OIDC authentication" %}
+> **Plans:** OIDC authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 By integrating your OpenID Connect (OIDC) provider with Metabase, you can:
 

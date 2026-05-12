@@ -17,7 +17,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 ![Map types](../images/map-types.png)
 
-{% include youtube.html id='EewOLxHht1s' %}
+<div class="youtube-embed"><iframe src="https://www.youtube.com/embed/EewOLxHht1s" title="YouTube video player" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 ## Pin map
 

@@ -4,7 +4,7 @@ title: Impersonation access
 
 # Impersonation permissions
 
-{% include plans-blockquote.html feature="Impersonation access" %}
+> **Plans:** Impersonation access is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 This page covers the [View data](./data.md#view-data-permissions) permission level called Impersonation.
 

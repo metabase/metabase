@@ -51,8 +51,12 @@ const INCLUDED_PATHS = [
 const EXCLUDED_PATHS = ["embedding/sdk/api/snippets"];
 
 const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n/;
-const LIQUID_TAG_RE = /\{%[\s\S]*?%\}/g;
-const LIQUID_VAR_RE = /\{\{[\s\S]*?\}\}/g;
+// Strip `{% include_file ... %}` transclusion tags — the docs are otherwise
+// plain markdown now. (We don't expand them here; like before, the included
+// example code isn't carried into the llms.txt bundle. Note: we deliberately
+// do NOT strip `{{ ... }}` — those are now literal content, e.g. SQL parameter
+// examples like `{{category}}`.)
+const INCLUDE_FILE_TAG_RE = /\{%[\s\S]*?%\}/g;
 const FRONTMATTER_TITLE_RE = /^title\s*:\s*(.+?)\s*$/m;
 const H1_RE = /^#\s+(.+)$/m;
 
@@ -159,8 +163,7 @@ function concatenateDocuments(docs) {
     .map(({ absolutePath }) => {
       let content = readSourceFile(absolutePath);
       content = content.replace(FRONTMATTER_RE, "");
-      content = content.replace(LIQUID_TAG_RE, "");
-      content = content.replace(LIQUID_VAR_RE, "");
+      content = content.replace(INCLUDE_FILE_TAG_RE, "");
       return `${content.trim()}\n\n---`;
     })
     .join("\n\n");

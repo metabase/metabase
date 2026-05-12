@@ -5,7 +5,7 @@ summary: Embed static or interactive Metabase dashboards using the Modular embed
 
 # Modular embedding SDK - dashboards
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+> **Plans:** Modular embedding SDK is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can embed an interactive, editable, or static dashboard.
 

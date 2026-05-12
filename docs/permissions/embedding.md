@@ -52,9 +52,9 @@ Let's say your **Insights** column is a premium feature, and Tenant B is the onl
 
 | Tenant ID | Metrics | Insights                          |
 | --------- | ------- | --------------------------------- |
-| A         | ...     | {% include svg-icons/cross.svg %} |
+| A         | ...     | × |
 | B         | ...     | ...                               |
-| C         | ...     | {% include svg-icons/cross.svg %} |
+| C         | ...     | × |
 
 To keep A and C from viewing the `Insights` column, you can add [column-level security](./row-and-column-security.md) to restrict both the rows and columns they see when they view the table.
 
@@ -66,7 +66,7 @@ To keep A and C from viewing the `Insights` column, you can add [column-level se
    ```sql
    SELECT Tenant_ID, Metrics
    FROM data
-   WHERE Tenant_ID = {%raw%} {{ tenant_user_attribute }} {%endraw%}
+   WHERE Tenant_ID =  {{ tenant_user_attribute }} 
    ```
 
 5. Save the SQL question as "Customer Metrics".

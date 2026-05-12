@@ -186,7 +186,7 @@ The [transform inspector](./transform-inspector.md) lets you poke at the input a
 
 ## Transform dependencies
 
-{% include plans-blockquote.html feature="Transform dependencies" is_plural=true%}
+> **Plans:** Transform dependencies are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 _Data Studio > Transforms > Dependencies_
 

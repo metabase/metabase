@@ -7,7 +7,7 @@ redirect_from:
 
 # Modular embedding - authentication
 
-{% include plans-blockquote.html feature="Authenticated embeds" sdk=true is_plural=true%}
+> **Plans:** Authenticated embeds are only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 For using modular embedding with SSO in production, you'll need to set up authentication.
 
@@ -104,7 +104,7 @@ The response should be in the form of `{ jwt: "{JWT_TOKEN}" }`
 
 ## Setting up SAML SSO
 
-{% include plans-blockquote.html feature="SAML authentication" sdk=true %}
+> **Plans:** SAML authentication is only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To use SAML single sign-on with modular embedding, you'll need to set up SAML in both your Metabase and your Identity Provider (IdP). See the docs on [SAML-based authentication](../people-and-groups/authenticating-with-saml.md).
 
@@ -283,7 +283,7 @@ app.get("/sso/metabase", async (req, res) => {
 
 ## Embedding Metabase in a different domain
 
-{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embedding=true is_plural=true %}
+> **Plans:** Authenticated modular embeds are only available on [**Pro**](https://www.metabase.com/product/embedded-analytics) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 

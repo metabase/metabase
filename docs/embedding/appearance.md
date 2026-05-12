@@ -36,7 +36,7 @@ defineMetabaseConfig({
 
 ![Embedding themes](./images/themes.png)
 
-{% include plans-blockquote.html feature="Saved embedding themes" is_plural=true %}
+> **Plans:** Saved embedding themes are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 A theme is a named set of colors and fonts that the embed wizard can copy into each new embed's config. The embed doesn't reference the theme, the embed carries its own inlined copy of the values. Changing or deleting the theme won't affect existing embeds.
 
@@ -100,7 +100,7 @@ For the full set of available colors and component overrides, see [Theme options
 
 ## Advanced theming
 
-{% include plans-blockquote.html feature="Advanced theming modular embeds" is_plural=true %}
+> **Plans:** Advanced theming modular embeds are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 On Pro/Enterprise plan, you can configure granular appearance options, like background colors, font sizes etc. See the [list of all theming options](#theme-options).
 
@@ -137,7 +137,7 @@ defineMetabaseConfig({
 
 ### Theme options
 
-{% include plans-blockquote.html feature="Advanced theme options" is_plural=true %}
+> **Plans:** Advanced theme options are only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 For advanced theme configuration options, you can configure the `theme` object in the object passed to the `defineMetabaseConfig` function, see [Add an advanced theme to your embed](#add-an-advanced-theme-to-your-embed). Here's the list of all options available for customization:
 

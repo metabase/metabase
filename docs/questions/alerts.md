@@ -140,7 +140,7 @@ Alerts will continue to work _even if the person who set up the alert no longer 
 
 ## Admins can see all alerts
 
-{% include plans-blockquote.html feature="Usage analytics" %}
+> **Plans:** Usage analytics is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See the [Alerts model](../usage-and-performance-tools/usage-analytics-reference.md#alerts) in the Usage analytics reference.
 

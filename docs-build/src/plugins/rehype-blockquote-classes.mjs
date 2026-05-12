@@ -7,9 +7,10 @@
 //   > **Warning:** ...     → blockquote.warning
 //   > **Caution:** ...     → blockquote.warning
 //   > **Danger:** ...      → blockquote.danger
+//   > **Plans:** ...       → blockquote.plans-callout   (pricing / availability)
 //
-// Also leaves alone blockquotes already classed (e.g. .plans-callout
-// emitted by remark-liquid-includes).
+// Also leaves alone blockquotes already classed (e.g. an author-written
+// .plans-callout).
 
 import { visit } from "unist-util-visit";
 
@@ -20,6 +21,7 @@ const MARKERS = {
   warning: "warning",
   caution: "warning",
   danger: "danger",
+  plans: "plans-callout",
 };
 
 function existingClasses(node) {

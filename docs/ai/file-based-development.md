@@ -5,7 +5,7 @@ summary: "Use a combination of agent skills, the Metabase MCP server, and serial
 
 # File-based development
 
-{% include plans-blockquote.html feature="File-based development" %}
+> **Plans:** File-based development is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files directly, but the most productive workflow is to let an agent do the editing for you — this article focuses on that agent-driven workflow.
 

@@ -4,7 +4,7 @@ title: "Configuration file"
 
 # Configuration file
 
-{% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
+> **Plans:** Loading from a configuration file is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (self-hosted only).
 
 On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
@@ -76,7 +76,7 @@ If the Metabase has already been set up, then `first@example.com` will be loaded
 On a new Metabase, the example below sets up an admin user account and one database connection.
 
 ```yml
-{% raw %}
+
 version: 1
 config:
   users:
@@ -93,7 +93,7 @@ config:
         user: dbuser
         password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
         dbname: test-data
-{% endraw %}
+
 ```
 
 To determine which keys you can specify for a database, check out the fields available in Metabase itself for the database that you want to add.
@@ -109,7 +109,7 @@ You can also configure [uploads](../databases/uploads.md) in the config file wit
 Here's an example:
 
 ```yml
-{% raw %}
+
 version: 1
 config:
   users:
@@ -129,7 +129,7 @@ config:
       uploads_enabled: true
       uploads_schema_name: uploads
       uploads_table_prefix: uploads_
-{% endraw %}
+
 ```
 
 See [Uploads](../databases/uploads.md).
@@ -141,7 +141,7 @@ You can use the config file to create API keys, which is useful for automated de
 You can add API keys like so:
 
 ```yaml
-{% raw %}
+
 version: 1
 config:
   users:
@@ -158,19 +158,19 @@ config:
       group: all-users
       creator: cam@example.com
       key: mb_secondtestapikey
-{% endraw %}
+
 ```
 
 You can also use an environment variable to supply an API key, like so:
 
 ```
-{% raw %}
+
 api-keys:
   - name: "ENV API Key"
     key: "{{env API_KEY_FROM_ENV}}"
     creator: "admin@example.com"
     group: "admin"
-{% endraw %}
+
 ```
 
 See below for more on [environment variables in the config file](#referring-to-environment-variables-in-the-configyml).
@@ -204,26 +204,26 @@ Some other things to note about API keys in the config file:
 As shown in the examples above, environment variables can be specified with template tags like so:
 
 ```
-{% raw %}
+
 setting: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
-{% endraw %}
+
 ```
 
-Note the quote marks wrapping the template `{% raw %}"{{ env API_KEY_FROM_ENV }}"{% endraw %}`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
+Note the quote marks wrapping the template `"{{ env API_KEY_FROM_ENV }}"`; if you don't include the quotes, the YAML parser won't know it's a string template for Metabase to expand, and Metabase won't know to swap in the env var's value.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
 ## Values with special characters in the `config.yml`
 
-If a value contains double braces (`{%raw %}}}{% endraw %}` or `{%raw %}{{{% endraw %}`), you must use triple braces to tell the config parser to use the literal value. For example, if your password was `{% raw %}MetaPa$$123{{>{% endraw %}`, you'd need to wrap the value in triple braces, like so:
+If a value contains double braces (`}}` or `{{`), you must use triple braces to tell the config parser to use the literal value. For example, if your password was `MetaPa$$123{{>`, you'd need to wrap the value in triple braces, like so:
 
 ```
-{% raw %}
+
 password: "{{{ MetaPa$$123{{> }}}"
-{% endraw %}
+
 ```
 
-Note the quote marks in `{% raw %}"{{{ MetaPa$$123{{> }}}"{% endraw %}`.
+Note the quote marks in `"{{{ MetaPa$$123{{> }}}"`.
 
 ## Disable initial database sync
 

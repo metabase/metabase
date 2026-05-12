@@ -7,7 +7,7 @@ redirect_from:
 
 # Dependency diagnostics
 
-{% include plans-blockquote.html feature="Dependency diagnostics" %}
+> **Plans:** Dependency diagnostics is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Dependency diagnostics shows you content with broken dependencies, and content that isn't referenced by anything else.
 

@@ -80,7 +80,7 @@ X-Metabase-Session: SESSION_TOKEN
 
 ### JWT
 
-{% include plans-blockquote.html feature="JWT-based authentication" %}
+> **Plans:** JWT-based authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 If you've configured [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md) (**Admin** > **Settings** > **Authentication** > **JWT**), you can pass a signed JWT directly:
 

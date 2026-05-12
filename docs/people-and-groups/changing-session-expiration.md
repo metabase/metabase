@@ -29,7 +29,7 @@ java -DMAX_SESSION_AGE=1440 -jar metabase.jar
 
 ## Session timeout
 
-{% include plans-blockquote.html feature="Session timeout" %}
+> **Plans:** Session timeout is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 The session timeout is the maximum time that a person can be inactive (for example, if someone leaves Metabase open in a long-forgotten browser tab).
 

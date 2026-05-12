@@ -5,7 +5,7 @@ summary: Route queries to different databases based on who's viewing them. Great
 
 # Database routing
 
-{% include plans-blockquote.html feature="Database routing" %}
+> **Plans:** Database routing is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 

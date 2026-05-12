@@ -96,7 +96,7 @@ If the container is _not_ being terminated from the outside, but is failing to s
 **How to fix this:** Check that you are passing environments to Docker correctly. You can list the environment variables for a container with this command:
 
 ```
-docker inspect some-postgres -f '{% raw %}{{ .Config.Env }}{% endraw %}'
+docker inspect some-postgres -f '{{ .Config.Env }}'
 ```
 
 ## The Metabase server isn't able to connect to a MySQL or PostgreSQL database

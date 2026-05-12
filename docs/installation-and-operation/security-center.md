@@ -5,7 +5,7 @@ summary: See all security advisories published by Metabase and subscribe to noti
 
 # Security center
 
-{% include plans-blockquote.html feature="Security center" self-hosted-only="true" %}
+> **Plans:** Security center is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (self-hosted only).
 
 _Admin > Security_
 

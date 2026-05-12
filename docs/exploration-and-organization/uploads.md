@@ -142,7 +142,7 @@ Offsets:
 
 ### Deleting models created by uploads
 
-{% include plans-blockquote.html feature="Deleting uploaded tables" %}
+> **Plans:** Deleting uploaded tables is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can move a model to Trash by clicking on the three dots in the upper right and selecting **Move to Trash**.
 
@@ -150,7 +150,7 @@ For deleting models completely, see [Deleting items permanently](../exploration-
 
 ### Deleting tables created by uploads
 
-{% include plans-blockquote.html feature="Deleting uploaded tables" %}
+> **Plans:** Deleting uploaded tables is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To delete tables created by uploads, go to **Admin** > **Settings** > **Uploads**.
 

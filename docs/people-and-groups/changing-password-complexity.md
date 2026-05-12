@@ -37,6 +37,6 @@ If your instance is hosted on Metabase Cloud, passwords must:
 
 ## Disabling password logins
 
-{% include plans-blockquote.html feature="Disabling password logins" %}
+> **Plans:** Disabling password logins is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication**.

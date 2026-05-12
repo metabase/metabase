@@ -6,7 +6,7 @@ redirect_from:
 
 # SAML with Google
 
-{% include plans-blockquote.html feature="Google SAML authentication" %}
+> **Plans:** Google SAML authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 1. Set up a [custom SAML app](https://support.google.com/a/answer/6087519) in your [Google admin console](https://admin.google.com).
 2. As you follow Google's instructions, you'll need to:

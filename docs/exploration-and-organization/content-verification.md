@@ -4,7 +4,7 @@ title: Content verification
 
 # Content verification
 
-{% include plans-blockquote.html feature="Content verification" %}
+> **Plans:** Content verification is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 ![Verified icon](./images/verified-icon.png)
 

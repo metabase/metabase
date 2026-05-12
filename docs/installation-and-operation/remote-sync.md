@@ -5,7 +5,7 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 
 # Remote sync
 
-{% include plans-blockquote.html feature="Remote sync" %}
+> **Plans:** Remote sync is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 

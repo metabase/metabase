@@ -40,7 +40,7 @@ You can edit someone's name and email address by clicking the three dots icon an
 
 ## Adding a user attribute
 
-{% include plans-blockquote.html feature="User attributes" %}
+> **Plans:** User attributes is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 To add a user attribute manually:
 
@@ -182,7 +182,7 @@ It's important that your All Users group should never have _greater_ access for 
 
 #### Data analysts
 
-{% include plans-blockquote.html feature="Data Analysts group" %}
+> **Plans:** Data Analysts group is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 You can add non-admins to the special **Data Analysts** group to give them access to [Data Studio](../data-studio/overview.md).
 
@@ -214,7 +214,7 @@ You can also add or remove people from groups from the **People** list using the
 
 ## Group managers
 
-{% include plans-blockquote.html feature="Group managers" %}
+> **Plans:** Group managers is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 **Group managers** can manage other people within their group.
 

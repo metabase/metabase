@@ -5,7 +5,7 @@ summary: Create development instances of Metabase for testing without paying per
 
 # Development instances
 
-{% include plans-blockquote.html feature="Development instances" %}
+> **Plans:** Development instances is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 > A development instance **can't be used in production** and must be on **Metabase version 55 or above**.
 

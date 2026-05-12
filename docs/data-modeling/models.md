@@ -123,7 +123,7 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 ### Checking for breaking changes
 
-{% include plans-blockquote.html feature="Checking for breaking changes" %}
+> **Plans:** Checking for breaking changes is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break.
 
@@ -179,22 +179,22 @@ See [asking questions][question].
 You can refer to a model in a SQL query just like you can refer to a saved question:
 
 ```sql
-{% raw %}
+
 SELECT * FROM {{#1-customer-model}}
-{% endraw %}
+
 ```
 
 Or as a [common table expression (CTE)][cte]:
 
 ```sql
-{% raw %}
+
 WITH model AS {{#3807-invoice-model}}
 SELECT *
 FROM model;
-{% endraw %}
+
 ```
 
-Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
+Simply typing `{{#}} ` will allow you to search for models (for example, you could type in `{{#customer}}` to search models, questions, and tables with the word "customer" in the title.
 
 You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 

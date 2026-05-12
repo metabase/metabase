@@ -5,7 +5,7 @@ summary: Step-by-step guide to setting up Keycloak as an OIDC identity provider 
 
 # OIDC with Keycloak
 
-{% include plans-blockquote.html feature="OIDC authentication" %}
+> **Plans:** OIDC authentication is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 Keycloak is an open-source identity provider that supports [OpenID Connect (OIDC) authentication](./authenticating-with-oidc.md) out of the box.
 

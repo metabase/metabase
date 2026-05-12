@@ -5,7 +5,7 @@ summary: Create a source of truth for analytics with curated tables, metrics, an
 
 # Library
 
-{% include plans-blockquote.html feature="Library" %}
+> **Plans:** Library is only available on [**Pro**](/product/pro) and [**Enterprise**](/product/enterprise) plans (both self-hosted and on Metabase Cloud).
 
 "I have always imagined that Paradise will be a kind of library."
 

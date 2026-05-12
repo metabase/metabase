@@ -82,7 +82,7 @@ In the example above, when a user clicks on the **Orders by product category** c
 
 You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. In [some plans](https://www.metabase.com/pricing/), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
 
-When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {% raw %}{{Category}}{% endraw %}", where `Category` is the name of your column.
+When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}", where `Category` is the name of your column.
 
 You can also use values to construct URLs to external resources.
 
@@ -95,10 +95,10 @@ What we need to do here is to type in the full URL of where a user should go whe
 For example, we could type a URL like this:
 
 ```
-https://www.metabase.com/search.html?query={% raw %}{{Category}}{% endraw %}
+https://www.metabase.com/search.html?query={{Category}}
 ```
 
-The important part is the `{% raw %}{{Category}}{% endraw %}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if someone clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search.html?query=Widget`. Your URL can use as many column variables as you want - you can even refer to the same column multiple times in different parts of the URL. To see which variables you can include in the URL, click on the dropdown menu **Values you can reference**.
+The important part is the `{{Category}}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if someone clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search.html?query=Widget`. Your URL can use as many column variables as you want - you can even refer to the same column multiple times in different parts of the URL. To see which variables you can include in the URL, click on the dropdown menu **Values you can reference**.
 
 Next we’ll click **Done**, then **Save** our dashboard. Now when we click our chart, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL.
 
