@@ -21,7 +21,7 @@ EXPLAIN plan ────┘                        of examples)      forming a 
 - Source DB engine: **Postgres only**.
 - Source transform type: **native** (`{:type :query, :query {:native …, :database N}}`).
 - Output of a proposal: **new** transforms, never an update to the original.
-  Original stays around until the user accepts and deletes it.
+  Original stays around.
 - Verification is **optional**, user-triggered, and runs as a side workflow.
 
 ## Architecture sketch
@@ -34,9 +34,6 @@ files we'll hook into):
 - `metabase.transforms-base.query/run-query-transform!` — where the source SQL
   for a `:query` transform is compiled. We do *not* modify execution; we just
   re-use `compile-source` to get the SQL string for context.
-- `metabase.transforms.models.transform-run` — run history; we'll read
-  durations from here to surface "slow transforms" candidates and to compare
-  pre/post timings.
 - `metabase.transforms-rest.api.transform` — where the new endpoint
   `POST /api/transform/:id/optimize` will live.
 - `metabase.metabot.tools.deftool` + `metabase.metabot.tools` — where we
@@ -88,11 +85,10 @@ frontend/src/metabase/transform_optimizer/
 - `pg_introspection`: for a connection + a list of table names, return
   `{table → {columns [], indexes [], foreign_keys [], approx_row_count}}`.
   Use `pg_class.reltuples`, `pg_index`/`pg_indexes`, `pg_constraint`,
-  `information_schema.columns`.
+  `information_schema.columns`. NOTE: some of this already exists as part of the driver/sync information available in the appdb
 - `sql_extraction`: lightweight parser that yields the set of referenced
-  schemas/tables for a native query. Start with a regex/keyword approach,
-  upgrade to a parser if needed. The goal is "which tables to introspect" —
-  imprecision (extra tables) is fine; missing tables is not.
+  schemas/tables for a native query. NOTE: This already exists as internal utilities, see how
+  metabase-enterprise.transforms-inspector.context and metabase-enterprise.transforms-inspector.query-analysis do it
 - `explain.clj`: `EXPLAIN (FORMAT JSON, VERBOSE)` against the source DB.
   No `ANALYZE` by default — running the slow query is exactly what we're
   trying to avoid. Add an `:analyze?` opt for opt-in.
@@ -107,7 +103,7 @@ frontend/src/metabase/transform_optimizer/
   ## Transform
   - id, name, target table
   ## SQL
-  ```sql … ``` 
+  ```sql … ```
   ## Referenced tables
     table A — columns, FKs, indexes, ≈row count
     …
