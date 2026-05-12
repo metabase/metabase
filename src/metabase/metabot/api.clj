@@ -121,8 +121,7 @@
   cleanly without triggering upstream retries.
 
   `canceled?` is a `volatile!` flipped to `true` when the writer detects a
-  disconnect or canceled-chan signal — read by the persistence layer in `finally`
-  to mark the assistant turn as `finished=false`."
+  disconnect or canceled-chan signal to mark the assistant turn as `finished=false`."
   [^java.io.OutputStream os canceled-chan canceled?]
   (fn
     ([] nil)
@@ -178,30 +177,15 @@
           (finally
             (try
               (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-                    canceled?*     @canceled?
-                    error-part     (u/seek #(= :error (:type %)) combined-parts)
-                    ;; Cancel wins over error: if the client tore down the
-                    ;; connection, the agent's downstream rf throws are a
-                    ;; consequence of the abort, not a separate failure.
-                    error-data     (when-not canceled?* (:error error-part))]
-                (when canceled?*
-                  (log/info "User aborted metabot agent request"
-                            {:conversation-id conversation-id
-                             :external-id     external-id
-                             :profile-id      profile-id
-                             :parts-count     (count combined-parts)}))
-                (log/debug "Persisting agent turn"
-                           {:conversation-id conversation-id
-                            :external-id     external-id
-                            :canceled?       canceled?*
-                            :errored?        (some? error-data)
-                            :parts-count     (count combined-parts)})
+                    aborted?       @canceled?
+                    error-data     (when-not aborted?
+                                     (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/store-native-parts!
                  conversation-id profile-id combined-parts
                  :hostname    hostname
                  :pii-info    pii-info
                  :external-id external-id
-                 :finished?   (not canceled?*)
+                 :finished?   (not aborted?)
                  :error       error-data))
               (catch Exception e
                 (log/error e "Failed to persist native agent parts"

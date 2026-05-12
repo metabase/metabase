@@ -234,147 +234,119 @@
   (testing "conversation-detail returns nil when the conversation does not exist"
     (is (nil? (metabot-persistence/conversation-detail (str (random-uuid)))))))
 
-(deftest message->chat-messages-stubs-empty-errored-agent-row-test
-  (testing "an errored agent row with empty :data emits a placeholder agent message
-            so the FE can render the alert"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant :error (json/encode {:message "boom"}) :finished true :data []
-                   :external_id "ext-1"})]
-      (is (= 1 (count result)))
-      (is (= {:role "agent" :type "text" :message ""}
-             (select-keys (first result) [:role :type :message])))
-      (is (= {:message "boom"} (:error (first result))))
-      (is (= "ext-1" (:externalId (first result))))))
-  (testing "an aborted agent row with empty :data also gets a stub"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant :finished false :data []})]
-      (is (= 1 (count result)))
-      (is (false? (:finished (first result))))))
-  (testing "a healthy assistant row with empty :data still produces no messages"
+(deftest message->chat-messages-annotates-agent-row-test
+  (testing "empty :data on errored row emits a stub agent message so the FE can render the alert"
+    (is (=? [{:id "ext-1" :role "agent" :type "text" :message ""
+              :finished true :error {:message "boom"} :externalId "ext-1"}]
+            (metabot-persistence/message->chat-messages
+             {:role :assistant :error (json/encode {:message "boom"}) :finished true :data []
+              :external_id "ext-1"}))))
+  (testing "empty :data on aborted row also gets a stub"
+    (is (=? [{:role "agent" :type "text" :message "" :finished false}]
+            (metabot-persistence/message->chat-messages
+             {:role :assistant :finished false :data []}))))
+  (testing "empty :data on healthy row produces no messages"
     (is (= [] (metabot-persistence/message->chat-messages
-               {:role :assistant :finished true :data []})))))
-
-(deftest message->chat-messages-annotates-agent-status-test
-  (testing "agent messages get :finished true and no :error by default"
+               {:role :assistant :finished true :data []}))))
+  (testing "agent message gets :finished true and no :error by default"
     (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :assistant
-                  :data [{:type "text" :text "ok" :id "b1"}]})]
-      (is (true? (:finished msg)))
+                 {:role :assistant :data [{:type "text" :text "ok" :id "b1"}]})]
+      (is (=? {:finished true} msg))
       (is (not (contains? msg :error)))))
-  (testing "agent messages inherit :finished false from the parent row"
-    (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :assistant :finished false
-                  :data [{:type "text" :text "interrupted" :id "b1"}]})]
-      (is (false? (:finished msg)))))
-  (testing "agent messages inherit JSON-decoded :error from the parent row"
-    (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :assistant :finished true
-                  :error (json/encode {:message "boom" :type "RuntimeException"})
-                  :data [{:type "text" :text "partial" :id "b1"}]})]
-      (is (= {:message "boom" :type "RuntimeException"} (:error msg)))))
+  (testing "agent message inherits :finished false from parent row"
+    (is (=? [{:finished false}]
+            (metabot-persistence/message->chat-messages
+             {:role :assistant :finished false
+              :data [{:type "text" :text "interrupted" :id "b1"}]}))))
+  (testing "agent message inherits JSON-decoded :error from parent row"
+    (is (=? [{:error {:message "boom" :type "RuntimeException"}}]
+            (metabot-persistence/message->chat-messages
+             {:role :assistant :finished true
+              :error (json/encode {:message "boom" :type "RuntimeException"})
+              :data [{:type "text" :text "partial" :id "b1"}]}))))
   (testing "non-JSON :error column values fall through unchanged"
-    (let [[msg] (metabot-persistence/message->chat-messages
-                 {:role :assistant :finished true :error "raw legacy text"
-                  :data [{:type "text" :text "partial" :id "b1"}]})]
-      (is (= "raw legacy text" (:error msg)))))
+    (is (=? [{:error "raw legacy text"}]
+            (metabot-persistence/message->chat-messages
+             {:role :assistant :finished true :error "raw legacy text"
+              :data [{:type "text" :text "partial" :id "b1"}]}))))
   (testing "user messages do not receive agent-only status fields"
     (let [[msg] (metabot-persistence/message->chat-messages
                  {:role :user :data [{:role "user" :content "hi"}]})]
-      (is (not (contains? msg :finished)))
-      (is (not (contains? msg :error)))))
-  (testing "multi-block assistant rows: only the last agent message is annotated"
-    (let [result (metabot-persistence/message->chat-messages
-                  {:role :assistant :finished false
-                   :error (json/encode {:message "boom"})
-                   :data [{:type "text" :text "first" :id "b1"}
-                          {:type "tool-input" :id "call-1" :function "search"}
-                          {:type "text" :text "last" :id "b2"}]})]
-      (is (= 3 (count result)))
-      (is (not (contains? (first result) :finished)))
-      (is (not (contains? (first result) :error)))
-      (is (not (contains? (second result) :finished)))
-      (is (not (contains? (second result) :error)))
-      (is (false? (:finished (last result))))
-      (is (= {:message "boom"} (:error (last result)))))))
+      (is (not-any? #(contains? msg %) [:finished :error]))))
+  (testing "multi-block assistant row: only the last agent message is annotated"
+    (let [result     (metabot-persistence/message->chat-messages
+                      {:role :assistant :finished false
+                       :error (json/encode {:message "boom"})
+                       :data [{:type "text" :text "first" :id "b1"}
+                              {:type "tool-input" :id "call-1" :function "search"}
+                              {:type "text" :text "last" :id "b2"}]})
+          annotated? #(or (contains? % :finished) (contains? % :error))]
+      (is (=? [{:message "first"}
+               {:type "tool_call" :name "search"}
+               {:message "last" :finished false :error {:message "boom"}}]
+              result))
+      (is (= [false false true] (mapv annotated? result))))))
 
-(deftest messages->chat-messages-drops-errored-pairs-by-default-test
-  (testing "errored assistant rows and the user prompt that triggered them are removed"
-    (let [messages [{:role :user      :data [{:role "user" :content "first"}]}
-                    {:role :assistant :data [{:type "text" :text "first reply" :id "a1"}]}
-                    {:role :user      :data [{:role "user" :content "broken"}]}
-                    {:role :assistant :error (json/encode {:message "boom"}) :data []}
-                    {:role :user      :data [{:role "user" :content "third"}]}
-                    {:role :assistant :data [{:type "text" :text "third reply" :id "a3"}]}]
-          result   (metabot-persistence/messages->chat-messages messages)]
-      (is (= ["first" "first reply" "third" "third reply"]
-             (mapv :message result)))))
+(deftest messages->chat-messages-errored-pairs-test
+  (testing "by default, errored assistant rows and the preceding user prompt are dropped"
+    (is (= ["first" "first reply" "third" "third reply"]
+           (mapv :message
+                 (metabot-persistence/messages->chat-messages
+                  [{:role :user      :data [{:role "user" :content "first"}]}
+                   {:role :assistant :data [{:type "text" :text "first reply" :id "a1"}]}
+                   {:role :user      :data [{:role "user" :content "broken"}]}
+                   {:role :assistant :error (json/encode {:message "boom"}) :data []}
+                   {:role :user      :data [{:role "user" :content "third"}]}
+                   {:role :assistant :data [{:type "text" :text "third reply" :id "a3"}]}])))))
   (testing "an errored row at the start with no preceding user prompt is still dropped"
-    (let [result (metabot-persistence/messages->chat-messages
+    (is (= ["hi" "hello"]
+           (mapv :message
+                 (metabot-persistence/messages->chat-messages
                   [{:role :assistant :error (json/encode {:message "boom"}) :data []}
                    {:role :user      :data [{:role "user" :content "hi"}]}
-                   {:role :assistant :data [{:type "text" :text "hello" :id "a1"}]}])]
-      (is (= ["hi" "hello"] (mapv :message result))))))
-
-(deftest messages->chat-messages-include-errored-test
-  (testing "with :include-errored? true, errored pairs stay and :error surfaces on agent messages"
-    (let [messages [{:role :user      :data [{:role "user" :content "broken"}]}
-                    {:role :assistant :error (json/encode {:message "boom"}) :finished true
-                     :data [{:type "text" :text "partial" :id "a1"}]}
-                    {:role :user      :data [{:role "user" :content "ok"}]}
-                    {:role :assistant :data [{:type "text" :text "fine" :id "a2"}]}]
-          result   (metabot-persistence/messages->chat-messages
-                    messages {:include-errored? true})]
+                   {:role :assistant :data [{:type "text" :text "hello" :id "a1"}]}])))))
+  (testing "with :include-errored? true, errored pairs stay and :error surfaces on the agent message"
+    (let [result (metabot-persistence/messages->chat-messages
+                  [{:role :user      :data [{:role "user" :content "broken"}]}
+                   {:role :assistant :error (json/encode {:message "boom"}) :finished true
+                    :data [{:type "text" :text "partial" :id "a1"}]}
+                   {:role :user      :data [{:role "user" :content "ok"}]}
+                   {:role :assistant :data [{:type "text" :text "fine" :id "a2"}]}]
+                  {:include-errored? true})]
       (is (= ["broken" "partial" "ok" "fine"] (mapv :message result)))
-      (is (= {:message "boom"} (:error (second result))))
-      (is (not (contains? (nth result 3) :error))))))
+      (is (= [nil {:message "boom"} nil nil] (mapv :error result))))))
+
+(defn- store-and-read!
+  "Insert a one-text-part assistant message via `store-native-parts!` (as :rasta), then read it back.
+  Returns `[row chat-msg]`."
+  [& opts]
+  (let [conversation-id (str (random-uuid))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (apply metabot-persistence/store-native-parts!
+             conversation-id "metabot-1" [{:type :text :text "x"}] opts))
+    (let [row (t2/select-one :model/MetabotMessage :conversation_id conversation-id)]
+      [row (first (metabot-persistence/message->chat-messages row))])))
 
 (deftest store-native-parts-persists-finished-and-error-test
-  (testing "store-native-parts! writes :finished true and no :error by default"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (metabot-persistence/store-native-parts!
-           conversation-id "metabot-1" [{:type :text :text "hello"}]))
-        (let [message (t2/select-one :model/MetabotMessage :conversation_id conversation-id)]
-          (is (true? (:finished message)))
-          (is (nil? (:error message)))))))
-  (testing "aborted turn: :finished? false flows through, no error"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (metabot-persistence/store-native-parts!
-           conversation-id "metabot-1" [{:type :text :text "partial"}]
-           :finished? false))
-        (let [message (t2/select-one :model/MetabotMessage :conversation_id conversation-id)]
-          (is (false? (:finished message)))
-          (is (nil? (:error message)))))))
-  (testing "errored turn: :error map JSON-encoded into the column; partial parts persisted as-is"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))
-            error-data      {:message "agent loop API error: 503"
-                             :type    "java.lang.RuntimeException"
-                             :data    {:status 503}}]
-        (mt/with-current-user (mt/user->id :rasta)
-          (metabot-persistence/store-native-parts!
-           conversation-id "metabot-1"
-           [{:type :text :text "before failure"}]
-           :error error-data))
-        (let [message  (t2/select-one :model/MetabotMessage :conversation_id conversation-id)
-              [chat-msg] (metabot-persistence/message->chat-messages message)]
-          (is (true? (:finished message)))
-          (is (string? (:error message)))
-          (is (= error-data (json/decode+kw (:error message))))
-          (is (= error-data (:error chat-msg)))
-          (is (seq (:data message)))))))
-  (testing "errored turn: :error string also accepted (any JSON-serializable value)"
-    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (metabot-persistence/store-native-parts!
-           conversation-id "metabot-1"
-           [{:type :text :text "before failure"}]
-           :error "boom"))
-        (let [message    (t2/select-one :model/MetabotMessage :conversation_id conversation-id)
-              [chat-msg] (metabot-persistence/message->chat-messages message)]
-          (is (= "\"boom\"" (:error message)))
-          (is (= "boom" (:error chat-msg))))))))
+  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (testing "default: finished true, no error"
+      (let [[row] (store-and-read!)]
+        (is (=? {:finished true :error nil} row))))
+
+    (testing "aborted: finished false flows through, no error"
+      (let [[row] (store-and-read! :finished? false)]
+        (is (=? {:finished false :error nil} row))))
+
+    (testing "errored map: JSON-encoded into column, decoded onto chat msg; partial parts persisted"
+      (let [error-data     {:message "agent loop API error: 503"
+                            :type    "java.lang.RuntimeException"
+                            :data    {:status 503}}
+            [row chat-msg] (store-and-read! :error error-data)]
+        (is (=? {:finished true :error string? :data seq} row))
+        (is (= error-data (json/decode+kw (:error row))))
+        (is (= error-data (:error chat-msg)))))
+
+    (testing "errored string: any JSON-serializable value accepted"
+      (let [[row chat-msg] (store-and-read! :error "boom")]
+        (is (= "\"boom\"" (:error row)))
+        (is (= "boom" (:error chat-msg)))))))

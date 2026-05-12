@@ -103,10 +103,8 @@
   - `:external-id` — message external id used by feedback; generated if omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
   - `:finished?` — boolean (default true). False only for client-aborted turns.
-  - `:error` — anything JSON-serializable describing the failure. Written
-     verbatim (after `json/encode`) to the `error` column. Persisted partial
-     parts are kept as-is so the audit page can inspect what the agent emitted
-     before the failure.
+  - `:error` — a JSON-serialized error that contains the error part that was
+     streamed to the client.
 
   Returns the inserted `MetabotMessage` primary key."
   [conversation-id profile-id parts
@@ -123,8 +121,7 @@
                       (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
         external-id (or external-id (str (random-uuid)))
         ;; Filter out :start, :usage, :finish stream metadata. `:error` parts
-        ;; are dropped here too — the failure is captured on the dedicated
-        ;; `error` column, no need to duplicate it inside the data blob. Data
+        ;; are dropped here too, but captured in the `error` column. Data
         ;; parts are persisted (so the analytics view can surface them) except
         ;; :state, which is salvaged to MetabotConversation.state via
         ;; `state-part` above.
@@ -324,9 +321,9 @@
                             last)]
     (if (nil? last-agent-idx)
       chat-messages
-      (update (vec chat-messages) last-agent-idx
+      (update chat-messages last-agent-idx
               (fn [m]
-                (cond-> (assoc m :finished (if (some? finished) (boolean finished) true))
+                (cond-> (assoc m :finished (not= false finished))
                   (some? decoded-error) (assoc :error decoded-error)))))))
 
 (defn- empty-agent-placeholder
@@ -365,61 +362,35 @@
        (some? (:error m))))
 
 (defn- drop-errored-pairs
-  "Strip errored assistant rows and the user prompt that triggered them from a
-  conversation message seq. Used by the user-facing endpoint so the loaded
-  conversation reads as if the failed exchange never happened — and so the
-  `history` derived from it stays coherent on the next prompt."
+  "Strip errored assistant rows and the preceding user prompt."
   [messages]
-  (let [msgs (vec messages)
-        n    (count msgs)]
-    (loop [i 0, acc (transient [])]
-      (cond
-        (>= i n)
-        (persistent! acc)
-
-        (and (< (inc i) n)
-             (= :user (:role (nth msgs i)))
-             (errored-agent-row? (nth msgs (inc i))))
-        (recur (+ i 2) acc)
-
-        (errored-agent-row? (nth msgs i))
-        (recur (inc i) acc)
-
-        :else
-        (recur (inc i) (conj! acc (nth msgs i)))))))
+  (reduce (fn [acc msg]
+            (cond
+              (not (errored-agent-row? msg)) (conj acc msg)
+              (= :user (:role (peek acc)))  (pop acc)
+              :else                          acc))
+          []
+          messages))
 
 (defn messages->chat-messages
-  "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector.
-
-  Options:
-  - `:include-errored?` (default false). When false, errored assistant rows and
-    the user prompt that triggered them are dropped from the output (the
-    user-facing endpoint hides failed exchanges). When true, every row is kept
-    and the `:error` field surfaces on the affected agent messages."
+  "Convert a seq of `MetabotMessage` model instances into a flat vector of `MetabotChatMessage` maps.
+  Errored pairs are dropped unless `:include-errored? true`."
   ([messages] (messages->chat-messages messages nil))
   ([messages {:keys [include-errored?]}]
-   (let [msgs (if include-errored? (vec messages) (drop-errored-pairs messages))]
-     (into [] (mapcat message->chat-messages) msgs))))
+   (->> (if include-errored? messages (drop-errored-pairs messages))
+        (into [] (mapcat message->chat-messages)))))
 
 (defn conversation-detail
-  "Reconstruct a conversation-with-chat-messages snapshot from the DB. Returns nil if the
-   conversation does not exist.
-
-   `:include-errored?` (default false) controls whether errored assistant turns
-   (and the user prompt that triggered them) are filtered out — the user-facing
-   endpoint omits them so the conversation stays coherent; the analytics endpoint
-   keeps them and exposes `:excluded_from_history` so the admin UI can highlight
-   the failed exchange."
-  ([conversation-id] (conversation-detail conversation-id nil))
-  ([conversation-id opts]
-   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
-     (let [messages (t2/select :model/MetabotMessage
-                               {:where    [:and
-                                           [:= :conversation_id conversation-id]
-                                           [:= :deleted_at nil]]
-                                :order-by [[:created_at :asc]]})]
-       {:conversation_id (:id conversation)
-        :created_at      (:created_at conversation)
-        :summary         (:summary conversation)
-        :user_id         (:user_id conversation)
-        :chat_messages   (messages->chat-messages messages opts)}))))
+  "Conversation-with-chat-messages snapshot. Nil if not found."
+  [conversation-id]
+  (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
+    {:conversation_id (:id conv)
+     :created_at      (:created_at conv)
+     :summary         (:summary conv)
+     :user_id         (:user_id conv)
+     :chat_messages   (messages->chat-messages
+                       (t2/select :model/MetabotMessage
+                                  {:where    [:and
+                                              [:= :conversation_id conversation-id]
+                                              [:= :deleted_at nil]]
+                                   :order-by [[:created_at :asc]]}))}))

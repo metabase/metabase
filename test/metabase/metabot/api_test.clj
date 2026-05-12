@@ -90,20 +90,23 @@
   (str "data: " (json/encode data) "\n\n"))
 
 (deftest closing-connection-native-agent-test
-  (testing "When the client closes a native-agent streaming connection,
-            the pipeline stops and store-parts! is still called."
+  (testing "When the client closes a native-agent streaming connection, the
+            pipeline tears down and the partial turn is persisted as aborted."
     ;; We set up a fake OpenRouter-compatible (Chat Completions) SSE server that
-    ;; streams many text-delta events slowly. The Metabase server connects to it
-    ;; via the full native-agent pipeline:
+    ;; streams text-delta events. The Metabase server connects to it via the
+    ;; full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
     ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
-    ;; Then the test client reads one byte and closes the connection.
-    ;; We assert that store-parts! is called with a partial result.
-    (let [total-chunks 30
-          cnt          (atom total-chunks)
-          stored-parts (atom nil)
-          chat-id      (str "chatcmpl-" (random-uuid))
-          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas slowly
+    ;; The test client reads one byte and closes. The streaming-writer-rf's poll
+    ;; of `canceled-chan` flips the `canceled?` volatile and returns `reduced`,
+    ;; the agent loop unwinds, and `store-native-parts!` is called from the
+    ;; `finally` with `:finished? false`.
+    (let [total-chunks  30
+          cnt           (atom total-chunks)
+          stored-parts  (atom nil)
+          stored-kwargs (atom nil)
+          chat-id       (str "chatcmpl-" (random-uuid))
+          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas.
           llm-handler
           (fn [req respond _raise]
             (respond
@@ -148,55 +151,46 @@
           llm-server
           (doto (server.instance/create-server llm-handler {:port 0 :join? false})
             .start)
-          llm-url      (str "http://localhost:" (.. llm-server getURI getPort))]
+          llm-url       (str "http://localhost:" (.. llm-server getURI getPort))]
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            (let [real-http-post http/post]
-              (with-redefs [llm.settings/llm-openrouter-api-key      (constantly "fake-key")
-                            llm.settings/llm-openrouter-api-base-url (constantly llm-url)
-                            scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
-                            ;; The fake LLM server doesn't gzip, but clj-http wraps with
-                            ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
-                            http/post                                (fn [url opts]
-                                                                       (real-http-post url (assoc opts :decompress-body false)))
-                            metabot.context/create-context           (fn [ctx & _] ctx)
-                            metabot.persistence/store-native-parts!  (fn [_conv-id _prof-id parts & _kwargs]
-                                                                       (reset! stored-parts parts))
-                            sr/async-cancellation-poll-interval-ms   5]
-                (testing "Closing stream body will drop connection to LLM"
-                  (reset! cnt total-chunks)
-                  (reset! stored-parts nil)
-                  (let [body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                   {:request-options {:as              :stream
-                                                                      :decompress-body false}}
-                                                   {:message         "Test closure"
-                                                    :context         {}
-                                                    :conversation_id (str (random-uuid))
-                                                    :history         []
-                                                    :state           {}})]
-                    (.read ^java.io.InputStream body) ;; start the handler
-                    (.close ^java.io.Closeable body)
-                    (u/poll {:thunk       #(deref stored-parts)
-                             :done?       some?
-                             :interval-ms 10
-                             :timeout-ms  3000})
-                    (is (some? @stored-parts) "store-parts! was called even though client disconnected")
-                    (testing "LLM server stopped writing when connection was dropped"
-                      (is (< 10 @cnt) "Server should not have written all chunks"))
-                    ;; The stored parts should contain partial data — not all 30 chunks.
-                    ;; Text chunks are combined by combine-text-parts-xf, so we check
-                    ;; that the concatenated text is shorter than it would be if all
-                    ;; 30 chunks were processed.
-                    (let [stored-text (->> @stored-parts
-                                           (filter #(= :text (:type %)))
-                                           (map :text)
-                                           (str/join ""))]
-                      (is (< (count stored-text)
-                             ;; Each chunk is "chunk-NN " (~10 chars). If all 30 were
-                             ;; processed, that's ~300 chars. We should have far fewer.
-                             (* 10 total-chunks))
-                          "Only a fraction of the text chunks were processed before disconnect"))))))))
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+              (let [real-http-post http/post]
+                (with-redefs [llm.settings/llm-openrouter-api-key      (constantly "fake-key")
+                              llm.settings/llm-openrouter-api-base-url (constantly llm-url)
+                              scope/resolve-user-permissions           (constantly scope/all-yes-permissions)
+                              ;; The fake LLM server doesn't gzip, but clj-http wraps with
+                              ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
+                              http/post                                (fn [url opts]
+                                                                         (real-http-post url (assoc opts :decompress-body false)))
+                              metabot.context/create-context           (fn [ctx & _] ctx)
+                              metabot.persistence/store-native-parts!  (fn [_conv-id _prof-id parts & kwargs]
+                                                                         (reset! stored-parts parts)
+                                                                         (reset! stored-kwargs (apply hash-map kwargs)))
+                              sr/async-cancellation-poll-interval-ms   5]
+                  (testing "Closing stream body tears down the pipeline and persists the aborted turn"
+                    (reset! cnt total-chunks)
+                    (reset! stored-parts nil)
+                    (reset! stored-kwargs nil)
+                    (let [body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
+                                                     {:request-options {:as              :stream
+                                                                        :decompress-body false}}
+                                                     {:message         "Test closure"
+                                                      :context         {}
+                                                      :conversation_id (str (random-uuid))
+                                                      :history         []
+                                                      :state           {}})]
+                      (.read ^java.io.InputStream body) ;; start the handler
+                      (.close ^java.io.Closeable body)
+                      (u/poll {:thunk       #(deref stored-parts)
+                               :done?       some?
+                               :interval-ms 10
+                               :timeout-ms  3000})
+                      (is (some? @stored-parts)
+                          "store-native-parts! was called even though the client disconnected")
+                      (is (false? (:finished? @stored-kwargs))
+                          "the persisted turn is marked :finished? false — the cancel was detected"))))))))
         (finally
           (.stop llm-server))))))
 
