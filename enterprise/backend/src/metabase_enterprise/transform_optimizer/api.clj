@@ -15,6 +15,7 @@
    [clojure.core.async :as a]
    [metabase-enterprise.transform-optimizer.accept :as opt.accept]
    [metabase-enterprise.transform-optimizer.core :as opt.core]
+   [metabase-enterprise.transform-optimizer.proposal-cache :as opt.cache]
    [metabase-enterprise.transform-optimizer.verify :as opt.verify]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -82,6 +83,11 @@
       [^OutputStream os canceled-chan]
       (try
         (let [result (opt.core/optimize! (:id transform) :analyze? analyze?)]
+          ;; Cache every proposal under (user, transform, proposal-id) so
+          ;; verify/accept can look them up by id alone (FE never re-sends
+          ;; the body). The cache is short-lived (1 h) and per-user.
+          (opt.cache/put-all! api/*current-user-id* (:id transform) (:proposals result))
+
           (when-not (canceled? canceled-chan)
             (write-sse! os "summary" {:text (or (:summary result) "")}))
 
@@ -109,41 +115,69 @@
   See SUMMARY.md for the response shape.
 
   Single-transform proposals only — precompute (DAG) verification is
-  deferred until DAG accept is in place."
+  deferred until DAG accept is in place.
+
+  The proposal payload is resolved server-side from the proposal cache
+  populated by the streaming `/optimize` endpoint, so the FE only sends
+  the `proposal_id`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   body :- [:map [:proposal :map]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (try
-      (opt.verify/verify transform (:proposal body))
-      (catch clojure.lang.ExceptionInfo e
-        (let [data (ex-data e)]
-          (if-let [code (:status-code data)]
-            {:status code
-             :body   (-> data
-                         (dissoc :status-code)
-                         (assoc :error (or (:error data) "verify_failed")
-                                :detail (ex-message e)))}
-            (throw e)))))))
+   body :- [:map [:proposal_id :string]]]
+  (let [transform (api/read-check :model/Transform id)
+        pid       (:proposal_id body)
+        proposal  (opt.cache/get-one api/*current-user-id* (:id transform) pid)]
+    (cond
+      (nil? proposal)
+      {:status 404
+       :body   {:error  "proposal_not_found"
+                :detail (str "Proposal " (pr-str pid)
+                             " is not in the optimizer cache (it may have expired or this is a different "
+                             "process). Re-run /optimize to repopulate it.")}}
+
+      :else
+      (try
+        (opt.verify/verify transform proposal)
+        (catch clojure.lang.ExceptionInfo e
+          (let [data (ex-data e)]
+            (if-let [code (:status-code data)]
+              {:status code
+               :body   (-> data
+                           (dissoc :status-code)
+                           (assoc :error (or (:error data) "verify_failed")
+                                  :detail (ex-message e)))}
+              (throw e))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Accept endpoint
 
 (api.macros/defendpoint :post "/:id/proposal/accept"
   "Create the new transforms described by the proposal set. Single rewrites
-  pass an array of one element; precompute DAGs pass N elements in
-  dependency order (caller's responsibility — we create them in the order
-  given).
+  pass an array of one id; precompute DAGs pass N ids in dependency order
+  (caller's responsibility — we create them in the order given).
+
+  Each proposal payload is resolved server-side from the proposal cache
+  populated by the streaming `/optimize` endpoint. If any id is missing,
+  the whole request is rejected (425) — partial accept is too easy to
+  mis-handle on the FE.
 
   DDL statements are returned as `advisory_ddl` for the user to run
   manually; we do not execute DDL in this branch."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:proposals    [:sequential :map]]
+            [:proposal_ids  [:sequential :string]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (opt.accept/accept! transform (:proposals body) (:collection_id body))))
+  (let [transform                  (api/read-check :model/Transform id)
+        [proposals missing]        (opt.cache/get-many api/*current-user-id*
+                                                       (:id transform)
+                                                       (:proposal_ids body))]
+    (if (seq missing)
+      {:status 404
+       :body   {:error              "proposal_not_found"
+                :detail             (str "These proposal ids are not in the optimizer cache "
+                                         "(expired or never seen); re-run /optimize.")
+                :missing_proposal_ids missing}}
+      (opt.accept/accept! transform proposals (:collection_id body)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Route bundle
