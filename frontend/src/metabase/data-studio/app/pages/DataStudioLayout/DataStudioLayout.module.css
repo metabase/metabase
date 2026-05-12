@@ -1,5 +1,5 @@
 .nav {
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
   overflow: auto;
 }
 
@@ -53,7 +53,7 @@
   position: relative;
 
   .toggle {
-    left: 50%;
+    inset-inline-start: 50%;
     opacity: 0;
     position: absolute;
     top: 50%;
@@ -76,7 +76,7 @@
 .badgeOverlay {
   position: absolute;
   top: 0.25rem;
-  right: 0.25rem;
+  inset-inline-end: 0.25rem;
 }
 
 .upperGroup {

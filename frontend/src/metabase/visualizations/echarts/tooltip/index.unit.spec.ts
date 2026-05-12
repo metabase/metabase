@@ -81,9 +81,9 @@ describe("getTooltipPositionFn", () => {
       width: 500,
       height: 500,
       top: 50,
-      right: 550,
+      inset-inline-end: 550,
       bottom: 550,
-      left: 50,
+      inset-inline-start: 50,
       toJSON: jest.fn(),
     });
 

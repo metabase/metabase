@@ -25,7 +25,7 @@ export const Root = styled(FullWidthContainer, {
     background-color: ${() => alpha("background-primary", 0.1)};
     border: none;
     font-size: 1em;
-    margin-left: 0.75em;
+    margin-inline-start: 0.75em;
   }
 
   .${ButtonsS.ButtonPrimary} {

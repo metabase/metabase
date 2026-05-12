@@ -11,8 +11,8 @@ export const ActionSettingsWrapper = styled.div`
 export const ActionSettingsHeader = styled.h2`
   font-size: 1.25rem;
   padding-bottom: var(--mantine-spacing-sm);
-  padding-left: var(--mantine-spacing-xl);
-  padding-right: var(--mantine-spacing-xl);
+  padding-inline-start: var(--mantine-spacing-xl);
+  padding-inline-end: var(--mantine-spacing-xl);
 `;
 
 // make strolling nicer by fading out the top and bottom of the column
@@ -28,7 +28,7 @@ const fade = (side: "top" | "bottom") => `
 `;
 
 export const ActionSettingsLeft = styled.div`
-  padding-left: var(--mantine-spacing-xl);
+  padding-inline-start: var(--mantine-spacing-xl);
   padding-top: var(--mantine-spacing-xl);
   padding-bottom: var(--mantine-spacing-xl);
   width: 20rem;
@@ -37,14 +37,14 @@ export const ActionSettingsLeft = styled.div`
   &:before {
     ${fade("top")}
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 19rem;
   }
 
   &:after {
     ${fade("bottom")}
     bottom: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 19rem;
   }
 `;
@@ -55,7 +55,7 @@ export const ActionSettingsRight = styled.div`
   flex: 1;
   flex-direction: column;
   padding-top: var(--mantine-spacing-xl);
-  border-left: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
 `;
 
 export const ParameterMapperContainer = styled.div`
@@ -65,8 +65,8 @@ export const ParameterMapperContainer = styled.div`
   flex: 1;
   padding-top: var(--mantine-spacing-sm);
   padding-bottom: var(--mantine-spacing-xl);
-  padding-left: var(--mantine-spacing-xl);
-  padding-right: var(--mantine-spacing-xl);
+  padding-inline-start: var(--mantine-spacing-xl);
+  padding-inline-end: var(--mantine-spacing-xl);
 `;
 
 export const ModalActions = styled.div`

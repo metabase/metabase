@@ -15,11 +15,11 @@ interface FormCaptionProps {
 export const FieldCaption = styled.div<FormCaptionProps>`
   align-self: ${(props) =>
     props.orientation !== "vertical" && !props.hasDescription ? "center" : ""};
-  margin-left: ${(props) =>
+  margin-inline-start: ${(props) =>
     props.orientation === "horizontal" &&
     props.alignment === "start" &&
     "0.5rem"};
-  margin-right: ${(props) =>
+  margin-inline-end: ${(props) =>
     props.orientation === "horizontal" &&
     props.alignment === "end" &&
     "0.5rem"};
@@ -41,7 +41,7 @@ export const OptionalTag = styled.span`
   color: var(--mb-color-text-secondary);
   font-size: 0.77rem;
   font-weight: 900;
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
 `;
 
 interface FieldLabelContainerProps {
@@ -67,7 +67,7 @@ export const FieldDescription = styled.div`
 
 export const FieldInfoIcon = styled(Icon)`
   color: var(--mb-color-background-tertiary-inverse);
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
 
@@ -79,7 +79,7 @@ export const FieldInfoIcon = styled(Icon)`
 export const FieldInfoLabel = styled.div`
   color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
-  margin-left: auto;
+  margin-inline-start: auto;
   cursor: default;
 `;
 
@@ -108,7 +108,7 @@ export const FieldRoot = styled.div<FieldRootProps>`
 `;
 
 export const FieldTitleActions = styled.div`
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 0.77rem;
   font-weight: 900;
   color: var(--mb-color-text-secondary);

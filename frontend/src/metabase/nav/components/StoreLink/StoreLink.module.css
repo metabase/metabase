@@ -1,6 +1,6 @@
 .root {
-  margin-left: var(--mantine-spacing-xs);
-  margin-right: var(--mantine-spacing-sm);
+  margin-inline-start: var(--mantine-spacing-xs);
+  margin-inline-end: var(--mantine-spacing-sm);
 }
 
 .iconWrapper {

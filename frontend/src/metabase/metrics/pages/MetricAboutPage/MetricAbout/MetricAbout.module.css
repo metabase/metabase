@@ -17,17 +17,17 @@
 .descriptionSection {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-left: none;
-  border-top-right-radius: var(--default-border-radius);
-  border-bottom-right-radius: var(--default-border-radius);
+  border-inline-start: none;
+  border-start-end-radius: var(--default-border-radius);
+  border-end-end-radius: var(--default-border-radius);
   overflow: auto;
 }
 
 .visualizationPanel {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-top-left-radius: var(--default-border-radius);
-  border-bottom-left-radius: var(--default-border-radius);
+  border-start-start-radius: var(--default-border-radius);
+  border-end-start-radius: var(--default-border-radius);
   overflow: hidden;
   pointer-events: none;
 }

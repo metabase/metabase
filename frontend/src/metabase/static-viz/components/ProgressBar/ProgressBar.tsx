@@ -28,8 +28,8 @@ const layout = {
   height: 110,
   margin: {
     top: 40,
-    right: 40,
-    left: 40,
+    inset-inline-end: 40,
+    inset-inline-start: 40,
   },
   barHeight: 40,
   borderRadius: 5,

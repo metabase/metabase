@@ -9,7 +9,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 `;
 
 export const SidebarHeader = styled.div`
@@ -18,7 +18,7 @@ export const SidebarHeader = styled.div`
 `;
 
 export const BackIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
   color: var(--mb-color-text-tertiary);
 `;
 
@@ -32,7 +32,7 @@ export const BackButton = styled.button`
   padding: 0.5rem 0;
   cursor: pointer;
   transition: color 200ms;
-  text-align: left;
+  text-align: start;
 
   &:hover {
     color: var(--mb-color-filter);

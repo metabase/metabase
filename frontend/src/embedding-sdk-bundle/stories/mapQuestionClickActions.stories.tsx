@@ -136,8 +136,8 @@ const SimpleModal = ({
       style={{
         position: "fixed",
         top: 0,
-        left: 0,
-        right: 0,
+        inset-inline-start: 0,
+        inset-inline-end: 0,
         bottom: 0,
         backgroundColor: "rgba(0, 0, 0, 0.5)",
         display: "flex",
@@ -165,7 +165,7 @@ const SimpleModal = ({
           style={{
             position: "absolute",
             top: "12px",
-            right: "12px",
+            inset-inline-end: "12px",
             background: "none",
             border: "none",
             fontSize: "24px",

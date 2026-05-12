@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 export const OuterCircle = styled.div`
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   border-radius: 50%;
   background-color: var(--mb-color-border);
   transition: all 0.2s;
@@ -13,7 +13,7 @@ export const OuterCircle = styled.div`
 export const InnerCircle = styled.div<{ isVisible: boolean }>`
   position: absolute;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   border-radius: 50%;
   color-adjust: exact;
   background-color: ${(props) =>

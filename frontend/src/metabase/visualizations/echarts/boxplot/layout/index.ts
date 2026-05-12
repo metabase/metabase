@@ -188,7 +188,7 @@ const computeSideLabelOverflow = (
 
   const hasFormatters = Object.keys(seriesLabelsFormatters).length > 0;
   if (!showValuesMode || !hasFormatters || xValues.length === 0) {
-    return { left: 0, right: 0, leftYAxisOffset: 0, rightYAxisOffset: 0 };
+    return { inset-inline-start: 0, inset-inline-end: 0, leftYAxisOffset: 0, rightYAxisOffset: 0 };
   }
 
   const fontStyle = {

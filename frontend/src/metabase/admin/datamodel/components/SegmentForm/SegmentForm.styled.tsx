@@ -19,13 +19,13 @@ export const FormSection = styled.div`
   padding: 0 1em;
 
   ${breakpointMinSmall} {
-    padding-left: 1.75rem;
-    padding-right: 1.75rem;
+    padding-inline-start: 1.75rem;
+    padding-inline-end: 1.75rem;
   }
 
   ${breakpointMinMedium} {
-    padding-left: 2.625rem;
-    padding-right: 2.625rem;
+    padding-inline-start: 2.625rem;
+    padding-inline-end: 2.625rem;
   }
 `;
 
@@ -50,5 +50,5 @@ export const FormFooterContent = styled.div`
 `;
 
 export const FormSubmitButton = styled(Button)`
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 `;

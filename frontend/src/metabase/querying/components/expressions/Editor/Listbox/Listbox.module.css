@@ -22,7 +22,7 @@
   }
 
   .icon {
-    margin-right: 8px;
+    margin-inline-end: 8px;
     height: 14px;
     width: 14px;
     flex-shrink: 0;
@@ -63,10 +63,10 @@
   margin: 0 4px;
 
   & + .key {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   &:first-child {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 }

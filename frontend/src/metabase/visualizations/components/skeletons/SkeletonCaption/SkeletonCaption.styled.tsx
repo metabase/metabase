@@ -26,6 +26,6 @@ export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
 
 export const SkeletonCaptionDescription = styled(Icon)`
   color: var(--mb-color-text-secondary);
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   visibility: hidden;
 `;

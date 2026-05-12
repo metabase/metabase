@@ -18,7 +18,7 @@ export const ListFooter = styled.div`
 
 export const ListThread = styled.div`
   height: 100%;
-  border-left: 1px dashed var(--mb-color-border);
+  border-inline-start: 1px dashed var(--mb-color-border);
 `;
 
 export const ListThreadContainer = styled.div`
@@ -39,11 +39,11 @@ export const ListIcon = styled(Icon)`
 export const ListIconText = styled.div`
   color: var(--mb-color-text-tertiary);
   margin-top: 0.375rem;
-  margin-left: 0.75rem;
+  margin-inline-start: 0.75rem;
 `;
 
 export const ListIconContainer = styled.div`
   display: flex;
   margin-top: 0.5rem;
-  margin-left: 0.675rem;
+  margin-inline-start: 0.675rem;
 `;

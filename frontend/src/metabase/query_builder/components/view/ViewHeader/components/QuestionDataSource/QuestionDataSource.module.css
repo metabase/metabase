@@ -10,7 +10,7 @@
   color: var(--mb-color-text-tertiary);
   display: inline-block;
   font-size: 1rem;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   vertical-align: middle;
   padding-bottom: 1px;
 }

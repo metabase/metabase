@@ -30,7 +30,7 @@
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
-  padding-left: 0;
+  padding-inline-start: 0;
   height: 3rem;
 
   &:hover {
@@ -80,7 +80,7 @@
 .icon:not([data-css-specificity-hack="🪗"]) {
   color: var(--mb-color-brand);
   height: 3rem;
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
   width: 3rem;
 
   [data-active="true"] & {
@@ -92,7 +92,7 @@
   list-style-type: circle;
 
   li {
-    margin-left: 2rem;
+    margin-inline-start: 2rem;
   }
 }
 

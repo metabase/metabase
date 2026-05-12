@@ -22,7 +22,7 @@
 }
 
 .Container.dataSidebarOpen .dataSidebar {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 .Container.vizSettingsOpen {
@@ -31,7 +31,7 @@
 
 .dataSidebar {
   position: relative;
-  left: calc(-1 * var(--data-sidebar-width));
+  inset-inline-start: calc(-1 * var(--data-sidebar-width));
   transition: var(--transition-duration);
   grid-area: dataSidebar;
   min-width: 0;
@@ -44,22 +44,22 @@
 
 .Header {
   grid-area: Header;
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 }
 
 .Canvas {
   grid-area: Canvas;
   overflow: hidden;
   padding: var(--mantine-spacing-lg);
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 }
 
 .Footer {
   grid-area: Footer;
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-start: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
 }
 
 .settingsSidebar {

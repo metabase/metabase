@@ -58,7 +58,7 @@ export const SearchInputContainer = styled.div<{
 
   ${breakpointMaxSmall} {
     justify-content: center;
-    margin-left: auto;
+    margin-inline-start: auto;
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
@@ -128,13 +128,13 @@ export const SearchIcon = styled(Icon, { shouldForwardProp: isPropValid })<{
     ${(props) =>
       props.isActive &&
       css`
-        margin-left: ${ICON_MARGIN};
-        margin-right: ${ICON_MARGIN};
+        margin-inline-start: ${ICON_MARGIN};
+        margin-inline-end: ${ICON_MARGIN};
       `}
   }
 
   ${breakpointMinSmall} {
-    margin-left: ${ICON_MARGIN};
+    margin-inline-start: ${ICON_MARGIN};
   }
 `;
 
@@ -154,8 +154,8 @@ export const CloseSearchButton = styled.button`
 
 export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   color: var(--mb-color-text-primary);
 
   ${breakpointMaxSmall} {

@@ -21,7 +21,7 @@ export const TokenFieldAddon = styled.a<{
 }>`
   display: flex;
   align-items: center;
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   color: ${({ isValid }) => (isValid ? "" : `var(--mb-color-error)`)};
 
   &:hover {

@@ -7,8 +7,8 @@ import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
   bottom: 0;
-  left: 50%;
-  margin-left: ${(props) =>
+  inset-inline-start: 50%;
+  margin-inline-start: ${(props) =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: var(--mantine-spacing-md);
   transform: translateX(-50%);

@@ -67,7 +67,7 @@ export function VirtualizedList({
           style={{
             position: "absolute",
             top: 0,
-            left: 0,
+            inset-inline-start: 0,
             transform: `translateY(${items[0]?.start ?? 0}px)`,
             width: "100%",
           }}

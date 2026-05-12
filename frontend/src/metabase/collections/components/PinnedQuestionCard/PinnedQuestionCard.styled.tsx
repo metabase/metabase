@@ -10,7 +10,7 @@ import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticS
 export const CardActionMenuContainer = styled.div`
   position: absolute;
   top: 0.3125rem;
-  right: 0.3125rem;
+  inset-inline-end: 0.3125rem;
   z-index: 3;
   color: var(--mb-color-text-secondary);
   visibility: hidden;

@@ -26,8 +26,8 @@ export const Root = styled.div<{
     css`
       position: absolute;
       top: 0;
-      left: 0;
-      right: 0;
+      inset-inline-start: 0;
+      inset-inline-end: 0;
       bottom: 0;
     `}
 
@@ -86,8 +86,8 @@ export const DashboardTabsContainer = styled(FullWidthContainer, {
   narrow?: boolean;
 }>`
   ${breakpointMaxSmall} {
-    padding-left: 0;
-    padding-right: 0;
+    padding-inline-start: 0;
+    padding-inline-end: 0;
   }
 
   ${({ narrow }) =>

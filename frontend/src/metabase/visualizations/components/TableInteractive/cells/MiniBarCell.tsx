@@ -74,13 +74,13 @@ export const MiniBarCell = <TValue,>({
   const barStyle = !hasNegative
     ? {
         width: barPercent + "%",
-        left: 0,
+        inset-inline-start: 0,
         borderRadius: BORDER_RADIUS,
       }
     : isNegative
       ? {
           width: barPercent / 2 + "%",
-          right: "50%",
+          inset-inline-end: "50%",
           borderTopRightRadius: 0,
           borderBottomRightRadius: 0,
           borderTopLeftRadius: BORDER_RADIUS,
@@ -88,7 +88,7 @@ export const MiniBarCell = <TValue,>({
         }
       : {
           width: barPercent / 2 + "%",
-          left: "50%",
+          inset-inline-start: "50%",
           borderTopLeftRadius: 0,
           borderBottomLeftRadius: 0,
           borderTopRightRadius: BORDER_RADIUS,
@@ -145,7 +145,7 @@ export const MiniBarCell = <TValue,>({
             <div
               style={{
                 position: "absolute",
-                left: "50%",
+                inset-inline-start: "50%",
                 top: 0,
                 bottom: 0,
                 borderLeft: `1px solid ${color("white")}`,

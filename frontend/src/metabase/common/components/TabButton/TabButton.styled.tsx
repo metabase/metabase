@@ -23,13 +23,13 @@ export const TabButtonInputWrapper = styled.span<TabButtonProps>`
 export const TabButtonInputResizer = styled.span`
   visibility: hidden;
   white-space: pre;
-  padding-right: 2px;
+  padding-inline-end: 2px;
 `;
 
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   position: absolute;
   width: 100%;
-  left: 0;
+  inset-inline-start: 0;
   bottom: -1px; /* offsets 1px input border */
   padding: 0.25rem;
   border: 1px solid transparent;
@@ -74,7 +74,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     content: " ";
     position: absolute;
     top: 100%;
-    left: 0;
+    inset-inline-start: 0;
     width: 100%;
     border-bottom: 0.125rem solid transparent;
   }

@@ -28,7 +28,7 @@ interface LinkHoverMenuProps {
 }
 
 export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
-  const [hoverPosition, setHoverPosition] = useState({ top: 0, left: 0 });
+  const [hoverPosition, setHoverPosition] = useState({ top: 0, inset-inline-start: 0 });
   const [hoveredLink, setHoveredLink] = useState<HTMLElement | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

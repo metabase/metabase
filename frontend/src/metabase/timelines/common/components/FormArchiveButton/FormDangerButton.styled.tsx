@@ -5,8 +5,8 @@ import { Button } from "metabase/common/components/Button/Button";
 
 export const ArchiveButton = styled(Button)`
   color: var(--mb-color-danger);
-  padding-left: 0;
-  padding-right: 0;
+  padding-inline-start: 0;
+  padding-inline-end: 0;
 
   &:hover {
     color: var(--mb-color-danger);

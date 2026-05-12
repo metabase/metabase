@@ -66,7 +66,7 @@
 
 .DashEditing .DashCard .VisualizationSlowSpinner {
   position: absolute;
-  right: -2px;
+  inset-inline-end: -2px;
   top: -2px;
 }
 
@@ -84,7 +84,7 @@
   width: 40px;
   height: 40px;
   bottom: 0;
-  right: 0;
+  inset-inline-end: 0;
   z-index: 1; /* ensure the handle is above the card contents */
 
   /* overwrites the style coming from react-grid-layout */
@@ -98,10 +98,10 @@
   width: 8px;
   height: 8px;
   bottom: 6px;
-  right: 6px;
+  inset-inline-end: 6px;
   border-bottom: 2px solid var(--mb-color-border);
-  border-right: 2px solid var(--mb-color-border);
-  border-bottom-right-radius: 2px;
+  border-inline-end: 2px solid var(--mb-color-border);
+  border-end-end-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }

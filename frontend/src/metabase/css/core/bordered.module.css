@@ -36,11 +36,11 @@
 }
 
 .borderRight {
-  border-right: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-inline-end: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
 .borderLeft {
-  border-left: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-inline-start: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
 .borderSuccess {

@@ -9,7 +9,7 @@
     &::after {
       content: "";
       position: absolute;
-      right: -7px;
+      inset-inline-end: -7px;
       display: inline-block;
       padding: 6px;
       border-style: solid;
@@ -27,14 +27,14 @@
   }
 
   &:not(:last-child) {
-    border-right: 1px solid var(--mb-color-border);
+    border-inline-end: 1px solid var(--mb-color-border);
   }
 }
 
 .label {
   position: absolute;
   top: 0;
-  left: 0.5rem;
+  inset-inline-start: 0.5rem;
   padding: 0 0.5rem;
   transform: translateY(-50%);
   color: var(--mb-color-text-secondary);

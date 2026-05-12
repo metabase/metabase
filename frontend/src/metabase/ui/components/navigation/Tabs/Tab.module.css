@@ -11,7 +11,7 @@
 
   &[data-orientation="vertical"] {
     .tabLabel {
-      text-align: left; /* "start" for some reason doesn't work properly */
+      text-align: start; /* "start" for some reason doesn't work properly */
     }
   }
 }

@@ -31,12 +31,12 @@
 
 .itemSection {
   &[data-position="left"] {
-    margin-right: var(--mantine-spacing-sm);
+    margin-inline-end: var(--mantine-spacing-sm);
   }
 
   &[data-position="right"] {
     color: var(--mb-color-text-tertiary);
-    margin-left: var(--mantine-spacing-md);
+    margin-inline-start: var(--mantine-spacing-md);
   }
 }
 
@@ -50,7 +50,7 @@
 .divider {
   margin-top: calc(var(--mantine-spacing-xs) - 1px);
   margin-bottom: var(--mantine-spacing-xs);
-  margin-left: var(--mantine-spacing-sm);
-  margin-right: var(--mantine-spacing-sm);
+  margin-inline-start: var(--mantine-spacing-sm);
+  margin-inline-end: var(--mantine-spacing-sm);
   border-top-color: var(--mb-color-border);
 }

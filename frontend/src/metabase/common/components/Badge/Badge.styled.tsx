@@ -50,7 +50,7 @@ export const BadgeIcon = styled(
   Icon,
   doNotForwardProps("hasMargin", "targetOffsetX"),
 )<{ hasMargin: boolean }>`
-  margin-right: ${(props) => (props.hasMargin ? "5px" : 0)};
+  margin-inline-end: ${(props) => (props.hasMargin ? "5px" : 0)};
   flex-shrink: 0;
 `;
 

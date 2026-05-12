@@ -43,7 +43,7 @@ const createMockContainerRef = () => {
   const element = document.createElement("div");
 
   element.getBoundingClientRect = jest.fn(
-    () => ({ left: 10, top: 20, width: 400, height: 300 }) as DOMRect,
+    () => ({ inset-inline-start: 10, top: 20, width: 400, height: 300 }) as DOMRect,
   );
 
   const containerRef = { current: element } as RefObject<HTMLDivElement>;
@@ -180,7 +180,7 @@ describe("use-brush", () => {
 
   describe("createZrenderMousedownEvent", () => {
     it("calculates correct offsets from client coords and rect", () => {
-      const rect = { left: 50, top: 100 } as DOMRect;
+      const rect = { inset-inline-start: 50, top: 100 } as DOMRect;
       const { offsetX, offsetY, target, event } = createZrenderMousedownEvent(
         { x: 150, y: 250 },
         rect,

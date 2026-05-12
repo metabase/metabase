@@ -64,7 +64,7 @@ export function FilterApplyToast({
       style={{
         position,
         bottom: "20px",
-        left: "50%",
+        inset-inline-start: "50%",
         transform: "translateX(-50%)",
         zIndex: 4,
       }}

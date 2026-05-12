@@ -15,14 +15,14 @@
   height: 100%;
   cursor: col-resize;
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   top: 0;
   transition: background-color 0.4s ease;
 }
 
 .Sidebar {
   height: 100%;
-  border-right: 1px solid var(--mb-color-border);
+  border-inline-end: 1px solid var(--mb-color-border);
   position: relative;
   display: flex;
   flex-direction: column;

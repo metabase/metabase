@@ -1,6 +1,6 @@
 .usage {
   padding: 0.25rem 0;
-  padding-left: 0.5rem;
+  padding-inline-start: 0.5rem;
   background-color: var(--mb-color-white);
   color: var(--mb-color-text-secondary);
   cursor: pointer;
@@ -14,7 +14,7 @@
 }
 
 .toggle {
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 0 0.65rem;
   display: flex;
   align-items: center;

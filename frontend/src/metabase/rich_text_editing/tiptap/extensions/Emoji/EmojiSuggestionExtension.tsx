@@ -282,7 +282,7 @@ function startAutoPositioning(
       ],
     }).then(({ x, y }) => {
       Object.assign(popup.style, {
-        left: `${x}px`,
+        inset-inline-start: `${x}px`,
         top: `${y}px`,
       });
     });
@@ -308,7 +308,7 @@ function updatePositionOnce(
     ],
   }).then(({ x, y }) => {
     Object.assign(popup.style, {
-      left: `${x}px`,
+      inset-inline-start: `${x}px`,
       top: `${y}px`,
     });
   });

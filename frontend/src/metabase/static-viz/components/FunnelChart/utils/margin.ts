@@ -40,6 +40,6 @@ export const calculateMargin = (
     top,
     bottom,
     left,
-    right: 0,
+    inset-inline-end: 0,
   };
 };

@@ -243,7 +243,7 @@ function DatasetFieldMetadataSidebarInner({
                       "&::before": {
                         content: `"${field.name}"`,
                         position: "absolute",
-                        left: "0.75rem",
+                        inset-inline-start: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
                         color: color("text-tertiary"),

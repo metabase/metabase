@@ -112,7 +112,7 @@ function getTotalGraphicOption(
   return {
     type: "group",
     top: "center",
-    left: "center",
+    inset-inline-start: "center",
     children: [
       {
         // Value

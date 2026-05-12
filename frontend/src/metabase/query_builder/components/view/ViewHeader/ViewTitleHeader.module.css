@@ -20,7 +20,7 @@
 
     /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
-      border-right-color: var(--mb-color-border);
+      border-inline-end-color: var(--mb-color-border);
     }
   }
 }
@@ -36,7 +36,7 @@
   }
 
   .ActionButtonSection[data-position="left"] {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
 }
 
@@ -133,14 +133,14 @@
   line-height: 1.5rem;
   font-weight: 700;
   color: var(--mb-color-text-secondary);
-  padding-left: 0.5rem;
-  padding-right: 0.25rem;
+  padding-inline-start: 0.5rem;
+  padding-inline-end: 0.25rem;
 }
 
 .AdHocViewHeading {
   margin-bottom: 0.25rem;
   margin-top: 0.25rem;
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 }
 
 .SaveButton {
@@ -162,12 +162,12 @@
 .ViewHeaderActionPanel {
   display: flex;
   align-items: center;
-  margin-left: auto;
+  margin-inline-start: auto;
   gap: 0.5rem;
   position: relative;
 
   @container query-builder (max-width: 70em) {
-    margin-left: 0;
+    margin-inline-start: 0;
     width: 100%;
     justify-content: start;
     border-top: 1px solid var(--mb-color-border);
@@ -211,7 +211,7 @@
       gap: 0.25rem;
 
       .ViewHeaderActionPanel {
-        margin-left: 0;
+        margin-inline-start: 0;
       }
 
       flex-direction: column;
@@ -240,11 +240,11 @@
 }
 
 .SavedQuestionHeaderButtonContainer {
-  right: 0.38rem;
+  inset-inline-end: 0.38rem;
   width: 100%;
 
   &.isModelOrMetric {
-    right: 0;
+    inset-inline-end: 0;
   }
 }
 
@@ -256,7 +256,7 @@
   gap: 0.5rem;
 
   @container query-builder (max-width: 70em) {
-    padding-left: 1.325rem;
+    padding-inline-start: 1.325rem;
   }
 }
 

@@ -17,7 +17,7 @@ export const SectionHeader = styled.div`
 
 export const SectionContainer = styled.div`
   flex: 1 1 auto;
-  margin-right: 2rem;
+  margin-inline-end: 2rem;
 `;
 
 export const SectionTitle = styled.div`

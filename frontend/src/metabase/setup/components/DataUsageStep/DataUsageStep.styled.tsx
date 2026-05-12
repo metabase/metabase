@@ -23,7 +23,7 @@ export const StepToggle = styled(Toggle)`
 
 export const StepToggleLabel = styled.div`
   color: var(--mb-color-text-secondary);
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 `;
 
 export const StepInfoList = styled.ul`

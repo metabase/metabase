@@ -11,10 +11,10 @@ export const ToastRoot = styled.div`
 
 export const StyledIcon = styled(Icon)`
   color: var(--mb-color-text-primary-inverse);
-  margin-right: var(--mantine-spacing-sm);
+  margin-inline-end: var(--mantine-spacing-sm);
 `;
 
 export const DestinationLink = styled(Link)`
   color: var(--mb-color-brand);
-  margin-left: var(--mantine-spacing-xs);
+  margin-inline-start: var(--mantine-spacing-xs);
 `;

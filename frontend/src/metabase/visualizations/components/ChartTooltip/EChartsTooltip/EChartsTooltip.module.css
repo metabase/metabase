@@ -58,27 +58,27 @@
   white-space: nowrap;
   padding: 0.25rem 0;
   vertical-align: middle;
-  text-align: right;
+  text-align: end;
   font-weight: 600;
   width: auto;
 }
 
 .Cell + .Cell:not(.NameCell) {
-  padding-left: 0.75rem;
+  padding-inline-start: 0.75rem;
 }
 
 .Cell:first-of-type {
-  padding-left: 1rem;
+  padding-inline-start: 1rem;
 }
 
 .Cell:last-of-type {
-  padding-right: 1rem;
+  padding-inline-end: 1rem;
 }
 
 .NameCell {
-  padding-left: 0.375rem;
+  padding-inline-start: 0.375rem;
   font-weight: 400;
-  text-align: left;
+  text-align: start;
   max-width: 360px;
 }
 

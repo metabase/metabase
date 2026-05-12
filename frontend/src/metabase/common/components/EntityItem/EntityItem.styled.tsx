@@ -76,6 +76,6 @@ export const EntityMenuContainer = styled.div`
 export const EntityItemActions = styled.div`
   display: flex;
   align-items: center;
-  margin-left: auto;
-  padding-right: 0.5rem;
+  margin-inline-start: auto;
+  padding-inline-end: 0.5rem;
 `;

@@ -119,13 +119,13 @@
 .content
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border-stronger);
+  border-inline-start: 3px solid var(--mb-color-border-stronger);
   margin: 0 0 0.5rem 0;
   color: var(--mb-color-text-secondary);
   font-style: italic;
   background-color: var(--mb-color-background-secondary);
   padding: 0.5rem;
-  padding-left: 0.75rem;
+  padding-inline-start: 0.75rem;
   border-radius: var(--mantine-radius-xs);
 }
 
@@ -134,7 +134,7 @@
   :global(.ProseMirror)
   :where(:global(ul), :global(ol)):not(:global(.editor-style-boundary) *) {
   margin: 0;
-  padding-left: 1rem;
+  padding-inline-start: 1rem;
 }
 
 .content

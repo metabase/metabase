@@ -12,8 +12,8 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   align-items: center;
   gap: 1rem;
   height: ${APP_BAR_HEIGHT};
-  padding-left: 1.325rem;
-  padding-right: 1rem;
+  padding-inline-start: 1.325rem;
+  padding-inline-end: 1rem;
   border-bottom: 1px solid
     ${(props) =>
       props.hasSidebarOpen ? "var(--mb-color-border)" : "transparent"};

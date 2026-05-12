@@ -100,9 +100,9 @@ const borderRight = css`
     content: " ";
     position: absolute;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     height: 100%;
-    border-right: 1px solid ${color("border-subtle")};
+    border-inline-end: 1px solid ${color("border-subtle")};
   }
 `;
 

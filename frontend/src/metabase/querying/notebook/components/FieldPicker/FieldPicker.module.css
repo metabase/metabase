@@ -5,7 +5,7 @@
 
 .ItemIcon {
   margin: 0 0.5em;
-  margin-left: 0.75em;
+  margin-inline-start: 0.75em;
   color: var(--mb-color-text-tertiary);
 }
 
@@ -17,7 +17,7 @@
   display: flex;
   align-items: center;
   padding: 0 0.5em;
-  padding-right: 0;
+  padding-inline-end: 0;
   border-radius: 6px;
   cursor: pointer;
   min-height: 2.25rem;
@@ -32,6 +32,6 @@
   margin-bottom: 0.5em;
 
   .ItemTitle {
-    margin-left: 1em;
+    margin-inline-start: 1em;
   }
 }

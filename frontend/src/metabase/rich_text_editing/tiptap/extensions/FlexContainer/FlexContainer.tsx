@@ -208,7 +208,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
           key={i}
           className={styles.resizeHandle}
           style={{
-            left: `${leftWidth}%`,
+            inset-inline-start: `${leftWidth}%`,
           }}
           contentEditable={false}
           onMouseDown={(e) => handleMouseDown(i, e)}

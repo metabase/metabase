@@ -52,7 +52,7 @@ export const ToggleContainer = styled.div`
 
 export const ToggleLabel = styled.label`
   font-size: 12px;
-  margin-right: 1rem;
+  margin-inline-end: 1rem;
 `;
 
 export const WarningIcon = styled(
@@ -69,7 +69,7 @@ export const WarningIcon = styled(
     },
   ),
 )`
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
   color: var(--mb-color-text-tertiary);
 `;
 

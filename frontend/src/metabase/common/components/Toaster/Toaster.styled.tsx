@@ -22,7 +22,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
     props.fixed
       ? `position: fixed;
        bottom: ${props.show ? "20px" : "10px"};
-       left: 20px;`
+       inset-inline-start: 20px;`
       : `position: relative;
        bottom: ${props.show ? "0px" : "-10px"};`}
   opacity: ${(props) => (props.show ? 1 : 0)};

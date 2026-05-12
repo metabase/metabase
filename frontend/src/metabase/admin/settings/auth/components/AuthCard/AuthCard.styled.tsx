@@ -46,5 +46,5 @@ export const CardBadge = styled.div<CardBadgeProps>`
 `;
 
 export const CardMenu = styled(EntityMenu)`
-  margin-left: auto;
+  margin-inline-start: auto;
 `;

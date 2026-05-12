@@ -1,7 +1,7 @@
 .root {
   height: 100%;
   padding: 0 0.5rem;
-  text-align: right;
+  text-align: end;
   color: var(--mb-color-text-tertiary);
   display: flex;
   justify-content: flex-end;

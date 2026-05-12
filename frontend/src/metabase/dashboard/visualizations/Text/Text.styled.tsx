@@ -146,7 +146,7 @@ export const DisplayContainer = styled(
 export const ReactMarkdownStyleWrapper = styled.div`
   height: 100%;
   width: 100%;
-  padding-left: 2px; /* adjust padding to align text input and markdown preview */
+  padding-inline-start: 2px; /* adjust padding to align text input and markdown preview */
   font-size: inherit;
 
   .text-card-markdown {
@@ -255,7 +255,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown th {
-    text-align: left;
+    text-align: start;
   }
 
   .text-card-markdown table {
@@ -267,7 +267,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-family: Monaco, monospace;
     font-size: 12.64px;
     line-height: 0.76rem;
-    text-align: left;
+    text-align: start;
   }
 
   .text-card-markdown tr {
@@ -296,12 +296,12 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown pre code {
     padding: 1em;
     display: block;
-    margin-right: 1.5em;
+    margin-inline-end: 1.5em;
   }
 
   .text-card-markdown blockquote {
     color: var(--mb-color-text-secondary);
-    border-left: 5px solid var(--mb-color-border);
+    border-inline-start: 5px solid var(--mb-color-border);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }

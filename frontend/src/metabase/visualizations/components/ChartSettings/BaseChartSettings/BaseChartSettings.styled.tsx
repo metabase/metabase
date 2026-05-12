@@ -13,19 +13,19 @@ export const SectionContainer = styled.div`
   }
 
   ${Radio.RadioContainerVariants.join(", ")} {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-inline-start: 1rem;
+    padding-inline-end: 1rem;
     padding-block: 0.5rem;
   }
 
   ${Radio.RadioLabelVariants.join(", ")} {
     /* flex-grow: 1; */
-    margin-right: 0;
+    margin-inline-end: 0;
     display: flex;
     justify-content: center;
 
     &:not(:last-child) {
-      margin-right: 0;
+      margin-inline-end: 0;
     }
   }
 `;
