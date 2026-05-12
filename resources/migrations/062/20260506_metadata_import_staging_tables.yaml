@@ -61,11 +61,13 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: false
+                  remarks: Wire :name — table's natural-key name component.
               - column:
                   name: description
                   type: ${text.type}
                   constraints:
                     nullable: true
+                  remarks: Wire :description — clobbered onto metabase_table.description on merge.
               - column:
                   name: display_name
                   type: varchar(254)
@@ -78,6 +80,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: Resolved by table-resolve step; → metabase_table.id. NULL means no live row matches; row is an insert candidate.
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:00.1
+      author: galdre
+      comment: Index metabase_table_import.target_id for the merge-tables clobber subqueries
+      changes:
         - createIndex:
             tableName: metabase_table_import
             indexName: idx_mti_target_id
@@ -127,16 +135,19 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: false
+                  remarks: Wire :name — field's natural-key name component (within its parent + table).
               - column:
                   name: base_type
                   type: varchar(254)
                   constraints:
                     nullable: false
+                  remarks: Wire :base_type — clobbered onto metabase_field.base_type on merge.
               - column:
                   name: database_type
                   type: varchar(254)
                   constraints:
                     nullable: false
+                  remarks: Wire :database_type — clobbered onto metabase_field.database_type on merge.
               - column:
                   name: effective_type
                   type: varchar(254)
@@ -148,16 +159,19 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: true
+                  remarks: Wire :semantic_type — clobbered onto metabase_field.semantic_type on merge.
               - column:
                   name: coercion_strategy
                   type: varchar(254)
                   constraints:
                     nullable: true
+                  remarks: Wire :coercion_strategy — clobbered onto metabase_field.coercion_strategy on merge.
               - column:
                   name: description
                   type: ${text.type}
                   constraints:
                     nullable: true
+                  remarks: Wire :description — clobbered onto metabase_field.description on merge.
               - column:
                   name: nfc_path
                   type: ${text.type}
@@ -195,12 +209,24 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: Populated per-depth-level by self-join on source_fk_target_id → another row's target_id.
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:01.1
+      author: galdre
+      comment: Index metabase_field_import.depth for per-level scoping in the depth-walk merge
+      changes:
         - createIndex:
             tableName: metabase_field_import
             indexName: idx_mfi_depth
             columns:
               - column:
                   name: depth
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:01.2
+      author: galdre
+      comment: Index metabase_field_import.target_id for the merge-fields clobber subqueries
+      changes:
         - createIndex:
             tableName: metabase_field_import
             indexName: idx_mfi_target_id
