@@ -460,30 +460,39 @@
   If the task has already been terminated (`ended_at` is set, e.g., because an admin cancelled it
   via POST /current-task/cancel while the virtual thread was still running), this function logs a
   warning and returns without writing anything. This prevents a still-running thread from clobbering
-  the cancellation bookkeeping or stomping the branch setting via its captured value."
+  the cancellation bookkeeping or stomping the branch setting via its captured value.
+
+  The read and the subsequent write happen in a single transaction with `SELECT ... FOR UPDATE` so
+  a concurrent cancel cannot slip in between the terminated-check and the result-write."
   [result task-id & [branch]]
-  (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
-    (cond
-      (nil? task)
-      (log/warnf "Task %s missing during result handling; skipping" task-id)
+  (let [proceed?
+        (t2/with-transaction [_conn]
+          (let [task (t2/select-one :model/RemoteSyncTask :id task-id {:for :update})]
+            (cond
+              (nil? task)
+              (do (log/warnf "Task %s missing during result handling; skipping" task-id)
+                  false)
 
-      (some? (:ended_at task))
-      (log/warnf "Task %s already terminated (ended_at=%s); skipping result handling to preserve state"
-                 task-id (:ended_at task))
+              (some? (:ended_at task))
+              (do (log/warnf "Task %s already terminated (ended_at=%s); skipping result handling to preserve state"
+                             task-id (:ended_at task))
+                  false)
 
-      :else
-      (case (:status result)
-        :success (do
-                   (t2/with-transaction [_conn]
-                     (when branch
-                       (settings/remote-sync-branch! branch))
-                     (remote-sync.task/complete-sync-task! task-id))
-                   (invalidate-remote-changes-cache!))
-        :conflict (do
-                    (remote-sync.task/set-version! task-id (:version result))
-                    (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
-        :error (remote-sync.task/fail-sync-task! task-id (:message result))
-        (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
+              :else
+              (do
+                (case (:status result)
+                  :success (do
+                             (when branch
+                               (settings/remote-sync-branch! branch))
+                             (remote-sync.task/complete-sync-task! task-id))
+                  :conflict (do
+                              (remote-sync.task/set-version! task-id (:version result))
+                              (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))
+                  :error (remote-sync.task/fail-sync-task! task-id (:message result))
+                  (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))
+                true))))]
+    (when (and proceed? (= (:status result) :success))
+      (invalidate-remote-changes-cache!))))
 
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
