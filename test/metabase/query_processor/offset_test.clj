@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.offset-test
   "Tests for the new :offset window function clause (#9393)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.offset-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

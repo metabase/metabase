@@ -2,6 +2,7 @@
   "Tests for the remote-sync events system.
 
    Tests event publishing, handling, and model change tracking functionality."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.events-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

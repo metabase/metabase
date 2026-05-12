@@ -1,4 +1,5 @@
 (ns metabase.driver.sql.query-processor.boolean-to-comparison-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.query-processor.boolean-to-comparison-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql.query-processor :as sql.qp]

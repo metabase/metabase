@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.queries-rest.api.card-test
   "Tests for /api/card endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries-rest.api.card-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.queries-rest.api.card-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]

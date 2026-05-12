@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.page-test
   "Tests for the `:page` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.page-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

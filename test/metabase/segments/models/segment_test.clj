@@ -1,4 +1,5 @@
 (ns metabase.segments.models.segment-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.models.segment-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]

@@ -1,4 +1,5 @@
 (ns metabase.search.appdb.index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.appdb.index-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

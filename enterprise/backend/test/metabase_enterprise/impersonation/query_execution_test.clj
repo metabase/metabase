@@ -2,6 +2,7 @@
   "Integration tests that verify `is_impersonated` is recorded on `:model/QueryExecution` rows when a query runs
   under an active connection-impersonation policy. Distinct from [[metabase-enterprise.impersonation.driver-test]]
   which tests role resolution; here we drive a full userland query through the QP and inspect the persisted row."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.impersonation.query-execution-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]

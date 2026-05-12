@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.fix-bad-field-id-refs-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.fix-bad-field-id-refs-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

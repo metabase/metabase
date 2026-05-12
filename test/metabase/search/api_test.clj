@@ -1,6 +1,9 @@
 (ns metabase.search.api-test
   "There are more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
   below into that namespace."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.search.api-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.search.api-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.search.api-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -55,10 +58,10 @@
    :dashboardcard_count        nil
    :database_name              nil
    :description                nil
-   :display                    nil
-   :id                         true
-   :initial_sync_status        nil
-   :model_name                 nil
+   :display                    nil   :id                         true
+   :initial_sync_status        nil   :model_name
+
+   nil
    :moderated_status           nil
    :last_editor_common_name    nil
    :last_editor_id             false

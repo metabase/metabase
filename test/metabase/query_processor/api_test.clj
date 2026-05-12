@@ -6,7 +6,8 @@
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
                        {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.api-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
