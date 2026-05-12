@@ -13,6 +13,13 @@
    (java.io File)
    (java.time Instant)))
 
+(set! *warn-on-reflection* true)
+
+;; Kondo flags `test-helpers-set-global-values!` inside any fixture as
+;; "destructive in parallel context". Here it is *intentionally* the opt-out
+;; switch — without it the agent runs on a separate connection that can't see
+;; the test's mt/with-temp rollback-only state.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once
   (fn [thunk]
     (mt/with-temporary-setting-values [disable-auto-sync true]

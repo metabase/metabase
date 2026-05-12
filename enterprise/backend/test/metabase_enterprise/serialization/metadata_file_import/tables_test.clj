@@ -4,6 +4,7 @@
   natural-key tuple (db_name, schema, name) against `metabase_table`,
   filtered to active non-defective rows."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as p]
    [metabase.test :as mt]
@@ -20,7 +21,7 @@
           :db_name      db-name
           :schema       "PUBLIC"
           :name         name
-          :display_name (clojure.string/capitalize name)}
+          :display_name (str/capitalize name)}
          overrides))
 
 (defn- staging-rows-by-source-id []
@@ -152,7 +153,7 @@
         (is (some? inserted))
         (is (= "PUBLIC" (:schema inserted)))
         (is (= "first import" (:description inserted)))
-        (is (= true (:active inserted)))
+        (is (true? (:active inserted)))
         (is (= "internal" (name (:data_layer inserted)))))
       (finally
         (t2/delete! :model/Table :db_id db-id)

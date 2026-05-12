@@ -205,7 +205,7 @@
         ;; --- merge (one txn — every live-data write all-or-nothing) ---
         (let [new-tables
               (t2/with-transaction [_]
-                (let [inserted (processors/merge-tables!)]
+                (let [insert-source-ids (processors/merge-tables!)]
                   ;; round 2 captures INSERT-assigned ids back into table staging
                   (processors/resolve-target-table-ids-in-staging!)
                   ;; copy target-table-ids from table staging onto field staging
@@ -213,7 +213,7 @@
                   ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
                   (processors/merge-fields-by-depth!)
                   (mark-databases-sync-complete! matched-target-db-ids)
-                  inserted))]
+                  (processors/new-target-tables-from-staging insert-source-ids)))]
           ;; Permission grants run outside the merge txn — the cluster lock
           ;; shouldn't be held across the long merge work.
           (doseq [[db-id rows] (group-by :db_id new-tables)]

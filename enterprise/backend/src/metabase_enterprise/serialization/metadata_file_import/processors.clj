@@ -399,56 +399,82 @@
   The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
   source DB has no target appdb match are silently dropped.
 
-  Returns a vector of `{:id :db_id :schema}` maps for the newly inserted
-  rows so the caller can grant default permissions in batch."
+  Returns the set of staging `source_id`s that were INSERTed (snapshot taken
+  *before* the INSERT runs). Callers that follow up with
+  [[resolve-target-table-ids-in-staging!]] can then pass that set to
+  [[new-target-tables-from-staging]] to read the freshly-created
+  `metabase_table` rows for downstream work like permission grants. We use
+  this round-trip instead of `INSERT ... RETURNING` so the SQL stays portable
+  across all supported appdbs (vanilla MySQL has no `RETURNING`)."
   []
   (t2/with-transaction [_]
     ;; t2 joins an outer txn rather than creating a savepoint, so wrapping
     ;; this call in a larger transaction is safe.
 
-    ;; UPDATE matched rows first (clobber description, bump updated_at).
-    ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
-    ;; description actually differs (NULL-safe via COALESCE-with-empty-
-    ;; string), so a re-import with identical description is a true no-op
-    ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
-    ;; in the predicate (otherwise the UPDATE would always fire,
-    ;; defeating the optimization).
-    (t2/query
-     {:update :metabase_table
-      :set    {:description {;; ORDER BY + LIMIT 1: two staging rows can
-                             ;; resolve to the same `target_id` (GHY-3549).
-                             :select   [:it.description]
-                             :from     [[:metabase_table_import :it]]
-                             :where    [:= :it.target_id :metabase_table.id]
-                             :order-by [[:it.source_id :asc]]
-                             :limit    1}
-               :updated_at :%now}
-      :where  [:and
-               [:= :metabase_table.is_defective_duplicate [:inline false]]
-               [:= :metabase_table.active [:inline true]]
-               [:exists {:select [[[:inline 1]]]
-                         :from   [[:metabase_table_import :it]]
-                         :where  [:and
-                                  [:= :it.target_id :metabase_table.id]
-                                  [:!= [:coalesce :metabase_table.description [:inline ""]]
-                                   [:coalesce :it.description             [:inline ""]]]]}]]})
-    ;; INSERT bypasses :model/Table's :after-insert hook — that hook
-    ;; schedules per-DB Quartz triggers we don't want and fires
-    ;; `set-new-table-permissions!` once per row. RETURNING surfaces the
-    ;; new rows so the caller can grant default perms in one batch.
-    (t2/query
-     {:insert-into
-      [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
-                         :active :show_in_getting_started :is_defective_duplicate
-                         :created_at :updated_at]]
-       {:select [:d.id :it.schema :it.name :it.description :it.display_name
-                 [[:inline "internal"]]
-                 [[:inline true]] [[:inline false]] [[:inline false]]
-                 :%now :%now]
-        :from   [[:metabase_table_import :it]]
-        :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
-        :where  [:= :it.target_id nil]}]
-      :returning [:id :db_id :schema]})))
+    ;; Capture which staging rows are about to be INSERTed (target_id NULL).
+    ;; After the INSERT + a subsequent resolve round, these source_ids will
+    ;; have their `target_id` populated with the freshly-inserted live id.
+    (let [insert-source-ids
+          (into #{} (map :source_id)
+                (t2/query {:select [:source_id]
+                           :from   [:metabase_table_import]
+                           :where  [:= :target_id nil]}))]
+      ;; UPDATE matched rows first (clobber description, bump updated_at).
+      ;; Skip-if-unchanged: the EXISTS subquery additionally requires that
+      ;; description actually differs (NULL-safe via COALESCE-with-empty-
+      ;; string), so a re-import with identical description is a true no-op
+      ;; — no UPDATE fires, no dead tuple. updated_at is deliberately NOT
+      ;; in the predicate (otherwise the UPDATE would always fire,
+      ;; defeating the optimization).
+      (t2/query
+       {:update :metabase_table
+        :set    {:description {;; ORDER BY + LIMIT 1: two staging rows can
+                               ;; resolve to the same `target_id` (GHY-3549).
+                               :select   [:it.description]
+                               :from     [[:metabase_table_import :it]]
+                               :where    [:= :it.target_id :metabase_table.id]
+                               :order-by [[:it.source_id :asc]]
+                               :limit    1}
+                 :updated_at :%now}
+        :where  [:and
+                 [:= :metabase_table.is_defective_duplicate [:inline false]]
+                 [:= :metabase_table.active [:inline true]]
+                 [:exists {:select [[[:inline 1]]]
+                           :from   [[:metabase_table_import :it]]
+                           :where  [:and
+                                    [:= :it.target_id :metabase_table.id]
+                                    [:!= [:coalesce :metabase_table.description [:inline ""]]
+                                     [:coalesce :it.description             [:inline ""]]]]}]]})
+      ;; INSERT bypasses :model/Table's :after-insert hook — that hook
+      ;; schedules per-DB Quartz triggers we don't want and fires
+      ;; `set-new-table-permissions!` once per row.
+      (t2/query
+       {:insert-into
+        [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
+                           :active :show_in_getting_started :is_defective_duplicate
+                           :created_at :updated_at]]
+         {:select [:d.id :it.schema :it.name :it.description :it.display_name
+                   [[:inline "internal"]]
+                   [[:inline true]] [[:inline false]] [[:inline false]]
+                   :%now :%now]
+          :from   [[:metabase_table_import :it]]
+          :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
+          :where  [:= :it.target_id nil]}]})
+      insert-source-ids)))
+
+(defn new-target-tables-from-staging
+  "Look up the `metabase_table` rows that were just INSERTed by
+  [[merge-tables!]]. `insert-source-ids` is the set returned by
+  [[merge-tables!]]. Pre-condition:
+  [[resolve-target-table-ids-in-staging!]] has run since the INSERT, so
+  staging's `target_id` is populated for these rows. Portable across PG /
+  H2 / MySQL (no `RETURNING`)."
+  [insert-source-ids]
+  (when (seq insert-source-ids)
+    (t2/query {:select [:t.id :t.db_id :t.schema]
+               :from   [[:metabase_table :t]]
+               :join   [[:metabase_table_import :it] [:= :it.target_id :t.id]]
+               :where  [:in :it.source_id (vec insert-source-ids)]})))
 
 ;;; ============================== fields — drain + merge ==============================
 

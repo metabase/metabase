@@ -6,6 +6,7 @@
   (`update-matched-fields-at-depth!`, `insert-new-fields-at-depth!`), and
   the orchestration loop (`merge-fields-by-depth!`)."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as p]
    [metabase.test :as mt]
@@ -27,7 +28,7 @@
                       :db_name      db-name
                       :schema       "PUBLIC"
                       :name         name
-                      :display_name (clojure.string/capitalize name)}
+                      :display_name (str/capitalize name)}
                      overrides)))
 
 (defn- insert-staging-field-row!

@@ -15,6 +15,8 @@
    (org.postgresql PGConnection)
    (org.postgresql.copy CopyIn)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once
   (fn [thunk]
     (mt/with-temporary-setting-values [disable-auto-sync true]
@@ -233,7 +235,7 @@
     :coercion_strategy "Coercion/UNIXSeconds->DateTime"
     :description "an email field"}])
 
-(defn- snapshot-after [drain-fn]
+(defn- snapshot-after! [drain-fn]
   (try
     (p/clear-staging-tables!)
     (drain-fn)
@@ -247,12 +249,12 @@
     (let [tbl-batch (batch equivalence-table-batch-rows)
           fld-batch (batch equivalence-field-batch-rows)
           ;; Path 1: HoneySQL t2/insert!
-          honeysql  (snapshot-after
+          honeysql  (snapshot-after!
                      (fn []
                        (p/drain-tables-batch! equivalence-databases-by-source-id tbl-batch)
                        (p/drain-fields-batch! fld-batch)))
           ;; Path 2: JDBC executeBatch
-          jdbc      (snapshot-after
+          jdbc      (snapshot-after!
                      (fn []
                        (with-open [^Connection conn (.getConnection (mdb/data-source))
                                    ^PreparedStatement tps (.prepareStatement conn p/tables-insert-sql)
@@ -261,7 +263,7 @@
                          (p/drain-fields-batch-jdbc! fps fld-batch))))
           ;; Path 3: PG CopyManager (PG appdb only)
           pg-copy   (when (= :postgres (mdb/db-type))
-                      (snapshot-after
+                      (snapshot-after!
                        (fn []
                          (with-open [^Connection conn (.getConnection (mdb/data-source))]
                            (let [pg-conn  (.unwrap conn PGConnection)
