@@ -48,7 +48,7 @@ export const snippetApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("snippet")]),
     }),
-    updateSnippet: builder.mutation<unknown, UpdateSnippetRequest>({
+    updateSnippet: builder.mutation<NativeQuerySnippet, UpdateSnippetRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/native-query-snippet/${id}`,
