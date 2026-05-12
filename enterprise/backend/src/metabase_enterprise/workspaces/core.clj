@@ -151,10 +151,10 @@
    [:databases [:map-of :int ::workspace-database-config]]])
 
 (mu/defn set-instance-workspace!
-  "Set the in-process workspace config for this instance. Called by the `:workspace`
-  section loader at boot. Replaces any prior value. The config is validated against
-  [[::workspace-instance-config]] - a malformed config throws at the boundary
-  rather than propagating into transform target rewriting or QP middleware."
+  "Set the in-process workspace config for this instance. Replaces any prior value.
+  The config is validated against [[::workspace-instance-config]] — a malformed
+  config throws at the boundary rather than propagating into transform target
+  rewriting or QP middleware."
   [config :- ::workspace-instance-config]
   (reset! *workspace-instance-config* config))
 

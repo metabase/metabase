@@ -35,10 +35,8 @@
   "Delete every `TableRemapping` row on `database`'s id whose `to_*` slots match
    the iso namespace `(iso-db, iso-schema)` for this workspace_database row.
 
-   Called from `provisioning/deprovision-workspace-database!` after the driver's
-   `destroy-workspace-isolation!` succeeds. Idempotent — 0 rows deleted is a
-   valid outcome when nothing was registered (e.g. a workspace_database that
-   was provisioned but never had a transform run).
+   Idempotent — 0 rows deleted is a valid outcome when nothing was registered
+   (e.g. a workspace_database that was provisioned but never had a transform run).
 
    Scope rationale: the unique constraint on `(database_id, from_db, from_schema,
    from_table_name)` prevents two workspaces on the same metabase_database from

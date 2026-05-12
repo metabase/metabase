@@ -9,10 +9,9 @@
 
    - [[add-mapping!]] — the writer. Takes `db-id` and two `::table-spec` maps
      (`{:db, :schema, :table}`). Idempotent on the unique constraint.
-   - [[add-transform-target-mapping!]] — transform-hook integration. Called when a
-     transform target is rewritten to a workspace schema; resolves the workspace output
-     schema from the database's provisioned `WorkspaceDatabase` row and delegates to
-     [[add-mapping!]]. Used by [[metabase-enterprise.workspaces.transform-hooks]].
+   - [[add-transform-target-mapping!]] — transform-hook integration for rewriting a
+     transform target to a workspace schema. Resolves the workspace output schema from
+     the database's provisioned `WorkspaceDatabase` row and delegates to [[add-mapping!]].
 
    Callers with `:model/Database` and `:model/Table` rows can produce a `::table-spec`
    via [[spec-for-table]] and hand it to [[add-mapping!]] directly.
@@ -232,8 +231,8 @@
 ;;; ----------------------------------------- SQL rewriting -----------------------------------------
 ;;;
 ;;; Pure SQL rewrite primitives keyed off `::table-spec`. Pure relative to a `{from-spec to-spec}`
-;;; remappings map -- callers fetch from the active store and pass it in. Used by every workspace
-;;; rewrite site: QP middleware Phase 2 and the native-transform exec hook.
+;;; remappings map -- fetched from the active store and passed in. Shared between the QP
+;;; middleware Phase 2 rewriter and the native-transform exec hook.
 
 (defn table-spec->sqlglot-key
   "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
@@ -319,7 +318,7 @@
 (defn- driver-for-db
   ; TODO think about whether we can keep track of the db driver in a more efficient way
   ; Probably just convert the callers to pass the whole `database` instead of just the ID
-  "Fetch the engine keyword for `db-id`. Used by translators that take a consumer-shape
+  "Fetch the engine keyword for `db-id`. For translators that take a consumer-shape
    spec (no driver in scope) and need driver-aware key projection. The app-DB cache
    keeps repeat lookups cheap."
   [db-id]
@@ -461,14 +460,14 @@
    `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
    canonical table if a TableRemapping row records that pair as the destination
    of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
-   for write-side callers that already have the rewritten target on hand and
-   need the canonical slot before touching `:model/Table` rows.
+   for write-side paths that already have the rewritten target on hand and need
+   the canonical slot before touching `:model/Table` rows.
 
    Driver-aware: matches against the slots the driver actually emits, so an
    engine like MySQL (whose canonical and isolated tables differ at `:db` rather
    than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
-   when the driver doesn't populate them, so callers don't need to denormalize
-   the empty-string sentinel themselves."
+   when the driver doesn't populate them, so the empty-string sentinel never
+   leaks above this boundary."
   :feature :none
   [db-id to-spec]
   (when-let [driver (driver-for-db db-id)]
@@ -479,9 +478,9 @@
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
-   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. Used by display
-   paths (e.g. the QB's `POST /api/dataset/native` SQL preview) so users see canonical
-   SQL instead of the isolation schema. Deliberately ungated on premium features."
+   (metadata override) and Phase 2 (SQLGlot rewrite) both short-circuit. For display
+   paths that want users to see canonical SQL instead of the isolation schema.
+   Deliberately ungated on premium features."
   :feature :none
   [thunk]
   (binding [ws.remapping/*skip-remapping?* true]
@@ -564,13 +563,11 @@
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so callers
-   like [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]]
-   can `assoc` the values onto the transform target without a per-call
-   denormalization shim.
+   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
+   can be `assoc`ed onto a transform target without a per-call denormalization shim.
 
-   Throws when the database is not workspaced -- a caller getting here in that case is a
-   programming error; the transform-hook path should gate on [[ws/db-workspace-namespace]] first."
+   Throws when the database is not workspaced -- reaching this with a non-workspaced
+   db is a programming error; gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
     (when-not workspace-ns

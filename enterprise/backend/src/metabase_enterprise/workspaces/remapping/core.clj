@@ -197,9 +197,9 @@
   (get-mapping* *remapping-store* db-id from-spec))
 
 (defn insert-mapping!
-  "Idempotently ensure a remapping exists in the active store. Specs are pre-normalized
-   `::table-spec` maps; callers in `metabase-enterprise.workspaces.table-remapping`
-   normalize from user-facing maps before calling.
+  "Idempotently ensure a remapping exists in the active store. Specs MUST be
+   pre-normalized `::table-spec` maps — `\"\"` (not nil) for slots a driver doesn't
+   emit. The user-facing wrappers in `table-remapping` handle that normalization.
 
    Returns truthy when the remapping is in place after the call (insert or already-existed)."
   [db-id from-spec to-spec]

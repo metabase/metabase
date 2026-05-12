@@ -52,9 +52,9 @@
    ## Short-circuits (escape hatches)
 
      - `enabled-for-db?` is false (no remappings exist for this DB) — both phases pass through.
-     - `ws.remapping/*skip-remapping?*` is bound true — both phases pass through. Used by
-       display-oriented callers like `POST /api/dataset/native` that want the user to see the
-       SQL they authored, not the rewritten form. Never bound on an execution path.
+     - `ws.remapping/*skip-remapping?*` is bound true — both phases pass through. For
+       display-oriented paths that want the user to see the SQL they authored, not the
+       rewritten form. Never bound on an execution path.
 
    ## Cost
 
