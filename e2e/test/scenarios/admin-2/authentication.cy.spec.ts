@@ -159,40 +159,57 @@ describe("scenarios > admin > settings > user provisioning", () => {
     });
 
     it("should properly handle errors", () => {
-      cy.log("should show error when scim token fails to load");
-      cy.intercept("GET", "/api/ee/scim/api_key", { statusCode: 500 });
-      cy.visit("/admin/settings/authentication/user-provisioning");
-      H.main().within(() => {
-        cy.findByText("Error fetching SCIM token");
+      cy.intercept("POST", "/api/ee/scim/api_key", {
+        statusCode: 500,
+        body: { message: "An error occurred" },
       });
 
-      cy.log(
-        "should show error when scim token fails to generate when scim is enabled",
-      );
-      // enable scim and stop mocking get scim api key request
+      cy.visit("/admin/settings/authentication/user-provisioning");
+
+      // toggling SCIM on triggers the failing token-generation POST
+      scimToggle().click();
+
+      // no modal is opened on failure — error surfaces directly on the form
+      H.modal().should("not.exist");
+
+      H.main().within(() => {
+        cy.findByText(
+          "Token failed to generate, please regenerate one.",
+        ).should("exist");
+        cy.findByRole("button", { name: /Retry/ }).should("exist");
+      });
+    });
+
+    it("should show a warning when SCIM is enabled without a token", () => {
+      // simulate enabling SCIM via config file / env var: enable it server-side, no token generated
       cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
         req.continue();
       });
       cy.request("PUT", "api/setting/scim-enabled", { value: true });
       cy.visit("/admin/settings/authentication/user-provisioning");
+
       H.main().within(() => {
-        cy.findByText("Token failed to generate, please regenerate one.");
+        cy.findByText(
+          "Generate a SCIM token below to complete the setup.",
+        ).should("exist");
+        cy.findByRole("button", { name: /Generate/ }).should("exist");
+        cy.findByText(
+          "Token failed to generate, please regenerate one.",
+        ).should("not.exist");
       });
 
-      cy.log("should show error when scim token fails to regenerate");
-      cy.intercept("POST", "/api/ee/scim/api_key", {
-        statusCode: 500,
-        body: { message: "An error occurred" },
-      });
-      cy.findByRole("button", { name: /Regenerate/ }).click();
-
+      cy.log("warning is removed once a token has been generated");
+      cy.findByRole("button", { name: /Generate/ }).click();
       H.modal().within(() => {
-        cy.findByText("Regenerate token?").should("exist");
-        cy.findByRole("button", { name: /Regenerate now/ }).click();
+        cy.findByText("Here's what you'll need to set SCIM up").should("exist");
+        cy.findByRole("button", { name: /Done/ }).click();
       });
 
-      H.modal().within(() => {
-        cy.findByText("An error occurred");
+      H.main().within(() => {
+        cy.findByText(
+          "Generate a SCIM token below to complete the setup.",
+        ).should("not.exist");
+        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
       });
     });
   });
