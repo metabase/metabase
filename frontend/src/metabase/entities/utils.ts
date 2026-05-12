@@ -397,7 +397,9 @@ export function createEntity(def: EntityDef): Entity {
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
-  const getWritableProperties = (object: EntityObject): Partial<EntityObject> =>
+  const getWritableProperties = (
+    object: EntityObject,
+  ): Partial<EntityObject> =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;
@@ -973,7 +975,13 @@ type CombinedEntities = {
  * another entity's normalizr schema (e.g. measures inside a table's
  * `query_metadata` response).
  */
-const RETIRED_ENTITY_NAMES = ["measures", "metrics", "schemas", "segments"];
+const RETIRED_ENTITY_NAMES = [
+  "measures",
+  "metrics",
+  "schemas",
+  "segments",
+  "snippets",
+];
 
 export function combineEntities(entities: Entity[]): CombinedEntities {
   const entitiesMap: Record<string, Entity> = {};
