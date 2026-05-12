@@ -3,7 +3,14 @@ import { glob } from "astro/loaders";
 
 const docs = defineCollection({
   loader: glob({
-    pattern: ["**/*.md", "!**/node_modules/**"],
+    pattern: [
+      "**/*.md",
+      "!**/node_modules/**",
+      // Generated typedoc fragments — transcluded into authored pages via
+      // the include_file plugin; not standalone pages.
+      "!embedding/sdk/api/**",
+      "!embedding/eajs/snippets/**",
+    ],
     base: "../docs",
   }),
   schema: z.object({

@@ -80,6 +80,18 @@ Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 Whether AI features are enabled.
 
+### `MB_AI_USAGE_MAX_RETENTION_DAYS`
+
+- Type: string
+- Default: `null`
+
+Number of days to retain rows in the ai_usage_log table. Minimum value is 30; set to 0 to retain data indefinitely.
+
+Sets the maximum number of days Metabase preserves rows in the `ai_usage_log` table.
+
+Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
+If set to 0, Metabase will keep all rows.
+
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
