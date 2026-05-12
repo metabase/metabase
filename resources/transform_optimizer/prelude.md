@@ -16,7 +16,9 @@ proposal list with a short summary stating why — that is a valid answer.
 Two transforms are equivalent when they produce the **same set of rows
 with the same multiplicity** (i.e. `EXCEPT ALL` in both directions yields
 zero). It is acceptable for the order of rows to differ unless the
-original specifies `ORDER BY`.
+original specifies `ORDER BY`. **Equivalence trumps speedup** — a
+faster proposal that diverges in even a single edge case is worse than
+no proposal at all.
 
 You **may not**:
 
@@ -29,6 +31,101 @@ You **may not**:
 
 When in doubt, prefer **adding an optimization step** (e.g. a precompute
 transform) to **changing the original semantics**.
+
+## Equivalence pitfalls — check these before proposing
+
+These are real footguns that produce *plausible-looking* rewrites that
+are not equivalent. Before proposing a rewrite, check each that applies
+and either (a) abandon the rewrite, (b) add the missing precondition to
+the rewritten SQL, or (c) downgrade the severity and document the
+precondition explicitly in `rationale`.
+
+### NULL semantics — `NOT IN` vs `NOT EXISTS` are NOT equivalent on nullable columns
+
+`x NOT IN (subquery)` returns **UNKNOWN** (i.e. row excluded) whenever
+the subquery returns *any* NULL — even for outer rows that are not in
+the non-NULL part of the subquery. `NOT EXISTS` has no such NULL trap.
+
+```sql
+-- NOT equivalent in general:
+WHERE c.id NOT IN (SELECT customer_id FROM events)        -- events.customer_id NULLable
+WHERE NOT EXISTS (SELECT 1 FROM events WHERE customer_id = c.id)
+```
+
+Only propose the `NOT IN → NOT EXISTS` rewrite when the inner column
+is **declared `NOT NULL`** in the schema you were given (or the
+subquery explicitly filters NULLs with `WHERE col IS NOT NULL`).
+Otherwise the rewrite is unsafe.
+
+The same applies in reverse to `<> ALL` (subquery) and `IN` vs `EXISTS`
+on outer-NULL paths — be skeptical of any rewrite that touches NULL
+handling.
+
+### `DISTINCT ON` and ordering
+
+`SELECT DISTINCT ON (key) ... ORDER BY key, tiebreaker` returns a
+deterministic single row per key. If you rewrite to a window function
+or aggregate, the tiebreaker must be preserved exactly — otherwise the
+*set* of returned rows changes when there are ties.
+
+### Multi-aggregate rollups — `array_agg(DISTINCT)` + `UNNEST` is subtly different from `GROUP BY`
+
+When splitting a multi-aggregate query into a daily/hourly rollup,
+**do not** stuff distinct-value sets into `array_agg(DISTINCT ...)`
+and then `UNNEST` at the consumer level. The empty-array and NULL
+cases (e.g. a day with zero matching rows producing `NULL` for the
+array agg rather than an empty array) diverge subtly from the
+original GROUP BY semantics.
+
+Instead, emit **one rollup per independent aggregate** and join them
+at the final query level. Use `FULL OUTER JOIN` (or `COALESCE` on
+both sides) so groups that appear in only one of the rollups still
+appear in the result with `0` for the missing aggregate.
+
+```sql
+-- Risky: empty-array semantics differ from no-row semantics
+SELECT ... ARRAY_AGG(DISTINCT customer_id) FILTER (...) AS ids ... GROUP BY day
+-- Then later: LEFT JOIN LATERAL UNNEST(ids) … — divergent on empty days.
+
+-- Safe: two rollups, FULL OUTER JOIN at the final level
+WITH a AS (SELECT day, count(distinct customer_id) AS active FROM … GROUP BY day),
+     b AS (SELECT day, count(*) AS views FROM … GROUP BY day)
+SELECT COALESCE(a.day, b.day), COALESCE(a.active, 0), COALESCE(b.views, 0)
+FROM a FULL OUTER JOIN b ON a.day = b.day;
+```
+
+### Result-set type compatibility
+
+The verifier compares rows with `EXCEPT ALL`, which requires matching
+column types in matching ordinal positions. Casts are not implicit
+between integer / numeric / bigint. When your rewrite swaps a `COUNT`
+(returns `bigint`) for a `SUM` (may return `numeric`), add an explicit
+`::bigint` cast so the types align.
+
+### Top-N per group — `LATERAL` + index is a *scale-dependent* win
+
+Rewriting `ROW_NUMBER() OVER (PARTITION BY ...)` + `WHERE rn <= N` to
+a `CROSS JOIN LATERAL (... ORDER BY ... LIMIT N)` pattern only beats
+the window-function plan when:
+
+- the per-group cardinality is large (so `LIMIT N` early-terminates
+  meaningfully), and
+- an index supports the `ORDER BY ... DESC` inside the LATERAL
+  (otherwise the planner sorts per group, which is no win).
+
+If the EXPLAIN plan shows a cheap hash-join + window over a small
+intermediate, the LATERAL rewrite may *regress*. Check estimated
+group sizes from the context's `~row_count` figures and the EXPLAIN
+plan before proposing this. Downgrade severity to `low` if the gain
+is uncertain.
+
+### CTE inlining
+
+In modern Postgres (≥ 12) non-recursive CTEs are inlined by default,
+so wrapping a subquery in `WITH foo AS (...)` is a wash. In older
+Postgres versions CTEs were optimization fences. Don't claim CTE
+wrapping itself as an optimization — it isn't, unless paired with a
+real structural change.
 
 ## Output schema
 
@@ -146,7 +243,7 @@ the leaf; the planner switches from seq-scan to index-only scan. High
 severity; ≥100× speedup. The SQL body is unchanged so `body` is `null`
 and `kind` is `index`.
 
-### Example 3 — kind: rewrite+index
+### Example 3 — kind: rewrite+index (scale-dependent — check EXPLAIN)
 
 **Slow** (top-N per category via a window function over 20k products
 joined to 15M order_items):
@@ -195,7 +292,12 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_category_id
   ON shop.products (category_id);
 ```
 
-Medium severity (≥50× speedup).
+Medium severity (≥50× speedup at production scale). **Only propose this
+rewrite when the EXPLAIN plan shows a sort or full-scan that the LATERAL
+pattern would avoid, and when an index exists that supports the
+`ORDER BY … DESC` inside the LATERAL.** At small fact-table scale the
+window-function plan often beats the LATERAL rewrite — see the
+"Top-N per group" pitfall above.
 
 ### Example 4 — kind: precompute (DAG split)
 
