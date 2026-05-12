@@ -1,0 +1,30 @@
+---
+import { getNav, findTrail } from "../lib/nav";
+import NavItem from "./NavItem.astro";
+
+interface Props {
+  currentSlug: string;
+}
+
+const { currentSlug } = Astro.props;
+const nav = getNav();
+const trail = findTrail(currentSlug, nav) ?? [];
+const expandedNames = new Set(trail.map((t) => t.name));
+---
+
+<nav class="docs-sidebar" aria-label="Documentation">
+  {nav.categories.map((category) => (
+    <div class="docs-sidebar-category">
+      <h5>{category.name}</h5>
+      <ul>
+        {category.pages.map((page) => (
+          <NavItem
+            page={page}
+            currentSlug={currentSlug}
+            expandedNames={expandedNames}
+          />
+        ))}
+      </ul>
+    </div>
+  ))}
+</nav>

@@ -1,0 +1,38 @@
+---
+import { findTrail } from "../lib/nav";
+
+interface Props {
+  currentSlug: string;
+  title: string;
+}
+
+const { currentSlug, title } = Astro.props;
+const trail = findTrail(currentSlug) ?? [];
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// Build breadcrumb items. The last item is the current page (no link).
+// Intermediate items link only when they have a URL.
+const breadcrumbs = trail.map((p, i) => {
+  const isLast = i === trail.length - 1;
+  let href: string | undefined;
+  if (!isLast && p.url) {
+    if (p.url.startsWith("/learn/") || /^https?:/.test(p.url)) {
+      href = p.url;
+    } else {
+      href = base + "/" + p.url.replace(/^\/+/, "");
+    }
+  }
+  return { label: p.navName ?? p.name, href };
+});
+---
+
+{breadcrumbs.length > 0 && (
+  <nav class="docs-topbar" aria-label="Breadcrumb">
+    <ol>
+      {breadcrumbs.map((b) => (
+        <li>{b.href ? <a href={b.href}>{b.label}</a> : <span>{b.label}</span>}</li>
+      ))}
+    </ol>
+  </nav>
+)}

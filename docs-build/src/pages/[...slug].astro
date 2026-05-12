@@ -1,0 +1,39 @@
+---
+import { getCollection, render } from "astro:content";
+import DocsLayout from "../layouts/DocsLayout.astro";
+
+export async function getStaticPaths() {
+  // Astro's glob loader lowercases entry ids. Strip trailing /index for
+  // dir/index.md → /dir routing.
+  const normalize = (id: string): string => id.replace(/\/index$/, "");
+  const entries = await getCollection("docs");
+  return entries.map((entry) => {
+    const id = normalize(entry.id);
+    // The repo's README is the docs landing page → render at the base root.
+    const slug = id === "readme" ? undefined : id;
+    return { params: { slug }, props: { entry } };
+  });
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const id = entry.id.replace(/\/index$/, "");
+const slug = id === "readme" ? "" : id;
+
+function prettifyFilename(s: string): string {
+  const base = s.split("/").pop() ?? s;
+  return base.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const title =
+  entry.data.title ?? headings[0]?.text ?? prettifyFilename(entry.id);
+---
+
+<DocsLayout
+  title={title}
+  summary={entry.data.summary}
+  headings={headings}
+  slug={slug}
+>
+  <Content />
+</DocsLayout>

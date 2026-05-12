@@ -1,0 +1,53 @@
+---
+import type { NavPage } from "../lib/nav";
+
+interface Props {
+  page: NavPage;
+  currentSlug: string;
+  expandedNames: Set<string>;
+  depth?: number;
+}
+
+const { page, currentSlug, expandedNames, depth = 0 } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function hrefFor(p: NavPage): string | undefined {
+  if (!p.url) return undefined;
+  if (/^https?:\/\//.test(p.url)) return p.url;
+  if (p.url.startsWith("/learn/")) return p.url;
+  return base + "/" + p.url.replace(/^\/+/, "");
+}
+
+function urlMatchesSlug(url: string | undefined): boolean {
+  if (!url) return false;
+  if (url.startsWith("/learn/") || /^https?:/.test(url)) return false;
+  return url.replace(/^\/+|\/+$/g, "") === currentSlug.replace(/^\/+|\/+$/g, "");
+}
+
+const label = page.navName ?? page.name;
+const href = hrefFor(page);
+const isSelected = urlMatchesSlug(page.url);
+const isExpanded = expandedNames.has(page.name);
+const hasChildren = !!page.pages?.length;
+---
+
+<li class:list={[{ expanded: isExpanded }]}>
+  {href ? (
+    <a href={href} class:list={[{ selected: isSelected }]}>{label}</a>
+  ) : (
+    <span class="docs-sidebar-group-label">{label}</span>
+  )}
+  {hasChildren && (
+    <ul>
+      {page.pages!.map((child) => (
+        <Astro.self
+          page={child}
+          currentSlug={currentSlug}
+          expandedNames={expandedNames}
+          depth={depth + 1}
+        />
+      ))}
+    </ul>
+  )}
+</li>
