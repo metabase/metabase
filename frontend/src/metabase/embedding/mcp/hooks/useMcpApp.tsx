@@ -21,7 +21,14 @@ interface McpAppState {
   app: App | null;
 }
 
-type ToolArgument = { query?: string; prompt?: string } | undefined;
+type VisualizeQueryToolInput = {
+  query?: string;
+};
+
+type VisualizeQueryToolResult = {
+  query?: string;
+  prompt?: string;
+};
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -54,7 +61,8 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolinput = (params) => {
-        const { query } = (params.arguments as ToolArgument) ?? {};
+        const { query } =
+          (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
 
         if (query) {
           setQuery(query);
@@ -67,7 +75,8 @@ export function useMcpApp(): McpAppState {
       // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
         const { query, prompt } =
-          (params.structuredContent as ToolArgument) ?? {};
+          (params.structuredContent as VisualizeQueryToolResult | undefined) ??
+          {};
 
         if (query) {
           setQuery(query);
