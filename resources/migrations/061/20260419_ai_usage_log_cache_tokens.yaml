@@ -1,4 +1,9 @@
 ## Track Anthropic prompt-caching token counts on ai_usage_log
+##
+## Note: the v3 view update that exposes these columns lives in a separate
+## file (20260511_ai_usage_log_view_v3.yaml) so it runs after the BOT-1406
+## PII compliance migration (20260504), which is what adds embedding_hostname
+## and the other PII columns to metabot_conversation that v3 projects.
 
 databaseChangeLog:
   - changeSet:
@@ -30,35 +35,3 @@ databaseChangeLog:
                   remarks: Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens).
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v61.2026-04-19T00:00:03
-      author: tsplude
-      runOnChange: true
-      comment: Update v_ai_usage_log to v3 - expose cache_creation_tokens, cache_read_tokens
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: ../instance_analytics_views/ai_usage_log/v3/postgres-ai_usage_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: ../instance_analytics_views/ai_usage_log/v3/mysql-ai_usage_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: ../instance_analytics_views/ai_usage_log/v3/h2-ai_usage_log.sql
-            relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: postgresql
-            path: ../instance_analytics_views/ai_usage_log/v2/postgres-ai_usage_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: ../instance_analytics_views/ai_usage_log/v2/mysql-ai_usage_log.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: ../instance_analytics_views/ai_usage_log/v2/h2-ai_usage_log.sql
-            relativeToChangelogFile: true
