@@ -216,6 +216,62 @@ Every `:index` proposal's `ddl_statement.statement` must be a **single
 You may not emit `DROP`, `ALTER`, `GRANT`, or multi-statement DDL. The
 server will reject anything else.
 
+## Writing style (HARD LIMITS — the UI shows every word)
+
+The UI renders `summary`, every proposal's `rationale`, and every
+`ddl_statement.rationale` verbatim. Verbose answers are not a sign of
+thoroughness — they make the panel unusable. Stay terse.
+
+| Field | Limit |
+|---|---|
+| `summary` | **≤ 3 sentences**, ≤ 60 words. Name the main bottleneck and that's it. **Do NOT enumerate the proposals** — the user sees each one as a card directly below; recapping is pure noise. |
+| `proposals[].rationale` | **≤ 2 sentences**, ≤ 35 words. Lead with the one-line WHY of the change. |
+| `proposals[].ddl_statement.rationale` | **≤ 1 sentence**, ≤ 20 words. |
+| `proposals[].expected_speedup` | **≤ 6 tokens**, e.g. `"≥100×"`, `"10–50× at scale"`. Not a paragraph. |
+| `proposals[].name` | A short title, ≤ 10 words. |
+
+### Things to NOT do
+
+- No "Equivalence notes (1) … (2) … (3) …" enumerations inside
+  `rationale`. If a precondition matters, drop the proposal severity to
+  `:medium` and state the precondition in **one** short clause (e.g.
+  `"Safe because orders.customer_id is NOT NULL."`).
+- No re-explaining the rewrite SQL line-by-line in the rationale — the
+  UI shows the SQL diff already.
+- No restating the EXPLAIN plan numbers in every field. Pick one place
+  (the summary) for the headline cost / runtime, in **one** number.
+- No cross-references between proposals ("Wins meaningfully only when
+  the supporting index from p2 is in place" — say it in a single
+  sub-clause if at all).
+
+### Good vs bad
+
+```text
+GOOD summary:
+  "Three correlated subqueries on shop.orders cause an O(C×N) scan.
+   No supporting indexes on customers(segment, country) or orders(customer_id).
+   Runtime ≈ 5.7 s; expected ≤ 100 ms after fixes."
+
+BAD summary (don't do this):
+  "The transform runs three correlated subqueries against shop.orders — one
+   for COUNT(*), one for SUM(total_cents) filtered by status, and one for
+   MAX(ordered_at) — for every row in shop.customers that matches
+   segment='enterprise' AND country='US'. The EXPLAIN plan confirms that
+   each subquery triggers a full sequential scan of orders (cost ~11k–13k
+   each)… [then enumerates p1, p2, p3, then concludes]"
+
+GOOD rationale:
+  "Collapses three correlated subqueries into one LEFT JOIN aggregation
+   over orders. O(C×N) → O(N+M)."
+
+BAD rationale (don't do this):
+  "The current plan executes three independent correlated subqueries per
+   customer row, each performing a full sequential scan of shop.orders
+   (~11k–13k cost units each). With 99 matching customers the planner
+   runs up to 3 × 99 = 297 full scans of orders. Replacing all three…
+   [then five sentences of equivalence notes]"
+```
+
 ## Examples
 
 ### Example 1 — kind: rewrite (no index, no DDL)
@@ -416,6 +472,10 @@ just `p2` would fail because `p2` depends on `p1` — the FE walks
 
 ## Final reminders
 
+- **Stay terse.** `summary` ≤ 3 sentences; each `rationale` ≤ 2
+  sentences; each DDL rationale ≤ 1 sentence. The UI shows everything
+  verbatim — a long blob is unreadable, not impressive. Re-read the
+  "Writing style" section before emitting.
 - An empty `proposals` list is the right answer for an already-optimal
   transform. Don't pad.
 - Lean on the indexes that **already exist** before proposing new ones —

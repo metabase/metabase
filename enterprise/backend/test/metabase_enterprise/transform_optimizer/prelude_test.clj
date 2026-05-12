@@ -59,7 +59,16 @@
         (is (or (str/includes? text "::bigint")
                 (str/includes? text "type compat"))))
       (testing "scale-dependent LATERAL caveat is documented"
-        (is (str/includes? text "lateral"))))))
+        (is (str/includes? text "lateral"))))
+
+    (testing "writing-style length limits are present"
+      ;; The UI renders summary / rationale / DDL rationale verbatim.
+      ;; Without explicit caps the LLM writes essays. These anchors
+      ;; protect that section from quiet regressions.
+      (is (str/includes? text "writing style"))
+      (is (str/includes? text "3 sentences"))
+      (is (str/includes? text "2 sentences"))
+      (is (str/includes? text "1 sentence")))))
 
 (deftest prelude-cached-test
   (testing "successive calls return the same string instance (delayed cache)"
