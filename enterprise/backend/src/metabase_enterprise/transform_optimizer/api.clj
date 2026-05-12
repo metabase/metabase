@@ -1,0 +1,153 @@
+(ns metabase-enterprise.transform-optimizer.api
+  "HTTP endpoints for the Transform Optimizer.
+
+  Mounted under `/api/ee/transform-optimizer` by the EE route map. The
+  primary endpoint is the streaming SSE one (`POST /:id/optimize`). Verify
+  and accept are simple request/response endpoints — see SUMMARY.md for the
+  wire contract.
+
+  Today the optimizer is buffered server-side: we call Claude, wait for the
+  full structured response, then re-emit it as a sequence of SSE events.
+  The FE contract is preserved (events arrive in the documented order) so
+  we can upgrade to incremental LLM streaming later without touching the
+  client."
+  (:require
+   [clojure.core.async :as a]
+   [metabase-enterprise.transform-optimizer.accept :as opt.accept]
+   [metabase-enterprise.transform-optimizer.core :as opt.core]
+   [metabase-enterprise.transform-optimizer.verify :as opt.verify]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.util.handlers :as handlers]
+   [metabase.server.streaming-response :as sr]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (java.io OutputStream)))
+
+(set! *warn-on-reflection* true)
+
+;; ---------------------------------------------------------------------------
+;; SSE helpers
+;;
+;; Server-Sent Events frames are:
+;;
+;;   event: <name>
+;;   data: <single line of JSON>
+;;
+;;   (blank line terminates the frame)
+;;
+;; The blank line is critical — without it the EventSource on the FE never
+;; dispatches the event. We always JSON-encode data (no multi-line payloads).
+
+(defn- write-sse!
+  "Write one SSE frame to `os` and flush. Returns `false` if the client is
+  gone (EofException) so the caller can stop the stream cleanly."
+  [^OutputStream os event-name data]
+  (try
+    (let [bytes (.getBytes (str "event: " event-name "\n"
+                                "data: "  (json/encode data) "\n\n")
+                           "UTF-8")]
+      (.write os bytes)
+      (.flush os)
+      true)
+    (catch org.eclipse.jetty.io.EofException _
+      false)))
+
+(defn- canceled? [canceled-chan]
+  (and canceled-chan (a/poll! canceled-chan)))
+
+;; ---------------------------------------------------------------------------
+;; Streaming endpoint
+
+(api.macros/defendpoint :post "/:id/optimize"
+  "Stream optimization proposals for the given transform as SSE events.
+
+  Emits, in order:
+    event: summary    — `{text}`
+    event: proposal   — one per proposal, in `depends_on` topological order
+    event: done       — `{optimization_degree}`
+
+  On failure: a single `event: error` frame then closes the stream."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- [:maybe [:map [:analyze {:optional true} [:maybe :boolean]]]]]
+  (let [transform (api/read-check :model/Transform id)
+        analyze?  (boolean (:analyze body))]
+    (sr/streaming-response {:content-type "text/event-stream"
+                            :headers      {"Cache-Control" "no-cache"
+                                           "X-Accel-Buffering" "no"}}
+      [^OutputStream os canceled-chan]
+      (try
+        (let [result (opt.core/optimize! (:id transform) :analyze? analyze?)]
+          (when-not (canceled? canceled-chan)
+            (write-sse! os "summary" {:text (or (:summary result) "")}))
+
+          (loop [[p & more] (:proposals result)]
+            (cond
+              (canceled? canceled-chan) :canceled
+              (nil? p)                  :done
+              :else (do (write-sse! os "proposal" p)
+                        (recur more))))
+
+          (when-not (canceled? canceled-chan)
+            (write-sse! os "done" {:optimization_degree (:optimization_degree result)})))
+        (catch Exception e
+          (log/errorf e "optimize streaming failed (transform-id=%d)" (:id transform))
+          (write-sse! os "error"
+                      {:message   (or (ex-message e) "unknown error")
+                       :retryable (boolean (-> e ex-data :retryable))}))))))
+
+;; ---------------------------------------------------------------------------
+;; Verify endpoint
+
+(api.macros/defendpoint :post "/:id/proposal/verify"
+  "Verify equivalence of the original transform vs the proposal. Materialises
+  both into scratch tables and compares via `EXCEPT ALL` in both directions.
+  See SUMMARY.md for the response shape.
+
+  Single-transform proposals only — precompute (DAG) verification is
+  deferred until DAG accept is in place."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map [:proposal :map]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (try
+      (opt.verify/verify transform (:proposal body))
+      (catch clojure.lang.ExceptionInfo e
+        (let [data (ex-data e)]
+          (if-let [code (:status-code data)]
+            {:status code
+             :body   (-> data
+                         (dissoc :status-code)
+                         (assoc :error (or (:error data) "verify_failed")
+                                :detail (ex-message e)))}
+            (throw e)))))))
+
+;; ---------------------------------------------------------------------------
+;; Accept endpoint (BE-5 stub)
+
+(api.macros/defendpoint :post "/:id/proposal/accept"
+  "Create the new transforms described by the proposal. Returns the created
+  transform records plus the advisory DDL list (DDL is not executed in this
+  branch — the user is expected to run it manually).
+
+  Phase-5 stub — returns 501 until BE-5 lands."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body :- [:map
+             [:proposal :map]
+             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/read-check :model/Transform id)
+  {:status 501
+   :body   {:error "accept endpoint not yet implemented (BE-5)"}})
+
+;; ---------------------------------------------------------------------------
+;; Route bundle
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/transform-optimizer` routes."
+  (handlers/routes
+   (api.macros/ns-handler *ns* +auth)))

@@ -49,10 +49,10 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 | # | Task | Depends on | Notes |
 |---|---|---|---|
 | BE-1 | Wire Metabot deftool `propose-transform-optimizations` | — | Replace `core/call-llm-stub`. Tool takes `{transform_id, opts}`, calls `core/build-prompt`, hands the rendered prompt to the Claude client in `metabase.metabot.self.claude`, parses streamed JSON, runs `core/finalise-proposals`. |
-| BE-2 | HTTP streaming endpoint `POST /api/transform/:id/optimize` | BE-1 | Reuses Metabot's SSE-streaming-writer-rf. See **Streaming endpoint** below for the wire contract. |
-| BE-3 | `GET /api/transform/:id/optimize/proposals` | persistence | Fetch persisted proposals (most recent first). Only needed if we persist; otherwise the panel runs the optimizer each time. |
-| BE-4 | `POST /api/transform/:id/optimize/proposal/:pid/verify` | none of BE-1..3 | Equivalence check. Pure server-side work; can be developed in parallel with BE-1. |
-| BE-5 | `POST /api/transform/:id/optimize/proposal/:pid/accept` | none | Creates the new transforms in `depends_on` order. DDL is advisory in this branch — *not* executed by Metabase; the response includes the validated DDL list for the user to copy. |
+| BE-2 | HTTP streaming endpoint `POST /api/ee/transform-optimizer/:id/optimize` | BE-1 | Reuses Metabot's SSE-streaming-writer-rf. See **Streaming endpoint** below for the wire contract. |
+| BE-3 | `GET /api/ee/transform-optimizer/:id/optimize/proposals` | persistence | Fetch persisted proposals (most recent first). Only needed if we persist; otherwise the panel runs the optimizer each time. |
+| BE-4 | `POST /api/ee/transform-optimizer/:id/proposal/verify` | none of BE-1..3 | Equivalence check. Pure server-side work; can be developed in parallel with BE-1. |
+| BE-5 | `POST /api/ee/transform-optimizer/:id/proposal/accept` | none | Creates the new transforms in `depends_on` order. DDL is advisory in this branch — *not* executed by Metabase; the response includes the validated DDL list for the user to copy. |
 | BE-6 | Persistence model `:model/TransformOptimizerProposal` | none | Liquibase migration + Toucan2 model. Stores the streamed payload + per-DDL `:validation` tags. Optional for the hackathon walking skeleton; required before merge. |
 | BE-7 | `clj-kondo` module config entry for `enterprise/transform-optimizer` | none | We currently cross `transforms-inspector`'s API boundary (`context/build-context`); will trip lint until registered. Either add `context` and `query-analysis` to the inspector's `:api` set or re-export them via `transforms-inspector.api`. |
 | BE-8 | Tests | BE-1..5 | Per-namespace unit tests. The harness from Phase 0 covers integration (equivalence + speedup) for the corpus of examples. |
@@ -81,7 +81,7 @@ Mirage / MSW; sample fixture below.
 ### Request
 
 ```
-POST /api/transform/:id/optimize
+POST /api/ee/transform-optimizer/:id/optimize
 Accept: text/event-stream
 Content-Type: application/json
 ```
@@ -191,7 +191,7 @@ data: {"optimization_degree":55}
 ### Verify
 
 ```
-POST /api/transform/:id/optimize/proposal/:pid/verify
+POST /api/ee/transform-optimizer/:id/proposal/verify
 ```
 
 Body: none. The proposal payload (including its `body` and any
@@ -221,7 +221,7 @@ column count between slow and fast):
 ### Accept
 
 ```
-POST /api/transform/:id/optimize/proposal/:pid/accept
+POST /api/ee/transform-optimizer/:id/proposal/accept
 ```
 
 Creates the proposal's transforms (1 for `rewrite` / `index`, N for

@@ -21,6 +21,7 @@
   (:require
    [metabase-enterprise.transform-optimizer.context :as context]
    [metabase-enterprise.transform-optimizer.ddl.parse :as ddl.parse]
+   [metabase-enterprise.transform-optimizer.llm :as llm]
    [metabase-enterprise.transform-optimizer.prelude :as prelude]
    [metabase-enterprise.transform-optimizer.prompt :as prompt]
    [metabase-enterprise.transform-optimizer.scoring :as scoring]
@@ -104,26 +105,22 @@
      :proposals           cleaned}))
 
 ;; ---------------------------------------------------------------------------
-;; Stub LLM call — replaced in Phase 2
-
-(defn- call-llm-stub
-  "Placeholder for the Metabot tool / Anthropic call. Phase 2 swaps this for
-  the streaming agent loop. Returns the canonical response shape so the
-  surrounding plumbing can be exercised."
-  [_prompt-map]
-  {:summary   "(LLM call not wired up yet — returning an empty proposal set.)"
-   :proposals []})
-
-;; ---------------------------------------------------------------------------
 ;; Public entry
 
 (defn optimize!
-  "End-to-end: load the transform, build the prompt, call the LLM (stub for
-  now), validate any emitted DDL, score, and return the UI-shaped payload.
+  "End-to-end: load the transform, build the prompt, call Claude with our
+  structured-output schema, validate any emitted DDL, score, and return the
+  UI-shaped payload.
+
+  This is the synchronous form — useful from the REPL and from the HTTP
+  endpoint as a fallback path. The streaming endpoint emits the same payload
+  as a sequence of SSE events.
 
   Options:
-    :analyze?  — forwarded to EXPLAIN. Defaults false. Don't pass true for
-                 transforms whose latest run took more than a few seconds.
+    :analyze?     — forwarded to EXPLAIN. Defaults false. Don't pass true for
+                    transforms whose latest run took more than a few seconds.
+    :llm-opts     — forwarded to `llm/propose-optimizations` (`:model`,
+                    `:temperature`, `:max-tokens`).
 
   Returns:
     {:transform           {…}
@@ -131,11 +128,13 @@
      :summary             <LLM diagnosis>
      :proposals           [{… :ddl_statements [{… :validation …}]} …]
      :optimization_degree <0..100>}"
-  [transform-id & {:as opts}]
+  [transform-id & {:keys [llm-opts] :as opts}]
   (try
     (let [transform   (fetch-transform transform-id)
-          prompt-map  (apply build-prompt transform (mapcat identity (or opts {})))
-          llm-out     (call-llm-stub prompt-map)
+          ctx-opts    (dissoc opts :llm-opts)
+          prompt-map  (apply build-prompt transform (mapcat identity ctx-opts))
+          llm-out     (apply llm/propose-optimizations prompt-map
+                             (mapcat identity (or llm-opts {})))
           finalised   (finalise-proposals (:proposals llm-out) (:context prompt-map))]
       (merge {:transform (select-keys transform [:id :name :source_database_id])
               :sql       (-> prompt-map :context :sql)
