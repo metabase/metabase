@@ -20,6 +20,7 @@ import type {
 } from "metabase/metabot/state";
 import {
   ActionIcon,
+  Box,
   Button,
   Card,
   Flex,
@@ -197,7 +198,7 @@ export const AgentMessage = ({
   hideActions,
   ...props
 }: AgentMessageProps) => {
-  const messageId = message.type === "text" ? (message.externalId ?? "") : "";
+  const messageId = "externalId" in message ? (message.externalId ?? "") : "";
   const canGiveFeedback = !!(
     showFeedbackButtons &&
     setFeedbackMessage &&
@@ -228,10 +229,10 @@ export const AgentMessage = ({
           <AgentTurnAlert
             variant="error"
             message={m.display?.message ?? t`Something went wrong`}
-            cta={
-              m.error.type === "metabase_ai_managed_locked" ? (
+            footer={
+              m.error.type === "metabase_ai_managed_locked" && (
                 <MetabotManagedProviderLimitActions inline />
-              ) : undefined
+              )
             }
             debugDetails={debug ? m.error : undefined}
           />
@@ -298,11 +299,13 @@ const AgentTurnAlert = ({
   variant,
   message,
   cta,
+  footer,
   debugDetails,
 }: {
   variant: "error" | "info";
   message: string;
   cta?: ReactNode;
+  footer?: ReactNode;
   debugDetails?: MetabotAgentTurnError;
 }) => (
   <Flex
@@ -342,6 +345,7 @@ const AgentTurnAlert = ({
         {JSON.stringify(debugDetails, null, 2)}
       </Card>
     )}
+    {footer && <Box ml="lg">{footer}</Box>}
   </Flex>
 );
 
