@@ -198,3 +198,11 @@ export function adminToolsModelCaching() {
 export function adminToolsGrantAccess() {
   return "/admin/tools/help/grant-access";
 }
+
+export function adminToolsIntrospector() {
+  return "/admin/tools/introspector";
+}
+
+export function adminToolsIntrospectorWorkload() {
+  return "/admin/tools/introspector/workload";
+}

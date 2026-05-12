@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -17,6 +16,7 @@ import {
 import { HotspotList } from "./HotspotList";
 import { SlotExpansion } from "./SlotExpansion";
 import { WorkloadGrid } from "./WorkloadGrid";
+import { WorkloadStatStrip } from "./WorkloadStatStrip";
 import { useGetWorkloadGridQuery, useGetWorkloadSlotQuery } from "./api";
 import type { WorkloadJobType } from "./types";
 import { useWorkloadParams } from "./useWorkloadParams";
@@ -73,14 +73,6 @@ export function WorkloadPage() {
         <Text c="text-secondary" size="sm">
           {t`Scheduled background work across your instance. Click a cell to see what runs in that hour.`}
         </Text>
-        <Group gap="md">
-          <Anchor component={Link} to="/admin/introspector" c="text-secondary">
-            {t`Content`}
-          </Anchor>
-          <Anchor component={Link} to="/admin/introspector/workload" fw={600}>
-            {t`Workload`}
-          </Anchor>
-        </Group>
       </Stack>
 
       {grid?.scheduler_status === "stopped" && (
@@ -88,6 +80,13 @@ export function WorkloadPage() {
           {t`Scheduled jobs are paused on this instance — workload data is unavailable.`}
         </Alert>
       )}
+
+      <WorkloadStatStrip
+        cells={grid?.cells ?? []}
+        scaleMax={grid?.scale_max ?? 0}
+        timezone={timezone}
+        isLoading={gridLoading}
+      />
 
       <Stack gap="sm" mb="md">
         <Group justify="space-between">

@@ -2,21 +2,15 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
-type IntrospectorNavItemProps = {
-  currentPath: string;
-};
-
 type IntrospectorPlugin = {
   isEnabled: boolean;
   IntrospectorPage: ComponentType;
-  IntrospectorNavItem: ComponentType<IntrospectorNavItemProps>;
   WorkloadPage: ComponentType;
 };
 
 const getDefaultPlugin = (): IntrospectorPlugin => ({
   isEnabled: false,
   IntrospectorPage: PluginPlaceholder,
-  IntrospectorNavItem: PluginPlaceholder,
   WorkloadPage: PluginPlaceholder,
 });
 

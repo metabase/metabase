@@ -298,20 +298,6 @@ export const getRoutes = (
           />
         )}
 
-        {PLUGIN_INTROSPECTOR.isEnabled && (
-          <Route
-            path="introspector"
-            component={PLUGIN_INTROSPECTOR.IntrospectorPage}
-          />
-        )}
-
-        {PLUGIN_INTROSPECTOR.isEnabled && (
-          <Route
-            path="introspector/workload"
-            component={PLUGIN_INTROSPECTOR.WorkloadPage}
-          />
-        )}
-
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route component={ToolsApp}>
             <IndexRedirect to="help" />
@@ -355,6 +341,18 @@ export const getRoutes = (
               <Route
                 path="dependencies"
                 component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+              />
+            )}
+            {PLUGIN_INTROSPECTOR.isEnabled && (
+              <Route
+                path="introspector"
+                component={PLUGIN_INTROSPECTOR.IntrospectorPage}
+              />
+            )}
+            {PLUGIN_INTROSPECTOR.isEnabled && (
+              <Route
+                path="introspector/workload"
+                component={PLUGIN_INTROSPECTOR.WorkloadPage}
               />
             )}
           </Route>

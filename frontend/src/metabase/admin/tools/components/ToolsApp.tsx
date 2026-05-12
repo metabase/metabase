@@ -8,6 +8,7 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { PLUGIN_INTROSPECTOR } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
@@ -58,6 +59,23 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="database"
             location={location}
           />
+          {PLUGIN_INTROSPECTOR.isEnabled && (
+            <ToolsNavItem
+              label={t`Introspector — Content`}
+              path={Urls.adminToolsIntrospector()}
+              icon="search"
+              location={location}
+              exact
+            />
+          )}
+          {PLUGIN_INTROSPECTOR.isEnabled && (
+            <ToolsNavItem
+              label={t`Introspector — Workload`}
+              path={Urls.adminToolsIntrospectorWorkload()}
+              icon="clock"
+              location={location}
+            />
+          )}
         </AdminNavWrapper>
       }
     >
@@ -68,12 +86,18 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
 
 type ToolsNavItemProps = AdminNavItemProps & {
   location: Location;
+  exact?: boolean;
 };
 
-const ToolsNavItem = ({ location, ...props }: ToolsNavItemProps) => {
-  // we want to highlight the nav item even if a subpath is active
-  const subpath = location?.pathname;
-  const isActive = !!props.path && subpath.includes(props.path);
+const ToolsNavItem = ({ location, exact, ...props }: ToolsNavItemProps) => {
+  // we want to highlight the nav item even if a subpath is active,
+  // unless `exact` is set — in which case only the exact path counts
+  // (used when two items share a prefix, e.g. `introspector` and
+  // `introspector/workload`).
+  const subpath = location?.pathname ?? "";
+  const isActive =
+    !!props.path &&
+    (exact ? subpath === props.path : subpath.includes(props.path));
 
   return <AdminNavItem {...props} active={isActive} />;
 };

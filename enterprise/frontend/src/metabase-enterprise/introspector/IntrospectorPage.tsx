@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Anchor, Box, Group, Stack, Tabs, Text, Title } from "metabase/ui";
+import { Box, Stack, Tabs, Text, Title } from "metabase/ui";
 
 import { useGetIntrospectorSummaryQuery } from "./api";
 import { StatStrip } from "./components/StatStrip";
@@ -46,18 +45,6 @@ export function IntrospectorPage() {
         <Text c="text-secondary" size="sm">
           {t`Find stale, broken, and unreferenced content across your instance.`}
         </Text>
-        <Group gap="md">
-          <Anchor component={Link} to="/admin/introspector" fw={600}>
-            {t`Content`}
-          </Anchor>
-          <Anchor
-            component={Link}
-            to="/admin/introspector/workload"
-            c="text-secondary"
-          >
-            {t`Workload`}
-          </Anchor>
-        </Group>
       </Stack>
 
       <Tabs

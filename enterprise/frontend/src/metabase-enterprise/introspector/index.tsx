@@ -1,6 +1,5 @@
 import { PLUGIN_INTROSPECTOR } from "metabase/plugins";
 
-import { IntrospectorNavItem } from "./IntrospectorNavItem";
 import { IntrospectorPage } from "./IntrospectorPage";
 import { initializeWorkloadPlugin } from "./workload";
 
@@ -10,6 +9,5 @@ import { initializeWorkloadPlugin } from "./workload";
 export function initializePlugin() {
   PLUGIN_INTROSPECTOR.isEnabled = true;
   PLUGIN_INTROSPECTOR.IntrospectorPage = IntrospectorPage;
-  PLUGIN_INTROSPECTOR.IntrospectorNavItem = IntrospectorNavItem;
   initializeWorkloadPlugin();
 }
