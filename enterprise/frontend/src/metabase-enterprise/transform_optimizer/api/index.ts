@@ -1,4 +1,5 @@
 import { EnterpriseApi } from "metabase-enterprise/api";
+import { idTag, invalidateTags } from "metabase-enterprise/api/tags";
 
 import type {
   DdlExecutionStatus,
@@ -144,6 +145,16 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
           ...(collectionId != null ? { collection_id: collectionId } : {}),
         },
       }),
+      // After accept we may have:
+      //   - run DDL on one of the transform's referenced tables → refetch the index list
+      //   - replaced the original transform's source in place → refetch the
+      //     transform detail so the SQL editor / read-only view doesn't show
+      //     stale text after the user switches tabs.
+      invalidatesTags: (_data, error, { transformId }) =>
+        invalidateTags(error, [
+          idTag("transform-optimizer-indexes", transformId),
+          idTag("transform", transformId),
+        ]),
     }),
     listTargetIndexes: builder.query<
       ListIndexesResponse,
@@ -153,6 +164,9 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/transform-optimizer/${transformId}/indexes`,
       }),
+      providesTags: (_data, _error, { transformId }) => [
+        idTag("transform-optimizer-indexes", transformId),
+      ],
     }),
     dropTargetIndex: builder.mutation<
       DropIndexResult,
@@ -163,6 +177,10 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform-optimizer/${transformId}/index/drop`,
         body: { index_name: indexName },
       }),
+      invalidatesTags: (_data, error, { transformId }) =>
+        invalidateTags(error, [
+          idTag("transform-optimizer-indexes", transformId),
+        ]),
     }),
   }),
 });

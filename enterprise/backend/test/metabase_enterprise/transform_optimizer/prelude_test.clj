@@ -21,7 +21,10 @@
     (testing "output schema anchors"
       (is (str/includes? text "summary"))
       (is (str/includes? text "proposals"))
-      (is (str/includes? text "ddl_statements"))
+      ;; One change per proposal: singular `ddl_statement` is the new
+      ;; canonical shape. We deliberately do NOT anchor on the legacy
+      ;; plural form here.
+      (is (str/includes? text "ddl_statement"))
       (is (str/includes? text "depends_on")))
 
     (testing "all proposal kinds are described"

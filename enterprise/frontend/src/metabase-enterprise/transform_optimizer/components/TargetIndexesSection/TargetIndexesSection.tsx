@@ -182,7 +182,12 @@ function IndexRow({
   busy: boolean;
   readOnly?: boolean;
 }) {
-  const canDrop = !index.is_primary && !readOnly;
+  // Primary keys are foundational — we don't even offer the option to
+  // drop them (would orphan FKs and uniqueness guarantees). For everything
+  // else, the button is enabled unless the user lacks DB write perms,
+  // in which case we render a disabled+tooltip variant.
+  const isPk = index.is_primary;
+  const canDrop = !isPk && !readOnly;
   return (
     <Box className={styles.row}>
       <Box miw={0}>
@@ -217,7 +222,7 @@ function IndexRow({
         <code className={styles.definition}>{index.definition}</code>
       </Box>
       <Group justify="flex-end" gap="xs" wrap="nowrap">
-        {canDrop ? (
+        {isPk ? null : canDrop ? (
           <Button
             color="error"
             variant="subtle"
@@ -229,11 +234,7 @@ function IndexRow({
           </Button>
         ) : (
           <Tooltip
-            label={
-              index.is_primary
-                ? t`Primary keys can't be dropped from the optimizer.`
-                : t`You don't have permission to drop indexes here.`
-            }
+            label={t`You don't have permission to drop indexes here.`}
           >
             <span>
               <Button color="error" variant="subtle" size="xs" disabled>
