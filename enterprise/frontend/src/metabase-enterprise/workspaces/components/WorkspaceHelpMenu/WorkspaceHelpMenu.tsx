@@ -26,7 +26,7 @@ export function WorkspaceHelpMenu() {
             to={fileBasedDevDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<Icon name="reference" />}
+            leftSection={<Icon name="external" />}
           >
             {t`File-based development`}
           </Menu.Item>
@@ -37,7 +37,7 @@ export function WorkspaceHelpMenu() {
             to={remoteSyncDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<Icon name="reference" />}
+            leftSection={<Icon name="external" />}
           >
             {t`Using remote sync`}
           </Menu.Item>

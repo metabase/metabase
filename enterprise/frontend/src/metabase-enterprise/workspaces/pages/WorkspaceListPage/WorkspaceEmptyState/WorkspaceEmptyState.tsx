@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { Button, Card, Group, Stack, Text, Title } from "metabase/ui";
+import { Button, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 export function WorkspaceEmptyState() {
   return (
@@ -44,6 +44,7 @@ function HelpSection() {
             to={fileBasedDevDocsUrl}
             target="_blank"
             rel="noreferrer"
+            leftSection={<Icon name="external" />}
           >
             {t`File-based development`}
           </Button>
@@ -54,6 +55,7 @@ function HelpSection() {
             to={remoteSyncDocsUrl}
             target="_blank"
             rel="noreferrer"
+            leftSection={<Icon name="external" />}
           >
             {t`Using remote sync`}
           </Button>

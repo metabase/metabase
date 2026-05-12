@@ -8,7 +8,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
@@ -107,6 +107,9 @@ function NewWorkspaceDatabaseForm({
         return (
           <Form>
             <Stack gap="lg">
+              <Text>
+                {t`Provisioning will create a temporary schema and user in the database, grant the user read access to the selected schemas, and write access to the new schema.`}
+              </Text>
               <DatabaseSelect
                 databases={availableDatabases}
                 value={values.database_id}
@@ -127,7 +130,10 @@ function NewWorkspaceDatabaseForm({
               <FormErrorMessage />
               <Group justify="flex-end">
                 <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton label={t`Add`} variant="filled" />
+                <FormSubmitButton
+                  label={t`Provision database`}
+                  variant="filled"
+                />
               </Group>
             </Stack>
           </Form>

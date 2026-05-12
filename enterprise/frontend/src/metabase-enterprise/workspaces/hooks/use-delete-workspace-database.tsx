@@ -32,9 +32,9 @@ export function useDeleteWorkspaceDatabase({
       : t`Database ${workspaceDatabase.database_id}`;
 
     show({
-      title: t`Remove ${databaseLabel}?`,
-      message: t`This will deprovision the database from the workspace.`,
-      confirmButtonText: t`Remove`,
+      title: t`Deprovision ${databaseLabel}?`,
+      message: t`This will delete the temporary user and schema from the database.`,
+      confirmButtonText: t`Deprovision`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
         await deleteWorkspaceDatabase({

@@ -8,7 +8,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useUpdateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type {
   Database,
@@ -108,6 +108,9 @@ function UpdateWorkspaceDatabaseForm({
       {({ values, setFieldValue, dirty }) => (
         <Form>
           <Stack gap="lg">
+            <Text>
+              {t`Reprovisioning will first delete the temporary user and schema, then recreate them with the new configuration.`}
+            </Text>
             <DatabaseSelect
               databases={availableDatabases}
               value={workspaceDatabase.database_id}
@@ -125,7 +128,7 @@ function UpdateWorkspaceDatabaseForm({
             <Group justify="flex-end">
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
-                label={t`Save`}
+                label={t`Provision database`}
                 variant="filled"
                 disabled={!dirty}
               />

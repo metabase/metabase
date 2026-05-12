@@ -36,10 +36,11 @@ export function NewWorkspaceButton({
       >
         <Button
           disabled={!hasAvailableDatabases}
-          aria-label={t`Add workspace`}
           leftSection={<Icon name="add" />}
           onClick={open}
-        />
+        >
+          {t`Add workspace`}
+        </Button>
       </Tooltip>
       <NewWorkspaceModal
         opened={opened}
