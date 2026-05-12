@@ -21,6 +21,7 @@ import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -301,6 +302,114 @@ describe("DashCard", () => {
   it("should not show a 'replace card' action", () => {
     setup({ isEditing: false });
     expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
+  });
+
+  const permissionDeniedDataset = createMockDataset({
+    error: { status: 403 },
+    error_type: SERVER_ERROR_TYPES.missingPermissions,
+  });
+
+  it("should show the permission-denied message on a visualizer dashcard the user cannot read", () => {
+    const visualizerDashcard = createMockDashboardCard({
+      card: createMockCard({
+        name: "Private Card",
+        display: "table",
+      }),
+      visualization_settings: {
+        visualization: {
+          display: "table",
+          columns: [],
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${tableDashcard.card.id}`,
+                originalName: "SUBTOTAL",
+                name: "COLUMN_1",
+              },
+            ],
+          },
+          settings: {},
+        },
+      },
+    });
+    const permissionDeniedData: DashCardDataMap = {
+      [visualizerDashcard.id]: {
+        [visualizerDashcard.card.id]: permissionDeniedDataset,
+      },
+    };
+
+    setup({
+      dashboard: {
+        ...testDashboard,
+        dashcards: [visualizerDashcard],
+      },
+      dashcard: visualizerDashcard,
+      dashcardData: permissionDeniedData,
+    });
+
+    expect(
+      screen.getByText("Sorry, you don't have permission to see this card."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Some columns are missing/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the permission-denied message on a multi-source visualizer dashcard when any source is denied", () => {
+    const allowedSourceCardId = 9000;
+    const deniedSourceCardId = 9001;
+    const visualizerDashcard = createMockDashboardCard({
+      card: createMockCard({
+        id: allowedSourceCardId,
+        name: "Public Source",
+        display: "table",
+      }),
+      series: [
+        createMockCard({
+          id: deniedSourceCardId,
+          name: "Private Source",
+          display: "table",
+        }),
+      ],
+      visualization_settings: {
+        visualization: {
+          display: "table",
+          columns: [],
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${deniedSourceCardId}`,
+                originalName: "SUBTOTAL",
+                name: "COLUMN_1",
+              },
+            ],
+          },
+          settings: {},
+        },
+      },
+    });
+    const mixedAccessData: DashCardDataMap = {
+      [visualizerDashcard.id]: {
+        [allowedSourceCardId]: createMockDataset(),
+        [deniedSourceCardId]: permissionDeniedDataset,
+      },
+    };
+
+    setup({
+      dashboard: {
+        ...testDashboard,
+        dashcards: [visualizerDashcard],
+      },
+      dashcard: visualizerDashcard,
+      dashcardData: mixedAccessData,
+    });
+
+    expect(
+      screen.getByText("Sorry, you don't have permission to see this card."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Some columns are missing/),
+    ).not.toBeInTheDocument();
   });
 
   describe("edit mode", () => {

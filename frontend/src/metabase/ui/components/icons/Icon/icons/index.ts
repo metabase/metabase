@@ -316,6 +316,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import mcp_component from "./mcp.svg?component";
+import mcp_source from "./mcp.svg?source";
 import medallion_component from "./medallion.svg?component";
 import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
@@ -1185,6 +1187,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    mcp: {
+      component: mcp_component,
+      source: mcp_source,
+    },
     medallion: {
       component: medallion_component,
       source: medallion_source,
@@ -1888,6 +1894,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "mcp"
   | "medallion"
   | "message_circle"
   | "metabot"

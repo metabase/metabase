@@ -7,7 +7,6 @@ import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
-export const ActionSchema = new schema.Entity("actions");
 export const QuestionSchema = new schema.Entity("questions");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const BookmarkSchema = new schema.Entity("bookmarks");
@@ -116,7 +115,6 @@ MeasureSchema.define({
 CacheConfigSchema.define({});
 
 export const ENTITIES_SCHEMA_MAP = {
-  actions: ActionSchema,
   questions: QuestionSchema,
   cacheConfigs: CacheConfigSchema,
   bookmarks: BookmarkSchema,

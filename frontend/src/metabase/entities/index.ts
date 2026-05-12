@@ -68,7 +68,6 @@
  *   )(BookContainer);
  */
 
-export { Actions as actions } from "./actions/actions";
 export { Collections as collections } from "./collections";
 export { SnippetCollections as snippetCollections } from "./snippet-collections";
 export { Dashboards as dashboards } from "./dashboards";
@@ -79,7 +78,5 @@ export { Databases as databases } from "./databases";
 export { Schemas as schemas } from "./schemas";
 export { Tables as tables } from "./tables";
 export { Fields as fields } from "./fields";
-export { Segments as segments } from "./segments";
-export { Measures as measures } from "./measures";
 
 export { Snippets as snippets } from "./snippets";

@@ -176,6 +176,10 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
 
+## Pass parameter values to embedded components
+
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).
+
 ## Page-level config
 
 To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:

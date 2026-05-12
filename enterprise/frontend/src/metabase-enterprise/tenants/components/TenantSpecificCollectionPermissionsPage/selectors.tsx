@@ -16,6 +16,11 @@ import {
   DataPermissionType,
   type PermissionEditorType,
 } from "metabase/admin/permissions/types";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
@@ -24,11 +29,6 @@ import {
 } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
 import type {
   CollectionId,

@@ -7,10 +7,8 @@ import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Schema from "metabase-lib/v1/metadata/Schema";
-import Segment from "metabase-lib/v1/metadata/Segment";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -19,7 +17,9 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import type {
   Collection as ApiCollection,
+  Table as ApiTable,
   Card,
+  Measure,
   Metric,
   NormalizedCollection,
   NormalizedDatabase,
@@ -30,6 +30,7 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  Segment,
 } from "metabase-types/api";
 
 import { getSettings } from "./settings";
@@ -150,10 +151,10 @@ export const getMetadata: (
         .map((f) => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
-      Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
+      Object.values(segments).map((s) => [s.id, createSegment(s)]),
     );
     metadata.measures = Object.fromEntries(
-      Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
     );
     metadata.metrics = Object.fromEntries(
       Object.values(metrics).map((m) => [m.id, createMetric(m)]),
@@ -186,11 +187,8 @@ export const getMetadata: (
     Object.values(metadata.schemas).forEach((schema) => {
       schema.tables = hydrateSchemaTables(schema, metadata);
     });
-    Object.values(metadata.segments).forEach((segment) => {
-      segment.table = hydrateSegmentTable(segment, metadata);
-    });
     Object.values(metadata.measures).forEach((measure) => {
-      measure.table = hydrateMeasureTable(measure, metadata);
+      measure.table = hydrateMeasureTable(measure, tables);
     });
     Object.values(metadata.metrics).forEach((metric) => {
       metric.collection = hydrateMetricCollection(metric, collections);
@@ -267,22 +265,14 @@ function createForeignKey(
   return instance;
 }
 
-function createSegment(
-  segment: NormalizedSegment,
-  metadata: Metadata,
-): Segment {
-  const instance = new Segment(segment);
-  instance.metadata = metadata;
-  return instance;
+function createSegment(segment: NormalizedSegment): Segment {
+  const { table: _normalizedTableId, ...rest } = segment;
+  return rest;
 }
 
-function createMeasure(
-  measure: NormalizedMeasure,
-  metadata: Metadata,
-): Measure {
-  const instance = new Measure(measure);
-  instance.metadata = metadata;
-  return instance;
+function createMeasure(measure: NormalizedMeasure): Measure {
+  const { table: _normalizedTableId, ...rest } = measure;
+  return rest;
 }
 
 function createMetric(metric: NormalizedMetric): Metric {
@@ -399,7 +389,9 @@ function hydrateTableForeignKeys(
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
+  return segmentIds
+    .map((id) => metadata.segments[id] ?? null)
+    .filter(isNotNull);
 }
 
 function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
@@ -433,18 +425,27 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   }
 }
 
-function hydrateSegmentTable(
-  segment: Segment,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(segment.table_id) ?? undefined;
-}
-
 function hydrateMeasureTable(
   measure: Measure,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(measure.table_id) ?? undefined;
+  tables: Record<string, NormalizedTable>,
+): ApiTable | undefined {
+  const normalized = tables[measure.table_id];
+  if (!normalized) {
+    return undefined;
+  }
+  const {
+    db: _db,
+    fields: _fields,
+    fks: _fks,
+    segments: _segments,
+    measures: _measures,
+    metrics: _metrics,
+    schema: _schema,
+    schema_name,
+    original_fields: _original_fields,
+    ...rest
+  } = normalized;
+  return { ...rest, schema: schema_name ?? "" };
 }
 
 function hydrateMetricCollection(

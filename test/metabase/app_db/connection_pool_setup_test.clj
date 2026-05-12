@@ -6,6 +6,7 @@
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.core :as app-db]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -98,6 +99,71 @@
         (Thread/sleep 30)
         (is (not (#'mdb.connection-pool-setup/recent-activity?* latest-activity (t/millis 10)))
             "recent-window-duration has elapsed but still recent")))))
+
+(defn- with-config-overrides
+  "Returns a fn replacement for `config/config-int` (or `config/config-bool`) that returns
+  `overrides`' value for matching keys and the original config fn's value otherwise."
+  [orig-fn overrides]
+  (fn [k]
+    (if (contains? overrides k)
+      (get overrides k)
+      (orig-fn k))))
+
+(deftest application-db-connection-pool-props-defaults-test
+  (testing "default values are preserved when no overrides are set"
+    (with-redefs [config/config-int  (with-config-overrides config/config-int
+                                       {:mb-application-db-max-connection-pool-size                  nil
+                                        :mb-application-db-unreturned-connection-timeout            nil
+                                        :mb-application-db-unreturned-connection-timeout-seconds    nil
+                                        :mb-application-db-max-connection-age-seconds               nil
+                                        :mb-application-db-idle-connection-test-period-seconds      nil
+                                        :mb-application-db-max-idle-time-excess-connections-seconds nil})
+                  config/config-bool (with-config-overrides config/config-bool
+                                       {:mb-application-db-test-connection-on-checkout nil})]
+      (let [props (#'mdb.connection-pool-setup/application-db-connection-pool-props)]
+        (is (= 60   (get props "idleConnectionTestPeriod")))
+        (is (= 600  (get props "maxIdleTimeExcessConnections")))
+        (is (= 3600 (get props "maxConnectionAge")))
+        (is (= 15   (get props "maxPoolSize")))
+        (is (= 3600 (get props "unreturnedConnectionTimeout")))
+        (is (false? (get props "testConnectionOnCheckout")))))))
+
+(deftest application-db-connection-pool-props-overrides-test
+  (testing "MB_APPLICATION_DB_MAX_CONNECTION_AGE_SECONDS overrides maxConnectionAge"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-max-connection-age-seconds 0})]
+      (is (= 0 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                    "maxConnectionAge"))
+          "setting maxConnectionAge to 0 must be honored (use case: RDS IAM auth via the AWS JDBC wrapper)")))
+  (testing "MB_APPLICATION_DB_IDLE_CONNECTION_TEST_PERIOD_SECONDS overrides idleConnectionTestPeriod"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-idle-connection-test-period-seconds 30})]
+      (is (= 30 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                     "idleConnectionTestPeriod")))))
+  (testing "MB_APPLICATION_DB_MAX_IDLE_TIME_EXCESS_CONNECTIONS_SECONDS overrides maxIdleTimeExcessConnections"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-max-idle-time-excess-connections-seconds 120})]
+      (is (= 120 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                      "maxIdleTimeExcessConnections")))))
+  (testing "MB_APPLICATION_DB_TEST_CONNECTION_ON_CHECKOUT overrides testConnectionOnCheckout"
+    (with-redefs [config/config-bool (with-config-overrides config/config-bool
+                                       {:mb-application-db-test-connection-on-checkout true})]
+      (is (true? (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                      "testConnectionOnCheckout"))))))
+
+(deftest application-db-unreturned-connection-timeout-aliasing-test
+  (testing "the _SECONDS-suffixed name takes precedence over the legacy unsuffixed name"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-unreturned-connection-timeout-seconds 42
+                                       :mb-application-db-unreturned-connection-timeout         99})]
+      (is (= 42 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                     "unreturnedConnectionTimeout")))))
+  (testing "the legacy unsuffixed name still works when the _SECONDS-suffixed name is not set"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-unreturned-connection-timeout-seconds nil
+                                       :mb-application-db-unreturned-connection-timeout         99})]
+      (is (= 99 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                     "unreturnedConnectionTimeout"))))))
 
 (deftest reset-read-only-test
   (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
