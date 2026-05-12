@@ -80,9 +80,9 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
+            - indexExists:
                 tableName: metabot_source_feedback
-                constraintName: uq_metabot_source_feedback_message_user_source
+                indexName: uq_metabot_source_feedback_message_user_source
       changes:
         - addUniqueConstraint:
             tableName: metabot_source_feedback

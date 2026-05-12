@@ -29,9 +29,9 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-            - uniqueConstraintExists:
+            - indexExists:
                 tableName: metabot_message
-                constraintName: uq_metabot_message_external_id
+                indexName: uq_metabot_message_external_id
       changes:
         - addUniqueConstraint:
             tableName: metabot_message
