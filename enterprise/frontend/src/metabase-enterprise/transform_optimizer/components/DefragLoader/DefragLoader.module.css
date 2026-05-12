@@ -1,0 +1,293 @@
+/* 90s-defrag aesthetic, Metabase palette. Hard pixel borders, beveled
+   chrome, chunky cells — but every colour is pulled from the brand tokens
+   so it sits inside the rest of the product rather than next to it. */
+
+.window {
+  /* Chrome neutrals — derived from Metabase's grayscale so the window
+     reads as "Metabase chrome", not "Windows 95 chrome". */
+  --chrome: var(--mb-color-bg-light);
+  --chrome-darker: color-mix(
+    in srgb,
+    var(--mb-color-border) 60%,
+    var(--mb-color-bg-medium)
+  );
+  --chrome-shadow: var(--mb-color-border);
+  --chrome-highlight: var(--mb-color-bg-white);
+
+  /* Title bar — brand-blue gradient. */
+  --title-from: color-mix(in srgb, var(--mb-color-brand) 70%, black);
+  --title-to: var(--mb-color-brand);
+  --title-fg: var(--mb-color-text-white, #ffffff);
+
+  /* Cell palette — semantic tokens. */
+  --grid-bg: var(--mb-color-bg-white);
+  --grid-line: color-mix(
+    in srgb,
+    var(--mb-color-border) 70%,
+    transparent
+  );
+
+  --data: var(--mb-color-brand);
+  --data-light: color-mix(in srgb, var(--mb-color-brand) 60%, white);
+  --data-dark: color-mix(in srgb, var(--mb-color-brand) 60%, black);
+
+  --system: var(--mb-color-warning);
+  --system-light: color-mix(in srgb, var(--mb-color-warning) 60%, white);
+  --system-dark: color-mix(in srgb, var(--mb-color-warning) 60%, black);
+
+  --unmoveable: var(--mb-color-error);
+  --unmoveable-light: color-mix(in srgb, var(--mb-color-error) 60%, white);
+  --unmoveable-dark: color-mix(in srgb, var(--mb-color-error) 60%, black);
+
+  --moving: var(--mb-color-success);
+  --moving-light: color-mix(in srgb, var(--mb-color-success) 60%, white);
+  --moving-dark: color-mix(in srgb, var(--mb-color-success) 60%, black);
+
+  --free: var(--mb-color-bg-white);
+  --free-edge: color-mix(in srgb, var(--mb-color-border) 60%, transparent);
+
+  display: block;
+  width: 100%;
+  background: var(--chrome);
+  padding: 2px;
+  box-sizing: border-box;
+  /* Outer bevel: bright top-left, dim bottom-right. */
+  border-top: 2px solid var(--chrome-highlight);
+  border-left: 2px solid var(--chrome-highlight);
+  border-right: 2px solid var(--chrome-darker);
+  border-bottom: 2px solid var(--chrome-darker);
+  box-shadow: 1px 1px 0 0 var(--chrome-shadow);
+  font-family: "Pixelated MS Sans Serif", "MS Sans Serif", Geneva, Tahoma,
+    sans-serif;
+  color: var(--mb-color-text-primary);
+  user-select: none;
+}
+
+/* ---------- Title bar ---------- */
+.titleBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 2px 2px 2px 3px;
+  background: linear-gradient(
+    90deg,
+    var(--title-from) 0%,
+    var(--title-to) 100%
+  );
+  color: var(--title-fg);
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.titleIcon {
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--chrome);
+  color: var(--mb-color-text-primary);
+  border-top: 1px solid var(--chrome-highlight);
+  border-left: 1px solid var(--chrome-highlight);
+  border-right: 1px solid var(--chrome-darker);
+  border-bottom: 1px solid var(--chrome-darker);
+}
+
+.titleIconInner {
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--mb-color-brand);
+}
+
+.titleText {
+  flex: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titleControls {
+  display: flex;
+  gap: 2px;
+}
+
+.titleBtn,
+.titleBtnClose {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  background: var(--chrome);
+  color: var(--mb-color-text-primary);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  border-top: 1px solid var(--chrome-highlight);
+  border-left: 1px solid var(--chrome-highlight);
+  border-right: 1px solid var(--chrome-darker);
+  border-bottom: 1px solid var(--chrome-darker);
+}
+
+/* ---------- Body ---------- */
+.body {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gridFrame {
+  background: var(--grid-bg);
+  padding: 2px;
+  /* Sunken bevel — opposite of the outer window. */
+  border-top: 1px solid var(--chrome-darker);
+  border-left: 1px solid var(--chrome-darker);
+  border-right: 1px solid var(--chrome-highlight);
+  border-bottom: 1px solid var(--chrome-highlight);
+}
+
+.grid {
+  display: grid;
+  gap: 1px;
+  background: var(--grid-line);
+  width: 100%;
+  /* Lock the cell aspect ratio to the grid's column/row count so the
+     squares stay square-ish as the container resizes. */
+  aspect-ratio: 28 / 8;
+}
+
+.cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.22),
+    inset -1px -1px 0 0 rgba(0, 0, 0, 0.18);
+}
+
+.free {
+  background: var(--free);
+}
+.free::after {
+  box-shadow: inset 0 0 0 1px var(--free-edge);
+}
+
+.data {
+  background: var(--data);
+}
+.data::after {
+  box-shadow: inset 1px 1px 0 0 var(--data-light),
+    inset -1px -1px 0 0 var(--data-dark);
+}
+
+.system {
+  background: var(--system);
+}
+.system::after {
+  box-shadow: inset 1px 1px 0 0 var(--system-light),
+    inset -1px -1px 0 0 var(--system-dark);
+}
+
+.unmoveable {
+  background: var(--unmoveable);
+}
+.unmoveable::after {
+  box-shadow: inset 1px 1px 0 0 var(--unmoveable-light),
+    inset -1px -1px 0 0 var(--unmoveable-dark);
+}
+
+.moving {
+  background: var(--moving);
+  animation: blink 240ms steps(2, start) infinite;
+}
+.moving::after {
+  box-shadow: inset 1px 1px 0 0 var(--moving-light),
+    inset -1px -1px 0 0 var(--moving-dark);
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    filter: brightness(1.18);
+  }
+  50%,
+  100% {
+    filter: brightness(0.88);
+  }
+}
+
+/* ---------- Legend ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  font-size: 10px;
+  padding: 2px;
+  color: var(--mb-color-text-secondary);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  position: relative;
+  border-top: 1px solid var(--chrome-darker);
+  border-left: 1px solid var(--chrome-darker);
+  border-right: 1px solid var(--chrome-highlight);
+  border-bottom: 1px solid var(--chrome-highlight);
+}
+
+.legendLabel {
+  font-family: inherit;
+  color: var(--mb-color-text-primary);
+}
+
+/* ---------- Status bar ---------- */
+.statusBar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--chrome);
+  padding: 2px 4px;
+  font-family: "Courier New", "Lucida Console", monospace;
+  font-size: 10px;
+  border-top: 1px solid var(--chrome-highlight);
+  border-left: 1px solid var(--chrome-highlight);
+  border-right: 1px solid var(--chrome-darker);
+  border-bottom: 1px solid var(--chrome-darker);
+  color: var(--mb-color-text-primary);
+}
+
+.statusText,
+.statusTextRight {
+  background: var(--chrome);
+  padding: 1px 4px;
+  border-top: 1px solid var(--chrome-darker);
+  border-left: 1px solid var(--chrome-darker);
+  border-right: 1px solid var(--chrome-highlight);
+  border-bottom: 1px solid var(--chrome-highlight);
+  letter-spacing: 0.04em;
+}
+
+.statusTextRight {
+  margin-left: auto;
+  min-width: 36px;
+  text-align: right;
+  color: var(--mb-color-brand);
+  font-weight: bold;
+}

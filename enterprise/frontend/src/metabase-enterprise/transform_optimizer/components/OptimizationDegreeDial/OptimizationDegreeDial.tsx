@@ -1,6 +1,8 @@
 import { c, t } from "ttag";
 
-import { Box, Group, Loader, Stack, Text } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
+
+import { DefragLoader } from "../DefragLoader";
 
 import S from "./OptimizationDegreeDial.module.css";
 
@@ -22,13 +24,9 @@ export function OptimizationDegreeDial({
   score,
   errorMessage,
 }: Props) {
+    return <DefragLoader />;
   if (status === "streaming" && score == null) {
-    return (
-      <Group gap="md" align="center">
-        <Loader size="lg" />
-        <Text c="text-secondary">{t`Analyzing transform…`}</Text>
-      </Group>
-    );
+    return <DefragLoader />;
   }
 
   if (status === "error") {
