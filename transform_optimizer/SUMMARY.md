@@ -59,18 +59,64 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 
 ## Open BE tasks
 
-| # | Task | Depends on | Notes |
+### Done
+
+| # | Task | Notes |
+|---|---|---|
+| BE-1 | ✅ Wire LLM call | `llm.clj` calls `metabot.self/call-llm-structured` with the structured-output schema. Default model `anthropic/claude-sonnet-4-6`. Prelude + context concatenated into one user message (call-llm-structured has no separate system slot). |
+| BE-2 | ✅ HTTP streaming endpoint | `api.clj` POST `/api/ee/transform-optimizer/:id/optimize` emits the SSE events per the **Streaming endpoint** contract below. Buffered today (LLM call completes before any event is emitted); upgrade to true streaming is **F3**. |
+| BE-4 | ✅ Verify endpoint (single proposal) | `verify.clj` materialises both sides into a scratch schema and EXCEPT-ALL diffs both directions. Precompute (DAG) verification deferred — see **C3**. |
+| BE-5 | ✅ Accept endpoint | `accept.clj` creates a transform per proposal that has a body; pure-`:index` proposals are skipped. DDL returned as advisory. DAG body-substitution still missing — see **C1**. |
+| BE-7 | ✅ `clj-kondo` module config | `enterprise/transform-optimizer` registered; `inspector.context` + `inspector.query-analysis` added to `enterprise/transforms-inspector`'s `:api` set. |
+
+### Correctness / completeness — ship-blockers
+
+These surfaced when I reviewed the just-written code; they're the gaps a
+real user would hit on day one.
+
+| # | Where | What | Effort |
 |---|---|---|---|
-| BE-1 | ✅ Wire LLM call | — | `llm.clj` calls `metabot.self/call-llm-structured` with the structured-output schema. Default model `anthropic/claude-sonnet-4-6`. Prelude + context concatenated into a single user message (call-llm-structured has no separate system slot). |
-| BE-2 | ✅ HTTP streaming endpoint | — | `api.clj`: `POST /api/ee/transform-optimizer/:id/optimize` emits the SSE events per the **Streaming endpoint** contract below. |
-| BE-3 | `GET /api/ee/transform-optimizer/:id/proposals` | BE-6 | Fetch persisted proposals (most recent first). Only needed once we persist; today the panel re-runs the optimizer each time. |
-| BE-4 | ✅ Verify endpoint | — | `verify.clj` materialises both sides into a scratch schema and EXCEPT-ALL diffs both directions. Single-transform proposals only — precompute DAGs deferred. |
-| BE-5 | ✅ Accept endpoint | — | `accept.clj` creates a transform per proposal that has a body; pure-`:index` proposals are skipped. DDL returned as advisory. |
-| BE-6 | Persistence model `:model/TransformOptimizerProposal` | — | Liquibase migration + Toucan2 model. Stores the streamed payload + per-DDL `:validation` tags. Optional for the walking skeleton; required before merge. |
-| BE-7 | ✅ `clj-kondo` module config | — | `enterprise/transform-optimizer` registered; `inspector.context` + `inspector.query-analysis` added to `enterprise/transforms-inspector`'s `:api` set. |
-| BE-8 | Integration tests | — | Pure-unit tests for scoring/ddl/prompt/prelude/core ✅. End-to-end tests against a seeded Postgres still to write (verify + accept) — best done as a follow-up after the FE is connected. |
-| BE-9 | Permission-check at accept-time | — | Today only `read-check` runs on the source transform. Accept should also assert write permission on the target DB. |
-| BE-10 | Cost guard | — | Skip EXPLAIN ANALYZE / verify materialisation for transforms whose latest run exceeded N minutes. |
+| **C1** | `accept.clj` | **DAG body-substitution.** When `p3.body` says `… FROM <p1 target> …`, accept must replace `<p1 target>` with the actual `schema.table` of the just-created sibling. Without this, precompute accept silently emits broken transforms. | ~45 min |
+| **C2** | `accept.clj` | **Topological-order check + target-name collision detection.** Verify caller-given proposal order matches `depends_on`, reject duplicate target names within the batch, and refuse if a target name already exists in the destination DB. | ~30 min |
+| **C3** | `verify.clj` | **DAG verification.** Currently returns 422 on `kind = precompute`. Extend to materialise each precompute body to a scratch table, substitute its name into the leaf, then EXCEPT-ALL. | ~1 hr |
+| **C4** | `verify.clj` | **Scratch-schema isolation.** Two concurrent `/verify` calls both write `transform_optimizer_verify.slow` and clobber each other. Switch to a per-request scratch identifier (`slow_<uuid>` / `fast_<uuid>` or a randomly-named schema). | ~20 min |
+| **C5** | `api_routes/routes.clj` | **Correct feature flag.** We piggyback on `:transforms-python` as a placeholder. Define a proper `:transform-optimizer` premium feature in `metabase.premium-features` and switch the `premium-handler` over. | ~15 min |
+| **C6** | `accept.clj` | **Body sanity check** before insert. Reject empty / whitespace-only / unparseable `body` per-proposal rather than 500-ing inside `create-transform!`. | ~15 min |
+
+### Hardening
+
+| # | Where | What |
+|---|---|---|
+| **H1 / BE-9** | `api.clj` accept | Write-permission check on the target DB. Today only `read-check` runs on the source transform; a read-only user can call `/accept` and 500 in `create-transform!`. |
+| **H2 / BE-10** | `core.clj` | Cost guard: if the latest `transform_run.duration_ms` exceeds N minutes, decline `EXPLAIN ANALYZE` and the `/verify` materialise path. |
+| **H3** | `api.clj` optimize | Streaming-endpoint deadline. `call-llm-structured` retries internally but the HTTP request has no overall timeout — a wedged provider holds the connection forever. |
+| **H4** | `llm.clj` | Validate the LLM's structured response against the malli schema before passing to `finalise-proposals`. A schema-violating response today flows straight through and may NPE downstream. |
+| **H5** | `llm.clj` | Promote `model` / `temperature` to `defsetting` so the LLM can be tuned per-tenant without code edits. |
+| **H6** | all `api.clj` endpoints | Telemetry events: `transform-optimizer/proposed`, `/accepted`, `/verified` with severities, kinds, and measured speedups. Feeds the prelude over time. |
+| **H7** | `verify.clj` | Wrap each `DROP TABLE` in the `cleanup!` path in its own try/catch + log; today a failing cleanup leaks the scratch table for the rest of the session. |
+| **H8** | `api.clj` accept | Audit-log who accepted which proposal IDs for which transform. |
+| **H9** | `core.clj` | `source-tables-readable?` precheck (mirror `transforms-inspector`). User can read the transform but might lack read on a referenced table; today the optimizer would still call the LLM with their schema metadata. |
+
+### Future / deferred
+
+| # | Task | Depends on |
+|---|---|---|
+| **F1 / BE-6** | Persistence model `:model/TransformOptimizerProposal` (Liquibase migration + Toucan2 model). Stores the streamed payload + per-DDL `:validation` tags. | — |
+| **F2 / BE-3** | `GET /api/ee/transform-optimizer/:id/proposals` (fetch persisted, most-recent-first). | F1 |
+| **F3** | True incremental SSE streaming — parse Claude's `tool-input` deltas live and emit `summary` / `proposal` events as each JSON object completes, instead of buffering the full LLM response. | — |
+| **F4** | Post-accept verify — optionally run `verify.clj` against each just-created transform and include the measured speedup in the accept response. | C1, C3 |
+| **F5 / BE-8** | Integration tests for verify / accept / streaming endpoint against the seeded Postgres from the harness. Pure unit tests already cover scoring / parse / prompt / prelude / core. | — |
+| **F6** | Score-from-EXPLAIN anchor — feed slow vs proposed EXPLAIN cost ratios into the severity rubric so the LLM has a less subjective anchor (per PLAN open questions). | — |
+
+### Recommended next pass
+
+In this order — each step is largely independent of the next:
+
+1. **C5** (feature flag — 15 min, removes wrong-feature gating).
+2. **C4** (scratch isolation — 20 min, prevents corruption under concurrent verify).
+3. **H4** (validate LLM response — 20 min, prevents downstream NPEs).
+4. **C1 + C2 + C3** (full DAG support across accept + verify — together ~1.5–2 hr, unlocks the precompute kind end-to-end).
+5. **H1** (write-perm check at accept — 15 min, security hygiene).
 
 
 ## Open FE tasks
