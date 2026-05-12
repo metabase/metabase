@@ -301,16 +301,18 @@
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by
-  `store-native-parts!`). Falls back to the raw value if it's already non-string
-  or fails to parse, so legacy rows and surprises don't crash the read path."
+  `store-native-parts!`). Falls back to the raw value if it's not a JSON object."
   [error]
   (if (string? error)
     (try (json/decode+kw error)
          (catch Exception _ error))
     error))
 
+;; TODO (sloansparger 2026-05-12) -- chat_messages should be replaced with turns
+;; so that we have a higher-level abstraction to annotate. this is fine, but a
+;; bit of a hack.
 (defn- annotate-agent-messages
-  "Stamp `:finished` and (when present) `:error` from the parent row onto the
+  "Stamp `:finished` and `:error` from the parent row onto the
   *last* agent-role chat message produced from it. The annotation describes the
   row's outcome, so it belongs on a single message — the FE expands it into a
   trailing `turn_aborted` / `turn_errored` chat message."

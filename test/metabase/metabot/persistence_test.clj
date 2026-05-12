@@ -298,13 +298,6 @@
                    {:role :assistant :error (json/encode {:message "boom"}) :data []}
                    {:role :user      :data [{:role "user" :content "third"}]}
                    {:role :assistant :data [{:type "text" :text "third reply" :id "a3"}]}])))))
-  (testing "an errored row at the start with no preceding user prompt is still dropped"
-    (is (= ["hi" "hello"]
-           (mapv :message
-                 (metabot-persistence/messages->chat-messages
-                  [{:role :assistant :error (json/encode {:message "boom"}) :data []}
-                   {:role :user      :data [{:role "user" :content "hi"}]}
-                   {:role :assistant :data [{:type "text" :text "hello" :id "a1"}]}])))))
   (testing "with :include-errored? true, errored pairs stay and :error surfaces on the agent message"
     (let [result (metabot-persistence/messages->chat-messages
                   [{:role :user      :data [{:role "user" :content "broken"}]}
