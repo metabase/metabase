@@ -41,12 +41,20 @@
    :users
    :venues])
 
+;; in test_resources/ssl/mongo/ dir: openssl x509 -in metabase.crt -text -noout
+(def ^:private cert-subject "C=US, ST=CA, L=San Francisco, O=Metabase Inc., OU=metabase, CN=localhost, emailAddress=metabase@localhost")
+
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (mt/test-driver
-    :mongo
-    (mt/dataset test-data
-      (mt/db)
+  (mt/test-driver :mongo
+    (mt/dataset test-data (mt/db)
+      (try
+        (mongo.connection/with-mongo-client [c (mt/db)]
+          ;; allow connecting with the client cert
+          ;; https://www.mongodb.com/docs/manual/tutorial/configure-x509-client-authentication/#add-x-509-certificate-subject-as-a-user
+          (mongo.util/run-command (mongo.util/database c "$external")
+                                  {:createUser cert-subject :roles []}))
+        (catch com.mongodb.MongoCommandException _))
       (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
                                                               :port   3000
                                                               :dbname "bad-db-name"}
@@ -66,9 +74,8 @@
                                                    :expected true
                                                    :message  "should use default port 27017 if not specified"}
                                                   {:details  {:host   "localhost"
-                                                              :user   "metabase"
-                                                              :pass   "metasample123"
-                                                              :dbname "test-data"
+                                                              :user   cert-subject
+                                                              :dbname "$external"
                                                               :additional-options "authMechanism=MONGODB-X509"}
                                                    :expected true
                                                    :message  "should use X509 authentication"}
