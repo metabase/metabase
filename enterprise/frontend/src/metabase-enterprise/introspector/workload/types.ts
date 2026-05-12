@@ -23,6 +23,7 @@ export type WorkloadGridResponse = {
 
 export type WorkloadLastRun = {
   duration_ms: number;
+  status: "success" | "failed" | "abandoned";
   run_type: "sync" | "alert" | "subscription";
   entity_type: "database" | "card" | "dashboard";
   entity_id: number;

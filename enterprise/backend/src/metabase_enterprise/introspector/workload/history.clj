@@ -75,9 +75,15 @@
   [targets]
   (when (seq targets)
     (let [rows (t2/select [:model/TaskRun
-                           :run_type :entity_type :entity_id
+                           :run_type :entity_type :entity_id :status
                            :started_at :ended_at]
-                          {:where (into [:and [:= :status "success"]]
+                          {:where (into [:and
+                                         ;; All terminal statuses — "—" should
+                                         ;; mean "no terminal run found",
+                                         ;; not "no success found". An
+                                         ;; always-failing job carries useful
+                                         ;; signal too.
+                                         [:in :status ["success" "failed" "abandoned"]]]
                                         [(into [:or]
                                                (for [[rt et eid] targets]
                                                  [:and
@@ -123,6 +129,7 @@
               (assoc row :last_run
                      (when hit
                        {:duration_ms (duration-ms hit)
+                        :status      (some-> (:status hit) name)
                         :run_type    (name (first target))
                         :entity_type (name (second target))
                         :entity_id   (nth target 2)}))))

@@ -37,7 +37,7 @@ type Props = {
   rangeTo: string;
 };
 
-type SortKey = "type" | "entity" | "fires" | "weight" | "updated";
+type SortKey = "type" | "entity" | "fires" | "weight" | "updated" | "lastRun";
 type SortDir = "asc" | "desc";
 
 type SlotGroup = {
@@ -77,9 +77,21 @@ function lastRunUrl(last: WorkloadLastRun): string {
     "run-type": last.run_type,
     "entity-type": last.entity_type,
     "entity-id": String(last.entity_id),
-    status: "success",
   });
   return `/admin/tools/tasks/runs?${params.toString()}`;
+}
+
+function lastRunColor(
+  status: WorkloadLastRun["status"],
+): "success" | "error" | "warning" {
+  switch (status) {
+    case "success":
+      return "success";
+    case "failed":
+      return "error";
+    case "abandoned":
+      return "warning";
+  }
 }
 
 const BADGE_COLOR: Record<
@@ -188,6 +200,12 @@ function sortGroups(
         return sign * (a.totalWeight - b.totalWeight);
       case "updated":
         return sign * (a.updated_at ?? "").localeCompare(b.updated_at ?? "");
+      case "lastRun":
+        // No last_run sorts to the end regardless of direction.
+        return (
+          sign *
+          ((a.last_run?.duration_ms ?? -1) - (b.last_run?.duration_ms ?? -1))
+        );
     }
   };
   return [...groups].sort(cmp);
@@ -302,7 +320,11 @@ export function SlotExpansion({
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortDir(key === "weight" || key === "fires" ? "desc" : "asc");
+      setSortDir(
+        key === "weight" || key === "fires" || key === "lastRun"
+          ? "desc"
+          : "asc",
+      );
     }
   };
 
@@ -477,7 +499,12 @@ export function SlotExpansion({
               () => toggleSort("weight"),
               t`Weight`,
             )}
-            <th style={headerStyleBase}>{t`Last run`}</th>
+            {sortableHeader(
+              sortKey === "lastRun",
+              sortDir,
+              () => toggleSort("lastRun"),
+              t`Last run`,
+            )}
             <th style={{ ...headerStyleBase, width: 64 }} />
           </tr>
         </thead>
@@ -556,7 +583,8 @@ export function SlotExpansion({
                     <Anchor
                       href={lastRunUrl(g.last_run)}
                       size="sm"
-                      title={t`See runs in troubleshooting logs`}
+                      c={lastRunColor(g.last_run.status)}
+                      title={t`Last run: ${g.last_run.status}. Click to see runs in troubleshooting logs.`}
                     >
                       {formatDuration(g.last_run.duration_ms)}
                     </Anchor>
