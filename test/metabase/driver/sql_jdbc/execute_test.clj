@@ -7,6 +7,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection DatabaseMetaData)
@@ -218,7 +219,7 @@
 (deftest bad-connection-details-throw-client-error-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/Database tmp-db {:details (assoc (:details (mt/db)) :host "badhost")
+    (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                            :engine  driver/*driver*}]
       (let [query    {:database (:id tmp-db)
                       :type     :native
