@@ -1,16 +1,18 @@
-.threadList {
-  overflow-y: auto;
-}
-
-.threadGroupList {
-  overflow-y: auto;
-}
-
 .errorTooltip {
   overflow-wrap: break-word;
 }
 
-.queryRow {
+.tree {
+  overflow-y: auto;
+  padding: 0 1rem 1rem 0;
+}
+
+.tree :global(ul) {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeRow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -21,15 +23,11 @@
   text-align: left;
 }
 
-.queryRow:hover {
+.treeRow:hover {
   background: var(--mb-color-background-hover);
 }
 
-.queryRowSelected {
+.treeRowSelected {
   background: var(--mb-color-background-brand);
   color: var(--mb-color-brand);
-}
-
-.groupQueries {
-  padding-left: 1.5rem;
 }

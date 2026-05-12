@@ -1,4 +1,4 @@
-import { passesInterestingnessThreshold } from "metabase/explorations/constants";
+import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import type { Dataset, ExplorationQuery, TimelineId } from "metabase-types/api";
 
 /**
@@ -62,7 +62,7 @@ export function getInterestingTimelineIds(
 ): ReadonlySet<TimelineId> {
   const result = new Set<TimelineId>();
   for (const [id, score] of getMaxTimelineInterestingness(queries)) {
-    if (passesInterestingnessThreshold(score)) {
+    if (score >= TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
       result.add(id);
     }
   }
@@ -86,7 +86,7 @@ export function getMostInterestingTimelineId(
     if (!availableTimelineIds.has(id)) {
       continue;
     }
-    if (!passesInterestingnessThreshold(score)) {
+    if (score < TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
       continue;
     }
     if (best == null || score > best.score) {

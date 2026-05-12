@@ -19,9 +19,7 @@ import type {
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
   ExplorationQueryId,
-  ExplorationQueryWithName,
   ExplorationThread,
-  ThreadsWithSortedQueries,
   Timeline,
   TimelineEvent,
   TimelineId,
@@ -29,10 +27,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
-import {
-  AUTO_INSIGHTS_DOCUMENT_NAME,
-  ExplorationSidebar,
-} from "../components/ExplorationSidebar";
+import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import {
   ExplorationGroupVisualization,
   ExplorationVisualization,
@@ -41,6 +36,7 @@ import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
+import { AUTO_INSIGHTS_DOCUMENT_NAME } from "../constants";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -199,27 +195,6 @@ export function ExplorationPage({
   const allTimelinesById: Map<TimelineId, Timeline> = useMemo(() => {
     return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
   }, [allTimelines]);
-
-  const threadsWithSortedQueries: ThreadsWithSortedQueries[] = useMemo(() => {
-    if (!exploration?.threads) {
-      return [];
-    }
-    return exploration.threads.map((thread) => {
-      return {
-        ...thread,
-        queries:
-          thread.queries
-            ?.filter((query): query is ExplorationQueryWithName =>
-              Boolean(query.name),
-            )
-            .toSorted(
-              (a, b) =>
-                (b.interestingness_score ?? -1) -
-                (a.interestingness_score ?? -1),
-            ) ?? [],
-      };
-    });
-  }, [exploration]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -485,7 +460,7 @@ export function ExplorationPage({
 
   return (
     <Group
-      pl="3rem"
+      pl="2.25rem"
       h="100%"
       w="100%"
       bg="background-secondary"
@@ -498,7 +473,6 @@ export function ExplorationPage({
         exploration={exploration}
         selectedEntityId={selectedEntityId}
         setSelectedEntityId={setSelectedEntityId}
-        threadsWithSortedQueries={threadsWithSortedQueries}
       />
       {selectedThread && selectedQuery && (
         <ExplorationVisualization
