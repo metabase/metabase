@@ -170,3 +170,23 @@
       (let [rows (query-view [tenant-log no-tenant-log])]
         (is (= tenant-id (:tenant_id (find-row rows tenant-log))))
         (is (nil? (:tenant_id (find-row rows no-tenant-log))))))))
+
+(deftest cache-tokens-passthrough-test
+  (testing "cache_creation_tokens and cache_read_tokens pass through; null when not set"
+    (mt/with-temp [:model/AiUsageLog {with-cache :id} {:source "metabot_agent"
+                                                       :model default-model
+                                                       :prompt_tokens 950
+                                                       :completion_tokens 30
+                                                       :total_tokens 980
+                                                       :cache_creation_tokens 50
+                                                       :cache_read_tokens 800}
+                   :model/AiUsageLog {no-cache :id} {:source "metabot_agent"
+                                                     :model default-model
+                                                     :prompt_tokens 100
+                                                     :completion_tokens 30
+                                                     :total_tokens 130}]
+      (let [rows (query-view [with-cache no-cache])]
+        (is (= 50  (:cache_creation_tokens (find-row rows with-cache))))
+        (is (= 800 (:cache_read_tokens     (find-row rows with-cache))))
+        (is (nil?  (:cache_creation_tokens (find-row rows no-cache))))
+        (is (nil?  (:cache_read_tokens     (find-row rows no-cache))))))))
