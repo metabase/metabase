@@ -1,18 +1,16 @@
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-export type DeleteWorkspaceOptions = {
+export type DeleteWorkspaceProps = {
   onSuccess?: () => void;
 };
 
-export function useDeleteWorkspace({ onSuccess }: DeleteWorkspaceOptions = {}) {
+export function useDeleteWorkspace({ onSuccess }: DeleteWorkspaceProps = {}) {
   const { modalContent, show } = useConfirmation();
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const handleDelete = (workspace: Workspace) => {
     show({
@@ -21,13 +19,8 @@ export function useDeleteWorkspace({ onSuccess }: DeleteWorkspaceOptions = {}) {
       confirmButtonText: t`Delete`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
-        const { error } = await deleteWorkspace(workspace.id);
-        if (error) {
-          sendErrorToast(t`Failed to delete workspace`);
-        } else {
-          sendSuccessToast(t`Workspace deleted`);
-          onSuccess?.();
-        }
+        await deleteWorkspace(workspace.id).unwrap();
+        onSuccess?.();
       },
     });
   };

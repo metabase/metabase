@@ -57,14 +57,14 @@
             (is (=? {:databases [{:database_id (mt/id) :status "provisioned"}]}
                     (mt/user-http-request :crowberto :post 200
                                           (str "ee/workspace-manager/" ws-id "/database")
-                                          {:database_id (mt/id) :input [{:schema "PUBLIC"}]}))))
+                                          {:database_id (mt/id) :input_schemas ["PUBLIC"]}))))
 
           (testing "PUT /:id/database/:db-id updates input"
-            (is (=? {:databases [{:database_id (mt/id)
-                                  :input [{:schema "PUBLIC"} {:schema "ANALYTICS"}]}]}
+            (is (=? {:databases [{:database_id   (mt/id)
+                                  :input_schemas ["PUBLIC" "ANALYTICS"]}]}
                     (mt/user-http-request :crowberto :put 200
                                           (str "ee/workspace-manager/" ws-id "/database/" (mt/id))
-                                          {:input [{:schema "PUBLIC"} {:schema "ANALYTICS"}]}))))
+                                          {:input_schemas ["PUBLIC" "ANALYTICS"]}))))
 
           (testing "DELETE /:id/database/:db-id deprovisions and removes"
             (is (=? {:databases empty?}
@@ -150,12 +150,12 @@
             (testing "POST /:id/database — 403 against the no-perm DB"
               (mt/user-http-request :rasta :post 403
                                     (str "ee/workspace-manager/" ws-id "/database")
-                                    {:database_id other-db-id :input [{:schema "PUBLIC"}]}))
+                                    {:database_id other-db-id :input_schemas ["PUBLIC"]}))
 
             (testing "POST /:id/database — 200 against the perm-holding DB"
               (mt/user-http-request :rasta :post 200
                                     (str "ee/workspace-manager/" ws-id "/database")
-                                    {:database_id target-db-id :input [{:schema "PUBLIC"}]}))
+                                    {:database_id target-db-id :input_schemas ["PUBLIC"]}))
 
             ;; Attach `other-db-id` so we can target it on PUT / DELETE too.
             (mt/with-temp [:model/WorkspaceDatabase _ {:workspace_id ws-id
@@ -165,12 +165,12 @@
               (testing "PUT /:id/database/:db-id — 403 against the no-perm DB"
                 (mt/user-http-request :rasta :put 403
                                       (str "ee/workspace-manager/" ws-id "/database/" other-db-id)
-                                      {:input [{:schema "ANALYTICS"}]}))
+                                      {:input_schemas ["ANALYTICS"]}))
 
               (testing "PUT /:id/database/:db-id — 200 against the perm-holding DB"
                 (mt/user-http-request :rasta :put 200
                                       (str "ee/workspace-manager/" ws-id "/database/" target-db-id)
-                                      {:input [{:schema "PUBLIC"}]}))
+                                      {:input_schemas ["PUBLIC"]}))
 
               (testing "DELETE /:id/database/:db-id — 403 against the no-perm DB"
                 (mt/user-http-request :rasta :delete 403

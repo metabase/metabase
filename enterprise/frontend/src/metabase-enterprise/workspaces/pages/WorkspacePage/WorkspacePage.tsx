@@ -6,7 +6,7 @@ import * as Urls from "metabase/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
-import { HelpMenu } from "../../components/HelpMenu";
+import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
 import { getAvailableDatabases } from "../../utils";
 
 import { SetupSection } from "./SetupSection";
@@ -69,7 +69,7 @@ function WorkspacePageBody({
 }: WorkspacePageBodyProps) {
   return (
     <PageContainer data-testid="workspace-editor">
-      <WorkspaceHeader workspace={workspace} actions={<HelpMenu />} />
+      <WorkspaceHeader workspace={workspace} actions={<WorkspaceHelpMenu />} />
       <Stack gap="3.5rem">
         <WorkspaceDatabaseList
           workspace={workspace}

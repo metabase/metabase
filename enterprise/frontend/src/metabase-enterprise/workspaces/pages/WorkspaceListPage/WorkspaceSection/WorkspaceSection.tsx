@@ -8,19 +8,15 @@ import {
   Group,
   Icon,
   Menu,
-  Pill,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type {
-  Database,
-  Workspace,
-  WorkspaceDatabase,
-} from "metabase-types/api";
+import type { Database, Workspace } from "metabase-types/api";
 
+import { WorkspaceDatabaseInfo } from "../../../components/WorkspaceDatabaseInfo";
 import { useDeleteWorkspace } from "../../../hooks";
 
 export type WorkspaceSectionProps = {
@@ -49,7 +45,7 @@ export function WorkspaceSection({
             <Divider />
             <Stack gap="sm">
               {workspace.databases.map((workspaceDatabase) => (
-                <DatabaseSection
+                <WorkspaceDatabaseInfo
                   key={workspaceDatabase.database_id}
                   workspaceDatabase={workspaceDatabase}
                   availableDatabases={availableDatabases}
@@ -77,31 +73,6 @@ function CreatorSection({ workspace }: CreatorSectionProps) {
         ? t`Created by ${creatorName} ${timeAgo}`
         : t`Created ${timeAgo}`}
     </Text>
-  );
-}
-
-type DatabaseSectionProps = {
-  workspaceDatabase: WorkspaceDatabase;
-  availableDatabases: Database[];
-};
-
-function DatabaseSection({
-  workspaceDatabase,
-  availableDatabases,
-}: DatabaseSectionProps) {
-  const database = availableDatabases.find(
-    (candidate) => candidate.id === workspaceDatabase.database_id,
-  );
-  const databaseLabel =
-    database?.name ?? t`Database ${workspaceDatabase.database_id}`;
-
-  return (
-    <Group gap="sm" wrap="nowrap">
-      <Text>{databaseLabel}</Text>
-      {workspaceDatabase.input_schemas.map((schema) => (
-        <Pill key={schema}>{schema}</Pill>
-      ))}
-    </Group>
   );
 }
 

@@ -37,12 +37,12 @@
 
 (def ^:private AddDatabaseParams
   [:map {:closed true}
-   [:database_id ms/PositiveInt]
-   [:input       [:sequential {:min 1} TableNamespaceParam]]])
+   [:database_id   ms/PositiveInt]
+   [:input_schemas [:sequential {:min 1} ms/NonBlankString]]])
 
 (def ^:private UpdateDatabaseParams
   [:map {:closed true}
-   [:input [:sequential {:min 1} TableNamespaceParam]]])
+   [:input_schemas [:sequential {:min 1} ms/NonBlankString]]])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
@@ -55,8 +55,7 @@
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
    [:database_id   ms/PositiveInt]
-   [:output_schema :string]
-   [:input         [:sequential TableNamespaceParam]]
+   [:input_schemas [:sequential ms/NonBlankString]]
    [:status        WorkspaceStatus]])
 
 (def ^:private CreatorResponse
@@ -85,9 +84,22 @@
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
+(defn- input->input-schemas
+  "Convert internal `:input` (a sequence of `{:db ?, :schema ?}` maps) to the wire-format
+   `:input_schemas` (a sequence of schema-name strings). Drops entries without a `:schema`."
+  [input]
+  (vec (keep :schema input)))
+
+(defn- input-schemas->input
+  "Convert the wire-format `:input_schemas` (a sequence of schema-name strings) to internal
+   `:input` shape (a sequence of `{:schema schema}` maps)."
+  [input-schemas]
+  (mapv (fn [schema] {:schema schema}) input-schemas))
+
 (defn- present-workspace-database [wsd]
-  (-> (select-keys wsd [:database_id :output_schema :input :status])
-      (update :status name)))
+  {:database_id   (:database_id wsd)
+   :input_schemas (input->input-schemas (:input wsd))
+   :status        (name (:status wsd))})
 
 (defn- present-creator [creator]
   (when creator
@@ -153,7 +165,9 @@
    params :- AddDatabaseParams]
   (api/create-check :model/WorkspaceDatabase params)
   (present-workspace
-   (ws/add-database! id (:database_id params) (:input params))))
+   (ws/add-database! id
+                     (:database_id params)
+                     (input-schemas->input (:input_schemas params)))))
 
 (api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
   "Update a database's input namespaces. Deprovisions the old config and reprovisions
@@ -165,7 +179,7 @@
                                                  :workspace_id id
                                                  :database_id db-id)))
   (present-workspace
-   (ws/update-database! id db-id (:input params))))
+   (ws/update-database! id db-id (input-schemas->input (:input_schemas params)))))
 
 (api.macros/defendpoint :delete "/:id/database/:db-id"
   :- WorkspaceResponse

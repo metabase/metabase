@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Button, Icon, Menu } from "metabase/ui";
 
-export function HelpMenu() {
+export function WorkspaceHelpMenu() {
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =

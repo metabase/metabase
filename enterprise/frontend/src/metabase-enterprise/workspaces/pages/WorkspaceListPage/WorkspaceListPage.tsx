@@ -9,7 +9,7 @@ import { Group, Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { HelpMenu } from "../../components/HelpMenu";
+import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
 import { getAvailableDatabases } from "../../utils";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
@@ -68,7 +68,7 @@ function WorkspaceListPageBody({
         actions={
           <Group gap="sm">
             <NewWorkspaceButton availableDatabases={availableDatabases} />
-            {hasWorkspaces && <HelpMenu />}
+            {hasWorkspaces && <WorkspaceHelpMenu />}
           </Group>
         }
         py={0}
