@@ -27,6 +27,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.sync.util :as sync.util]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -202,26 +203,27 @@
         ;; --- table resolve round 1: matched-vs-insert decision for merge-tables! ---
         (processors/resolve-target-table-ids-in-staging!)
         ;; --- merge (one txn — every live-data write all-or-nothing) ---
-        (t2/with-transaction [_]
-          (processors/merge-tables!)
-          ;; round 2 captures INSERT-assigned ids back into table staging
-          (processors/resolve-target-table-ids-in-staging!)
-          ;; copy target-table-ids from table staging onto field staging
-          (processors/resolve-target-table-ids-for-fields-in-staging!)
-          ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
-          (processors/merge-fields-by-depth!)
-          (mark-databases-sync-complete! matched-target-db-ids))
+        (let [new-tables
+              (t2/with-transaction [_]
+                (let [inserted (processors/merge-tables!)]
+                  ;; round 2 captures INSERT-assigned ids back into table staging
+                  (processors/resolve-target-table-ids-in-staging!)
+                  ;; copy target-table-ids from table staging onto field staging
+                  (processors/resolve-target-table-ids-for-fields-in-staging!)
+                  ;; depth-walk: per-depth resolve + UPDATE matched + INSERT new
+                  (processors/merge-fields-by-depth!)
+                  (mark-databases-sync-complete! matched-target-db-ids)
+                  inserted))]
+          ;; Run perms outside the merge txn so the cluster lock isn't held
+          ;; across the long merge work.
+          (doseq [[db-id rows] (group-by :db_id new-tables)]
+            (schema.table/set-new-tables-permissions! db-id rows)))
         (log/infof "metadata-file-import: complete (matched-databases=%d)"
                    (count matched-target-db-ids))))
     :ok))
 
 ;;; ============================== Concurrency guard ==============================
-;;;
-;;; All imports flow through a single Clojure agent so that no two run at
-;;; once within a JVM. Boot path and HTTP route both call `enqueue-import!`;
-;;; the agent's `send-off` thread executes them in arrival order. In-JVM
-;;; only, same scope as `metabase.sync.util/operation->db-ids`. No cluster-
-;;; wide coordination (consistent with sync's existing protections).
+;;; In-JVM only — matches the scope of `metabase.sync.util/operation->db-ids`.
 
 (defonce ^:private import-state
   (atom {:status :idle :file nil :since nil :last-result nil}))
@@ -234,11 +236,7 @@
   []
   (= :running (:status @import-state)))
 
-(defn- import-busy-reason
-  "Predicate registered with `metabase.sync.util/register-busy-predicate!`.
-  Returns nil unless an import is running; when running, returns a map the
-  sync side logs at WARN before skipping its operation."
-  []
+(defn- import-busy-reason []
   (let [{:keys [status file since]} @import-state]
     (when (= :running status)
       {:reason (format "metadata-file-import in progress (file=%s, since=%s)"
@@ -248,9 +246,8 @@
   (do (sync.util/register-busy-predicate! import-busy-reason) true))
 
 (defn- run-import*
-  "Agent body. Runs the import, updating `import-state` so observers see
-  `:running`. Always returns `::serializer`; `:error-mode :continue` plus an
-  inner try/catch means a failing import never poisons the agent."
+  "Agent body. Always returns `::serializer`; `:error-mode :continue` plus
+  the inner try/catch means a failing import never poisons the agent."
   [_serializer ^File file {:keys [delete-after?]}]
   (let [path (.getAbsolutePath file)
         t0   (System/nanoTime)]
@@ -282,12 +279,9 @@
     ::serializer))
 
 (defn enqueue-import!
-  "Submit `file` to the import agent. Returns immediately. Imports execute in
-  arrival order. Options:
-
-    :delete-after? — delete `file` from disk after the import completes
-                     (success or failure). For HTTP callers that spool the
-                     request body to a temp file."
+  "Submit `file` to the import agent and return immediately. Imports execute
+  in arrival order. With `{:delete-after? true}`, the agent deletes `file`
+  once it finishes (success or failure)."
   ([^File file]
    (enqueue-import! file {}))
   ([^File file opts]

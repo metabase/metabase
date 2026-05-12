@@ -43,9 +43,6 @@
     (mt/with-temp [:model/Database {} {:name "mfi-running-toggles" :engine :postgres}]
       (let [file        (tiny-meta-file (tiny-payload "mfi-running-toggles"))
             observed    (atom nil)
-            ;; Wrap the real import in a function that records the running
-            ;; flag at a known mid-flight point. Restoring redefs after the
-            ;; await guarantees we observe the actual `:running` state.
             real-import mfi/import-metadata-file!]
         (with-redefs [mfi/import-metadata-file!
                       (fn [f] (reset! observed (mfi/import-running?))

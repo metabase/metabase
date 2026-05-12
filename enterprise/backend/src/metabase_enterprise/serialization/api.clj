@@ -373,10 +373,6 @@
                     {:status-code 415}))
 
     :else
-    ;; Spool the request body to a temp file, then hand the file off to the
-    ;; serializing agent. The agent deletes the temp file once it finishes
-    ;; (or fails) processing. Returns immediately so concurrent client calls
-    ;; queue rather than 500-ing on tight contention.
     (let [tmp (spool-to-temp-file! body)]
       (metadata-file-import/enqueue-import! tmp {:delete-after? true})
       {:queued true})))

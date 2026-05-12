@@ -361,11 +361,10 @@
   (t2/query
    {:update :metabase_table_import
     :set    {:target_id
-             ;; MIN(t.id) collapses to one row when the appdb has multiple
-             ;; candidates. `metabase_database`'s unique constraint is
-             ;; `(router_database_id, name)`, and PG's default NULL-not-equal
-             ;; rule means two databases with NULL router can share a name —
-             ;; producing two `(db_name, schema, name)` matches. GHY-3549.
+             ;; MIN(t.id): `metabase_database`'s unique constraint is
+             ;; `(router_database_id, name)`, so two NULL-router databases
+             ;; can share a name → two `(db_name, schema, name)` matches
+             ;; (GHY-3549).
              {:select [[[:min :t.id]]]
               :from   [[:metabase_table :t]]
               :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
@@ -400,7 +399,8 @@
   The INSERT JOINs `metabase_database` on `db_name`, so staging rows whose
   source DB has no target appdb match are silently dropped.
 
-  Per-table permissions aren't set on insert. TODO: batched-grant fix."
+  Returns a vector of `{:id :db_id :schema}` maps for the newly inserted
+  rows so the caller can grant default permissions in batch."
   []
   (t2/with-transaction [_]
     ;; t2 joins an outer txn rather than creating a savepoint, so wrapping
@@ -415,10 +415,8 @@
     ;; defeating the optimization).
     (t2/query
      {:update :metabase_table
-      :set    {:description {;; ORDER BY :it.source_id + LIMIT 1 picks a
-                             ;; stable staging row when the file describes
-                             ;; the same live table twice. Same defense as
-                             ;; the resolve subqueries above; GHY-3549.
+      :set    {:description {;; ORDER BY + LIMIT 1: two staging rows can
+                             ;; resolve to the same `target_id` (GHY-3549).
                              :select   [:it.description]
                              :from     [[:metabase_table_import :it]]
                              :where    [:= :it.target_id :metabase_table.id]
@@ -434,11 +432,10 @@
                                   [:= :it.target_id :metabase_table.id]
                                   [:!= [:coalesce :metabase_table.description [:inline ""]]
                                    [:coalesce :it.description             [:inline ""]]]]}]]})
-    ;; INSERT rows with no matching live row (target_id IS NULL).
-    ;; Goes through the raw :metabase_table keyword (not :model/Table) to
-    ;; skip the :after-insert hook — that hook schedules Quartz sync triggers
-    ;; we don't want and calls set-new-table-permissions!, hence the gap
-    ;; documented above.
+    ;; INSERT bypasses :model/Table's :after-insert hook — that hook
+    ;; schedules per-DB Quartz triggers we don't want and fires
+    ;; `set-new-table-permissions!` once per row. RETURNING surfaces the
+    ;; new rows so the caller can grant default perms in one batch.
     (t2/query
      {:insert-into
       [[:metabase_table [:db_id :schema :name :description :display_name :data_layer
@@ -450,7 +447,8 @@
                  :%now :%now]
         :from   [[:metabase_table_import :it]]
         :join   [[:metabase_database :d] [:= :d.name :it.db_name]]
-        :where  [:= :it.target_id nil]}]})))
+        :where  [:= :it.target_id nil]}]
+      :returning [:id :db_id :schema]})))
 
 ;;; ============================== fields — drain + merge ==============================
 
@@ -690,11 +688,9 @@
    :effective_type :semantic_type :coercion_strategy :nfc_path])
 
 (defn- target-id-clobber-subquery
-  "Correlated subquery for a single clobber column. The match is a single
-  indexed lookup on `staging.target_id` (the per-depth resolve populates
-  it just before this UPDATE fires). ORDER BY :fi.source_id + LIMIT 1
-  keeps the subquery single-row when the wire format describes the same
-  live field more than once (GHY-3549)."
+  "Correlated subquery for a single clobber column. ORDER BY + LIMIT 1
+  keeps the subquery single-row when two staging rows resolve to the
+  same `target_id` (GHY-3549)."
   [col]
   {:select   [(keyword (str "fi." (name col)))]
    :from     [[:metabase_field_import :fi]]
@@ -785,9 +781,8 @@
   (t2/query
    {:update :metabase_field_import
     :set    {:target_id
-             ;; MIN(f.id) tiebreaker — same defense as the table resolve.
-             ;; metabase_field has no uniqueness on (table_id, name, parent_id),
-             ;; only is_defective_duplicate gating, so dupes can exist.
+             ;; MIN(f.id) tiebreaker — `metabase_field` has no uniqueness
+             ;; constraint on `(table_id, name, parent_id)` (GHY-3549).
              {:select [[[:min :f.id]]]
               :from   [[:metabase_field :f]]
               :where  [:and

@@ -131,6 +131,42 @@
           (is (= users-id (:fk_target_field_id orders-fk))
               "orders.user_id's fk_target_field_id is users.id's resolved target id"))))))
 
+;;; ============================== Per-table default permissions ==============================
+
+(deftest newly-imported-tables-get-default-permissions-test
+  (testing "Tables inserted by the importer flow through `set-new-tables-permissions!`
+            in batch, mirroring what the `:after-insert` hook on `:model/Table`
+            would do for single-row inserts (just in one call instead of N).
+            Verified via a spy on the bulk grant function — asserting which
+            rows actually land in `data_permissions` would couple the test to
+            permission-graph semantics (db-level perms cover new tables ⇒ no
+            table-level rows), which isn't what we're checking here."
+    (mt/with-temp [:model/Database {tgt-db :id} {:name "perms-bulk-db" :engine :postgres}]
+      (let [meta-file (json-file
+                       {:databases [{:id 7 :name "perms-bulk-db" :engine "postgres"}]
+                        :tables    [{:id 100 :db_id 7 :schema "public" :name "alpha"}
+                                    {:id 101 :db_id 7 :schema "public" :name "beta"}]
+                        :fields    [{:id 1000 :table_id 100 :name "id"
+                                     :base_type "type/Integer" :database_type "integer"}
+                                    {:id 1001 :table_id 101 :name "id"
+                                     :base_type "type/Integer" :database_type "integer"}]})
+            spy       (atom [])
+            real-bulk @#'metabase.warehouse-schema.models.table/set-new-tables-permissions!]
+        (with-redefs [metabase.warehouse-schema.models.table/set-new-tables-permissions!
+                      (fn [db-id rows]
+                        (swap! spy conj {:db-id db-id :rows rows})
+                        (real-bulk db-id rows))]
+          (loader/import-metadata-file! meta-file))
+        (let [calls @spy]
+          (is (= 1 (count calls)) "set-new-tables-permissions! fired exactly once (per db_id)")
+          (let [{:keys [db-id rows]} (first calls)]
+            (is (= tgt-db db-id) "called with the target db_id")
+            (is (= 2 (count rows)) "passed both newly-inserted tables")
+            (is (= #{"alpha" "beta"}
+                   (set (map :name
+                             (t2/select [:model/Table :name] :id [:in (map :id rows)]))))
+                "rows correspond to alpha and beta")))))))
+
 ;;; ============================== Idempotence ==============================
 
 (deftest re-import-is-idempotent-test
