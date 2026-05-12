@@ -12,6 +12,11 @@
   (:import
    (java.io File)))
 
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (thunk))))
+
 ;;; ============================== with-staging-tables ==============================
 
 (defn- count-staging

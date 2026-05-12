@@ -12,6 +12,11 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (thunk))))
+
 (defn- insert-staging-table-row!
   "Helper: drop one row into metabase_table_import. `overrides` can include
   `:target_id` to pre-resolve the row."

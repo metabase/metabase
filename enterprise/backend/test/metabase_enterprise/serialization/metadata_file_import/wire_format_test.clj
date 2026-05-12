@@ -15,6 +15,11 @@
   (:import
    (java.io ByteArrayOutputStream)))
 
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (thunk))))
+
 (defn- export-as-json
   "Run the export against `opts`, decode JSON to keyword-keyed maps."
   [opts]
