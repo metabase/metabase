@@ -128,7 +128,6 @@ export {
   PLUGIN_TRANSFORMS_PYTHON,
   type TransformsPlugin,
   type PythonTransformEditorProps,
-  type TestPythonScriptState,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
   type PythonTransformsPlugin,

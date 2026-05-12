@@ -5,11 +5,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type {
-  PythonTransformSourceDraft,
-  TestPythonTransformResponse,
-  Transform,
-} from "metabase-types/api";
+import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 
 // Types
 export type TransformPickerItem = OmniPickerItem & {
@@ -28,18 +24,9 @@ export type PythonTransformEditorUiOptions = {
   hideRunButton?: boolean;
 };
 
-export type TestPythonScriptState = {
-  isRunning: boolean;
-  isDirty: boolean;
-  executionResult: TestPythonTransformResponse;
-  run: () => void;
-  cancel: () => void;
-};
-
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  testState: TestPythonScriptState;
   uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
   transform?: Transform;
@@ -47,6 +34,7 @@ export type PythonTransformEditorProps = {
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
 };
@@ -67,9 +55,6 @@ export type PythonTransformsPlugin = {
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
   ) => PythonTransformSourceValidationResult;
-  useTestPythonTransform: (
-    source?: PythonTransformSourceDraft,
-  ) => TestPythonScriptState | undefined;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
@@ -96,7 +81,6 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
     return getDefaultInspectorRoutes();
   },
   getPythonSourceValidationResult: () => ({ isValid: true }),
-  useTestPythonTransform: () => undefined,
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,

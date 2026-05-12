@@ -4,10 +4,7 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type {
-  PythonTransformEditorUiOptions,
-  TestPythonScriptState,
-} from "metabase/plugins/oss/transforms";
+import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
 import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
@@ -62,25 +59,13 @@ type SetupOpts = {
   isEditMode?: boolean;
   transform?: Transform;
   uiOptions?: PythonTransformEditorUiOptions;
-  testState?: TestPythonScriptState;
 };
-
-function createMockTestState(): TestPythonScriptState {
-  return {
-    isRunning: false,
-    isDirty: false,
-    executionResult: {},
-    run: jest.fn(),
-    cancel: jest.fn(),
-  };
-}
 
 function setup({
   source = mockPythonSource,
   isEditMode = true,
   transform,
   uiOptions,
-  testState = createMockTestState(),
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
@@ -89,7 +74,6 @@ function setup({
   renderWithProviders(
     <PythonTransformEditor
       source={source}
-      testState={testState}
       isEditMode={isEditMode}
       transform={transform}
       uiOptions={uiOptions}

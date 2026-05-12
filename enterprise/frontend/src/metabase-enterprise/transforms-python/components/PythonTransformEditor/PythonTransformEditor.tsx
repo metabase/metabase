@@ -17,22 +17,28 @@ import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
 import S from "./PythonTransformEditor.module.css";
 import { PythonTransformTopBar } from "./PythonTransformTopBar";
+import { useTestPythonTransform } from "./hooks";
 import { updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
   proposedSource,
-  testState,
   uiOptions,
   isEditMode,
   transform,
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
+  onDryRunErrorChange,
   onRunTransform,
   onRun,
 }: PythonTransformEditorProps) {
-  const { isRunning, cancel, run, executionResult, isDirty } = testState;
+  const { isRunning, cancel, run, executionResult, isDirty } =
+    useTestPythonTransform(source);
+
+  useEffect(() => {
+    onDryRunErrorChange?.(executionResult?.error?.message);
+  }, [executionResult, onDryRunErrorChange]);
 
   const wasRunning = usePrevious(isRunning);
 

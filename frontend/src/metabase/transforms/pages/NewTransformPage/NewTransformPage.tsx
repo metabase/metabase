@@ -119,16 +119,8 @@ function NewTransformPageBody({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
-  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
-    source.type === "python" ? source : undefined,
-  );
-  useRegisterMetabotTransformContext(
-    undefined,
-    source,
-    source.type === "python"
-      ? pythonTestState?.executionResult.error?.message
-      : undefined,
-  );
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
+  useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
   const validationResult = useMemo(() => {
     return source.type === "query"
@@ -192,11 +184,11 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              testState={pythonTestState!}
               isEditMode
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor

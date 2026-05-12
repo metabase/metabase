@@ -127,15 +127,11 @@ function TransformQueryPageBody({
       ? (transform.last_run.message ?? undefined)
       : undefined;
   }, [transform.last_run]);
-  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
-    source.type === "python" ? source : undefined,
-  );
+  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(
     transform,
     source,
-    source.type === "python"
-      ? (pythonTestState?.executionResult.error?.message ?? lastRunError)
-      : lastRunError,
+    dryRunError ?? lastRunError,
   );
 
   const {
@@ -246,13 +242,13 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              testState={pythonTestState!}
               uiOptions={{ readOnly }}
               isEditMode={isEditMode}
               transform={transform}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onDryRunErrorChange={setDryRunError}
             />
           ) : (
             <TransformEditor
@@ -307,6 +303,7 @@ export type TransformQueryPageEditorProps = {
   acceptProposed: () => void;
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
+  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
@@ -324,18 +321,14 @@ export function TransformQueryPageEditor({
   isEditMode = false,
   acceptProposed,
   rejectProposed,
+  onDryRunErrorChange,
   onRunQueryStart,
   onRunTransform,
   onRun,
 }: TransformQueryPageEditorProps) {
-  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
-    source.type === "python" ? source : undefined,
-  );
-
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
       source={source}
-      testState={pythonTestState!}
       uiOptions={uiOptions}
       proposedSource={
         proposedSource?.type === "python" ? proposedSource : undefined
@@ -344,6 +337,7 @@ export function TransformQueryPageEditor({
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
+      onDryRunErrorChange={onDryRunErrorChange}
       onRunTransform={onRunTransform}
       onRun={onRun}
     />
