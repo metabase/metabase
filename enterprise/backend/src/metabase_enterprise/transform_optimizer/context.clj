@@ -16,11 +16,11 @@
   The returned map is what `prompt.clj` (to come) renders into the LLM
   context block — it is not yet a string, just a data shape."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.transform-optimizer.explain :as opt.explain]
    [metabase-enterprise.transform-optimizer.index-introspection :as opt.indexes]
    [metabase-enterprise.transforms-inspector.context :as inspector.context]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -56,7 +56,7 @@
               (keep :fk_target_field_id))
         sources))
 
-(defn- ^java.util.Map fk-target-index [target-ids]
+(defn- fk-target-index ^java.util.Map [target-ids]
   ;; Two batch queries (fields → tables) then a small in-memory join.
   (when (seq target-ids)
     (let [target-fields (t2/select [:model/Field :id :name :table_id]
@@ -113,8 +113,8 @@
           (assoc src
                  :indexes
                  (get indexes-by-table
-                      [(some-> schema     str/lower-case)
-                       (some-> table_name str/lower-case)]
+                      [(some-> schema     u/lower-case-en)
+                       (some-> table_name u/lower-case-en)]
                       [])))
         sources))
 

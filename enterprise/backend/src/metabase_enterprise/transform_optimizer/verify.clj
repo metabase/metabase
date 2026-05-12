@@ -11,7 +11,6 @@
   / EXCEPT-ALL form."
   (:require
    [clojure.string :as str]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]

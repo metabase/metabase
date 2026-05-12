@@ -12,7 +12,8 @@
   recoverable — the user can copy the statement manually. False positives
   (we accept a destructive statement) are not."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,7 +89,7 @@
   (re-pattern (str "(?i)\\b(?:" (str/join "|" forbidden-keywords) ")\\b")))
 
 (defn- forbidden-keyword [^String sanitised]
-  (some-> (re-find forbidden-keywords-re sanitised) str/upper-case))
+  (some-> (re-find forbidden-keywords-re sanitised) u/upper-case-en))
 
 ;; ---------------------------------------------------------------------------
 ;; CREATE INDEX shape
@@ -133,10 +134,10 @@
       (if-let [[_ idx-name schema table] (re-matches create-index-re (first parts))]
         (let [allowed-lc (into #{}
                                (map (fn [[s t]]
-                                      [(some-> s str/lower-case)
-                                       (some-> t str/lower-case)]))
+                                      [(some-> s u/lower-case-en)
+                                       (some-> t u/lower-case-en)]))
                                allowed-tables)]
-          (if (contains? allowed-lc [(str/lower-case schema) (str/lower-case table)])
+          (if (contains? allowed-lc [(u/lower-case-en schema) (u/lower-case-en table)])
             {:ok? true :name idx-name :schema schema :table table}
             {:ok?    false
              :reason :unknown-table

@@ -21,13 +21,13 @@
                                   source-DB index the optimizer ran at
                                   accept time but doesn't replay."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.transform-optimizer.ddl.execute :as ddl.execute]
    [metabase-enterprise.transform-optimizer.ddl.parse :as ddl.parse]
    [metabase-enterprise.transform-optimizer.index-introspection :as iix]
    [metabase.driver :as driver]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -80,8 +80,8 @@
         seen    (volatile! #{})
         keep!   (fn [pair]
                   (when pair
-                    (let [key [(some-> (first pair) str/lower-case)
-                               (some-> (second pair) str/lower-case)]]
+                    (let [key [(some-> (first pair) u/lower-case-en)
+                               (some-> (second pair) u/lower-case-en)]]
                       (when-not (@seen key)
                         (vswap! seen conj key)
                         pair))))]
@@ -136,13 +136,12 @@
 
       :else
       (let [rows          (or (iix/fetch-indexes driver-kw database pairs) [])
-            allowed       (into #{} pairs)
             managed-names (when target (managed-index-names transform #{target}))
-            target-schema (some-> target first  str/lower-case)
-            target-table  (some-> target second str/lower-case)
+            target-schema (some-> target first  u/lower-case-en)
+            target-table  (some-> target second u/lower-case-en)
             on-target? (fn [row]
-                          (and (some-> (:schema row) str/lower-case (= target-schema))
-                               (some-> (:table  row) str/lower-case (= target-table))))]
+                         (and (some-> (:schema row) u/lower-case-en (= target-schema))
+                              (some-> (:table  row) u/lower-case-en (= target-table))))]
         (mapv (fn [row]
                 (let [target-side? (on-target? row)]
                   (-> row
@@ -225,10 +224,10 @@
                               :skipped  {:status :skipped :reason :not-postgres})]
             (when (and (= :dropped (:status result))
                        target
-                       (= (some-> (:schema existing-row) str/lower-case)
-                          (some-> (first target)         str/lower-case))
-                       (= (some-> (:table existing-row)  str/lower-case)
-                          (some-> (second target)        str/lower-case)))
+                       (= (some-> (:schema existing-row) u/lower-case-en)
+                          (some-> (first target)         u/lower-case-en))
+                       (= (some-> (:table existing-row)  u/lower-case-en)
+                          (some-> (second target)        u/lower-case-en)))
               ;; Only scrub `post_run_ddl` when we dropped an index *on the
               ;; target table*. Source-table indices were never tracked
               ;; there in the first place.

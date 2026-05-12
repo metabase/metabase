@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.transform-optimizer.prelude :as prelude]))
+   [metabase-enterprise.transform-optimizer.prelude :as prelude]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,7 +18,7 @@
   ;; the LLM is being asked to do something different than what the scoring
   ;; rubric / validator expect. Update both the prelude and these anchors
   ;; together.
-  (let [text (str/lower-case (prelude/prelude))]
+  (let [text (u/lower-case-en (prelude/prelude))]
     (testing "output schema anchors"
       (is (str/includes? text "summary"))
       (is (str/includes? text "proposals"))

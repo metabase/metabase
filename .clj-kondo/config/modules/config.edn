@@ -2251,6 +2251,7 @@
   transforms
   {:team "Graphy"
    :api  #{metabase.transforms.core
+           metabase.transforms.crud
            metabase.transforms.feature-gating
            metabase.transforms.init
            metabase.transforms.schema
@@ -3428,11 +3429,15 @@
 
   enterprise/transform-optimizer
   {:team "Gadget"
-   :api  #{metabase-enterprise.transform-optimizer.api}
+   :api  #{metabase-enterprise.transform-optimizer.api
+           metabase-enterprise.transform-optimizer.init}
    :uses #{api
            driver
            enterprise/transforms-inspector
+           events
+           lib
            metabot
+           query-processor
            server
            transforms
            transforms-base

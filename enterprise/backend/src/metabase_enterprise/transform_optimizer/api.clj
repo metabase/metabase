@@ -25,6 +25,7 @@
 ;; ---------------------------------------------------------------------------
 ;; Optimize
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/optimize"
   "Run the optimizer for `transform-id` and return the full result in one
   JSON payload:
@@ -59,6 +60,7 @@
 ;; ---------------------------------------------------------------------------
 ;; Verify endpoint
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/proposal/verify"
   "Verify equivalence of the original transform vs the proposal. Materialises
   both into scratch tables and compares via `EXCEPT ALL` in both directions.
@@ -99,6 +101,7 @@
 ;; ---------------------------------------------------------------------------
 ;; Accept endpoint
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/proposal/accept"
   "Apply the proposal set: create new transforms for proposals that
   carry a body, *and* run every validated `CREATE INDEX` statement
@@ -150,6 +153,7 @@
 ;; ---------------------------------------------------------------------------
 ;; Index management on a transform's target + source tables
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/indexes"
   "List every index on the transform's target table *and* every source
   table it reads from. Each row carries `:schema`/`:table` so the FE can
@@ -161,6 +165,7 @@
     {:transform {:id (:id transform) :target (:target transform)}
      :indexes   (opt.indexes/list-indexes transform)}))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/index/drop"
   "Drop the named index from any of the transform's referenced tables
   (target or source). Validates that the index actually exists on one of

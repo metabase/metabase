@@ -18,6 +18,7 @@
     - Process-local: a Metabase restart drops the cache. The FE should
       handle `404 proposal_not_found` by re-running `/optimize`."
   (:require
+   [clojure.string :as str]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -56,7 +57,7 @@
       (swap! store
              (fn [s]
                (reduce (fn [s {pid :id :as p}]
-                         (if (and pid (not (clojure.string/blank? (str pid))))
+                         (if (and pid (not (str/blank? (str pid))))
                            (assoc s [user-id transform-id pid]
                                   {:proposal p :stored-at now})
                            s))
@@ -87,7 +88,8 @@
 
 ;; -- test hook ---------------------------------------------------------------
 
-(defn ^:private clear-all!
-  "Reset the cache. Test-only."
+(defn clear-all!
+  "Reset the cache. Test-only — used by `proposal-cache-test`."
+  {:test-only? true}
   []
   (reset! store {}))

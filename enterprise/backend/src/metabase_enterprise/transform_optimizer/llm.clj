@@ -155,7 +155,7 @@
                           "check the prelude for shape mismatches.")))
         result)
       (catch Exception e
-        (log/errorf e "transform-optimizer: LLM call failed")
+        (log/error e "transform-optimizer: LLM call failed")
         (throw (ex-info "LLM call failed"
                         {:status-code 502
                          :cause       (ex-message e)

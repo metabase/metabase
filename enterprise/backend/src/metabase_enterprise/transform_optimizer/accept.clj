@@ -16,6 +16,7 @@
    [metabase-enterprise.transform-optimizer.ddl.execute :as ddl.execute]
    [metabase.lib.core :as lib]
    [metabase.transforms.crud :as transforms.crud]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -32,7 +33,7 @@
 
 (defn- sanitize-name [s]
   (let [base (-> (or s "transform")
-                 str/lower-case
+                 u/lower-case-en
                  (str/replace #"[^a-z0-9_]+" "_")
                  (str/replace #"^_+|_+$" "")
                  (str/replace #"_+" "_"))]

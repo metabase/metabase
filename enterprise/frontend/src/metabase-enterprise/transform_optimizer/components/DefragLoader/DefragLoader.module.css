@@ -5,45 +5,36 @@
 .window {
   /* Chrome neutrals — derived from Metabase's grayscale so the window
      reads as "Metabase chrome", not "Windows 95 chrome". */
-  --chrome: var(--mb-color-bg-light);
+  --chrome: var(--mb-color-background-secondary);
   --chrome-darker: color-mix(
     in srgb,
     var(--mb-color-border) 60%,
-    var(--mb-color-bg-medium)
+    var(--mb-color-background-tertiary)
   );
   --chrome-shadow: var(--mb-color-border);
-  --chrome-highlight: var(--mb-color-bg-white);
+  --chrome-highlight: var(--mb-color-background-primary);
 
   /* Title bar — brand-blue gradient. */
   --title-from: color-mix(in srgb, var(--mb-color-brand) 70%, black);
   --title-to: var(--mb-color-brand);
-  --title-fg: var(--mb-color-text-white, #ffffff);
+  --title-fg: var(--mb-color-text-white, #fff);
 
   /* Cell palette — semantic tokens. */
-  --grid-bg: var(--mb-color-bg-white);
-  --grid-line: color-mix(
-    in srgb,
-    var(--mb-color-border) 70%,
-    transparent
-  );
-
+  --grid-bg: var(--mb-color-background-primary);
+  --grid-line: color-mix(in srgb, var(--mb-color-border) 70%, transparent);
   --data: var(--mb-color-brand);
   --data-light: color-mix(in srgb, var(--mb-color-brand) 60%, white);
   --data-dark: color-mix(in srgb, var(--mb-color-brand) 60%, black);
-
   --system: var(--mb-color-warning);
   --system-light: color-mix(in srgb, var(--mb-color-warning) 60%, white);
   --system-dark: color-mix(in srgb, var(--mb-color-warning) 60%, black);
-
   --unmoveable: var(--mb-color-error);
   --unmoveable-light: color-mix(in srgb, var(--mb-color-error) 60%, white);
   --unmoveable-dark: color-mix(in srgb, var(--mb-color-error) 60%, black);
-
   --moving: var(--mb-color-success);
   --moving-light: color-mix(in srgb, var(--mb-color-success) 60%, white);
   --moving-dark: color-mix(in srgb, var(--mb-color-success) 60%, black);
-
-  --free: var(--mb-color-bg-white);
+  --free: var(--mb-color-background-primary);
   --free-edge: color-mix(in srgb, var(--mb-color-border) 60%, transparent);
 
   display: block;
@@ -59,8 +50,8 @@
   border-right: 2px solid var(--chrome-darker);
   border-bottom: 2px solid var(--chrome-darker);
   box-shadow: 1px 1px 0 0 var(--chrome-shadow);
-  font-family: "Pixelated MS Sans Serif", "MS Sans Serif", Geneva, Tahoma,
-    sans-serif;
+  font-family:
+    "Pixelated MS Sans Serif", "MS Sans Serif", Geneva, Tahoma, sans-serif;
   color: var(--mb-color-text-primary);
   user-select: none;
 }
@@ -172,13 +163,15 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.22),
+  box-shadow:
+    inset 1px 1px 0 0 rgba(255, 255, 255, 0.22),
     inset -1px -1px 0 0 rgba(0, 0, 0, 0.18);
 }
 
 .free {
   background: var(--free);
 }
+
 .free::after {
   box-shadow: inset 0 0 0 1px var(--free-edge);
 }
@@ -186,24 +179,30 @@
 .data {
   background: var(--data);
 }
+
 .data::after {
-  box-shadow: inset 1px 1px 0 0 var(--data-light),
+  box-shadow:
+    inset 1px 1px 0 0 var(--data-light),
     inset -1px -1px 0 0 var(--data-dark);
 }
 
 .system {
   background: var(--system);
 }
+
 .system::after {
-  box-shadow: inset 1px 1px 0 0 var(--system-light),
+  box-shadow:
+    inset 1px 1px 0 0 var(--system-light),
     inset -1px -1px 0 0 var(--system-dark);
 }
 
 .unmoveable {
   background: var(--unmoveable);
 }
+
 .unmoveable::after {
-  box-shadow: inset 1px 1px 0 0 var(--unmoveable-light),
+  box-shadow:
+    inset 1px 1px 0 0 var(--unmoveable-light),
     inset -1px -1px 0 0 var(--unmoveable-dark);
 }
 
@@ -211,8 +210,10 @@
   background: var(--moving);
   animation: blink 240ms steps(2, start) infinite;
 }
+
 .moving::after {
-  box-shadow: inset 1px 1px 0 0 var(--moving-light),
+  box-shadow:
+    inset 1px 1px 0 0 var(--moving-light),
     inset -1px -1px 0 0 var(--moving-dark);
 }
 
@@ -221,6 +222,7 @@
   49% {
     filter: brightness(1.18);
   }
+
   50%,
   100% {
     filter: brightness(0.88);

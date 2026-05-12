@@ -9,9 +9,9 @@
   representation and is the field we expect the prompt template to render
   by default."
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.sql Array Connection ResultSet)))
@@ -148,4 +148,4 @@
   [indexes]
   (->> indexes
        (group-by (fn [{:keys [schema table]}]
-                   [(some-> schema str/lower-case) (some-> table str/lower-case)]))))
+                   [(some-> schema u/lower-case-en) (some-> table u/lower-case-en)]))))

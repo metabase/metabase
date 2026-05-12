@@ -2,7 +2,7 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-sm);
   padding: var(--mantine-spacing-sm);
-  background: var(--mb-color-bg-light);
+  background: var(--mb-color-background-secondary);
 }
 
 .codeBlock {

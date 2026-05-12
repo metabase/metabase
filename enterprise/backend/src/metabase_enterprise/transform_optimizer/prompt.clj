@@ -49,7 +49,7 @@
          (or fields-block "")
          (or indexes-block no-index-note))))
 
-(defn- format-run [{:keys [start_time end_time status run_method duration_ms]}]
+(defn- format-run [{:keys [start_time status run_method duration_ms]}]
   (format "- %s : %s [%s] in %sms"
           start_time
           (clojure.core/name (or status :unknown))
