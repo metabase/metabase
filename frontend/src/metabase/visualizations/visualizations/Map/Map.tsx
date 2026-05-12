@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -32,7 +32,7 @@ import {
   isNumeric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, Series } from "metabase-types/api";
+import type { CustomGeoJSONMap, DatasetData, Series } from "metabase-types/api";
 
 import {
   ChoroplethMap,
@@ -44,16 +44,18 @@ import { PinMap } from "../../components/PinMap";
 import { CustomMapFooter } from "./CustomMapFooter";
 
 const PIN_MAP_VALUES = ["pin", "heat", "grid"] as const;
-type PIN_MAP_VALUES_TYPE = (typeof PIN_MAP_VALUES)[number];
-const PIN_MAP_TYPES = new Set<PIN_MAP_VALUES_TYPE | "region">([
-  ...PIN_MAP_VALUES,
-  "region",
-]);
+type PinMapValue = (typeof PIN_MAP_VALUES)[number];
+
+function isPinMapType(value: unknown): value is PinMapValue {
+  return PIN_MAP_VALUES.some((v) => v === value);
+}
+
+const MAP_DISPLAY_ALIASES = ["state", "country", "pin_map"] as const;
 
 function isSensible({ cols, rows }: DatasetData) {
   return (
     PinMap.isSensible({ cols, rows }) ||
-    // @ts-expect-error - convert ChoplethMap to ts
+    // @ts-expect-error - convert ChoroplethMap to ts
     ChoroplethMap.isSensible({ cols, rows }) ||
     // @ts-expect-error - convert LeafletGridHeatMap to ts
     LeafletGridHeatMap.isSensible({ cols, rows })
@@ -64,9 +66,9 @@ function checkRenderable(
   _series: Series,
   settings: ComputedVisualizationSettings,
 ) {
-  const type: PIN_MAP_VALUES_TYPE | "region" = settings["map.type"];
+  const type = settings["map.type"];
 
-  if (PIN_MAP_TYPES.has(type)) {
+  if (isPinMapType(type)) {
     if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
       throw new ChartSettingsError(
         t`Please select longitude and latitude columns in the chart settings.`,
@@ -90,9 +92,9 @@ function checkRenderable(
 
 function MapComponent(props: VisualizationProps) {
   const { settings } = props;
-  const type: PIN_MAP_VALUES_TYPE | "region" = settings["map.type"];
+  const type = settings["map.type"];
 
-  if (PIN_MAP_TYPES.has(type)) {
+  if (isPinMapType(type)) {
     return <PinMap {...props} />;
   }
 
@@ -115,8 +117,8 @@ function arePropsEqual(prev: VisualizationProps, next: VisualizationProps) {
 const MAP_VIZ_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Map`,
   identifier: "map",
-  iconName: "pinmap" as const,
-  aliases: ["state", "country", "pin_map"] as const,
+  iconName: "pinmap",
+  aliases: [...MAP_DISPLAY_ALIASES],
   minSize: getMinSize("map"),
   defaultSize: getDefaultSize("map"),
   isSensible,
@@ -146,7 +148,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         ],
       }),
       getDefault: ([{ card, data }], settings) => {
-        const display = card.display as string;
+        const display: string = card.display;
         switch (display) {
           case "state":
           case "country":
@@ -213,11 +215,8 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
             : data.rows.length >= 1000
               ? "tiles"
               : "markers",
-      getHidden: (_series, vizSettings) => {
-        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
-
-        return !PIN_MAP_TYPES.has(type);
-      },
+      getHidden: (_series, vizSettings) =>
+        !isPinMapType(vizSettings["map.type"]),
     },
     ...fieldSetting("map.latitude_column", {
       get title() {
@@ -225,10 +224,8 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
-      getHidden: (_series, vizSettings) => {
-        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
-        return !PIN_MAP_TYPES.has(type);
-      },
+      getHidden: (_series, vizSettings) =>
+        !isPinMapType(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.longitude_column", {
       get title() {
@@ -236,25 +233,18 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
-      getHidden: (_series, vizSettings) => {
-        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
-        return !PIN_MAP_TYPES.has(type);
-      },
+      getHidden: (_series, vizSettings) =>
+        !isPinMapType(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.metric_column", {
       get title() {
         return t`Metric field`;
       },
       fieldFilter: isMetric,
-      getHidden: (_series, vizSettings) => {
-        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
-
-        return (
-          !PIN_MAP_TYPES.has(type) ||
-          (vizSettings["map.pin_type"] !== "heat" &&
-            vizSettings["map.pin_type"] !== "grid")
-        );
-      },
+      getHidden: (_series, vizSettings) =>
+        !isPinMapType(vizSettings["map.type"]) ||
+        (vizSettings["map.pin_type"] !== "heat" &&
+          vizSettings["map.pin_type"] !== "grid"),
     }),
     "map.region": {
       get title() {
@@ -262,7 +252,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       widget: "select",
       getDefault: ([{ card, data }]) => {
-        const display = card.display as string;
+        const display: string = card.display;
         if (display === "state" || _.any(data.cols, isState)) {
           return "us_states";
         } else if (display === "country" || _.any(data.cols, isCountry)) {
@@ -273,8 +263,8 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       getProps: () => ({
         options: _.chain(MetabaseSettings.get("custom-geojson") ?? {})
           .pairs()
-          .map(([key, value]) => ({
-            name: (value as { name?: string }).name || "",
+          .map(([key, value]: [string, CustomGeoJSONMap]) => ({
+            name: value.name || "",
             value: key,
           }))
           .sortBy((x) => x.name.toLowerCase())
@@ -375,6 +365,6 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
 };
 
 export const Map = Object.assign(
-  React.memo(MapComponent, arePropsEqual),
+  memo(MapComponent, arePropsEqual),
   MAP_VIZ_DEFINITION,
 );
