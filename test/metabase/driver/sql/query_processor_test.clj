@@ -1398,7 +1398,9 @@
         (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
           (is (= uuid
                  (sql.qp/->honeysql driver
-                                    [:value uuid {:base_type :type/UUID :effective_type :type/UUID}]))))))))
+                                    (if (isa? driver/hierarchy driver :sql-mbql5)
+                                      [:value {:base_type :type/UUID :effective_type :type/UUID} uuid]
+                                      [:value uuid {:base_type :type/UUID :effective_type :type/UUID}])))))))))
 
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"
