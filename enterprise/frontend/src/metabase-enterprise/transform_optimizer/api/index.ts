@@ -94,7 +94,7 @@ export type ListIndexesResponse = {
   indexes: TargetIndex[];
 };
 
-const optimizerApi = EnterpriseApi.injectEndpoints({
+export const optimizerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     optimize: builder.query<
       OptimizeResponse,
@@ -105,6 +105,11 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform-optimizer/${transformId}/optimize`,
         body: { analyze },
       }),
+      // The optimizer call takes 5–30 s and the LLM bill isn't free. Keep
+      // the result cached for the session so a tab switch (or any other
+      // unmount of `TransformOptimizerSection`) doesn't drop the work the
+      // user already paid for.
+      keepUnusedDataFor: 60 * 60,
     }),
     verifyProposal: builder.mutation<
       VerifyResponse,
@@ -187,6 +192,7 @@ const optimizerApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useLazyOptimizeQuery,
+  useOptimizeQuery,
   useVerifyProposalMutation,
   useAcceptProposalMutation,
   useListTargetIndexesQuery,
