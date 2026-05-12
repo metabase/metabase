@@ -299,7 +299,7 @@ export const submitInput = createAsyncThunk<
         return {
           prompt: rawPrompt,
           success: false,
-          shouldRetry: true,
+          shouldRetry: result.payload.shouldRetry,
           error:
             result.payload?.type === "error"
               ? result.payload.display
@@ -510,6 +510,7 @@ export const sendAgentRequest = createAsyncThunk<
           ],
           // reuse new state if we recieved it
           state: Object.keys(state).length === 0 ? request.state : state,
+          shouldRetry: false,
         });
       }
 
