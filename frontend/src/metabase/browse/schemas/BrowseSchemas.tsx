@@ -1,9 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { useListDatabaseSchemasQuery } from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Databases } from "metabase/entities/databases";
@@ -86,9 +87,22 @@ const BrowseSchemasContainer = ({
 
 export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
-  const { data, isLoading, error } = useListDatabaseSchemasQuery(
-    dbId == null ? skipToken : { id: dbId },
-  );
+
+  if (dbId == null) {
+    return <NotFound />;
+  }
+
+  return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
+};
+
+const BrowseSchemasForDatabase = ({
+  dbId,
+  params,
+}: {
+  dbId: number;
+  params: { slug: string };
+}) => {
+  const { data, isLoading, error } = useListDatabaseSchemasQuery({ id: dbId });
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
