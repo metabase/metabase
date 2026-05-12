@@ -29,7 +29,9 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement)
+   (org.postgresql PGConnection)
+   (org.postgresql.copy CopyIn CopyManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -79,34 +81,72 @@
           nil
           (processors/process-databases! batch)))
 
+(defn- drain-via-jdbc-batch!
+  "Drive parser batches through JDBC `executeBatch` against per-staging-table
+  `PreparedStatement`s. Portable across all app-db drivers."
+  [^Connection conn ^File file matched-ids databases-by-source-id]
+  (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
+              ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
+    (parsers/stream-keyed-arrays!
+     file processors/import-batch-size
+     {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
+      :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
+      :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))})))
+
+(defn- drain-via-pg-copy!
+  "Drive parser batches through PG's COPY wire protocol via `CopyManager`.
+  Streams TSV-formatted bytes directly to the server. Only one COPY can be
+  active per connection at a time, so we track the current handle (`:tables`
+  or `:fields`) and close it before opening the next."
+  [^Connection conn ^File file matched-ids databases-by-source-id]
+  (let [^PGConnection pg-conn  (.unwrap conn PGConnection)
+        ^CopyManager  copy-mgr (.getCopyAPI pg-conn)
+        current                (volatile! {:kind nil :copy-in nil})
+        close-current! (fn []
+                         (when-let [^CopyIn ci (:copy-in @current)]
+                           (.endCopy ci)
+                           (vreset! current {:kind nil :copy-in nil})))
+        ensure-copy!   (fn [kind ^String sql]
+                         (when (not= kind (:kind @current))
+                           (close-current!)
+                           (vreset! current {:kind kind :copy-in (.copyIn copy-mgr sql)})))]
+    (try
+      (parsers/stream-keyed-arrays!
+       file processors/import-batch-size
+       {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
+        :tables    (fn [batch]
+                     (ensure-copy! :tables processors/tables-copy-sql)
+                     (processors/drain-tables-batch-pg-copy! (:copy-in @current) @databases-by-source-id batch))
+        :fields    (fn [batch]
+                     (ensure-copy! :fields processors/fields-copy-sql)
+                     (processors/drain-fields-batch-pg-copy! (:copy-in @current) batch))})
+      (close-current!)
+      (catch Throwable t
+        (try (close-current!) (catch Throwable _ nil))
+        (throw t)))))
+
 (defn- drain-and-match-databases!
   "Single-pass walk of the metadata file: match `:databases` against the live
   appdb, drain `:tables` and `:fields` into staging. Returns the set of
   matched target-db-ids.
 
-  Uses hand-rolled JDBC `executeBatch` against per-staging-table prepared
-  statements, all committed in one transaction at the end. Bypasses the
-  `t2/insert!` + HoneySQL VALUES formatting overhead, which is the dominant
-  cost at multi-million-row scale."
+  Opens one JDBC connection, sets `autoCommit=false`, dispatches the drain
+  through a driver-conditional path (PG `CopyManager` fast path, JDBC
+  `executeBatch` fallback for H2/MySQL), commits at the end. c3p0's
+  `autoCommitOnClose=false` means we must explicitly restore `autoCommit=true`
+  before returning the connection to the pool; otherwise the next pool user
+  inherits an open-transaction-capable connection and can leak an idle-in-
+  transaction backend."
   [^File file]
   (let [matched-ids            (volatile! #{})
         databases-by-source-id (volatile! {})
         ds                     (mdb/data-source)]
     (with-open [^Connection conn (.getConnection ds)]
-      ;; Always normalize autoCommit on exit. c3p0's `autoCommitOnClose=false`
-      ;; means a connection returned to the pool keeps whatever autoCommit
-      ;; state we left it in; if we leave it `false` the next pool user
-      ;; inherits an open-transaction-capable connection without knowing it
-      ;; and can leak an idle-in-transaction backend.
       (.setAutoCommit conn false)
       (try
-        (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
-                    ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
-          (parsers/stream-keyed-arrays!
-           file processors/import-batch-size
-           {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
-            :tables    (fn [batch] (processors/drain-tables-batch-jdbc! tables-ps @databases-by-source-id batch))
-            :fields    (fn [batch] (processors/drain-fields-batch-jdbc! fields-ps batch))}))
+        (case (mdb/db-type)
+          :postgres (drain-via-pg-copy!     conn file matched-ids databases-by-source-id)
+          (drain-via-jdbc-batch! conn file matched-ids databases-by-source-id))
         (.commit conn)
         (catch Throwable t
           (try (.rollback conn) (catch Throwable _ nil))
