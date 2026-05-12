@@ -187,22 +187,69 @@
         v  (f)]
     [(/ (- (System/nanoTime) t0) 1e6) v]))
 
-(defn- capture-result! [ds target-table select-sql]
+(def ^:private heartbeat-interval-ms
+  "How often the heartbeat thread prints `… still running (Ns)`. Short enough
+  that the user trusts the harness isn't hung."
+  3000)
+
+(defn- println-flush [s]
+  (println s)
+  (.flush ^java.io.PrintStream System/out))
+
+(defn- with-heartbeat
+  "Run `f` while a daemon thread prints periodic `… still running (Ns)` lines.
+  `label` prefixes each heartbeat. The heartbeat is cancelled before `f`
+  returns (success or exception)."
+  [label f]
+  (let [start  (System/nanoTime)
+        done?  (volatile! false)
+        ^Runnable r (fn []
+                      (try
+                        (loop []
+                          (Thread/sleep ^long heartbeat-interval-ms)
+                          (when-not @done?
+                            (println-flush
+                             (format "        … %s still running (%.1fs)"
+                                     label
+                                     (/ (- (System/nanoTime) start) 1e9)))
+                            (recur)))
+                        (catch InterruptedException _)))
+        thr    (doto (Thread. r) (.setDaemon true) (.start))]
+    (try
+      (f)
+      (finally
+        (vreset! done? true)
+        (.interrupt thr)))))
+
+(defn- run-statement! [ds sql label]
+  (with-heartbeat label #(jdbc/execute! ds [sql])))
+
+(defn- capture-result! [ds target-table select-sql label]
   (jdbc/execute! ds [(str "DROP TABLE IF EXISTS bench." target-table)])
-  (let [[ms _]    (time-ms #(jdbc/execute! ds [(str "CREATE TABLE bench." target-table
-                                                    " AS " select-sql)]))
+  (let [[ms _]    (time-ms
+                   #(with-heartbeat label
+                      (fn [] (jdbc/execute!
+                              ds [(str "CREATE TABLE bench." target-table " AS " select-sql)]))))
         row-count (-> (jdbc/execute-one! ds [(str "SELECT count(*) AS c FROM bench."
                                                   target-table)])
                       :c)]
     {:ms ms :row-count row-count}))
 
-(defn- run-slow! [ds pair ref-now]
-  (capture-result! ds (str "slow_" (:short pair)) (pin-now (:slow pair) ref-now)))
+(defn- run-slow! [ds pair ref-now label]
+  (capture-result! ds (str "slow_" (:short pair)) (pin-now (:slow pair) ref-now) label))
 
-(defn- run-fast! [ds pair ref-now]
-  (doseq [s (:fast-pre pair)]
-    (jdbc/execute! ds [(pin-now s ref-now)]))
-  (capture-result! ds (str "fast_" (:short pair)) (pin-now (:fast-final pair) ref-now)))
+(defn- run-fast! [ds pair ref-now label]
+  ;; Multi-statement fast queries (q07/q08 precomputes): announce each step so
+  ;; the user can see which precompute is running.
+  (let [pre (:fast-pre pair)
+        n   (count pre)]
+    (doseq [[idx s] (map-indexed vector pre)]
+      (let [step-label (format "%s [precompute %d/%d]" label (inc idx) (inc n))]
+        (println-flush (str "      ↳ " step-label))
+        (run-statement! ds (pin-now s ref-now) step-label)))
+    (when (pos? n)
+      (println-flush (str "      ↳ " label " [final SELECT]")))
+    (capture-result! ds (str "fast_" (:short pair)) (pin-now (:fast-final pair) ref-now) label)))
 
 (defn- compare-results [ds short]
   (try
@@ -260,8 +307,11 @@
       (jdbc/execute! ds ["CREATE SCHEMA bench"])
       (doseq [f ["01_schema.sql" "02_seed.sql"]]
         (let [path (project-file "dataset" f)
-              [ms _] (time-ms #(exec-script! ds path))]
-          (println (format "  %-30s (%.1fs)" f (/ ms 1000.0))))))
+              _    (println-flush (format "  → %s loading ..." f))
+              [ms _] (time-ms
+                      #(with-heartbeat f
+                         (fn [] (exec-script! ds path))))]
+          (println-flush (format "  ✓ %s (%.1fs)" f (/ ms 1000.0))))))
 
     (when-not (:reset opts)
       (jdbc/execute! ds ["CREATE SCHEMA IF NOT EXISTS bench"]))
@@ -275,27 +325,40 @@
       (println (str "\nReference instant for NOW(): " ref-now))
 
       (println "\n== Phase 2: run slow queries (baseline schema, no helper indexes) ==")
-      (let [slow-stats
-            (mapv (fn [p]
-                    (let [{:keys [ms row-count]} (run-slow! ds p ref-now)]
-                      (println (format "  %-32s slow %8.3fs  rows=%d"
-                                       (:slug p) (/ ms 1000.0) row-count))
-                      (assoc p :slow-ms ms :slow-rows row-count)))
-                  pairs)]
+      (let [total (count pairs)
+            slow-stats
+            (vec
+             (map-indexed
+              (fn [i p]
+                (let [n     (inc i)
+                      label (format "[%d/%d] %s slow" n total (:slug p))]
+                  (println-flush (format "  → %s  running ..." label))
+                  (let [{:keys [ms row-count]} (run-slow! ds p ref-now label)]
+                    (println-flush
+                     (format "  ✓ %s  %.3fs  rows=%d" label (/ ms 1000.0) row-count))
+                    (assoc p :slow-ms ms :slow-rows row-count))))
+              pairs))]
 
         (println "\n== Phase 3: apply optimized indexes ==")
         (let [[ms _] (time-ms
-                      #(exec-script! ds (project-file "dataset" "03_optimized_indexes.sql")))]
-          (println (format "  03_optimized_indexes.sql       (%.1fs)" (/ ms 1000.0))))
+                      #(with-heartbeat "03_optimized_indexes.sql"
+                         (fn []
+                           (exec-script! ds (project-file "dataset" "03_optimized_indexes.sql")))))]
+          (println-flush (format "  03_optimized_indexes.sql       (%.1fs)" (/ ms 1000.0))))
 
         (println "\n== Phase 4: run fast queries (with indexes) ==")
         (let [fast-stats
-              (mapv (fn [p]
-                      (let [{:keys [ms row-count]} (run-fast! ds p ref-now)]
-                        (println (format "  %-32s fast %8.3fs  rows=%d"
-                                         (:slug p) (/ ms 1000.0) row-count))
-                        (assoc p :fast-ms ms :fast-rows row-count)))
-                    slow-stats)]
+              (vec
+               (map-indexed
+                (fn [i p]
+                  (let [n     (inc i)
+                        label (format "[%d/%d] %s fast" n total (:slug p))]
+                    (println-flush (format "  → %s  running ..." label))
+                    (let [{:keys [ms row-count]} (run-fast! ds p ref-now label)]
+                      (println-flush
+                       (format "  ✓ %s  %.3fs  rows=%d" label (/ ms 1000.0) row-count))
+                      (assoc p :fast-ms ms :fast-rows row-count))))
+                slow-stats))]
 
           (println "\n== Phase 5: compare results (EXCEPT ALL, both directions) ==")
           (let [report
