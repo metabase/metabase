@@ -688,6 +688,27 @@
           (is (false? (.contains json-str ^CharSequence NUL)) "encoded JSON has no raw NUL")
           (is (false? (.contains json-str ^CharSequence FF))  "encoded JSON has no raw form feed"))))))
 
+(deftest dedupe-entries-test
+  (let [dedupe @#'search.index/dedupe-entries]
+    (testing "passes through entries with distinct (model, model_id)"
+      (is (= [{:model "card" :model_id "1" :name "a"}
+              {:model "card" :model_id "2" :name "b"}
+              {:model "dataset" :model_id "1" :name "c"}]
+             (dedupe [{:model "card" :model_id "1" :name "a"}
+                      {:model "card" :model_id "2" :name "b"}
+                      {:model "dataset" :model_id "1" :name "c"}]))))
+    (testing "collapses entries that share (model, model_id), keeping the last one"
+      ;; Postgres rejects an `INSERT ... ON CONFLICT DO UPDATE` when two rows in the
+      ;; same batch collide on the conflict target — see issue #72427.
+      (is (= [{:model "card" :model_id "1" :name "second"}]
+             (dedupe [{:model "card" :model_id "1" :name "first"}
+                      {:model "card" :model_id "1" :name "second"}]))))
+    (testing "same model_id under different models is not a collision"
+      (is (= 2 (count (dedupe [{:model "card"    :model_id "1" :name "a"}
+                               {:model "dataset" :model_id "1" :name "b"}])))))
+    (testing "empty input returns empty"
+      (is (empty? (dedupe []))))))
+
 (deftest when-index-created
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]

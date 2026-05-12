@@ -327,6 +327,15 @@
                             (name table-type) table-name)
                 nil)))))))
 
+(defn- dedupe-entries
+  "Remove entries that collide on (model, model_id), keeping the last occurrence.
+   Postgres rejects `INSERT ... ON CONFLICT DO UPDATE` when the same batch contains
+   two rows that share the conflict target, and H2's unique index would also reject
+   duplicates in a single insert. Upstream ingestion can fan rows out via joins, so
+   we dedupe defensively per batch."
+  [entries]
+  (vals (into {} (map (juxt (juxt :model :model_id) identity)) entries)))
+
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
   [context documents]
@@ -343,7 +352,7 @@
 
   (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
         do-writes   (fn []
-                      (let [entries         (map document->entry documents)
+                      (let [entries         (dedupe-entries (map document->entry documents))
                             ;; No need to update the active index if we are doing a full index, as this table will be
                             ;; swapped out soon. Most updates would be no-ops anyway.
                             active-updated  (when-not (and reindexing? (pending-table))
