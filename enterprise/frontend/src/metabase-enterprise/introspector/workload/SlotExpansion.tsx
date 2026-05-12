@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Anchor, Badge, Box, Skeleton, Table, Text, Title } from "metabase/ui";
+import { Anchor, Badge, Box, Skeleton, Text, Title } from "metabase/ui";
 
 import type { WorkloadJobType, WorkloadSlotRow } from "./types";
 
@@ -10,12 +10,31 @@ type Props = {
   isLoading: boolean;
 };
 
-const BADGE_COLOR: Record<WorkloadJobType, string> = {
-  sync: "blue",
-  "transform-job": "orange",
-  notification: "green",
-  "persisted-refresh": "violet",
-  other: "gray",
+const BADGE_COLOR: Record<
+  WorkloadJobType,
+  "brand" | "warning" | "success" | "summarize" | "text-secondary"
+> = {
+  sync: "brand",
+  "transform-job": "warning",
+  notification: "success",
+  "persisted-refresh": "summarize",
+  other: "text-secondary",
+};
+
+const cellStyle = {
+  padding: "8px 4px",
+  borderBottom: "1px solid var(--mb-color-border)",
+  fontSize: 13,
+} as const;
+
+const headerStyle = {
+  ...cellStyle,
+  textAlign: "left" as const,
+  fontSize: 11,
+  fontWeight: 500,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.04em",
+  color: "var(--mb-color-text-secondary)",
 };
 
 export function SlotExpansion({ slot, rows, isLoading }: Props) {
@@ -78,51 +97,51 @@ export function SlotExpansion({ slot, rows, isLoading }: Props) {
       <Title order={5} mb="xs">
         {t`${slot.replace("T", " · ")}:00 UTC`}
       </Title>
-      <Table striped withTableBorder={false} verticalSpacing="xs">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>{t`Type`}</Table.Th>
-            <Table.Th>{t`Entity`}</Table.Th>
-            <Table.Th>{t`Cron`}</Table.Th>
-            <Table.Th>{t`Fires at`}</Table.Th>
-            <Table.Th>{t`Weight`}</Table.Th>
-            <Table.Th />
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th style={headerStyle}>{t`Type`}</th>
+            <th style={headerStyle}>{t`Entity`}</th>
+            <th style={headerStyle}>{t`Cron`}</th>
+            <th style={headerStyle}>{t`Fires at`}</th>
+            <th style={headerStyle}>{t`Weight`}</th>
+            <th style={headerStyle} />
+          </tr>
+        </thead>
+        <tbody>
           {rows.map((r, i) => (
-            <Table.Tr key={`${r.type}-${r.entity_id ?? "x"}-${r.fire_at}-${i}`}>
-              <Table.Td>
+            <tr key={`${r.type}-${r.entity_id ?? "x"}-${r.fire_at}-${i}`}>
+              <td style={cellStyle}>
                 <Badge color={BADGE_COLOR[r.type]} variant="light">
                   {r.type}
                 </Badge>
-              </Table.Td>
-              <Table.Td>
+              </td>
+              <td style={cellStyle}>
                 {r.entity_name ?? (
                   <Text c="text-secondary" component="span">
                     {t`(orphaned)`}
                   </Text>
                 )}
-              </Table.Td>
-              <Table.Td>
+              </td>
+              <td style={cellStyle}>
                 <Text ff="monospace" size="xs">
                   {r.cron ?? "—"}
                 </Text>
-              </Table.Td>
-              <Table.Td>{new Date(r.fire_at).toLocaleString()}</Table.Td>
-              <Table.Td>{r.weight}</Table.Td>
-              <Table.Td>
+              </td>
+              <td style={cellStyle}>{new Date(r.fire_at).toLocaleString()}</td>
+              <td style={cellStyle}>{r.weight}</td>
+              <td style={cellStyle}>
                 {r.settings_url ? (
                   <Anchor
                     href={r.settings_url}
                     size="sm"
                   >{t`Reschedule…`}</Anchor>
                 ) : null}
-              </Table.Td>
-            </Table.Tr>
+              </td>
+            </tr>
           ))}
-        </Table.Tbody>
-      </Table>
+        </tbody>
+      </table>
     </Box>
   );
 }
