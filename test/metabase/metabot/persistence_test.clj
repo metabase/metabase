@@ -448,6 +448,59 @@
         (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
           [row (first (metabot-persistence/message->chat-messages row))])))))
 
+(deftest throwable->error-payload-test
+  (testing "matches the streamed :error part shape produced by the agent loop's
+            own catch (agent/core/error-part), so a thrown turn and a streamed
+            :error turn render identically through the FE."
+    (testing "ExceptionInfo with ex-data carries :message, :type, :data"
+      (is (= {:message "boom" :type "clojure.lang.ExceptionInfo" :data {:status 503}}
+             (metabot-persistence/throwable->error-payload
+              (ex-info "boom" {:status 503})))))
+    (testing "throwable without a message falls back to .toString so :message is never blank"
+      (let [payload (metabot-persistence/throwable->error-payload (NullPointerException.))]
+        (is (= "java.lang.NullPointerException" (:type payload)))
+        (is (string? (:message payload)))
+        (is (seq (:message payload)))))
+    (testing "empty ex-data is omitted (no spurious :data key)"
+      (is (not (contains? (metabot-persistence/throwable->error-payload (ex-info "x" {}))
+                          :data))))
+    (testing "non-ExceptionInfo throwables carry no :data"
+      (is (not (contains? (metabot-persistence/throwable->error-payload (RuntimeException. "oops"))
+                          :data))))))
+
+(deftest safe-encode-error-falls-back-when-encode-throws-test
+  (testing "If json/encode throws (e.g. an Object fallback encoder isn't loaded
+            in some early-init context), the error payload is re-encoded with
+            :data downgraded to pr-str so the row's error column is still
+            valid JSON. Without this, an unusual ex-data value would fail the
+            whole UPDATE and the row would stay with error=nil — looking like
+            a clean success."
+    (let [real-encode json/encode
+          ;; Simulate an encoder that chokes on a specific marker value, but
+          ;; otherwise behaves normally — so the fallback's *second* encode call
+          ;; (with :data swapped for pr-str) still succeeds.
+          fail-encode (fn fail-encode
+                        ([v] (fail-encode v nil))
+                        ([v opts]
+                         (if (and (map? v)
+                                  (= ::poison (some-> v :data :marker)))
+                           (throw (ex-info "simulated encoder failure" {}))
+                           (if opts (real-encode v opts) (real-encode v)))))]
+      (with-redefs [json/encode fail-encode]
+        (let [encoded (#'metabot-persistence/safe-encode-error
+                       {:message "wrapper"
+                        :type    "java.lang.RuntimeException"
+                        :data    {:marker ::poison :other "x"}})
+              decoded (json/decode+kw encoded)]
+          (is (= "wrapper" (:message decoded))
+              "top-level message survives the fallback")
+          (is (= "java.lang.RuntimeException" (:type decoded))
+              "top-level type survives the fallback")
+          (is (string? (:data decoded))
+              ":data is downgraded to a pr-str string")
+          (is (re-find #":marker" (:data decoded))
+              "stringified :data still carries enough info for triage"))))))
+
 (deftest finalize-assistant-turn-persists-finished-and-error-test
   (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
     (testing "default: finished true, no error"

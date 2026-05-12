@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -204,6 +205,49 @@
                             "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
         (finally
           (.stop llm-server))))))
+
+(deftest thrown-during-agent-setup-persists-as-errored-test
+  (testing "A throwable escaping the agent loop (e.g. permission/setup throw before
+            the reducible is constructed) finalizes the placeholder with
+            :finished? true + a structured :error payload — distinguishable from
+            both a successful turn (error nil) and a client abort (finished false)."
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [stored-parts  (atom nil)
+              stored-kwargs (atom nil)]
+          (with-redefs [;; Pre-reducible throw: this is the exact escape path the new
+                        ;; catch covers. The agent loop's own (catch Exception) is
+                        ;; inside the reify, so a throw from `run-agent-loop` itself
+                        ;; bypasses it entirely.
+                        agent/run-agent-loop
+                        (fn [_opts]
+                          (throw (ex-info "agent setup exploded"
+                                          {:status 503 :provider :test})))
+                        metabot.persistence/finalize-assistant-turn!
+                        (fn [_conv-id _pk parts & kwargs]
+                          (reset! stored-parts parts)
+                          (reset! stored-kwargs (apply hash-map kwargs)))]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    {:message         "go"
+                                     :context         {}
+                                     :conversation_id (str (random-uuid))
+                                     :history         []
+                                     :state           {}})
+              (u/poll {:thunk       #(deref stored-kwargs)
+                       :done?       some?
+                       :interval-ms 10
+                       :timeout-ms  3000})
+              (is (some? @stored-kwargs)
+                  "finalize-assistant-turn! is called from the finally even when setup threw")
+              (is (true? (:finished? @stored-kwargs))
+                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+              (is (=? {:message #"(?i)agent setup exploded"
+                       :type    "clojure.lang.ExceptionInfo"
+                       :data    {:status 503 :provider :test}}
+                      (:error @stored-kwargs))
+                  "the throwable becomes a structured error payload"))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"

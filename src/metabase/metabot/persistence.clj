@@ -62,6 +62,35 @@
    {}
    parts))
 
+(defn throwable->error-payload
+  "Coerce a `Throwable` into the same JSON-encodable map shape a streamed
+  `:error` part carries, so a turn that fails by *throwing* persists in the
+  same column shape as one that fails by emitting an `:error` part. The FE
+  renders both via the `turn_errored` alert path with no branching."
+  [^Throwable t]
+  (let [data (ex-data t)]
+    (cond-> {:message (or (ex-message t) (.toString t))
+             :type    (.getName (class t))}
+      (seq data) (assoc :data data))))
+
+(defn- safe-encode-error
+  "JSON-encode an error payload, falling back to a stringified `:data` if the
+  first encode throws. Defense-in-depth: `metabase.server.middleware.json`
+  registers an `Object` `.toString` fallback encoder that handles most odd
+  values, but in contexts where that middleware hasn't been loaded — early
+  init, certain unit-test setups — an unusual `ex-data` value could still
+  throw. We'd rather persist a stringified payload than fail the whole UPDATE
+  and lose the row's error column to `nil`."
+  [error]
+  (when (some? error)
+    (try (json/encode error)
+         (catch Throwable _
+           (try (json/encode (cond-> error
+                               (map? error) (assoc :data (pr-str (:data error)))))
+                (catch Throwable _
+                  (json/encode {:message      (pr-str error)
+                                :encode-error true})))))))
+
 (defn combine-text-parts-xf
   "Transducer that merges consecutive `:text` parts into a single `:text` part.
   Non-text parts pass through unchanged. Used before persistence so streaming
@@ -218,7 +247,7 @@
                                               (map #(+ (:prompt %) (:completion %)))
                                               (reduce + 0))
                            :finished     (boolean finished?)
-                           :error        (some-> error json/encode)}
+                           :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
                     channel-id   (assoc :channel_id channel-id))))))
 

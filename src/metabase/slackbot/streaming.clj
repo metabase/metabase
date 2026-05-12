@@ -202,6 +202,12 @@
                          {:metabot-id metabot.config/slackbot-metabot-id})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
+        ;; Sibling capture for throwables that escape the agent loop's own
+        ;; `catch Exception`. The slack `send-dm-response` / `send-channel-response`
+        ;; wrappers already turn the rethrown error into a user-facing slack message;
+        ;; this volatile is purely so the persisted row's `:error` column matches the
+        ;; failure shape of a streamed `:error` part.
+        thrown          (volatile! nil)
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
                          (keep (fn [part]
@@ -241,6 +247,13 @@
                    :context       context
                    :tracking-opts {:source     "slackbot"
                                    :session-id conversation-id}}))
+      (catch Throwable t
+        ;; Capture for the finally's `:error` payload, then re-throw so the
+        ;; existing slack error-handling path (DM/channel) still surfaces a
+        ;; user-facing message. Unlike the HTTP path we *do* want the throw to
+        ;; propagate — the caller flushes / posts a fallback / cancels viz.
+        (vreset! thrown t)
+        (throw t))
       (finally
         ;; UPDATE the placeholder with whatever parts we collected, even if the
         ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
@@ -249,7 +262,8 @@
          conversation-id assistant-msg-id
          (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
          :profile-id   "slackbot"
-         :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))))
+         :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+         :error        (some-> @thrown metabot.persistence/throwable->error-payload))))
     {:msg-id      assistant-msg-id
      :external-id assistant-external-id}))
 
