@@ -55,14 +55,16 @@ function UpdateSegmentForm({ route, segmentId }: UpdateSegmentFormProps) {
     async (segmentValues: Partial<Segment>) => {
       setIsDirty(false);
 
-      const result = await updateSegment(segmentValues as UpdateSegmentRequest);
+      const result = await updateSegment(
+        toUpdateSegmentRequest(segmentId, segmentValues),
+      );
       if (result.error) {
         setIsDirty(isDirty);
         return;
       }
       dispatch(push("/admin/datamodel/segments"));
     },
-    [dispatch, updateSegment, isDirty],
+    [dispatch, segmentId, updateSegment, isDirty],
   );
 
   const isLoading = isLoadingSegment || isLoadingTable;
@@ -142,4 +144,18 @@ export function SegmentApp({ params, route }: SegmentAppOwnProps) {
   }
 
   return <CreateSegmentForm route={route} />;
+}
+
+function toUpdateSegmentRequest(
+  id: number,
+  values: Partial<Segment>,
+): UpdateSegmentRequest {
+  return {
+    id,
+    name: values.name,
+    description: values.description,
+    definition: values.definition,
+    archived: values.archived,
+    revision_message: values.revision_message ?? "",
+  };
 }
