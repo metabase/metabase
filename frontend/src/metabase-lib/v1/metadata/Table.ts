@@ -11,11 +11,13 @@ import type Field from "./Field";
 import type ForeignKey from "./ForeignKey";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
+import { getSchemaDisplayName } from "./utils/schema";
 
-interface Table extends Omit<
-  NormalizedTable,
-  "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
-> {
+interface Table
+  extends Omit<
+    NormalizedTable,
+    "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
+  > {
   db?: Database;
   schema?: Schema;
   fields?: Field[];
@@ -71,8 +73,9 @@ class Table {
 
   displayName({ includeSchema }: { includeSchema?: boolean } = {}) {
     return (
-      (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
-      this.display_name
+      (includeSchema && this.schema
+        ? getSchemaDisplayName(this.schema.name) + "."
+        : "") + this.display_name
     );
   }
 
