@@ -196,8 +196,8 @@
                       true)]
         (mt/with-temp-scheduler!
           ;; Start the job immediately.
-          (#'dependencies.backfill/schedule-run! 0)
-          (is (= true (deref job-started 1000 :timeout))
+          (#'dependencies.backfill/schedule-run! (task/scheduler) 0)
+          (is (true? (deref job-started 1000 :timeout))
               "BackfillDependencies job did not start within 1s")
           (let [scheduler (task/scheduler)
                 job-key   (JobKey. "metabase.task.dependency-backfill.job")
