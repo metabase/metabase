@@ -2717,7 +2717,7 @@
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/api
   {:team "UX West"
@@ -3498,9 +3498,11 @@
            premium-features
            query-processor
            server
+           settings
            sql-tools
            util
            enterprise/serialization}
+   :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/User}}}
 
