@@ -1,5 +1,5 @@
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 
 import { mergeVisualizerData } from "./merge-data";
