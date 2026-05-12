@@ -21,7 +21,7 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { SnippetRow } from "./SnippetRow";
@@ -271,6 +271,7 @@ function SnippetSidebarWithSearch(props) {
 }
 
 export function SnippetSidebar(props) {
+  const dispatch = useDispatch();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -305,6 +306,7 @@ export function SnippetSidebar(props) {
           snippetCollections={snippetCollections}
           snippetCollection={snippetCollection}
           isRemoteSyncReadOnly={isRemoteSyncReadOnly}
+          dispatch={dispatch}
         />
       )}
     </LoadingAndErrorWrapper>

@@ -1,13 +1,14 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import { snippetApi } from "metabase/api";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
-import { Snippets } from "metabase/entities/snippets";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -30,7 +31,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, NativeQuerySnippet, SegmentId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
@@ -246,8 +247,11 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
+    const snippets: NativeQuerySnippet[] = await entityCompatibleQuery(
+      undefined,
+      dispatch,
+      snippetApi.endpoints.listSnippets,
+    );
     query = query.updateSnippetNames(snippets);
   }
   return query;
