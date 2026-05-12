@@ -29,6 +29,8 @@ import { OptimizationDegreeDial } from "../OptimizationDegreeDial";
 import { ProposalCard } from "../ProposalCard";
 import { TargetIndexesSection } from "../TargetIndexesSection";
 
+import { ProposalGroup } from "./ProposalGroup";
+
 type Props = {
   transform: Transform;
   readOnly?: boolean;
@@ -203,49 +205,51 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
               )}
 
               <Stack gap="md">
-                {state.proposals.map((proposal) => {
-                  // Verify only makes sense for proposals that actually
-                  // produce a new SQL result (rewrite / precompute).
-                  // `:index` proposals don't change the query result, so
-                  // there's nothing to EXCEPT-ALL against.
-                  const canVerify = proposal.kind !== "index";
-                  const dependencyNames = resolveDependencyNames(
-                    proposal,
-                    state.proposals,
-                  );
-                  return (
-                    <ProposalCard
-                      key={proposal.id}
-                      proposal={proposal}
-                      currentSql={currentSql}
-                      dependencyNames={dependencyNames}
-                      actions={{
-                        accept: {
-                          kind: "accept",
-                          busy:
-                            busyProposalId === proposal.id &&
-                            acceptResult.isLoading,
-                          disabled: readOnly,
-                          disabledReason: readOnly
-                            ? t`You don't have permission to create transforms here.`
-                            : undefined,
-                        },
-                        verify: canVerify
-                          ? {
-                              kind: "verify",
+                {groupProposalsByDependency(state.proposals).map((group) => (
+                  <ProposalGroup
+                    key={group.key}
+                    proposals={group.proposals}
+                    renderCard={(proposal) => {
+                      const canVerify = proposal.kind !== "index";
+                      const dependencyNames = resolveDependencyNames(
+                        proposal,
+                        state.proposals,
+                      );
+                      return (
+                        <ProposalCard
+                          key={proposal.id}
+                          proposal={proposal}
+                          currentSql={currentSql}
+                          dependencyNames={dependencyNames}
+                          actions={{
+                            accept: {
+                              kind: "accept",
                               busy:
                                 busyProposalId === proposal.id &&
-                                verifyResult.isLoading,
-                            }
-                          : undefined,
-                        dismiss: { kind: "dismiss" },
-                      }}
-                      onAccept={(mode) => handleAccept(proposal, mode)}
-                      onVerify={() => handleVerify(proposal)}
-                      onDismiss={() => dismissProposal(proposal.id)}
-                    />
-                  );
-                })}
+                                acceptResult.isLoading,
+                              disabled: readOnly,
+                              disabledReason: readOnly
+                                ? t`You don't have permission to create transforms here.`
+                                : undefined,
+                            },
+                            verify: canVerify
+                              ? {
+                                  kind: "verify",
+                                  busy:
+                                    busyProposalId === proposal.id &&
+                                    verifyResult.isLoading,
+                                }
+                              : undefined,
+                            dismiss: { kind: "dismiss" },
+                          }}
+                          onAccept={(mode) => handleAccept(proposal, mode)}
+                          onVerify={() => handleVerify(proposal)}
+                          onDismiss={() => dismissProposal(proposal.id)}
+                        />
+                      );
+                    }}
+                  />
+                ))}
               </Stack>
             </Stack>
           )}
@@ -379,6 +383,96 @@ function topoOrderForAccept(target: Proposal, available: Proposal[]): string[] {
 
   visit(target.id);
   return order;
+}
+
+type ProposalGroupShape = {
+  /** Stable React key — concatenated, topo-ordered proposal ids. */
+  key: string;
+  /** Members of the group in topological (root-first) order. */
+  proposals: Proposal[];
+};
+
+/**
+ * Walk the `depends_on` edges (as undirected) and split proposals into
+ * connected components. Each component is one "pipeline" — a precompute
+ * + its rewrite leaf, a rewrite + its supporting index, etc. — that
+ * the user accepts as a whole or breaks apart by `Dismiss`-ing parts.
+ *
+ * Within a component, proposals are returned in topological (root-first)
+ * order so the UI naturally reads top-to-bottom along the
+ * "build precompute → consume in rewrite" flow.
+ *
+ * Components are returned in input order of their first-seen proposal,
+ * which preserves the LLM's emit order across the panel.
+ */
+function groupProposalsByDependency(
+  proposals: Proposal[],
+): ProposalGroupShape[] {
+  // Union-find over the undirected depends_on graph.
+  const parent = new Map<string, string>();
+  for (const p of proposals) {
+    parent.set(p.id, p.id);
+  }
+  const find = (id: string): string => {
+    let cur = id;
+    while (parent.get(cur) !== cur) {
+      const p = parent.get(cur)!;
+      parent.set(cur, parent.get(p)!);
+      cur = parent.get(cur)!;
+    }
+    return cur;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) {
+      parent.set(ra, rb);
+    }
+  };
+  const ids = new Set(proposals.map((p) => p.id));
+  for (const p of proposals) {
+    for (const dep of p.depends_on) {
+      if (ids.has(dep)) {
+        union(p.id, dep);
+      }
+    }
+  }
+
+  // Bucket each proposal under its root, preserving emit order.
+  const buckets = new Map<string, Proposal[]>();
+  for (const p of proposals) {
+    const root = find(p.id);
+    const bucket = buckets.get(root) ?? [];
+    bucket.push(p);
+    buckets.set(root, bucket);
+  }
+
+  // Topo-sort each bucket (roots first).
+  return Array.from(buckets.values()).map((bucket) => {
+    const byId = new Map(bucket.map((p) => [p.id, p]));
+    const visited = new Set<string>();
+    const ordered: Proposal[] = [];
+    const visit = (id: string) => {
+      if (visited.has(id)) {
+        return;
+      }
+      visited.add(id);
+      const node = byId.get(id);
+      if (!node) {
+        return;
+      }
+      for (const dep of node.depends_on) {
+        if (byId.has(dep)) {
+          visit(dep);
+        }
+      }
+      ordered.push(node);
+    };
+    for (const p of bucket) {
+      visit(p.id);
+    }
+    return { key: ordered.map((p) => p.id).join("→"), proposals: ordered };
+  });
 }
 
 /**

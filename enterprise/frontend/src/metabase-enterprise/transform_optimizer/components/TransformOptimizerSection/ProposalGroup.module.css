@@ -1,0 +1,41 @@
+.group {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 12px;
+  background: var(--mb-color-bg-light, var(--mb-color-bg-white));
+  padding: 0.75rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pipeline {
+  /* Each card in a multi-step pipeline gets a subtle vertical connector
+   * via this nested grid so the user reads top-to-bottom as one flow. */
+  display: grid;
+  gap: 0.5rem;
+}
+
+.step {
+  position: relative;
+}
+
+.step::before {
+  /* A 2px vertical line connecting consecutive cards, drawn only
+   * between steps (skipped on the last child). Sits in the gutter so it
+   * doesn't overlap any card content. */
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  top: 100%;
+  height: 0.5rem;
+  width: 2px;
+  background: var(--mb-color-border);
+}
+
+.step:last-child::before {
+  display: none;
+}
