@@ -45,6 +45,13 @@ export type SdkState = {
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
   pluginsReady: boolean;
+  /**
+   * Tab to apply when the next dashboard mounts via a cross-dashboard
+   * click behavior. Not cleared after use: tab IDs are globally unique
+   * PKs, so stale values can't match another dashboard's tabs, and the
+   * selector falls back to the first tab via a `hasTab` guard. Every
+   * cross-dashboard push overwrites this slot anyway.
+   */
   initialDashboardTabId: DashboardTabId | null;
 };
 
