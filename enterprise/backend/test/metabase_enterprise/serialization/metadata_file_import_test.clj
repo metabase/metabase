@@ -18,6 +18,13 @@
 
 (set! *warn-on-reflection* true)
 
+;; NOT ^:parallel — test-helpers-set-global-values! asserts non-parallel.
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/test-helpers-set-global-values!
+        (thunk)))))
+
 ;;; ============================== Test helpers ==============================
 
 (defn- temp-file ^File [suffix content]

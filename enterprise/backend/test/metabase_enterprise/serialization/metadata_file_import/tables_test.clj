@@ -9,6 +9,11 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :once
+  (fn [thunk]
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (thunk))))
+
 (defn- staging-row [source-id db-name name & {:as overrides}]
   (merge {:source_id    source-id
           :source_db_id 1
