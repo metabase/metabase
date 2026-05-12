@@ -6,9 +6,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.metadata-file-import.processors :as p]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection PreparedStatement)
+   (org.postgresql PGConnection)
+   (org.postgresql.copy CopyIn)))
 
 (use-fixtures :once
   (fn [thunk]
@@ -197,3 +202,82 @@
                nil
                (catch clojure.lang.ExceptionInfo e (:kind (ex-data e)))))))
     (finally (p/clear-staging-tables!))))
+
+;;; ============================== Drain-path equivalence ==============================
+
+(def ^:private equivalence-databases-by-source-id
+  {7 "warehouse-a" 9 "warehouse-b"})
+
+(def ^:private equivalence-table-batch-rows
+  [{:id 100 :db_id 7 :schema "public"    :name "users"     :description "user table"}
+   {:id 101 :db_id 7 :schema nil         :name "events"}
+   {:id 200 :db_id 9 :schema "analytics" :name "purchases"}])
+
+(def ^:private equivalence-field-batch-rows
+  [{:id 1000 :table_id 100 :name "id"
+    :base_type "type/Integer" :database_type "int"}
+   {:id 1001 :table_id 100 :name "data"
+    :base_type "type/Dictionary" :database_type "json"}
+   {:id 1002 :table_id 100 :name "value"
+    :base_type "type/Text" :database_type "text"
+    :parent_id 1001 :nfc_path ["data" "value"]}
+   {:id 1003 :table_id 100 :name "embedded → leaf"
+    :base_type "type/Text" :database_type "text"
+    :nfc_path ["embedded" "leaf"]}
+   {:id 1004 :table_id 100 :name "account_fk"
+    :base_type "type/Integer" :database_type "int"
+    :fk_target_field_id 2000}
+   {:id 1005 :table_id 100 :name "casted_value"
+    :base_type "type/Text" :database_type "varchar"
+    :effective_type "type/Text" :semantic_type "type/Email"
+    :coercion_strategy "Coercion/UNIXSeconds->DateTime"
+    :description "an email field"}])
+
+(defn- snapshot-after [drain-fn]
+  (try
+    (p/clear-staging-tables!)
+    (drain-fn)
+    {:tables (staging-tables) :fields (staging-fields)}
+    (finally (p/clear-staging-tables!))))
+
+(deftest drain-paths-produce-identical-staging-test
+  (testing "the HoneySQL, JDBC, and PG-COPY drain paths each produce the
+            same staging-table contents for the same batch — guards against
+            silent drift if one path's row-shaping diverges from the others"
+    (let [tbl-batch (batch equivalence-table-batch-rows)
+          fld-batch (batch equivalence-field-batch-rows)
+          ;; Path 1: HoneySQL t2/insert!
+          honeysql  (snapshot-after
+                     (fn []
+                       (p/drain-tables-batch! equivalence-databases-by-source-id tbl-batch)
+                       (p/drain-fields-batch! fld-batch)))
+          ;; Path 2: JDBC executeBatch
+          jdbc      (snapshot-after
+                     (fn []
+                       (with-open [^Connection conn (.getConnection (mdb/data-source))
+                                   ^PreparedStatement tps (.prepareStatement conn p/tables-insert-sql)
+                                   ^PreparedStatement fps (.prepareStatement conn p/fields-insert-sql)]
+                         (p/drain-tables-batch-jdbc! tps equivalence-databases-by-source-id tbl-batch)
+                         (p/drain-fields-batch-jdbc! fps fld-batch))))
+          ;; Path 3: PG CopyManager (PG appdb only)
+          pg-copy   (when (= :postgres (mdb/db-type))
+                      (snapshot-after
+                       (fn []
+                         (with-open [^Connection conn (.getConnection (mdb/data-source))]
+                           (let [pg-conn  (.unwrap conn PGConnection)
+                                 copy-mgr (.getCopyAPI pg-conn)
+                                 t-ci     (.copyIn copy-mgr ^String p/tables-copy-sql)]
+                             (try
+                               (p/drain-tables-batch-pg-copy! t-ci equivalence-databases-by-source-id tbl-batch)
+                               (finally (.endCopy ^CopyIn t-ci))))
+                           (let [pg-conn  (.unwrap conn PGConnection)
+                                 copy-mgr (.getCopyAPI pg-conn)
+                                 f-ci     (.copyIn copy-mgr ^String p/fields-copy-sql)]
+                             (try
+                               (p/drain-fields-batch-pg-copy! f-ci fld-batch)
+                               (finally (.endCopy ^CopyIn f-ci))))))))]
+      (is (= honeysql jdbc)
+          "HoneySQL drain produces the same staging rows as the JDBC drain")
+      (when pg-copy
+        (is (= jdbc pg-copy)
+            "JDBC drain produces the same staging rows as the PG-COPY drain")))))

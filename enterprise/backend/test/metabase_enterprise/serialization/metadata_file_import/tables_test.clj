@@ -99,6 +99,37 @@
         (is (= target-id (:target_id row))))
       (finally (p/clear-staging-tables!)))))
 
+(deftest resolve-tolerates-duplicate-natural-key-target-test
+  (testing "If two live (db_name, schema, name) candidates exist — possible
+            because `metabase_database`'s unique constraint is
+            `(router_database_id, name)` and NULL routers don't collide —
+            the resolve subquery picks a stable tiebreaker (MIN(id)) rather
+            than throwing `subquery returned more than one row`. Regression
+            for GHY-3549."
+    (mt/with-temp [:model/Database {db-id-1 :id db-name :name} {:engine :h2}
+                   :model/Database {db-id-2 :id}                {:engine :h2}]
+      ;; Make the second Database share the first's name; mt/with-temp gives
+      ;; each a unique name but PG's unique constraint is `(router_database_id,
+      ;; name)`, so an UPDATE that sets a duplicate (NULL, name) is permitted.
+      (t2/query {:update :metabase_database :set {:name db-name} :where [:= :id db-id-2]})
+      (let [t1-id (:id (t2/insert-returning-instance!
+                        :model/Table {:db_id db-id-1 :schema "PUBLIC" :name "users"
+                                      :display_name "Users" :active true}))
+            t2-id (:id (t2/insert-returning-instance!
+                        :model/Table {:db_id db-id-2 :schema "PUBLIC" :name "users"
+                                      :display_name "Users" :active true}))]
+        (try
+          (p/clear-staging-tables!)
+          (t2/insert! :metabase_table_import [(staging-row 100 db-name "users")])
+          ;; The bug pre-fix: resolve throws "subquery returned more than one row".
+          ;; With the fix: resolve completes and target_id is set to MIN(id).
+          (p/resolve-target-table-ids-in-staging!)
+          (let [row (get (staging-rows-by-source-id) 100)]
+            (is (= (min t1-id t2-id) (:target_id row))
+                "MIN(id) tiebreaker: target_id is the smaller of the two candidates"))
+          (finally
+            (p/clear-staging-tables!)))))))
+
 ;;; ============================== merge-tables ==============================
 
 (deftest merge-empty-staging-is-noop-test

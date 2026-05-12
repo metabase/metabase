@@ -6,6 +6,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase-enterprise.serialization.api :as api.serialization]
+   [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
@@ -681,29 +682,38 @@
                 (.getBytes ^String (json/encode payload) "UTF-8"))}})))
 
 (deftest metadata-import-roundtrip-test
-  (testing "POST /api/ee/serialization/metadata/import is the inverse of GET /metadata/export"
-    (mt/with-premium-features #{:serialization}
-      (mt/with-temp [:model/Database {db-id :id}        {:engine :h2}
-                     :model/Table    {t-id  :id}        {:db_id db-id :schema "PUBLIC"
-                                                         :description "round trip"}
-                     :model/Field    _                  {:table_id      t-id
-                                                         :base_type     :type/Integer
-                                                         :database_type "BIGINT"
-                                                         :semantic_type :type/PK}]
-        (let [exported      (mt/user-http-request :crowberto :get 202
-                                                  "ee/serialization/metadata/export"
-                                                  :with-databases true
-                                                  :with-tables    true
-                                                  :with-fields    true)
-              before-tables (t2/count :model/Table :db_id db-id)
-              before-fields (t2/count :model/Field :table_id t-id)]
-          (is (= {:success true} (import-metadata! exported)))
-          (testing "no rows are added by re-importing the same payload"
-            (is (= before-tables (t2/count :model/Table :db_id db-id)))
-            (is (= before-fields (t2/count :model/Field :table_id t-id))))
-          (testing "the table description is preserved"
-            (is (= "round trip"
-                   (t2/select-one-fn :description :model/Table t-id)))))))))
+  (testing "POST /api/ee/serialization/metadata/import is the inverse of POST /metadata/export"
+    ;; The agent runs the import on a separate connection from the test thread;
+    ;; mt/with-temp's default rollback-only wrapper would hide the temp rows
+    ;; from that connection. Real commits + auto-sync disabled lets the agent
+    ;; see what the test set up.
+    (mt/with-temporary-setting-values [disable-auto-sync true]
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:serialization}
+          (mt/with-temp [:model/Database {db-id :id}        {:engine :h2}
+                         :model/Table    {t-id  :id}        {:db_id db-id :schema "PUBLIC"
+                                                             :description "round trip"}
+                         :model/Field    _                  {:table_id      t-id
+                                                             :base_type     :type/Integer
+                                                             :database_type "BIGINT"
+                                                             :semantic_type :type/PK}]
+            (let [exported      (mt/user-http-request :crowberto :post 202
+                                                      "ee/serialization/metadata/export"
+                                                      :with-databases true
+                                                      :with-tables    true
+                                                      :with-fields    true)
+                  before-tables (t2/count :model/Table :db_id db-id)
+                  before-fields (t2/count :model/Field :table_id t-id)]
+              (is (= {:queued true} (import-metadata! exported)))
+              ;; The import endpoint hands the file off to an agent and returns
+              ;; immediately. Block until the agent has drained it.
+              (await @#'metadata-file-import/import-agent)
+              (testing "no rows are added by re-importing the same payload"
+                (is (= before-tables (t2/count :model/Table :db_id db-id)))
+                (is (= before-fields (t2/count :model/Field :table_id t-id))))
+              (testing "the table description is preserved"
+                (is (= "round trip"
+                       (t2/select-one-fn :description :model/Table t-id)))))))))))
 
 (deftest metadata-import-wrong-content-type-test
   (testing "POST /api/ee/serialization/metadata/import — JSON content-type is rejected with 415"

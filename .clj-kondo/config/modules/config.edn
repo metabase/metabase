@@ -3340,7 +3340,8 @@
            server
            setup
            sync
-           util}
+           util
+           warehouse-schema}
    :model-imports :bypass}
 
   enterprise/snippet-collections

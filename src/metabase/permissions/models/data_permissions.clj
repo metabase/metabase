@@ -1128,109 +1128,112 @@
                         groups)]
       (batch-insert-permissions! perm-rows))))
 
+(defn- mk-perm-row [group-id perm-type perm-value db-id table-id schema]
+  {:perm_type perm-type :group_id group-id :perm_value perm-value
+   :db_id db-id :table_id table-id :schema_name schema})
+
+(defn- load-perm-context
+  "Load the introspection state needed to classify each `(group, perm-type)`
+  for new tables on `db-id`."
+  [db-id group-ids perm-types]
+  (let [qn          (mapv u/qualified-name perm-types)
+        db-level    (t2/select :model/DataPermissions
+                               {:where [:and [:= :db_id db-id] [:= :table_id nil]
+                                        [:in :group_id group-ids] [:in :perm_type qn]]})
+        table-level (t2/select :model/DataPermissions
+                               {:where [:and [:= :db_id db-id] [:not= :table_id nil]
+                                        [:in :group_id group-ids] [:in :perm_type qn]]})]
+    {:db-id            db-id
+     :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)
+     :schema-vals-idx  (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
+                                 (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
+                               {} table-level)
+     :all-db-tables    (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
+     :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
+
+(defn- compute-actual-value
+  "Per-entry resolution: enterprise view-data override, then schema-consistency
+  if all existing tables in the schema agree, else the caller's default."
+  [{:keys [view-data-levels schema-vals-idx]}
+   {:keys [group-id perm-type default-value table]}]
+  (or (when (= perm-type :perms/view-data)
+        (get view-data-levels group-id))
+      (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
+        (when (and (seq sv) (= (count sv) 1))
+          (first sv)))
+      default-value))
+
+(defn- classify-key
+  "For one `(group-id, perm-type)`, return `{:deletes [id?] :rows [perm-row...]}`.
+  Three branches mirror the original cond: going-granular, simple-insert, no-op."
+  [{:keys [db-id db-level-idx all-db-tables batch-table-ids]}
+   [[group-id perm-type] entries]]
+  (let [db-perm      (get db-level-idx [group-id perm-type])
+        any-blocked? (and db-perm (some #(= :blocked (:actual-value %)) entries))
+        mk           (fn [v table-id schema]
+                       (mk-perm-row group-id perm-type v db-id table-id schema))]
+    (cond
+      ;; Going-granular fires once for the whole `(group, perm-type)`:
+      ;; delete the DB-level row, expand non-batch tables to the old value,
+      ;; then write each batch table at its actual-value.
+      any-blocked?
+      (let [expansion-value (case (:perm_value db-perm)
+                              :query-builder-and-native :query-builder
+                              (:perm_value db-perm))]
+        {:deletes [(:id db-perm)]
+         :rows    (concat
+                   (for [t all-db-tables :when (not (contains? batch-table-ids (:id t)))]
+                     (mk expansion-value (:id t) (:schema t)))
+                   (for [{:keys [actual-value table]} entries]
+                     (mk actual-value (u/the-id table) (:schema table))))})
+      (nil? db-perm)
+      {:rows (for [{:keys [actual-value table]} entries]
+               (mk actual-value (u/the-id table) (:schema table)))}
+      ;; DB-level covers the batch tables — no-op.
+      :else nil)))
+
+(defn set-default-table-permissions-bulk!
+  "Bulk-set default permissions for many newly-created tables on the same
+  database. Issues the introspection SELECTs once for the whole batch and
+  a single DELETE + INSERT, deduping going-granular triggers across the
+  batch.
+
+  Caller must hold [[with-db-scoped-permissions-lock]] for `db-id`.
+  `tables+defaults` is a seq of `[table group-perm-defaults]` pairs."
+  [db-id tables+defaults]
+  (when (seq tables+defaults)
+    (let [batch-table-ids (set (map (fn [[t _]] (u/the-id t)) tables+defaults))
+          all-defaults    (mapcat (fn [[t defs]] (map #(assoc % :table t) defs))
+                                  tables+defaults)
+          group-ids       (distinct (map :group-id all-defaults))
+          perm-types      (distinct (map :perm-type all-defaults))
+          ctx             (assoc (load-perm-context db-id group-ids perm-types)
+                                 :batch-table-ids batch-table-ids)
+          annotated       (mapv (fn [d] (assoc d :actual-value (compute-actual-value ctx d)))
+                                all-defaults)
+          results         (->> annotated
+                               (group-by (juxt :group-id :perm-type))
+                               (keep #(classify-key ctx %)))
+          to-delete       (mapcat :deletes results)
+          to-insert       (mapcat :rows results)]
+      (when (seq to-delete) (batch-delete-permissions! to-delete))
+      (when (seq to-insert) (batch-insert-permissions! to-insert)))))
+
 (defn set-default-table-permissions!
-  "Bulk-sets default permissions for a newly-created table across all relevant groups.
-   Handles three cases per (group, perm-type):
-   - Group has DB-level perm matching default → no-op (DB-level covers it)
-   - Group has DB-level perm but new table needs :blocked → going-granular (expand to per-table rows)
-   - Group has no DB-level perm (already table-granular) → simple insert for the new table
+  "Set default permissions for a newly-created table across all relevant
+  groups. Handles three cases per `(group, perm-type)`:
+   - Group has DB-level perm matching default → no-op
+   - Group has DB-level perm but new table needs `:blocked` → going-granular
+   - Group has no DB-level perm → simple insert
 
-   `group-perm-defaults` is a seq of {:group-id G :perm-type PT :default-value V} triples."
+   `group-perm-defaults` is a seq of `{:group-id :perm-type :default-value}`
+   triples. Thin wrapper over [[set-default-table-permissions-bulk!]] for
+   the single-table case."
   [table group-perm-defaults]
-  (when (seq group-perm-defaults)
-    (let [table     (if (map? table)
-                      table
-                      (t2/select-one [:model/Table :id :db_id :schema] :id table))
-          db-id     (:db_id table)
-          table-id  (u/the-id table)
-          schema    (:schema table)
-          group-ids (distinct (map :group-id group-perm-defaults))
-          perm-types (distinct (map :perm-type group-perm-defaults))
-          ;; Batch SELECT #1: all DB-level permissions for this DB across all relevant groups + perm-types
-          db-level-perms (t2/select :model/DataPermissions
-                                    {:where [:and
-                                             [:= :db_id db-id]
-                                             [:= :table_id nil]
-                                             [:in :group_id group-ids]
-                                             [:in :perm_type (mapv u/qualified-name perm-types)]]})
-          ;; Index: {[group_id perm_type] → db-level-perm-row}
-          db-level-idx   (into {} (map (fn [p] [[(:group_id p) (:perm_type p)] p]) db-level-perms))
-          ;; Batch SELECT #2: all existing table-level permissions for this DB
-          ;; (needed for schema-permission-value logic and going-granular expansion)
-          table-perms    (t2/select :model/DataPermissions
-                                    {:where [:and
-                                             [:= :db_id db-id]
-                                             [:not= :table_id nil]
-                                             [:in :group_id group-ids]
-                                             [:in :perm_type (mapv u/qualified-name perm-types)]]})
-          ;; Index: {[group_id perm_type schema_name] → set of values}
-          schema-vals-idx (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
-                                    (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
-                                  {}
-                                  table-perms)
-          ;; Batch SELECT #3: all tables in this DB (for going-granular expansion)
-          all-db-tables  (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
-          ;; Batch-fetch view-data levels for all groups at once
-          view-data-levels (new-table-view-data-permission-levels db-id group-ids)
-          ;; Classify each (group, perm-type) triple
-          {:keys [simple-perms going-granular db-rows-to-delete]}
-          (reduce
-           (fn [acc {:keys [group-id perm-type default-value]}]
-             (let [;; Enterprise hook override for view-data
-                   actual-value  (or (when (= perm-type :perms/view-data)
-                                       (get view-data-levels group-id))
-                                     ;; Schema-level consistency: if all tables in schema have same value, use it
-                                     (let [sv (get-in schema-vals-idx [group-id perm-type schema])]
-                                       (when (and (seq sv) (= (count sv) 1))
-                                         (first sv)))
-                                     default-value)
-                   db-level-perm (get db-level-idx [group-id perm-type])
-                   new-perm      {:perm_type   perm-type
-                                  :group_id    group-id
-                                  :perm_value  actual-value
-                                  :db_id       db-id
-                                  :table_id    table-id
-                                  :schema_name schema}]
-               (cond
-                 ;; Group has DB-level perm and new table needs :blocked → going-granular
-                 (and db-level-perm (= actual-value :blocked))
-                 (-> acc
-                     (update :going-granular conj {:group-id group-id :perm-type perm-type
-                                                   :new-perm new-perm :db-perm db-level-perm})
-                     (update :db-rows-to-delete conj (:id db-level-perm)))
-
-                 ;; Group has no DB-level perm (already table-granular) → simple insert
-                 (not db-level-perm)
-                 (update acc :simple-perms conj new-perm)
-
-                 ;; Group has DB-level perm matching or compatible → no-op
-                 :else
-                 acc)))
-           {:simple-perms [] :going-granular [] :db-rows-to-delete []}
-           group-perm-defaults)]
-      ;; Bulk DELETE: DB-level rows that need going-granular expansion
-      (when (seq db-rows-to-delete)
-        (batch-delete-permissions! db-rows-to-delete))
-      ;; Bulk INSERT: expansion rows for going-granular groups + simple insert rows
-      (let [expansion-rows (mapcat
-                            (fn [{:keys [group-id perm-type new-perm db-perm]}]
-                              (let [db-perm-value (:perm_value db-perm)
-                                    ;; Build per-table rows for all existing tables (with the old DB-level value)
-                                    existing-table-rows
-                                    (keep (fn [t]
-                                            (when (not= (:id t) table-id)
-                                              {:perm_type   perm-type
-                                               :group_id    group-id
-                                               :perm_value  (case db-perm-value
-                                                              :query-builder-and-native :query-builder
-                                                              db-perm-value)
-                                               :db_id       db-id
-                                               :table_id    (:id t)
-                                               :schema_name (:schema t)}))
-                                          all-db-tables)]
-                                (cons new-perm existing-table-rows)))
-                            going-granular)]
-        (batch-insert-permissions! (concat expansion-rows simple-perms))))))
+  (let [table (if (map? table)
+                table
+                (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+    (set-default-table-permissions-bulk! (:db_id table) [[table group-perm-defaults]])))
 
 (defenterprise download-perms-level
   "Return the download permission for the query that the given user has. OSS returns :full"

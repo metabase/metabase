@@ -91,22 +91,17 @@
 ;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
 
-;; Extension point for processes that should pause sync while they are in flight (e.g.,
-;; enterprise metadata-file-import). Each registered predicate is a 0-arity fn returning
-;; either `nil` (proceed with sync) or `{:reason "..."}` (skip the sync, log at WARN).
 ;; In-JVM only, same scope as `operation->db-ids`.
 (defonce ^:private external-busy-predicates (atom []))
 
 (defn register-busy-predicate!
-  "Register `pred` (a 0-arity fn) to be checked before each `do-sync-operation` runs.
-  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it. Intended
-  for in-process coordination with other appdb-wide write processes."
+  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
+  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
+  (logged at WARN by the caller)."
   [pred]
   (swap! external-busy-predicates conj pred))
 
-(defn- external-busy
-  "Return the first non-nil result from registered busy predicates, or nil."
-  []
+(defn- external-busy []
   (some (fn [p] (p)) @external-busy-predicates))
 
 (defn with-duplicate-ops-prevented
