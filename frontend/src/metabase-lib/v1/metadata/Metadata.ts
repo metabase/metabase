@@ -10,7 +10,7 @@ import type {
   Metric,
   NativeQuerySnippet,
   SchemaId,
-  SegmentId,
+  Segment,
   SettingKey,
   Settings,
   TableId,
@@ -22,7 +22,6 @@ import type Database from "./Database";
 import type Field from "./Field";
 import type Measure from "./Measure";
 import type Schema from "./Schema";
-import type Segment from "./Segment";
 import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
@@ -87,20 +86,6 @@ class Metadata {
    */
   fieldsList(): Field[] {
     return Object.values(this.fields);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListSegmentsQuery
-   */
-  segmentsList(): Segment[] {
-    return Object.values(this.segments);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useGetSegmentQuery
-   */
-  segment(segmentId: SegmentId | undefined | null): Segment | null {
-    return (segmentId != null && this.segments[segmentId]) || null;
   }
 
   /**

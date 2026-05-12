@@ -4,9 +4,9 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getUrlTarget,
-  open,
+  openUrl,
   shouldOpenInBlankWindow,
-} from "metabase/utils/dom";
+} from "metabase/visualizations/lib/open-url";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("shouldOpenInBlankWindow", () => {
@@ -47,7 +47,7 @@ describe("getUrlTarget", () => {
   });
 });
 
-describe("open()", () => {
+describe("openUrl()", () => {
   beforeEach(async () => {
     await mockIsEmbeddingSdk();
     // Ensure a clean store before each test
@@ -74,7 +74,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    await open(url, {
+    await openUrl(url, {
       openInSameWindow,
       openInBlankWindow,
     });
@@ -94,7 +94,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    await open(url, {
+    await openUrl(url, {
       openInSameWindow,
       openInBlankWindow,
     });
@@ -114,7 +114,7 @@ describe("open()", () => {
     const url = "https://example.com/dashboard/1";
 
     await expect(
-      open(url, {
+      openUrl(url, {
         openInSameWindow,
         openInBlankWindow,
       }),
@@ -136,7 +136,7 @@ describe("open()", () => {
     const openInBlankWindow = jest.fn();
     const url = "https://example.com/dashboard/1";
 
-    await open(url, {
+    await openUrl(url, {
       openInSameWindow,
       openInBlankWindow,
     });
