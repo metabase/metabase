@@ -1,37 +1,35 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
+import { useListSegmentsQuery } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetArchive } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
-import { Segments } from "metabase/entities/segments";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { connect } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
 interface Props {
-  isAdmin: boolean;
-  isRemoteSyncReadOnly: boolean;
   segments: Segment[];
   tableSelector: ReactNode;
 }
 
-function SegmentListAppInner({
-  isAdmin,
-  isRemoteSyncReadOnly,
-  segments,
-  tableSelector,
-}: Props) {
+function SegmentListAppInner({ segments, tableSelector }: Props) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const archive = useSetArchive();
   const trackSegmentCreateClick = () => {
     trackSegmentCreateStarted("admin_datamodel_segments");
@@ -91,11 +89,17 @@ function SegmentListAppInner({
   );
 }
 
-export const SegmentListApp = _.compose(
-  Segments.loadList(),
-  FilteredToUrlTable,
-  connect((state: State) => ({
-    isAdmin: getUserIsAdmin(state),
-    isRemoteSyncReadOnly: PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly(state),
-  })),
-)(SegmentListAppInner);
+const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
+
+export function SegmentListApp() {
+  const { isLoading, error } = useListSegmentsQuery();
+  const segments = useSelector((state: State) =>
+    Object.values(getMetadata(state).segments),
+  );
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <FilteredSegmentList segments={segments} />;
+}
