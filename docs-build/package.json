@@ -12,6 +12,9 @@
   "dependencies": {
     "astro": "^6.3.1",
     "js-yaml": "^4.1.0",
+    "mdast-util-from-markdown": "^2.0.2",
+    "mdast-util-gfm": "^3.0.0",
+    "micromark-extension-gfm": "^3.0.0",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-external-links": "^3.0.0",
     "rehype-slug": "^6.0.0",
