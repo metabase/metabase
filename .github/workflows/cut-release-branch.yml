@@ -172,7 +172,7 @@ jobs:
             ].filter(Boolean).join('\n');
 
             const message = [
-              `:evergreen_tree: Cut new release branch *${branch}* at ${shaLink} ${team}`,
+              `:evergreen_tree: A new release branch *${branch}* cut at ${shaLink} ${team}`,
               notes,
               `${embedding} please run the <${embeddingChecklist}|Embedding Checklist>.`,
             ].filter(Boolean).join('\n');
