@@ -7,16 +7,15 @@ import { useSelector } from "metabase/redux/hooks";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
 
-const campaign = "TODO";
-const UTM_LOCATION = "TODO";
-
 export function EmbeddedMetabotUpsell() {
+  const campaign = "embedded-metabot";
+  const location = "metabot-settings";
   const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, { utm_content: "embedding-page" }),
+    getUpgradeUrl(state, { utm_campaign: campaign, utm_content: location }),
   );
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign,
-    location: "embedding-page",
+    location,
   });
 
   return (
@@ -25,7 +24,7 @@ export function EmbeddedMetabotUpsell() {
       buttonLink={upgradeUrl}
       onClick={triggerUpsellFlow}
       campaign={campaign}
-      location={UTM_LOCATION}
+      location={location}
       buttonText={t`Upgrade to Metabase Pro`}
       fullWidth
       maxWidth="initial"
