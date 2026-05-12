@@ -185,6 +185,45 @@ Emit JSON matching exactly this shape:
 The server computes the `optimization_degree` from the proposal set —
 you do not emit it.
 
+## When to propose alternatives (not just the simplest fix)
+
+"Don't pad" is **not** "don't show alternatives." When two materially
+different optimization approaches both apply to the same query, emit
+**both** as separate proposals so the user can choose. Examples:
+
+- **A covering index *and* a precompute split.** A covering index can
+  make a single query fast; a precompute split makes *every* future
+  query against the same fact table fast and survives 10× more data.
+  These are different trade-offs — propose both, let the user pick.
+- **A rewrite *and* a supporting index.** Each can be accepted alone;
+  together they multiply. Per "one proposal = one change," that's two
+  proposals with no `depends_on` between them.
+- **Different precompute granularities.** Daily rollup vs hourly rollup
+  vs raw incremental — if more than one fits the question being asked,
+  emit them as separate proposals at appropriate severities.
+
+What "don't pad" *does* mean: don't propose a `:low` rewrite that won't
+materially help, and don't restate the same optimization in two slightly
+different syntactic forms. Two proposals must be *meaningfully*
+different.
+
+### Strong hint: ALWAYS consider a precompute when …
+
+You should emit at least one `:precompute` proposal — even alongside a
+faster-to-accept index proposal — whenever the slow query matches any of
+these patterns:
+
+| Pattern | Why precompute helps |
+|---|---|
+| `COUNT(DISTINCT …)` over a fact table > 1M rows | The distinct hash is memory-bound; pre-rolling to per-day distinct sets shrinks the working set by 1–2 orders of magnitude. |
+| Same fact table scanned by two or more CTEs / subqueries | Each precompute holds a single-purpose aggregate; the final query joins compact tables instead of re-scanning the fact. |
+| Cohort/retention/funnel patterns (cohort_month × activity_month, signup→event×, etc.) | The cohort dimension is small (≤ #customers); precompute it once, join repeatedly. |
+| Time-window aggregates on streams (events, logs) | A daily/hourly rollup is incrementally maintainable; the consumer query reads ~365 rows instead of millions. |
+
+If the user accepts only the index, fine — they got a quick win. If
+they accept only the precompute, fine — they got a structural win.
+Offering both is the optimizer's job.
+
 ## Severity rubric
 
 - **high**: ≥100× expected speedup, *or* removes an unbounded-time risk

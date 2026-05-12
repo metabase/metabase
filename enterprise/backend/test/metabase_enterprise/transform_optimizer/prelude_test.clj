@@ -69,7 +69,17 @@
       (is (str/includes? text "writing style"))
       (is (str/includes? text "3 sentences"))
       (is (str/includes? text "2 sentences"))
-      (is (str/includes? text "1 sentence")))))
+      (is (str/includes? text "1 sentence")))
+
+    (testing "the 'always also consider a precompute' nudges are present"
+      ;; Without this section, the LLM tends to emit one quick-win
+      ;; proposal (e.g. a covering index) even when a precompute split
+      ;; is the structural answer. Anchors guard that section so a
+      ;; prelude edit can't silently drop it.
+      (is (str/includes? text "alternatives"))
+      (is (str/includes? text "always consider a precompute"))
+      (is (str/includes? text "count(distinct"))
+      (is (str/includes? text "cohort")))))
 
 (deftest prelude-cached-test
   (testing "successive calls return the same string instance (delayed cache)"
