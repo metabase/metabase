@@ -34,13 +34,27 @@
 (set! *warn-on-reflection* true)
 
 (defn- find-sql-exception
-  "Walk the cause chain until we find a `java.sql.SQLException`, or nil."
+  "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
+   chain and also peeks into each level's `ex-data` for Throwable values:
+   `clojure.java.jdbc/db-transaction*` (which `execute!` uses by default)
+   wraps a caught Throwable in an `ex-info` with the original stashed under
+   `:handling` when the rollback path also fails - observed on Redshift,
+   where permission-denied inside an implicit transaction surfaces this way
+   instead of as a bare SQLException with the SQLException as `.getCause`."
   [^Throwable t]
-  (loop [t t]
-    (cond
-      (nil? t)                            nil
-      (instance? java.sql.SQLException t) t
-      :else                               (recur (.getCause t)))))
+  (letfn [(walk [^Throwable t seen]
+            (cond
+              (nil? t)                            nil
+              (contains? seen t)                  nil
+              (instance? java.sql.SQLException t) t
+              :else
+              (let [seen' (conj seen t)]
+                (or (some (fn [v]
+                            (when (instance? Throwable v)
+                              (walk v seen')))
+                          (vals (or (ex-data t) {})))
+                    (walk (.getCause t) seen')))))]
+    (walk t #{})))
 
 (defn- create-input-namespace-sql
   "DDL to create a fresh per-run input namespace (a schema for schema'd drivers,
