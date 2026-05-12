@@ -56,16 +56,25 @@ export function useWorkloadParams() {
   );
 
   const range = useMemo(() => {
+    // Align both boundaries to UTC midnight so we always show exactly 7 full calendar
+    // days — otherwise a 168-hour rolling window crosses 8 calendar days with partials
+    // on each end (white cells at the start of the first row and end of the last row).
     const now = new Date();
+    const todayMidnightUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    );
+    const DAY = 24 * 3600 * 1000;
     if (params.range === "forecast") {
       return {
-        from: now.toISOString(),
-        to: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString(),
+        from: new Date(todayMidnightUTC).toISOString(),
+        to: new Date(todayMidnightUTC + 7 * DAY).toISOString(),
       };
     }
     return {
-      from: new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString(),
-      to: now.toISOString(),
+      from: new Date(todayMidnightUTC - 7 * DAY).toISOString(),
+      to: new Date(todayMidnightUTC).toISOString(),
     };
   }, [params.range]);
 
@@ -73,8 +82,9 @@ export function useWorkloadParams() {
     if (!params.slot) {
       return null;
     }
-    const start = new Date(`${params.slot}:00:00Z`);
-    const end = new Date(start.getTime() + 3600 * 1000);
+    // slot format: "YYYY-MM-DDTHH:MM" (hourly grid uses minute=00). Range = that hour.
+    const start = new Date(`${params.slot}:00Z`);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
     return { from: start.toISOString(), to: end.toISOString() };
   }, [params.slot]);
 

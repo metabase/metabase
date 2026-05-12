@@ -23,12 +23,39 @@ const COLORS = [
   "#1e3a8a",
 ];
 
-function bucketIndex(value: number, max: number): number {
-  if (value <= 0 || max <= 0) {
+const ROW_HEIGHT_PX = 28;
+
+// Quantile-based thresholds: divide non-zero weights into 5 buckets at the
+// 20/40/60/80 percentiles. Adapts to skewed distributions far better than a
+// linear (max/5) split — a long tail of outliers doesn't wash out the rest.
+function computeThresholds(cells: WorkloadCell[]): number[] {
+  const sorted = cells
+    .map((c) => c.weight)
+    .filter((w) => w > 0)
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) {
+    return [];
+  }
+  const pct = (p: number) => sorted[Math.floor((sorted.length - 1) * p)];
+  // De-duplicate so heavily-tied distributions still produce sensible bands.
+  return Array.from(new Set([pct(0.2), pct(0.4), pct(0.6), pct(0.8)]));
+}
+
+function bucketIndex(value: number, thresholds: number[]): number {
+  if (value <= 0) {
     return 0;
   }
-  const step = Math.max(1, Math.ceil(max / 5));
-  return Math.min(5, Math.floor((value - 1) / step) + 1);
+  // Find the first threshold the value is <=; bucket index is 1 + that index.
+  // Values above the top threshold land in the darkest bucket (5).
+  let i = 0;
+  while (i < thresholds.length && value > thresholds[i]) {
+    i++;
+  }
+  return Math.min(5, i + 1);
+}
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
 }
 
 function daysInRange(cells: WorkloadCell[]): string[] {
@@ -49,10 +76,15 @@ export function WorkloadGrid({
   const byKey = useMemo(() => {
     const m = new Map<string, WorkloadCell>();
     for (const c of cells) {
-      m.set(`${c.day}T${String(c.hour).padStart(2, "0")}`, c);
+      // Fall back to minute=0 when the BE response predates 5/10-min bucketing —
+      // keeps the heatmap usable while the BE namespace reloads.
+      const minute = typeof c.minute === "number" ? c.minute : 0;
+      m.set(`${c.day}T${pad2(c.hour)}:${pad2(minute)}`, c);
     }
     return m;
   }, [cells]);
+
+  const thresholds = useMemo(() => computeThresholds(cells), [cells]);
 
   if (isLoading) {
     return (
@@ -66,38 +98,58 @@ export function WorkloadGrid({
 
   return (
     <Box>
+      {/* Header: blank corner + 24 hour columns */}
       <Box
         style={{
           display: "grid",
-          gridTemplateColumns: "60px repeat(24, 1fr)",
-          gap: 3,
+          gridTemplateColumns: "64px repeat(24, 1fr)",
+          gap: 2,
+          marginBottom: 4,
         }}
       >
         <Box />
         {Array.from({ length: 24 }).map((_, h) => (
           <Text key={h} size="xs" c="text-secondary" ta="center">
-            {h}
+            {pad2(h)}
           </Text>
         ))}
+      </Box>
 
+      {/* Grid: one row per day, 24 cells per row */}
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "64px repeat(24, 1fr)",
+          gap: 2,
+          alignItems: "stretch",
+        }}
+      >
         {days.map((day) => (
           <Fragment key={day}>
-            <Text size="xs" c="text-secondary" style={{ alignSelf: "center" }}>
+            <Text
+              size="xs"
+              c="text-secondary"
+              style={{
+                alignSelf: "center",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               {day.slice(5)}
             </Text>
             {Array.from({ length: 24 }).map((_, h) => {
-              const slot = `${day}T${String(h).padStart(2, "0")}`;
+              const slot = `${day}T${pad2(h)}:00`;
               const cell = byKey.get(slot);
               const value = cell?.weight ?? 0;
-              const i = bucketIndex(value, scaleMax);
+              const idx = bucketIndex(value, thresholds);
               const focused = focusedSlot === slot;
               return (
                 <Box
                   key={slot}
                   onClick={() => onSelectSlot(slot)}
+                  title={`${slot} — ${value} units`}
                   style={{
-                    aspectRatio: "1.2 / 1",
-                    background: COLORS[i],
+                    height: ROW_HEIGHT_PX,
+                    background: COLORS[idx],
                     borderRadius: 3,
                     outline: focused ? "2.5px solid #ef4444" : undefined,
                     outlineOffset: focused ? 1 : 0,
@@ -105,10 +157,9 @@ export function WorkloadGrid({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 9,
-                    color: i >= 3 ? "rgba(255,255,255,0.9)" : "#1e3a8a",
+                    fontSize: 11,
+                    color: idx >= 3 ? "rgba(255,255,255,0.9)" : "#1e3a8a",
                   }}
-                  title={`${slot} — ${value} units`}
                 >
                   {value > 0 ? value : ""}
                 </Box>
@@ -118,22 +169,39 @@ export function WorkloadGrid({
         ))}
       </Box>
 
-      <Group mt="sm" gap={6} align="center">
-        <Text size="xs" c="text-secondary">{t`Units of work scheduled`}</Text>
-        <Flex gap={2}>
-          {COLORS.map((c) => (
-            <Box
-              key={c}
-              style={{ width: 14, height: 14, background: c, borderRadius: 2 }}
-            />
-          ))}
-        </Flex>
+      <Group mt="sm" gap={8} align="center">
         <Text size="xs" c="text-secondary">
-          0
+          {t`Units of work scheduled per hour`}
         </Text>
+        <Flex gap={4} align="center">
+          {COLORS.map((c, i) => {
+            // Label each swatch with its lower bound from the quantile thresholds.
+            const lower =
+              i === 0
+                ? 0
+                : i === 1
+                  ? 1
+                  : (thresholds[i - 2] ?? 0) + 1;
+            return (
+              <Flex key={c} direction="column" align="center" gap={0}>
+                <Box
+                  style={{
+                    width: 18,
+                    height: 12,
+                    background: c,
+                    borderRadius: 2,
+                  }}
+                />
+                <Text size="xs" c="text-secondary">
+                  {lower}
+                </Text>
+              </Flex>
+            );
+          })}
+        </Flex>
         <Box style={{ flex: 1 }} />
         <Text size="xs" c="text-secondary">
-          {scaleMax || "—"}
+          {t`peak ${scaleMax || "—"}`}
         </Text>
       </Group>
     </Box>

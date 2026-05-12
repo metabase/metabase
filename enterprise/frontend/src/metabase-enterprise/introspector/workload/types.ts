@@ -1,15 +1,16 @@
 export type WorkloadJobType =
   | "sync"
   | "transform-job"
-  | "notification"
-  | "persisted-refresh"
-  | "other";
+  | "alert"
+  | "dashboard-subscription"
+  | "persisted-refresh";
 
 export type WorkloadRange = "forecast" | "history";
 
 export type WorkloadCell = {
   day: string; // ISO date "2026-05-13"
   hour: number; // 0..23
+  minute: number; // 0/5/10/.../55 — 5-min granularity bucket start
   weight: number; // sub-op count
   by_type: Partial<Record<WorkloadJobType, number>>;
 };

@@ -23,9 +23,9 @@ import { useWorkloadParams } from "./useWorkloadParams";
 const JOB_TYPES: WorkloadJobType[] = [
   "sync",
   "transform-job",
-  "notification",
+  "alert",
+  "dashboard-subscription",
   "persisted-refresh",
-  "other",
 ];
 
 export function WorkloadPage() {
@@ -84,31 +84,42 @@ export function WorkloadPage() {
         </Alert>
       )}
 
-      <Group justify="space-between" mb="md">
-        <SegmentedControl
-          value={params.range}
-          onChange={(v) =>
-            setParams({ range: v as "forecast" | "history", slot: null })
-          }
-          data={[
-            { value: "forecast", label: t`Forecast (next 7d)` },
-            { value: "history", label: t`History (last 7d)` },
-          ]}
-        />
-        <Group gap="xs">
+      <Stack gap="sm" mb="md">
+        <Group justify="space-between">
+          <SegmentedControl
+            value={params.range}
+            onChange={(v) =>
+              setParams({ range: v as "forecast" | "history", slot: null })
+            }
+            data={[
+              { value: "forecast", label: t`Forecast (next 7d)` },
+              { value: "history", label: t`History (last 7d)` },
+            ]}
+          />
+          {params.types.length > 0 && (
+            <Anchor size="sm" onClick={() => setParams({ types: [] })}>
+              {t`Clear filters`}
+            </Anchor>
+          )}
+        </Group>
+        <Group gap="xs" align="center">
+          <Text c="text-secondary" size="sm" mr="xs">
+            {t`Filter by type:`}
+          </Text>
           {JOB_TYPES.map((tt) => (
             <Chip
               key={tt}
               checked={params.types.includes(tt)}
               onChange={() => toggleType(tt)}
-              size="xs"
-              variant="filled"
+              size="sm"
+              variant="outline"
+              color="brand"
             >
               {tt}
             </Chip>
           ))}
         </Group>
-      </Group>
+      </Stack>
 
       <WorkloadGrid
         cells={grid?.cells ?? []}

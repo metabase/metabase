@@ -1,6 +1,17 @@
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Anchor, Badge, Box, Skeleton, Text, Title } from "metabase/ui";
+import {
+  Anchor,
+  Badge,
+  Box,
+  Group,
+  Skeleton,
+  Text,
+  TextInput,
+  Title,
+} from "metabase/ui";
+import { getScheduleExplanation } from "metabase/utils/cron";
 
 import type { WorkloadJobType, WorkloadSlotRow } from "./types";
 
@@ -10,15 +21,18 @@ type Props = {
   isLoading: boolean;
 };
 
+type SortKey = "type" | "entity" | "cron" | "weight";
+type SortDir = "asc" | "desc";
+
 const BADGE_COLOR: Record<
   WorkloadJobType,
-  "brand" | "warning" | "success" | "summarize" | "text-secondary"
+  "brand" | "warning" | "success" | "summarize"
 > = {
   sync: "brand",
   "transform-job": "warning",
-  notification: "success",
+  alert: "success",
+  "dashboard-subscription": "success",
   "persisted-refresh": "summarize",
-  other: "text-secondary",
 };
 
 const cellStyle = {
@@ -27,7 +41,7 @@ const cellStyle = {
   fontSize: 13,
 } as const;
 
-const headerStyle = {
+const headerStyleBase = {
   ...cellStyle,
   textAlign: "left" as const,
   fontSize: 11,
@@ -35,9 +49,81 @@ const headerStyle = {
   textTransform: "uppercase" as const,
   letterSpacing: "0.04em",
   color: "var(--mb-color-text-secondary)",
+  userSelect: "none" as const,
 };
 
+const sortableHeader = (
+  active: boolean,
+  dir: SortDir,
+  onClick: () => void,
+  children: React.ReactNode,
+) => (
+  <th
+    style={{ ...headerStyleBase, cursor: "pointer" }}
+    onClick={onClick}
+  >
+    {children}
+    {active ? (dir === "asc" ? " ↑" : " ↓") : ""}
+  </th>
+);
+
+function sortRows(
+  rows: WorkloadSlotRow[],
+  key: SortKey,
+  dir: SortDir,
+): WorkloadSlotRow[] {
+  const sign = dir === "asc" ? 1 : -1;
+  const cmp = (a: WorkloadSlotRow, b: WorkloadSlotRow) => {
+    switch (key) {
+      case "type":
+        return sign * a.type.localeCompare(b.type);
+      case "entity":
+        return sign * (a.entity_name ?? "").localeCompare(b.entity_name ?? "");
+      case "cron":
+        return sign * (a.cron ?? "").localeCompare(b.cron ?? "");
+      case "weight":
+        return sign * (a.weight - b.weight);
+    }
+  };
+  return [...rows].sort(cmp);
+}
+
 export function SlotExpansion({ slot, rows, isLoading }: Props) {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("weight");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const visibleRows = useMemo(() => {
+    if (!rows) {
+      return [];
+    }
+    const q = query.trim().toLowerCase();
+    const explainCron = (cron: string | null) => {
+      if (!cron) {
+        return "";
+      }
+      return getScheduleExplanation(cron)?.toLowerCase() ?? cron.toLowerCase();
+    };
+    const filtered = q
+      ? rows.filter(
+          (r) =>
+            (r.entity_name ?? "").toLowerCase().includes(q) ||
+            explainCron(r.cron).includes(q) ||
+            r.type.toLowerCase().includes(q),
+        )
+      : rows;
+    return sortRows(filtered, sortKey, sortDir);
+  }, [rows, query, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir(key === "weight" ? "desc" : "asc");
+    }
+  };
+
   if (!slot) {
     return (
       <Box
@@ -94,22 +180,39 @@ export function SlotExpansion({ slot, rows, isLoading }: Props) {
         borderRadius: 8,
       }}
     >
-      <Title order={5} mb="xs">
-        {t`${slot.replace("T", " · ")}:00 UTC`}
-      </Title>
+      <Group justify="space-between" mb="sm" align="end">
+        <Title order={5}>
+          {t`${slot.replace("T", " · ")} UTC`}
+        </Title>
+        <Group gap="sm" align="center">
+          <Text c="text-secondary" size="xs">
+            {visibleRows.length === rows.length
+              ? t`${rows.length} jobs`
+              : t`${visibleRows.length} of ${rows.length}`}
+          </Text>
+          <TextInput
+            size="xs"
+            placeholder={t`Search name, schedule, or type…`}
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+            style={{ width: 240 }}
+          />
+        </Group>
+      </Group>
+
+
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={headerStyle}>{t`Type`}</th>
-            <th style={headerStyle}>{t`Entity`}</th>
-            <th style={headerStyle}>{t`Cron`}</th>
-            <th style={headerStyle}>{t`Fires at`}</th>
-            <th style={headerStyle}>{t`Weight`}</th>
-            <th style={headerStyle} />
+            {sortableHeader(sortKey === "type", sortDir, () => toggleSort("type"), t`Type`)}
+            {sortableHeader(sortKey === "entity", sortDir, () => toggleSort("entity"), t`Entity`)}
+            {sortableHeader(sortKey === "cron", sortDir, () => toggleSort("cron"), t`Schedule`)}
+            {sortableHeader(sortKey === "weight", sortDir, () => toggleSort("weight"), t`Weight`)}
+            <th style={headerStyleBase} />
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {visibleRows.map((r, i) => (
             <tr key={`${r.type}-${r.entity_id ?? "x"}-${r.fire_at}-${i}`}>
               <td style={cellStyle}>
                 <Badge color={BADGE_COLOR[r.type]} variant="light">
@@ -117,18 +220,27 @@ export function SlotExpansion({ slot, rows, isLoading }: Props) {
                 </Badge>
               </td>
               <td style={cellStyle}>
-                {r.entity_name ?? (
+                {r.entity_name && r.settings_url ? (
+                  <Anchor href={r.settings_url} size="sm">
+                    {r.entity_name}
+                  </Anchor>
+                ) : r.entity_name ? (
+                  <Text component="span">{r.entity_name}</Text>
+                ) : (
                   <Text c="text-secondary" component="span">
                     {t`(orphaned)`}
                   </Text>
                 )}
               </td>
               <td style={cellStyle}>
-                <Text ff="monospace" size="xs">
-                  {r.cron ?? "—"}
-                </Text>
+                {r.cron ? (
+                  <Text size="xs">
+                    {getScheduleExplanation(r.cron) ?? r.cron}
+                  </Text>
+                ) : (
+                  "—"
+                )}
               </td>
-              <td style={cellStyle}>{new Date(r.fire_at).toLocaleString()}</td>
               <td style={cellStyle}>{r.weight}</td>
               <td style={cellStyle}>
                 {r.settings_url ? (

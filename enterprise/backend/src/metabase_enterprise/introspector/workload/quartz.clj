@@ -8,6 +8,8 @@
   (:require
    [metabase-enterprise.introspector.workload.weights :as weights]
    [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time Instant ZoneOffset)
@@ -24,9 +26,25 @@
 
 (defn- ^Scheduler scheduler [] (task/scheduler))
 
-(defn running? []
+(defn- ensure-standby!
+  "If no Quartz scheduler is initialized yet (e.g. running with MB_DISABLE_SCHEDULER=true),
+   bring one up in standby mode so we can enumerate triggers without firing jobs.
+   Idempotent — `init-scheduler!` is a no-op when a scheduler already exists."
+  []
+  (when-not (scheduler)
+    (try
+      (task.impl/init-scheduler!)
+      (log/info "Introspector workload lazily initialized Quartz scheduler in standby mode.")
+      (catch Throwable e
+        (log/warn e "Introspector workload could not initialize Quartz scheduler.")))))
+
+(defn running?
+  "True if a Quartz scheduler instance is available — even in standby mode.
+   We don't need it to be actively firing jobs; we only read the registered triggers."
+  []
   (try
-    (some-> (scheduler) .isStarted)
+    (ensure-standby!)
+    (some? (scheduler))
     (catch Throwable _ false)))
 
 (defn- all-triggers []
@@ -38,21 +56,39 @@
 
 ;;; ---------------------------------------------------------------- parse-trigger
 
+(def ^:private trigger-name-patterns
+  "Each entry: [regex job-type]. Group 1 of the regex (when present) captures the entity-id.
+   Quartzite `jobs/key` defaults to `group=DEFAULT`, so the discriminator lives in the trigger
+   NAME, not its group. Inspect live names via:
+     (map #(-> % .getKey .getName) (all-triggers))
+
+   Two notification systems exist:
+   - :alert                 — new system, `metabase.task.notification.trigger.subscription.NN`
+                              (NN = notification_subscription_id)
+   - :dashboard-subscription — legacy pulse, `metabase.task.send-pulse.trigger.NN.<schedule>`
+                              (NN = pulse_id, schedule = hashed schedule string)"
+  [[#"metabase\.task\.sync-and-analyze\.trigger\.(\d+)"                :sync]
+   [#"metabase\.task\.update-field-values\.trigger\.(\d+)"             :sync]
+   [#"metabase\.task\.transforms\.trigger\.(\d+)"                      :transform-job]
+   [#"metabase\.task\.notification\.trigger\.subscription\.(\d+)"      :alert]
+   [#"metabase\.task\.send-pulse\.trigger\.(\d+)\..*"                  :dashboard-subscription]
+   [#"metabase\.task\.PersistenceRefresh\.database\.trigger\.(\d+)"    :persisted-refresh]
+   [#"metabase\.task\.PersistenceRefresh\.individual\.trigger\.(\d+)"  :persisted-refresh]
+   [#"metabase\.task\.PersistencePrune\..*"                            :persisted-refresh]])
+
 (defn parse-trigger
-  "Identify (job-type, entity-id) from a trigger's job key + data map.
-   Group strings below are placeholders — verify against actual scheduling code on
-   first run via `(map #(.getGroup (.getJobKey %)) (all-triggers))`."
+  "Return {:type :id} if the trigger matches a known entity-bound pattern; nil otherwise.
+   Triggers we don't recognize are dropped from both grid and slot — they're typically
+   system singletons (cleanups, indexing, etc.) that admins can't reschedule and that
+   would otherwise show up as orphaned rows."
   [^Trigger trigger]
-  (let [jk    (.getJobKey trigger)
-        group (.getGroup jk)
-        data  (.getJobDataMap trigger)
-        as-long #(when % (try (long (Long/parseLong (str %))) (catch Throwable _ nil)))]
-    (case group
-      "metabase-sync"             {:type :sync              :id (as-long (.get data "db-id"))}
-      "transforms.scheduling"     {:type :transform-job     :id (as-long (.get data "job-id"))}
-      "notification-send"         {:type :notification      :id (as-long (.get data "notification-id"))}
-      "PersistRefresh"            {:type :persisted-refresh :id (as-long (.get data "db-id"))}
-      {:type :other :id nil})))
+  (let [tname (.getName (.getKey trigger))]
+    (some (fn [[re tp]]
+            (when-let [m (re-matches re tname)]
+              {:type tp
+               :id   (when (sequential? m)
+                       (try (Long/parseLong (second m)) (catch Throwable _ nil)))}))
+          trigger-name-patterns)))
 
 ;;; ---------------------------------------------------------------- projection
 
@@ -96,12 +132,18 @@
     (instance? SimpleTrigger trig) (simple-fires trig from to)
     :else                           []))
 
+(def ^:private bucket-minutes
+  "Granularity of the heatmap in minutes. 60 -> hourly buckets."
+  60)
+
 (defn- bucket-key
-  "(day, hour) UTC key for an Instant."
+  "(day, hour, minute) UTC key for an Instant. Minute is floored to the nearest
+   `bucket-minutes` boundary."
   [^Instant inst]
   (let [zdt (.atZone inst ZoneOffset/UTC)]
-    {:day  (str (.toLocalDate zdt))
-     :hour (.getHour zdt)}))
+    {:day    (str (.toLocalDate zdt))
+     :hour   (.getHour zdt)
+     :minute (* bucket-minutes (quot (.getMinute zdt) bucket-minutes))}))
 
 ;;; ---------------------------------------------------------------- grid
 
@@ -117,12 +159,17 @@
     (let [keep-type? (type-filter-fn types)
           buckets    (volatile! (transient {}))]
       (doseq [trig (all-triggers)
-              :let [{:keys [type id]} (parse-trigger trig)]
-              :when (keep-type? type)
+              :let [parsed (parse-trigger trig)
+                    {:keys [type id]} parsed]
+              :when (and parsed (keep-type? type))
               ^Instant fire (fires-of trig from to)]
         (let [w   (weights/weight-for type id)
               bk  (bucket-key fire)
-              cur (get @buckets bk {:day (:day bk) :hour (:hour bk) :weight 0 :by_type {}})
+              cur (get @buckets bk {:day    (:day bk)
+                                    :hour   (:hour bk)
+                                    :minute (:minute bk)
+                                    :weight 0
+                                    :by_type {}})
               upd (-> cur
                       (update :weight + w)
                       (update-in [:by_type type] (fnil + 0) w))]
@@ -136,19 +183,47 @@
 
 (defn- ^String settings-url-for [{:keys [type id]}]
   (case type
-    :sync              (when id (str "/admin/databases/" id))
-    :transform-job     (when id (str "/admin/transforms/jobs/" id))
-    :notification      (when id "/account/notifications")
-    :persisted-refresh (when id "/admin/performance")
+    :sync                   (when id (str "/admin/databases/" id))
+    :transform-job          (when id (str "/admin/transforms/jobs/" id))
+    ;; Dashboard subscription id is a pulse_id; resolve to the dashboard the pulse targets.
+    :dashboard-subscription (when id
+                              (when-let [dash-id (t2/select-one-fn :dashboard_id
+                                                                   :model/Pulse :id id)]
+                                (str "/dashboard/" dash-id)))
+    ;; Alert id is a notification_subscription_id; resolve to the card via notification_card.
+    :alert                  (when id
+                              (when-let [notif-id (t2/select-one-fn :notification_id
+                                                                    :model/NotificationSubscription
+                                                                    :id id)]
+                                (when-let [card-id (t2/select-one-fn :card_id
+                                                                     :model/NotificationCard
+                                                                     {:where [:in :id {:select [:payload_id]
+                                                                                       :from   [:notification]
+                                                                                       :where  [:= :id notif-id]}]})]
+                                  (str "/question/" card-id))))
+    :persisted-refresh      (when id (str "/admin/databases/" id))
     nil))
 
-(defn- entity-name-for [{:keys [type id]}]
+(defn- entity-name-for
+  "Always returns a non-nil string for known trigger types — if the underlying entity row
+   has been deleted (orphan trigger), we still return a synthetic id-based label so the
+   UI shows what the trigger points at, not just `(orphaned)`."
+  [{:keys [type id]}]
   (when id
     (case type
-      :sync              (:name (t2/select-one [:model/Database :name] :id id))
-      :transform-job     (:name (t2/select-one [:model/TransformJob :name] :id id))
-      :notification      (:name (t2/select-one [:model/Pulse :name] :id id))
-      :persisted-refresh (str "DB " id " persisted refresh")
+      :sync                   (or (:name (t2/select-one [:model/Database :name] :id id))
+                                  (str "Database #" id " (deleted)"))
+      :transform-job          (or (:name (t2/select-one [:model/TransformJob :name] :id id))
+                                  (str "Transform job #" id " (deleted)"))
+      :alert                  (if-let [notif-id (t2/select-one-fn :notification_id
+                                                                  :model/NotificationSubscription
+                                                                  :id id)]
+                                (str "Alert · notification #" notif-id)
+                                (str "Alert · subscription #" id " (deleted)"))
+      :dashboard-subscription (or (:name (t2/select-one [:model/Pulse :name] :id id))
+                                  (str "Dashboard subscription #" id " (deleted)"))
+      :persisted-refresh      (or (:name (t2/select-one [:model/Database :name] :id id))
+                                  (str "DB #" id " (deleted)"))
       nil)))
 
 (defn slot
@@ -161,7 +236,7 @@
        (for [trig (all-triggers)
              :let [parsed (parse-trigger trig)
                    {:keys [type id]} parsed]
-             :when (keep-type? type)
+             :when (and parsed (keep-type? type))
              ^Instant fire (fires-of trig from to)
              :let [cron (when (instance? CronTrigger trig)
                           (.getCronExpression ^CronTrigger trig))]]

@@ -180,6 +180,13 @@
                          [:unref :unref]   [:= :unref.id :report_card.id]]
              :where  [:and
                       [:= :report_card.archived false]
+                      ;; Exclude cards living in an archived/trashed collection.
+                      [:or
+                       [:= :report_card.collection_id nil]
+                       [:not-in :report_card.collection_id
+                        {:select [:id]
+                         :from   [:collection]
+                         :where  [:= :collection.archived true]}]]
                       (conditions-filter-clause conditions)]
              :order-by (sort-clause sort-column sort-direction)
              :limit    limit
@@ -245,6 +252,13 @@
                          [:unref :unref]   [:= :unref.id :report_dashboard.id]]
              :where  [:and
                       [:= :report_dashboard.archived false]
+                      ;; Exclude dashboards living in an archived/trashed collection.
+                      [:or
+                       [:= :report_dashboard.collection_id nil]
+                       [:not-in :report_dashboard.collection_id
+                        {:select [:id]
+                         :from   [:collection]
+                         :where  [:= :collection.archived true]}]]
                       (conditions-filter-clause conditions)]
              :order-by (sort-clause sort-column sort-direction)
              :limit    limit
@@ -308,6 +322,9 @@
              :left-join [[:broken :broken] [:= :broken.id :transform.id]
                          [:unref :unref]   [:= :unref.id :transform.id]]
              :where  [:and
+                      ;; Skip inactive (paused/disabled) transforms — they're not load-bearing
+                      ;; and they typically aren't what an admin is looking to clean up.
+                      [:= :transform.active true]
                       (cond
                         (and (contains? conditions :broken)
                              (contains? conditions :unreferenced))
@@ -343,32 +360,75 @@
 
 ;;; -------------------------------------- summary --------------------------------------
 
-(defn- count-of [query]
+(def ^:private archived-collection-ids-subq
+  "Subquery selecting ids of all archived (trashed) collections."
+  {:select [:id] :from [:collection] :where [:= :collection.archived true]})
+
+(defn- count-cards
+  "Count cards whose ids match `ids-cte`, applying the same archive/trash filters as the
+   federated list query so summary counts line up with the list."
+  [ids-cte]
   (-> {:select [[:%count.* :total]]
-       :from   [[query :sub]]}
+       :from   [:report_card]
+       :where  [:and
+                [:in :report_card.id {:select [:id] :from [[ids-cte :ids]]}]
+                [:= :report_card.archived false]
+                [:or
+                 [:= :report_card.collection_id nil]
+                 [:not-in :report_card.collection_id archived-collection-ids-subq]]]}
+      t2/query first :total))
+
+(defn- count-dashboards [ids-cte]
+  (-> {:select [[:%count.* :total]]
+       :from   [:report_dashboard]
+       :where  [:and
+                [:in :report_dashboard.id {:select [:id] :from [[ids-cte :ids]]}]
+                [:= :report_dashboard.archived false]
+                [:or
+                 [:= :report_dashboard.collection_id nil]
+                 [:not-in :report_dashboard.collection_id archived-collection-ids-subq]]]}
+      t2/query first :total))
+
+(defn- count-transforms [ids-cte]
+  (-> {:select [[:%count.* :total]]
+       :from   [:transform]
+       :where  [:and
+                [:in :transform.id {:select [:id] :from [[ids-cte :ids]]}]
+                [:= :transform.active true]]}
       t2/query first :total))
 
 (defn summary
   "Per-entity-type, per-condition counts for the stat strip."
   []
   (let [cutoff (t/minus (t/local-date) (t/months 6))]
-    {:cards      {:broken       (count-of (broken-ids-cte "card"))
-                  :stale        (count-of (card-stale-cte cutoff))
-                  :unreferenced (count-of (unreferenced-cards-cte))
+    {:cards      {:broken       (count-cards (broken-ids-cte "card"))
+                  :stale        (count-cards (card-stale-cte cutoff))
+                  :unreferenced (count-cards (unreferenced-cards-cte))
                   :healthy      (-> {:select [[:%count.* :total]]
                                      :from   [:report_card]
-                                     :where  [:= :archived false]}
+                                     :where  [:and
+                                              [:= :report_card.archived false]
+                                              [:or
+                                               [:= :report_card.collection_id nil]
+                                               [:not-in :report_card.collection_id
+                                                archived-collection-ids-subq]]]}
                                     t2/query first :total)}
-     :dashboards {:broken       (count-of (broken-ids-cte "dashboard"))
-                  :stale        (count-of (dashboard-stale-cte cutoff))
-                  :unreferenced (count-of (unreferenced-dashboards-cte))
+     :dashboards {:broken       (count-dashboards (broken-ids-cte "dashboard"))
+                  :stale        (count-dashboards (dashboard-stale-cte cutoff))
+                  :unreferenced (count-dashboards (unreferenced-dashboards-cte))
                   :healthy      (-> {:select [[:%count.* :total]]
                                      :from   [:report_dashboard]
-                                     :where  [:= :archived false]}
+                                     :where  [:and
+                                              [:= :report_dashboard.archived false]
+                                              [:or
+                                               [:= :report_dashboard.collection_id nil]
+                                               [:not-in :report_dashboard.collection_id
+                                                archived-collection-ids-subq]]]}
                                     t2/query first :total)}
-     :transforms {:broken       (count-of (broken-ids-cte "transform"))
+     :transforms {:broken       (count-transforms (broken-ids-cte "transform"))
                   :stale        0
-                  :unreferenced (count-of (unreferenced-transforms-cte))
+                  :unreferenced (count-transforms (unreferenced-transforms-cte))
                   :healthy      (-> {:select [[:%count.* :total]]
-                                     :from   [:transform]}
+                                     :from   [:transform]
+                                     :where  [:= :transform.active true]}
                                     t2/query first :total)}}))
