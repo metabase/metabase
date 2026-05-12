@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -13,13 +14,20 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
-  createMockSettings,
+  COMMON_DATABASE_FEATURES,
   createMockDatabase,
+  createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import { TransformsSectionLayout } from "./TransformsSectionLayout";
+
+const createTransformSupportedDatabase = (opts?: Partial<Database>) =>
+  createMockDatabase({
+    features: [...COMMON_DATABASE_FEATURES, "transforms/table"],
+    ...opts,
+  });
 
 jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => "App Switcher",
@@ -33,6 +41,7 @@ const setup = ({
   isStoreUser = false,
   canAccessDbDetails = false,
   databases = [],
+  databasesError = false,
 }: {
   isHosted?: boolean;
   hasTransformFeature?: boolean;
@@ -41,9 +50,14 @@ const setup = ({
   isStoreUser?: boolean;
   canAccessDbDetails?: boolean;
   databases?: Database[];
+  databasesError?: boolean;
 } = {}) => {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabaseListEndpoint(databases);
+  if (databasesError) {
+    fetchMock.get("path:/api/database", 500);
+  } else {
+    setupDatabaseListEndpoint(databases);
+  }
 
   const storeUserEmail = "store-user@example.com";
   const currentUser = createMockUser({ is_superuser: isAdmin });
@@ -67,7 +81,6 @@ const setup = ({
   });
   const settings = mockSettings(settingsValues);
 
-  setupDatabaseListEndpoint([]);
   setupPropertiesEndpoints(settingsValues);
 
   if (isHosted || hasTransformFeature) {
@@ -80,7 +93,9 @@ const setup = ({
     <Route
       path={path}
       component={() => (
-        <TransformsSectionLayout>List of transforms</TransformsSectionLayout>
+        <TransformsSectionLayout>
+          <div>List of transforms</div>
+        </TransformsSectionLayout>
       )}
     />,
     {
@@ -114,7 +129,9 @@ describe("TransformSectionLayout", () => {
     it("should show allow you into transforms if transforms are enabled and writable databases exist", async () => {
       setup({
         transformsEnabled: true,
-        databases: [createMockDatabase({ transforms_permissions: "write" })],
+        databases: [
+          createTransformSupportedDatabase({ transforms_permissions: "write" }),
+        ],
       });
 
       await assertInApp();
@@ -131,7 +148,9 @@ describe("TransformSectionLayout", () => {
       setup({
         hasTransformFeature: true,
         transformsEnabled: true,
-        databases: [createMockDatabase({ transforms_permissions: "write" })],
+        databases: [
+          createTransformSupportedDatabase({ transforms_permissions: "write" }),
+        ],
       });
       await assertInApp();
     });
@@ -157,7 +176,9 @@ describe("TransformSectionLayout", () => {
       setup({
         isHosted: true,
         hasTransformFeature: true,
-        databases: [createMockDatabase({ transforms_permissions: "write" })],
+        databases: [
+          createTransformSupportedDatabase({ transforms_permissions: "write" }),
+        ],
       });
       await assertInApp();
     });
@@ -241,6 +262,20 @@ describe("TransformSectionLayout", () => {
         screen.queryByRole("link", {
           name: "View your database connections",
         }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show an error UI (not the empty state) when the databases request fails", async () => {
+      setup({
+        transformsEnabled: true,
+        databasesError: true,
+      });
+
+      expect(await screen.findByText(/error/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "To use transforms, you need a writable database connection",
+        ),
       ).not.toBeInTheDocument();
     });
   });

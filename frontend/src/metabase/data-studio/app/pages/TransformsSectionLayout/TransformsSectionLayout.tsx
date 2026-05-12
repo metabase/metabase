@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
@@ -23,7 +24,7 @@ export function TransformsSectionLayout({
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
   const isHosted = useSetting("is-hosted?");
-  const { transformsDatabases, isLoadingDatabases } =
+  const { transformsDatabases, isLoadingDatabases, databasesError } =
     useTransformSupportedDbs();
 
   if (shouldShowUpsell) {
@@ -40,5 +41,15 @@ export function TransformsSectionLayout({
     );
   }
 
-  return <SectionLayout>{children}</SectionLayout>;
+  return (
+    <SectionLayout>
+      <LoadingAndErrorWrapper
+        loading={isLoadingDatabases}
+        error={databasesError}
+        noWrapper
+      >
+        {children}
+      </LoadingAndErrorWrapper>
+    </SectionLayout>
+  );
 }
