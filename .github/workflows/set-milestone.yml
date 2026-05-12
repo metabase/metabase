@@ -27,14 +27,31 @@ jobs:
           sparse-checkout: |
             release
             .github
-          fetch-depth: ${{ github.event_name == 'push' && 3 || 0 }} # we need the full history to get all the commit messages
+          # Single-commit path only needs 3 commits; both backfill paths need
+          # full history to compute the merge-base with master.
+          fetch-depth: ${{ (github.event_name == 'push' && github.event.created != true) && 3 || 0 }}
           ref: master # we want the logic from master, even though we're triggering on a release branch
+
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
-      # Skip the single-commit path when the push *created* the branch:
-      # the cut commit has no PR ref and setMilestoneForCommits would throw.
-      # The new-branch case is handled by cut-release-branch.yml dispatching
-      # this workflow with `version` set (the workflow_dispatch path below).
+
+      # Resolve the major version we're operating on. For workflow_dispatch
+      # it comes straight from inputs.version; for a push it's parsed from
+      # the branch ref (refs/heads/release-x.{N}.x).
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MAJOR="${{ inputs.version }}"
+          else
+            REF="${{ github.ref_name }}"
+            MAJOR="${REF#release-x.}"
+            MAJOR="${MAJOR%.x}"
+          fi
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+
+      # Backport push to an existing release branch: milestone the single
+      # commit that was just pushed.
       #
       # `github.event.created` is a documented top-level field on the push
       # webhook payload (true iff the push created the ref). See:
@@ -58,13 +75,20 @@ jobs:
               branchName,
               commitMessages: [commitMessage],
             });
+
+      # Full backfill — assigns milestone 0.{major} to every PR/issue whose
+      # commit landed on master between the previous release branch forking
+      # point and this branch. Fires for:
+      #   - Fresh-cut pushes (the canonical signal of a new release branch)
+      #   - Manual workflow_dispatch (ad-hoc re-runs to pick up misses)
       - name: Get commit messages for release branch
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
         run: |
           npm i -g tsx
-          tsx release/src/release-branch-commits.ts ${{ inputs.version }} > commit-messages.json
+          tsx release/src/release-branch-commits.ts ${{ steps.version.outputs.major }} > commit-messages.json
+
       - uses: actions/github-script@v7
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ (github.event_name == 'push' && github.event.created == true) || github.event_name == 'workflow_dispatch' }}
         name: Backfill milestones for release branch
         env:
           # this token has a higher rate limit than the default token, and
@@ -78,7 +102,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const versionNumber = context.payload.inputs.version;
+            const versionNumber = '${{ steps.version.outputs.major }}';
             const branchName = `release-x.${versionNumber}.x`;
 
             console.log(`Found ${commitMessages.length} new commits for ${branchName}`);
@@ -91,3 +115,17 @@ jobs:
               commitMessages: commitMessages,
               ignoreExistingMilestones: true,
             });
+
+      # Fresh-cut only: now that the milestone is populated, dispatch
+      # release-notes-preview to post the markdown to #writing.
+      # Manual workflow_dispatch backfills skip this — they're for catching
+      # missed commits, not for pinging writers again.
+      - name: Trigger release notes preview for the writing team
+        if: ${{ github.event_name == 'push' && github.event.created == true }}
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh workflow run release-notes-preview.yml \
+            -f version=v0.${{ steps.version.outputs.major }}.0 \
+            -f slackChannel=writing \
+            --repo "${{ github.repository }}"
