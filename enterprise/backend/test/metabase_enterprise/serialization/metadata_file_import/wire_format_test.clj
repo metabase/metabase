@@ -1,10 +1,14 @@
-(ns ^:parallel metabase-enterprise.serialization.metadata-file-import.wire-format-test
+(ns metabase-enterprise.serialization.metadata-file-import.wire-format-test
   "Contract test between the metadata export and import sides. The importer's
   Malli schemas describe what the importer expects on the wire; this test
   exercises the export pipeline against a small hand-built fixture and
   validates every emitted row against the corresponding import schema. If the
   export starts emitting a column the import schema doesn't know about — or
-  stops emitting a required one — the test fails."
+  stops emitting a required one — the test fails.
+
+  NOT `^:parallel`: each test does an `mt/with-temp [:model/Database :model/Table
+  :model/Field …]` whose `:after-insert` chain hits `metabase_data_permissions`
+  + the cluster lock. Concurrent tests in this ns reliably deadlock on MariaDB."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.export :as export]
