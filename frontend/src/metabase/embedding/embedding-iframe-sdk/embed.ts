@@ -743,7 +743,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 }
 
-type ConcreteEmbedElementCtor<U extends string[]> = new (
+type ConcreteEmbedElementConstructor<U extends string[]> = new (
   ...args: any[]
 ) => MetabaseEmbedElement<U> & {
   _componentName: string;
@@ -753,11 +753,12 @@ type ConcreteEmbedElementCtor<U extends string[]> = new (
 function createCustomElement<
   T extends keyof ComponentToAttributes,
   U extends (keyof ComponentToAttributes[T] & string)[],
-  C extends ConcreteEmbedElementCtor<U> = ConcreteEmbedElementCtor<U>,
+  C extends ConcreteEmbedElementConstructor<U> =
+    ConcreteEmbedElementConstructor<U>,
 >(
   componentName: T,
   attributeNames: U,
-  decorate?: (Base: ConcreteEmbedElementCtor<U>) => C,
+  decorate?: (Base: ConcreteEmbedElementConstructor<U>) => C,
 ): C {
   const Base = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
@@ -766,7 +767,7 @@ function createCustomElement<
     static get observedAttributes() {
       return attributeNames;
     }
-  } as unknown as ConcreteEmbedElementCtor<U>;
+  } as unknown as ConcreteEmbedElementConstructor<U>;
 
   const CustomEmbedElement = (decorate ? decorate(Base) : Base) as C;
 
