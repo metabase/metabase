@@ -1,0 +1,60 @@
+name: Build docs (Astro)
+
+# Triggers:
+#   - push to master / release-x.NN.x with docs source changes (fast path
+#     for documentation edits)
+#   - nightly cron, to catch drift from backend / SDK changes that affect
+#     the regenerated content (OpenAPI spec, typedoc snippets)
+#   - manual workflow_dispatch for ad-hoc rebuilds
+on:
+  push:
+    branches:
+      - master
+      - 'release-x.*.x'
+    paths:
+      - 'docs/**'
+      - 'docs-build/**'
+      - 'bin/build-docs.sh'
+      - 'bin/ensure-generated-docs.sh'
+      - 'bin/generate-docs.sh'
+      - 'bin/generate-embedding-docs.sh'
+      - '.github/workflows/docs-astro-build.yml'
+  schedule:
+    # 07:00 UTC daily — picks up Clojure / SDK source changes that don't
+    # touch docs/** directly.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      base_path:
+        description: 'URL base path (e.g. /docs/latest, /docs/v0.60)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.7'
+
+      # Java + Clojure CLI + M2 cache. Needed because bin/build-docs.sh
+      # regenerates docs/api.json via `clojure -M:ee:doc api-documentation`.
+      - name: Prepare backend environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Build docs
+        env:
+          DOCS_BASE_PATH: ${{ inputs.base_path }}
+        run: ./bin/build-docs.sh
+
+      - name: Upload docs HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html-${{ github.ref_name }}
+          path: docs-build/dist
+          retention-days: 30
+          if-no-files-found: error

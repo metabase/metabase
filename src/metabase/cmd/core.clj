@@ -139,7 +139,7 @@
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
 (defn ^:command api-documentation
-  "Generate an HTML file and a JSON file for Scalar docs for the Metabase API."
+  "Generate the OpenAPI spec (docs/api.json) consumed by the Scalar viewer in the docs site."
   []
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
