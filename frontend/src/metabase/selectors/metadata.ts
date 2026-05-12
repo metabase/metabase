@@ -18,7 +18,6 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import type {
   Collection as ApiCollection,
-  Table as ApiTable,
   Card,
   Metric,
   NormalizedCollection,
@@ -186,9 +185,6 @@ export const getMetadata: (
     });
     Object.values(metadata.schemas).forEach((schema) => {
       schema.tables = hydrateSchemaTables(schema, metadata);
-    });
-    Object.values(metadata.segments).forEach((segment) => {
-      segment.table = hydrateSegmentTable(segment, tables);
     });
     Object.values(metadata.measures).forEach((measure) => {
       measure.table = hydrateMeasureTable(measure, metadata);
@@ -430,20 +426,6 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   if (nameFieldId != null) {
     return metadata.field(nameFieldId) ?? undefined;
   }
-}
-
-function hydrateSegmentTable(
-  segment: Segment,
-  tables: Record<string, NormalizedTable>,
-): ApiTable | undefined {
-  if (segment.table_id == null) {
-    return undefined;
-  }
-  const normalized = tables[segment.table_id];
-  if (!normalized) {
-    return undefined;
-  }
-  return normalized as unknown as ApiTable;
 }
 
 function hydrateMeasureTable(

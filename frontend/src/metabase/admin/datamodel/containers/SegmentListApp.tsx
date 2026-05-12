@@ -15,8 +15,7 @@ import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getShallowTables } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -31,6 +30,7 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const tables = useSelector(getShallowTables);
   const archive = useSetArchive();
   const trackSegmentCreateClick = () => {
     trackSegmentCreateStarted("admin_datamodel_segments");
@@ -70,7 +70,9 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
             <SegmentItem
               key={segment.id}
               segment={segment}
-              readOnly={segment.table?.is_published && isRemoteSyncReadOnly}
+              readOnly={
+                tables[segment.table_id]?.is_published && isRemoteSyncReadOnly
+              }
               onRetire={
                 isAdmin
                   ? () => archive({ id: segment.id, model: "segment" }, true)
@@ -97,12 +99,9 @@ type SegmentListAppProps = {
 };
 
 export function SegmentListApp({ location }: SegmentListAppProps) {
-  const { isLoading, error } = useListSegmentsQuery();
-  const segments = useSelector((state: State) =>
-    Object.values(getMetadata(state).segments),
-  );
+  const { data: segments, isLoading, error } = useListSegmentsQuery();
 
-  if (isLoading || error) {
+  if (isLoading || error || !segments) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
