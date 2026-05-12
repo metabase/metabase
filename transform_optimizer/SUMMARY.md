@@ -11,7 +11,7 @@ coordination surface.
 | Artifact | Path | Notes |
 |---|---|---|
 | DDL | `dataset/01_schema.sql` | `shop` schema; FKs kept, no helper indexes |
-| Seed | `dataset/02_seed.sql` | ~1/5 scale (100k customers, 1M orders, 3M events, 300k reviews) — runs in ~1 min |
+| Seed | `dataset/02_seed.sql` | 50k customers, 500k orders, 1.5M order_items, 2M events, 250k reviews — full harness run (load → verify) ~1–1.5 min on a dev laptop |
 | Optimized indexes | `dataset/03_optimized_indexes.sql` | btree + `pg_trgm` GIN; applied between Phase-2-slow and Phase-4-fast in the harness |
 | 8 slow→fast query pairs | `queries/qNN_*.sql` | `-- @meta` / `-- @slow` / `-- @fast` markers, one file per pair |
 | Validation harness | `harness/run.sh`, `harness/run.clj` | Loads schema+seed, runs all pairs, EXCEPT-ALL equivalence check, geomean speedup. Heartbeat every 3 s. |
@@ -40,11 +40,12 @@ All under `enterprise/backend/src/metabase_enterprise/transform_optimizer/`:
 
 ### Phase 3 — UI ⛔ **not started**
 
-### Phase 4 — Equivalence verification ✅ **done**
+### Phase 4 — Equivalence verification 🟡 **partial (single-transform only)**
 
-| Namespace | File | What it does |
-|---|---|---|
-| `verify` | `verify.clj` | Materialises slow + proposal SQL into a scratch schema, schema-compatibility check, `EXCEPT ALL` diff in both directions, sample-diff capture. Postgres only. |
+| Namespace | File | What it does | Status |
+|---|---|---|---|
+| `verify` | `verify.clj` | Materialises slow + proposal SQL into a scratch schema, schema-compatibility check, `EXCEPT ALL` diff in both directions, sample-diff capture. Postgres only. | ✅ single proposals |
+| | | Precompute (DAG) verification — materialise each precompute body and rewrite the leaf's `<pN target>` references before EXCEPT-ALL. | ⛔ deferred (see C3) |
 
 ### Phase 5 — Polish & guardrails 🟡 **partial**
 
