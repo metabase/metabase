@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v61.asdgew
+      id: v62.asdgew
       author: nvoxland
       comment: Create the table backing the message queue
       changes:
@@ -63,7 +63,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v61.gdasfg2e
+      id: v62.gdasfg2e
       author: nvoxland
       comment: Index queue_message_batch name and status
       changes:
@@ -78,7 +78,7 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v61.g9dasg4
+      id: v62.g9dasg4
       author: nvoxland
       comment: Create topic_message_batch table for pub/sub messaging
       changes:
@@ -114,7 +114,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v61.igoiead
+      id: v62.igoiead
       author: nvoxland
       comment: Index topic_message_batch by topic_name and id for efficient polling
       changes:
@@ -128,7 +128,7 @@ databaseChangeLog:
                   name: id
 
   - changeSet:
-      id: v61.8867df
+      id: v62.8867df
       author: nvoxland
       comment: Index topic_message_batch.created_at for efficient cleanup queries
       changes:
