@@ -37,6 +37,10 @@ jobs:
       # the cut commit has no PR ref and setMilestoneForCommits would throw.
       # The new-branch case is handled by cut-release-branch.yml dispatching
       # this workflow with `version` set (the isNewReleaseBranch == 'true' path).
+      #
+      # `github.event.created` is a documented top-level field on the push
+      # webhook payload (true iff the push created the ref). See:
+      # https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
       - uses: actions/github-script@v7
         if: ${{ env.isNewReleaseBranch == 'false' && github.event.created != true }}
         name: Set milestone for single commit
