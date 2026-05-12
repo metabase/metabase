@@ -2,18 +2,19 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   Alert,
   Anchor,
   Box,
   Chip,
   Group,
-  SegmentedControl,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 
+import { HotspotList } from "./HotspotList";
 import { SlotExpansion } from "./SlotExpansion";
 import { WorkloadGrid } from "./WorkloadGrid";
 import { useGetWorkloadGridQuery, useGetWorkloadSlotQuery } from "./api";
@@ -28,8 +29,17 @@ const JOB_TYPES: WorkloadJobType[] = [
   "persisted-refresh",
 ];
 
+const JOB_TYPE_LABEL: Record<WorkloadJobType, string> = {
+  sync: "Database sync",
+  "transform-job": "Transform run",
+  alert: "Alert",
+  "dashboard-subscription": "Subscription",
+  "persisted-refresh": "Model cache refresh",
+};
+
 export function WorkloadPage() {
   const { params, setParams, range, slotRange } = useWorkloadParams();
+  const timezone = useSetting("system-timezone") || "UTC";
 
   const gridParams = useMemo(
     () => ({
@@ -80,22 +90,15 @@ export function WorkloadPage() {
 
       {grid?.scheduler_status === "stopped" && (
         <Alert color="warning" mb="md">
-          {t`The Quartz scheduler isn't running on this instance — workload data is unavailable.`}
+          {t`Scheduled jobs are paused on this instance — workload data is unavailable.`}
         </Alert>
       )}
 
       <Stack gap="sm" mb="md">
         <Group justify="space-between">
-          <SegmentedControl
-            value={params.range}
-            onChange={(v) =>
-              setParams({ range: v as "forecast" | "history", slot: null })
-            }
-            data={[
-              { value: "forecast", label: t`Forecast (next 7d)` },
-              { value: "history", label: t`History (last 7d)` },
-            ]}
-          />
+          <Text c="text-secondary" size="sm">
+            {t`Showing the next 7 days · ${timezone}`}
+          </Text>
           {params.types.length > 0 && (
             <Anchor size="sm" onClick={() => setParams({ types: [] })}>
               {t`Clear filters`}
@@ -115,11 +118,17 @@ export function WorkloadPage() {
               variant="outline"
               color="brand"
             >
-              {tt}
+              {JOB_TYPE_LABEL[tt]}
             </Chip>
           ))}
         </Group>
       </Stack>
+
+      <HotspotList
+        cells={grid?.cells ?? []}
+        timezone={timezone}
+        onJumpToSlot={(slot) => setParams({ slot })}
+      />
 
       <WorkloadGrid
         cells={grid?.cells ?? []}
@@ -127,12 +136,14 @@ export function WorkloadPage() {
         isLoading={gridLoading}
         focusedSlot={params.slot}
         onSelectSlot={(slot) => setParams({ slot })}
+        timezone={timezone}
       />
 
       <SlotExpansion
         slot={params.slot}
         rows={slotRows}
         isLoading={slotLoading}
+        timezone={timezone}
       />
     </Box>
   );

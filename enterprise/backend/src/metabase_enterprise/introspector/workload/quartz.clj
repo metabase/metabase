@@ -98,8 +98,14 @@
 (defn- cron-fires
   "Lazy-ish seq of Instants for a CronTrigger in the half-open window [from, to)."
   [^CronTrigger ct ^Instant from ^Instant to]
-  (let [^CronExpression cron (CronExpression. (.getCronExpression ct))]
-    (loop [cursor (java.util.Date/from from)
+  (let [^CronExpression cron (CronExpression. (.getCronExpression ct))
+        ;; Quartz's getNextValidTimeAfter is *strictly* after the cursor, so a
+        ;; trigger firing at exactly `from` is missed when from itself sits on
+        ;; a fire boundary (e.g. slot endpoint requests [08:00, 09:00) and the
+        ;; cron fires hourly at :00). Back the cursor up by 1 ms so the fire AT
+        ;; `from` is included.
+        start (java.util.Date/from (.minusMillis from 1))]
+    (loop [cursor start
            acc    (transient [])]
       (let [^java.util.Date next (.getNextValidTimeAfter cron cursor)]
         (cond
@@ -215,11 +221,16 @@
                                   (str "Database #" id " (deleted)"))
       :transform-job          (or (:name (t2/select-one [:model/TransformJob :name] :id id))
                                   (str "Transform job #" id " (deleted)"))
-      :alert                  (if-let [notif-id (t2/select-one-fn :notification_id
-                                                                  :model/NotificationSubscription
-                                                                  :id id)]
-                                (str "Alert · notification #" notif-id)
-                                (str "Alert · subscription #" id " (deleted)"))
+      :alert                  (or (when-let [notif-id (t2/select-one-fn :notification_id
+                                                                        :model/NotificationSubscription
+                                                                        :id id)]
+                                    (when-let [card-id (t2/select-one-fn :card_id
+                                                                         :model/NotificationCard
+                                                                         {:where [:in :id {:select [:payload_id]
+                                                                                           :from   [:notification]
+                                                                                           :where  [:= :id notif-id]}]})]
+                                      (:name (t2/select-one [:model/Card :name] :id card-id))))
+                                  (str "Alert · subscription #" id " (deleted)"))
       :dashboard-subscription (or (:name (t2/select-one [:model/Pulse :name] :id id))
                                   (str "Dashboard subscription #" id " (deleted)"))
       :persisted-refresh      (or (:name (t2/select-one [:model/Database :name] :id id))

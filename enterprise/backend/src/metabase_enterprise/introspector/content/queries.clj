@@ -321,19 +321,15 @@
              :from   [:transform]
              :left-join [[:broken :broken] [:= :broken.id :transform.id]
                          [:unref :unref]   [:= :unref.id :transform.id]]
-             :where  [:and
-                      ;; Skip inactive (paused/disabled) transforms — they're not load-bearing
-                      ;; and they typically aren't what an admin is looking to clean up.
-                      [:= :transform.active true]
-                      (cond
-                        (and (contains? conditions :broken)
-                             (contains? conditions :unreferenced))
-                        [:or [:not= :broken.id nil] [:not= :unref.id nil]]
+             :where  (cond
+                       (and (contains? conditions :broken)
+                            (contains? conditions :unreferenced))
+                       [:or [:not= :broken.id nil] [:not= :unref.id nil]]
 
-                        (contains? conditions :broken)       [:not= :broken.id nil]
-                        (contains? conditions :unreferenced) [:not= :unref.id nil]
-                        :else
-                        [:or [:not= :broken.id nil] [:not= :unref.id nil]])]
+                       (contains? conditions :broken)       [:not= :broken.id nil]
+                       (contains? conditions :unreferenced) [:not= :unref.id nil]
+                       :else
+                       [:or [:not= :broken.id nil] [:not= :unref.id nil]])
              :order-by (case sort-column
                          :last_used_at [[:transform.updated_at (or sort-direction :desc)]]
                          [[:%lower.name (or sort-direction :asc)]])
@@ -392,9 +388,7 @@
 (defn- count-transforms [ids-cte]
   (-> {:select [[:%count.* :total]]
        :from   [:transform]
-       :where  [:and
-                [:in :transform.id {:select [:id] :from [[ids-cte :ids]]}]
-                [:= :transform.active true]]}
+       :where  [:in :transform.id {:select [:id] :from [[ids-cte :ids]]}]}
       t2/query first :total))
 
 (defn summary
@@ -429,6 +423,5 @@
                   :stale        0
                   :unreferenced (count-transforms (unreferenced-transforms-cte))
                   :healthy      (-> {:select [[:%count.* :total]]
-                                     :from   [:transform]
-                                     :where  [:= :transform.active true]}
+                                     :from   [:transform]}
                                     t2/query first :total)}}))
