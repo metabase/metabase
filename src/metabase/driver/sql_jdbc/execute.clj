@@ -567,13 +567,16 @@
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
-  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
+  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid. Match the
+  ;; classification used in [[execute-reducible-query]] below: such errors should surface to the
+  ;; user as :invalid-query (HTTP 4xx with the underlying database message), not :driver
+  ;; (HTTP 5xx "We're experiencing server issues"). See #71637.
   (doto (try
           (prepared-statement driver conn sql params)
           (catch Throwable e
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
-                             :type   driver-api/qp.error-type.driver
+                             :type   driver-api/qp.error-type.invalid-query
                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
