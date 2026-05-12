@@ -52,7 +52,7 @@ const vizDefinition: VisualizationDefinition = {
   isSensible: () => true,
 
   settings: {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "list.entity_icon": {
       getDefault: () => null,
     },
