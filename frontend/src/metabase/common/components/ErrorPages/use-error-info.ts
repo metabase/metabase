@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { useLazyListLogsQuery } from "metabase/api/logger";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi } from "metabase/services";
 
@@ -27,6 +27,7 @@ export const useErrorInfo = (
 ) => {
   const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const dispatch = useDispatch();
   const location = window.location.href;
   const [getBugReportDetails] = useLazyGetBugReportDetailsQuery();
   const [listLogs] = useLazyListLogsQuery();
@@ -47,7 +48,12 @@ export const useErrorInfo = (
 
     const isAdHoc = entity === "question" && window.location.href.includes("#");
 
-    const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
+    const entityInfoRequest = getEntityDetails({
+      entity,
+      id,
+      isAdHoc,
+      dispatch,
+    });
     const bugReportDetailsRequest = isAdmin
       ? getBugReportDetails().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
@@ -82,6 +88,7 @@ export const useErrorInfo = (
       entityInfo.originalCard = await getEntityDetails({
         entity,
         id: entityInfo.original_card_id,
+        dispatch,
       });
     }
 
