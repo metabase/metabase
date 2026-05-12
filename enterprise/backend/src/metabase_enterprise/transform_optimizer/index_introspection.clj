@@ -99,9 +99,25 @@
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
+(defn- normalise-pairs
+  "Accept either a single `[schema table]` pair or a sequence of them. Returns
+  a sequence of pairs. This lets REPL callers write
+  `(fetch-indexes drv db [\"shop\" \"orders\"])` without ceremony while still
+  supporting the bulk shape `[[\"shop\" \"orders\"] [\"shop\" \"events\"]]`."
+  [table-pairs]
+  (cond
+    (and (sequential? table-pairs)
+         (= 2 (count table-pairs))
+         (every? string? table-pairs))
+    [table-pairs]
+
+    :else
+    table-pairs))
+
 (defn fetch-indexes
   "Look up full index detail for the given `[[schema table] …]` pairs against
-  `database`. Returns a vector of index info maps; each carries the
+  `database`. A single `[schema table]` pair is also accepted as a
+  convenience. Returns a vector of index info maps; each carries the
   `:definition` (raw `CREATE INDEX …` text from `pg_get_indexdef`) plus
   parsed-out structured fields (`:key_columns`, `:include_columns`,
   `:access_method`, `:partial_predicate`, …).
@@ -110,18 +126,19 @@
   should fall back to `driver/describe-table-indexes` and tag the resulting
   context as partial."
   [driver database table-pairs]
-  (cond
-    (not (isa? driver/hierarchy driver :postgres))
-    (do (log/warnf "index-introspection only supports :postgres (got %s); falling back" driver)
-        nil)
+  (let [pairs (normalise-pairs table-pairs)]
+    (cond
+      (not (isa? driver/hierarchy driver :postgres))
+      (do (log/warnf "index-introspection only supports :postgres (got %s); falling back" driver)
+          nil)
 
-    (empty? table-pairs)
-    []
+      (empty? pairs)
+      []
 
-    :else
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database nil
-     (fn [^Connection conn] (query-indexes conn table-pairs)))))
+      :else
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database nil
+       (fn [^Connection conn] (query-indexes conn pairs))))))
 
 (defn group-by-table
   "Turn the flat seq returned by `fetch-indexes` into a `{[schema table] [indexes…]}`
