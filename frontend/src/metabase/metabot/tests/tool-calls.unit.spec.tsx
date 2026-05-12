@@ -159,7 +159,7 @@ describe("metabot > tool calls", () => {
     await assertConversation([
       ["user", "Who is your favorite?"],
       ["agent", "You, but"],
-      ["agent", /response was interrupted/],
+      ["agent", /Response.+was interrupted/],
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);
@@ -188,7 +188,7 @@ describe("metabot > tool calls", () => {
     await assertConversation([
       ["user", "Who is your favorite?"],
       ["agent", "You, but"],
-      ["agent", /response was interrupted/],
+      ["agent", /Response.+was interrupted/],
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);

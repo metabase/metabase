@@ -232,55 +232,53 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions}>
-          <>
-            <Tooltip label={t`Copy`}>
+          <Tooltip label={t`Copy`}>
+            <ActionIcon
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+              onClick={() => onCopy(message.id)}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+          {canGiveFeedback && (
+            <>
+              <Tooltip label={t`Give positive feedback`}>
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-up"
+                  icon="thumbs_up"
+                  hasBeenClicked={submittedFeedback === "positive"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({ messageId, positive: true })
+                  }
+                />
+              </Tooltip>
+              <Tooltip label={t`Give negative feedback`}>
+                <FeedbackButton
+                  data-testid="metabot-chat-message-thumbs-down"
+                  icon="thumbs_down"
+                  hasBeenClicked={submittedFeedback === "negative"}
+                  disabled={!!submittedFeedback}
+                  onClick={() =>
+                    setFeedbackMessage({ messageId, positive: false })
+                  }
+                />
+              </Tooltip>
+            </>
+          )}
+
+          {onRetry && (
+            <Tooltip label={t`Retry`}>
               <ActionIcon
+                onClick={() => onRetry(message.id)}
                 h="sm"
-                data-testid="metabot-chat-message-copy"
-                onClick={() => onCopy(message.id)}
+                data-testid="metabot-chat-message-retry"
               >
-                <Icon name="copy" size="1rem" />
+                <Icon name="revert" size="1rem" />
               </ActionIcon>
             </Tooltip>
-            {canGiveFeedback && (
-              <>
-                <Tooltip label={t`Give positive feedback`}>
-                  <FeedbackButton
-                    data-testid="metabot-chat-message-thumbs-up"
-                    icon="thumbs_up"
-                    hasBeenClicked={submittedFeedback === "positive"}
-                    disabled={!!submittedFeedback}
-                    onClick={() =>
-                      setFeedbackMessage({ messageId, positive: true })
-                    }
-                  />
-                </Tooltip>
-                <Tooltip label={t`Give negative feedback`}>
-                  <FeedbackButton
-                    data-testid="metabot-chat-message-thumbs-down"
-                    icon="thumbs_down"
-                    hasBeenClicked={submittedFeedback === "negative"}
-                    disabled={!!submittedFeedback}
-                    onClick={() =>
-                      setFeedbackMessage({ messageId, positive: false })
-                    }
-                  />
-                </Tooltip>
-              </>
-            )}
-
-            {onRetry && (
-              <Tooltip label={t`Retry`}>
-                <ActionIcon
-                  onClick={() => onRetry(message.id)}
-                  h="sm"
-                  data-testid="metabot-chat-message-retry"
-                >
-                  <Icon name="revert" size="1rem" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </>
+          )}
         </Flex>
       )}
     </MessageContainer>
@@ -304,10 +302,10 @@ const AgentTurnAlert = ({
     direction="column"
     gap="xs"
     p="sm"
-    bd={`1px solid var(--mb-color-border)`}
+    bd="1px solid var(--mb-color-border)"
     bdrs="sm"
     data-testid="metabot-chat-message-turn-alert"
-    bg={"background-primary"}
+    bg="background-primary"
   >
     <Flex align="center" gap="sm">
       <Icon
@@ -373,7 +371,7 @@ const AbortedTurnAlert = ({
   return (
     <AgentTurnAlert
       variant="info"
-      message={t`${metabotName}'s response was interrupted`}
+      message={t`Response from ${metabotName} was interrupted`}
       cta={
         !debug && onRetry ? (
           <Button

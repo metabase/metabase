@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
@@ -99,7 +100,7 @@ export const useMetabot = (): UseMetabotResult => {
         .filter((m) => m.role === "agent" && m.type === "turn_errored")
         .map(
           (m) =>
-            m.display ?? { type: "message", message: "Something went wrong" },
+            m.display ?? { type: "message", message: t`Something went wrong` },
         ),
     [agent.messages],
   );

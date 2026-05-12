@@ -1,7 +1,7 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { MetabotAgentChatMessage } from "metabase/metabot/state";
 
-import { AgentMessage } from "./MetabotChatMessage";
+import { AgentMessage, Messages } from "./MetabotChatMessage";
 
 const setup = (message: MetabotAgentChatMessage) =>
   renderWithProviders(
@@ -18,6 +18,24 @@ const setup = (message: MetabotAgentChatMessage) =>
   );
 
 describe("AgentMessage", () => {
+  it("hides the action bar on the last agent message while processing", () => {
+    renderWithProviders(
+      <Messages
+        messages={[
+          { id: "u1", role: "user", type: "text", message: "hi" },
+          { id: "a1", role: "agent", type: "text", message: "hello" },
+        ]}
+        isDoingScience
+        debug={false}
+      />,
+    );
+
+    const [, agentMessage] = screen.getAllByTestId("metabot-chat-message");
+    expect(
+      within(agentMessage).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
+  });
+
   describe("turn_errored", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({
@@ -70,6 +88,32 @@ describe("AgentMessage", () => {
       });
 
       expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
+    });
+
+    it("renders the raw error payload as a debug card when debug is true", () => {
+      renderWithProviders(
+        <AgentMessage
+          debug
+          readonly={false}
+          hideActions
+          showFeedbackButtons={false}
+          setFeedbackMessage={() => {}}
+          submittedFeedback={undefined}
+          onCopy={() => {}}
+          message={{
+            id: "msg",
+            role: "agent",
+            type: "turn_errored",
+            error: { type: "stream_error", message: "boom" },
+          }}
+        />,
+      );
+
+      const debugCard = screen.getByTestId(
+        "metabot-chat-message-turn-alert-debug",
+      );
+      expect(debugCard).toHaveTextContent(/stream_error/);
+      expect(debugCard).toHaveTextContent(/boom/);
     });
   });
 });

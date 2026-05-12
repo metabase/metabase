@@ -132,9 +132,7 @@ export const appendAgentTurnAborted = (
     id: createMessageId(),
     role: "agent",
     type: "turn_aborted",
-    ...(convo.pendingMessageExternalId
-      ? { externalId: convo.pendingMessageExternalId }
-      : {}),
+    externalId: convo.pendingMessageExternalId,
   });
 };
 
@@ -148,10 +146,8 @@ export const appendAgentTurnErrored = (
     role: "agent",
     type: "turn_errored",
     error,
-    ...(display ? { display } : {}),
-    ...(convo.pendingMessageExternalId
-      ? { externalId: convo.pendingMessageExternalId }
-      : {}),
+    display,
+    externalId: convo.pendingMessageExternalId,
   });
 };
 
