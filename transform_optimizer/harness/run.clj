@@ -72,8 +72,12 @@
     :dbname   (:dbname opts)
     :user     (:user opts)
     :password (:password opts)
-    ;; CREATE INDEX in 03_optimized_indexes can be hefty; let the planner pick freely
-    :options  "-c statement_timeout=0"}))
+    ;; - statement_timeout=0 so CREATE INDEX on big tables isn't capped
+    ;; - work_mem=128MB so HashedSubPlan / HashAgg fit in memory for the
+    ;;   "slow" queries; without this Postgres falls back to repeated-scan
+    ;;   subplans and the NOT-IN/correlated-subquery pairs blow up from
+    ;;   seconds to many minutes.
+    :options  "-c statement_timeout=0 -c work_mem=128MB"}))
 
 ;; ---------------------------------------------------------------------------
 ;; SQL parsing

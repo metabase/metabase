@@ -1,21 +1,28 @@
 -- Transform Optimizer — seed data.
 --
 -- Loads roughly:
---   customers      100 000   suppliers   2 000   categories      30
---   products        20 000   orders  1 000 000   order_items ≈ 3 000 000
---   events       3 000 000   reviews    300 000
+--   customers       50 000   suppliers   2 000   categories      30
+--   products        10 000   orders    300 000   order_items ≈ 900 000
+--   events       1 000 000   reviews    150 000
 --
 -- Sizing rationale
 -- ================
--- The dataset is sized so the un-optimized slow queries take a few seconds
--- each (3–15 s) and the optimized versions land sub-second, giving a clean
--- 50×–500× ratio. Full developer-laptop run (seed → all 8 pairs → indexes
--- → fast pairs → compare) is in the 3–5 minute range.
+-- The dataset is sized so each un-optimized slow query lands in the 0.5–3 s
+-- range and the optimized versions stay well below 100 ms — a clean
+-- 10×–500× ratio that demonstrates the optimisation without making the run
+-- painful. Full developer-laptop run (seed → all 8 pairs → indexes → fast
+-- pairs → compare) finishes in about a minute.
 --
--- We deliberately do NOT use a ×5–×10 bigger scale: it pushes q02 (three
--- correlated subqueries on the no-index orders table) into hours instead of
--- seconds. If you want a bigger dataset for stress-testing, multiply the
--- generate_series stop values below — but expect q02 to be the bottleneck.
+-- The biggest constraint is q01 (NOT IN antijoin) and q02 (three correlated
+-- subqueries). Both need their hash subplans to fit in `work_mem`; without
+-- that Postgres falls back to per-row re-scans and the slow versions go
+-- from seconds to many minutes. The harness already sets
+-- `work_mem=128MB` on its connection — keep that or scale the dataset
+-- down further.
+--
+-- If you want a bigger dataset for stress-testing, multiply the
+-- generate_series stop values below — but expect q01/q02 to be the
+-- bottleneck.
 --
 -- Generation strategy
 -- ===================
@@ -66,7 +73,7 @@ SELECT
   END,
   TIMESTAMPTZ '2021-01-01 00:00:00+00'
     + (((i * 1009) % (365 * 4 * 24 * 60)) || ' minutes')::interval
-FROM generate_series(1, 100000) AS i;
+FROM generate_series(1, 50000) AS i;
 
 INSERT INTO products (id, name, category_id, supplier_id, price_cents, cost_cents, active, description)
 SELECT
@@ -86,10 +93,10 @@ SELECT
     WHEN 5 THEN 'Out of stock in some regions. Refunds available.'
     ELSE        'New arrival. Limited initial inventory.'
   END
-FROM generate_series(1, 20000) AS i;
+FROM generate_series(1, 10000) AS i;
 
 -- ----------------------------------------------------------------------------
--- Orders (5M)
+-- Orders (300k)
 --
 -- We bias `ordered_at` slightly toward recent dates and `customer_id` so that
 -- a handful of customers are heavy buyers (zipf-ish).
@@ -98,10 +105,10 @@ FROM generate_series(1, 20000) AS i;
 INSERT INTO orders (id, customer_id, ordered_at, status, total_cents, currency, shipping_country)
 SELECT
   i,
-  -- skew: 70% of orders go to the first 20k customers
+  -- skew: 70% of orders go to the first 10k customers
   CASE WHEN (i % 10) < 7
-       THEN 1 + ((i * 2654435761) % 20000)
-       ELSE 1 + ((i * 2654435761) % 100000)
+       THEN 1 + ((i * 2654435761) % 10000)
+       ELSE 1 + ((i * 2654435761) % 50000)
   END,
   TIMESTAMPTZ '2022-01-01 00:00:00+00'
     + ((((i::bigint * 1019) + ((i * 7) % 9973)) % (365 * 3 * 24 * 60)) || ' minutes')::interval,
@@ -109,10 +116,10 @@ SELECT
   500 + ((i * 97) % 80000),                            -- $5 — $805
   (ARRAY['USD','USD','USD','EUR','GBP','BRL','JPY'])[1 + (i % 7)],
   (ARRAY['US','UK','DE','FR','IT','ES','BR','JP','CA','AU','NL','SE','PL','MX','IN'])[1 + ((i * 11) % 15)]
-FROM generate_series(1, 1000000) AS i;
+FROM generate_series(1, 300000) AS i;
 
 -- ----------------------------------------------------------------------------
--- Order items (≈ 3M)
+-- Order items (≈ 900k)
 --
 -- 1–5 items per order, deterministic. We use a row_number() global counter to
 -- assign primary keys.
@@ -122,7 +129,7 @@ INSERT INTO order_items (id, order_id, product_id, quantity, unit_price_cents, d
 SELECT
   row_number() OVER (),
   o.id,
-  1 + ((o.id * 7 + g) % 20000),
+  1 + ((o.id * 7 + g) % 10000),
   1 + ((g * 13 + o.id) % 5),
   100 + ((o.id * 31 + g) % 10000),
   CASE WHEN ((o.id + g) % 12) = 0 THEN ((g * 17) % 2000) ELSE 0 END
@@ -130,7 +137,7 @@ FROM orders o,
      LATERAL generate_series(1, 1 + (o.id % 5)) AS g;
 
 -- ----------------------------------------------------------------------------
--- Events (3M)
+-- Events (1M)
 --
 -- Mostly anonymous page_views; ~15% authenticated; ~3% purchases.
 -- ----------------------------------------------------------------------------
@@ -139,22 +146,22 @@ INSERT INTO events (id, customer_id, occurred_at, type, product_id, session_id, 
 SELECT
   i,
   CASE WHEN (i % 100) < 15
-       THEN 1 + ((i * 2654435761) % 100000)
+       THEN 1 + ((i * 2654435761) % 50000)
        ELSE NULL
   END,
   TIMESTAMPTZ '2023-01-01 00:00:00+00'
     + (((i * 31) % (365 * 2 * 24 * 60 * 60)) || ' seconds')::interval,
   (ARRAY['page_view','page_view','page_view','page_view','page_view','page_view','page_view',
          'search','search','add_to_cart','add_to_cart','checkout_start','purchase'])[1 + (i % 13)],
-  CASE WHEN (i % 5) = 0 THEN 1 + ((i * 7) % 20000) ELSE NULL END,
+  CASE WHEN (i % 5) = 0 THEN 1 + ((i * 7) % 10000) ELSE NULL END,
   'sess_' || ((i / 30) % 1000000),                     -- ≈30 events per session
   '/' || (ARRAY['home','products','search','cart','checkout','account','help','blog'])[1 + (i % 8)]
     || '/' || ((i * 11) % 10000),
   jsonb_build_object('referrer', (ARRAY['google','direct','email','ad','social'])[1 + (i % 5)])
-FROM generate_series(1, 3000000) AS i;
+FROM generate_series(1, 1000000) AS i;
 
 -- ----------------------------------------------------------------------------
--- Reviews (300k)
+-- Reviews (150k)
 --
 -- We salt review bodies with hot keywords ("refund", "broken", "amazing",
 -- "fast delivery") at a low rate so the trigram-search example is realistic.
@@ -163,8 +170,8 @@ FROM generate_series(1, 3000000) AS i;
 INSERT INTO reviews (id, product_id, customer_id, rating, body, created_at)
 SELECT
   i,
-  1 + ((i * 7) % 20000),
-  1 + ((i * 2654435761) % 100000),
+  1 + ((i * 7) % 10000),
+  1 + ((i * 2654435761) % 50000),
   1 + (i % 5),
   CASE (i % 20)
     WHEN 0  THEN 'Arrived broken. Had to request a refund — process took two weeks.'
@@ -181,7 +188,7 @@ SELECT
   END,
   TIMESTAMPTZ '2023-01-01 00:00:00+00'
     + (((i * 53) % (365 * 2 * 24 * 60)) || ' minutes')::interval
-FROM generate_series(1, 300000) AS i;
+FROM generate_series(1, 150000) AS i;
 
 COMMIT;
 
