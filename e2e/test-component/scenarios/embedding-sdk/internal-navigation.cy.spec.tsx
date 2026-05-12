@@ -783,38 +783,63 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       });
     });
 
-    it("should be a no-op when click behavior points to the same tab-less dashboard", () => {
+    it("should apply mapped parameters when click behavior points to the same tab-less dashboard", () => {
+      const ID_FILTER: Parameter = createMockActionParameter({
+        id: "self-link-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
       H.createQuestion({
         name: "Self-linking card",
         query: { "source-table": ORDERS_ID, limit: 5 },
       }).then(({ body: card }) => {
-        H.createDashboard({ name: "Self-linking Dashboard" }).then(
-          ({ body: dashboard }) => {
-            H.addOrUpdateDashboardCard({
+        H.createDashboard({
+          name: "Self-linking Dashboard",
+          parameters: [ID_FILTER],
+        }).then(({ body: dashboard }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: createMockDashboardCard({
               card_id: card.id,
-              dashboard_id: dashboard.id,
-              card: createMockDashboardCard({
-                card_id: card.id,
-                size_x: 24,
-                size_y: 8,
-                visualization_settings: {
-                  column_settings: {
-                    [`["ref",["field",${ORDERS.ID},null]]`]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "dashboard",
-                        linkTextTemplate: "Self link (no-op)",
-                        targetId: dashboard.id,
-                        parameterMapping: {},
+              size_x: 24,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: ID_FILTER.id,
+                  card_id: card.id,
+                  target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+              ],
+              visualization_settings: {
+                column_settings: {
+                  [`["ref",["field",${ORDERS.ID},null]]`]: {
+                    click_behavior: {
+                      type: "link",
+                      linkType: "dashboard",
+                      linkTextTemplate: "Self link",
+                      targetId: dashboard.id,
+                      parameterMapping: {
+                        [ID_FILTER.id]: {
+                          source: { type: "column", id: "ID", name: "ID" },
+                          target: {
+                            type: "parameter",
+                            id: ID_FILTER.id,
+                          },
+                          id: ID_FILTER.id,
+                        },
                       },
                     },
                   },
                 },
-              }),
-            });
-            cy.wrap(dashboard.id).as("selfDashboardId");
-          },
-        );
+              },
+            }),
+          });
+          cy.wrap(dashboard.id).as("selfDashboardId");
+        });
       });
 
       cy.signOut();
@@ -836,14 +861,13 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
 
-        // Click the self-linking link — it has self-linking click_behavior.
-        H.getDashboardCard().findAllByText("Self link (no-op)").first().click();
+        // Click the self-linking link — same dashboard, same (no) tab, with
+        // a parameter mapping that should set the dashboard's ID filter.
+        H.getDashboardCard().findAllByText("Self link").first().click();
 
-        // Expected: clicking a same-dashboard, no-tab link is a no-op — we are
-        // already on the only view there is. No back-button frame should be
-        // pushed onto the navigation stack.
-        // On master this fails: a new "dashboard" entry is pushed and the
-        // back-button "Back to Self-linking Dashboard" appears.
+        // Expected: filter widget reflects the mapped cell value; no extra
+        // navigation frame is pushed since we're already on this view.
+        H.filterWidget().should("contain.text", "1");
         cy.findByText(/Back to/).should("not.exist");
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
@@ -865,6 +889,14 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       const TARGET_TAB_1 = { id: 1, name: "Target Tab 1" };
       const TARGET_TAB_2 = { id: 2, name: "Target Tab 2" };
 
+      const TARGET_ID_FILTER: Parameter = createMockActionParameter({
+        id: "target-id-filter",
+        name: "ID Filter",
+        slug: "id-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
       H.createQuestion({
         name: "Card on Target Tab 1",
         query: { "source-table": ORDERS_ID, limit: 5 },
@@ -875,6 +907,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         }).then(({ body: targetTab2Card }) => {
           H.createDashboardWithTabs({
             name: "Target Dashboard",
+            parameters: [TARGET_ID_FILTER],
             tabs: [TARGET_TAB_1, TARGET_TAB_2],
             dashcards: [
               createMockDashboardCard({
@@ -890,6 +923,13 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 dashboard_tab_id: TARGET_TAB_2.id,
                 size_x: 12,
                 size_y: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: TARGET_ID_FILTER.id,
+                    card_id: targetTab2Card.id,
+                    target: ["dimension", ["field", ORDERS.ID, null]],
+                  },
+                ],
               }),
             ],
           }).then((targetDashboard) => {
@@ -917,7 +957,20 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                               linkTextTemplate: "Go to Target Tab 2",
                               targetId: targetDashboard.id,
                               tabId: resolvedTargetTab2.id,
-                              parameterMapping: {},
+                              parameterMapping: {
+                                [TARGET_ID_FILTER.id]: {
+                                  source: {
+                                    type: "column",
+                                    id: "ID",
+                                    name: "ID",
+                                  },
+                                  target: {
+                                    type: "parameter",
+                                    id: TARGET_ID_FILTER.id,
+                                  },
+                                  id: TARGET_ID_FILTER.id,
+                                },
+                              },
                             },
                           },
                         },
@@ -964,6 +1017,10 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           "true",
         );
         cy.findByText("Card on Target Tab 2").should("be.visible");
+
+        // Target dashboard's ID filter should reflect the value passed by
+        // the click behavior's parameterMapping.
+        H.filterWidget().should("contain.text", "1");
 
         cy.findByText("Back to Source Dashboard").should("be.visible");
       });
