@@ -301,6 +301,12 @@
                         :labels      [:model]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
+   (prometheus/counter :metabase-search/appdb-index-batches-skipped
+                       {:description "Number of search index batches skipped because the upsert errored."
+                        :labels      [:table-type]})
+   (prometheus/counter :metabase-search/index-documents-skipped
+                       {:description "Number of individual search documents skipped because building the document errored."
+                        :labels      [:model]})
    (prometheus/counter :metabase-search/index-update-ms
                        {:description "Total number of ms updating the index"})
    (prometheus/histogram :metabase-search/index-update-duration-ms
