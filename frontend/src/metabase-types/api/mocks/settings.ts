@@ -279,6 +279,7 @@ export const createMockSettings = (
    * You probably don't want to set this directly in tests because it can get out
    * of sync with the database state (which should be a source of truth).
    */
+  "has-active-workspace": false,
   "has-sample-database?": undefined,
   "has-user-setup": true,
   "hide-embed-branding?": true,
