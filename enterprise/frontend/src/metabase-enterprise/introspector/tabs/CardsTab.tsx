@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { Box } from "metabase/ui";
@@ -8,22 +7,27 @@ import { useListIntrospectorCardsQuery } from "../api";
 import { BulkActionBar } from "../components/BulkActionBar";
 import { ContentTable } from "../components/ContentTable";
 import { FilterRow } from "../components/FilterRow";
+import { Pagination } from "../components/Pagination";
 import type { IntrospectorCondition, IntrospectorRow } from "../types";
+
+const PAGE_SIZE = 50;
 
 export function CardsTab() {
   const [conditions, setConditions] = useState<Set<IntrospectorCondition>>(
     new Set(["broken", "stale", "unreferenced"]),
   );
   const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const params = useMemo(
     () => ({
       conditions: Array.from(conditions).join(","),
       search: search || undefined,
-      limit: 50,
+      limit: PAGE_SIZE,
+      offset,
     }),
-    [conditions, search],
+    [conditions, search, offset],
   );
 
   const { data, isFetching } = useListIntrospectorCardsQuery(params);
@@ -40,6 +44,12 @@ export function CardsTab() {
     }
     setConditions(next);
     setSelectedIds(new Set());
+    setOffset(0);
+  };
+
+  const onSearchChange = (v: string) => {
+    setSearch(v);
+    setOffset(0);
   };
 
   const toggleSelect = (id: number) => {
@@ -78,7 +88,7 @@ export function CardsTab() {
         conditions={conditions}
         onToggleCondition={toggleCondition}
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={onSearchChange}
       />
       <ContentTable
         entityType="cards"
@@ -94,17 +104,18 @@ export function CardsTab() {
         }
         onTrash={trashOne}
       />
+      <Pagination
+        total={data?.total ?? 0}
+        offset={offset}
+        limit={PAGE_SIZE}
+        onChange={setOffset}
+      />
       <BulkActionBar
         count={selectedIds.size}
         onTrash={trashSelected}
         onClear={() => setSelectedIds(new Set())}
         isWorking={isTrashing}
       />
-      {!isFetching && data && (
-        <Box mt="sm" ta="right" c="text-secondary" fz="xs">
-          {t`Showing ${rows.length} of ${data.total}`}
-        </Box>
-      )}
     </Box>
   );
 }
