@@ -8,6 +8,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
   (:import
@@ -114,8 +115,7 @@
        collection-filter])))
 
 (defn personal-collections-where-clause
-  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
-  WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
+  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant."
   [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
   (case (or filter-type "all")
     "all" nil
@@ -133,25 +133,36 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/")
-          child-patterns (for [id personal-ids] (format "/%d/%%" id))]
+    ;; "only" / "exclude": use a single EXISTS / NOT EXISTS against `collection` so the WHERE size
+    ;; is constant regardless of how many personal collections live on the instance. The previous
+    ;; approach generated one :like predicate per personal collection, which timed out the search
+    ;; query on instances with many users.
+    ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
+    (let [descendant-of-personal-collection
+          [:exists {:select [[[:inline 1]]]
+                    :from   [[:collection :pc]]
+                    :where  [:and
+                             [:not= :pc.personal_owner_id nil]
+                             [:= :pc.location "/"]
+                             [:like :collection.location
+                              [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
-        `[:or
-          ;; top level personal collections
-          [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
-          ;; their sub-collections
-          ~@(for [p child-patterns] [:like :collection.location p])]
+        [:or
+         ;; top level personal collections
+         [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+         ;; their sub-collections
+         descendant-of-personal-collection]
 
         "exclude"
-        `[:or
-          ;; not in a collection
-          [:= ~collection-id-col nil]
-          [:and
-           ;; neither in a top-level personal collection
-           [:= :collection.personal_owner_id nil]
-           ;; nor within one of their sub-collections
-           ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
+        [:or
+         ;; not in a collection
+         [:= collection-id-col nil]
+         [:and
+          ;; neither in a top-level personal collection
+          [:= :collection.personal_owner_id nil]
+          ;; nor within one of their sub-collections
+          [:not descendant-of-personal-collection]]]))))
 
 (defn transform-source-type-where-clause
   "Build a clause that limits transforms to enabled source types.
