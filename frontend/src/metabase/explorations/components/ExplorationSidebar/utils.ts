@@ -27,12 +27,14 @@ export interface ExplorationTreeQueryGroup {
   query_ids: ExplorationQueryId[];
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
+  parent_id: ExplorationQueryGroupId | null;
 }
 
 export interface ExplorationTreeDocument {
   type: "document";
   id: DocumentId;
   status: ExplorationQueryStatus;
+  parent_id: string;
 }
 
 export type ExplorationTreeItem =
@@ -128,6 +130,7 @@ function getExplorationQueryTree(
           status: getExplorationQueryGroupStatus(groupQueries),
           interestingness_score:
             getExplorationQueryGroupInterestingness(groupQueries),
+          parent_id: group.parent_group_id,
         },
       });
     }
@@ -154,6 +157,7 @@ function getExplorationDocumentTree(
             thread.completed_at == null
               ? "running"
               : "done",
+          parent_id: "documents",
         },
       };
     });

@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
+import type { TreeHandle } from "metabase/common/components/tree/Tree";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
@@ -41,6 +42,8 @@ export function ExplorationSidebar({
   selectedEntityId,
   setSelectedEntityId,
 }: ExplorationSidebarProps) {
+  const treeRef = useRef<TreeHandle>(null);
+
   const tree = useMemo(
     () => getExplorationSidebarTree(exploration),
     [exploration],
@@ -73,6 +76,16 @@ export function ExplorationSidebar({
         }
         event.preventDefault();
       }
+      // if we moved into a different folder, collapse the previous folder
+      const currentItem = flatItems.find(
+        (item) => item.id === selectedEntityId.id,
+      );
+      if (
+        currentItem?.data?.parent_id &&
+        currentItem.data.parent_id !== nextItem?.data?.parent_id
+      ) {
+        treeRef.current?.collapse(currentItem.data.parent_id);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -85,6 +98,7 @@ export function ExplorationSidebar({
       </Text>
       <Box className={S.tree}>
         <Tree
+          ref={treeRef}
           data={tree}
           selectedId={selectedEntityId?.id}
           onSelect={(item) => {
