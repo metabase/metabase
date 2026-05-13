@@ -155,17 +155,18 @@
 (task/defjob
   ^{:doc "Backfill the dependency table."
     org.quartz.DisallowConcurrentExecution true}
-  BackfillDependencies [^JobExecutionContext ctx]
-  (log-job-start ctx)
-  (let [full-batch-selected? (backfill-dependencies!)
-        retries? (has-pending-retries?)]
-    (if (or full-batch-selected?
-            retries?)
-      (let [delay-in-seconds (deps.task-util/job-delay
-                              (deps.settings/dependency-backfill-delay-minutes)
-                              (deps.settings/dependency-backfill-variance-minutes))]
-        (schedule-run! (.getScheduler ctx) delay-in-seconds))
-      (log/info "No more entities to backfill for, stopping."))))
+  BackfillDependencies [ctx]
+  (let [ctx ^JobExecutionContext ctx]
+    (log-job-start ctx)
+    (let [full-batch-selected? (backfill-dependencies!)
+          retries? (has-pending-retries?)]
+      (if (or full-batch-selected?
+              retries?)
+        (let [delay-in-seconds (deps.task-util/job-delay
+                                (deps.settings/dependency-backfill-delay-minutes)
+                                (deps.settings/dependency-backfill-variance-minutes))]
+          (schedule-run! (.getScheduler ctx) delay-in-seconds))
+        (log/info "No more entities to backfill for, stopping.")))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
