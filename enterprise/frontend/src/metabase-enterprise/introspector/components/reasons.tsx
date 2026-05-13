@@ -73,9 +73,23 @@ function ReasonRow({ reason }: { reason: IntrospectorReason }) {
 }
 
 /**
+ * Cap on visible reasons before the cell collapses to a "Show N more" toggle.
+ * Some transforms emit tens of `missing-column` reasons (cf. transform 3269
+ * with 41 of them) and rendering all inline blows up the row height. Tuned
+ * by eye so the first batch fits without dominating the row.
+ */
+const MAX_VISIBLE_REASONS = 3;
+
+/**
  * Renders the per-row Reasons cell shared by ContentTable (cards/dashboards)
- * and TransformsTable. Long details collapse to a one-line excerpt with an
- * inline `Show more` toggle so the row stays compact by default.
+ * and TransformsTable.
+ *
+ * Two independent collapse axes:
+ *   • per-reason: long detail strings get an inline "Show more" toggle (see
+ *     `ReasonRow`).
+ *   • per-cell: when a row has more than `MAX_VISIBLE_REASONS` reasons,
+ *     hide the tail behind a "Show N more reasons" / "Show fewer" toggle so
+ *     the row stays compact by default.
  */
 export function ReasonsCell({
   reasons,
@@ -83,6 +97,7 @@ export function ReasonsCell({
   reasons: IntrospectorReason[] | undefined;
 }) {
   const list = reasons ?? [];
+  const [expanded, setExpanded] = useState(false);
   if (!list.length) {
     return (
       <Text size="sm" c="text-secondary">
@@ -90,11 +105,26 @@ export function ReasonsCell({
       </Text>
     );
   }
+  const overflow = list.length > MAX_VISIBLE_REASONS;
+  const visible =
+    expanded || !overflow ? list : list.slice(0, MAX_VISIBLE_REASONS);
+  const hiddenCount = list.length - MAX_VISIBLE_REASONS;
   return (
     <Stack gap={4}>
-      {list.map((r, i) => (
+      {visible.map((r, i) => (
         <ReasonRow key={`${r.code}-${i}`} reason={r} />
       ))}
+      {overflow && (
+        <UnstyledButton
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <Text size="xs" c="brand" fw={500} td="underline">
+            {expanded ? t`Show fewer` : t`Show ${hiddenCount} more reasons`}
+          </Text>
+        </UnstyledButton>
+      )}
     </Stack>
   );
 }
