@@ -233,7 +233,7 @@ function FeedbackCard({
   );
 }
 
-function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
+export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
   if (query.query_type === "notebook" && query.mbql) {
     return (
       <NotebookGeneratedQueryCard mbql={query.mbql} display={query.display} />
@@ -270,7 +270,13 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
         <Flex justify="space-between" align="center" gap="sm">
-          <Text size="lg" fw={700}>{t`SQL query`}</Text>
+          <Text
+            size="lg"
+            fw={700}
+            style={{ flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere" }}
+          >
+            {t`SQL query`}
+          </Text>
           {runUrl && (
             <Button
               component="a"
@@ -279,6 +285,7 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
               rel="noreferrer"
               variant="filled"
               leftSection={<Icon name="play_outlined" aria-hidden />}
+              style={{ flexShrink: 0 }}
             >
               {t`Run`}
             </Button>
@@ -363,7 +370,11 @@ function NotebookGeneratedQueryCard({
     >
       <Stack gap="md">
         <Flex justify="space-between" align="center" gap="sm">
-          <Text size="lg" fw={700}>
+          <Text
+            size="lg"
+            fw={700}
+            style={{ flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere" }}
+          >
             {title}
           </Text>
           <Button
@@ -373,6 +384,7 @@ function NotebookGeneratedQueryCard({
             rel="noreferrer"
             variant="filled"
             leftSection={<Icon name="play_outlined" aria-hidden />}
+            style={{ flexShrink: 0 }}
           >
             {t`Run`}
           </Button>
