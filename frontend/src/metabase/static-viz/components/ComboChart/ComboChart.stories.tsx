@@ -1121,3 +1121,17 @@ export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
     renderingContext,
   },
 };
+
+// Static viz silently falls back to a timeseries scale for ordinal+date so
+// subscription previews still show readable labels (metabase#29852).
+export const OrdinalScaleOnDateColumn = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.barDataLabelsNegatives,
+      [0, "card", "visualization_settings"],
+      (val) => ({ ...val, "graph.x_axis.scale": "ordinal" }),
+    ) as any,
+    renderingContext,
+  },
+};

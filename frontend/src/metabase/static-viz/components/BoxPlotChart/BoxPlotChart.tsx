@@ -2,6 +2,7 @@ import { Group } from "@visx/group";
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { getStaticCartesianChartSettings } from "metabase/static-viz/lib/cartesian-settings";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import {
@@ -24,13 +25,14 @@ const LEGEND_PADDING = 8;
 
 export function BoxPlotChart({
   rawSeries,
-  settings,
+  settings: originalSettings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
 }: StaticChartProps) {
+  const settings = getStaticCartesianChartSettings(rawSeries, originalSettings);
   const chartModel = getBoxPlotModel(rawSeries, settings);
 
   const legendItems = getLegendItems(chartModel.seriesModels);
