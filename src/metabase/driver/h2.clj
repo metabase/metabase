@@ -42,7 +42,7 @@
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
+(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;; h2 can be used to generate mbql5 natively, but this is not the default yet.
 ;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
@@ -97,12 +97,12 @@
     supported?))
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
-  [driver [_ _opts arg pattern]]
+  [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -426,15 +426,15 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ _opts field]]
+  [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 :log]
   [driver [_ _opts field]]
-  [:log10 (sql.qp/->honeysql driver field)])
+  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
-  [driver [_ _opts value]]
+  [driver [_ value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
@@ -446,14 +446,7 @@
 
 (defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
   [driver [_ _opts value]]
-  ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
-  ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
-  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
-  ;;
-  ;; https://linear.app/metabase/issue/QUE-726/
-  ;; https://github.com/h2database/h2database/issues/1383
-  (->> (sql.qp/->honeysql driver value)
-       (h2x/cast :text)))
+  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
