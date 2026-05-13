@@ -1000,15 +1000,12 @@
         (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
         (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
         (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
-        (is (= "representation-row"
-               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
-            "no source filter → newest row wins, regardless of provenance")
         (is (= "appdb-row"
-               (get-in (data-complexity-score/latest-score fingerprint "appdb") [:meta :label]))
-            "source=\"appdb\" must skip past the newer representation-tagged row")
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+            "default source=\"appdb\" skips past the newer representation-tagged row")
         (is (= "representation-row"
                (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
-            "and an explicit representation source still resolves its own row")
+            "an explicit representation source still resolves its own row")
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
