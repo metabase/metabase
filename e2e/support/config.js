@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
@@ -68,10 +69,7 @@ const defaultConfig = {
       : undefined,
   },
 
-  // Note: We can't set `allowCypressEnv: false` yet because @cypress/grep
-  // plugin still uses Cypress.env() internally
-  // FIXME: enable once we upgrade (DEV-1620)
-  // allowCypressEnv: false,
+  allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
@@ -83,7 +81,7 @@ const defaultConfig = {
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    config.expose.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -156,11 +154,11 @@ const defaultConfig = {
 
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../";
-    config.env.grepFilterSpecs = true;
-    config.env.grepOmitFiltered = true;
+    config.expose.grepIntegrationFolder = "../../";
+    config.expose.grepFilterSpecs = true;
+    config.expose.grepOmitFiltered = true;
 
-    require("@cypress/grep/src/plugin")(config);
+    cypressGrepPlugin(config);
 
     if (isCI) {
       cypressSplit(on, config);

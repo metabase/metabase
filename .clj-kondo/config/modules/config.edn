@@ -1061,6 +1061,7 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
+           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1084,8 +1085,7 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util}
    :uses #{config
            graph
            legacy-mbql
@@ -1758,6 +1758,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
+              metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
@@ -2486,6 +2487,7 @@
            api
            app-db
            audit-app
+           collections
            driver
            lib
            lib-be
@@ -2952,6 +2954,7 @@
            api
            app-db
            collections
+           database-routing
            documents
            driver
            events
@@ -3311,7 +3314,6 @@
            lib
            logger
            models
-           permissions
            plugins
            premium-features
            search

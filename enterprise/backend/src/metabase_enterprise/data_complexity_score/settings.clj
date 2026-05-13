@@ -1,17 +1,25 @@
 (ns metabase-enterprise.data-complexity-score.settings
   "Settings for the data-complexity-score module."
   (:require
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting data-complexity-scoring-enabled
   (deferred-tru "Run the scheduled Data Complexity Score job (one node per cluster, daily).")
   :encryption :no
   :visibility :admin
-  :default    false
   :type       :boolean
   :export?    false
-  :doc        false)
+  :doc        false
+  :getter     (fn []
+                (u/or-with some?
+                  (setting/get-value-of-type :boolean :data-complexity-scoring-enabled)
+                  ;; Defaults to true on Metabase Cloud staging hosts and false elsewhere.
+                  (boolean (and (premium-features/is-hosted?)
+                                (config/config-bool :mb-store-use-staging))))))
 
 (defsetting data-complexity-scoring-last-fingerprint
   (deferred-tru "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations.")

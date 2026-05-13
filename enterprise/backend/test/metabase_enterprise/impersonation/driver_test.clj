@@ -710,7 +710,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
-               #"(?s)SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))"
+               #"(?s)(?:SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))|Cannot perform SELECT)"
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 

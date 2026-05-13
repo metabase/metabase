@@ -6,9 +6,9 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- fix-bad-field-id-refs-in-stage :- [:maybe ::lib.schema/stage]
@@ -18,7 +18,7 @@
   (let [first-stage-path (conj (pop (vec path)) 0)
         source-table     (:source-table (get-in query first-stage-path))
         update-fields    (fn update-fields [form]
-                           (lib.util.match/replace-lite form
+                           (match/replace form
                              ;; don't recurse into joins. But should we update conditions tho.
                              {:lib/type :mbql/join}
                              (update &match :conditions update-fields)

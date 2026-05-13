@@ -18,6 +18,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
 import {
   Box,
@@ -120,6 +121,9 @@ function RootItemList() {
     ]).length &&
     shouldShowLibrary
   ) {
+    if (libraryCollection.type === "library") {
+      return <LibraryRootItemList libraryCollectionId={libraryCollection.id} />;
+    }
     return (
       <CollectionItemList
         parent={{
@@ -160,6 +164,115 @@ function RootItemList() {
           }}
         />
       )}
+    </ItemList>
+  );
+}
+
+/**
+ * Shows the Data and Metrics sections at the library root.
+ * If the user has access to the real root collections (is_library_root),
+ * they render normally. If not, synthetic folders are created to group
+ * any promoted subcollections by their type.
+ */
+function LibraryRootItemList({
+  libraryCollectionId,
+}: {
+  libraryCollectionId: CollectionItem["id"];
+}) {
+  const { setPath } = useMiniPickerContext();
+
+  const { data, isLoading } = useListCollectionItemsQuery({
+    id: libraryCollectionId,
+  });
+
+  const sections = useMemo(() => {
+    type Section = {
+      key: string;
+      name: string;
+      type: LibrarySubCollectionType;
+      realCollection?: CollectionItem;
+      hasPromotedChildren: boolean;
+    };
+
+    const sectionDefs: Section[] = [
+      {
+        key: "data",
+        name: t`Data`,
+        type: "library-data",
+        hasPromotedChildren: false,
+      },
+      {
+        key: "metrics",
+        name: t`Metrics`,
+        type: "library-metrics",
+        hasPromotedChildren: false,
+      },
+    ];
+
+    const items = data?.data ?? [];
+
+    for (const item of items) {
+      if (item.model !== "collection") {
+        continue;
+      }
+
+      for (const section of sectionDefs) {
+        if (item.type !== section.type) {
+          continue;
+        }
+
+        if (item.is_library_root) {
+          section.realCollection = item;
+        } else {
+          section.hasPromotedChildren = true;
+        }
+      }
+    }
+
+    return sectionDefs.filter((s) => s.realCollection || s.hasPromotedChildren);
+  }, [data]);
+
+  if (isLoading) {
+    return <MiniPickerListLoader />;
+  }
+
+  return (
+    <ItemList>
+      {sections.map((section) => {
+        const collection = section.realCollection;
+
+        return (
+          <MiniPickerItem
+            key={section.key}
+            name={collection?.name ?? section.name}
+            model="collection"
+            isFolder
+            onClick={() => {
+              if (collection) {
+                setPath([
+                  {
+                    model: "collection",
+                    id: collection.id,
+                    name: collection.name,
+                    type: collection.type,
+                  },
+                ]);
+              } else {
+                setPath([
+                  {
+                    model: "collection",
+                    id: `${section.type}-${libraryCollectionId}`,
+                    sourceCollectionId: libraryCollectionId,
+                    name: section.name,
+                    type: section.type,
+                    childTypeFilter: section.type,
+                  },
+                ]);
+              }
+            }}
+          />
+        );
+      })}
     </ItemList>
   );
 }
@@ -276,12 +389,19 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
-    id: parent.id === null ? "root" : parent.id,
+    id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
     include_can_run_adhoc_query: true,
   });
 
-  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
-  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
+  const allItems: CollectionItem[] = (data?.data ?? []).filter(
+    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+  );
+  const typeFilter = parent.childTypeFilter;
+  const items = typeFilter
+    ? allItems.filter(
+        (item) => item.model !== "collection" || item.type === typeFilter,
+      )
+    : allItems;
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
@@ -305,6 +425,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
                     model: item.model,
                     id: item.id,
                     name: item.name,
+                    type: item.type,
                   },
                 ]);
               } else {

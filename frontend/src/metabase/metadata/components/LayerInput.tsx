@@ -1,4 +1,3 @@
-import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
@@ -15,14 +14,8 @@ export const LayerInput = ({
   comboboxProps,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
-  };
-
   return (
     <Select
       comboboxProps={{
@@ -57,7 +50,6 @@ export const LayerInput = ({
       placeholder={t`Select visibility layer`}
       value={value}
       onChange={(value) => onChange(value)}
-      onFocus={handleFocus}
       {...props}
     />
   );

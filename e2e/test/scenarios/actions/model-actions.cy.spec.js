@@ -124,6 +124,11 @@ describe(
         .should("be.checked");
       cy.findByRole("button", { name: "Update" }).click();
 
+      cy.wait("@updateAction");
+      // The action editor closes after the update; wait until it is gone
+      // before asserting on the action list behind it.
+      cy.findByTestId("action-creator").should("not.exist");
+
       cy.findByLabelText("Action list")
         .findByText(
           "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
@@ -480,6 +485,11 @@ describe(
 
         cy.findByRole("button", { name: "Update" }).click();
 
+        cy.wait("@updateAction");
+        // The action editor closes after the update; wait until it is gone
+        // before clicking through to the run modal behind it.
+        cy.findByTestId("action-creator").should("not.exist");
+
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
         H.modal().within(() => {
@@ -508,6 +518,9 @@ describe(
         });
         cy.findByRole("button", { name: "Update" }).click();
 
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
+
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
         H.modal().within(() => {
@@ -533,6 +546,9 @@ describe(
             });
           cy.findByRole("button", { name: "Update" }).click();
         });
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
@@ -572,6 +588,9 @@ describe(
           });
 
         cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor("Create");
 
@@ -634,6 +653,9 @@ describe(
 
         cy.findByRole("button", { name: "Update" }).click();
 
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
+
         cy.signOut();
 
         cy.get("@queryActionPublicUrl").then((url) => {
@@ -680,6 +702,7 @@ describe(
         cy.findByRole("button", { name: "Update" }).click();
 
         cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         cy.signOut();
 
