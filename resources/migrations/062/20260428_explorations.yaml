@@ -1108,3 +1108,24 @@ databaseChangeLog:
               )
               WHERE auto_insights_document_id IS NULL
       rollback:
+
+  - changeSet:
+      id: v62.qresviz
+      author: nvoxland
+      comment: Add display + visualization_settings columns to exploration_query_result
+      changes:
+        - addColumn:
+            tableName: exploration_query_result
+            columns:
+              - column:
+                  name: display
+                  type: varchar(254)
+                  remarks: Metabase display type chosen for this query's static chart embed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: JSON-encoded visualization_settings for this query's static chart embed
+                  constraints:
+                    nullable: true

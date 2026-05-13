@@ -4,23 +4,21 @@
   Given the Phase-1 curation, the analyst LLM produces the ProseMirror document
   the user sees. This namespace holds the phase-2 LLM config, schema,
   slim/full chart block renderers, prompt builder, validation (including the
-  per-node validator for the `explorationChart` placeholder type), the
-  repair-prompt builder, the `run-analysis!` entry point, and the chart-
-  materialization pipeline that resolves `explorationChart` placeholders into
-  real `cardEmbed` nodes.
+  per-node validator for the `staticCardEmbed` node type), the repair-prompt
+  builder, the `run-analysis!` entry point, and the chart-config materializer
+  that persists the chosen `display` + `visualization_settings` onto each
+  referenced `exploration_query_result` row so the frontend can render the
+  embed from the cached result blob (no live Card created).
 
   Common chart-rendering and LLM-call infrastructure lives in
   [[metabase.explorations.auto-insights.common]]."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.documents.core :as documents]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.auto-insights.common :as common]
    [metabase.explorations.auto-insights.prompts :as prompts]
    [metabase.interestingness.core :as interestingness]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.queries.core :as queries]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -173,7 +171,7 @@
     (str "### exploration_query_id " exploration-query-id " — " name "\n\n"
          "- **metric**: " (or metric-detail "(unknown)") "\n"
          "- **dim**: " (or dim-detail "(unknown)") "\n\n"
-         "When referencing this chart in an `explorationChart` node, use "
+         "When referencing this chart in a `staticCardEmbed` node, use "
          "`exploration_query_id: " exploration-query-id "`.\n\n"
          repr
          (when (seq extras) (str "\n\n" extras)))))
@@ -190,9 +188,10 @@
    :additionalProperties false})
 
 (def allowed-chart-sorts
-  "Sort attribute values an `explorationChart` placeholder is allowed to
-  request. The set is intentionally small — it's an enum the LLM picks from
-  rather than free-form sort expressions."
+  "Sort attribute values a `staticCardEmbed` is allowed to request. The set is
+  intentionally small — it's an enum the LLM picks from rather than free-form
+  sort expressions. The chosen sort is stored on the node and applied
+  in-memory at read time by the `/static-card` API."
   #{"value_desc" "value_asc" "label_asc" "label_desc"})
 
 (defn build-analysis-prompt
@@ -220,16 +219,17 @@
   (when (map? response)
     (or (:document response) (get response "document"))))
 
-;;; ----- explorationChart placeholder validation -----
+;;; ----- staticCardEmbed validation -----
 ;;;
-;;; The LLM emits `explorationChart` placeholder nodes that reference an
-;;; `exploration_query_id`; we resolve them to real `cardEmbed`s in
-;;; [[materialize-chart-embeds]]. The generic prose-mirror validator doesn't
-;;; know about this node type, so we register a per-node validator here.
+;;; The LLM emits `staticCardEmbed` nodes that reference an
+;;; `exploration_query_id`. The generic prose-mirror validator doesn't know
+;;; about this node type, so we register a per-node validator here. The doc
+;;; persists these nodes verbatim — the frontend resolves them at render time
+;;; by hitting `/api/exploration/query/:id/static-card`.
 
-(defn- validate-exploration-chart
+(defn- validate-static-card-embed
   "Validator passed to [[documents/validate-prose-mirror]] via
-  `:custom-block-nodes`. Confirms the placeholder has an integer
+  `:custom-block-nodes`. Confirms the node has an integer
   `exploration_query_id` attr, an optional but enumerated `sort` attr, and
   no children."
   [node path]
@@ -249,21 +249,21 @@
                  " (or omitted), got " (pr-str sort-val)))
 
       content
-      (conj (str path ": explorationChart must not have a `content` array"
+      (conj (str path ": staticCardEmbed must not have a `content` array"
                  " (it's a leaf node); got " (count content) " children")))))
 
 (def ^:private validation-opts
-  {:custom-block-nodes {"explorationChart" validate-exploration-chart}})
+  {:custom-block-nodes {prose-mirror/static-card-embed-type validate-static-card-embed}})
 
 (defn- node-type [node]
   (when (map? node)
     (or (get node :type) (get node "type"))))
 
-(defn- explorationchart-eq-id
-  "Pull a numeric exploration_query_id out of an `explorationChart` placeholder
-  node, tolerating string/keyword keys and numeric strings."
+(defn- static-card-embed-eq-id
+  "Pull a numeric exploration_query_id out of a `staticCardEmbed` node,
+  tolerating string/keyword keys and numeric strings."
   [node]
-  (when (= "explorationChart" (node-type node))
+  (when (= prose-mirror/static-card-embed-type (node-type node))
     (let [attrs (or (get node :attrs) (get node "attrs"))
           raw   (or (get attrs :exploration_query_id)
                     (get attrs "exploration_query_id"))]
@@ -271,29 +271,29 @@
         (integer? raw) raw
         (string? raw)  (try (Long/parseLong raw) (catch Exception _ nil))))))
 
-(defn- explorationchart-sort
-  "Pull the validated `sort` attribute out of an `explorationChart` placeholder
-  node, or nil when absent. The per-node validator already enforced enum
-  membership when sort is present."
+(defn- static-card-embed-sort
+  "Pull the validated `sort` attribute out of a `staticCardEmbed` node, or nil
+  when absent. The per-node validator already enforced enum membership when
+  sort is present."
   [node]
   (let [attrs (or (get node :attrs) (get node "attrs"))
         raw   (or (get attrs :sort) (get attrs "sort"))]
     (when (contains? allowed-chart-sorts raw) raw)))
 
-(defn- all-exploration-chart-nodes
-  "Walk `pm-doc` depth-first and return every `explorationChart` node in
+(defn- all-static-card-embed-nodes
+  "Walk `pm-doc` depth-first and return every `staticCardEmbed` node in
   document order. Tolerates the keyword / string key shapes that arrive
   post-JSON-decode."
   [pm-doc]
   (cond
-    (and (map? pm-doc) (= "explorationChart" (node-type pm-doc))) [pm-doc]
-    (map? pm-doc)        (mapcat all-exploration-chart-nodes
+    (and (map? pm-doc) (= prose-mirror/static-card-embed-type (node-type pm-doc))) [pm-doc]
+    (map? pm-doc)        (mapcat all-static-card-embed-nodes
                                  (or (:content pm-doc) (get pm-doc "content")))
-    (sequential? pm-doc) (mapcat all-exploration-chart-nodes pm-doc)
+    (sequential? pm-doc) (mapcat all-static-card-embed-nodes pm-doc)
     :else                []))
 
 (defn- validate-categorical-sorts
-  "Require a `sort` attribute on every `explorationChart` whose underlying
+  "Require a `sort` attribute on every `staticCardEmbed` whose underlying
   chart has a categorical x-axis. The model's prompt already calls this out
   as REQUIRED, but the JSON schema can't express it (temporal/numeric charts
   must omit sort). Without this check the analyst can write prose calling for
@@ -302,33 +302,33 @@
   enforces enum membership when sort is present — this only enforces
   presence."
   [pm-doc categorical-chart-ids]
-  (->> (all-exploration-chart-nodes pm-doc)
+  (->> (all-static-card-embed-nodes pm-doc)
        (keep (fn [node]
-               (let [eq-id (explorationchart-eq-id node)
-                     sort  (explorationchart-sort node)]
+               (let [eq-id (static-card-embed-eq-id node)
+                     sort  (static-card-embed-sort node)]
                  (when (and eq-id
                             (contains? categorical-chart-ids eq-id)
                             (nil? sort))
-                   (str "explorationChart with exploration_query_id="
+                   (str "staticCardEmbed with exploration_query_id="
                         eq-id " has a categorical x-axis but no `sort` attribute. "
                         "Pick one of \"value_desc\", \"value_asc\", \"label_asc\", "
                         "or \"label_desc\" — see the prompt's sort decision tree.")))))
        vec))
 
 (defn- validate-no-duplicate-embeds
-  "Flag any pair of `explorationChart` embeds that share the same
-  (exploration_query_id, sort) — they materialize to the same Card and render
-  identically, which is almost always an oversight where the prose calls for
-  two distinct orderings of the same chart but the second embed lost its
-  sort attribute. The error message names a concrete fix."
+  "Flag any pair of `staticCardEmbed`s that share the same
+  (exploration_query_id, sort) — they render identically, which is almost
+  always an oversight where the prose calls for two distinct orderings of the
+  same chart but the second embed lost its sort attribute. The error message
+  names a concrete fix."
   [pm-doc]
-  (->> (all-exploration-chart-nodes pm-doc)
-       (map (juxt explorationchart-eq-id explorationchart-sort))
+  (->> (all-static-card-embed-nodes pm-doc)
+       (map (juxt static-card-embed-eq-id static-card-embed-sort))
        (filter first)        ; ids that didn't parse are caught by the per-node validator
        frequencies
        (keep (fn [[[eq-id sort] n]]
                (when (> n 1)
-                 (str "explorationChart for exploration_query_id=" eq-id
+                 (str "staticCardEmbed for exploration_query_id=" eq-id
                       " appears " n " times with the same sort=" (pr-str sort)
                       ". Repeats of the same chart must use distinct sorts "
                       "(e.g. value_desc + value_asc to show top contributors "
@@ -339,7 +339,7 @@
 (defn- validate-doc
   "Phase-2 document validator. Combines:
    - the generic prose-mirror schema validation (knows the standard node types
-     plus the custom `explorationChart` placeholder via `validation-opts`),
+     plus the custom `staticCardEmbed` via `validation-opts`),
    - the categorical-sort presence check, and
    - the duplicate-embed check.
   Returns one flat vector of error strings so the repair prompt can address
@@ -381,166 +381,68 @@
                            :validate-fn    #(validate-doc % categorical-chart-ids)
                            :repair-builder repair-prompt}))
 
-;;; ----- query sorting -----
+;;; ----- chart config persistence -----
+;;;
+;;; The frontend renders each `staticCardEmbed` by hitting the `/static-card`
+;;; API, which streams the cached `exploration_query_result` blob along with
+;;; the `display` and `visualization_settings` chosen for that query. Phase 2
+;;; persists those columns onto the result row here, once per referenced
+;;; exploration_query_id. The doc itself keeps the LLM-emitted nodes verbatim
+;;; (with their per-embed `sort` attr) — no tree rewrite, no Card creation.
 
-(defn- mbql-query?
-  "True when `dataset-query` is an MBQL query — either pMBQL (`:lib/type
-  :mbql/query`) or legacy MBQLv1 (`:type :query`). Native queries return
-  false. Handles keyword and string key/value variants since the source
-  data isn't always normalized."
-  [dataset-query]
-  (let [lt (or (:lib/type dataset-query) (get dataset-query "lib/type"))
-        t  (or (:type dataset-query)    (get dataset-query "type"))]
-    (boolean
-     (or (contains? #{:mbql/query "mbql/query"} lt)
-         (contains? #{:query "query"} t)))))
-
-(defn- has-existing-order-by?
-  "True when `dataset-query` already specifies an order — either on the last
-  pMBQL stage or in MBQLv1's inner query."
-  [dataset-query]
-  (or (seq (get-in dataset-query [:query :order-by]))
-      (some seq (map :order-by (:stages dataset-query)))
-      (some seq (map #(get % "order-by") (or (:stages dataset-query)
-                                             (get dataset-query "stages"))))))
-
-(defn- apply-chart-sort
-  "Add the requested `order-by` to `dataset-query` based on the Phase-2
-  `explorationChart` `:sort` attribute, using MLv2 so we work uniformly
-  against pMBQL and legacy MBQLv1. The enum values map as:
-
-      \"value_desc\" → ORDER BY <first aggregation> DESC
-      \"value_asc\"  → ORDER BY <first aggregation> ASC
-      \"label_asc\"  → ORDER BY <first breakout column>  ASC
-      \"label_desc\" → ORDER BY <first breakout column>  DESC
-
-  Returns the (possibly-modified) `dataset_query`. The transformation is a
-  no-op — leaving the original query intact — when any of these is true:
-   - `sort` is nil
-   - the query isn't MBQL (e.g. native SQL)
-   - the query already has an `order-by` (we respect existing sorts)
-   - the requested sort needs a breakout / aggregation the query doesn't have
-   - anything throws during the MLv2 round-trip"
-  [dataset-query sort mp-cache]
-  (if (or (nil? sort)
-          (not (mbql-query? dataset-query))
-          (has-existing-order-by? dataset-query))
-    dataset-query
-    (try
-      (let [db-id      (or (:database dataset-query) (get dataset-query "database"))
-            mp         (or (get @mp-cache db-id)
-                           (let [mp (lib-be/application-database-metadata-provider db-id)]
-                             (swap! mp-cache assoc db-id mp)
-                             mp))
-            query      (lib/query mp dataset-query)
-            ;; `aggregation-ref` produces an MLv2 `:aggregation` clause keyed to
-            ;; the aggregation's `:lib/uuid` — that's the kind of ref `order-by`
-            ;; wants. Calling order-by on the raw aggregation clause itself
-            ;; throws "No method in multimethod 'ref-method'", which is what
-            ;; the earlier implementation hit.
-            has-agg?   (seq (lib/aggregations query))
-            ;; Pass *column metadata* (not the raw breakout clause) so order-by
-            ;; generates a fresh ref with its own `:lib/uuid`; passing the
-            ;; clause directly produced a "Duplicate :lib/uuid" schema failure.
-            first-brk  (first (lib/breakouts-metadata query))
-            sorted     (case sort
-                         "value_desc" (when has-agg? (lib/order-by query (lib/aggregation-ref query 0) :desc))
-                         "value_asc"  (when has-agg? (lib/order-by query (lib/aggregation-ref query 0) :asc))
-                         "label_asc"  (when first-brk (lib/order-by query first-brk :asc))
-                         "label_desc" (when first-brk (lib/order-by query first-brk :desc))
-                         nil)]
-        (or sorted dataset-query))
-      (catch Throwable e
-        (log/warnf e "apply-chart-sort: failed to apply %s; leaving query untouched" (pr-str sort))
-        dataset-query))))
-
-;;; ----- chart materialization -----
-
-(defn- materialize-chart-card!
-  "Create a real Card in `doc`'s collection for `eq` (an `ExplorationQuery`),
-  associated with the document. Mirrors the `/append` endpoint logic so the
-  embedded chart behaves identically. Caller must establish a current-user
-  binding (via [[metabase.request.core/with-current-user]]) before invoking.
-
-  When `sort` is supplied (one of the values in [[allowed-chart-sorts]]), the
-  Card's `dataset_query` is augmented with an `:order-by` so the rendered
-  chart presents the data in the order the analyst wanted to make its point.
-  See [[apply-chart-sort]] for the no-op cases (native queries, queries with
-  an existing order-by, etc.).
-
-  Display precedence:
+(defn- chart-display
+  "Pick a display type for `eq`, falling back through the same precedence the
+  old `materialize-chart-card!` used:
     1. `(:display eq)` — explicit user override on the query
     2. `(:computed-display eq)` — the `effective-display-type` heuristic
        (line for temporal x, bar otherwise), populated upstream
     3. `(:display src-card)` — the source card's display
     4. `:table` — last-resort fallback"
-  [doc eq sort mp-cache]
-  (let [src-card (t2/select-one [:model/Card :name :display :visualization_settings]
-                                :id (:card_id eq))]
-    (queries/create-card!
-     {:name                   (or (not-empty (:name eq))
-                                  (not-empty (:name src-card))
-                                  "Chart")
-      :type                   :question
-      :dataset_query          (apply-chart-sort (:dataset_query eq) sort mp-cache)
-      :display                (or (some-> (:display eq) keyword)
-                                  (some-> (:computed-display eq) keyword)
-                                  (:display src-card)
-                                  :table)
-      :visualization_settings (or (:visualization_settings eq)
-                                  (:visualization_settings src-card)
-                                  {})
-      :collection_id          (:collection_id doc)
-      :document_id            (:id doc)}
-     @api/*current-user*)))
+  [eq src-card]
+  (or (some-> (:display eq) keyword)
+      (some-> (:computed-display eq) keyword)
+      (:display src-card)
+      :table))
 
-(defn- transform-nodes
-  "Walk a ProseMirror tree depth-first, applying `f` to each node. `f` may
-  return nil (drop), a single node, or a vector of nodes (splice in place)."
-  [f node]
-  (if-not (map? node)
-    node
-    (let [children-key (cond
-                         (contains? node :content)  :content
-                         (contains? node "content") "content"
-                         :else                      nil)
-          node'        (if children-key
-                         (let [transformed (->> (get node children-key)
-                                                (mapcat (fn [child]
-                                                          (let [r (transform-nodes f child)]
-                                                            (cond
-                                                              (nil? r)    []
-                                                              (vector? r) r
-                                                              :else       [r]))))
-                                                vec)]
-                           (assoc node children-key transformed))
-                         node)
-          result       (f node')]
-      result)))
+(defn- chart-visualization-settings
+  "Pick a visualization_settings map for `eq` using the same precedence as the
+  old `materialize-chart-card!`."
+  [eq src-card]
+  (or (:visualization_settings eq)
+      (:visualization_settings src-card)
+      {}))
 
-(defn materialize-chart-embeds
-  "Walk `pm-doc` and replace every `explorationChart` placeholder with a real
-  `cardEmbed` (wrapped in `resizeNode`). One Card is created per unique
-  (`exploration_query_id`, `sort`) pair — so the same chart can legitimately
-  appear in the document twice with different orderings (e.g. value_desc to
-  show top contributors and value_asc to show underperformers). Identical
-  references reuse the cached Card. Unknown ids are dropped silently with a
-  debug log. Caller must have established a current-user binding."
-  [pm-doc eq-by-id doc]
-  (let [card-cache (atom {})            ; [eq-id sort] -> card-id
-        mp-cache   (atom {})]           ; db-id -> metadata-provider (shared across embeds)
-    (transform-nodes
-     (fn [node]
-       (if-let [eq-id (explorationchart-eq-id node)]
-         (if-let [eq (get eq-by-id eq-id)]
-           (let [sort     (explorationchart-sort node)
-                 cache-k  [eq-id sort]
-                 card-id  (or (get @card-cache cache-k)
-                              (let [c (materialize-chart-card! doc eq sort mp-cache)]
-                                (swap! card-cache assoc cache-k (:id c))
-                                (:id c)))]
-             {:type    "resizeNode"
-              :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}]})
-           (do (log/debugf "Dropping explorationChart with unknown id %s" eq-id) nil))
-         node))
-     pm-doc)))
+(defn- write-chart-config!
+  "Persist the chosen `display` + `visualization_settings` for `eq-id` onto its
+  matching `exploration_query_result` row. No-ops when the result row doesn't
+  exist yet (e.g. the query is still pending/errored) — the frontend will
+  surface the 409 from the read endpoint instead."
+  [eq-id eq]
+  (let [src-card (when (:card_id eq)
+                   (t2/select-one [:model/Card :name :display :visualization_settings]
+                                  :id (:card_id eq)))]
+    (t2/update! :model/ExplorationQueryResult
+                :exploration_query_id eq-id
+                {:display                (chart-display eq src-card)
+                 :visualization_settings (chart-visualization-settings eq src-card)})))
+
+(defn materialize-chart-configs!
+  "Walk `pm-doc`, collect every distinct `exploration_query_id` referenced by a
+  `staticCardEmbed`, and write the chosen `display` + `visualization_settings`
+  onto the matching `exploration_query_result` row. Returns `pm-doc` unchanged
+  — the LLM-emitted node attrs (`exploration_query_id`, optional `sort`) are
+  the final shape persisted in the document.
+
+  One DB write per unique exploration_query_id. Two embeds of the same query
+  with different `sort`s share the same viz config row (sort is applied in
+  memory at read time by the `/static-card` API). Unknown ids are skipped
+  silently with a debug log."
+  [pm-doc eq-by-id]
+  (let [eq-ids (->> (all-static-card-embed-nodes pm-doc)
+                    (keep static-card-embed-eq-id)
+                    distinct)]
+    (doseq [eq-id eq-ids]
+      (if-let [eq (get eq-by-id eq-id)]
+        (write-chart-config! eq-id eq)
+        (log/debugf "staticCardEmbed references unknown exploration_query_id %s" eq-id))))
+  pm-doc)

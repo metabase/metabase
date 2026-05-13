@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.explorations.auto-insights :as auto-insights]
+   [metabase.explorations.auto-insights.phase2 :as auto-insights.phase2]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.result-access :as result-access]
@@ -19,6 +20,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -326,6 +328,23 @@
    so we describe it as `:any`. On a not-yet-done query we return a 409 with a status payload."
   [:or
    :any
+   [:map
+    [:status [:= 409]]
+    [:body   [:map
+              [:id            ms/PositiveInt]
+              [:status        :string]
+              [:error_message {:optional true} [:maybe :string]]
+              [:started_at    {:optional true} [:maybe :any]]
+              [:finished_at   {:optional true} [:maybe :any]]]]]])
+
+(mr/def ::StaticCardResponse
+  "Schema for `GET /query/:id/static-card`. Card-shaped envelope so the FE can feed it directly
+   into the same Visualization pipeline used by saved-card embeds. On a not-yet-done query we
+   return a 409 with a status payload (same shape as `/query/:id`)."
+  [:or
+   [:map
+    [:card    :map]
+    [:dataset :map]]
    [:map
     [:status [:= 409]]
     [:body   [:map
@@ -695,6 +714,114 @@
                                    (t2/select-one [:model/ExplorationQueryResult :result_data]
                                                   :exploration_query_id id))]
         (stream-stored-result format result_data))
+
+      {:status 409
+       :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
+
+(defn- deserialize-cached-result
+  "Pull the QP result map (`{:data {:cols :rows ...} :status :row_count ...}`) out of a
+  worker-serialized blob produced by [[metabase.query-processor.middleware.cache.impl/do-with-serialization]].
+  Returns nil when the blob is missing or unreadable. Realizes rows fully — the caller may need
+  to re-sort them in memory."
+  [^bytes result-bytes]
+  (when result-bytes
+    (with-open [is (ByteArrayInputStream. result-bytes)]
+      (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
+        (when qp-result
+          (let [data (:data qp-result)]
+            (assoc qp-result :data (assoc data :rows (vec (or (:rows data) []))))))))))
+
+(defn- col-index-by-source
+  "Index of the first col whose `:source` matches `source` (`:breakout` or `:aggregation`).
+  Falls back to `default-idx` when no col carries that source — pre-MLv2 cached blobs may not
+  populate `:source` reliably."
+  [cols source default-idx]
+  (or (->> cols
+           (map-indexed (fn [i c]
+                          (when (= source (or (:source c) (get c "source"))) i)))
+           (some identity))
+      default-idx))
+
+(defn- apply-static-card-sort
+  "Re-sort the rows of a deserialized QP result in memory based on `sort` (one of the values in
+  [[auto-insights.phase2/allowed-chart-sorts]]). The label column is the first `:breakout` col;
+  the value column is the first `:aggregation` col. Cached blobs without explicit `:source`
+  fall back to first col = label, last col = value. Returns the (possibly-modified) result map.
+  Any throw during sort falls back to the original row order with a warning — we never block a
+  read on a sort hiccup."
+  [qp-result sort]
+  (if (or (nil? sort)
+          (not (contains? auto-insights.phase2/allowed-chart-sorts sort)))
+    qp-result
+    (try
+      (let [cols      (get-in qp-result [:data :cols])
+            rows      (get-in qp-result [:data :rows])
+            label-idx (col-index-by-source cols :breakout 0)
+            value-idx (col-index-by-source cols :aggregation (max 0 (dec (count cols))))
+            idx       (case sort
+                        ("value_asc" "value_desc") value-idx
+                        ("label_asc" "label_desc") label-idx)
+            cmp       (case sort
+                        ("value_asc" "label_asc")  compare
+                        ("value_desc" "label_desc") #(compare %2 %1))
+            sorted    (vec (sort-by #(nth % idx nil)
+                                    (fn [a b]
+                                      (cond
+                                        (and (nil? a) (nil? b)) 0
+                                        (nil? a) 1
+                                        (nil? b) -1
+                                        :else    (cmp a b)))
+                                    rows))]
+        (assoc-in qp-result [:data :rows] sorted))
+      (catch Throwable e
+        (log/warnf e "apply-static-card-sort: failed to apply %s; returning unsorted result" (pr-str sort))
+        qp-result))))
+
+(defn- exploration-query-result-row
+  "Pull the cached `exploration_query_result` row for `eq-id`, decoded through the model's
+  transforms. Returns nil when no row exists yet (query still pending/errored)."
+  [eq-id]
+  (t2/select-one [:model/ExplorationQueryResult :result_data :display :visualization_settings]
+                 :exploration_query_id eq-id))
+
+(defn- static-card-response
+  "Card-shaped envelope assembled from the cached `exploration_query_result` row and the
+  parent `ExplorationQuery`. `id` is nil because no real Card exists; FE consumers treat this
+  as an inline question. The dataset uses the `\"completed\"` status the FE expects for a
+  finished QP result."
+  [eq result-row qp-result]
+  {:card    {:id                     nil
+             :name                   (:name eq)
+             :display                (or (:display result-row) :table)
+             :visualization_settings (or (:visualization_settings result-row) {})
+             :dataset_query          (:dataset_query eq)
+             :database_id            (-> eq :dataset_query :database)
+             :type                   "question"}
+   :dataset {:status    "completed"
+             :data      (:data qp-result)
+             :row_count (or (:row_count qp-result)
+                            (count (get-in qp-result [:data :rows] [])))}})
+
+(api.macros/defendpoint :get "/query/:id/static-card" :- ::StaticCardResponse
+  "Return a card-shaped envelope (`{card, dataset}`) for a single completed exploration query,
+  reading from the cached `exploration_query_result` blob. The `sort` query param (one of
+  `value_asc`, `value_desc`, `label_asc`, `label_desc`) re-orders the rows in memory before
+  returning — cached results are small enough that this is essentially free. The FE node-view
+  for `staticCardEmbed` feeds this response straight into the same `Visualization` rendering
+  used by `cardEmbed`. Returns 409 + status payload when the underlying query is still pending
+  or has errored."
+  [{:keys [id]}   :- [:map [:id ms/PositiveInt]]
+   {:keys [sort]} :- [:map
+                      [:sort {:optional true}
+                       [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
+  (let [q (get-exploration-query-or-404 id)]
+    (when-not (= api/*current-user-id* (exploration-query->creator-id q))
+      (result-access/assert-can-view-cached-result! q))
+    (case (:status q)
+      "done"
+      (let [row       (api/check-404 (exploration-query-result-row id))
+            qp-result (api/check-404 (deserialize-cached-result (:result_data row)))]
+        (static-card-response q row (apply-static-card-sort qp-result sort)))
 
       {:status 409
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))

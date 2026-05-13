@@ -1,4 +1,5 @@
 import type {
+  Card,
   CardDisplayType,
   CreateExplorationRequest,
   Dataset,
@@ -12,6 +13,17 @@ import type {
   GetExplorationDataResponse,
   VisualizationSettings,
 } from "metabase-types/api";
+
+export type StaticCardSort =
+  | "value_asc"
+  | "value_desc"
+  | "label_asc"
+  | "label_desc";
+
+export interface ExplorationStaticCardResponse {
+  card: Card;
+  dataset: Dataset;
+}
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideMetricListTags } from "./tags";
@@ -57,6 +69,20 @@ export const explorationApi = Api.injectEndpoints({
       // inside one session is instant (no skeleton flash on re-select).
       keepUnusedDataFor: 30 * 60,
     }),
+    getExplorationStaticCard: builder.query<
+      ExplorationStaticCardResponse,
+      { id: ExplorationQueryId; sort?: StaticCardSort }
+    >({
+      query: ({ id, sort }) => ({
+        method: "GET",
+        url: `/api/exploration/query/${id}/static-card`,
+        params: sort ? { sort } : undefined,
+      }),
+      // Auto-insights docs render many staticCardEmbeds; cached results are immutable
+      // once written, so keep them around long enough that navigating between docs
+      // doesn't reload them.
+      keepUnusedDataFor: 30 * 60,
+    }),
     createExplorationDocument: builder.mutation<
       ExplorationDocument,
       {
@@ -100,6 +126,7 @@ export const {
   useGetExplorationQuery,
   useCreateExplorationMutation,
   useGetExplorationQueryResultQuery,
+  useGetExplorationStaticCardQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
 } = explorationApi;

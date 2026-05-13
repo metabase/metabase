@@ -625,6 +625,91 @@
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
+(deftest exploration-static-card-card-shaped-response-test
+  (testing "GET /query/:id/static-card returns a card-shaped envelope with display, viz_settings, and dataset rows"
+    (mt/with-temp [:model/User u {:email "static-card@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (mt/user-http-request u :post 200 "exploration"
+                                         {:name "static"
+                                          :metrics [{:card_id (:id metric)
+                                                     :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                          :dimensions [{:dimension_id "d1"}]})
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "x" :source :breakout}
+                                    {:name "y" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1] ["c" 2]]}
+                    :row_count 3}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQueryResult :exploration_query_id qid
+                    {:display                :bar
+                     :visualization_settings {:graph.x_axis.title_text "X"}})
+        (let [body (mt/user-http-request u :get 200 (format "exploration/query/%d/static-card" qid))]
+          (is (= "bar" (-> body :card :display))
+              "display from exploration_query_result is returned")
+          (is (= {:graph.x_axis.title_text "X"}
+                 (-> body :card :visualization_settings))
+              "visualization_settings from exploration_query_result is returned")
+          (is (nil? (-> body :card :id))
+              "card.id is nil — there's no real Card row")
+          (is (= "completed" (-> body :dataset :status)))
+          (is (= [["a" 3] ["b" 1] ["c" 2]] (-> body :dataset :data :rows))
+              "rows come back in cached order when no sort param is supplied"))))))
+
+(deftest exploration-static-card-sort-test
+  (testing "GET /query/:id/static-card?sort=… re-orders rows in memory"
+    (mt/with-temp [:model/User u {:email "static-sort@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp   (mt/user-http-request u :post 200 "exploration"
+                                         {:name "sort"
+                                          :metrics [{:card_id (:id metric)
+                                                     :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                          :dimensions [{:dimension_id "d1"}]})
+            qid    (-> resp :threads first :queries first :id)
+            qp-out {:status :completed
+                    :data   {:cols [{:name "label" :source :breakout}
+                                    {:name "value" :source :aggregation}]
+                             :rows [["a" 3] ["b" 1] ["c" 2]]}
+                    :row_count 3}
+            fetch  (fn [sort]
+                     (-> (mt/user-http-request u :get 200
+                                               (format "exploration/query/%d/static-card?sort=%s" qid sort))
+                         :dataset :data :rows))]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (is (= [["a" 3] ["c" 2] ["b" 1]] (fetch "value_desc")))
+        (is (= [["b" 1] ["c" 2] ["a" 3]] (fetch "value_asc")))
+        (is (= [["a" 3] ["b" 1] ["c" 2]] (fetch "label_asc")))
+        (is (= [["c" 2] ["b" 1] ["a" 3]] (fetch "label_desc")))))))
+
+(deftest exploration-static-card-409-when-not-done-test
+  (testing "GET /query/:id/static-card returns 409 with status info while the query is still pending"
+    (mt/with-temp [:model/User u {:email "static-pending@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name "static-pending"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            qid  (-> resp :threads first :queries first :id)
+            body (mt/user-http-request u :get 409 (format "exploration/query/%d/static-card" qid))]
+        (is (= "pending" (:status body)))
+        (is (= qid (:id body)))))))
+
+(deftest exploration-static-card-permissions-test
+  (testing "GET /query/:id/static-card enforces the parent exploration's read check"
+    (mt/with-temp [:model/User owner {:email "static-owner@example.com"}
+                   :model/User other {:email "static-other@example.com"}
+                   :model/Card metric (valid-metric-card (:id owner))]
+      (let [resp (mt/user-http-request owner :post 200 "exploration"
+                                       {:name "static-private"
+                                        :metrics [{:card_id (:id metric)
+                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                        :dimensions [{:dimension_id "d1"}]})
+            qid  (-> resp :threads first :queries first :id)]
+        (mt/user-http-request other :get 403 (format "exploration/query/%d/static-card" qid))))))
+
 (deftest exploration-user-interestingness-roundtrip-test
   (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
     (mt/with-temp [:model/User u {:email "mark@example.com"}

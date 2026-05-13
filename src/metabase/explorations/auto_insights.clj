@@ -451,13 +451,13 @@
    :phase-2-llm-config phase2/llm-config})
 
 (defn- write-document!
-  "Materialize the PM doc (resolving explorationChart placeholders to real
-  Cards) and update the placeholder `doc` (created up-front by
-  [[create-placeholder-doc!]]) with the final content. Returns the rendered
-  (post-materialization) PM doc."
+  "Persist viz config for every `staticCardEmbed` in `pm-doc` (one row write
+  per unique `exploration_query_id`) and update the placeholder `doc`
+  (created up-front by [[create-placeholder-doc!]]) with the final content.
+  Returns `{:document-id ... :rendered-pm-doc ...}`."
   [{:keys [doc pm-doc eq-by-id creator-id]}]
   (request/with-current-user creator-id
-    (let [body (phase2/materialize-chart-embeds pm-doc eq-by-id doc)]
+    (let [body (phase2/materialize-chart-configs! pm-doc eq-by-id)]
       (t2/update! :model/Document (:id doc)
                   {:document     body
                    :content_type prose-mirror/prose-mirror-content-type})

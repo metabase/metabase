@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [clojure.edn :as edn]
+   [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -51,5 +52,7 @@
         nil))))
 
 (t2/deftransforms :model/ExplorationQueryResult
-  {:result_data {:out blob->bytes}
-   :chart_stats {:in chart-stats-in :out chart-stats-out}})
+  {:result_data            {:out blob->bytes}
+   :chart_stats            {:in chart-stats-in :out chart-stats-out}
+   :display                mi/transform-keyword
+   :visualization_settings mi/transform-visualization-settings})

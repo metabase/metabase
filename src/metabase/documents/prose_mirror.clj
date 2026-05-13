@@ -7,6 +7,12 @@
   "Type of a card-embed node"
   "cardEmbed")
 
+(def static-card-embed-type
+  "Type of a static-card-embed node. Used to render a chart from a
+  cached `exploration_query_result` blob (instead of a live Card), so the doc stays in lock-step
+  with the prose discussing it even if the underlying data changes."
+  "staticCardEmbed")
+
 (def smart-link-type
   "Type of a smart-link node"
   "smartLink")

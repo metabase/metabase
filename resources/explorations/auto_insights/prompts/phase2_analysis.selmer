@@ -43,7 +43,7 @@ DOCUMENT STRUCTURE (required — model after a short research paper):
    No chart embeds in this section.
 
 2. **Discussion** — heading level 2, titled `Discussion`. The body of the
-   document. This is where you build the argument. Embed `explorationChart`
+   document. This is where you build the argument. Embed `staticCardEmbed`
    nodes INLINE, mid-discussion, immediately after the paragraph whose claim
    they support — so each chart functions as a proof point, not a standalone
    item.
@@ -75,14 +75,14 @@ Use your thinking/reasoning to plan, then call the tool with the final result.
 SUPPORTED NODE TYPES (ProseMirror):
 - Root: `{"type": "doc", "content": [<block>, ...]}`
 - Block: paragraph, heading (`attrs.level` 1-3), bulletList, orderedList,
-  blockquote, explorationChart.
+  blockquote, staticCardEmbed.
   - paragraph:  `{"type": "paragraph", "content": [<inline>, ...]}`
   - heading:    `{"type": "heading", "attrs": {"level": 2},
                   "content": [<inline>, ...]}`
   - bulletList: `{"type": "bulletList", "content": [<listItem>, ...]}`
   - listItem:   `{"type": "listItem", "content": [<paragraph>, ...]}`
   - blockquote: `{"type": "blockquote", "content": [<block>, ...]}`
-  - explorationChart: `{"type": "explorationChart",
+  - staticCardEmbed: `{"type": "staticCardEmbed",
                         "attrs": {"exploration_query_id": <int>,
                                   "sort": "value_desc"}}`
     Use this to embed one of the supplied charts inline as a proof point.
@@ -123,7 +123,8 @@ SUPPORTED NODE TYPES (ProseMirror):
     The default for a categorical comparison is `value_desc`. If you're
     not sure, use `value_desc`. Only use `label_asc` when the surrounding
     prose specifically tells the reader to look something up by name.
-    Sort is applied via a query order-by when the chart is rendered.
+    Sort is applied in memory to the cached query result when the chart is
+    rendered — it does not change the underlying query.
 - Inline: `{"type": "text", "text": "..."}`, optionally with
   `"marks": [{"type": "bold"}]` or `{"type": "italic"}` or
   `{"type": "code"}`.

@@ -296,7 +296,7 @@
                                                       :content [{:type "text" :text "Abstract"}]}
                                                      {:type "paragraph"
                                                       :content [{:type "text" :text "Revenue trends upward in spring 2025."}]}
-                                                     {:type "explorationChart"
+                                                     {:type "staticCardEmbed"
                                                       :attrs {:exploration_query_id (:id query)}}]}}
                                  :parts  [{:type :reasoning :reasoning "thinking about analysis"}]}))))]
           (let [outcome (auto-insights/generate-auto-insights! (:id t))]
@@ -306,9 +306,16 @@
             (let [doc (t2/select-one :model/Document :exploration_thread_id (:id t)
                                      :name "Automatic Insights")]
               (is (some? doc) "Automatic Insights document was created")
-              ;; A card was created for the chart embed
+              ;; No Card is created — the staticCardEmbed reads from the cached result blob.
               (let [cards (t2/select :model/Card :document_id (:id doc))]
-                (is (= 1 (count cards)) "exactly one Card was materialized for the embed")))))))))
+                (is (= 0 (count cards)) "no Card is materialized for staticCardEmbed"))
+              ;; Viz config is persisted onto the exploration_query_result row.
+              (let [row (t2/select-one [:model/ExplorationQueryResult :display :visualization_settings]
+                                       :exploration_query_id (:id query))]
+                (is (some? (:display row))
+                    "display was written to exploration_query_result")
+                (is (map? (:visualization_settings row))
+                    "visualization_settings was written to exploration_query_result")))))))))
 
 (deftest append-reasoning-section-paragraph-split-test
   (testing "Reasoning blocks are split on blank lines into separate paragraphs"

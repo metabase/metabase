@@ -35,6 +35,7 @@ import { MetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/exte
 import { PlainLink } from "metabase/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { StaticCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/StaticCardEmbed/StaticCardEmbedNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
@@ -46,6 +47,7 @@ import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
+  StaticCardEmbed.name,
   MetabotNode.name,
   SmartLink.name,
   Image.name,
@@ -138,6 +140,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
           placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
         }),
         CardEmbed,
+        StaticCardEmbed,
         FlexContainer,
         SupportingText,
         MentionExtension.configure({
