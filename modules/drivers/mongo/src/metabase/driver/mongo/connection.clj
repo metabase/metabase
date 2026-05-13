@@ -84,7 +84,7 @@
       (when (seq user)
         (.credential builder
                      (if (some-> additional-options
-                                 str/lower-case
+                                 u/lower-case-en
                                  (str/index-of "authmechanism=mongodb-x509"))
                        (MongoCredential/createMongoX509Credential user)
                        (MongoCredential/createCredential user
