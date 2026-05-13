@@ -510,8 +510,8 @@ article.docs-content td code { background: var(--neutral-95); }
   position: sticky;
   bottom: 16px;
   margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--neutral-90);
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--neutral-90);
   background: var(--neutral-98);
   display: flex;
   flex-direction: column;
