@@ -33,6 +33,8 @@ export const WorkspacePage = {
     WorkspacePage.get().should("be.visible");
   },
   nameInput: () => WorkspacePage.get().findByTestId("workspace-name-input"),
+  breadcrumbs: () =>
+    WorkspacePage.get().findByTestId("data-studio-breadcrumbs"),
   menuButton: () =>
     WorkspacePage.get().findByRole("button", { name: "Workspace actions" }),
   deleteMenuItem: () => cy.findByRole("menuitem", { name: "Delete" }),

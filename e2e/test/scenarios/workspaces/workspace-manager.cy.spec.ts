@@ -1,3 +1,5 @@
+import path from "path";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
@@ -11,6 +13,45 @@ const PG_SCHEMA_B = "Wild";
 const CONFIG_FILENAME = "config.yml";
 
 describe("scenarios > workspaces > workspace manager", () => {
+  describe("navigation", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+    });
+
+    it("renames a workspace and navigates between the workspace and the list", () => {
+      const originalName = "My workspace";
+      const renamedName = "Renamed workspace";
+
+      cy.log("create the workspace from the empty state");
+      H.WorkspaceListPage.visit();
+      H.WorkspaceListPage.newButton().click();
+      H.NewWorkspaceModal.nameInput().type(originalName);
+      H.NewWorkspaceModal.createButton().click();
+      H.WorkspacePage.get().should("be.visible");
+
+      cy.log("rename the workspace in the header");
+      H.WorkspacePage.nameInput()
+        .should("have.value", originalName)
+        .clear()
+        .type(renamedName)
+        .blur();
+      H.WorkspacePage.nameInput().should("have.value", renamedName);
+
+      cy.log("navigate back to the list via the breadcrumbs");
+      H.WorkspacePage.breadcrumbs()
+        .findByRole("link", { name: "Workspaces" })
+        .click();
+      H.WorkspaceListPage.get().should("be.visible");
+
+      cy.log("open the renamed workspace from the list");
+      H.WorkspaceListPage.workspace(renamedName).should("be.visible").click();
+      H.WorkspacePage.get().should("be.visible");
+      H.WorkspacePage.nameInput().should("have.value", renamedName);
+    });
+  });
+
   describe("postgres (with schemas)", () => {
     beforeEach(() => {
       H.restore("postgres-writable");
@@ -18,6 +59,7 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.activateToken("bleeding-edge");
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      cy.deleteDownloadsFolder();
     });
 
     it("creates, edits, downloads config, and deletes a workspace with a Postgres database", () => {
@@ -54,7 +96,15 @@ describe("scenarios > workspaces > workspace manager", () => {
         .and("contain.text", PG_SCHEMA_B);
 
       cy.log("download the workspace config");
-      assertConfigDownloads();
+      downloadConfig();
+      readConfig().should((contents) => {
+        expect(contents).to.contain(workspaceName);
+        expect(contents).to.contain(POSTGRES_DB_NAME);
+        expect(contents).to.contain("postgres");
+        expect(contents).to.contain(PG_SCHEMA_A);
+        expect(contents).to.contain(PG_SCHEMA_B);
+        expect(contents).to.match(/schema-filters-patterns:.*Domestic.*Wild/);
+      });
 
       cy.log("remove the database from the workspace");
       H.WorkspaceDatabaseSection.databaseMenuButton(POSTGRES_DB_NAME).click();
@@ -76,6 +126,7 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      cy.deleteDownloadsFolder();
     });
 
     it("creates, downloads config, and deletes a workspace with a MySQL database", () => {
@@ -90,14 +141,19 @@ describe("scenarios > workspaces > workspace manager", () => {
 
       cy.log("add the writable MySQL database (no schemas to pick)");
       H.WorkspaceDatabaseSection.addDatabaseButton().click();
-      // MySQL doesn't support schemas — the multi-select must not appear.
       H.NewWorkspaceDatabaseModal.schemasInput().should("not.exist");
       H.NewWorkspaceDatabaseModal.submitButton().click();
 
       H.WorkspaceDatabaseSection.database(MYSQL_DB_NAME).should("be.visible");
 
       cy.log("download the workspace config");
-      assertConfigDownloads();
+      downloadConfig();
+      readConfig().should((contents) => {
+        expect(contents).to.contain(workspaceName);
+        expect(contents).to.contain(MYSQL_DB_NAME);
+        expect(contents).to.contain("mysql");
+        expect(contents).not.to.contain("schema-filters-patterns");
+      });
 
       cy.log("remove the database from the workspace");
       H.WorkspaceDatabaseSection.databaseMenuButton(MYSQL_DB_NAME).click();
@@ -115,11 +171,12 @@ describe("scenarios > workspaces > workspace manager", () => {
   });
 });
 
-function assertConfigDownloads() {
-  H.WorkspaceSetupSection.downloadConfigButton()
-    .invoke("attr", "download")
-    .should("eq", CONFIG_FILENAME);
-  H.WorkspaceSetupSection.downloadConfigButton()
-    .invoke("attr", "href")
-    .should("match", /\/api\/ee\/workspace-manager\/\d+\/config$/);
+function downloadConfig() {
+  H.WorkspaceSetupSection.downloadConfigButton().click();
+  cy.verifyDownload(CONFIG_FILENAME, { timeout: 15000 });
+}
+
+function readConfig() {
+  const downloadsFolder = Cypress.config("downloadsFolder");
+  return cy.readFile(path.join(downloadsFolder, CONFIG_FILENAME));
 }
