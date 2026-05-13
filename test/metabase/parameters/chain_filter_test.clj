@@ -583,6 +583,22 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
+(deftest ^:parallel chain-filter-mbql-query-projects-only-needed-fields-test
+  (testing "chain-filter-mbql-query selects only one field on the source stage and `:none` on each join"
+    (testing "without FK remapping"
+      (let [query (#'chain-filter/chain-filter-mbql-query (mt/id :categories :name) nil nil)]
+        (is (= 1 (count (lib/fields query))))
+        (is (empty? (lib/joins query)))))
+    (testing "with FK remapping"
+      (let [query (#'chain-filter/chain-filter-mbql-query
+                   (mt/id :categories :name)
+                   nil
+                   {:original-field-id (mt/id :venues :category_id)})]
+        (is (= 1 (count (lib/fields query))))
+        (is (seq (lib/joins query)))
+        (doseq [a-join (lib/joins query)]
+          (is (= :none (lib/join-fields a-join))))))))
+
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
