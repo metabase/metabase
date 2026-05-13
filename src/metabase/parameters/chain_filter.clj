@@ -65,15 +65,17 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
@@ -403,23 +405,6 @@
    query
    joins))
 
-(defn- referenced-field-ids-by-join-alias
-  "Walk an MBQL query and return `{join-alias #{field-id ...}}` — the set of Field IDs the query references via each
-  `:join-alias` anywhere outside the join's own inner stage (refs inside the inner subquery have no `:join-alias` and
-  so don't contribute)."
-  [query]
-  (let [acc (volatile! {})]
-    (walk/postwalk
-     (fn [x]
-       (when (and (vector? x) (= :field (first x)) (= 3 (count x)))
-         (let [opts (nth x 1)
-               id   (nth x 2)]
-           (when (and (map? opts) (string? (:join-alias opts)) (integer? id))
-             (vswap! acc update (:join-alias opts) (fnil conj #{}) id))))
-       x)
-     query)
-    @acc))
-
 (mu/defn- tighten-join-projections :- ::lib.schema/query
   "After the full chain-filter pipeline has built the query, narrow each join's inner-stage `:fields` to the Field IDs
   the rest of the query actually references through that join's alias. This is what makes
@@ -431,25 +416,25 @@
   BigQuery-partitioned joined Tables) automatically contributes to the projection — its references are visible in the
   finished MBQL when we walk it."
   [query :- ::lib.schema/query]
-  (if-let [joins (not-empty (get-in query [:stages 0 :joins]))]
-    (let [refs (referenced-field-ids-by-join-alias query)]
-      (assoc-in
-       query
-       [:stages 0 :joins]
-       (mapv
-        (fn [a-join]
-          (let [a-alias      (lib/current-join-alias a-join)
-                field-ids    (get refs a-alias #{})
-                rhs-table-id (get-in a-join [:stages 0 :source-table])
-                rhs-table    (lib.metadata/table query rhs-table-id)
-                field-mds    (mapv #(lib.metadata/field query %) field-ids)
-                inner-query  (lib/with-fields (lib/query query rhs-table) field-mds)]
-            (-> (lib/join-clause inner-query)
-                (lib/with-join-fields :none)
-                (lib/with-join-alias a-alias)
-                (lib/with-join-conditions (lib/join-conditions a-join)))))
-        joins)))
-    query))
+  (if (empty? (lib.join/joins query))
+    query
+    (let [refs (lib.walk.util/all-field-ids-by-join-alias query)]
+      (lib.util/update-query-stage
+       query 0
+       update :joins
+       (fn [joins]
+         (mapv
+          (fn [a-join]
+            (let [a-alias     (lib/current-join-alias a-join)
+                  field-ids   (get refs a-alias #{})
+                  joinable    (lib.join/joined-thing query a-join)
+                  field-mds   (mapv #(lib.metadata/field query %) field-ids)
+                  inner-query (lib/with-fields (lib/query query joinable) field-mds)]
+              (-> (lib/join-clause inner-query)
+                  (lib/with-join-fields :none)
+                  (lib/with-join-alias a-alias)
+                  (lib/with-join-conditions (lib/join-conditions a-join)))))
+          joins))))))
 
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.

@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.walk :as lib.walk]
@@ -195,6 +196,20 @@
                                                (walk-clause clause)))
       (lib.walk/walk-clause query-or-clause walk-clause))
     (persistent! @joined-field-ids)))
+
+(mu/defn all-field-ids-by-join-alias :- [:map-of ::lib.schema.join/alias [:set ::lib.schema.id/field]]
+  "Return `{join-alias #{field-id ...}}` — the set of Field IDs referenced via each `:join-alias` in `query`.
+  Refs without a `:join-alias` (e.g. source-Table refs, refs inside a join's own inner stage) don't contribute."
+  [query :- ::lib.schema/query]
+  (let [acc (volatile! (transient {}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _path clause]
+       (match/match-one clause
+         [:field {:join-alias (a :guard string?)} (id :guard pos-int?)]
+         (vswap! acc assoc! a (conj (get @acc a #{}) id)))
+       nil))
+    (persistent! @acc)))
 
 (mu/defn all-implicitly-joined-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Set of all Table IDs referenced via implicit joins in `query` or nil if no such IDs can be found."

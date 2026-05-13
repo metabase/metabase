@@ -2,10 +2,12 @@
   (:require
    [clojure.set]
    [clojure.test :refer :all]
-   [clojure.walk]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.query-processor.compile :as qp.compile]
@@ -604,44 +606,25 @@
 ;;; The structural invariant: for every join, inner :fields equals "field-ids referenced via
 ;;; this join's :alias anywhere else in the query."
 
-(defn- field-ref-ids
-  "Collect field-ids from a sequence of MBQL clauses (`:fields` lists, breakout lists, etc.)."
-  [clauses]
-  (set (keep (fn [c]
-               (when (and (vector? c) (= :field (first c)) (= 3 (count c)) (integer? (nth c 2)))
-                 (nth c 2)))
-             clauses)))
-
-(defn- field-refs-by-join-alias
-  "Walk an MBQL query and return {join-alias #{field-id ...}} for every `[:field id {:join-alias …}]`
-  reference anywhere in the query (including inside join conditions, but inner stages contribute
-  only refs that themselves carry a :join-alias — bare refs in a subquery have no alias)."
-  [query]
-  (let [acc (atom {})]
-    (clojure.walk/postwalk
-     (fn [x]
-       (when (and (vector? x) (= :field (first x)) (= 3 (count x)))
-         (let [opts (nth x 1)
-               id   (nth x 2)]
-           (when (and (map? opts) (string? (:join-alias opts)) (integer? id))
-             (swap! acc update (:join-alias opts) (fnil conj #{}) id))))
-       x)
-     query)
-    @acc))
-
 (defn- inner-projection-by-join-alias
-  "Return {join-alias #{field-id ...}} — the field-ids each join's inner-stage :fields projects."
+  "Return {join-alias #{field-id ...}} — the field-ids each join's inner-stage :fields projects.
+  Inspects the MBQL directly because the assertion we're after is specifically about the shape
+  of the inner stage's projection list, not all field refs anywhere in the join."
   [query]
   (into {}
-        (for [a-join (get-in query [:stages 0 :joins])]
-          [(:alias a-join)
-           (field-ref-ids (:fields (first (:stages a-join))))])))
+        (for [a-join (lib/joins query)]
+          [(lib/current-join-alias a-join)
+           (set (keep (fn [clause]
+                        (when (lib.util/clause-of-type? clause :field)
+                          (let [id (last clause)]
+                            (when (pos-int? id) id))))
+                      (:fields (first (:stages a-join)))))])))
 
 (defn- projection-violations
   "Return a seq of diagnostic maps (one per offending join) or nil if the invariant holds:
   inner-stage :fields equals the set of field-ids referenced via that join's alias."
   [query]
-  (let [refs (field-refs-by-join-alias query)
+  (let [refs (lib.walk.util/all-field-ids-by-join-alias query)
         proj (inner-projection-by-join-alias query)]
     (not-empty
      (vec
@@ -684,9 +667,13 @@
                             {}
                             (sql-tools/referenced-fields driver nq))
         mbql-proj (into {}
-                        (for [a-join (get-in query [:stages 0 :joins])
-                              :let [tid    (get-in a-join [:stages 0 :source-table])
-                                    fields (field-ref-ids (:fields (first (:stages a-join))))]]
+                        (for [a-join (lib/joins query)
+                              :let [tid    (:id (lib.join/joined-thing query a-join))
+                                    fields (set (keep (fn [clause]
+                                                        (when (lib.util/clause-of-type? clause :field)
+                                                          (let [id (last clause)]
+                                                            (when (pos-int? id) id))))
+                                                      (:fields (first (:stages a-join)))))]]
                           [tid fields]))]
     (not-empty
      (into {}
@@ -758,7 +745,7 @@
           (let [q    (mbql-for (mt/id :categories :name)
                                (mt/id :venues :category_id)
                                nil)
-                refs (get (field-refs-by-join-alias q) venues-alias)]
+                refs (get (lib.walk.util/all-field-ids-by-join-alias q) venues-alias)]
             (is (contains? refs partition-fid)
                 (str "expected refs on " venues-alias " to include " partition-fid
                      " (venues.price); got " refs))))))))
