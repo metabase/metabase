@@ -8,11 +8,6 @@ interface Props {
   onClear: () => void;
   isWorking?: boolean;
   /**
-   * Transforms-only: optional secondary action to suppress (hide locally)
-   * the selected rows. Not shown on Cards/Dashboards.
-   */
-  onSuppress?: () => void;
-  /**
    * Transforms-only: optional toggle to also drop the warehouse target table
    * before archiving. The parent owns the boolean state; we just render the
    * checkbox.
@@ -28,7 +23,6 @@ export function BulkActionBar({
   onTrash,
   onClear,
   isWorking,
-  onSuppress,
   alsoDropTable,
 }: Props) {
   if (count === 0) {
@@ -77,11 +71,6 @@ export function BulkActionBar({
           <Button variant="subtle" onClick={onClear} disabled={isWorking}>
             {t`Cancel`}
           </Button>
-          {onSuppress && (
-            <Button variant="default" onClick={onSuppress} disabled={isWorking}>
-              {t`Suppress`}
-            </Button>
-          )}
           <Button color="error" onClick={onTrash} loading={isWorking}>
             {t`Move to Trash`}
           </Button>

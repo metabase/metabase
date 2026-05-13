@@ -130,8 +130,9 @@ export function ContentTable({
           <col style={{ width: 108 }} />
           {/* Reasons — gets the remaining flex. */}
           <col />
-          {/* Actions: Open + (deps?) + Trash. */}
-          <col style={{ width: 116 }} />
+          {/* Actions: (deps?) + Trash. The Open action moved onto the Name
+              column — clicking the name itself opens the entity page. */}
+          <col style={{ width: 88 }} />
         </colgroup>
         <thead>
           <tr>
@@ -171,7 +172,19 @@ export function ContentTable({
                 </td>
                 <td style={cellStyle}>
                   <Stack gap={2}>
-                    <Text fw={600} c="brand">
+                    {/* Row name doubles as the deep link to the entity page —
+                        replaces the separate Open (external) action icon that
+                        used to sit in the actions column. Opens in a new tab
+                        so the introspector list stays on screen. */}
+                    <Text
+                      component="a"
+                      href={onOpen(row)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      fw={600}
+                      c="brand"
+                      style={{ textDecoration: "none" }}
+                    >
                       {row.name}
                     </Text>
                     {row.description && (
@@ -213,17 +226,6 @@ export function ContentTable({
                 </td>
                 <td style={cellStyle}>
                   <Group gap="xs" justify="flex-end" wrap="nowrap">
-                    <Tooltip label={t`Open`}>
-                      <ActionIcon
-                        component="a"
-                        href={onOpen(row)}
-                        target="_blank"
-                        variant="subtle"
-                        aria-label={t`Open`}
-                      >
-                        <Icon name="external" />
-                      </ActionIcon>
-                    </Tooltip>
                     {row.is_broken ? (
                       <Tooltip label={t`Open dependency graph`}>
                         <ActionIcon

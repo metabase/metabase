@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import {
@@ -7,7 +7,6 @@ import {
 } from "metabase/api";
 import {
   Box,
-  Button,
   Chip,
   Group,
   Icon,
@@ -29,37 +28,8 @@ import { Pagination } from "../components/Pagination";
 import { TransformsTable } from "../components/TransformsTable";
 import type { IntrospectorRow, TransformsFlagFilter } from "../types";
 
-/** v1 suppress state — keyed per browser + admin. v2 promotes this to an app-DB table. */
-const SUPPRESS_STORAGE_KEY = "metabase.introspector.suppressed-transforms";
-
 /** Page size for server-side pagination (matches the Cards/Dashboards tabs). */
 const PAGE_SIZE = 50;
-
-interface SuppressEntry {
-  id: number;
-  acknowledged_at: string;
-}
-
-function readSuppressed(): SuppressEntry[] {
-  try {
-    const raw = window.localStorage.getItem(SUPPRESS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSuppressed(entries: SuppressEntry[]) {
-  try {
-    window.localStorage.setItem(SUPPRESS_STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // localStorage may be unavailable (private browsing); silently skip.
-  }
-}
 
 // Now that transforms have a real time-based stale signal (see
 // `transform-stale-cte` in queries.clj), the "Stale" pill maps to the
@@ -97,12 +67,6 @@ export function TransformsTab({
   const [offset, setOffset] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [alsoDropTable, setAlsoDropTable] = useState(false);
-  const [suppressed, setSuppressed] = useState<SuppressEntry[]>([]);
-  const [showSuppressed, setShowSuppressed] = useState(false);
-
-  useEffect(() => {
-    setSuppressed(readSuppressed());
-  }, []);
 
   const params = useMemo(
     () => ({
@@ -118,25 +82,13 @@ export function TransformsTab({
   );
 
   const { data, isFetching } = useListIntrospectorTransformsQuery(params);
-  const allRows = useMemo(() => data?.rows ?? [], [data?.rows]);
-
-  const suppressedIds = useMemo(
-    () => new Set(suppressed.map((e) => e.id)),
-    [suppressed],
-  );
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
 
   const [archiveTransform, { isLoading: isTrashing }] =
     useArchiveTransformMutation();
   const [deleteTransformTarget, { isLoading: isDroppingTable }] =
     useDeleteTransformTargetMutation();
   const isWorking = isTrashing || isDroppingTable;
-
-  const rows = useMemo(() => {
-    if (showSuppressed || suppressedIds.size === 0) {
-      return allRows;
-    }
-    return allRows.filter((r) => !suppressedIds.has(r.id));
-  }, [allRows, suppressedIds, showSuppressed]);
 
   const onFlagChange = useCallback((v: TransformsFlagFilter | null) => {
     setFlag(v ?? "all");
@@ -228,31 +180,7 @@ export function TransformsTab({
     deleteTransformTarget,
   ]);
 
-  const suppressSelected = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    setSuppressed((prev) => {
-      const known = new Set(prev.map((e) => e.id));
-      const now = new Date().toISOString();
-      const additions = ids
-        .filter((id) => !known.has(id))
-        .map((id) => ({ id, acknowledged_at: now }));
-      if (additions.length === 0) {
-        return prev;
-      }
-      const next = [...prev, ...additions];
-      writeSuppressed(next);
-      return next;
-    });
-    setSelectedIds(new Set());
-  }, [selectedIds]);
-
-  const clearSuppressed = useCallback(() => {
-    writeSuppressed([]);
-    setSuppressed([]);
-  }, []);
-
   const total = data?.total ?? 0;
-  const suppressedCount = suppressed.length;
   const selectedCount = selectedIds.size;
 
   return (
@@ -318,39 +246,10 @@ export function TransformsTab({
         />
       </Group>
 
-      {/* ── Toolbar: page summary + suppressed visibility toggle ──────────── */}
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Text c="text-secondary" size="sm">
-          {isFetching
-            ? t`Loading…`
-            : showSuppressed
-              ? t`${rows.length} of ${total} transforms (showing suppressed)`
-              : t`${rows.length} of ${total} transforms${suppressedCount > 0 ? t` · ${suppressedCount} suppressed` : ""}`}
-        </Text>
-        {suppressedCount > 0 && (
-          <Group gap="xs">
-            <Button
-              size="xs"
-              variant="subtle"
-              onClick={() => setShowSuppressed((v) => !v)}
-            >
-              {showSuppressed
-                ? t`Hide suppressed`
-                : t`Show suppressed (${suppressedCount})`}
-            </Button>
-            {showSuppressed && (
-              <Button
-                size="xs"
-                variant="subtle"
-                color="error"
-                onClick={clearSuppressed}
-              >
-                {t`Clear suppressed`}
-              </Button>
-            )}
-          </Group>
-        )}
-      </Group>
+      {/* ── Toolbar: page summary ─────────────────────────────────────────── */}
+      <Text c="text-secondary" size="sm">
+        {isFetching ? t`Loading…` : t`${rows.length} of ${total} transforms`}
+      </Text>
 
       <Box>
         <TransformsTable
@@ -373,18 +272,16 @@ export function TransformsTab({
 
       {/*
         Floating bulk-action bar — same component Cards/Dashboards use,
-        extended with the transforms-only `Suppress` button and
-        `Also drop target tables` toggle. The bar is `position: sticky;
-        bottom: 16px` so it floats at the bottom of the viewport once any
-        row is selected; opaque `bg-dark` background so it doesn't bleed
-        the table behind it.
+        with an extra transforms-only `Also drop target tables` toggle.
+        The bar is `position: sticky; bottom: 16px` so it floats at the
+        bottom of the viewport once any row is selected; opaque dark
+        background so it doesn't bleed the table behind it.
       */}
       <BulkActionBar
         count={selectedCount}
         onClear={clearSelection}
         onTrash={trashSelected}
         isWorking={isWorking}
-        onSuppress={suppressSelected}
         alsoDropTable={{
           checked: alsoDropTable,
           onToggle: setAlsoDropTable,

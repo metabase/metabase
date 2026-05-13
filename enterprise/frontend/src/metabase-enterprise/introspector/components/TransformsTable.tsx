@@ -196,7 +196,8 @@ function ReasonsCell({ reasons }: { reasons: IntrospectorReason[] }) {
 }
 
 /**
- * Per-row action cluster — matches Cards/Dashboards: Open + Trash.
+ * Per-row action cluster — Trash only. Open moved onto the Name column
+ * (clicking the name opens the transform's definition page).
  *
  * Runs/Inspector/Suppress/dependency-graph deliberately omitted from the row;
  * users who need those navigate from the transform definition page, and bulk
@@ -211,18 +212,6 @@ function RowActions({
 }) {
   return (
     <Group gap={4} justify="flex-end" wrap="nowrap">
-      <Tooltip label={t`Open`}>
-        <ActionIcon
-          component="a"
-          href={`/data-studio/transforms/${row.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="subtle"
-          aria-label={t`Open`}
-        >
-          <Icon name="external" />
-        </ActionIcon>
-      </Tooltip>
       <Tooltip label={t`Move to Trash`}>
         <ActionIcon
           variant="subtle"
@@ -280,8 +269,8 @@ export function TransformsTable({
           <col style={{ width: 120 }} />
           {/* Reasons — gets the remaining flex. */}
           <col />
-          {/* Actions: Open + Trash, matching Cards/Dashboards rows. */}
-          <col style={{ width: 88 }} />
+          {/* Actions: Trash only. Open moved onto the Name column. */}
+          <col style={{ width: 56 }} />
         </colgroup>
         <thead>
           <tr>
@@ -323,7 +312,18 @@ export function TransformsTable({
                 </td>
                 <td style={cellStyle}>
                   <Stack gap={2}>
-                    <Text fw={600} c="brand">
+                    {/* Name doubles as the deep link to the transform's
+                        definition page — replaces the separate Open icon
+                        in the row-actions cluster. */}
+                    <Text
+                      component="a"
+                      href={`/data-studio/transforms/${row.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      fw={600}
+                      c="brand"
+                      style={{ textDecoration: "none" }}
+                    >
                       {row.name}
                     </Text>
                     {row.description && (
