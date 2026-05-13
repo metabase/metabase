@@ -292,28 +292,25 @@
           xml (llm-shape/model->xml model)]
       (is (not (str/includes? xml "portable_entity_id")))))
 
-  (testing "renders the saved query body as a <query> block when :query_yaml is provided"
-    (let [yaml (str "lib/type: mbql/query\n"
-                    "database: Sample\n"
-                    "stages:\n"
-                    "  - lib/type: mbql.stage/mbql\n"
-                    "    source-table:\n"
-                    "      - Sample\n"
-                    "      - PUBLIC\n"
-                    "      - ORDERS\n")
-          model {:id 8 :name "M" :database_id 1 :database_engine "postgres" :query_yaml yaml}
+  (testing "renders the saved query body as a <query> block when :query_json is provided"
+    (let [query-json {"lib/type" "mbql/query"
+                      "database" "Sample"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}
+          model {:id 8 :name "M" :database_id 1 :database_engine "postgres" :query_json query-json}
           xml (llm-shape/model->xml model)]
       (is (str/includes? xml "### Saved query"))
       (is (str/includes? xml "<query>"))
-      (is (str/includes? xml "lib/type: mbql/query"))
+      (is (str/includes? xml "```json"))
+      (is (str/includes? xml "\"lib/type\""))
       (is (str/includes? xml "</query>"))))
 
-  (testing "omits the <query> block when :query_yaml is missing or blank"
+  (testing "omits the <query> block when :query_json is missing or blank"
     (let [xml-missing (llm-shape/model->xml {:id 9 :name "M" :database_id 1 :database_engine "postgres"})
-          xml-blank   (llm-shape/model->xml {:id 10 :name "M" :database_id 1 :database_engine "postgres"
-                                             :query_yaml ""})]
+          xml-empty   (llm-shape/model->xml {:id 10 :name "M" :database_id 1 :database_engine "postgres"
+                                             :query_json {}})]
       (is (not (str/includes? xml-missing "<query>")))
-      (is (not (str/includes? xml-blank "<query>"))))))
+      (is (not (str/includes? xml-empty "<query>"))))))
 
 (deftest query->xml-test
   (testing "formats query result matching Python"
@@ -406,25 +403,22 @@
     (let [question {:id 104 :name "No EID"}
           xml (llm-shape/question->xml question)]
       (is (not (str/includes? xml "portable_entity_id")))))
-  (testing "renders the saved query body as a <query> block when :query_yaml is provided"
-    (let [yaml (str "lib/type: mbql/query\n"
-                    "database: Sample\n"
-                    "stages:\n"
-                    "  - lib/type: mbql.stage/mbql\n"
-                    "    source-table:\n"
-                    "      - Sample\n"
-                    "      - PUBLIC\n"
-                    "      - ORDERS\n")
-          xml (llm-shape/question->xml {:id 200 :name "Q" :query_yaml yaml})]
+  (testing "renders the saved query body as a <query> block when :query_json is provided"
+    (let [query-json {"lib/type" "mbql/query"
+                      "database" "Sample"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}
+          xml (llm-shape/question->xml {:id 200 :name "Q" :query_json query-json})]
       (is (str/includes? xml "<query>"))
-      (is (str/includes? xml "lib/type: mbql/query"))
-      (is (str/includes? xml "source-table:"))
+      (is (str/includes? xml "```json"))
+      (is (str/includes? xml "\"lib/type\""))
+      (is (str/includes? xml "\"source-table\""))
       (is (str/includes? xml "</query>"))))
-  (testing "omits the <query> block when :query_yaml is missing or blank"
+  (testing "omits the <query> block when :query_json is missing or blank"
     (let [xml-missing (llm-shape/question->xml {:id 201 :name "Q"})
-          xml-blank   (llm-shape/question->xml {:id 202 :name "Q" :query_yaml ""})]
+          xml-empty   (llm-shape/question->xml {:id 202 :name "Q" :query_json {}})]
       (is (not (str/includes? xml-missing "<query>")))
-      (is (not (str/includes? xml-blank "<query>"))))))
+      (is (not (str/includes? xml-empty "<query>"))))))
 
 (deftest dashboard->xml-test
   (testing "formats dashboard matching Python"

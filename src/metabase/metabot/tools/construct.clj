@@ -19,9 +19,9 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -33,21 +33,22 @@
    [:chart_type :string]])
 
 (def ^:private construct-notebook-query-args-schema
-  "Args schema for `construct_notebook_query` in representations mode.
+  "Args schema for `construct_notebook_query`.
 
-  The `query` parameter is a **YAML string** in the canonical MBQL 5 representations format
-  (see `resources/metabot/prompts/tools/construct_notebook_query.md`). We keep it at the plain
-  `:string` type rather than parsing the shape here — parsing and structural validation happen
-  inside `execute-representations-query`. Keeping the schema flat (just `:string`) also
-  sidesteps the MCP `flatten-root-schema` pitfalls hit by more elaborate `:and`/`:fn` wrappers.
+  `:query` is a JSON object matching the canonical portable MBQL 5 wire format
+  ([[metabase.lib.schema/external-query]]). The structural shape (stages, clauses, portable
+  FKs, etc.) is documented for the LLM at
+  `resources/metabot/prompts/tools/construct_notebook_query.md`.
 
-  Per `repr-plan.md` step 13, this schema intentionally does NOT include `:source_entity` or
-  `:referenced_entities`: the YAML query is self-describing, so passing a separate entity
-  identifier is redundant and can disagree with the YAML. Database identity is derived from
-  the first stage's `source-table:` / `source-card:` — see [[resolve-database-id-from-first-stage]]."
+  Validation against `::external-query` happens at the entry-point boundaries (HTTP defendpoint
+  via the string-transformer, `execute-representations-query` post-repair via
+  `lib.normalize/normalize ::lib.schema/query`); the args schema here only asserts `:query`
+  is map-shaped so the LLM-input forgiveness layer in repair has a chance to fix common
+  shortcuts (missing `{}` options, etc.). Per `repr-plan.md` step 13, this schema deliberately
+  omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   [:query :string]
+   [:query :map]
    [:visualization {:optional true} construct-visualization-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
@@ -227,34 +228,39 @@
     (ex-info (ex-message e) data e)))
 
 (defn execute-representations-query
-  "Execute a notebook query in the canonical MBQL 5 YAML representations format.
+  "Execute a notebook query in the canonical portable MBQL 5 representations format.
+
+  `external-query` is a keyword-keyed Clojure map matching [[metabase.lib.schema/external-query]]
+  — what the JSON middleware decodes from the HTTP body, or what the MCP tool layer hands in
+  after schema-coercion. Strict shape validation against `::external-query` is the
+  responsibility of the entry-point (defendpoint / mu/defn) — this function trusts the input
+  shape and concentrates on the LLM-friendly repair passes.
 
   Pipeline:
-    1. Parse the YAML string into a portable Clojure data structure.
+    1. Convert to the string-keyed portable form the repair pipeline operates on.
     2. Resolve the database id from the first stage's `source-table:` / `source-card:`
        ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
     3. Run the repair pass (fill in `{}` options, missing `lib/type` markers, stamp the
        top-level `database:`, auto-wire `source-field` for implicit joins, rewrite inline
        `order-by` aggregations to refs, etc.).
-    4. Structurally validate against the repr schema.
+    4. Sanity-check the post-repair shape against the portable repair schema.
     5. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
-    6. Export that final numeric pMBQL back to portable representations YAML for the LLM-facing
-       `:query-yaml` / `query-content` output.
+    6. Export that final numeric pMBQL back to the portable form for the LLM-facing
+       `:query-json` / `query-content` output.
 
   Returns a map with `:structured-output` and `:instructions` keys. Throws with an
   `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
   surface a helpful message to the LLM without a stack trace.
 
-  Per `repr-plan.md` step 13, there is no `source_entity` parameter — the YAML carries
+  Per `repr-plan.md` step 13, there is no `source_entity` parameter — the query body carries
   everything needed. Per the step-14 follow-up, there is also no top-level `database:` in the
   LLM-facing contract: the database is derived from the first stage's source, and a repair
-  pass stamps `database:` into the parsed YAML before lib.schema / resolve need it."
-  [yaml-string]
-  (let [;; Parse first so we can derive the database-id from the YAML.
-        parsed      (try
-                      (repr/parse-yaml yaml-string)
+  pass stamps `database:` into the portable form before lib.schema / resolve need it."
+  [external-query]
+  (let [parsed      (try
+                      (repr/external-query->portable external-query)
                       (catch clojure.lang.ExceptionInfo e
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
@@ -275,7 +281,7 @@
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
-                             :query-yaml     (yaml/generate-string exported-repr :dumper-options {:flow-style :block})
+                             :query-json     exported-repr
                              :result-columns (result-columns-for-query pmbql-query mp)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
@@ -294,24 +300,35 @@
     (string? chart-type)  (keyword chart-type)
     :else                 chart-type))
 
+(defn- query-json->llm-content
+  "Render the portable repr-form `query-json` map as the JSON code block embedded inside
+  `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
+  with pretty-printing and a triple-backtick fence so the LLM sees the same syntactic frame it
+  would in a tool description or assistant turn."
+  [query-json]
+  (when (map? query-json)
+    (str "```json\n"
+         (json/encode query-json {:pretty true})
+         "\n```")))
+
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-shape/query->xml]].
 
-  `:query-content` is the **canonical normalized representations YAML** for the final
-  pMBQL query we actually constructed: repaired and resolved to numeric IDs, normalized by
-  lib, then exported back to portable FK paths/entity_ids. By feeding the LLM this final
-  portable form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next
-  turn it can reference exactly the field paths and aggregation UUIDs that will execute.
+  `:query-content` is the **canonical portable representations JSON** for the final pMBQL
+  query we actually constructed: repaired and resolved to numeric IDs, normalized by lib,
+  then exported back to portable FK paths/entity_ids. By feeding the LLM this final portable
+  form (rather than legacy-MBQL JSON or a pre-resolve approximation) on the next turn it can
+  reference exactly the field paths and aggregation UUIDs that will execute.
 
   See repr-plan.md step 18."
-  [{:keys [query-id query query-yaml result-columns]}]
+  [{:keys [query-id query query-json result-columns]}]
   (let [legacy-query (when (and (map? query) (:lib/type query))
                        #_{:clj-kondo/ignore [:discouraged-var]}
                        (lib/->legacy-MBQL query))]
     {:query-type    "notebook"
      :query-id      query-id
      :database_id   (:database legacy-query)
-     :query-content query-yaml
+     :query-content (query-json->llm-content query-json)
      :result        (when (seq result-columns)
                       {:result_columns result-columns})}))
 
@@ -330,7 +347,7 @@
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table.
 
-  Accepts an MBQL 5 query in the canonical representations YAML format. See
+  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
   (try

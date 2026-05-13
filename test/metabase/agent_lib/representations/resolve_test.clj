@@ -288,11 +288,11 @@
           "the portable `source-field` FK is still resolved to its numeric id alongside the alias"))))
 
 ;;; ============================================================
-;;; export-query-yaml: structured + native + nil/error fallback
+;;; try-export-query: structured + native + nil/error fallback
 ;;; ============================================================
 
-(deftest export-query-yaml-structured-test
-  (testing "structured pMBQL exports to a YAML string in canonical block-style with portable FKs"
+(deftest try-export-query-structured-test
+  (testing "structured pMBQL exports to a portable repr-form map with portable FKs and string keys"
     (let [parsed {"lib/type" "mbql/query"
                   "database" "Sample"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -300,24 +300,22 @@
                                "aggregation"  [["count" {}]]
                                "breakout"     [["field" {"temporal-unit" "month"}
                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}
-          q     (repr.resolve/resolve-query mp parsed)
-          yaml  (repr.resolve/export-query-yaml mp q)]
-      (is (string? yaml))
-      (is (re-find #"lib/type: mbql/query" yaml))
-      (is (re-find #"database: Sample" yaml))
-      ;; Portable FK paths show up as YAML block sequences ("- Sample\n  - PUBLIC\n  - ORDERS")
-      ;; rather than numeric ids.
-      (is (re-find #"source-table:" yaml))
-      (is (re-find #"- Sample" yaml))
-      (is (re-find #"- ORDERS" yaml))
-      (is (not (re-find #":lib/metadata" yaml))
-          "the metadata-provider handle never leaks to the LLM-facing YAML"))))
+          q        (repr.resolve/resolve-query mp parsed)
+          exported (repr.resolve/try-export-query mp q)]
+      (is (map? exported))
+      (is (= "mbql/query" (get exported "lib/type")))
+      (is (= "Sample" (get exported "database")))
+      (is (= ["Sample" "PUBLIC" "ORDERS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (not (contains? exported :lib/metadata))
+          "the metadata-provider handle never leaks to the LLM-facing payload")
+      (is (not (contains? exported "lib/metadata"))))))
 
-(deftest export-query-yaml-nil-and-error-fallback-test
+(deftest try-export-query-nil-and-error-fallback-test
   (testing "nil / blank input returns nil so the caller can omit the field"
-    (is (nil? (repr.resolve/export-query-yaml mp nil)))
-    (is (nil? (repr.resolve/export-query-yaml mp {})))
-    (is (nil? (repr.resolve/export-query-yaml nil {:lib/type :mbql/query :database 1 :stages []}))))
+    (is (nil? (repr.resolve/try-export-query mp nil)))
+    (is (nil? (repr.resolve/try-export-query mp {})))
+    (is (nil? (repr.resolve/try-export-query nil {:lib/type :mbql/query :database 1 :stages []}))))
   (testing "export errors are swallowed and surface as nil (the caller falls back gracefully)"
     ;; A query map with a numeric field id that doesn't exist in the metadata-provider
     ;; will throw inside `export-mbql`; we want the helper to return nil rather than
@@ -326,4 +324,4 @@
                  :database 1
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 99999}]}]
-      (is (nil? (repr.resolve/export-query-yaml mp bogus))))))
+      (is (nil? (repr.resolve/try-export-query mp bogus))))))

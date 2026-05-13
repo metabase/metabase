@@ -74,11 +74,8 @@
         (is (not (contains? props :source_entity)))
         (is (not (contains? props :referenced_entities)))
         (is (not (contains? props :program))))
-      (testing "`:query` is a plain string (flat schema for MCP compat)"
-        ;; Keep the schema flat: MCP `flatten-root-schema` historically breaks on
-        ;; `:and` / `:fn` wrappers. The YAML is validated inside
-        ;; `execute-representations-query`, not at the tool boundary.
-        (is (= "string" (get-in json-schema [:properties :query :type])))))))
+      (testing "`:query` is a JSON object (the portable representations external-query)"
+        (is (= "object" (get-in json-schema [:properties :query :type])))))))
 
 ;;; ---------------------------------------- integration tests ------------------------------------------------------
 
@@ -96,32 +93,30 @@
     (f)))
 
 (deftest slackbot-tool-happy-path-test
-  (testing (str "Slackbot tool takes a YAML query, hands it verbatim to\n"
+  (testing (str "Slackbot tool takes an external-query map, hands it verbatim to\n"
                 "execute-representations-query, wraps the result in an adhoc_viz data part\n"
                 "with the provided title + display, and returns structured-output + instructions.")
-    (let [captured-yaml (atom nil)
-          fake-query    {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
+    (let [captured-query (atom nil)
+          fake-query     {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [yaml-string]
-          (reset! captured-yaml yaml-string)
+        (fn [external-query]
+          (reset! captured-query external-query)
           {:structured-output {:query-id       "q-1"
                                :query          fake-query
                                :result-columns []}
            :instructions      "Query created."})
         (fn []
-          (let [yaml-input (str "lib/type: mbql/query\n"
-                                "database: Sample\n"
-                                "stages:\n"
-                                "  - source-table: [Sample, PUBLIC, ORDERS]\n"
-                                "    aggregation:\n"
-                                "      - [count, {}]\n")
-                result     (slackbot-query/slackbot-construct-notebook-query-tool
-                            {:reasoning "user asked for order count"
-                             :query     yaml-input
-                             :title     "Monthly order volume"
-                             :display   "bar"})]
-            (testing "YAML string passed through verbatim"
-              (is (= yaml-input @captured-yaml)))
+          (let [query-input {:lib/type "mbql/query"
+                             :stages   [{:lib/type     "mbql.stage/mbql"
+                                         :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                         :aggregation  [["count" {}]]}]}
+                result      (slackbot-query/slackbot-construct-notebook-query-tool
+                             {:reasoning "user asked for order count"
+                              :query     query-input
+                              :title     "Monthly order volume"
+                              :display   "bar"})]
+            (testing "external-query passed through verbatim"
+              (is (= query-input @captured-query)))
             (testing "structured-output is returned upstream"
               (is (= "q-1" (get-in result [:structured-output :query-id])))
               (is (= fake-query (get-in result [:structured-output :query]))))
@@ -142,7 +137,7 @@
                 "include them with nil values) but the link is still built and returned.")
     (let [fake-query {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [_yaml]
+        (fn [_external-query]
           {:structured-output {:query-id       "q-x"
                                :query          fake-query
                                :result-columns []}
@@ -150,7 +145,10 @@
         (fn []
           (let [result (slackbot-query/slackbot-construct-notebook-query-tool
                         {:reasoning "simple request"
-                         :query     "database: Sample\nstages:\n  - source-table: [Sample, PUBLIC, ORDERS]\n    aggregation:\n      - [count]\n"})
+                         :query     {:lib/type "mbql/query"
+                                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                                 :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                                 :aggregation  [["count" {}]]}]}})
                 data   (get-in result [:data-parts 0 :data])]
             (is (= "q-x" (get-in result [:structured-output :query-id])))
             (is (not (contains? data :title)))
@@ -164,7 +162,7 @@
                 "returns `{:output <message>}` so the message reaches the LLM verbatim -\n"
                 "no stack trace, no data-parts.")
     (with-repr-stub!
-      (fn [_yaml]
+      (fn [_external-query]
         (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by entity_details."
                         {:agent-error? true
                          :status-code  400
@@ -173,7 +171,7 @@
       (fn []
         (let [result (slackbot-query/slackbot-construct-notebook-query-tool
                       {:reasoning "test agent-error path"
-                       :query     "database: Sample\nstages: []\n"})]
+                       :query     {:lib/type "mbql/query" :stages []}})]
           (testing "bare :output key with the agent message, no structured-output or data-parts"
             (is (string? (:output result)))
             (is (re-find #"Unknown database" (:output result)))
@@ -186,12 +184,12 @@
                 "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
                 "leaking internal stack-trace-style messages.")
     (with-repr-stub!
-      (fn [_yaml]
+      (fn [_external-query]
         (throw (RuntimeException. "something went sideways")))
       (fn []
         (let [result (slackbot-query/slackbot-construct-notebook-query-tool
                       {:reasoning "test non-agent error path"
-                       :query     "database: Sample\nstages: []\n"})]
+                       :query     {:lib/type "mbql/query" :stages []}})]
           (is (string? (:output result)))
           (is (str/starts-with? (:output result) "Failed to construct notebook query:"))
           (is (re-find #"something went sideways" (:output result))))))))
@@ -209,15 +207,13 @@
       (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
             ;; Canonical DB name (per `repr-plan.md` step 13); `Sample` alone would
             ;; short-circuit with :unknown-database.
-            yaml    (str "lib/type: mbql/query\n"
-                         "database: " db-name "\n"
-                         "stages:\n"
-                         "  - source-table: [" db-name ", PUBLIC, ORDERS]\n"
-                         "    aggregation:\n"
-                         "      - [count, {}]\n")
+            external-query {:lib/type "mbql/query"
+                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                        :source-table [db-name "PUBLIC" "ORDERS"]
+                                        :aggregation  [["count" {}]]}]}
             result  (slackbot-query/slackbot-construct-notebook-query-tool
                      {:reasoning "count the orders"
-                      :query     yaml
+                      :query     external-query
                       :title     "Total orders"
                       :display   "bar"})]
         (testing "structured-output carries a resolved MBQL 5 query with numeric ids"
@@ -248,15 +244,13 @@
                 "is gone.")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [;; Intentionally use an impossible name so we hit :unknown-database at lookup.
-            yaml   (str "lib/type: mbql/query\n"
-                        "database: DefinitelyNotARealDatabaseName\n"
-                        "stages:\n"
-                        "  - source-table: [DefinitelyNotARealDatabaseName, PUBLIC, ORDERS]\n"
-                        "    aggregation:\n"
-                        "      - [count, {}]\n")
+            external-query {:lib/type "mbql/query"
+                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                        :source-table ["DefinitelyNotARealDatabaseName" "PUBLIC" "ORDERS"]
+                                        :aggregation  [["count" {}]]}]}
             result (slackbot-query/slackbot-construct-notebook-query-tool
                     {:reasoning "wrong db name"
-                     :query     yaml
+                     :query     external-query
                      :display   "table"})]
         (testing "no structured-output, no data-parts, clear message"
           (is (nil? (:structured-output result)))

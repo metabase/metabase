@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.tools.charts :as tools.charts]
@@ -14,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (deftest edit-chart-test
@@ -82,18 +82,18 @@
                                     (when (= "Category" display_name)
                                       portable_fk))
                                   (:fields table))
-          ;; (1) construct a query via the YAML representations format. Build the YAML from
-          ;; a Clojure data structure and let `yaml/generate-string` handle quoting, flow
-          ;; sequences, and `nil`-as-`null` so we don't have to do any manual JSON escaping.
+          ;; (1) construct a query via the portable representations JSON format. Author the
+          ;; query as a string-keyed map and `keywordize-keys` it into the keyword-keyed
+          ;; external-query shape the tool accepts.
           query-data {"lib/type" "mbql/query"
                       "database" (first table-fk)
                       "stages"   [{"lib/type"     "mbql.stage/mbql"
                                    "source-table" table-fk
                                    "aggregation"  [["count" {}]]
                                    "breakout"     [["field" {} category-field-fk]]}]}
-          query-yaml (yaml/generate-string query-data)
+          external-query (walk/keywordize-keys query-data)
           construct-result (tools.construct/construct-notebook-query-tool
-                            {:query         query-yaml
+                            {:query         external-query
                              :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
@@ -138,9 +138,9 @@
                                                       ["sum" {}
                                                        ["field" {}
                                                         [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
-            query-yaml (yaml/generate-string query-data)
+            external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
-                    {:query         query-yaml
+                    {:query         external-query
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
@@ -181,9 +181,9 @@
                                                       ["sum" {}
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
-            query-yaml (yaml/generate-string query-data)
+            external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
-                    {:query         query-yaml
+                    {:query         external-query
                      :visualization {:chart_type "bar"}})]
         (testing "tool returns a clear, agent-targeted error rather than producing a chart"
           ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
@@ -213,9 +213,9 @@
                                                        [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]
                                      "breakout"     [["field" {}
                                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
-            query-yaml (yaml/generate-string query-data)
+            external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
-                    {:query         query-yaml
+                    {:query         external-query
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
@@ -266,10 +266,10 @@
                                      "source-table" orders-fk
                                      "aggregation"  [["count" {}]]
                                      "breakout"     [["field" {} category-field-fk]]}]}
-            query-yaml (yaml/generate-string query-data)
+            external-query (walk/keywordize-keys query-data)
 
             construct-result (tools.construct/construct-notebook-query-tool
-                              {:query         query-yaml
+                              {:query         external-query
                                :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])

@@ -1114,21 +1114,18 @@
       (is (= once twice)))))
 
 ;;; ============================================================
-;;; End-to-end repair then parse-and-validate
+;;; End-to-end repair against an LLM shortcut shape
 ;;; ============================================================
 
-(deftest end-to-end-yaml-repair-test
-  (testing "LLM-style YAML missing both lib/types and options maps still parses+validates after repair"
-    ;; This test intentionally goes through `parse-yaml` because its purpose is to confirm
-    ;; that an LLM-style YAML shortcut - a 1-element flow sequence `[count]` without an
-    ;; options map - round-trips cleanly through parser + repair. Other tests in this ns use
-    ;; Clojure data directly.
-    (let [yaml-input (str "database: Sample\n"
-                          "stages:\n"
-                          "  - source-table: [Sample, PUBLIC, ORDERS]\n"
-                          "    aggregation:\n"
-                          "      - [count]\n")
-          repaired (repair/repair trivial-mp (repr/parse-yaml yaml-input))]
+(deftest end-to-end-shortcut-repair-test
+  (testing "LLM-style shortcut missing both lib/types and options maps still validates after repair"
+    ;; The `:lib.schema/external-query` validation at the API boundary rejects this shape, but
+    ;; the repair pipeline itself is still expected to handle it for callers that bypass
+    ;; boundary validation (tests, programmatic invocations).
+    (let [parsed   {"database" "Sample"
+                    "stages"   [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count"]]}]}
+          repaired (repair/repair trivial-mp parsed)]
       (is (= "mbql/query" (get repaired "lib/type")))
       (is (= "mbql.stage/mbql" (get-in repaired ["stages" 0 "lib/type"])))
       (is (= [["count" {}]] (get-in repaired ["stages" 0 "aggregation"])))

@@ -4,7 +4,7 @@
    agent. Templated via `resources/metabot/prompts/llm_shape.selmer`.
 
    Naming note: this is the *output* (response-side) shape, not to be confused with the
-   *input*-side representations YAML format owned by `metabase.agent-lib.representations.*`.
+   *input*-side portable representations format owned by `metabase.agent-lib.representations.*`.
    The two share no schema and no code path; they were briefly named symmetrically
    (`llm-shaperesentations` here, `representations` there) and the symmetry caused enough
    confusion to motivate this rename.
@@ -16,6 +16,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
@@ -55,7 +56,23 @@
         (when (seq path-segments)
           (str "/" (str/join "/" (map encode-uri-segment path-segments)))))))
 
-(defn escape-xml
+(defn- query-json->llm-block
+  "Render a portable repr-form `query-json` map (or already-rendered string) as a JSON code
+  block embedded inside the `<query>` tag of `<metabase_question>` / `<metabase-model>`. The
+  triple-backtick fence gives the LLM the same syntactic frame it would in a tool description
+  or assistant turn. Returns `nil` when the input is empty so the selmer template can omit the
+  block entirely."
+  [query-json]
+  (cond
+    (and (string? query-json)
+         (not (str/blank? query-json)))
+    query-json
+
+    (and (map? query-json)
+         (seq query-json))
+    (str "```json\n" (json/encode query-json {:pretty true}) "\n```")))
+
+(defn- escape-xml
   "Escape XML special characters in a string.
    Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
   [s]
@@ -286,12 +303,13 @@
    Matches Python Model.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute (see [[table->xml]] for the rationale).
 
-   When the caller supplies `:query_yaml` (the model's `dataset_query` exported through the
-   representations resolver), it is rendered inside the `<metabase-model>` element as a
-   `<query>` block - same canonical MBQL 5 representations YAML form used elsewhere.
-   Note: Python uses <metabase-model> tag but closes with </model>."
+   When the caller supplies `:query_json` (the model's `dataset_query` exported through the
+   representations resolver as a portable repr-form map), it is rendered inside the
+   `<metabase-model>` element as a JSON `<query>` block — same canonical portable MBQL 5
+   representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
+   with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables measures segments portable_entity_id query_yaml]}]
+           related_tables measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -304,8 +322,7 @@
       :model_fqn                fqn
       :model_description        description
       :model_portable_entity_id portable_entity_id
-      :model_query_yaml         (when (and (string? query_yaml) (not (str/blank? query_yaml)))
-                                  query_yaml)
+      :model_query_json         (query-json->llm-block query_json)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
@@ -393,12 +410,12 @@
 (defn question->xml
   "Format question for LLM consumption.
 
-  When the caller supplies `:query_yaml` (the saved card's `dataset_query` exported through
-  the representations resolver), it is rendered inside the `<metabase_question>` element as
-  a `<query>` block. The format is the same canonical MBQL 5 representations YAML the LLM
-  writes into `construct_notebook_query` and gets back in that tool's result - so existing
-  cards and freshly-built queries share one form."
-  [{:keys [id name description verified collection visualization display fields portable_entity_id query_yaml]}]
+  When the caller supplies `:query_json` (the saved card's `dataset_query` exported through
+  the representations resolver as a portable repr-form map), it is rendered inside the
+  `<metabase_question>` element as a JSON `<query>` block. The format is the same canonical
+  portable MBQL 5 representations the LLM writes into `construct_notebook_query` and gets
+  back in that tool's result — so existing cards and freshly-built queries share one form."
+  [{:keys [id name description verified collection visualization display fields portable_entity_id query_json]}]
   (render-llm-template
    :question
    {:question_id (str id)
@@ -409,8 +426,7 @@
     :question_portable_entity_id portable_entity_id
     :question_collection_xml (when collection (collection->xml collection))
     :question_visualization_xml (when visualization (visualization->xml visualization))
-    :question_query_yaml (when (and (string? query_yaml) (not (str/blank? query_yaml)))
-                           query_yaml)
+    :question_query_json (query-json->llm-block query_json)
     :question_fields_xml (when (seq fields)
                            (str/join "\n" (map field->xml fields)))}))
 

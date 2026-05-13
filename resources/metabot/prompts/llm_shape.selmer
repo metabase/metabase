@@ -95,13 +95,13 @@ This will help avoid errors due to unexpected data types or formats.
 
 ### Description
 {{model_description}}
-{% if model_query_yaml %}
+{% if model_query_json %}
 
 ### Saved query
-The model's saved query, in the same canonical representations YAML format the
+The model's saved query, in the same canonical portable representations JSON format the
 `construct_notebook_query` tool consumes:
 <query>
-{{model_query_yaml|safe}}
+{{model_query_json|safe}}
 </query>
 {% endif %}
 {% if model_fields_xml %}
@@ -191,11 +191,11 @@ Chart link: metabase://chart/{{chart_id}}
 The question is stored in the following collection:
 {{question_collection_xml|safe}}
 {% endif %}
-{% if question_query_yaml %}
-The question's saved query, in the same canonical representations YAML format the
+{% if question_query_json %}
+The question's saved query, in the same canonical portable representations JSON format the
 `construct_notebook_query` tool consumes:
 <query>
-{{question_query_yaml|safe}}
+{{question_query_json|safe}}
 </query>
 {% endif %}
 {% if question_visualization_xml %}

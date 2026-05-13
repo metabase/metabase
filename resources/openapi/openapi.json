@@ -57,6 +57,31 @@
                 "minimum" : 1,
                 "type" : "integer"
               },
+              "sync_started_at" : {
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "url" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [ "url", "created_at", "sync_started_at", "created_by_id", "db_id" ],
+            "type" : "object"
+          }, {
+            "properties" : {
+              "created_at" : {
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "created_by_id" : {
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "db_id" : {
+                "minimum" : 1,
+                "type" : "integer"
+              },
               "last_sync_at" : {
                 "minimum" : 1,
                 "type" : "integer"
@@ -1142,6 +1167,39 @@
         } ],
         "description" : "All the various ways of referring to an action with the v2 APIs."
       },
+      "metabase-enterprise.data-studio.api.table.publish-table-selectors" : {
+        "properties" : {
+          "collection_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "database_ids" : {
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "schema_ids" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "table_ids" : {
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "collection_id" ],
+        "type" : "object"
+      },
       "metabase-enterprise.data-studio.api.table.publish-tables-response" : {
         "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
         "properties" : {
@@ -2137,6 +2195,110 @@
           }
         },
         "required" : [ "min", "fixed" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.serialization.schema.export-metadata-response" : {
+        "properties" : {
+          "databases" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-database"
+            },
+            "type" : "array"
+          },
+          "fields" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-field"
+            },
+            "type" : "array"
+          },
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.exported-table"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase-enterprise.serialization.schema.exported-database" : {
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.serialization.schema.exported-field" : {
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nfc_path" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.serialization.schema.exported-table" : {
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ],
         "type" : "object"
       },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
@@ -3208,11 +3370,10 @@
       },
       "metabase.agent-api.api.construct-query-request" : {
         "additionalProperties" : false,
-        "description" : "Request body for /v2/construct-query and the fresh-query branch of /v2/query.\n  A single `:query` key whose value is a YAML string in the canonical Metabase MBQL 5\n  representations format. The YAML is fully self-describing: the database is derived from\n  the first stage's `source-table:` or `source-card:`, all field references are portable\n  FKs (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary\n  `source_entity` / `referenced_entities` envelope. See\n  `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference\n  (including operators, joins, expressions, multi-stage queries, and FK conventions).\n\n  Closed map: any extra top-level keys (notably the legacy `source_entity` /\n  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so\n  callers don't silently send fields the server ignores.",
+        "description" : "Request body for /v2/construct-query and the fresh-query branch of /v2/query.\n  A single `:query` key whose value is a JSON object matching\n  [[metabase.lib.schema/external-query]] — the canonical portable MBQL 5 wire format. The\n  query is fully self-describing: the database is derived from the first stage's\n  `source-table:` or `source-card:`, all field references are portable FKs\n  (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary\n  `source_entity` / `referenced_entities` envelope. See\n  `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference\n  (including operators, joins, expressions, multi-stage queries, and FK conventions).\n\n  Closed map: any extra top-level keys (notably the legacy `source_entity` /\n  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so\n  callers don't silently send fields the server ignores.",
         "properties" : {
           "query" : {
-            "minLength" : 1,
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.external-query"
           }
         },
         "required" : [ "query" ],
@@ -3227,6 +3388,162 @@
           }
         },
         "required" : [ "query" ],
+        "type" : "object"
+      },
+      "metabase.agent-api.api.create-dashboard-request" : {
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "question_ids" : {
+            "oneOf" : [ {
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
+      "metabase.agent-api.api.create-dashboard-response" : {
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashcard_ids" : {
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "collection_id", "description", "dashcard_ids" ],
+        "type" : "object"
+      },
+      "metabase.agent-api.api.create-question-request" : {
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "query" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "query" ],
+        "type" : "object"
+      },
+      "metabase.agent-api.api.create-question-response" : {
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "display", "collection_id", "description" ],
         "type" : "object"
       },
       "metabase.agent-api.api.entity-type" : {
@@ -3513,7 +3830,7 @@
         "type" : "object"
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <yaml>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
+        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
         "oneOf" : [ {
           "additionalProperties" : false,
           "properties" : {
@@ -5834,6 +6151,7 @@
             } ]
           },
           "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid",
             "maxLength" : 36,
             "minLength" : 36,
             "type" : "string"
@@ -7714,6 +8032,8 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema..stage.valid-refs"
         }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive"
+        }, {
           "allOf" : [ ]
         } ]
       },
@@ -7765,6 +8085,9 @@
         }, {
           "allOf" : [ ]
         } ]
+      },
+      "metabase.lib.schema..stage.page-and-limit-are-mutually-exclusive" : {
+        "description" : "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
       },
       "metabase.lib.schema..stage.type" : {
         "enum" : [ "mbql.stage/native", "mbql.stage/mbql" ],
@@ -8125,6 +8448,10 @@
       "metabase.lib.schema.expression.window..offset.n" : {
         "type" : "integer"
       },
+      "metabase.lib.schema.external-query" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.query",
+        "description" : "Schema for \"External MBQL\" 5 query."
+      },
       "metabase.lib.schema.fields" : {
         "allOf" : [ {
           "items" : {
@@ -8221,6 +8548,13 @@
       "metabase.lib.schema.id.saved-questions-virtual-database" : {
         "const" : -1337,
         "description" : "The ID used to signify that a database is 'virtual' rather than physical.\n\n   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using\n   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this\n   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database\n   ID.)\n\n   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is\n   this 'virtual' database and take the appropriate actions."
+      },
+      "metabase.lib.schema.id.schema" : {
+        "anyOf" : [ {
+          "type" : "null"
+        }, {
+          "type" : "string"
+        } ]
       },
       "metabase.lib.schema.id.segment" : {
         "description" : "Valid legacy Segment ID",
@@ -14297,146 +14631,6 @@
         },
         "type" : "object"
       },
-      "metabase.warehouses-rest.api.database-info" : {
-        "properties" : {
-          "engine" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "name", "engine" ],
-        "type" : "object"
-      },
-      "metabase.warehouses-rest.api.databases-metadata-response" : {
-        "properties" : {
-          "databases" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
-            },
-            "type" : "array"
-          },
-          "fields" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
-            },
-            "type" : "array"
-          },
-          "tables" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [ "databases", "tables", "fields" ],
-        "type" : "object"
-      },
-      "metabase.warehouses-rest.api.field-info" : {
-        "properties" : {
-          "base_type" : {
-            "type" : "string"
-          },
-          "coercion_strategy" : {
-            "type" : "string"
-          },
-          "database_type" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "effective_type" : {
-            "type" : "string"
-          },
-          "fk_target_field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "parent_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "semantic_type" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          }
-        },
-        "required" : [ "id", "table_id", "name", "base_type" ],
-        "type" : "object"
-      },
-      "metabase.warehouses-rest.api.field-values-info" : {
-        "properties" : {
-          "field_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-          },
-          "has_more_values" : {
-            "type" : "boolean"
-          },
-          "human_readable_values" : {
-            "items" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : "array"
-          },
-          "values" : {
-            "items" : {
-              "items" : { },
-              "type" : "array"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [ "field_id", "values", "has_more_values" ],
-        "type" : "object"
-      },
-      "metabase.warehouses-rest.api.field-values-response" : {
-        "properties" : {
-          "field_values" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-info"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [ "field_values" ],
-        "type" : "object"
-      },
-      "metabase.warehouses-rest.api.table-info" : {
-        "properties" : {
-          "db_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schema" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "db_id", "name" ],
-        "type" : "object"
-      },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
@@ -14955,6 +15149,42 @@
         "tags" : [ "/api/activity" ]
       }
     },
+    "/api/agent/v1/dashboard" : {
+      "post" : {
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.",
+        "operationId" : "post-api-agent-v1-dashboard",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-dashboard-request"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-dashboard-response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/agent/v1/dashboard",
+        "tags" : [ "/api/agent" ]
+      }
+    },
     "/api/agent/v1/execute" : {
       "post" : {
         "description" : "Execute an MBQL query and return results.\n\n  Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,\n  returning results with column metadata.\n\n  Response format:\n  - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}\n  - On failure: {:status :failed :error \"message\" ...}\n\n  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated).",
@@ -15145,6 +15375,42 @@
           }
         },
         "summary" : "GET /api/agent/v1/ping",
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/question" : {
+      "post" : {
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter should be a base64-encoded string returned by construct_query.\n  Optionally specify display type, description, collection, and visualization settings.",
+        "operationId" : "post-api-agent-v1-question",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-question-request"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-question-response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/agent/v1/question",
         "tags" : [ "/api/agent" ]
       }
     },
@@ -15366,7 +15632,7 @@
     },
     "/api/agent/v2/construct-query" : {
       "post" : {
-        "description" : "Construct an MBQL query from a Metabase representations YAML string.\n\n  The body is `{\"query\": \"<yaml>\"}` where the YAML is a self-describing MBQL 5 query\n  in the canonical representations format — see the `construct_notebook_query` tool\n  documentation for the format reference. Returns a base64-encoded MBQL query that can be\n  executed via /v1/execute or paginated via /v2/query.",
+        "description" : "Construct an MBQL query from a portable MBQL 5 representations JSON payload.\n\n  The body is `{\"query\": <external-query>}` where `<external-query>` is a JSON object\n  matching `::lib.schema/external-query` — see the `construct_notebook_query` tool\n  documentation for the format reference. Returns a base64-encoded MBQL query that can be\n  executed via /v1/execute or paginated via /v2/query.",
         "operationId" : "post-api-agent-v2-construct-query",
         "parameters" : [ ],
         "requestBody" : {
@@ -15402,7 +15668,7 @@
     },
     "/api/agent/v2/query" : {
       "post" : {
-        "description" : "Execute a representations YAML query and stream the results, with continuation-token pagination.\n\n  Accepts either a YAML body (same shape as /v2/construct-query) or a `continuation_token`\n  from a previous response. Returns results with column metadata and an optional\n  `continuation_token` for fetching the next page.",
+        "description" : "Execute a portable MBQL 5 representations JSON query and stream the results, with\n  continuation-token pagination.\n\n  Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`\n  from a previous response. Returns results with column metadata and an optional\n  `continuation_token` for fetching the next page.",
         "operationId" : "post-api-agent-v2-query",
         "parameters" : [ ],
         "requestBody" : {
@@ -17176,6 +17442,26 @@
                       "type" : "null"
                     } ]
                   },
+                  "size" : {
+                    "oneOf" : [ {
+                      "properties" : {
+                        "size_x" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "minimum" : 1,
+                          "type" : "integer"
+                        },
+                        "size_y" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "minimum" : 1,
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "size_x", "size_y" ],
+                      "type" : "object"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "type" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
@@ -18799,7 +19085,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -19327,7 +19613,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "transform", "document", "pulse", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -21605,60 +21891,6 @@
         "tags" : [ "/api/database" ]
       }
     },
-    "/api/database/field-values" : {
-      "get" : {
-        "description" : "Get sampled field values for every field in the instance, streamed as a single\n  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,\n  optional `human_readable_values`, and `has_more_values`.\n\n  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and\n  linked-filter variants are user-specific and would bypass their own enforcement\n  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve\n  `field_id` to table and field names. Response is streamed for efficiency with large\n  schemas.\n\n  Admin-only: this endpoint exposes cached values computed over the unrestricted\n  dataset, so it would leak data past sandbox / impersonation rules if served to\n  regular users.",
-        "operationId" : "get-api-database-field-values",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-values-response"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/database/field-values",
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/metadata" : {
-      "get" : {
-        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
-        "operationId" : "get-api-database-metadata",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/database/metadata",
-        "tags" : [ "/api/database" ]
-      }
-    },
     "/api/database/sample_database" : {
       "post" : {
         "description" : "Add the sample database as a new `Database`.",
@@ -22362,6 +22594,17 @@
               "type" : "null"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "include_measures",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -22437,6 +22680,17 @@
         }, {
           "in" : "query",
           "name" : "can-write-metadata",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_measures",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -24094,6 +24348,9 @@
               "application/json" : {
                 "schema" : {
                   "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
                     "permissions" : {
                       "items" : {
                         "properties" : {
@@ -24116,7 +24373,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "permissions" ],
+                  "required" : [ "permissions", "advanced" ],
                   "type" : "object"
                 }
               }
@@ -24176,6 +24433,9 @@
               "application/json" : {
                 "schema" : {
                   "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
                     "permissions" : {
                       "items" : {
                         "properties" : {
@@ -24198,7 +24458,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "permissions" ],
+                  "required" : [ "permissions", "advanced" ],
                   "type" : "object"
                 }
               }
@@ -24213,6 +24473,112 @@
           }
         },
         "summary" : "PUT /api/ee/ai-controls/permissions",
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      }
+    },
+    "/api/ee/ai-controls/permissions/advanced" : {
+      "delete" : {
+        "description" : "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users.",
+        "operationId" : "delete-api-ee-ai-controls-permissions-advanced",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "items" : {
+                        "properties" : {
+                          "group_id" : {
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "perm_type" : {
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ],
+                            "type" : "string"
+                          },
+                          "perm_value" : {
+                            "enum" : [ "yes", "no" ],
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "permissions", "advanced" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/ai-controls/permissions/advanced",
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      },
+      "post" : {
+        "description" : "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group.",
+        "operationId" : "post-api-ee-ai-controls-permissions-advanced",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "items" : {
+                        "properties" : {
+                          "group_id" : {
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "perm_type" : {
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ],
+                            "type" : "string"
+                          },
+                          "perm_value" : {
+                            "enum" : [ "yes", "no" ],
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "permissions", "advanced" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/ai-controls/permissions/advanced",
         "tags" : [ "/api/ee/ai-controls/permissions" ]
       }
     },
@@ -25050,11 +25416,986 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/custom-viz-plugin" : {
+      "get" : {
+        "description" : "List all registered custom visualization plugins.",
+        "operationId" : "get-api-ee-custom-viz-plugin",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "properties" : {
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "created_at" : { },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "dev_only" : {
+                        "type" : "boolean"
+                      },
+                      "display_name" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "error_message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "identifier" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metabase_version" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "status" : {
+                        "enum" : [ "active", "error" ],
+                        "type" : "string"
+                      },
+                      "updated_at" : { }
+                    },
+                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                    "type" : "object"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/custom-viz-plugin",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "post" : {
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "operationId" : "post-api-ee-custom-viz-plugin",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ],
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "display_name" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "identifier" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "status" : {
+                      "enum" : [ "active", "error" ],
+                      "type" : "string"
+                    },
+                    "updated_at" : { }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/custom-viz-plugin",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/dev" : {
+      "post" : {
+        "description" : "Register a dev-only custom visualization plugin from a local dev server.\n   No bundle upload is required — files are served from the dev server URL.\n   Requires custom viz plugin dev mode to be enabled.",
+        "operationId" : "post-api-ee-custom-viz-plugin-dev",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "identifier" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "display_name" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "identifier" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "status" : {
+                      "enum" : [ "active", "error" ],
+                      "type" : "string"
+                    },
+                    "updated_at" : { }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/custom-viz-plugin/dev",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/list" : {
+      "get" : {
+        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with incompatible Metabase version requirements are excluded.\n   Dev-only plugins are excluded when dev mode is disabled.",
+        "operationId" : "get-api-ee-custom-viz-plugin-list",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "properties" : {
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bundle_url" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "display_name" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "identifier" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "manifest" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "identifier", "display_name", "bundle_url" ],
+                    "type" : "object"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/custom-viz-plugin/list",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}" : {
+      "delete" : {
+        "description" : "Remove a custom visualization plugin and evict its on-disk cache.",
+        "operationId" : "delete-api-ee-custom-viz-plugin-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/custom-viz-plugin/{id}",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "put" : {
+        "description" : "Update a custom visualization plugin. Currently only `enabled` may be toggled.",
+        "operationId" : "put-api-ee-custom-viz-plugin-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "enabled" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "display_name" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "identifier" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "status" : {
+                      "enum" : [ "active", "error" ],
+                      "type" : "string"
+                    },
+                    "updated_at" : { }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/asset" : {
+      "get" : {
+        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "path",
+          "required" : true,
+          "schema" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/bundle" : {
+      "get" : {
+        "description" : "Serve the JS bundle for a plugin from the on-disk cache.\n   Returns application/javascript with ETag and Cache-Control headers.\n   In dev mode, proxies from `dev_bundle_url` if set.",
+        "operationId" : "get-api-ee-custom-viz-plugin-id-bundle",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/bundle",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      },
+      "put" : {
+        "description" : "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in\n   the same format as the `POST /` endpoint. The manifest's `name` field must\n   match the plugin's existing `identifier`.",
+        "operationId" : "put-api-ee-custom-viz-plugin-id-bundle",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "properties" : {
+                      "filename" : {
+                        "type" : "string"
+                      },
+                      "tempfile" : { }
+                    },
+                    "required" : [ "filename", "tempfile" ],
+                    "type" : "object"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "display_name" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "identifier" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "status" : {
+                      "enum" : [ "active", "error" ],
+                      "type" : "string"
+                    },
+                    "updated_at" : { }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/bundle",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-sse" : {
+      "get" : {
+        "description" : "Proxy Server-Sent Events from the plugin's dev server.\n   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.\n   This avoids the need for a CSP exception for the dev server origin.\n   Requires custom viz plugin dev mode to be enabled.",
+        "operationId" : "get-api-ee-custom-viz-plugin-id-dev-sse",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/custom-viz-plugin/{id}/dev-sse",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/dev-url" : {
+      "put" : {
+        "description" : "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).\n   The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.\n   Persisted to the database so it survives server restarts.\n   Requires custom viz plugin dev mode to be enabled.",
+        "operationId" : "put-api-ee-custom-viz-plugin-id-dev-url",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "dev_bundle_url" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "dev_bundle_url" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "dev_bundle_url" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/custom-viz-plugin/{id}/dev-url",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
+    "/api/ee/custom-viz-plugin/{id}/refresh" : {
+      "post" : {
+        "description" : "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded\n   plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle\n   to `/:id/bundle`.",
+        "operationId" : "post-api-ee-custom-viz-plugin-id-refresh",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "dev_bundle_url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "dev_only" : {
+                      "type" : "boolean"
+                    },
+                    "display_name" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "icon" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "identifier" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "manifest" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "metabase_version" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "status" : {
+                      "enum" : [ "active", "error" ],
+                      "type" : "string"
+                    },
+                    "updated_at" : { }
+                  },
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/custom-viz-plugin/{id}/refresh",
+        "tags" : [ "/api/ee/custom-viz-plugin" ]
+      }
+    },
     "/api/ee/data-complexity-score/complexity" : {
       "get" : {
-        "description" : "Return the current Data Complexity Score for this instance.\n  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent\n  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db\n  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered\n  deployment each node can still run one pass concurrently.",
+        "description" : "Return the most recently stored Data Complexity Score for this instance.\n  Pass `force-recalculation=true` to recompute, persist, and return a fresh score.\n  Superuser-only.",
         "operationId" : "get-api-ee-data-complexity-score-complexity",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "force-recalculation",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "content" : {
@@ -25065,7 +26406,7 @@
                       "properties" : {
                         "components" : {
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25096,7 +26437,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25127,7 +26468,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25158,7 +26499,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25189,7 +26530,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25221,7 +26562,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ],
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ],
                           "type" : "object"
                         },
                         "total" : {
@@ -25238,38 +26579,39 @@
                     },
                     "meta" : {
                       "properties" : {
-                        "embedding-model" : {
+                        "calculated_at" : { },
+                        "embedding_model" : {
                           "oneOf" : [ {
                             "properties" : {
-                              "model-name" : {
+                              "model_name" : {
                                 "type" : "string"
                               },
                               "provider" : {
                                 "type" : "string"
                               }
                             },
-                            "required" : [ "provider", "model-name" ],
+                            "required" : [ "provider", "model_name" ],
                             "type" : "object"
                           }, {
                             "type" : "null"
                           } ]
                         },
-                        "formula-version" : {
+                        "formula_version" : {
                           "minimum" : 1,
                           "type" : "integer"
                         },
-                        "synonym-threshold" : {
+                        "synonym_threshold" : {
                           "type" : "number"
                         }
                       },
-                      "required" : [ "formula-version", "synonym-threshold" ],
+                      "required" : [ "formula_version", "synonym_threshold" ],
                       "type" : "object"
                     },
                     "metabot" : {
                       "properties" : {
                         "components" : {
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25300,7 +26642,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25331,7 +26673,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25362,7 +26704,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25393,7 +26735,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25425,7 +26767,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ],
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ],
                           "type" : "object"
                         },
                         "total" : {
@@ -25444,7 +26786,7 @@
                       "properties" : {
                         "components" : {
                           "properties" : {
-                            "entity-count" : {
+                            "entity_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25475,7 +26817,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "field-count" : {
+                            "field_count" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25506,7 +26848,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "name-collisions" : {
+                            "name_collisions" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25537,7 +26879,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "repeated-measures" : {
+                            "repeated_measures" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25568,7 +26910,7 @@
                                 "type" : "object"
                               } ]
                             },
-                            "synonym-pairs" : {
+                            "synonym_pairs" : {
                               "anyOf" : [ {
                                 "additionalProperties" : false,
                                 "properties" : {
@@ -25600,7 +26942,7 @@
                               } ]
                             }
                           },
-                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ],
+                          "required" : [ "entity_count", "name_collisions", "synonym_pairs", "field_count", "repeated_measures" ],
                           "type" : "object"
                         },
                         "total" : {
@@ -25643,7 +26985,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.publish-table-selectors"
               }
             }
           }
@@ -27017,6 +28359,586 @@
         },
         "summary" : "GET /api/ee/logs/query_execution/{yyyy-mm}",
         "tags" : [ "/api/ee/logs" ]
+      }
+    },
+    "/api/ee/metabot-analytics/conversations" : {
+      "get" : {
+        "description" : "Return paginated list of AI conversations with summary statistics.",
+        "operationId" : "get-api-ee-metabot-analytics-conversations",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "sort_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "enum" : [ "created_at", "message_count", "total_tokens" ],
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_dir",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "enum" : [ "asc", "desc" ],
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "user_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "group_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenant_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "date",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "properties" : {
+                          "assistant_message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "conversation_id" : {
+                            "description" : "value must be a valid UUID.",
+                            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                            "type" : "string"
+                          },
+                          "created_at" : {
+                            "format" : "date-time",
+                            "type" : "string"
+                          },
+                          "embedding_hostname" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "embedding_path" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "ip_address" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "last_message_at" : {
+                            "oneOf" : [ {
+                              "format" : "date-time",
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "profile_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "query_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "sanitized_user_agent" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "search_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "summary" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "total_tokens" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "user" : {
+                            "oneOf" : [ {
+                              "properties" : {
+                                "email" : {
+                                  "type" : "string"
+                                },
+                                "first_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "id" : {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "minimum" : 1,
+                                  "type" : "integer"
+                                },
+                                "last_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                }
+                              },
+                              "required" : [ "id", "email", "first_name", "last_name" ],
+                              "type" : "object"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_agent" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/metabot-analytics/conversations",
+        "tags" : [ "/api/ee/metabot-analytics" ]
+      }
+    },
+    "/api/ee/metabot-analytics/conversations/{id}" : {
+      "get" : {
+        "description" : "Return full details for a specific conversation including all messages.",
+        "operationId" : "get-api-ee-metabot-analytics-conversations-id",
+        "parameters" : [ {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "chat_messages" : {
+                      "items" : {
+                        "properties" : { },
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                      "type" : "string"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "embedding_hostname" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "embedding_path" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "feedback" : {
+                      "items" : {
+                        "properties" : {
+                          "created_at" : {
+                            "format" : "date-time",
+                            "type" : "string"
+                          },
+                          "external_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "freeform_feedback" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "issue_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "positive" : {
+                            "type" : "boolean"
+                          },
+                          "updated_at" : {
+                            "format" : "date-time",
+                            "type" : "string"
+                          },
+                          "user" : {
+                            "oneOf" : [ {
+                              "properties" : {
+                                "email" : {
+                                  "type" : "string"
+                                },
+                                "first_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                },
+                                "id" : {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "minimum" : 1,
+                                  "type" : "integer"
+                                },
+                                "last_name" : {
+                                  "oneOf" : [ {
+                                    "type" : "string"
+                                  }, {
+                                    "type" : "null"
+                                  } ]
+                                }
+                              },
+                              "required" : [ "id", "email", "first_name", "last_name" ],
+                              "type" : "object"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "id", "message_id", "user_id", "external_id", "positive", "issue_type", "freeform_feedback", "created_at", "updated_at" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "ip_address" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "message_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "profile_id" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "queries" : {
+                      "items" : {
+                        "properties" : {
+                          "call_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "database_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "mbql" : {
+                            "oneOf" : [ {
+                              "properties" : { },
+                              "type" : "object"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "query_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "query_type" : {
+                            "enum" : [ "sql", "notebook" ],
+                            "type" : "string"
+                          },
+                          "sql" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "tables" : {
+                            "items" : {
+                              "type" : "string"
+                            },
+                            "type" : "array"
+                          },
+                          "tool" : {
+                            "enum" : [ "construct_notebook_query", "create_sql_query", "edit_sql_query", "replace_sql_query" ],
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "tool", "call_id", "message_id", "query_id", "query_type", "sql", "mbql", "display", "database_id", "tables" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "query_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "sanitized_user_agent" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "search_count" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "slack_permalink" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "summary" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total_tokens" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "user" : {
+                      "oneOf" : [ {
+                        "properties" : {
+                          "email" : {
+                            "type" : "string"
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "minimum" : 1,
+                            "type" : "integer"
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name" ],
+                        "type" : "object"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_agent" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/metabot-analytics/conversations/{id}",
+        "tags" : [ "/api/ee/metabot-analytics" ]
       }
     },
     "/api/ee/metabot/usage" : {
@@ -29410,6 +31332,69 @@
         "tags" : [ "/api/ee/serialization" ]
       }
     },
+    "/api/ee/serialization/metadata/export" : {
+      "post" : {
+        "description" : "Get warehouse metadata (databases, tables, and fields) for all databases visible to the\n  current user. References between rows are emitted as raw numeric ids (`db_id`,\n  `table_id`, `parent_id`, `fk_target_field_id`).\n\n  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`\n  query parameters — they all default to `false`. The response is streamed for efficiency\n  with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
+        "operationId" : "post-api-ee-serialization-metadata-export",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "with-databases",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-tables",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "with-fields",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.serialization.schema.export-metadata-response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/serialization/metadata/export",
+        "tags" : [ "/api/ee/serialization" ]
+      }
+    },
     "/api/ee/stale/{id}" : {
       "get" : {
         "description" : "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:\n  - `before_date` - only return entities that were last edited before this date (default: 6 months ago)\n  - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)\n  - `sort_column` - the column to sort by (default: name)\n  - `sort_direction` - the direction to sort by (default: asc)",
@@ -31551,6 +33536,64 @@
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/field/table-ids" : {
+      "post" : {
+        "description" : "Get unique Table IDs for a list of Field IDs.",
+        "operationId" : "post-api-field-table-ids",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "field_ids" : {
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "type" : "array"
+                  }
+                },
+                "required" : [ "field_ids" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "table_ids" : {
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "table_ids" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/field/table-ids",
+        "tags" : [ "/api/field" ]
+      }
+    },
     "/api/field/{id}" : {
       "get" : {
         "description" : "Get `Field` with ID.",
@@ -32436,10 +34479,10 @@
         "tags" : [ "/api/ldap" ]
       }
     },
-    "/api/llm/extract-tables" : {
+    "/api/llm/extract-sources" : {
       "post" : {
-        "description" : "Parse SQL and return referenced tables with their columns.\n\n   Uses Macaw to parse the SQL, resolves table names to IDs,\n   and returns permission-filtered tables with column metadata.\n\n   This is a lightweight endpoint that does not trigger fingerprinting\n   or field value fetching.",
-        "operationId" : "post-api-llm-extract-tables",
+        "description" : "Parse native query sources and return referenced tables and cards/models.\n\n    Uses Macaw to parse the SQL, resolves table names to IDs,\n    and returns permission-filtered tables with column metadata. Card and model\n    references are extracted from native query template tags.\n\n    This is a lightweight endpoint that does not trigger fingerprinting\n    or field value fetching.",
+        "operationId" : "post-api-llm-extract-sources",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -32452,6 +34495,22 @@
                   },
                   "sql" : {
                     "type" : "string"
+                  },
+                  "template_tags" : {
+                    "additionalProperties" : {
+                      "properties" : {
+                        "card-id" : {
+                          "minimum" : 1,
+                          "type" : "integer"
+                        },
+                        "type" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "type" ],
+                      "type" : "object"
+                    },
+                    "type" : "object"
                   }
                 },
                 "required" : [ "database_id", "sql" ],
@@ -32466,6 +34525,13 @@
               "application/json" : {
                 "schema" : {
                   "properties" : {
+                    "card_ids" : {
+                      "items" : {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "type" : "array"
+                    },
                     "tables" : {
                       "items" : {
                         "properties" : {
@@ -32553,7 +34619,7 @@
                       "type" : "array"
                     }
                   },
-                  "required" : [ "tables" ],
+                  "required" : [ "tables", "card_ids" ],
                   "type" : "object"
                 }
               }
@@ -32567,7 +34633,7 @@
             "description" : "Server error response"
           }
         },
-        "summary" : "POST /api/llm/extract-tables",
+        "summary" : "POST /api/llm/extract-sources",
         "tags" : [ "/api/llm" ]
       }
     },
@@ -33388,6 +35454,169 @@
         "tags" : [ "/api/metabot" ]
       }
     },
+    "/api/metabot/conversations" : {
+      "get" : {
+        "description" : "List conversations visible in the current user's history, most-recent first.\n\n  New conversations are participation-based (the user authored at least one\n  message); legacy conversations created before message authors were stamped\n  fall back to the conversation originator.",
+        "operationId" : "get-api-metabot-conversations",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "properties" : {
+                          "conversation_id" : {
+                            "description" : "value must be a valid UUID.",
+                            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                            "type" : "string"
+                          },
+                          "created_at" : {
+                            "format" : "date-time",
+                            "type" : "string"
+                          },
+                          "last_message_at" : {
+                            "oneOf" : [ {
+                              "format" : "date-time",
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "message_count" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "minimum" : 0,
+                            "type" : "integer"
+                          },
+                          "summary" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "user_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be an integer greater than zero.",
+                              "minimum" : 1,
+                              "type" : "integer"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "conversation_id", "created_at", "summary", "user_id", "message_count", "last_message_at" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "minimum" : 0,
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/conversations",
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}" : {
+      "get" : {
+        "description" : "Return a single conversation with its flattened chat messages.\n\n  Accessible to any participant in the conversation or to any superuser.",
+        "operationId" : "get-api-metabot-conversations-id",
+        "parameters" : [ {
+          "description" : "value must be a valid UUID.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "chat_messages" : {
+                      "items" : {
+                        "properties" : { },
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    },
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                      "type" : "string"
+                    },
+                    "created_at" : {
+                      "format" : "date-time",
+                      "type" : "string"
+                    },
+                    "summary" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "minimum" : 1,
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "summary", "user_id", "chat_messages" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/metabot/conversations/{id}",
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
     "/api/metabot/document/generate-content" : {
       "post" : {
         "description" : "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent.",
@@ -33498,14 +35727,42 @@
     },
     "/api/metabot/feedback" : {
       "post" : {
-        "description" : "Proxy Metabot feedback to Harbormaster, adding the premium embedding token.",
+        "description" : "Persist Metabot feedback.",
         "operationId" : "post-api-metabot-feedback",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
-                "properties" : { },
+                "properties" : {
+                  "freeform_feedback" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "issue_type" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "message_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "positive" ],
                 "type" : "object"
               }
             }
@@ -33513,6 +35770,22 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -34164,6 +36437,75 @@
         },
         "summary" : "PUT /api/metabot/slack/settings",
         "tags" : [ "/api/metabot/slack" ]
+      }
+    },
+    "/api/metabot/source-feedback" : {
+      "post" : {
+        "description" : "Persist Metabot source feedback.",
+        "operationId" : "post-api-metabot-source-feedback",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "message_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "metabot_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "positive" : {
+                    "type" : "boolean"
+                  },
+                  "source_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "source_type" : {
+                    "enum" : [ "table", "card", "model" ],
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/metabot/source-feedback",
+        "tags" : [ "/api/metabot" ]
       }
     },
     "/api/metric" : {
@@ -40792,6 +43134,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_authority" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
@@ -41704,6 +44055,83 @@
           }
         },
         "summary" : "POST /api/testing/metabot/seed-ai-usage",
+        "tags" : [ "/api/testing" ]
+      }
+    },
+    "/api/testing/metabot/seed-usage-auditing" : {
+      "post" : {
+        "description" : "Seed deterministic Metabot conversation, message, and token usage rows for the usage auditing E2E charts.",
+        "operationId" : "post-api-testing-metabot-seed-usage-auditing",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "second_tenant_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "second_user_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "tenant_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "user_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  }
+                },
+                "required" : [ "user_id", "second_user_id" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "date" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "inserted" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "inserted", "date" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/testing/metabot/seed-usage-auditing",
         "tags" : [ "/api/testing" ]
       }
     },
@@ -43783,6 +46211,9 @@
                   "items" : {
                     "additionalProperties" : false,
                     "properties" : {
+                      "active" : {
+                        "type" : "boolean"
+                      },
                       "built_in_type" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -43896,7 +46327,7 @@
                       },
                       "updated_at" : { }
                     },
-                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                    "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                     "type" : "object"
                   },
                   "type" : "array"
@@ -43967,6 +46398,9 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "built_in_type" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -44080,7 +46514,7 @@
                     },
                     "updated_at" : { }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "type" : "object"
                 }
               }
@@ -44095,6 +46529,58 @@
           }
         },
         "summary" : "POST /api/transform-job",
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/active" : {
+      "put" : {
+        "description" : "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs\n  via `POST /api/transform-job/:job-id/run` ignore this flag.\n\n  Reports per-job outcome counts: `:updated` (successfully flipped) and `:failed` (raised an\n  error during the flip — the row update or Quartz write failed and was logged).",
+        "operationId" : "put-api-transform-job-active",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "active" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "failed" : {
+                      "type" : "integer"
+                    },
+                    "updated" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "updated", "failed" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/transform-job/active",
         "tags" : [ "/api/transform-job" ]
       }
     },
@@ -44146,6 +46632,9 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "built_in_type" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -44259,7 +46748,7 @@
                     },
                     "updated_at" : { }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "type" : "object"
                 }
               }
@@ -44294,6 +46783,9 @@
             "application/json" : {
               "schema" : {
                 "properties" : {
+                  "active" : {
+                    "type" : "boolean"
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "minLength" : 1,
@@ -44335,6 +46827,9 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
                     "built_in_type" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -44448,7 +46943,7 @@
                     },
                     "updated_at" : { }
                   },
-                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "entity_id", "created_at", "updated_at" ],
+                  "required" : [ "id", "name", "description", "schedule", "ui_display_type", "active", "entity_id", "created_at", "updated_at" ],
                   "type" : "object"
                 }
               }

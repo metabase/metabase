@@ -340,7 +340,7 @@
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)
-          ;; Portable representations YAML for the card's **own** saved query body.
+          ;; Portable representations JSON for the card's **own** saved query body.
           ;;
           ;; We deliberately export `dataset-query` (the real, normalised MBQL/legacy body
           ;; of the card) rather than `card-query`. `lib/query metadata-provider
@@ -359,15 +359,10 @@
           ;; Returns `nil` (so `m/assoc-some` drops the key) for cards whose
           ;; `dataset_query` can't be exported, e.g. unusual / partially-broken legacy
           ;; queries; the rest of the payload is still useful.
-          :query_yaml (when dataset-query
-                        (try
-                          (repr.resolve/export-query-yaml
-                           metadata-provider
-                           (lib/query metadata-provider (lib-be/normalize-query dataset-query)))
-                          (catch Exception e
-                            (log/debug e "Failed to render card dataset_query as repr YAML"
-                                       {:card-id id})
-                            nil)))
+          :query_json (when dataset-query
+                        (repr.resolve/try-export-query
+                         metadata-provider
+                         (lib/query metadata-provider (lib-be/normalize-query dataset-query))))
           :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
@@ -489,11 +484,11 @@
                             mp      (lib-be/application-database-metadata-provider (:database_id card))
                             details (card-details card mp options)]
                         (-> details
-                            ;; `:query_yaml` is intentionally part of the slim payload here:
+                            ;; `:query_json` is intentionally part of the slim payload here:
                             ;; it's what `question->xml` renders inside `<metabase_question>`
-                            ;; so the LLM sees the saved card's body in the same
-                            ;; representations YAML form `construct_notebook_query` consumes.
-                            (select-keys [:id :type :description :name :verified :query_yaml])
+                            ;; so the LLM sees the saved card's body in the same portable
+                            ;; representations JSON form `construct_notebook_query` consumes.
+                            (select-keys [:id :type :description :name :verified :query_json])
                             (assoc :result-columns (:fields details))
                             (m/assoc-some :average_query_time (:average_query_time card)
                                           :display (:display card))))

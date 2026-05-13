@@ -15,8 +15,8 @@ Base path: /api/agent
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
   inspect a metric's dimensions, and reference the metric in a representations
-  YAML query as `aggregation: [[metric, {}, <portable_entity_id>]]` (see the
-  representations format reference linked from /v2/construct-query).
+  JSON query as `"aggregation": [["metric", {}, "<portable_entity_id>"]]` (see
+  the representations format reference linked from /v2/construct-query).
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
@@ -286,21 +286,22 @@ Response:
 
 ### POST /v2/construct-query
 
-Construct an MBQL query from a representations YAML payload. Returns a
+Construct an MBQL query from a representations JSON payload. Returns a
 base64-encoded query string to pass to `/v1/execute`.
 
 #### Request body
 
 ```json
-{"query": "<yaml-string>"}
+{"query": <external-query-object>}
 ```
 
-The `query` value is a YAML string in Metabase's canonical MBQL 5
-*representations format* — a self-describing serialization that uses portable
-FKs (`[<db-name>, <schema>, <table-name>, <column-name>]`) instead of numeric
-IDs, encodes operators as `[<name>, <opts-map>, <args>...]` clauses, and
-derives the application database from the first stage's `source-table:` /
-`source-card:`. There is **no** auxiliary `source_entity` envelope, and no
+The `query` value is a JSON object matching `::lib.schema/external-query` —
+Metabase's canonical MBQL 5 *portable representations format*, a
+self-describing serialization that uses portable FKs
+(`["<db-name>", "<schema>", "<table-name>", "<column-name>"]`) instead of
+numeric IDs, encodes operators as `["<name>", {opts}, <args>...]` clauses, and
+derives the application database from the first stage's `source-table` /
+`source-card`. There is **no** auxiliary `source_entity` envelope, and no
 standalone integer IDs.
 
 The full format reference — including every operator (filters, aggregations,
@@ -312,20 +313,22 @@ tool prompt:
 
 Minimal example:
 
-```yaml
-lib/type: mbql/query
-stages:
-  - lib/type: mbql.stage/mbql
-    source-table: ['Sample Database', PUBLIC, ORDERS]
-    aggregation:
-      - [sum, {}, [field, {}, ['Sample Database', PUBLIC, ORDERS, TOTAL]]]
-    breakout:
-      - [field, {}, ['Sample Database', PUBLIC, PEOPLE, STATE]]
-    limit: 100
+```json
+{
+  "query": {
+    "lib/type": "mbql/query",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+        "breakout":    [["field", {}, ["Sample Database", "PUBLIC", "PEOPLE", "STATE"]]],
+        "limit": 100
+      }
+    ]
+  }
+}
 ```
-
-You never construct the JSON envelope and the YAML separately — the request
-body is just `{"query": "<the YAML above, as a single string>"}`.
 
 #### Response
 
@@ -340,7 +343,7 @@ as opaque.
 #### Error responses
 
 The representations pipeline distinguishes user-facing input errors (the
-LLM-/agent-authored YAML can't be resolved or doesn't validate) from internal
+LLM-/agent-authored query can't be resolved or doesn't validate) from internal
 failures. Input errors are returned as `400 Bad Request` with the originating
 ex-data fields surfaced in the body — most commonly `error`, `path`, and
 `candidates`. Examples:
@@ -364,8 +367,8 @@ Combined construct-and-execute endpoint with built-in pagination via
 continuation tokens.
 
 The request body is either:
-- A representations YAML payload (`{"query": "<yaml>"}`, same shape as
-  `/v2/construct-query`), **or**
+- A representations JSON payload (`{"query": <external-query-object>}`, same
+  shape as `/v2/construct-query`), **or**
 - A continuation token from a previous response: `{"continuation_token": "..."}`.
 
 Pagination is automatic. The per-page row limit is taken from the query's
@@ -462,12 +465,12 @@ Row limits:
    schema / portable-FK info needed to write a query
 3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
    you need to know valid filter values or field statistics
-4. **Build query** — POST /v2/construct-query with a representations YAML
-   payload (`{"query": "<yaml>"}`); see the `construct_notebook_query` tool
-   prompt for the format reference
+4. **Build query** — POST /v2/construct-query with a representations JSON
+   payload (`{"query": <external-query-object>}`); see the
+   `construct_notebook_query` tool prompt for the format reference
 5. **Execute** — POST /v1/execute with the base64-encoded query, or use
    POST /v2/query to construct and execute in one round-trip with pagination
-6. **Iterate** — Adjust the YAML and repeat steps 4-5
+6. **Iterate** — Adjust the query and repeat steps 4-5
 
 ## Error handling
 
@@ -475,7 +478,7 @@ Row limits:
 |-------------|----------------------------------------------------------------------|
 | 200         | Success (GET endpoints, construct-query)                             |
 | 202         | Success (execute / query — streaming response)                       |
-| 400         | Invalid representations YAML (validation, repair, or resolution failure; `:agent-error?` paths) |
+| 400         | Invalid representations query (validation, repair, or resolution failure; `:agent-error?` paths) |
 | 401         | Authentication failure                                               |
 | 403         | Insufficient permissions                                             |
 | 404         | Entity not found (GET endpoints only)                                |

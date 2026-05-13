@@ -13,6 +13,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
@@ -370,10 +371,11 @@
 
 (mr/def ::construct-query-request
   "Request body for /v2/construct-query and the fresh-query branch of /v2/query.
-  A single `:query` key whose value is a YAML string in the canonical Metabase MBQL 5
-  representations format. The YAML is fully self-describing: the database is derived from
-  the first stage's `source-table:` or `source-card:`, all field references are portable
-  FKs (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary
+  A single `:query` key whose value is a JSON object matching
+  [[metabase.lib.schema/external-query]] — the canonical portable MBQL 5 wire format. The
+  query is fully self-describing: the database is derived from the first stage's
+  `source-table:` or `source-card:`, all field references are portable FKs
+  (`[<db-name>, <schema>, <table-name>, <column-name>]`), and there is no auxiliary
   `source_entity` / `referenced_entities` envelope. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the full format reference
   (including operators, joins, expressions, multi-stage queries, and FK conventions).
@@ -382,11 +384,12 @@
   `referenced_entities` envelope from before the repr migration) are rejected with a 400 so
   callers don't silently send fields the server ignores."
   [:map {:closed true}
-   [:query {:tool/description (str "A YAML string containing a Metabase MBQL 5 query in the "
-                                   "canonical representations format \u2014 see the "
+   [:query {:tool/description (str "A Metabase MBQL 5 query in the canonical portable "
+                                   "representations format (JSON object matching "
+                                   "::lib.schema/external-query). See the "
                                    "construct_notebook_query tool documentation for the format "
                                    "reference.")}
-    ms/NonBlankString]])
+    ::lib.schema/external-query]])
 
 (def ^:private construct-query-prompt-max-length
   10000)
@@ -415,42 +418,43 @@
    [:query ms/NonBlankString]
    [:prompt {:optional true} ConstructQueryPrompt]])
 
-(defn- evaluate-yaml-to-live-query
-  "Run the representations pipeline (parse → repair → validate → resolve) on a YAML
-  request body and return the resolved MBQL 5 lib query (with `:lib/metadata` attached).
-  The pipeline raises `:agent-error?` ex-data on any LLM-input failure (unknown DB,
-  unknown table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]]
-  surfaces them with the appropriate 4xx status code instead of a 500."
+(defn- evaluate-external-query-to-live-query
+  "Run the representations pipeline (validate → convert → repair → resolve) on a request body
+  and return the resolved MBQL 5 lib query (with `:lib/metadata` attached).
+
+  The pipeline raises `:agent-error?` ex-data on any LLM-input failure (unknown DB, unknown
+  table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
+  them with the appropriate 4xx status code instead of a 500."
   [body]
   (-> (metabot-construct/execute-representations-query (:query body))
       (get-in [:structured-output :query])))
 
-(defn- evaluate-yaml-for-execution
-  "Evaluate a YAML request body and return a plain MBQL 5 query map suitable for
-  serialization into a continuation token and execution by the QP."
+(defn- evaluate-external-query-for-execution
+  "Evaluate a request body and return a plain MBQL 5 query map suitable for serialization into
+  a continuation token and execution by the QP."
   [body]
-  (lib/prepare-for-serialization (evaluate-yaml-to-live-query body)))
+  (lib/prepare-for-serialization (evaluate-external-query-to-live-query body)))
 
 (api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
-  "Construct an MBQL query from a Metabase representations YAML string.
+  "Construct an MBQL query from a portable MBQL 5 representations JSON payload.
 
-  The body is `{\"query\": \"<yaml>\"}` where the YAML is a self-describing MBQL 5 query
-  in the canonical representations format \u2014 see the `construct_notebook_query` tool
+  The body is `{\"query\": <external-query>}` where `<external-query>` is a JSON object
+  matching `::lib.schema/external-query` \u2014 see the `construct_notebook_query` tool
   documentation for the format reference. Returns a base64-encoded MBQL query that can be
   executed via /v1/execute or paginated via /v2/query."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a Metabase query from a YAML string in the canonical "
-                             "representations format. The body is `{\"query\": \"<yaml>\"}`; "
-                             "see the construct_notebook_query tool for the YAML format "
-                             "reference (operators, joins, expressions, multi-stage queries, "
-                             "portable FKs). Returns an opaque query string that can be "
-                             "executed with execute_query.")
+           :description (str "Construct a Metabase query from a portable MBQL 5 representations "
+                             "JSON payload. The body is `{\"query\": <external-query>}`; see "
+                             "the construct_notebook_query tool for the JSON format reference "
+                             "(operators, joins, expressions, multi-stage queries, portable "
+                             "FKs). Returns an opaque query string that can be executed with "
+                             "execute_query.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    body :- ::construct-query-request]
-  (let [query (evaluate-yaml-for-execution body)]
+  (let [query (evaluate-external-query-for-execution body)]
     {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
@@ -535,7 +539,7 @@
                        :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
-  "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <yaml>}`,
+  "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,
   same shape as /v2/construct-query) or a `:continuation_token` from a prior response.
 
   Both branches are closed maps: extra top-level keys (e.g. the legacy
@@ -548,23 +552,24 @@
 
 (defn- initial-page-state
   "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
-   shape. A fresh YAML body is evaluated through the representations pipeline and the
+   shape. A fresh request body is evaluated through the representations pipeline and the
    total-row budget is derived from the resolved query's `:limit`; a continuation token
    carries that state from a prior response."
   [body]
   (if-let [token (:continuation_token body)]
     (let [{:keys [query pagination]} (decode-continuation-token token)]
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
-    (let [live-query (evaluate-yaml-to-live-query body)]
+    (let [live-query (evaluate-external-query-to-live-query body)]
       {:query       (lib/prepare-for-serialization live-query)
        :total-limit (total-row-limit live-query)
        :page        1})))
 
 (api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
-  "Execute a representations YAML query and stream the results, with continuation-token pagination.
+  "Execute a portable MBQL 5 representations JSON query and stream the results, with
+  continuation-token pagination.
 
-  Accepts either a YAML body (same shape as /v2/construct-query) or a `continuation_token`
+  Accepts either a JSON body (same shape as /v2/construct-query) or a `continuation_token`
   from a previous response. Returns results with column metadata and an optional
   `continuation_token` for fetching the next page."
   {:scope "agent:query"
@@ -573,10 +578,11 @@
            :description (str "Execute a Metabase query and return results with column "
                              "metadata. If more rows are available, the response includes a "
                              "continuation_token — pass it back to get the next page.\n\n"
-                             "The body is either `{\"query\": \"<yaml>\"}` (a representations "
-                             "YAML query, same format as construct_query; see the "
-                             "construct_notebook_query tool for the YAML format reference) or "
-                             "`{\"continuation_token\": \"...\"}` from a previous response.")
+                             "The body is either `{\"query\": <external-query>}` (a portable "
+                             "MBQL 5 representations JSON query, same format as construct_query; "
+                             "see the construct_notebook_query tool for the JSON format "
+                             "reference) or `{\"continuation_token\": \"...\"}` from a previous "
+                             "response.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params

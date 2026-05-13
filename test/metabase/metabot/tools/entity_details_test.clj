@@ -355,8 +355,8 @@
             (is (= card-id (:id output)))
             (is (= card-eid (:portable_entity_id output)))))))))
 
-(deftest card-details-exposes-query-yaml-structured-test
-  (testing "card-details surfaces the saved structured query as portable representations YAML"
+(deftest card-details-exposes-query-json-structured-test
+  (testing "card-details surfaces the saved structured query as a portable representations map"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {card-id :id}
@@ -367,16 +367,16 @@
                                                               :breakout    [$price]})}]
           (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
                            :structured-output)
-                yaml   (:query_yaml output)]
-            (is (string? yaml)
-                "`:query_yaml` is present for an MBQL question")
-            (is (re-find #"lib/type: mbql/query" yaml))
+                exported (:query_json output)]
+            (is (map? exported)
+                "`:query_json` is present for an MBQL question")
+            (is (= "mbql/query" (get exported "lib/type")))
             ;; Portable FK paths use the human-readable database name, not numeric ids.
-            (is (re-find #"source-table:" yaml))
-            (is (not (re-find #":lib/metadata" yaml)))))))))
+            (is (vector? (get-in exported ["stages" 0 "source-table"])))
+            (is (not (contains? exported "lib/metadata")))))))))
 
-(deftest card-details-exposes-query-yaml-native-test
-  (testing "card-details surfaces native saved queries as repr YAML, preserving the SQL inside"
+(deftest card-details-exposes-query-json-native-test
+  (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {card-id :id}
@@ -388,16 +388,17 @@
                                         :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}]
           (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
                            :structured-output)
-                yaml   (:query_yaml output)]
-            (is (string? yaml))
-            (is (re-find #"lib/type: mbql/query" yaml))
-            (is (re-find #"mbql.stage/native" yaml)
+                exported (:query_json output)]
+            (is (map? exported))
+            (is (= "mbql/query" (get exported "lib/type")))
+            (is (= "mbql.stage/native" (get-in exported ["stages" 0 "lib/type"]))
                 "native stage is exported in the canonical repr form, not as a bare SQL string")
-            (is (re-find #"SELECT \* FROM VENUES" yaml)
+            (is (= "SELECT * FROM VENUES LIMIT 5"
+                   (get-in exported ["stages" 0 "native"]))
                 "the SQL body itself is preserved verbatim inside `native:`")))))))
 
-(deftest get-report-details-includes-query-yaml-test
-  (testing "get-report-details (slim payload) carries `:query_yaml` so question->xml can render it"
+(deftest get-report-details-includes-query-json-test
+  (testing "get-report-details (slim payload) carries `:query_json` so question->xml can render it"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {card-id :id}
@@ -407,5 +408,5 @@
                         :dataset_query (mt/mbql-query venues {:limit 3})}]
           (let [output (-> (entity-details/get-report-details {:report-id card-id})
                            :structured-output)]
-            (is (string? (:query_yaml output)))
-            (is (re-find #"lib/type: mbql/query" (:query_yaml output)))))))))
+            (is (map? (:query_json output)))
+            (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))

@@ -7,8 +7,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.test :as mt]
-   [metabase.util.yaml :as yaml]))
+   [metabase.test :as mt]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -117,11 +116,11 @@
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
-    (let [yaml-captured (atom nil)
+    (let [query-captured (atom nil)
           chart-called  (atom nil)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                  (fn [yaml-string]
-                                    (reset! yaml-captured yaml-string)
+                                  (fn [external-query]
+                                    (reset! query-captured external-query)
                                     {:structured-output {:query-id "q-1"
                                                          :query {:database 1}
                                                          :result-columns []}
@@ -135,17 +134,15 @@
                                                                      :query-id (:query-id args)
                                                                      :reactions [{:type :metabot.reaction/redirect
                                                                                   :url "/question#hash"}]})]
-        (let [yaml-input (yaml/generate-string
-                          {"lib/type" "mbql/query"
-                           "database" "Sample"
-                           "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                        "aggregation"  [["count" {}]]}]})
+        (let [query-input {:lib/type "mbql/query"
+                           :stages   [{:lib/type     "mbql.stage/mbql"
+                                       :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                       :aggregation  [["count" {}]]}]}
               result (agent-tools/construct-notebook-query-tool
                       {:reasoning     "check seats"
-                       :query         yaml-input
+                       :query         query-input
                        :visualization {:chart_type "table"}})]
-          (is (= yaml-input @yaml-captured))
+          (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))

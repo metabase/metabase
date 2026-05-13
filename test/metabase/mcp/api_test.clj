@@ -526,11 +526,10 @@
         (let [[session-id _] (initialize!)
               orders-id      (mt/id :orders)
               db-name        (t2/select-one-fn :name :model/Database (mt/id))
-              orders-yaml    (str "lib/type: mbql/query\n"
-                                  "stages:\n"
-                                  "  - lib/type: mbql.stage/mbql\n"
-                                  (format "    source-table: ['%s', PUBLIC, ORDERS]\n" db-name)
-                                  "    limit: 5\n")
+              orders-query   {:lib/type "mbql/query"
+                              :stages   [{:lib/type     "mbql.stage/mbql"
+                                          :source-table [db-name "PUBLIC" "ORDERS"]
+                                          :limit        5}]}
               ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
               ;; assertion in `call-tool` fails partway through the sequence.
               question-id    (atom nil)
@@ -547,8 +546,8 @@
                                             {:id (:id metric) :field-id (str metric-fid)})
                   _              (call-tool session-id "search" {:term_queries ["orders"]})
                   ;; Query construction + execution
-                  construct-data (call-tool session-id "construct_query" {:query orders-yaml})
-                  _              (call-tool session-id "query" {:query orders-yaml})
+                  construct-data (call-tool session-id "construct_query" {:query orders-query})
+                  _              (call-tool session-id "query" {:query orders-query})
                   _              (call-tool session-id "execute_query"
                                             {:query_handle (:query_handle construct-data)})
                   ;; Write tools — record IDs as soon as they're known so the `finally` block
@@ -582,12 +581,11 @@
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
               db-name        (t2/select-one-fn :name :model/Database (mt/id))
-              yaml           (str "lib/type: mbql/query\n"
-                                  "stages:\n"
-                                  "  - lib/type: mbql.stage/mbql\n"
-                                  (format "    source-table: ['%s', PUBLIC, ORDERS]\n" db-name)
-                                  "    limit: 5\n")
-              construct-data (call-tool session-id "construct_query" {:query yaml})
+              external-query {:lib/type "mbql/query"
+                              :stages   [{:lib/type     "mbql.stage/mbql"
+                                          :source-table [db-name "PUBLIC" "ORDERS"]
+                                          :limit        5}]}
+              construct-data (call-tool session-id "construct_query" {:query external-query})
               execute-data   (call-tool session-id "execute_query"
                                         {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")

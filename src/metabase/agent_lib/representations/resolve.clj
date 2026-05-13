@@ -4,20 +4,35 @@
 
   Pipeline:
 
-    1. **keywordize** string keys on the representations query. LLM writes \"lib/type\",
-       \"source-table\", \"temporal-unit\" as YAML strings; lib-level MBQL expects keywords. We walk
-       the whole structure once to keywordize map keys (but leave string *values* - including
-       option values like \"month\" and clause heads like \"field\" / \"count\" - for
-       [[lib.normalize]] to convert).\n
-    2. **resolve portable FKs → numeric IDs** via `metabase.models.serialization.resolve/import-mbql`,\n       bound to a metadata-provider-backed resolver. Clause heads like `\"field\"` get converted to\n       `:field` keywords by `import-mbql` itself (per the `#{:field \"field\"}` match pattern) -\n       so by the end of this step the MBQL form has numeric ids and keywordized heads.\n\n    3. **normalize** through `lib.normalize/normalize` against `:metabase.lib.schema/query`. This:\n       * adds `:lib/uuid` to every clause;\n       * keywordizes known enum values (temporal units, base-types, join strategies);\n       * kebab-cases keys where applicable;\n       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" pMBQL that\n         can be handed to `lib.query` / the QP directly.\n\n  The output is a valid MBQL 5 query ready for the query processor."
+    1. **keywordize** string keys on the representations query. The repair pass operates on
+       string-keyed data (LLM-authored markers like `\"lib/type\"`, `\"source-table\"`,
+       `\"temporal-unit\"` flow through as strings); lib-level MBQL expects keywords. We walk the
+       structure once to keywordize map keys but leave string *values* — clause heads, option
+       values like `\"month\"`, etc. — for [[lib.normalize]] to convert.
+
+    2. **resolve portable FKs → numeric IDs** via `metabase.models.serialization.resolve/import-mbql`,
+       bound to a metadata-provider-backed resolver. Clause heads like `\"field\"` are converted
+       to `:field` keywords by `import-mbql` itself (per the `#{:field \"field\"}` match pattern),
+       so by the end of this step the MBQL form has numeric ids and keywordized heads.
+
+    3. **normalize** through `lib.normalize/normalize` against `:metabase.lib.schema/query`. This:
+       * adds `:lib/uuid` to every clause;
+       * keywordizes known enum values (temporal units, base-types, join strategies);
+       * kebab-cases keys where applicable;
+       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" pMBQL that
+         can be handed to `lib.query` / the QP directly.
+
+  The output is a valid MBQL 5 query ready for the query processor.
+
+  The inverse direction — final pMBQL back to portable form — is handled by [[export-query]];
+  the result is a Clojure map matching the external (keyword-keyed) shape, ready for JSON
+  encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
-   [metabase.agent-lib.representations :as repr]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -78,7 +93,7 @@
 ;;; ============================================================
 
 (defn- keyword->repr-string
-  "String form used by the YAML representations format for keywords."
+  "Stringify a keyword preserving its namespace, e.g. `:lib/type` → `\"lib/type\"`."
   [k]
   (if-let [ns (namespace k)]
     (str ns "/" (name k))
@@ -118,38 +133,15 @@
          (resolve/export-mbql resolver)
          portable-repr-form)))
 
-(defn parse-validate-resolve
-  "Convenience end-to-end: take a YAML string and a metadata-provider, return a fully-resolved
-  MBQL 5 query.
-
-  Pipeline: [[repr/parse-and-validate]] → [[resolve-query]]."
-  [metadata-provider ^String yaml-string]
-  (->> yaml-string
-       repr/parse-and-validate
-       (resolve-query metadata-provider)))
-
-(defn export-query-yaml
-  "Export a numeric-ID pMBQL `pmbql-query` to a portable representations YAML string ready
-  for the LLM-facing tool output.
-
-  Wraps [[export-query]] + `yaml/generate-string` with `:flow-style :block` (the same shape
-  that `construct_notebook_query` returns to the LLM, so existing-card payloads and
-  freshly-built-query payloads share one form).
-
-  Works for both structured (`mbql.stage/mbql`) and native (`mbql.stage/native`) stages -
-  this is intentional: the inverse path through `metabase.models.serialization/export-mbql`
-  resolves `:card-id` / `:snippet-id` inside `template-tags` to portable entity_ids, which is
-  the whole reason we prefer this form over a raw SQL string when the source is a native
-  card.
-
-  Returns `nil` if `pmbql-query` is nil/blank or if the export pipeline throws - the caller
-  is expected to gracefully omit the body in that case so an unusual / partially-broken
-  existing `dataset_query` doesn't break LLM context building."
+(defn try-export-query
+  "Best-effort wrapper around [[export-query]] that returns `nil` instead of throwing when the
+  export pipeline fails or `pmbql-query` is nil/blank. Used in LLM context-building paths where
+  an unusual or partially-broken existing `dataset_query` should gracefully drop out of the
+  payload rather than break the whole tool response."
   [metadata-provider pmbql-query]
   (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
     (try
-      (-> (export-query metadata-provider pmbql-query)
-          (yaml/generate-string :dumper-options {:flow-style :block}))
+      (export-query metadata-provider pmbql-query)
       (catch Exception e
-        (log/debug e "Failed to export pMBQL query to representations YAML; omitting from LLM payload")
+        (log/debug e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
         nil))))

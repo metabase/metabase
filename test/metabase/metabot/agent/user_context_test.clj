@@ -460,8 +460,8 @@
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
 
-(deftest format-transform-source-mbql-renders-repr-yaml-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as repr-YAML, not pprint'd pMBQL"
+(deftest format-transform-source-mbql-renders-repr-json-test
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [source {:type  "query"
@@ -469,13 +469,14 @@
               text   (user-context/format-transform-source
                       (assoc source :transform-source-type :query))]
           (is (string? text))
-          (is (re-find #"lib/type: mbql/query" text)
-              "output is the canonical representations YAML form, not pprint'd pMBQL")
-          (is (re-find #"source-table:" text))
-          (is (not (re-find #":lib/metadata" text))
+          (is (re-find #"```json" text)
+              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+          (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
+          (is (re-find #"\"source-table\"" text))
+          (is (not (re-find #"lib/metadata" text))
               "the metadata-provider handle never leaks to the LLM-facing payload"))))))
 
-(deftest format-transform-source-native-renders-repr-yaml-test
+(deftest format-transform-source-native-renders-repr-json-test
   (testing "native transform sources also go through the repr export so template-tags stay portable"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -486,5 +487,5 @@
               text   (user-context/format-transform-source
                       (assoc source :transform-source-type :native))]
           (is (string? text))
-          (is (re-find #"mbql.stage/native" text))
+          (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))

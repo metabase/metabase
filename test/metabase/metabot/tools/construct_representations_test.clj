@@ -2,24 +2,19 @@
   "Tests for `execute-representations-query` - the representations-format entry point for
   `construct_notebook_query`.
 
-  Covers the happy path (YAML -> resolved pMBQL wrapped in structured output), malformed YAML,
+  Covers the happy path (external-query JSON -> resolved pMBQL wrapped in structured output),
   unknown table, the `:agent-error?` error-translation contract, and the database-id
-  resolution from the YAML's `database:` field (per `repr-plan.md` step 13: unknown name,
-  ambiguous name, missing name, mismatched DB component in source-table).
-
-  Most tests express the query as a Clojure data structure and serialize it via
-  `yaml/generate-string` - the parser + validator then round-trip it back. Tests that
-  specifically exercise parser edge cases (malformed YAML, LLM-inline shortcuts) keep raw
-  YAML strings on purpose."
+  resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
+  unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]
-   [metabase.util.yaml :as yaml]))
+   [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,16 +83,19 @@
                 api/query-check                                 allow-read-check]
     (f)))
 
-(defn- query-yaml
-  "Serialize a Clojure query data structure (string-keyed, repr shape) to YAML for the tool."
-  [query-data]
-  (yaml/generate-string query-data))
+(defn- query-data
+  "Build the keyword-keyed external-query map the tool accepts. Tests author the query as a
+  string-keyed map (the form documented in earlier YAML-era tests); we walk-keywordize so the
+  call site stays terse and the namespace markers (`lib/type`, `lib/expression-name`, …) are
+  preserved by `clojure.core/keyword`."
+  [string-keyed-data]
+  (walk/keywordize-keys string-keyed-data))
 
 (deftest happy-path-test
   (with-mp-and-stubs!
     (fn []
       (let [result (construct/execute-representations-query
-                    (query-yaml
+                    (query-data
                      {"lib/type" "mbql/query"
                       "database" "Sample"
                       "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -113,43 +111,30 @@
           (is (= 1 (:database q)))
           (is (= 10 (get-in q [:stages 0 :source-table])))
           (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))
-        (testing "query-yaml is the final normalized portable representations YAML"
-          (is (string? (:query-yaml structured)))
-          ;; parse with `:keywords false` to mirror what `repr/parse-yaml` does, so we can
-          ;; assert on the *portable* string-keyed shape the YAML actually carries.
-          (let [round-tripped (yaml/parse-string (:query-yaml structured) :keywords false)]
-            (testing "YAML is exported from final pMBQL: portable/string-keyed, not numeric IDs"
-              (is (= "mbql/query" (get round-tripped "lib/type")))
-              (is (nil? (get round-tripped "lib/metadata")))
+        (testing "query-json is the final normalized portable representations map"
+          (let [exported (:query-json structured)]
+            (is (map? exported))
+            (testing "exported map is portable/string-keyed, not numeric IDs"
+              (is (= "mbql/query" (get exported "lib/type")))
+              (is (nil? (get exported "lib/metadata")))
               (is (= ["Sample" "PUBLIC" "ORDERS"]
-                     (get-in round-tripped ["stages" 0 "source-table"]))))
-            (testing "YAML includes lib-normalized UUIDs that were not present in the LLM input"
-              (is (string? (get-in round-tripped ["stages" 0 "aggregation" 0 1 "lib/uuid"]))))
-            (testing "YAML idempotency: feeding it back to the tool yields a result whose query-yaml is byte-equal"
-              (let [redo (construct/execute-representations-query (:query-yaml structured))]
-                (is (= (:query-yaml structured)
-                       (get-in redo [:structured-output :query-yaml])))))))))))
-
-(deftest malformed-yaml-surfaces-agent-error-test
-  (with-mp-and-stubs!
-    (fn []
-      (try
-        (construct/execute-representations-query
-         "not: [valid yaml")
-        (is false "expected throw")
-        (catch clojure.lang.ExceptionInfo e
-          (let [d (ex-data e)]
-            (testing "marked as an agent-error for the tool wrapper"
-              (is (true? (:agent-error? d))))
-            (testing "preserves underlying error code"
-              (is (= :invalid-representations-yaml (:error d))))))))))
+                     (get-in exported ["stages" 0 "source-table"]))))
+            (testing "exported map includes lib-normalized UUIDs that were not present in the LLM input"
+              (is (string? (get-in exported ["stages" 0 "aggregation" 0 1 "lib/uuid"]))))
+            (testing "idempotency: feeding the exported map back through the tool yields a structurally equal export"
+              ;; The exported form is string-keyed; we keywordize it back to the external-query
+              ;; shape the tool accepts.
+              (let [redo (construct/execute-representations-query
+                          (walk/keywordize-keys exported))]
+                (is (= exported
+                       (get-in redo [:structured-output :query-json])))))))))))
 
 (deftest unknown-table-surfaces-agent-error-test
   (with-mp-and-stubs!
     (fn []
       (try
         (construct/execute-representations-query
-         (query-yaml
+         (query-data
           {"lib/type" "mbql/query"
            "database" "Sample"
            "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -166,7 +151,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -187,7 +172,7 @@
     (fn []
       (try
         (construct/execute-representations-query
-         (query-yaml
+         (query-data
           {"lib/type" "mbql/query"
            "database" "Sample"
            "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -223,13 +208,13 @@
                                          :status-code  400
                                          :error        :unknown-database
                                          :database     db-name})))))]
-      (let [yaml-str (query-yaml
-                      {"lib/type" "mbql/query"
-                       "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                    "aggregation"  [["count" {}]]}]})]
+      (let [query (query-data
+                   {"lib/type" "mbql/query"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count" {}]]}]})]
         (try
-          (construct/execute-representations-query yaml-str)
+          (construct/execute-representations-query query)
           (is false "expected throw")
           (catch clojure.lang.ExceptionInfo e
             (let [d (ex-data e)]
@@ -250,25 +235,25 @@
                 "revenue desc and writes the order-by inline.")
     (with-mp-and-stubs!
       (fn []
-        (let [yaml-str (query-yaml
-                        {"lib/type" "mbql/query"
-                         "database" "Sample"
-                         "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                      "aggregation"  [["sum" {}
-                                                       ["field" {}
-                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
-                                      "breakout"     [["field" {}
-                                                       ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
-                                      "order-by"     [["desc" {}
-                                                       ["sum" {}
-                                                        ["field" {}
-                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
+        (let [query (query-data
+                     {"lib/type" "mbql/query"
+                      "database" "Sample"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "aggregation"  [["sum" {}
+                                                    ["field" {}
+                                                     ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                   "breakout"     [["field" {}
+                                                    ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                   "order-by"     [["desc" {}
+                                                    ["sum" {}
+                                                     ["field" {}
+                                                      ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
               ;; Today: `execute-representations-query` succeeds quietly here. The crash
               ;; happens later, when downstream callers (chart re-load, normalize, QP) try to
               ;; round-trip the query through legacy MBQL.
               result   (try
-                         (construct/execute-representations-query yaml-str)
+                         (construct/execute-representations-query query)
                          (catch clojure.lang.ExceptionInfo e e))]
           (testing "the pipeline produces a runnable query (not just an apparently-resolved one)"
             (is (not (instance? clojure.lang.ExceptionInfo result))
@@ -298,24 +283,6 @@
                       (str "legacy-roundtrip failed: "
                            (when (instance? clojure.lang.ExceptionInfo rebuilt)
                              (ex-message rebuilt)))))))))))))
-
-(deftest repair-fills-missing-pieces-test
-  (testing "LLM-style YAML missing lib/types and {} options still resolves after repair"
-    ;; Intentionally written as a raw string: the whole point of this test is that the parser
-    ;; + repair pass cope with LLM-style shortcuts (missing `lib/type` markers, `[count]`
-    ;; without an options map) that round-tripping through `yaml/generate-string` would
-    ;; silently "fix" by emitting the canonical form.
-    (with-mp-and-stubs!
-      (fn []
-        (let [result (construct/execute-representations-query
-                      (str "database: Sample\n"
-                           "stages:\n"
-                           "  - source-table: [Sample, PUBLIC, ORDERS]\n"
-                           "    aggregation:\n"
-                           "      - [count]\n"))
-              q (get-in result [:structured-output :query])]
-          (is (= :mbql/query (:lib/type q)))
-          (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))))))
 
 ;;; ============================================================
 ;;; Step-14-follow-up contract: database identity from `stages[0]`
@@ -416,7 +383,7 @@
                                          :database     db-name})))))]
       (try
         (construct/execute-representations-query
-         (query-yaml
+         (query-data
           {"lib/type" "mbql/query"
            "stages"   [{"lib/type"     "mbql.stage/mbql"
                         "source-table" ["OtherDB" "PUBLIC" "ORDERS"]
@@ -441,7 +408,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -474,7 +441,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -494,7 +461,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -521,7 +488,7 @@
       (fn []
         (try
           (construct/execute-representations-query
-           (query-yaml
+           (query-data
             {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -546,7 +513,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -574,7 +541,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -593,7 +560,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -618,7 +585,7 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -644,7 +611,7 @@
       (fn []
         (try
           (construct/execute-representations-query
-           (query-yaml
+           (query-data
             {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -710,7 +677,7 @@
     (with-card-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      (query-yaml
+                      (query-data
                        {"lib/type" "mbql/query"
                         "database" "Sample"
                         "stages"   [{"lib/type"    "mbql.stage/mbql"
@@ -728,10 +695,10 @@
             (is (= :field (first field-ref)))
             (is (= "TOTAL" (nth field-ref 2)))
             (is (= :type/Float (get-in field-ref [1 :base-type]))))
-          (testing "query-yaml exports the final numeric source-card back to its portable entity_id"
-            (let [round-tripped (yaml/parse-string (get-in result [:structured-output :query-yaml]) :keywords false)]
+          (testing "query-json exports the final numeric source-card back to its portable entity_id"
+            (let [exported (get-in result [:structured-output :query-json])]
               (is (= card-entity-id
-                     (get-in round-tripped ["stages" 0 "source-card"]))))))))))
+                     (get-in exported ["stages" 0 "source-card"]))))))))))
 
 (deftest source-card-unknown-entity-id-surfaces-agent-error-test
   (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"
@@ -739,7 +706,7 @@
       (fn []
         (try
           (construct/execute-representations-query
-           (query-yaml
+           (query-data
             {"lib/type" "mbql/query"
              "database" "Sample"
              ;; 21-char NanoID-shape so the serdes resolver actually dispatches on the
@@ -760,7 +727,7 @@
       (fn []
         (try
           (construct/execute-representations-query
-           (query-yaml
+           (query-data
             {"lib/type" "mbql/query"
              "database" "Sample"
              "stages"   [{"lib/type"    "mbql.stage/mbql"
