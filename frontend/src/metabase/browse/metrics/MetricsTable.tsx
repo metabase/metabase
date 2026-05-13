@@ -24,7 +24,6 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useSetArchive } from "metabase/common/hooks";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
@@ -350,8 +349,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -366,7 +363,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           });
 
           trackMetricBookmarked();
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }

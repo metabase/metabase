@@ -24,7 +24,7 @@ const elements = [
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
   }),
-  createElement({ type: "lib", name: "utils" }),
+  createElement({ type: "lib", name: "utils", enforceOutgoing: true }),
   createElement({ type: "lib", name: "analytics", enforceOutgoing: true }),
   createElement({ type: "lib", name: "css", enforceOutgoing: true }),
   createElement({
@@ -69,12 +69,14 @@ const elements = [
   createElement({ type: "shared", name: "data-studio", enforceOutgoing: true }),
   createElement({ type: "shared", name: "databases", enforceOutgoing: true }),
   createElement({ type: "shared", name: "detail-view", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "documents", enforceOutgoing: true }),
   createElement({ type: "shared", name: "forms", enforceOutgoing: true }),
   createElement({ type: "shared", name: "history", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hoc", enforceOutgoing: true }),
   createElement({ type: "shared", name: "hooks", enforceOutgoing: true }),
   createElement({ type: "shared", name: "i18n", enforceOutgoing: true }),
   createElement({ type: "shared", name: "metadata", enforceOutgoing: true }),
+  createElement({ type: "shared", name: "metrics", enforceOutgoing: true }),
   createElement({
     type: "shared",
     name: "metrics-viewer",

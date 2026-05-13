@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
 import type { IconName } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
+import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type { Dataset, VisualizationDisplay } from "metabase-types/api";
 
 export interface VisualizationItem {

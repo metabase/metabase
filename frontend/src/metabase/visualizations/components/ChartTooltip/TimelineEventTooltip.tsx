@@ -14,7 +14,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { timelineEvents } = hovered;
 
   return (
-    <ul className={S.timelineEventList}>
+    <ul className={S.timelineEventList} data-testid="timeline-event-tooltip">
       {timelineEvents.map((event) => (
         <li key={event.id}>
           <Flex>

@@ -10,11 +10,9 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  NormalizedWritebackAction,
 } from "metabase-types/api";
 
 export interface EntitiesState {
-  actions: Record<string, NormalizedWritebackAction>;
   collections: Record<string, NormalizedCollection>;
   dashboards: Record<string, NormalizedDashboard>;
   databases: Record<string, NormalizedDatabase>;

@@ -6,7 +6,7 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { useMetabotName } from "metabase/metabot/hooks";
-import type { MetabotErrorMessage } from "metabase/metabot/state";
+import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
@@ -17,7 +17,7 @@ interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
   onClose: () => void;
   isLoading: boolean;
-  error: MetabotErrorMessage | undefined;
+  error: MetabotAgentTurnDisplayError | undefined;
   generate: (options: { prompt: string; sourceSql?: string }) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
