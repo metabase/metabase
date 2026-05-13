@@ -95,22 +95,21 @@
                                             (nil? (:last_checkpoint_value transform)))
                                      :table
                                      (keyword (:type target)))
-          ;; Workspace SQL rewrite. Native transforms bypass QP middleware, so the
-          ;; QP's Phase 2 rewriter never sees their SQL -- apply the equivalent rewrite
-          ;; here so canonical refs resolve to workspace-isolation tables. No-op when no
-          ;; workspace is active. See `metabase.transforms-base.workspace-hooks`.
+          ;; Workspace SQL rewrite. Transforms route through `driver/run-transform!`
+          ;; with pre-compiled SQL -- they don't go through `qp.execute/run`, so the
+          ;; Phase 2 rewriter (which lives in the execute middleware chain) NEVER
+          ;; fires for transforms. Both MBQL and native sources need their compiled
+          ;; SQL rewritten here so canonical refs resolve to workspace-isolation
+          ;; tables. No-op when no workspace is active. See
+          ;; `metabase.transforms-base.workspace-hooks`.
           ;;
-          ;; MBQL sources are deliberately excluded: `qp.compile/compile` runs them
-          ;; through the full QP pipeline, including the Phase 2 rewriter. Re-applying
-          ;; the rewriter here would be a no-op in the happy case but risks failing an
-          ;; otherwise-valid MBQL transform on a SQLGlot parse edge produced by QP
-          ;; emission (window fns, dialect-specific CTAS, etc).
-          source-is-native? (= :native (keyword (get-in source [:query :type])))
-          compiled-query (cond-> (transforms-base.u/compile-source transform source-range-params)
-                           source-is-native?
-                           (update :query
-                                   #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
-                                     driver db %)))
+          ;; (An earlier attempt to gate this on `:native`-only sources was
+          ;; reverted -- the premise that "QP middleware handles MBQL" only holds
+          ;; for queries that go through `qp.execute/run`. Transforms don't.)
+          compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
+                             (update :query
+                                     #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
+                                       driver db %)))
           transform-details {:db-id db
                              :database database
                              :transform-id   id
