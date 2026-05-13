@@ -1,0 +1,27 @@
+---
+/**
+ * Marketing-site navigation header. Vendored snapshot of the rendered HTML
+ * from `metabase.github.io/_includes/navigation-header.html` (and its
+ * desktop/mobile sub-partials), captured into `src/data/header-snapshot.html`
+ * so the docs build is fully self-contained.
+ *
+ * Per-page bits the snapshot can't know (image base path) are rewritten at
+ * render time below; behavior (hover-highlight, mobile hamburger) lives in
+ * `public/js/main-nav.js`. The snapshot drops the dynamic Recent Blog Posts
+ * loop in favor of a single static link to /blog so the snapshot doesn't go
+ * stale page-by-page.
+ *
+ * To resync after a marketing-nav change: build the Jekyll site
+ * (`bundle exec jekyll build`), then `awk '/<header /,/<\/header>/'` a
+ * built page and re-run the cleanup script described in
+ * docs/developers-guide/docs.md.
+ */
+import headerSnapshot from "../data/header-snapshot.html?raw";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+// Rewrite the few /images/... paths in the snapshot so they resolve against
+// the docs base URL — the chrome's image assets live under public/images/.
+const html = headerSnapshot.replace(/(["'\s])\/images\//g, `$1${base}/images/`);
+---
+
+<header class="bootstrap sticky" set:html={html} />

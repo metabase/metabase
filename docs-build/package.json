@@ -5,6 +5,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "astro dev",
+    "dev:clean": "pkill -f 'docs-build/node_modules/.bin/astro' || true",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

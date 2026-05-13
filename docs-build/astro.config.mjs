@@ -15,6 +15,16 @@ export default defineConfig({
   base,
   outDir: "./dist",
   trailingSlash: "never",
+  server: {
+    port: 4321,
+  },
+  vite: {
+    server: {
+      // Hard-fail if 4321 is in use instead of silently bumping to 4322 — keeps
+      // orphaned `astro dev` processes from stacking unnoticed.
+      strictPort: true,
+    },
+  },
   build: {
     format: "file",
   },

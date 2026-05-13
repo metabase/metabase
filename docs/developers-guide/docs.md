@@ -40,6 +40,18 @@ bun run docs:preview
 
 That does a real production build and previews it locally, lazily regenerating any missing generated artifacts via `./bin/mage docs-ensure-generated` on first run.
 
+### If the dev server fails to start
+
+The docs dev server pins to port 4321. If you see a "Port 4321 in use" error, an old `astro dev` process is probably still running — when a terminal is force-quit or crashes, macOS reparents the child node process to `launchd` instead of cleaning it up.
+
+To clear stale dev servers (macOS/Linux):
+
+```
+bun run docs:dev:clean
+```
+
+That kills any orphaned `docs-build` astro processes. Then re-run `bun run docs:dev`.
+
 ## Build the production site
 
 All docs tooling lives under the `./bin/mage docs-*` family:
@@ -210,6 +222,46 @@ bun run lint-docs-links    # verify in-product docsUrl() references point at rea
 
 `docs:check` is the closest thing to a build-time linter for the markdown itself — if a transclusion can't resolve, a plugin throws, or frontmatter is malformed, it'll surface here.
 
+## Marketing-site chrome
+
+Every docs page is wrapped in the metabase.com marketing header (logo, top nav, Get started CTA) and footer (newsletter signup, sitemap, social links). The chrome is **vendored** into this repo as a static snapshot — the docs site does not link to any CSS, JS, or HTML hosted on metabase.com, so the build is fully independent.
+
+What's vendored:
+
+| File | Purpose |
+|---|---|
+| [`docs-build/src/components/Header.astro`](../../docs-build/src/components/Header.astro) | Renders the snapshot below into a `<header class="bootstrap sticky">`, rewriting `/images/...` paths to live under `${BASE_URL}`. |
+| [`docs-build/src/components/Footer.astro`](../../docs-build/src/components/Footer.astro) | Renders the footer snapshot into a `<footer class="body-footer">`. |
+| [`docs-build/src/data/header-snapshot.html`](../../docs-build/src/data/header-snapshot.html) | Rendered HTML extracted from `metabase.github.io/_includes/navigation-header.html` and its sub-partials. |
+| [`docs-build/src/data/footer-snapshot.html`](../../docs-build/src/data/footer-snapshot.html) | Same, for `_includes/footer.html`. |
+| [`docs-build/src/styles/chrome.css`](../../docs-build/src/styles/chrome.css) | Bootstrap 5.0.2 + the `.navigation-header`, `.body-footer`, and `.promo-banner` rules extracted from `metabase.github.io/_site/css/styles.css`, plus `MB-Logo` from `main.css` and a hand-written subset of flexboxgrid `col-xs-*` helpers. |
+| [`docs-build/public/js/main-nav.js`](../../docs-build/public/js/main-nav.js) | Hover-highlight + mobile hamburger toggle for the top nav. |
+| [`docs-build/public/js/promo-banner.js`](../../docs-build/public/js/promo-banner.js) | Show/dismiss for the promo banner; remembers dismissal in `localStorage` for 7 days. |
+| [`docs-build/public/js/status.js`](../../docs-build/public/js/status.js) | Live status indicator in the footer. |
+| [`docs-build/public/js/github-stars.js`](../../docs-build/public/js/github-stars.js) | GitHub star count badge in the footer. |
+| [`docs-build/public/js/snowplow.js`](../../docs-build/public/js/snowplow.js) | Anonymous Snowplow page-view tracking — same `sp.metabase.com` collector and `appId: "anon-www"` the marketing site uses for un-consented tracking. No cookies, server-side IP anonymization, no consent banner needed. The marketing tier (`marketing-snowplow.js`, identifiable + cookies) requires the gdpr-cookie-notice consent flow that we have not vendored. The `<script>` tag is only emitted when `import.meta.env.DEV` is false and `DOCS_DISABLE_ANALYTICS` is unset — so `bun run docs:dev` never tracks, and you can opt a production build out with `DOCS_DISABLE_ANALYTICS=1 bun run docs:build`. |
+| [`docs-build/public/images/`](../../docs-build/public/images) | `logo.svg`, `logo-with-wordmark.svg`, `chevron_blue_right.svg`, `icons/Type=Learn.svg`, and `navigation-header/embed.svg` — the only static images the chrome references. |
+
+The logo background-image URL is wired through CSS variables (`--mb-logo-url`, `--mb-logo-wordmark-url`) set inline by `DocsLayout.astro`, so `MB-Logo` resolves against whichever `DOCS_BASE_PATH` the build uses.
+
+What was dropped from the snapshot:
+
+- The promo-banner countdown script (`/js/events/datetime.js`) — not needed for static prose.
+- The dynamic "Recent Blog Posts" loop in the Resources flyout — replaced with a single static link to `/blog` so the snapshot doesn't go stale page-by-page.
+- The Mailchimp `mc-validate.js` external script and its jQuery `noConflict` snippet — both pull from outside the docs build. The newsletter form still POSTs directly to Mailchimp; HTML5 form validation handles the email field.
+
+### Resyncing the chrome after a marketing-nav change
+
+1. In the `metabase.github.io` checkout, run `bundle exec jekyll build` to refresh `_site/`.
+2. Pick any built page that uses the standard `default` layout (e.g. `_site/pricing/index.html`).
+3. Extract the header and footer:
+   ```
+   awk '/<header /,/<\/header>/' _site/pricing/index.html > /tmp/header-snap.html
+   awk '/<footer /,/<\/footer>/' _site/pricing/index.html > /tmp/footer-snap.html
+   ```
+4. Run the cleanup script to strip the dynamic blog block, the promo countdown, and the Mailchimp validation scripts (it lives at `docs-build/scripts/clean-snapshots.py` if you've kept the helper around — otherwise re-derive from this section).
+5. Re-extract the chrome CSS rules from `_site/css/styles.css` using the selector allowlist documented at the top of `docs-build/src/styles/chrome.css`, and prepend the MB-Logo block from `_site/css/main.css`.
+
 ## Where things live
 
 A short map for when you need to dig deeper than this page goes:
@@ -222,7 +274,9 @@ A short map for when you need to dig deeper than this page goes:
   - `remark-docs-version` — the `{SAMPLE_APP_BRANCH}` token.
   - `rehype-internal-links` — relative-link rewriting.
   - `rehype-blockquote-classes` — plans-callout styling.
-- [`docs-build/src/layouts/DocsLayout.astro`](../../docs-build/src/layouts/DocsLayout.astro) — page chrome (sidebar, topbar, table of contents).
+- [`docs-build/src/layouts/DocsLayout.astro`](../../docs-build/src/layouts/DocsLayout.astro) — page chrome wiring (Header above the docs shell, Footer below it, sidebar + topbar + table of contents inside).
+- [`docs-build/src/components/`](../../docs-build/src/components) — `Header.astro` and `Footer.astro` (vendored marketing chrome), plus `Sidebar`, `TopBar`, `TableOfContents`, `FeedbackWidget` (docs-internal chrome).
+- [`docs-build/src/styles/`](../../docs-build/src/styles) — `chrome.css` (vendored marketing styles) and `docs.css` (docs-internal styles).
 - [`mage/src/mage/docs.clj`](../../mage/src/mage/docs.clj) — implementation of the `docs-build`, `docs-build-branch`, `docs-generate`, `docs-generate-embedding`, and `docs-ensure-generated` tasks. Run `./bin/mage <task> --help` for usage.
 
 ## Style

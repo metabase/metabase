@@ -4,6 +4,9 @@ import Sidebar from "../components/Sidebar.astro";
 import TopBar from "../components/TopBar.astro";
 import TableOfContents from "../components/TableOfContents.astro";
 import FeedbackWidget from "../components/FeedbackWidget.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/chrome.css";
 import "../styles/docs.css";
 
 interface Props {
@@ -31,8 +34,16 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Roboto+Mono&display=swap"
     />
+    {/* Image URLs that chrome.css needs are passed in as CSS variables so the
+       background-image rules stay correct under any DOCS_BASE_PATH. */}
+    <style is:inline set:html={`:root {
+      --mb-logo-url: url("${base}/images/logo.svg");
+      --mb-logo-wordmark-url: url("${base}/images/logo-with-wordmark.svg");
+      --mb-embed-background-url: url("${base}/images/navigation-header/embed-background.svg");
+    }`} />
   </head>
   <body>
+    <Header />
     <div class="docs-shell">
       <Sidebar currentSlug={slug} />
       <article class="docs-content">
@@ -44,6 +55,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         <FeedbackWidget />
       </aside>
     </div>
+    <Footer />
 
     <script src={`${base}/js/anchor-links.js`} defer></script>
     <script src={`${base}/js/code-snippet-copy.js`} defer></script>
@@ -52,5 +64,16 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <script src={`${base}/js/image-zoom.js`} defer></script>
     <script src={`${base}/js/feedback-widget.js`} defer></script>
     <script src={`${base}/js/sidebar.js`} defer></script>
+    <script src={`${base}/js/main-nav.js`} defer></script>
+    <script src={`${base}/js/promo-banner.js`} defer></script>
+    <script src={`${base}/js/status.js`} defer></script>
+    <script src={`${base}/js/github-stars.js`} defer></script>
+    {/* Snowplow page-view tracking is skipped under `astro dev` so local
+       browsing doesn't pollute the production analytics stream. The tag is
+       still emitted by `astro build` (and therefore by `astro preview`); set
+       DOCS_DISABLE_ANALYTICS=1 in the build env to opt out of that too. */}
+    {!import.meta.env.DEV && !process.env.DOCS_DISABLE_ANALYTICS && (
+      <script src={`${base}/js/snowplow.js`} async></script>
+    )}
   </body>
 </html>
