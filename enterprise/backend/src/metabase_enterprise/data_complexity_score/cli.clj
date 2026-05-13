@@ -53,6 +53,14 @@
   (flush)
   (System/exit 1))
 
+(defn- fail-with-trace!
+  "Print `t`'s stack trace (including `caused by` chain) to stderr, then fail! with a one-line summary.
+  Used for unexpected throwables — keeps the SQL exception / column-mismatch site visible instead of
+  collapsing it into just `<class>: <message>`."
+  [^Throwable t]
+  (.printStackTrace t)
+  (fail! (format "%s: %s" (.getName (class t)) (.getMessage t))))
+
 (defn- validate-dir! [path]
   (let [f (io/file path)]
     (cond
@@ -107,13 +115,11 @@
   We deliberately skip [[metabase.app-db.setup/check-encryption]] because its auto-encrypt branch can rewrite
   every encrypted `setting` row — exactly the kind of silent side effect we're avoiding."
   []
-  (let [verify-conn (requiring-resolve 'metabase.app-db.setup/verify-db-connection)
-        finish!     (requiring-resolve 'metabase.app-db.core/finish-db-setup!)
-        is-set-up?  (requiring-resolve 'metabase.app-db.core/db-is-set-up?)
-        db-type-fn  (requiring-resolve 'metabase.app-db.connection/db-type)
-        ds-fn       (requiring-resolve 'metabase.app-db.connection/data-source)]
+  (let [verify!    (requiring-resolve 'metabase.app-db.core/verify-application-db-connection!)
+        finish!    (requiring-resolve 'metabase.app-db.core/finish-db-setup!)
+        is-set-up? (requiring-resolve 'metabase.app-db.core/db-is-set-up?)]
     (when-not (is-set-up?)
-      (verify-conn (db-type-fn) (ds-fn))
+      (verify!)
       (finish!))))
 
 (defn- resolve-write?
@@ -200,14 +206,16 @@
                         (catch clojure.lang.ExceptionInfo e
                           ;; Handle CLI validation failures (`:cli-validation`) and missing-embeddings
                           ;; failures from representation (`:embeddings-path`) — both are user-facing
-                          ;; misconfigurations rather than bugs.
+                          ;; misconfigurations rather than bugs. Everything else gets the stack trace
+                          ;; so an `ex-cause` SQL exception remains diagnosable from the terminal.
                           (let [data (ex-data e)]
                             (if (or (:cli-validation data) (:embeddings-path data))
                               (fail! (ex-message e))
-                              (fail! (format "%s: %s" (.getName (class e)) (ex-message e))))))
+                              (fail-with-trace! e))))
                         (catch Throwable t
-                          ;; Most likely an older appdb missing a column/table the scorer reads.
-                          (fail! (format "%s: %s" (.getName (class t)) (.getMessage t))))))
+                          ;; Most likely an older appdb missing a column/table the scorer reads —
+                          ;; print the trace so the failing query/site is visible.
+                          (fail-with-trace! t))))
     (System/exit 0)))
 
 ;; No `(:gen-class)` — the AOT JAR routes through [[metabase.core.bootstrap]] and dispatches to
