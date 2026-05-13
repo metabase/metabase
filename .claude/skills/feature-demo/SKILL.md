@@ -49,6 +49,12 @@ pip3 install pydub
 
 # Replicate token — sign up at replicate.com, set in your shell rc
 export REPLICATE_API_TOKEN=r8_...
+
+# Voice reference for cloning — one-time. Record 5-10s of clean speech.
+# Use any mic (built-in is fine for a POC; external mic gives better clone quality).
+mkdir -p ~/tmp
+sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 8     # macOS: brew install sox
+# Or: QuickTime → File → New Audio Recording → save → export as WAV
 ```
 
 ### Optional: EE tokens
@@ -97,7 +103,7 @@ Draft `tmp/demo-storyboard.md` from the discovery. Keep it small — 5–8 beats
 **Output:** tmp/demo-videos/feature.mp4
 **Boot mode:** e2e
 **EE tokens needed:** <yes|no>
-**Voice:** af_bella   <!-- optional; pydub-compatible kokoro voice id -->
+**Voice ref:** ~/tmp/voice-ref.wav   <!-- optional; overrides REPLICATE_TTS_REF_AUDIO for this recording -->
 
 ## Beats
 
@@ -148,9 +154,14 @@ Translate each storyboard beat into Playwright actions. Inject the cursor + smoo
 
 ```javascript
 import { chromium } from "playwright";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, renameSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import {
+  installCursor,
+  attachCursorHelpers,
+  ICONS,
+} from "../.claude/skills/feature-demo/references/cursor-overlay.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VIDEO_DIR = join(__dirname, "demo-videos");
@@ -159,7 +170,7 @@ const CREDENTIALS = { username: "test@test.com", password: "TestPass123!" };
 
 mkdirSync(VIDEO_DIR, { recursive: true });
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── API helpers ────────────────────────────────────────────────────────────
 
 async function api(sessionId, method, path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -186,44 +197,8 @@ async function login() {
   return (await res.json()).id;
 }
 
-// Visible cursor overlay — injected into every page. Tracks page.mouse events
-// and Playwright-dispatched clicks, so the cursor shows up in the .webm.
-async function installCursor(page) {
-  await page.addInitScript(() => {
-    const dot = document.createElement("div");
-    Object.assign(dot.style, {
-      position: "fixed", top: "0", left: "0", width: "20px", height: "20px",
-      borderRadius: "50%", background: "rgba(0,150,255,0.55)",
-      border: "2px solid rgba(255,255,255,0.9)", boxShadow: "0 0 6px rgba(0,0,0,0.4)",
-      pointerEvents: "none", zIndex: "2147483647", transform: "translate(-50%,-50%)",
-      transition: "transform 60ms linear",
-    });
-    const ready = () => {
-      if (!document.body) return setTimeout(ready, 10);
-      document.body.appendChild(dot);
-      window.addEventListener("mousemove", (e) => {
-        dot.style.left = e.clientX + "px";
-        dot.style.top = e.clientY + "px";
-      }, true);
-    };
-    ready();
-  });
-}
+// ── Cue recorder — wall-clock offsets for the WebVTT/JSON output ──────────
 
-// Smooth mouse-move + click. Interpolates from current pointer to target's
-// center so the cursor visibly travels (instead of teleporting).
-async function humanClick(page, locator, { steps = 25, settle = 250 } = {}) {
-  await locator.waitFor({ state: "visible", timeout: 10000 });
-  const box = await locator.boundingBox();
-  if (!box) { await locator.click(); return; }
-  const tx = box.x + box.width / 2;
-  const ty = box.y + box.height / 2;
-  await page.mouse.move(tx, ty, { steps });
-  await page.waitForTimeout(settle);
-  await locator.click();
-}
-
-// Cue recorder — wall-clock offsets, written out as WebVTT after the run.
 const t0 = Date.now();
 const cues = [];
 const cue = (text) => cues.push({ ms: Date.now() - t0, text });
@@ -258,8 +233,8 @@ async function main() {
     await api(sessionId, "PUT", `/api/setting/${key}`, { value });
   }
 
-  // Browser + video, slowMo for human pacing
-  const browser = await chromium.launch({ headless: true, slowMo: 250 });
+  // Browser + video
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },
@@ -268,21 +243,38 @@ async function main() {
     { name: "metabase.SESSION", value: sessionId, domain: "localhost", path: "/" },
     { name: "metabase.SEEN_ALERT_SPLASH", value: "true", domain: "localhost", path: "/" },
   ]);
+  await installCursor(context, { icon: ICONS.metabase });
   const page = await context.newPage();
-  await installCursor(page);
-  const pause = (ms = 2000) => page.waitForTimeout(ms);
+  const { initPosition, demoClick, demoHover, pan } = attachCursorHelpers(page);
+
+  // Bound waits so any unintentionally-slow operation fails fast instead
+  // of silently inflating the recording.
+  page.setDefaultTimeout(4000);
+  page.setDefaultNavigationTimeout(10000);
+  // `pause` takes an explicit ms — call sites should make the dwell visible.
+  // For "wait for the system" use waitForResponse / waitFor (see "Waits vs. dwells").
+  const pause = (ms) => page.waitForTimeout(ms);
 
   // ── DEMO BEATS — generate from storyboard ─────────────────────────────────
 
-  // Example beat. Each one: cue() first, then the action, then a settle pause.
+  // Example beat. Each one: cue() first, then wait-for-system, then demoClick/Hover,
+  // then a short dwell so the viewer registers the result.
   cue("Open the Introspector. Four tiles surface broken, stale, unreferenced, and healthy content.");
-  await page.goto(`${BASE_URL}/admin/introspector`);
-  await page.waitForLoadState("networkidle");
-  await pause(2500);
+  await page.goto(`${BASE_URL}/admin/introspector`, { waitUntil: "domcontentloaded" });
+  await page.locator("tbody tr").first().waitFor({ state: "visible" });
+  await initPosition();              // seed cursor at viewport center
+  await pause(1200);                 // dwell — let viewer take in the StatStrip + first rows
 
   cue("Click the Stale pill to isolate cards that haven't been viewed in over a year.");
-  await humanClick(page, page.getByText("Stale").first());
-  await pause(2000);
+  const refreshed = page.waitForResponse(
+    (r) => /\/api\/ee\/introspector\/content\/cards/.test(r.url()) && r.ok(),
+  );
+  await demoClick(
+    page.locator("label").filter({ hasText: /^Stale$/ }).first(),
+    { label: "Stale" },
+  );
+  await refreshed;
+  await pause(1200);                 // dwell — let viewer see the refreshed totals
 
   // … add more beats here …
 
@@ -296,12 +288,12 @@ async function main() {
 
   // Rename to a stable filename
   if (videoPath) {
-    const final = join(VIDEO_DIR, "feature.webm");
-    await import("fs").then(({ renameSync }) => renameSync(videoPath, final));
-    console.log("Video:", final);
+    const finalPath = join(VIDEO_DIR, "feature.webm");
+    renameSync(videoPath, finalPath);
+    console.log("Video:", finalPath);
   }
 
-  // Write WebVTT (TTS input)
+  // Write WebVTT (sidecar) and cues JSON (TTS input)
   const lines = ["WEBVTT", ""];
   for (let i = 0; i < cues.length; i++) {
     const start = msToTs(cues[i].ms);
@@ -309,13 +301,88 @@ async function main() {
     lines.push(String(i + 1), `${start} --> ${end}`, cues[i].text, "");
   }
   writeFileSync(join(VIDEO_DIR, "feature.vtt"), lines.join("\n"));
-  // Also emit a cues JSON for the stitcher (easier to parse than VTT)
   writeFileSync(join(VIDEO_DIR, "feature.cues.json"), JSON.stringify(cues, null, 2));
   console.log("VTT:", join(VIDEO_DIR, "feature.vtt"));
 }
 
 main().catch((e) => { console.error("Demo failed:", e); process.exit(1); });
 ```
+
+### Waits vs. dwells — keep them separate
+
+Two things take time in a demo script, and conflating them is the single most common source of dead frames in the recording:
+
+| Kind | Purpose | Tool |
+|---|---|---|
+| **Wait** | The system must finish doing something before the script proceeds — a filter request must return, a modal must mount, a menu animation must complete. | `page.waitForResponse(/specific-endpoint/)` (preferred when the action fires an identifiable API call), `locator.waitFor({ state: "visible" })` (preferred when there's an identifiable DOM landmark), `page.waitForLoadState("networkidle")` (fallback only — stalls on apps with telemetry/heartbeat traffic) |
+| **Dwell** | The viewer must see the result for long enough to register it — a tooltip, a stack trace, a state change. | `pause(N)` with an N that matches "how long should this stay on screen" |
+
+If a step needs both, do them in order: wait for the system, *then* dwell for the viewer. **Don't stack `networkidle + pause(2000)`** — that's two waits doubling the dead time without buying anything.
+
+Two consequences for how to use `pause`:
+- Make it take an explicit argument — `pause(800)`, not `pause()` — so the dwell duration is always visible at the call site. The script template above uses `const pause = (ms) => page.waitForTimeout(ms);` (no default).
+- A `pause` should only appear when there's something specific you want the viewer to register. If you wrote one because "things might not be ready yet," that's a wait — use one of the wait helpers instead.
+
+**Prefer `waitForResponse` whenever the action fires a single identifiable API call** (filter change, tab switch, search, save). It returns the instant the response lands, with no telemetry-induced variance.
+
+```js
+// Before — networkidle waits for traffic to fully quiet, then a hardcoded
+// dwell adds more on top. Double-counts the wait.
+await page.getByRole("tab", { name: "Dashboards" }).click();
+await page.waitForLoadState("networkidle");
+await pause(2000);
+
+// After — precise system-wait keyed to the action's actual API call,
+// followed by a short, intentional viewer-dwell.
+const dataLoaded = page.waitForResponse(
+  (r) => /\/api\/.../.test(r.url()) && r.ok(),
+);
+await page.getByRole("tab", { name: "Dashboards" }).click();
+await dataLoaded;
+await pause(800);  // dwell — let viewer see the new tab's content
+```
+
+When you can't identify a specific endpoint, `locator.waitFor({ state: "visible" })` on a known landmark (a new row, a heading, a button) is the next-best signal. `networkidle` should be a last resort.
+
+The `setDefaultTimeout(4000)` / `setDefaultNavigationTimeout(10000)` lines in the template matter for the same reason: without them, any unintentionally-slow wait inherits Playwright's 30s default and silently inflates the recording.
+
+### About the cursor overlay
+
+The `installCursor` / `attachCursorHelpers` imports come from `references/cursor-overlay.mjs` (a 325-line module shared with PR #7's `playwright-demo` skill — kept in sync by copy). It injects a synthetic cursor (plus click ripples, action-label captions, and an arc preview for long moves) into the page, then exposes `demoClick`, `demoHover`, and `pan` driver helpers that wrap Playwright's actions with a glide-to-target → dwell → label → act sequence.
+
+**Helper API:**
+
+- `demoClick(locator, { label, dwell })` — glides the cursor to the locator's center, shows a caption pill, dwells, then clicks. The press triggers a ripple animation.
+- `demoHover(locator, { label, dwell })` — same but ends on hover (default dwell 1200ms so tooltips render).
+- `pan(x, y)` — bare-mouse exploratory sweep without label or click. Good for showing off a header row or stat strip.
+- `initPosition()` — call once after the first `page.goto` so the cursor + Playwright's mouse start at viewport center; otherwise the first move arcs from (0, 0).
+
+**Icon options:**
+
+| Setter | Look | When to use |
+|---|---|---|
+| `ICONS.metabase` (default) | 22-dot Metabase brand mark, blue | On-brand demos for internal/Metabase audiences |
+| `ICONS.arrow` | Classic angled arrow, blue fill | External-audience demos or when the brand mark would distract |
+| Custom `{ svg, anchorX, anchorY, useCurrentColor? }` | Your own SVG | `anchorX/Y` is the pixel offset to the visual click point |
+
+```javascript
+await installCursor(context, { icon: ICONS.arrow });
+await installCursor(context, { icon: ICONS.metabase, color: "rgba(218, 32, 60, 0.95)" });
+```
+
+**Tuning knobs** (pass to `attachCursorHelpers`):
+
+```javascript
+const helpers = attachCursorHelpers(page, {
+  startX: 720, startY: 450,    // initial cursor position
+  arcThreshold: 250,           // px; long-move arc fires above this distance
+  defaultDwell: 600,           // ms pause before click (after glide)
+  defaultHoverDwell: 1200,     // ms to stay on a hovered element
+  stepCount: 20,               // Playwright mouse-move steps per glide
+});
+```
+
+Faster-paced demo → drop `defaultDwell` to ~400. More deliberate teaching style → bump to ~900.
 
 ### Run it
 
@@ -509,12 +576,28 @@ open tmp/demo-videos/feature.mp4
 
 ## Common Playwright patterns for Metabase
 
-(Same as PR #7's `playwright-demo` skill — re-use these locators inside `humanClick` calls.)
+Re-use these inside `demoClick` / `demoHover` calls. Synced with PR #7's `playwright-demo` skill.
 
-### Overflow menu
-The "..." label is a unicode ellipsis. Use a regex:
+### Mantine Chip / filter pills
+Mantine's `<Chip>` renders as a `<label>` wrapping a visually-hidden `<input type="checkbox|radio">`. `getByRole("checkbox", { name })` resolves the input — but the input has `display:none`, so Playwright refuses to click it. The label is the actual click surface:
+
 ```javascript
-await humanClick(page, page.getByLabel(/Move, trash, and more/));
+const chip = (name) =>
+  page
+    .locator("label")
+    .filter({ hasText: new RegExp(`^${name}$`) })
+    .first();
+
+await demoClick(chip("Broken"), { label: "Broken" });
+```
+
+The exact-match regex matters because chips like `Broken` and `All flagged` may share substrings. Works for both Mantine variants — single-select `Chip.Group` (radio) and multi-select `Chip` (checkbox).
+
+### Overflow menu (questions and dashboards)
+The "..." label is a unicode ellipsis. Use a regex and wait for the Mantine menu to mount:
+```javascript
+await demoClick(page.getByLabel(/Move, trash, and more/), { label: "More actions" });
+await page.getByRole("menu").waitFor({ state: "visible" });
 ```
 
 ### Buttons with variable text
@@ -524,21 +607,30 @@ const save = page
   .or(page.getByRole("button", { name: /done/i }))
   .or(page.getByRole("button", { name: /create/i }))
   .first();
-await humanClick(page, save);
-```
-
-### Wait for navigation / async load
-```javascript
-await page.waitForLoadState("networkidle");
-await pause(2000);  // small extra for animations
+await save.waitFor({ state: "visible" });
+await pause(600);  // dwell — viewer registers the populated modal
+await demoClick(save, { label: "Save" });
 ```
 
 ### Admin pages with row-level menus
 ```javascript
+await page.goto(`${BASE_URL}/trash`, { waitUntil: "domcontentloaded" });
 const row = page.locator("tr", { hasText: "Item Name" });
-const menu = row.locator('[data-testid="entity-item-actions-trigger"]')
+await row.waitFor({ state: "visible" });   // wait for the specific row, not network-idle
+const rowMenu = row.locator('[data-testid="entity-item-actions-trigger"]')
   .or(row.getByRole("button").first());
-await humanClick(page, menu);
+await demoClick(rowMenu, { label: "Row actions" });
+```
+
+### Wait for an action's API response
+Best signal for filter changes, tab switches, saves — anything with a single identifiable endpoint:
+```javascript
+const refreshed = page.waitForResponse(
+  (r) => /\/api\/ee\/introspector\/content\/cards/.test(r.url()) && r.ok(),
+);
+await demoClick(picker, { label: "1 year" });
+await refreshed;
+await pause(1200);  // dwell — viewer sees the new totals
 ```
 
 ---
