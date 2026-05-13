@@ -32,6 +32,7 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
 import {
+  Box,
   Card,
   EntityNameCell,
   Flex,
@@ -39,6 +40,7 @@ import {
   Icon,
   Stack,
   TextInput,
+  Tooltip,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -419,6 +421,19 @@ function getNameCell({
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
+      {row.original.optimized && (
+        <Tooltip label={t`Fully optimized`}>
+          <Box
+            component="img"
+            src="app/assets/img/sonic-gotta-go-fast.gif"
+            alt={t`Fully optimized`}
+            h={20}
+            w={20}
+            style={{ objectFit: "contain", flexShrink: 0 }}
+            data-testid="transform-optimized-badge"
+          />
+        </Tooltip>
+      )}
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );

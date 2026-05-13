@@ -17,6 +17,7 @@ export type TreeNode = {
   collection?: Collection;
   url?: string;
   source_readable?: boolean;
+  optimized?: boolean;
   warningTooltip?: string;
 };
 
