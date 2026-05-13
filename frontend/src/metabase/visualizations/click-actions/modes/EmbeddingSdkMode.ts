@@ -1,10 +1,11 @@
 import {
   getClickBehavior,
   getClickBehaviorData,
+  getParameterIdValuePairs,
   getParameterValuesBySlug,
 } from "metabase/dashboard/utils/dashboard-click-drill";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import type { DashboardTabId } from "metabase-types/api";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
 
 import type {
   ClickObject,
@@ -22,6 +23,12 @@ export type ClickBehaviorTarget = {
   id: number;
   name: string;
   parameters: ParameterValues;
+  /**
+   * Same parameter values as {@link parameters}, but keyed by parameter id.
+   * Used for same-dashboard click behaviors that need to dispatch per-id
+   * setParameterValue actions (mirrors core app DashboardClickAction).
+   */
+  parameterIdValuePairs: [string, ParameterValueOrArray | null][];
   tabId?: DashboardTabId;
 };
 
@@ -48,6 +55,16 @@ const getClickBehaviorTarget = (
       })
     : {};
 
+  const parameterIdValuePairs = (
+    parameterMapping
+      ? getParameterIdValuePairs(parameterMapping, {
+          data,
+          extraData,
+          clickBehavior,
+        })
+      : []
+  ) as [string, ParameterValueOrArray | null][];
+
   const entitiesMap =
     linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
   const target = entitiesMap?.[targetId];
@@ -64,6 +81,7 @@ const getClickBehaviorTarget = (
     id: target.id,
     name: target.name,
     parameters,
+    parameterIdValuePairs,
     tabId,
   };
 };

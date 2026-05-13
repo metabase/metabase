@@ -638,6 +638,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     it("should switch tab and pass parameters when click behavior points to a different tab on the same dashboard", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
+      const TAB_3 = { id: 3, name: "Tab 3" };
 
       const ID_FILTER: Parameter = createMockActionParameter({
         id: "tabbed-id-filter",
@@ -645,7 +646,16 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         slug: "id-filter",
         type: "number/=",
         sectionId: "number",
+        isMultiSelect: false,
       });
+
+      // External dashboard used to exercise the cross-dashboard push +
+      // back-restore path (`Go to Dashboard B` click behavior on Tab 1).
+      H.createDashboard({ name: "Dashboard B" }).then(
+        ({ body: externalDashboard }) => {
+          cy.wrap(externalDashboard.id).as("externalDashboardId");
+        },
+      );
 
       H.createQuestion({
         name: "Orders on Tab 1",
@@ -655,83 +665,128 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           name: "Orders on Tab 2",
           query: { "source-table": ORDERS_ID, limit: 5 },
         }).then(({ body: tabTwoCard }) => {
-          H.createDashboardWithTabs({
-            name: "Tabbed Dashboard",
-            parameters: [ID_FILTER],
-            tabs: [TAB_1, TAB_2],
-            dashcards: [
-              createMockDashboardCard({
-                id: -1,
-                card_id: tabOneCard.id,
-                dashboard_tab_id: TAB_1.id,
-                size_x: 12,
-                size_y: 6,
-              }),
-              createMockDashboardCard({
-                id: -2,
-                card_id: tabTwoCard.id,
-                dashboard_tab_id: TAB_2.id,
-                size_x: 12,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: ID_FILTER.id,
-                    card_id: tabTwoCard.id,
-                    target: ["dimension", ["field", ORDERS.ID, null]],
-                  },
-                ],
-              }),
-            ],
-          }).then((dashboard) => {
-            // After creation, tabs and dashcards have real ids; wire the
-            // click behavior (with parameter mapping + tabId) using those.
-            const tabs = dashboard.tabs ?? [];
-            const resolvedTab1 = tabs[0];
-            const resolvedTab2 = tabs[1];
-            const updatedDashcards = (dashboard.dashcards ?? []).map(
-              (dashcard) => {
-                if (dashcard.dashboard_tab_id !== resolvedTab1.id) {
-                  return dashcard;
-                }
-                return {
-                  ...dashcard,
-                  visualization_settings: {
-                    column_settings: {
-                      [`["ref",["field",${ORDERS.ID},null]]`]: {
-                        click_behavior: {
-                          type: "link",
-                          linkType: "dashboard",
-                          linkTextTemplate: "Go to Tab 2",
-                          targetId: dashboard.id,
-                          tabId: resolvedTab2.id,
-                          parameterMapping: {
-                            [ID_FILTER.id]: {
-                              source: {
-                                type: "column",
-                                id: "ID",
-                                name: "ID",
+          H.createQuestion({
+            name: "Orders on Tab 3",
+            query: { "source-table": ORDERS_ID, limit: 5 },
+          }).then(({ body: tabThreeCard }) => {
+            H.createDashboardWithTabs({
+              name: "Tabbed Dashboard",
+              parameters: [ID_FILTER],
+              tabs: [TAB_1, TAB_2, TAB_3],
+              dashcards: [
+                createMockDashboardCard({
+                  id: -1,
+                  card_id: tabOneCard.id,
+                  dashboard_tab_id: TAB_1.id,
+                  size_x: 12,
+                  size_y: 6,
+                }),
+                createMockDashboardCard({
+                  id: -2,
+                  card_id: tabTwoCard.id,
+                  dashboard_tab_id: TAB_2.id,
+                  size_x: 12,
+                  size_y: 6,
+                  parameter_mappings: [
+                    {
+                      parameter_id: ID_FILTER.id,
+                      card_id: tabTwoCard.id,
+                      target: ["dimension", ["field", ORDERS.ID, null]],
+                    },
+                  ],
+                }),
+                createMockDashboardCard({
+                  id: -3,
+                  card_id: tabThreeCard.id,
+                  dashboard_tab_id: TAB_3.id,
+                  size_x: 12,
+                  size_y: 6,
+                  parameter_mappings: [
+                    {
+                      parameter_id: ID_FILTER.id,
+                      card_id: tabThreeCard.id,
+                      target: ["dimension", ["field", ORDERS.ID, null]],
+                    },
+                  ],
+                }),
+              ],
+            }).then((dashboard) => {
+              // After creation, tabs and dashcards have real ids; wire the
+              // click behavior (with parameter mapping + tabId) using those.
+              const tabs = dashboard.tabs ?? [];
+              const resolvedTab1 = tabs[0];
+              const resolvedTab2 = tabs[1];
+              const resolvedTab3 = tabs[2];
+              cy.get<number>("@externalDashboardId").then(
+                (externalDashboardId) => {
+                  const updatedDashcards = (dashboard.dashcards ?? []).map(
+                    (dashcard) => {
+                      if (dashcard.dashboard_tab_id === resolvedTab1.id) {
+                        return {
+                          ...dashcard,
+                          visualization_settings: {
+                            column_settings: {
+                              [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                click_behavior: {
+                                  type: "link",
+                                  linkType: "dashboard",
+                                  linkTextTemplate: "Go to Tab 2",
+                                  targetId: dashboard.id,
+                                  tabId: resolvedTab2.id,
+                                  parameterMapping: {
+                                    [ID_FILTER.id]: {
+                                      source: {
+                                        type: "column",
+                                        id: "ID",
+                                        name: "ID",
+                                      },
+                                      target: {
+                                        type: "parameter",
+                                        id: ID_FILTER.id,
+                                      },
+                                      id: ID_FILTER.id,
+                                    },
+                                  },
+                                },
                               },
-                              target: {
-                                type: "parameter",
-                                id: ID_FILTER.id,
-                              },
-                              id: ID_FILTER.id,
                             },
                           },
-                        },
-                      },
+                        };
+                      }
+                      if (dashcard.dashboard_tab_id === resolvedTab3.id) {
+                        return {
+                          ...dashcard,
+                          visualization_settings: {
+                            column_settings: {
+                              // ID column on Tab 3 links to Dashboard B
+                              // (cross-dashboard push) — used to exercise the
+                              // back-restore path.
+                              [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                click_behavior: {
+                                  type: "link",
+                                  linkType: "dashboard",
+                                  linkTextTemplate: "Go to Dashboard B",
+                                  targetId: externalDashboardId,
+                                  parameterMapping: {},
+                                },
+                              },
+                            },
+                          },
+                        };
+                      }
+                      return dashcard;
                     },
-                  },
-                };
-              },
-            );
+                  );
 
-            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-              ...dashboard,
-              dashcards: updatedDashcards,
+                  cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+                    ...dashboard,
+                    dashcards: updatedDashcards,
+                  });
+
+                  cy.wrap(dashboard.entity_id).as("tabbedDashboardEntityId");
+                },
+              );
             });
-
-            cy.wrap(dashboard.entity_id).as("tabbedDashboardEntityId");
           });
         });
       });
@@ -776,10 +831,51 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // The dashboard's ID filter widget should reflect the value passed by
         // the click behavior's parameterMapping.
-        H.filterWidget().should("contain.text", "1");
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "1");
 
         // No back-button entry should be created for an in-place tab switch.
         cy.findByText(/Back to/).should("not.exist");
+
+        // Manually switch to Tab 3 — diverges from both the default first
+        // tab and the click-behavior-pushed Tab 2, so a missing live-capture
+        // would fall back to Tab 1 and fail the test.
+        cy.findByRole("tab", { name: "Tab 3" }).click();
+        cy.findByRole("tab", { name: "Tab 3" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
+        // Manually change the ID filter to a value that differs from the one
+        // set by the click behavior. The live filter value should be captured
+        // into the stack entry on push so it survives the round trip.
+        H.filterWidget({ name: "ID Filter" }).click();
+      });
+      H.popover().within(() => {
+        cy.findByDisplayValue("1").type("{selectall}999");
+        cy.button("Update filter").click();
+      });
+      getSdkRoot().within(() => {
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "999");
+
+        // Navigate away to a different dashboard from Tab 3 (real
+        // cross-dashboard push, unmounts the source dashboard so
+        // selectedTabId state is lost without the fix).
+        H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
+        cy.wait("@getDashboard");
+        cy.findByText("Dashboard B").should("be.visible");
+        cy.findByText("Back to Tabbed Dashboard").should("be.visible");
+
+        // Click back — should restore the manually-selected Tab 3, and the
+        // manually-changed ID filter value (999, not the click-behavior 1)
+        // should still be set.
+        cy.findByText("Back to Tabbed Dashboard").click();
+        cy.findByRole("tab", { name: "Tab 3" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "999");
       });
     });
 
@@ -792,13 +888,21 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         sectionId: "number",
       });
 
+      const QUANTITY_FILTER: Parameter = createMockActionParameter({
+        id: "self-link-quantity-filter",
+        name: "Quantity Filter",
+        slug: "quantity-filter",
+        type: "number/=",
+        sectionId: "number",
+      });
+
       H.createQuestion({
         name: "Self-linking card",
         query: { "source-table": ORDERS_ID, limit: 5 },
       }).then(({ body: card }) => {
         H.createDashboard({
           name: "Self-linking Dashboard",
-          parameters: [ID_FILTER],
+          parameters: [ID_FILTER, QUANTITY_FILTER],
         }).then(({ body: dashboard }) => {
           H.addOrUpdateDashboardCard({
             card_id: card.id,
@@ -812,6 +916,11 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                   parameter_id: ID_FILTER.id,
                   card_id: card.id,
                   target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+                {
+                  parameter_id: QUANTITY_FILTER.id,
+                  card_id: card.id,
+                  target: ["dimension", ["field", ORDERS.QUANTITY, null]],
                 },
               ],
               visualization_settings: {
@@ -850,6 +959,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
           <InteractiveDashboard
             dashboardId={dashboardId}
             enableEntityNavigation
+            initialParameters={{ [QUANTITY_FILTER.slug]: "7" }}
           />,
         );
       });
@@ -861,13 +971,22 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
 
+        // Pre-condition: Quantity filter is pre-set to 7 via initialParameters
+        // and should be preserved across the same-dashboard click behavior.
+        H.filterWidget({ name: "Quantity Filter" }).should("contain.text", "7");
+
         // Click the self-linking link — same dashboard, same (no) tab, with
         // a parameter mapping that should set the dashboard's ID filter.
         H.getDashboardCard().findAllByText("Self link").first().click();
 
-        // Expected: filter widget reflects the mapped cell value; no extra
-        // navigation frame is pushed since we're already on this view.
-        H.filterWidget().should("contain.text", "1");
+        // Expected: ID filter reflects the mapped cell value AND the
+        // unrelated Quantity filter is retained (matches core app's
+        // per-parameter merge behavior, not a full-replace).
+        //
+        // The table is filtered to Quantity=7, so the first row's ID is 8
+        // (not 1). The click behavior passes that cell's ID to the ID filter.
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "8");
+        H.filterWidget({ name: "Quantity Filter" }).should("contain.text", "7");
         cy.findByText(/Back to/).should("not.exist");
         cy.findByText("Self-linking Dashboard").should("be.visible");
         cy.findByText("Self-linking card").should("be.visible");
@@ -1022,7 +1141,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
         // Target dashboard's ID filter should reflect the value passed by
         // the click behavior's parameterMapping.
-        H.filterWidget().should("contain.text", "1");
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "1");
 
         cy.findByText("Back to Source Dashboard").should("be.visible");
       });

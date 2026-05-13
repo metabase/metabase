@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import type { DashboardTabId } from "metabase-types/api";
+import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
 
 // This type exists only to have a global place where to put the JSDoc for virtual
 type BaseEntry = {
@@ -20,6 +20,8 @@ export type SdkInternalNavigationEntry =
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
+      /** Id-keyed parameter values used for same-dashboard merge dispatch. */
+      parameterIdValuePairs?: [string, ParameterValueOrArray | null][];
       tabId?: DashboardTabId;
       onPop?: () => void;
     })
