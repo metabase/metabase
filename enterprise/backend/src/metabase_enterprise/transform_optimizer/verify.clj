@@ -1,13 +1,16 @@
 (ns metabase-enterprise.transform-optimizer.verify
   "Equivalence verification for a proposal vs the original transform.
 
-  Materialises both queries into scratch tables in a dedicated schema, then
-  compares with `EXCEPT ALL` in both directions — exactly the form the
-  Phase-0 harness uses, generalised to live transforms.
+  Materialises both queries into Postgres TEMP tables under a single
+  REPEATABLE READ transaction, then compares with `EXCEPT ALL` in both
+  directions — exactly the form the Phase-0 harness uses, generalised
+  to live transforms. Temp tables live in the session-private `pg_temp`
+  schema, so concurrent verify calls don't collide and we don't have to
+  manage a persistent scratch schema in the customer's database.
 
   This is Postgres-only for the same reason the rest of the optimizer is:
   the SQL we feed in is the compiled source of a native Postgres transform.
-  We can extend to other dialects later by parameterising the scratch-schema
+  We can extend to other dialects later by parameterising the temp-table
   / EXCEPT-ALL form."
   (:require
    [clojure.set :as set]
@@ -23,20 +26,18 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private scratch-schema "transform_optimizer_verify")
 (def ^:private sample-limit 10)
 
-;; A "table-ref" in this namespace is `{:schema "..." :table "..."}`. Both
-;; sides of the comparison are always materialised into the scratch schema
-;; under one MVCC snapshot — we used to also support reusing the live
-;; target table as the slow side, but source-data drift between the last
-;; run and now made that path unsafe (false-positive `equivalent: false`).
+;; Both sides of the comparison are materialised as Postgres TEMP tables.
+;; Temp tables live in the session-private `pg_temp` schema and are auto-
+;; dropped when the session ends, so concurrent verify calls from different
+;; users (or two tabs of the same user) can't collide on the same names.
+;; We still drop them explicitly at the end of verify to free the temp
+;; space before the connection returns to the pool, since pooled JDBC
+;; sessions outlive a single request.
 
-(def ^:private scratch-slow-ref {:schema scratch-schema :table "slow"})
-(def ^:private scratch-fast-ref {:schema scratch-schema :table "fast"})
-
-(defn- table-ref ^String [{:keys [schema table]}]
-  (str schema "." table))
+(def ^:private slow-table "slow_verify")
+(def ^:private fast-table "fast_verify")
 
 ;; ---------------------------------------------------------------------------
 ;; Connection / SQL helpers
@@ -51,30 +52,35 @@
     (when (.next rs) (.getObject rs 1))))
 
 (defn- materialize!
-  "Drop+create the table referenced by `ref` as the result of `select-sql`,
-  timing the wall clock around the CREATE TABLE. Returns `{:ms :row-count}`."
-  [^Connection conn ref select-sql]
-  (let [tref (table-ref ref)]
-    (exec! conn (str "DROP TABLE IF EXISTS " tref))
-    (let [t0    (System/nanoTime)
-          ddl   (str "CREATE TABLE " tref " AS " select-sql)
-          _     (exec! conn ddl)
-          ms    (/ (- (System/nanoTime) t0) 1e6)
-          rows  (scalar conn (str "SELECT count(*) FROM " tref))]
-      {:ms ms :row-count rows})))
+  "Drop+create a session-local TEMP table named `table-name` as the result
+  of `select-sql`, timing the wall clock around the CREATE TABLE. Returns
+  `{:ms :row-count}`."
+  [^Connection conn ^String table-name select-sql]
+  (exec! conn (str "DROP TABLE IF EXISTS " table-name))
+  (let [t0    (System/nanoTime)
+        ddl   (str "CREATE TEMP TABLE " table-name " AS " select-sql)
+        _     (exec! conn ddl)
+        ms    (/ (- (System/nanoTime) t0) 1e6)
+        rows  (scalar conn (str "SELECT count(*) FROM " table-name))]
+    {:ms ms :row-count rows}))
 
 ;; ---------------------------------------------------------------------------
 ;; Column / schema compatibility
 
 (defn- column-info
-  "Return `[[col-name pg-type-name] …]` for `ref` in ordinal order, used for
-  schema compatibility checks before the row comparison."
-  [^Connection conn {:keys [schema table]}]
-  (let [sql (str "SELECT column_name, data_type "
-                 "FROM information_schema.columns "
-                 "WHERE table_schema = '" schema "' "
-                 "  AND table_name   = '" table "' "
-                 "ORDER BY ordinal_position")]
+  "Return `[[col-name pg-type-name] …]` for `table-name` in ordinal order,
+  used for schema compatibility checks before the row comparison. Reads
+  from `pg_catalog.pg_attribute` keyed off `'pg_temp.<name>'::regclass`
+  because temp tables live in a session-private schema (`pg_temp_N`)
+  whose name we don't know at compile time — `pg_temp` is the alias
+  Postgres resolves to the current session's temp schema."
+  [^Connection conn ^String table-name]
+  (let [sql (str "SELECT a.attname AS column_name, "
+                 "       pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type "
+                 "FROM pg_catalog.pg_attribute a "
+                 "WHERE a.attrelid = 'pg_temp." table-name "'::regclass "
+                 "  AND a.attnum > 0 AND NOT a.attisdropped "
+                 "ORDER BY a.attnum")]
     (with-open [stmt (.createStatement conn)
                 ^ResultSet rs (.executeQuery stmt sql)]
       (loop [out []]
@@ -107,10 +113,8 @@
      (SELECT * FROM %s EXCEPT ALL SELECT * FROM %s)
    ) d")
 
-(defn- diff-count [^Connection conn slow-ref fast-ref]
-  (let [slow (table-ref slow-ref)
-        fast (table-ref fast-ref)]
-    (long (scalar conn (format diff-sql-template slow fast fast slow)))))
+(defn- diff-count [^Connection conn ^String slow ^String fast]
+  (long (scalar conn (format diff-sql-template slow fast fast slow))))
 
 (defn- row->vec [^ResultSet rs col-count]
   (loop [i 1, out []]
@@ -122,11 +126,9 @@
   "When the row counts differ, fetch a small sample from each direction so
   the UI can show a 'rows that are in slow but not fast / vice versa' diff.
   Capped at `sample-limit` rows per direction."
-  [^Connection conn slow-ref fast-ref]
+  [^Connection conn ^String slow ^String fast]
   (with-open [stmt (.createStatement conn)]
-    (let [slow (table-ref slow-ref)
-          fast (table-ref fast-ref)
-          sql-only-in-slow (format "(SELECT * FROM %s EXCEPT ALL SELECT * FROM %s) LIMIT %d"
+    (let [sql-only-in-slow (format "(SELECT * FROM %s EXCEPT ALL SELECT * FROM %s) LIMIT %d"
                                    slow fast sample-limit)
           sql-only-in-fast (format "(SELECT * FROM %s EXCEPT ALL SELECT * FROM %s) LIMIT %d"
                                    fast slow sample-limit)
@@ -208,15 +210,13 @@
 ;; ---------------------------------------------------------------------------
 ;; Public API
 
-(defn- ensure-scratch-schema! [^Connection conn]
-  (exec! conn (str "CREATE SCHEMA IF NOT EXISTS " scratch-schema)))
-
 (defn- cleanup! [^Connection conn]
-  ;; Only drop the scratch tables — never the live target, even if we
-  ;; pointed `slow-ref` at it.
+  ;; Temp tables would be auto-dropped at session end, but the JDBC
+  ;; session outlives a single request (c3p0 pooling) so drop explicitly
+  ;; to free temp space immediately.
   (try
-    (exec! conn (str "DROP TABLE IF EXISTS " (table-ref scratch-slow-ref)))
-    (exec! conn (str "DROP TABLE IF EXISTS " (table-ref scratch-fast-ref)))
+    (exec! conn (str "DROP TABLE IF EXISTS " slow-table))
+    (exec! conn (str "DROP TABLE IF EXISTS " fast-table))
     (catch Exception e
       (log/warn e "transform-optimizer verify: scratch cleanup failed"))))
 
@@ -268,32 +268,27 @@
      driver-kw db-id {:write? true}
      (fn [^Connection conn]
        (try
-         ;; Schema creation lives outside the snapshot transaction —
-         ;; CREATE SCHEMA IF NOT EXISTS is idempotent and we don't want a
-         ;; lingering snapshot-level lock on system catalogs.
-         (.setAutoCommit conn true)
-         (ensure-scratch-schema! conn)
-         ;; Now open the snapshot. Both materialises see the same MVCC view
-         ;; of the source — without this, inserts/updates landing between
-         ;; the slow and fast CREATE TABLE AS calls would diverge the row
-         ;; sets and verify would report false-positive `equivalent: false`.
-         ;; We previously tried to reuse the live target table as the slow
-         ;; side (cached from the last successful run) but that has the
-         ;; same problem on a longer timescale: source data drift between
-         ;; the cached run and now. Always materialise both fresh inside
-         ;; one snapshot.
+         ;; Open a snapshot transaction. Both materialises see the same
+         ;; MVCC view of the source — without this, inserts/updates landing
+         ;; between the slow and fast CREATE TEMP TABLE AS calls would
+         ;; diverge the row sets and verify would report false-positive
+         ;; `equivalent: false`. We previously tried to reuse the live
+         ;; target table as the slow side (cached from the last successful
+         ;; run) but that has the same problem on a longer timescale:
+         ;; source data drift between the cached run and now. Always
+         ;; materialise both fresh inside one snapshot.
          (.setAutoCommit conn false)
          (exec! conn "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-         (let [slow-stats (materialize! conn scratch-slow-ref slow-sql)
-               fast-stats (materialize! conn scratch-fast-ref fast-sql)
-               slow-cols  (column-info conn scratch-slow-ref)
-               fast-cols  (column-info conn scratch-fast-ref)
+         (let [slow-stats (materialize! conn slow-table slow-sql)
+               fast-stats (materialize! conn fast-table fast-sql)
+               slow-cols  (column-info conn slow-table)
+               fast-cols  (column-info conn fast-table)
                mismatch   (schema-match slow-cols fast-cols)]
            (.commit conn)
            (.setAutoCommit conn true)
            (if mismatch
              (throw (ex-info (:detail mismatch) (assoc mismatch :status-code 422)))
-             (let [diff-rows   (diff-count conn scratch-slow-ref scratch-fast-ref)
+             (let [diff-rows   (diff-count conn slow-table fast-table)
                    equivalent? (zero? diff-rows)
                    slow-ms     (long (:ms slow-stats))
                    fast-ms     (long (:ms fast-stats))
@@ -306,9 +301,7 @@
                 :diff_rows        diff-rows
                 :slow_source      "materialized"
                 :sample_diff      (when-not equivalent?
-                                    (diff-sample conn
-                                                 scratch-slow-ref
-                                                 scratch-fast-ref))})))
+                                    (diff-sample conn slow-table fast-table))})))
          (finally
            ;; Best-effort: roll back anything still open and put the
            ;; connection back into auto-commit mode before cleanup so the
