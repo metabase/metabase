@@ -272,31 +272,33 @@ function ExplorationGroupVisualizationChart({
         // row (color dot + chart name) consolidated in a single
         // wrap-flex legend at the top.
         <Stack gap="md" flex={1} mih={0} style={{ overflowY: "auto" }}>
-          <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
-            {series.map((s) => {
-              const color = queryColors[s.card.id];
-              return (
-                <Group
-                  key={s.card.id}
-                  gap="xs"
-                  align="center"
-                  wrap="nowrap"
-                  role="listitem"
-                >
-                  <Box
-                    aria-hidden
-                    w="0.625rem"
-                    h="0.625rem"
-                    bdrs="50%"
-                    style={{ background: color }}
-                  />
-                  <Text fw="bold" size="sm">
-                    {s.card.name}
-                  </Text>
-                </Group>
-              );
-            })}
-          </Group>
+          {queries.length > 1 && (
+            <Group gap="lg" wrap="wrap" role="list" aria-label={t`Legend`}>
+              {series.map((s) => {
+                const color = queryColors[s.card.id];
+                return (
+                  <Group
+                    key={s.card.id}
+                    gap="xs"
+                    align="center"
+                    wrap="nowrap"
+                    role="listitem"
+                  >
+                    <Box
+                      aria-hidden
+                      w="0.625rem"
+                      h="0.625rem"
+                      bdrs="50%"
+                      style={{ background: color }}
+                    />
+                    <Text fw="bold" size="sm">
+                      {s.card.name}
+                    </Text>
+                  </Group>
+                );
+              })}
+            </Group>
+          )}
           {series.map((s) => (
             <Box key={s.card.id} flex={1} mih="10rem" style={{ flexShrink: 0 }}>
               <Visualization rawSeries={[s]} className={S.chart} />
