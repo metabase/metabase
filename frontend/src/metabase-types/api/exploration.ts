@@ -101,6 +101,7 @@ export interface ExplorationQuery {
   exploration_thread_id: ExplorationThreadId;
   card_id: CardId;
   dimension_id: string;
+  dimension_name: string;
   name: string | null;
   position: number;
   status: ExplorationQueryStatus;
