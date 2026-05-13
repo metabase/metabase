@@ -326,10 +326,10 @@ function CartesianPageBody({
   const { ref: scrollContainerRef, height: scrollContainerHeight } =
     useElementSize();
 
-  const mainChartHeight = queries.length * MIN_PANEL_HEIGHT_PX;
+  const naturalChartHeight = queries.length * MIN_PANEL_HEIGHT_PX;
   const shouldShowStickyAxis =
     scrollContainerHeight > 0 &&
-    mainChartHeight > scrollContainerHeight - STICKY_AXIS_HEIGHT_PX;
+    naturalChartHeight > scrollContainerHeight - STICKY_AXIS_HEIGHT_PX;
 
   // When the sticky axis is active, hide the main chart's bottom
   // x-axis entirely (ticks + line + title) so we don't render the
@@ -371,9 +371,14 @@ function CartesianPageBody({
       ref={scrollContainerRef}
       flex={1}
       mih={0}
-      style={{ overflowY: "auto", position: "relative" }}
+      style={{
+        overflowY: "auto",
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
-      <Box ref={mainChartContainerRef} h={`${mainChartHeight}px`}>
+      <Box ref={mainChartContainerRef} flex={1} mih={`${naturalChartHeight}px`}>
         <Visualization
           rawSeries={adjustedSeries}
           timelineEvents={timelineEvents}
@@ -385,6 +390,7 @@ function CartesianPageBody({
           h={`${STICKY_AXIS_HEIGHT_PX}px`}
           data-testid="exploration-sticky-x-axis"
           bg="background-primary"
+          flex="none"
           style={{
             position: "sticky",
             bottom: 0,
