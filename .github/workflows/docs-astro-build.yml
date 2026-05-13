@@ -14,10 +14,7 @@ on:
     paths:
       - 'docs/**'
       - 'docs-build/**'
-      - 'bin/build-docs.sh'
-      - 'bin/ensure-generated-docs.sh'
-      - 'bin/generate-docs.sh'
-      - 'bin/generate-embedding-docs.sh'
+      - 'mage/src/mage/docs.clj'
       - '.github/workflows/docs-astro-build.yml'
   schedule:
     # 07:00 UTC daily — picks up Clojure / SDK source changes that don't
@@ -41,7 +38,7 @@ jobs:
         with:
           bun-version: '1.3.7'
 
-      # Java + Clojure CLI + M2 cache. Needed because bin/build-docs.sh
+      # Java + Clojure CLI + M2 cache. Needed because `./bin/mage docs-build`
       # regenerates docs/api.json via `clojure -M:ee:doc api-documentation`.
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
@@ -49,7 +46,7 @@ jobs:
       - name: Build docs
         env:
           DOCS_BASE_PATH: ${{ inputs.base_path }}
-        run: ./bin/build-docs.sh
+        run: ./bin/mage docs-build
 
       - name: Upload docs HTML
         uses: actions/upload-artifact@v4

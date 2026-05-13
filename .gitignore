@@ -193,5 +193,6 @@ __pycache__/
 .config/wt.toml
 .claude/worktrees
 .claude/scheduled_tasks.lock
+/__worktrees/
 .playwright-mcp
 .ci_reports/

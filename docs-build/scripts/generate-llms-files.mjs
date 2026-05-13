@@ -70,7 +70,7 @@ const repoRoot = path.resolve(docsBuildDir, "..");
 const docsSourceDir = path.join(repoRoot, "docs");
 const distDir = path.join(docsBuildDir, "dist");
 
-// DOCS_BASE_PATH is set by bin/build-docs.sh: /docs/latest or /docs/v0.NN.
+// DOCS_BASE_PATH is set by `./bin/mage docs-build`: /docs/latest or /docs/v0.NN.
 const docsBasePath = process.env.DOCS_BASE_PATH ?? "/docs/latest";
 const baseMatch = docsBasePath.match(/^\/docs\/(.+)$/);
 const version = baseMatch ? baseMatch[1] : "latest";
