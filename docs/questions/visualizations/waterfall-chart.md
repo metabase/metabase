@@ -16,13 +16,11 @@ Use a waterfall chart to show how a starting value changes through a series of i
 
 Waterfall charts are useful for financial breakdowns, inventory changes, or anywhere you need to show how a value changes step by step.
 
-If your data only contains positive values, or if you do not need to track a running total, consider a [bar chart](./line-bar-and-area-charts.md) instead.
-
 ## Data shape for a waterfall chart
 
-To create a waterfall chart, use a query that returns a single metric grouped by a single dimension, such as time or category. The metric should include both positive and negative values.
+To create a waterfall chart, create a question that returns a single metric grouped by a single dimension, such as time or category. The metric should include both positive and negative values.
 
-Here is the data shape for the example chart on this page:
+Here's the data shape for the example chart above:
 
 | Month      | Change in sales |
 | ---------- | --------------- |
@@ -91,6 +89,6 @@ Use the following options for the y-axis:
 
 ## Limitations and alternatives
 
-- If your data only contains positive values, or if you do not need to track a running total, consider a [bar chart](./line-bar-and-area-charts.md) instead.
+- If your data only contains positive values, or if you don't need to track a running total, consider a [bar chart](./line-bar-and-area-charts.md) instead.
 - If you want to show progress toward a single value, consider a [progress bar](./progress-bar.md) or [gauge chart](./gauge.md) instead.
-- Waterfall charts only support one metric grouped by one dimension. You cannot add breakouts or display multiple series.
+- Waterfall charts only support a single metric grouped by a single dimension. You can't add breakouts or display multiple series.
