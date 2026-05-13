@@ -5,7 +5,9 @@ summary: Overview of all the ways you can use AI with Metabase.
 
 # AI in Metabase
 
-There are three main ways you can use AI with your Metabase:
+AI is in Metabase optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
+
+Here are the different ways to use AI with Metabase:
 
 - [Metabot](#metabot)
 - [MCP server](#mcp-server)
