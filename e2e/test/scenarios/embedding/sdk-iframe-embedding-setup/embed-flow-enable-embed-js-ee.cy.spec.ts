@@ -102,13 +102,10 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
           .should("be.visible")
           .should("be.disabled");
 
-        // Going to the next step and selecting "Orders in a dashboard" explicitely
+        // Selecting "Orders in a dashboard" explicitely on the first step
         // because sometimes it selects another one that's been used recently
         // see EMB-1106
-        cy.log(
-          "Navigating to embed flow step 2 and selecting an item to embed",
-        );
-        cy.findByRole("button", { name: "Next" }).click();
+        cy.log("Selecting an item to embed on the first step");
         cy.findByTestId("embed-browse-entity-button").click();
         H.entityPickerModal()
           .findAllByText("Orders in a dashboard")

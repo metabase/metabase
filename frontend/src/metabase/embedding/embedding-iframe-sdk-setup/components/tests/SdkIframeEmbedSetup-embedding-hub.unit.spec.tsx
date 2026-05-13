@@ -40,7 +40,6 @@ describe("Embed flow > embedding hub step completion tracking", () => {
       expect(authRadio).toBeChecked();
 
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
-      await userEvent.click(screen.getByRole("button", { name: "Next" }));
       await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
       const ssoTypeRadio = screen.getByDisplayValue(

@@ -11,14 +11,14 @@ import {
 import { Button, Card, Icon, type IconName, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
-import { useSdkIframeEmbedSetupContext } from "../context";
+import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
-} from "../types";
-import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+} from "../../../types";
+import { getResourceIdFromSettings } from "../../../utils/get-default-sdk-iframe-embed-setting";
 
 // The picker uses the "recents" id to open on the Recent items tab while still
 // being able to resolve to a valid initial path.
@@ -27,7 +27,7 @@ const PICKER_RECENTS_VALUE = {
   model: "collection" as const,
 };
 
-export const SelectEmbedResourceStep = () => {
+export const ResourceCard = () => {
   const {
     experience,
     settings,
@@ -50,7 +50,6 @@ export const SelectEmbedResourceStep = () => {
       : skipToken,
   );
 
-  // If a step does not allow resource selection, hide it.
   if (!hasResourceSelectionStep(experience)) {
     return null;
   }
@@ -184,7 +183,7 @@ export const SelectEmbedResourceStep = () => {
 
   return (
     <>
-      <Card p="md" mb="md">
+      <Card p="md">
         <Stack gap="md">
           <Text size="lg" fw="bold">
             {title}
@@ -258,8 +257,8 @@ const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
 ): experience is Exclude<
   SdkIframeEmbedSetupExperience,
-  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 > =>
   !(
-    STEPS_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
+    EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);

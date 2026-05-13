@@ -113,14 +113,9 @@ export const navigateToEntitySelectionStep = (
     cy.findByText(labelByExperience).click();
   }
 
-  // exploration and metabot experience does not have the entity selection step
+  // Experience selection and resource picker are part of the same step.
+  // exploration and metabot do not show a resource picker.
   if (hasEntitySelection && options.resourceName) {
-    cy.log("navigate to the entity selection step");
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Entity selection step
-    });
-
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")

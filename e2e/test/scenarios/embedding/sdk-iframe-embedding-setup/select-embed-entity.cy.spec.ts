@@ -49,7 +49,6 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
       cy.log("a default dashboard is preselected");
@@ -79,7 +78,6 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
       // see the "shows recently created dashboard at the top of the list (EMB-1179)"
@@ -133,7 +131,6 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
-      cy.findByText("Next").click();
 
       cy.findByText("Select a chart to embed").should("be.visible");
 
@@ -174,7 +171,6 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click();
       getResourceSelectorButton().click();
     });
 
@@ -207,7 +203,6 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
-      cy.findByText("Next").click();
       getResourceSelectorButton().click();
     });
 
@@ -245,7 +240,6 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Browser").click();
-      cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
       getResourceSelectorButton().click();
     });
@@ -323,7 +317,6 @@ describe("recently created dashboards", () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
       cy.log(

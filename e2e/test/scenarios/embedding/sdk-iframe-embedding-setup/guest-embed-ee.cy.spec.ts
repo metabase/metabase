@@ -135,24 +135,14 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      // Experience step
+      // Combined experience + resource step
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
         cy.findByTestId("upsell-card").should("not.exist");
 
         cy.findByText("Chart").click();
-        cy.findByText("Next").click();
-      });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_completed",
-        event_detail:
-          "authType=guest-embed,experience=chart,isDefaultExperience=false",
-      });
-
-      // Entity selection step
-      getEmbedSidebar().within(() => {
         cy.findByTestId("embed-browse-entity-button").click();
       });
 
@@ -167,6 +157,12 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       getEmbedSidebar().within(() => {
         cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail:
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       H.expectUnstructuredSnowplowEvent({
@@ -397,7 +393,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
           cy.findByText("Back").click();
           cy.findByText("Back").click();
-          cy.findByText("Back").click();
 
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
@@ -407,7 +402,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         embedModalEnableEmbedding();
 
         getEmbedSidebar().within(() => {
-          cy.findByText("Next").click();
           cy.findByText("Next").click();
           cy.findByText("Get code").click();
 

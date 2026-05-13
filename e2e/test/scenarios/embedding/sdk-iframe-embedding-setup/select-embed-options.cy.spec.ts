@@ -703,7 +703,6 @@ describe(suiteTitle, () => {
         .and("include", "embedding/components.html#question");
 
       cy.findByText("Back").click();
-      cy.findByText("Back").click();
 
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();

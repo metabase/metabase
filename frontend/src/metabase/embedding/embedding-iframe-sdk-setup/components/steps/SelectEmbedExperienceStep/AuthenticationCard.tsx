@@ -1,25 +1,24 @@
 import { t } from "ttag";
 
-import { SdkIframeStepEnableEmbeddingSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepEnableEmbeddingSection";
-import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { Card, Radio, Stack, Text } from "metabase/ui";
+
+import { useSdkIframeEmbedSetupContext } from "../../../context";
 import {
   DEFAULT_EXPERIENCE,
   useHandleExperienceChange,
-} from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
-import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-experience";
-import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
-import { Card, Radio, Stack, Text } from "metabase/ui";
-
-import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
+} from "../../../hooks/use-handle-experience-change";
+import { getAuthTypeForSettings } from "../../../utils/get-auth-type-for-settings";
+import { getResourceTypeFromExperience } from "../../../utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardExperience } from "../../../utils/is-question-or-dashboard-experience";
+import { isStepWithResource } from "../../../utils/is-step-with-resource";
+import { SdkIframeStepEnableEmbeddingSection } from "../../SdkIframeStepEnableEmbeddingSection";
 
 import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";
 
-export const AuthenticationSection = () => {
+export const AuthenticationCard = () => {
   const {
     experience,
     isSimpleEmbedFeatureAvailable,
-    isFirstStep,
     currentStep,
     settings,
     updateSettings,
@@ -28,11 +27,6 @@ export const AuthenticationSection = () => {
   const handleEmbedExperienceChange = useHandleExperienceChange();
 
   const resourceType = getResourceTypeFromExperience(experience);
-
-  if (!isFirstStep) {
-    return null;
-  }
-
   const authType = getAuthTypeForSettings(settings);
 
   const handleAuthTypeChange = (value: string) => {

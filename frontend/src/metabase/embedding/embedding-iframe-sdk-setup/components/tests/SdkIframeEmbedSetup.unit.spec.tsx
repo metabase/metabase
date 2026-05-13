@@ -50,17 +50,17 @@ describe("Embed flow > forward and backward navigation", () => {
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // The resource picker is part of the first step
     expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
     expect(
       screen.getByTestId("embed-browse-entity-button"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Get code" }),
     ).toBeInTheDocument();
@@ -78,39 +78,36 @@ describe("Embed flow > forward and backward navigation", () => {
   it("navigates backward to the previous step", async () => {
     setup({ simpleEmbeddingEnabled: true });
 
-    // Select embed type > select resource > select embed options
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // First step (experience + resource) > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
 
-    // Back to select resource
-    await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
-
-    // Back to select embed type
+    // Back to first step
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Back" }),
     ).not.toBeInTheDocument();
   });
 
-  it("skips the 'select resource' step for exploration", async () => {
+  it("hides the resource picker for exploration on the first step", async () => {
     setup({ simpleEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
-    // Clicking next skips "select resource" and go directly to "select embed options"
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Behavior")).toBeInTheDocument();
-    expect(screen.getByText("Appearance")).toBeInTheDocument();
-
+    // The resource picker is not shown for the exploration experience
     expect(
       screen.queryByText("Select a dashboard to embed"),
     ).not.toBeInTheDocument();
+
+    // Clicking next goes directly to "select embed options"
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 
   it("disables next and back buttons when simple embedding is disabled", () => {
@@ -272,8 +269,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
       hasEmailSetup: true,
     });
 
-    // Navigate to options step: Next (experience) → Next (resource)
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Navigate to options step: Next (combined experience + resource step)
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(

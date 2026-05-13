@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { GetCodeStep } from "./components/GetCodeStep";
-import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
-import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
-import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
+import { AppearanceStep } from "./components/steps/AppearanceStep/AppearanceStep";
+import { GetCodeStep } from "./components/steps/GetCodeStep/GetCodeStep";
+import { SelectEmbedExperienceStep } from "./components/steps/SelectEmbedExperienceStep/SelectEmbedExperienceStep";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
@@ -68,10 +67,9 @@ export const getEmbedExperiences = ({
 type EmbedStepConfig = {
   id: SdkIframeEmbedSetupStep;
   component: React.ComponentType;
-  skipFor?: SdkIframeEmbedSetupExperience[];
 };
 
-export const STEPS_WITHOUT_RESOURCE_SELECTION = [
+export const EXPERIENCES_WITHOUT_RESOURCE_SELECTION = [
   "exploration",
   "metabot",
 ] as const satisfies SdkIframeEmbedSetupExperience[];
@@ -82,13 +80,8 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
     component: SelectEmbedExperienceStep,
   },
   {
-    id: "select-embed-resource",
-    component: SelectEmbedResourceStep,
-    skipFor: STEPS_WITHOUT_RESOURCE_SELECTION,
-  },
-  {
     id: "select-embed-options",
-    component: SelectEmbedOptionsStep,
+    component: AppearanceStep,
   },
   {
     id: "get-code",

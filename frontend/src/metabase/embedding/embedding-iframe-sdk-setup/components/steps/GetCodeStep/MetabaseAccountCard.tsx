@@ -1,13 +1,11 @@
 import { jt, t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import {
-  SETUP_SSO_CAMPAIGN,
-  UTM_LOCATION,
-} from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
-import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { Alert, Anchor, Card, Icon, Radio, Stack, Text } from "metabase/ui";
+
+import { SETUP_SSO_CAMPAIGN, UTM_LOCATION } from "../../../analytics";
+import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { getAuthSubTypeForSettings } from "../../../utils/get-auth-sub-type-for-settings";
 
 const utmTags = {
   utm_source: "product",
@@ -16,7 +14,7 @@ const utmTags = {
   utm_content: UTM_LOCATION,
 };
 
-export const MetabaseAccountSection = () => {
+export const MetabaseAccountCard = () => {
   const { isSsoEnabledAndConfigured, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
