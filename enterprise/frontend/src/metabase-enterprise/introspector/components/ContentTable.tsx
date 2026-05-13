@@ -14,31 +14,7 @@ import {
 import type { IntrospectorEntityType, IntrospectorRow } from "../types";
 
 import { ConditionBadges } from "./ConditionBadges";
-import { reasonFlagColor } from "./reasons";
-
-function ReasonsCell({ reasons }: { reasons: IntrospectorRow["reasons"] }) {
-  const list = reasons ?? [];
-  if (!list.length) {
-    return (
-      <Text size="sm" c="text-secondary">
-        —
-      </Text>
-    );
-  }
-  return (
-    <Stack gap={2}>
-      {list.map((r, i) => (
-        <Text key={`${r.code}-${i}`} size="xs" c="text-secondary">
-          <Text component="span" fw={600} c={reasonFlagColor(r.flag)}>
-            {r.code}
-          </Text>
-          {" — "}
-          {r.detail}
-        </Text>
-      ))}
-    </Stack>
-  );
-}
+import { ReasonsCell } from "./reasons";
 
 interface Props {
   entityType: IntrospectorEntityType;
@@ -198,18 +174,29 @@ export function ContentTable({
                   <ConditionBadges row={row} />
                 </td>
                 <td style={cellStyle}>
-                  {row.collection_name ? (
-                    <Group gap={4} wrap="nowrap">
-                      <Icon name="folder" size={12} c="text-secondary" />
-                      <Text
-                        size="sm"
-                        c="text-secondary"
-                        lineClamp={1}
-                        title={row.collection_name}
-                      >
-                        {row.collection_name}
-                      </Text>
-                    </Group>
+                  {row.collection_name && row.collection_id ? (
+                    // Wrap the inline icon+name pair in an anchor so the whole
+                    // collection cell becomes a deep link to /collection/:id.
+                    // Mantine's `Group` types don't accept `component="a"`
+                    // cleanly, so we wrap an `<a>` around it instead.
+                    <a
+                      href={`/collection/${row.collection_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "none" }}
+                    >
+                      <Group gap={4} wrap="nowrap">
+                        <Icon name="folder" size={12} c="text-secondary" />
+                        <Text
+                          size="sm"
+                          c="brand"
+                          lineClamp={1}
+                          title={row.collection_name}
+                        >
+                          {row.collection_name}
+                        </Text>
+                      </Group>
+                    </a>
                   ) : (
                     <Text size="sm" c="text-secondary">
                       {t`(Root)`}

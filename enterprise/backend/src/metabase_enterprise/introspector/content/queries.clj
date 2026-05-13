@@ -253,30 +253,179 @@
 ;; `analysis_finding_error`; stale and unreferenced reasons are synthesised in-process
 ;; from the federated row's flag columns (no extra DB hit).
 
+(defn- resolve-source-names
+  "Bulk-resolve a seq of `[source-entity-type source-entity-id]` pairs to
+  display names. Two queries — one for tables, one for cards.
+
+  Returns `{[source_entity_type source_entity_id] -> display-name}`."
+  [pairs]
+  (let [grouped     (group-by first (filter (fn [[t id]] (and t id)) pairs))
+        table-ids   (mapv second (get grouped "table" []))
+        card-ids    (mapv second (get grouped "card" []))
+        table-rows  (when (seq table-ids)
+                      (t2/query
+                       {:select [:id :name :schema]
+                        :from   [:metabase_table]
+                        :where  [:in :id (vec table-ids)]}))
+        card-rows   (when (seq card-ids)
+                      (t2/query
+                       {:select [:id :name]
+                        :from   [:report_card]
+                        :where  [:in :id (vec card-ids)]}))]
+    (into {}
+          (concat
+           (for [{:keys [id name schema]} table-rows]
+             [["table" id] (if schema (str schema "." name) name)])
+           (for [{:keys [id name]} card-rows]
+             [["card" id] name])))))
+
+(defn- transform-source-tables
+  "Returns `transform-id -> [\"schema.tab1\" \"schema.tab2\" …]` for the given
+  broken transform ids. Sourced from `dependency` edges of type
+  `transform -> table`. When the per-finding `source_entity_*` is blank
+  (common on transforms), we use this list to enrich `missing-column` /
+  `duplicate-column` reasons with the actual candidate source tables."
+  [transform-ids]
+  (if-not (seq transform-ids)
+    {}
+    (let [edges (t2/query
+                 {:select [[:d.from_entity_id  :transform_id]
+                           [:t.name            :name]
+                           [:t.schema          :schema]]
+                  :from   [[:dependency :d]]
+                  :join   [[:metabase_table :t]
+                           [:and
+                            [:= :t.id :d.to_entity_id]
+                            [:= :d.to_entity_type (h2x/literal "table")]]]
+                  :where  [:and
+                           [:= :d.from_entity_type (h2x/literal "transform")]
+                           [:in :d.from_entity_id (vec transform-ids)]]})]
+      (reduce (fn [m {:keys [transform_id name schema]}]
+                (let [qualified (if schema (str schema "." name) name)]
+                  (update m transform_id (fnil conj []) qualified)))
+              {} edges))))
+
+(defn- sanitize-exception-message
+  "Tidy up a Java/Python exception string for human display:
+   - strip the leading FQ wrapper class(es) (e.g. `java.lang.RuntimeException: `,
+     `java.nio.file.ClosedFileSystemException: `) when followed by another message
+   - if the only thing left is a bare FQ class name, keep just the short class
+   - collapse doubled `Foo: Foo: …` prefixes (common in nested Python -> Java)
+   - trim trailing whitespace."
+  [s]
+  (when (seq s)
+    (let [;; First strip prefix wrapper classes that have ": message" after them.
+          peeled (str/replace s
+                              #"^(?:[a-z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_$]+)+:\s+)+"
+                              "")
+          ;; If the result IS a bare FQ class with no message, shrink to short name.
+          short  (if (re-matches #"[a-z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_$]+)+" peeled)
+                   (last (str/split peeled #"\."))
+                   peeled)
+          ;; `PermissionError: PermissionError: …` -> `PermissionError: …`
+          deduped (str/replace short
+                               #"^([A-Za-z_]+(?:Error|Exception)):\s+\1:\s+"
+                               "$1: ")]
+      (str/trim deduped))))
+
+(defn- format-source-list
+  "Render a list of source names as a single `\"…in \\`a\\`, \\`b\\`, \\`c\\`\"` clause.
+  Above the truncation threshold, switches to `\"…in \\`a\\`, \\`b\\`, and N more\"`
+  so the reason stays scan-able even for transforms with many declared sources."
+  [sources]
+  (when (seq sources)
+    (let [limit  3
+          n      (count sources)
+          quoted (map #(str "`" % "`") sources)]
+      (if (<= n limit)
+        (str/join ", " quoted)
+        (str (str/join ", " (take limit quoted))
+             ", and " (- n limit) " more")))))
+
+(defn- humanize-error-detail
+  "Translate `(error_type, error_detail, source-list)` into a single human-readable
+  sentence. `source-list` is a (possibly empty) vector of qualified source names —
+  either the per-finding source (resolved from `analysis_finding_error.source_entity_*`)
+  or, when that's blank, a transform's declared source tables. Falls back to
+  `error_type: error_detail` when the type isn't recognised."
+  [error-type error-detail source-list]
+  (let [detail   (some-> error-detail str/trim not-empty)
+        col      (some-> detail (str/replace #"[`\"]" ""))
+        src-text (format-source-list source-list)
+        in-src   (when src-text (str " in " src-text))]
+    (case error-type
+      "missing-column"
+      (if col
+        (str "Missing column `" col "`" in-src
+             " — referenced but not found in the source(s).")
+        "A referenced column is missing from the source(s).")
+
+      "duplicate-column"
+      (if col
+        (str "Duplicate column `" col "`" in-src
+             " — declared more than once.")
+        "A column is declared more than once.")
+
+      "syntax-error"
+      (if detail
+        (str "SQL syntax error: " detail ".")
+        "SQL syntax error in the query body.")
+
+      "validation-exception-error"
+      (let [clean (sanitize-exception-message detail)]
+        (cond
+          (str/blank? clean) "The query raised an exception at validation time."
+          :else              (str "Validation exception: " clean)))
+
+      ;; Unknown type — be conservative, just show what we have.
+      (cond
+        (and error-type detail) (str error-type ": " detail)
+        error-type              error-type
+        detail                  detail
+        :else                   "Analysis finding reported an error."))))
+
 (defn- analysis-finding-error-reasons
   "Returns `entity-id → [{:flag :code :detail} …]` for broken-signal rows sourced from
-  `analysis_finding_error`. Each error row contributes one reason.
+  `analysis_finding_error`. Each error row contributes one reason whose detail is a
+  humanised sentence (see `humanize-error-detail`).
 
   `entity-type-str` is the `analyzed_entity_type` value to filter on
-  (`\"card\"`, `\"dashboard\"`, or `\"transform\"`)."
-  [entity-type-str entity-ids]
+  (`\"card\"`, `\"dashboard\"`, or `\"transform\"`).
+
+  Optional `:fallback-sources-by-id` — `{entity-id -> [source-name …]}` used as
+  the source-list when the per-finding `source_entity_*` is blank. For
+  transforms this is the declared source-table list from `dependency` edges,
+  giving column-missing reasons a concrete table to point at."
+  [entity-type-str entity-ids & {:keys [fallback-sources-by-id]}]
   (if-not (seq entity-ids)
     {}
-    (let [rows (t2/query
-                {:select [[:afe.analyzed_entity_id :id]
-                          [:afe.error_type :error_type]
-                          [:afe.error_detail :error_detail]]
-                 :from   [[:analysis_finding_error :afe]]
-                 :where  [:and
-                          [:= :afe.analyzed_entity_type (h2x/literal entity-type-str)]
-                          [:in :afe.analyzed_entity_id (vec entity-ids)]]})]
-      (reduce (fn [m {:keys [id error_type error_detail]}]
-                (let [detail (cond
-                               (and (seq error_type) (seq error_detail))
-                               (str error_type ": " error_detail)
-                               (seq error_type)   error_type
-                               (seq error_detail) error_detail
-                               :else              "Analysis finding reported an error.")]
+    (let [rows         (t2/query
+                        {:select [[:afe.analyzed_entity_id  :id]
+                                  [:afe.error_type          :error_type]
+                                  [:afe.error_detail        :error_detail]
+                                  [:afe.source_entity_type  :source_entity_type]
+                                  [:afe.source_entity_id    :source_entity_id]]
+                         :from   [[:analysis_finding_error :afe]]
+                         :where  [:and
+                                  [:= :afe.analyzed_entity_type (h2x/literal entity-type-str)]
+                                  [:in :afe.analyzed_entity_id (vec entity-ids)]]})
+          source-pairs (into #{}
+                             (keep (fn [{:keys [source_entity_type source_entity_id]}]
+                                     (when (and source_entity_type source_entity_id)
+                                       [source_entity_type source_entity_id])))
+                             rows)
+          source-name  (resolve-source-names source-pairs)]
+      (reduce (fn [m {:keys [id error_type error_detail
+                             source_entity_type source_entity_id]}]
+                (let [explicit (when (and source_entity_type source_entity_id)
+                                 (get source-name [source_entity_type source_entity_id]))
+                      sources  (cond
+                                 explicit
+                                 [explicit]
+
+                                 :else
+                                 (get fallback-sources-by-id id []))
+                      detail   (humanize-error-detail error_type error_detail sources)]
                   (update m id (fnil conj [])
                           {:flag   "broken"
                            :code   "analysis-finding-error"
@@ -713,9 +862,16 @@
   (if-not (seq transform-ids)
     {}
     (let [ids                 (vec transform-ids)
+          ;; Source-table list per transform — enriches `missing-column` and
+          ;; `duplicate-column` reasons when the finding row's `source_entity_*`
+          ;; is blank (the common case for transforms). Resolved in parallel
+          ;; with the analysis-finding query.
+          sources-f           (future (transform-source-tables ids))
           ;; Reuse the shared analysis-finding-error reader so cards, dashboards,
           ;; and transforms all hit the same SQL path.
-          analysis-f          (future (analysis-finding-error-reasons "transform" ids))
+          analysis-f          (future (analysis-finding-error-reasons
+                                       "transform" ids
+                                       :fallback-sources-by-id @sources-f))
           target-missing-f    (future
                                 ;; Only report target-missing as a *reason* for
                                 ;; rows where it actually contributes to broken,
@@ -753,10 +909,13 @@
                          :detail "Target table is inactive or has been dropped."}))
                 reasons target-missing-rows)
         (reduce (fn [m {:keys [transform_id message]}]
-                  (push m transform_id
-                        {:flag   "broken"
-                         :code   "latest-run-failed"
-                         :detail (or message "Most recent run failed.")}))
+                  (let [clean (sanitize-exception-message message)]
+                    (push m transform_id
+                          {:flag   "broken"
+                           :code   "latest-run-failed"
+                           :detail (if (str/blank? clean)
+                                     "The most recent run failed."
+                                     (str "Most recent run failed: " clean))})))
                 reasons latest-failed-rows)))))
 
 (defn- parse-transform-type
