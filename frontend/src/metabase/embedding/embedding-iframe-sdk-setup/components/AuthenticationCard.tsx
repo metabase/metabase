@@ -2,18 +2,18 @@ import { t } from "ttag";
 
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
-import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { useSdkIframeEmbedSetupContext } from "../context";
 import {
   DEFAULT_EXPERIENCE,
   useHandleExperienceChange,
-} from "../../../hooks/use-handle-experience-change";
-import { getAuthTypeForSettings } from "../../../utils/get-auth-type-for-settings";
-import { getResourceTypeFromExperience } from "../../../utils/get-resource-type-from-experience";
-import { isQuestionOrDashboardExperience } from "../../../utils/is-question-or-dashboard-experience";
-import { isStepWithResource } from "../../../utils/is-step-with-resource";
-import { SdkIframeStepEnableEmbeddingSection } from "../../SdkIframeStepEnableEmbeddingSection";
+} from "../hooks/use-handle-experience-change";
+import { getAuthTypeForSettings } from "../utils/get-auth-type-for-settings";
+import { getResourceTypeFromExperience } from "../utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardExperience } from "../utils/is-question-or-dashboard-experience";
+import { isStepWithResource } from "../utils/is-step-with-resource";
 
 import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";
+import { SdkIframeStepEnableEmbeddingSection } from "./SdkIframeStepEnableEmbeddingSection";
 
 export const AuthenticationCard = () => {
   const {

@@ -5,9 +5,9 @@ import { Box, Stack } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../../../analytics";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { AuthenticationCard } from "../../AuthenticationCard";
 import { EmbeddingUpsell } from "../../Common/EmbeddingUpsell";
 
-import { AuthenticationCard } from "./AuthenticationCard";
 import { ExperienceCard } from "./ExperienceCard";
 import { ResourceCard } from "./ResourceCard";
 

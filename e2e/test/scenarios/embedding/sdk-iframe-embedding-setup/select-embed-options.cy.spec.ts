@@ -221,7 +221,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -229,7 +228,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       // Trigger mouseover (not mouseenter) because this HoverCard is outside a
@@ -593,7 +591,6 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
-      cy.button("Back").click();
 
       cy.findByLabelText("Metabase account (SSO)").click();
     });
@@ -601,7 +598,6 @@ describe(suiteTitle, () => {
     embedModalEnableEmbedding();
 
     getEmbedSidebar().within(() => {
-      cy.button("Next").click();
       cy.button("Next").click();
 
       cy.findByLabelText("Allow alerts")
