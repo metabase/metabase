@@ -25,23 +25,3 @@ databaseChangeLog:
         - dropColumn:
             tableName: data_complexity_score
             columnName: source
-
-  - changeSet:
-      id: v61.2026-05-13T10:00:01
-      author: christruter
-      comment: |
-        Drop the column default once the rolling-deploy window has closed. Keeping it would
-        silently fill 'appdb' for any future insert that forgets to set source, masking the case
-        where a representation-derived row should have been tagged 'representation:<digest>'.
-        App-layer code must set source explicitly.
-      changes:
-        - dropDefaultValue:
-            tableName: data_complexity_score
-            columnName: source
-            columnDataType: varchar(255)
-      rollback:
-        - addDefaultValue:
-            tableName: data_complexity_score
-            columnName: source
-            columnDataType: varchar(255)
-            defaultValue: appdb
