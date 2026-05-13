@@ -14,9 +14,9 @@ export function useDeleteWorkspace({ onSuccess }: DeleteWorkspaceProps = {}) {
 
   const handleDelete = (workspace: Workspace) => {
     show({
-      title: t`Delete ${workspace.name}?`,
-      message: t`This will deprovision the workspace and remove it permanently.`,
-      confirmButtonText: t`Delete`,
+      title: t`Delete this workspace?`,
+      message: t`This will delete the workspace as well as the temporary database users and schemas that were created for this workspace. This can’t be undone.`,
+      confirmButtonText: t`Delete workspace`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
         await deleteWorkspace(workspace.id).unwrap();

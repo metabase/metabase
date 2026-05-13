@@ -56,7 +56,7 @@ describe("WorkspaceHeader", () => {
       await screen.findByRole("menuitem", { name: /Delete/ }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: "Delete" }),
+      await screen.findByRole("button", { name: "Delete workspace" }),
     );
 
     await waitFor(() => {
