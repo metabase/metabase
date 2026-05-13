@@ -11,6 +11,40 @@ Your job: produce **0 or more** equivalent-but-faster transforms. Output
 nothing else. If you find no meaningful optimization, return an empty
 proposal list with a short summary stating why — that is a valid answer.
 
+## Emit zero proposals when the query is already optimized
+
+**Reading this rule is more important than reading the rest of the
+prelude.** An empty `proposals` array is the *correct, expected, and
+celebrated* output when the input query is already in good shape.
+There is no quota, no minimum, no "look productive" expectation. The
+optimization_degree the server computes will be **100** if and only
+if you return zero proposals — that is the signal the UI uses to
+celebrate the user, and it is what the user wants to see for healthy
+transforms.
+
+A query is "already optimized" when **all** of the following are true:
+
+- The EXPLAIN plan shows no full table scans on tables > ~1M rows that
+  could be avoided by an index that is *not* already present.
+- No cosmetic-only rewrites apply (see "Canonical forms — do not
+  oscillate" below).
+- No precompute opportunity offers a measurable working-set reduction
+  (i.e. the fact-table scan dominates the cost and would not be
+  meaningfully shrunk by rolling up to a daily/cohort table).
+- The recent run history doesn't show a regression worth investigating.
+
+In that situation, **return `{"summary": "...", "proposals": []}` and
+stop**. Do not invent a `:low` rewrite to fill the array. Do not
+propose a cosmetic JOIN/IN swap. Do not propose wrapping a subquery
+in a CTE. Do not propose adding an index on a column that already has
+one. Each of those is *worse* than emitting nothing — it costs the
+user a click to dismiss, and it prevents the transform from being
+marked optimized.
+
+The `summary` for an empty-proposal result should briefly state *why*
+nothing was found (one sentence — "no index gaps, no precompute
+opportunity, query is well-shaped"), not apologise for it.
+
 ## What "equivalent" means
 
 Two transforms are equivalent when they produce the **same set of rows
@@ -126,6 +160,40 @@ so wrapping a subquery in `WITH foo AS (...)` is a wash. In older
 Postgres versions CTEs were optimization fences. Don't claim CTE
 wrapping itself as an optimization — it isn't, unless paired with a
 real structural change.
+
+## Canonical forms — do not oscillate
+
+Postgres' planner normalises several syntactically different patterns
+to the *same* execution plan. Proposing a rewrite that swaps one of
+these forms for its sibling is **pure cosmetic churn** — there is no
+speedup, and across multiple optimize runs you can flip the same
+transform back and forth forever, never converging on "fully
+optimized". When the only change is one of the swaps below, **do not
+propose the rewrite at all** — return zero proposals instead. The
+table tells you the canonical form the optimizer prefers; treat the
+input as already optimal on this axis regardless of which form it
+arrived in.
+
+| Pair | Canonical form | Why |
+|---|---|---|
+| `WHERE x IN (SELECT y FROM t WHERE …)` *vs* `JOIN t ON t.y = x AND …` | **Whichever the user wrote.** Both compile to the same semi-join plan in Postgres. | Planner treats them identically; the swap is cosmetic. |
+| `WHERE EXISTS (SELECT 1 FROM t WHERE t.y = x AND …)` *vs* `JOIN t ON t.y = x AND …` *vs* `WHERE x IN (SELECT y …)` | **Whichever the user wrote.** All three are semi-joins. | Same plan; no speedup. |
+| `LEFT JOIN t ON … WHERE t.col IS NULL` *vs* `WHERE NOT EXISTS (SELECT 1 FROM t WHERE …)` | **`NOT EXISTS`.** | NULL-safe and idiomatic. Don't rewrite an existing `NOT EXISTS` to the LEFT JOIN form. (Note: `NOT IN` is *not* in this set — see the NULL-semantics pitfall above.) |
+| `COUNT(*) FILTER (WHERE cond)` *vs* `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` | **`FILTER`.** | Same plan, more readable; don't rewrite either direction. |
+| Subquery in `FROM` *vs* non-recursive CTE | **Whichever the user wrote.** | Inlined identically since PG 12 (see CTE inlining above). |
+| Two-arg `coalesce(a, b)` *vs* `CASE WHEN a IS NULL THEN b ELSE a END` | **`coalesce`.** | Same plan; never rewrite either way. |
+
+If a proposal's only change is one of the cosmetic swaps in this
+table, drop it. A "rewrite" that merely swaps `IN (...)` for `JOIN`
+on the *same* table with the *same* predicates is not an optimization
+— the EXPLAIN plan is byte-identical.
+
+You may still propose a rewrite that *also* involves one of these
+swaps if there is a *separate* structural win driving it (different
+join order, materialised intermediate, index usage that's only
+reachable from one form because of a planner quirk in the *given*
+EXPLAIN plan). In that case, lead the `rationale` with the structural
+win — not the cosmetic swap.
 
 ## Output schema
 
