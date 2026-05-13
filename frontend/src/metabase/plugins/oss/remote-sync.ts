@@ -6,8 +6,8 @@ import type {
 import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import type { CollectionTreeItem } from "metabase/entities/collections";
 import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import type {
   GitSyncSetupMenuItemProps,

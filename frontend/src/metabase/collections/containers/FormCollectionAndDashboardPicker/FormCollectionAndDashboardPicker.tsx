@@ -14,6 +14,7 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
+import { getCollectionIcon } from "metabase/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import { FormField } from "metabase/common/components/FormField";
 import type {
@@ -29,7 +30,6 @@ import {
 } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon } from "metabase/ui";

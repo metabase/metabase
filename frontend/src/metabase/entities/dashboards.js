@@ -5,7 +5,7 @@ import {
   useGetDashboardQuery,
   useListDashboardsQuery,
 } from "metabase/api/dashboard";
-import { getCollectionType } from "metabase/entities/collections/utils";
+import { getCollectionType } from "metabase/collections/utils";
 
 import { createEntity, entityCompatibleQuery } from "./utils";
 

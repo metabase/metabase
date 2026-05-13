@@ -19,7 +19,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { ROOT_COLLECTION as ROOT } from "metabase/collections/constants";
 import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
   BaseEntityId,

@@ -15,7 +15,7 @@ import {
   screen,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { ROOT_COLLECTION as ROOT } from "metabase/collections/constants";
 import type { StoreDashboard } from "metabase/redux/store";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";

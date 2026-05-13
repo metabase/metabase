@@ -1,9 +1,9 @@
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import {
   ItemListLoader,
   type OmniPickerFolderItem,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import { CollectionItemList } from "./CollectionItemList";

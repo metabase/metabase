@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import type { CollectionTreeItem } from "metabase/entities/collections";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";

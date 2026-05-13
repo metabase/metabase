@@ -6,8 +6,8 @@ import {
   useGetCollectionQuery,
   useListTimelinesQuery,
 } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";

@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import {
   createMockSettingsState,

@@ -3,7 +3,7 @@ import {
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import MoveEventModal, {
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";

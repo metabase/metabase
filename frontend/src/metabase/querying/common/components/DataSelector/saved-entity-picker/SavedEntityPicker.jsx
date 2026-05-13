@@ -5,7 +5,9 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import {
+  buildCollectionTree,
   currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
@@ -13,10 +15,6 @@ import {
 import { Tree } from "metabase/common/components/tree";
 import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
-import {
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree,
-} from "metabase/entities/collections";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";

@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { isLibraryCollection } from "metabase/collections/utils";
+import {
+  buildCollectionTree,
+  isLibraryCollection,
+} from "metabase/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
-import { buildCollectionTree } from "metabase/entities/collections";
 import type { CollectionId } from "metabase-types/api";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";

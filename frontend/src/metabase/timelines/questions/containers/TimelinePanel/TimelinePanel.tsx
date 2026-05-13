@@ -1,9 +1,9 @@
 import type { ComponentProps } from "react";
 
 import { useGetCollectionQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetArchive } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import TimelinePanel from "../../components/TimelinePanel";

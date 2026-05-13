@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
+import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
 import { isPublicCollection } from "metabase/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { Input } from "metabase/common/components/Input";
@@ -12,10 +14,6 @@ import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import {
-  ROOT_COLLECTION,
-  getExpandedCollectionsById,
-} from "metabase/entities/collections";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";

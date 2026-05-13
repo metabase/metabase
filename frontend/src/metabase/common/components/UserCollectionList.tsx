@@ -1,9 +1,9 @@
 import { useListUsersQuery } from "metabase/api";
-import { CollectionListView } from "metabase/common/components/CollectionListView";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
-} from "metabase/entities/collections/constants";
+} from "metabase/collections/constants";
+import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 

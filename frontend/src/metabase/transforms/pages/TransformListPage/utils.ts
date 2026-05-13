@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { getCollectionIcon } from "metabase/entities/collections/utils";
+import { getCollectionIcon } from "metabase/collections/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery } from "metabase/transforms/utils";

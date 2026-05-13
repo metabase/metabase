@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Ellipsified, EntityNameCell } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";

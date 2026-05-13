@@ -2,15 +2,15 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isLibraryCollection } from "metabase/collections/utils";
-import { CollapseSection } from "metabase/common/components/CollapseSection";
-import { Tree } from "metabase/common/components/tree";
-import { useUserSetting } from "metabase/common/hooks";
-import type { CollectionTreeItem } from "metabase/entities/collections";
+import type { CollectionTreeItem } from "metabase/collections/utils";
 import {
   buildCollectionTree,
   getCollectionIcon,
-} from "metabase/entities/collections";
+  isLibraryCollection,
+} from "metabase/collections/utils";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { Tree } from "metabase/common/components/tree";
+import { useUserSetting } from "metabase/common/hooks";
 import {
   SidebarHeading,
   SidebarSection,
