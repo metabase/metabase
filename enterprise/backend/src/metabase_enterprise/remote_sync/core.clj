@@ -111,13 +111,22 @@
                                  (for [collection sync-on]
                                    [:like :location (str (collections/location-path collection) "%")]))]}))
       (when (seq sync-off)
-        (t2/query {:update (t2/table-name :model/Collection)
-                   :set {:is_remote_synced false}
-                   :where [:and
-                           [:= :is_remote_synced true]
-                           (into [:or [:in :id (map :id sync-off)]]
-                                 (for [collection sync-off]
-                                   [:like :location (str (collections/location-path collection) "%")]))]}))
+        (let [affected-collection-ids
+              (t2/select-pks-set :model/Collection
+                                 {:where [:and
+                                          [:= :is_remote_synced true]
+                                          (into [:or [:in :id (map :id sync-off)]]
+                                                (for [collection sync-off]
+                                                  [:like :location (str (collections/location-path collection) "%")]))]})]
+          (when (seq affected-collection-ids)
+            (t2/query {:update (t2/table-name :model/Collection)
+                       :set {:is_remote_synced false}
+                       :where [:in :id affected-collection-ids]})
+            (t2/delete! :model/RemoteSyncObject
+                        :model_type "Collection"
+                        :model_id [:in affected-collection-ids])
+            (t2/delete! :model/RemoteSyncObject
+                        :model_collection_id [:in affected-collection-ids]))))
       (doseq [collection sync-on]
         (collections/check-non-remote-synced-dependencies collection))
       (doseq [collection sync-off]

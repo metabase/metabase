@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.core-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.core :as core]
    [metabase.collections.test-utils :refer [with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
@@ -261,6 +262,56 @@
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+
+;;; ------------------------------------------- RSO Cleanup Tests -------------------------------------------
+
+(deftest bulk-set-remote-sync-cleans-up-rsos-on-disable-test
+  (testing "bulk-set-remote-sync deletes RemoteSyncObject entries for un-synced collections and their contents"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}
+                   :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id
+                                              :database_id (mt/id)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (let [now (t/offset-date-time)]
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                     :status "update" :status_changed_at now})
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Card" :model_id card-id :model_name "Test Card"
+                     :model_collection_id coll-id :status "update" :status_changed_at now})
+        (is (= 2 (t2/count :model/RemoteSyncObject
+                           {:where [:or
+                                    [:and [:= :model_type "Collection"] [:= :model_id coll-id]]
+                                    [:= :model_collection_id coll-id]]})))
+        (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
+          (core/bulk-set-remote-sync {coll-id false}))
+        (is (= 0 (t2/count :model/RemoteSyncObject
+                           {:where [:or
+                                    [:and [:= :model_type "Collection"] [:= :model_id coll-id]]
+                                    [:= :model_collection_id coll-id]]})))))))
+
+(deftest bulk-set-remote-sync-cleans-up-descendant-rsos-test
+  (testing "bulk-set-remote-sync deletes RSOs for descendant collections and their contents"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
+                   :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id)
+                                                     :is_remote_synced true}
+                   :model/Card {card-id :id} {:name "Child Card" :collection_id child-id
+                                              :database_id (mt/id)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (let [now (t/offset-date-time)]
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Collection" :model_id parent-id :model_name "Parent"
+                     :status "update" :status_changed_at now})
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Collection" :model_id child-id :model_name "Child"
+                     :status "update" :status_changed_at now})
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type "Card" :model_id card-id :model_name "Child Card"
+                     :model_collection_id child-id :status "create" :status_changed_at now})
+        (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
+          (core/bulk-set-remote-sync {parent-id false}))
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id parent-id)))
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id child-id)))
+        (is (false? (t2/exists? :model/RemoteSyncObject :model_id card-id)))))))
 
 ;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
 
