@@ -912,6 +912,7 @@
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
       (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/check-conversation-access!        (constantly nil)
                     api/store-aiservice-messages!         (constantly nil)
                     api/native-agent-streaming-request    (fn [args]
                                                             (reset! captured-args args)
