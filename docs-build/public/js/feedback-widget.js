@@ -46,14 +46,14 @@
     const gh = toGithubUrl(window.location.pathname);
     if (isHelpful === null) {
       return (
-        'Want to improve these docs? <a href="' +
+        'Want to improve these docs?<br><a href="' +
         gh +
         '" target="_blank" rel="noopener">Propose a change.</a>'
       );
     }
     if (isHelpful) {
       return (
-        'Want to improve these docs? <a href="' +
+        'Want to improve these docs?<br><a href="' +
         gh +
         '" target="_blank" rel="noopener">Propose a change.</a>'
       );

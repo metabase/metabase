@@ -1,0 +1,139 @@
+/*
+ * Theme styles loaded by Inkeep's cxkit-js into its shadow DOM. The `.ikp-*`
+ * selectors target debug class names emitted by the widget components — they
+ * only resolve once cxkit imports this stylesheet via its `theme.styles` config.
+ * Vendored from metabase.github.io/css/inkeep.css alongside the cxkit pin in
+ * docs-build/public/js/inkeep.js.
+ */
+
+inkeep-portal {
+  position: relative;
+  z-index: 100000;
+}
+
+.ikp-modal__content {
+  margin-top: var(--navigation-header-height, 77px);
+}
+
+.ikp-modal__overlay {
+  padding-top: var(--navigation-header-height, 77px);
+}
+
+.ikp-search-bar-trigger__container {
+  font-family: Lato, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.ikp-modal-widget__content {
+  font-family: Lato, sans-serif;
+}
+
+.ikp-ai-chat__toolbar-header {
+  visibility: hidden;
+}
+
+.ikp-search-bar-trigger__wrapper .ikp-btn {
+  background-color: #eef6fc;
+  border: 1px solid #e4ecfb;
+}
+
+.ikp-search-bar-trigger__wrapper {
+  background-color: #eef6fc;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+}
+
+.ikp-search-bar-trigger__wrapper:hover {
+  background-color: white;
+}
+
+.ikp-search-bar-trigger__container--variant_subtle:is(:hover,[data-hover]) {
+  background-color: #eef6fc !important;
+}
+
+.ikp-ai-chat-page-wrapper {
+  padding-top: 10px;
+}
+
+.ikp-search-bar-trigger__text--size_compact {
+  font-size: 14px;
+}
+
+.ikp-switch-view-toggle {
+  background-color: transparent;
+  border: 1px solid #e2e4e9;
+  margin-right: 8px;
+}
+
+.ikp-switch-view-toggle button {
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: 6px;
+  padding: 18px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.ikp-switch-view-toggle button:hover {
+  background-color: #fafbfe;
+}
+
+.ikp-switch-view-toggle button:first-child {
+  margin-left: 0;
+}
+
+.ikp-switch-view-toggle__button--active {
+  background-color: #eef6fc;
+  border: none;
+  box-shadow: none;
+  color: #509ee3;
+}
+
+.ikp-switch-view-toggle__button--active:hover {
+  background-color: #eef6fc !important;
+  border: none;
+  color: #509ee3;
+}
+
+.ikp-switch-view-toggle__button--active svg path {
+  fill: #509ee3;
+}
+
+.ikp-code {
+  background-color: #f9fbfe;
+  color: #5a6072;
+  font-weight: 400;
+}
+
+.ikp-chat-bubble__user-message img {
+  left: -2px;
+  position: relative;
+  zoom: 1.3;
+}
+
+div.ikp-d_flex.ikp-flex_row.ikp-items_center.ikp-pt_3.ikp-pb_1:has(.ikp-search-bar-stand-alone__search-input) {
+  margin-right: -2px;
+  margin-top: 6px;
+}
+
+.ikp-ai-chat__message-box {
+  background-color: #eef6fc;
+  border: 1px solid #e4ecfb;
+  box-shadow: none;
+}
+
+.ikp-ai-chat-footer__content-wrapper {
+  padding-bottom: 30px;
+}
+
+@media screen and (max-width: 992px) {
+  .ikp-search-bar-trigger__text {
+    display: none;
+  }
+
+  .ikp-search-bar-trigger__icon {
+    margin-right: 0;
+  }
+
+  kbd {
+    display: none;
+  }
+}

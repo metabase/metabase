@@ -41,13 +41,23 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       --mb-logo-wordmark-url: url("${base}/images/logo-with-wordmark.svg");
       --mb-embed-background-url: url("${base}/images/navigation-header/embed-background.svg");
     }`} />
+    {/* Inkeep search widget reads these paths from window.__INKEEP_CONFIG__
+       at init time. The inline script runs synchronously during head parsing
+       so the global is set before js/inkeep.js (a deferred module) executes. */}
+    <script is:inline define:vars={{ base }}>
+      window.__INKEEP_CONFIG__ = {
+        themeUrl: `${base}/css/inkeep.css`,
+        metabaseIconUrl: "https://www.metabase.com/images/icons/metabase-icon.svg",
+        personIconUrl: "https://www.metabase.com/images/icons/person.svg",
+      };
+    </script>
   </head>
   <body>
     <Header />
     <div class="docs-shell">
       <Sidebar currentSlug={slug} />
+      <TopBar currentSlug={slug} title={title} />
       <article class="docs-content">
-        <TopBar currentSlug={slug} title={title} />
         <slot />
       </article>
       <aside class="docs-rail" aria-label="On this page">
@@ -68,6 +78,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     <script src={`${base}/js/promo-banner.js`} defer></script>
     <script src={`${base}/js/status.js`} defer></script>
     <script src={`${base}/js/github-stars.js`} defer></script>
+    <script src={`${base}/js/inkeep.js`} type="module" defer></script>
     {/* Snowplow page-view tracking is skipped under `astro dev` so local
        browsing doesn't pollute the production analytics stream. The tag is
        still emitted by `astro build` (and therefore by `astro preview`); set

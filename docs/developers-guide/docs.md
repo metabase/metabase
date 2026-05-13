@@ -262,6 +262,14 @@ What was dropped from the snapshot:
 4. Run the cleanup script to strip the dynamic blog block, the promo countdown, and the Mailchimp validation scripts (it lives at `docs-build/scripts/clean-snapshots.py` if you've kept the helper around — otherwise re-derive from this section).
 5. Re-extract the chrome CSS rules from `_site/css/styles.css` using the selector allowlist documented at the top of `docs-build/src/styles/chrome.css`, and prepend the MB-Logo block from `_site/css/main.css`.
 
+## Search bar (Inkeep)
+
+The "Search" input in the docs topbar is an [Inkeep](https://inkeep.com/) cxkit-js widget. It's mounted into the `#inkeep` element in [`TopBar.astro`](../../docs-build/src/components/TopBar.astro) by [`docs-build/public/js/inkeep.js`](../../docs-build/public/js/inkeep.js), which pins the CDN version (`@inkeep/cxkit-js@0.5.117`) and holds the widget config (API key, AI assistant prompts, search placeholder). The theme styles live in [`docs-build/public/css/inkeep.css`](../../docs-build/public/css/inkeep.css) and are loaded into cxkit's shadow DOM via `theme.styles` in the config — the `.ikp-*` selectors target debug class names emitted by the widget components.
+
+`DocsLayout.astro` writes a small `window.__INKEEP_CONFIG__` object inline in `<head>` so the init script can resolve BASE-prefixed asset paths (the theme stylesheet, AI chat avatars) without hardcoding `/docs/latest`.
+
+The sparkle "What's new" button next to it is a plain link to [https://www.metabase.com/releases](https://www.metabase.com/releases); the icon lives at [`docs-build/public/images/icons/stars.svg`](../../docs-build/public/images/icons/stars.svg).
+
 ## Where things live
 
 A short map for when you need to dig deeper than this page goes:
