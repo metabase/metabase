@@ -1,5 +1,6 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { CollectionId } from "metabase-types/api";
+
+import type { OmniPickerItem } from "../EntityPicker";
 
 export const isInPersonalCollection = (
   dash: OmniPickerItem,
