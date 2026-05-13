@@ -1,3 +1,4 @@
+import ActionViz from "metabase/dashboard/components/ActionViz";
 import { registerVisualization } from "metabase/visualizations";
 
 import { DashCardPlaceholder } from "./DashCardPlaceholder";
@@ -8,6 +9,7 @@ import { Text } from "./Text";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function () {
+  registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);
   registerVisualization(Heading);
   registerVisualization(LinkViz);

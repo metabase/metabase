@@ -29,6 +29,7 @@ import {
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
+  "custom-viz-plugin",
   "scim",
   "gsheets-status",
   "sandbox",
@@ -48,6 +49,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-instance-limit",
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
+  "data-complexity-scores",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];

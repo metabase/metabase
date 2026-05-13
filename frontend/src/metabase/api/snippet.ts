@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { SnippetSchema } from "metabase/schema";
 import type {
   CreateSnippetRequest,
@@ -16,7 +15,7 @@ import {
   provideSnippetListTags,
   provideSnippetTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
 
 export const snippetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,10 +29,7 @@ export const snippetApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (snippets = []) => provideSnippetListTags(snippets),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [SnippetSchema])),
-        ),
+      onQueryStarted: hydrateLegacyEntities([SnippetSchema]),
     }),
     getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
       query: (id) => ({
@@ -41,10 +37,7 @@ export const snippetApi = Api.injectEndpoints({
         url: `/api/native-query-snippet/${id}`,
       }),
       providesTags: (snippet) => (snippet ? provideSnippetTags(snippet) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, SnippetSchema)),
-        ),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
     createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
       query: (body) => ({
@@ -54,8 +47,9 @@ export const snippetApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("snippet")]),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
-    updateSnippet: builder.mutation<unknown, UpdateSnippetRequest>({
+    updateSnippet: builder.mutation<NativeQuerySnippet, UpdateSnippetRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/native-query-snippet/${id}`,
@@ -63,6 +57,7 @@ export const snippetApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("snippet"), idTag("snippet", id)]),
+      onQueryStarted: hydrateLegacyEntities(SnippetSchema),
     }),
   }),
 });

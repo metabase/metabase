@@ -5,7 +5,7 @@ import { OverviewVisualization } from "metabase/data-studio/common/components/Ov
 import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { Box, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as LibMetric from "metabase-lib/metric";
 import type { Card } from "metabase-types/api";
 

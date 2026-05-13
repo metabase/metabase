@@ -1,3 +1,38 @@
-.MobileHamburgerIcon {
+.AdminNavbarRoot {
+  /* Override --mb-color-text-primary-inverse so descendants reading this token
+     (and the CSS module classes below) get a readable color on the dark navbar
+     bg in both light and dark themes. We override the value rather than picking
+     a different token because the navbar bg (admin-navbar) is purple in both
+     themes, but text-primary-inverse flips to a dark color in dark mode. */
+  --mb-color-text-primary-inverse: var(--mantine-color-white);
+
+  /* Drive navbar text color directly so we don't depend on Mantine's c= prop,
+     which resolves to a separate auto-derived `-text` variable. */
   color: var(--mb-color-text-primary-inverse);
+
+  /* Anchor descendants (logo Link, nav links) inherit this color — overriding
+     the user-agent / global link color. :where() keeps specificity at 0 so
+     more specific class rules (e.g. .AdminNavLink) still win. */
+  & :where(a) {
+    color: inherit;
+  }
+}
+
+.AdminNavLink {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0.5rem 1rem;
+  transition: all 200ms;
+  border-radius: 4px;
+  /* Color inherits from .AdminNavbarRoot — i.e. white in both themes via the
+     --mb-color-text-primary-inverse override. Selection is signified by the
+     hover/selected background pill, not by text color. */
+
+  @media screen and (--breakpoint-max-lg) {
+    padding-inline: 0.85rem;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-admin-navbar-inverse);
+  }
 }

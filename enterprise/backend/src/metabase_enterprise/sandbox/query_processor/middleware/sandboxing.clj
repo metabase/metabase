@@ -20,7 +20,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -94,7 +94,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-lite target-field-clause
+  (when-let [field-id (match/match-one target-field-clause
                         [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
@@ -409,7 +409,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
+    (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
                                                             {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)

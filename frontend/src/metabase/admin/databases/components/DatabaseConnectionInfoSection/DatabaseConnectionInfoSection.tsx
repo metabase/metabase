@@ -8,13 +8,13 @@ import {
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
+import { isDbModifiable } from "metabase/common/utils/database";
 import { Tables } from "metabase/entities/tables";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
-import { isDbModifiable } from "../../utils";
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
 import {
   DatabaseInfoSection,

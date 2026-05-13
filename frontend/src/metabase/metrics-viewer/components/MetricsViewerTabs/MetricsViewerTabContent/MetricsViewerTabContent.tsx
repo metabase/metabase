@@ -24,8 +24,11 @@ import type {
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import type { MetricSlot } from "../../../utils/metric-slots";
-import { buildDimensionItemsFromDefinitions } from "../../../utils/series";
-import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
+import {
+  buildDimensionItemsFromDefinitions,
+  shouldShowStackSeries,
+} from "../../../utils/series";
+import { getTabConfig } from "../../../utils/tab-config";
 import { DimensionPillBar } from "../../DimensionPillBar";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
@@ -181,8 +184,12 @@ export function MetricsViewerTabContent({
     [updateProjectionConfig],
   );
 
-  const showStackSeries =
-    DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
+  const showStackSeries = shouldShowStackSeries(
+    tab.display,
+    rawSeries,
+    formulaEntities,
+    definitions,
+  );
 
   const isTimeTab = tab.type === "time";
 

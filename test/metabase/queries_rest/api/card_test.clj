@@ -310,8 +310,8 @@
           (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
                                                              "x-metabase-client-version" version-string}}}))
-        (is (= {:embedding_client client-string, :embedding_version version-string}
-               (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
+        (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
+               (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
@@ -324,10 +324,10 @@
       (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
                             {:request-options {:headers {"x-metabase-client" "client-B"
                                                          "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_version "2"}
+      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
               (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
                                             :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
@@ -4095,7 +4095,21 @@
     (testing "We can't create a dashboard internal card with a non-null :collection_position"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
-                                                               :collection_position 5)))))
+                                                               :collection_position 5)))
+    (testing "An explicit :size overrides the display-type default when autoplacing"
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                               (assoc (card-with-name-and-query)
+                                                      :dashboard_id dash-id
+                                                      :size {:size_x 8 :size_y 5})))
+            dashcard (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
+        (is (= 8 (:size_x dashcard)))
+        (is (= 5 (:size_y dashcard)))))
+    (testing ":size is not persisted on the Card itself"
+      (let [card (mt/user-http-request :crowberto :post 200 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :dashboard_id dash-id
+                                              :size {:size_x 3 :size_y 3}))]
+        (is (not (contains? card :size)))))))
 
 (deftest dashboard-internal-card-updates
   (mt/with-temp [:model/Collection {coll-id :id} {}

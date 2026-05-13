@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { hasFeature } from "metabase/common/utils/database";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 import type { Database } from "metabase-types/api";

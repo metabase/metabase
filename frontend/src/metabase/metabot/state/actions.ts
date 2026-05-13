@@ -9,6 +9,7 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -20,10 +21,11 @@ import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotCodeEditorBufferContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-import { METABOT_ERR_MSG } from "../constants";
+import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
 
 import { metabot } from "./reducer";
 import {
@@ -38,10 +40,8 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
-  MetabotAgentChartMessage,
-  MetabotAgentEditSuggestionChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotAgentId,
-  MetabotAgentTodoListChatMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
   SlashCommand,
@@ -56,6 +56,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,
@@ -115,6 +116,16 @@ const handleResponseError = (
       },
       shouldRetry: true,
     }))
+    .with(
+      { "error-code": "ai_usage_limit_reached", message: P.string },
+      ({ message }) => ({
+        errorMessage: {
+          type: "message" as const,
+          message,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(P.string, (err) => ({
       errorMessage: {
         type: "message" as const,
@@ -154,7 +165,13 @@ export const executeSlashCommand = createAsyncThunk<
     match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
-          dispatch(setProfileOverride({ agentId, profile: args[0] }));
+          // cast allows custom overrides for development purposes; the backend validates
+          dispatch(
+            setProfileOverride({
+              agentId,
+              profile: args[0] as MetabotProfileId | undefined,
+            }),
+          );
         } else {
           dispatch(addUndo({ message: "/profile <name>" }));
         }
@@ -179,7 +196,15 @@ export const executeSlashCommand = createAsyncThunk<
         );
       })
       .otherwise(() => {
-        dispatch(addUndo({ message: "Unknown command" }));
+        const handled = PLUGIN_AUDIT.handleMetabotSlashCommand({
+          command,
+          agentId,
+          dispatch,
+          getState,
+        });
+        if (!handled) {
+          dispatch(addUndo({ message: "Unknown command" }));
+        }
       });
   },
 );
@@ -212,7 +237,7 @@ export const submitInput = createAsyncThunk<
     context: MetabotChatContext;
     agentId: MetabotAgentId;
     metabot_id?: string;
-    profile?: string;
+    profile?: MetabotProfileId;
   }
 >(
   "metabase/metabot/submitInput",
@@ -341,6 +366,18 @@ type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
 };
 
+const findCodeEditBuffer = (
+  context: MetabotChatContext,
+  bufferId: string,
+): MetabotCodeEditorBufferContext | undefined => {
+  const viewedBuffers = context.user_is_viewing.flatMap((item) =>
+    item.type === "code_editor" ? item.buffers : [],
+  );
+  const buffers = [...viewedBuffers, ...(context.code_editor?.buffers ?? [])];
+
+  return buffers.find((buffer) => buffer.id === bufferId);
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { agentId: MetabotAgentId },
@@ -356,19 +393,6 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
-      /**
-       * Hold the chart message until the stream finishes so it renders after
-       * the agent's final text. `navigate_to` arrives mid-stream, before the
-       * last message, so inserting it eagerly would show the chart above later
-       * text.
-       *
-       * Last navigate_to wins, matching setNavigateToPath/CurrentChart semantics.
-       * In practice we don't expect more than one navigate_to in a single stream.
-       */
-      let pendingChartMessage:
-        | { type: "chart"; navigateTo: string }
-        | undefined = undefined;
-
       const response = await aiStreamingQuery(
         {
           url: "/api/metabot/agent-streaming",
@@ -380,19 +404,18 @@ export const sendAgentRequest = createAsyncThunk<
         },
         {
           onDataPart: function handleDataPart(part) {
+            const pushDataPart = (
+              message: Omit<
+                MetabotAgentDataPartMessage,
+                "id" | "role" | "externalId"
+              >,
+            ) => dispatch(addAgentMessage({ ...message, agentId }));
+
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "todo_list" }, (part) => {
-                const message: Omit<
-                  MetabotAgentTodoListChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "todo_list",
-                  payload: part.value,
-                };
-
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
@@ -400,55 +423,61 @@ export const sendAgentRequest = createAsyncThunk<
                 if (part.value.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: {
+                    codeEditBuffer: findCodeEditBuffer(
+                      request.context,
+                      part.value.buffer_id,
+                    ),
+                  },
+                });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (isEmbeddingSdk()) {
-                  if (pendingChartMessage) {
-                    console.warn("Overwriting pending navigate_to: ", {
-                      previous: pendingChartMessage.navigateTo,
-                      next: part.value,
-                    });
-                  }
-                  pendingChartMessage = {
-                    type: "chart",
-                    navigateTo: part.value,
-                  };
-                }
-
                 if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+                pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "transform_suggestion" }, ({ value }) => {
+              .with({ type: "transform_suggestion" }, (part) => {
+                const suggestionId = nanoid();
                 const suggestedTransform = {
-                  ...value,
-                  id: value.id || undefined,
+                  ...part.value,
+                  id: part.value.id || undefined,
                   active: true,
-                  suggestionId: nanoid(),
+                  suggestionId,
                 };
                 dispatch(addSuggestedTransform(suggestedTransform));
 
-                const transform = request.context.user_is_viewing
+                const editorTransform = request.context.user_is_viewing
                   .filter(
                     (t): t is MetabotTransformInfo => t.type === "transform",
                   )
                   .find((t) => t.id === suggestedTransform.id);
-                const message: Omit<
-                  MetabotAgentEditSuggestionChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "edit_suggestion",
-                  model: "transform",
-                  payload: {
-                    editorTransform: transform,
-                    suggestedTransform,
-                  },
-                };
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: { editorTransform, suggestionId },
+                });
+              })
+              .with({ type: "adhoc_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "static_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
               })
               .exhaustive();
+          },
+          onStartMessagePart: function handleStartMessagePart(part) {
+            dispatch(
+              setPendingMessageExternalId({
+                agentId,
+                externalId: part.messageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
@@ -464,15 +493,6 @@ export const sendAgentRequest = createAsyncThunk<
           },
         },
       );
-
-      // Preserve any chart the agent already committed via `navigate_to`,
-      // even if the stream errored or was cancelled before the closing text
-      // arrived.
-      if (pendingChartMessage != null) {
-        const chartMessage: Omit<MetabotAgentChartMessage, "id" | "role"> =
-          pendingChartMessage;
-        dispatch(addAgentMessage({ ...chartMessage, agentId }));
-      }
 
       if (error) {
         throw error;

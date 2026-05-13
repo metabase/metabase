@@ -33,7 +33,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv get-in]])
+   [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf :refer [mapv get-in]]
+   [next.jdbc :as next.jdbc])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -255,7 +257,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
+          (driver-api/match-one base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -887,7 +889,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (driver-api/replace-lite inner-query
+    (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
@@ -1037,10 +1039,19 @@
   ;; valid database user for impersonation (see issue #60665).
   (:role (driver.conn/effective-details database)))
 
-(defmethod driver.sql/set-role-statement :sqlserver
-  [_driver role]
+(def ^{:arglists '([conn s])} memoized-quote-string-literal
+  "Call quotename(?, '''') on SQL Server to quote a string literal, and escape any embedded single quotes, for use
+  with [[sql-jdbc/set-role-statement]] below; presumably this should never change so use a bounded cache to avoid the
+  overhead of calling this on every query."
+  (memoize/bounded
+   (-> (fn [conn s]
+         (:s (next.jdbc/execute-one! conn ["SELECT quotename(?, '''') AS s;" s])))
+       (vary-meta assoc :clojure.core.memoize/args-fn (fn [[_conn s]] s)))))
+
+(defmethod sql-jdbc/set-role-statement :sqlserver
+  [_driver conn role]
   ;; REVERT to handle the case where the users role attribute has changed
-  (format "REVERT; EXECUTE AS USER = '%s';" role))
+  (format "REVERT; EXECUTE AS USER = %s;" (memoized-quote-string-literal conn role)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
   [_ e]

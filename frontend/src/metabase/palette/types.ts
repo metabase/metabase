@@ -29,12 +29,14 @@ export type PaletteAction = Action &
   PaletteActionExtras & {
     subtitle?: Action["subtitle"];
     icon?: IconName;
+    iconUrl?: string;
   };
 
 export type PaletteActionImpl = ActionImpl &
   PaletteActionExtras & {
     subtitle?: Action["subtitle"];
     icon?: IconName;
+    iconUrl?: string;
   };
 
 export type ShortcutGroup = keyof typeof GROUP_LABELS;
