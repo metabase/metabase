@@ -206,6 +206,11 @@
      :sql              sql
      :sources          with-idx
      :target           (:target inspector)
+     ;; Field IDs that the SQL actually references (FROM, WHERE, JOIN,
+     ;; GROUP BY, ORDER BY, SELECT). The prompt uses this to decide which
+     ;; fields are worth rendering :stats for — fingerprints on every
+     ;; column would blow the token budget for no win.
+     :visited_fields   (set (get-in inspector [:visited-fields :all]))
      :indexes_partial? (and (seq sources) (nil? indexes))
      :explain          explained
      :run_history      (run-history (:id transform) 10)}))
