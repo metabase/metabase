@@ -32,18 +32,22 @@ inkeep-portal {
 }
 
 .ikp-search-bar-trigger__wrapper .ikp-btn {
-  background-color: #eef6fc;
-  border: 1px solid #e4ecfb;
+  background-color: #ffffff;
+  border: 1px solid #e2e4e9;
+  height: 40px;
+  box-sizing: border-box;
 }
 
 .ikp-search-bar-trigger__wrapper {
-  background-color: #eef6fc;
+  background-color: #ffffff;
   border-radius: 6px;
-  transition: background-color 0.3s ease;
+  height: 40px;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .ikp-search-bar-trigger__wrapper:hover {
-  background-color: white;
+  background-color: #fafbfe;
 }
 
 .ikp-search-bar-trigger__container--variant_subtle:is(:hover,[data-hover]) {
