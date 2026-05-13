@@ -60,11 +60,7 @@ MCP server requests are handled by the AI client - not Metabase. Metabase just h
 
 This means that if you ask Claude "what's our q3 revenue" and instruct it to use Metabase MCP server, _Claude itself_ will determine which tools it needs to use and how - for example, it can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be - and Metabase will just diligently oblige (construct and execute the queries), but nothing more.
 
-In particular, this means that:
-
-- You don't need to have an [AI provider](settings.md#supported-providers) configured in Metabase (because the AI part is handled by your AI client, not Metabase);
-- If you do have an AI provider configured in Metabase (for example, for [Metabot](metabot.md)), that provider will _not_ be used for MCP server requestsl
-- MCP server uses the tokens from the third-party AI client you connected to the MCP server, not from the Metabase's AI provider.
+You don't need to have an [AI provider](settings.md#supported-providers) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 
 ## Available tools
 
