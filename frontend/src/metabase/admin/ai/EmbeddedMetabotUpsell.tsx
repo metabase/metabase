@@ -20,7 +20,7 @@ export function EmbeddedMetabotUpsell() {
 
   return (
     <UpsellCard
-      title={t`Bring AI chat to your product`}
+      title={t`Embed AI chat in your product`}
       buttonLink={upgradeUrl}
       onClick={triggerUpsellFlow}
       campaign={campaign}
@@ -30,7 +30,7 @@ export function EmbeddedMetabotUpsell() {
       maxWidth="initial"
     >
       <Text lh="lg">
-        {t`Make it easier for your customers to get answers from data. Embed an AI assistant in your app with Modular embedding to let your customers ask questions about your data in plain English.`}{" "}
+        {t`With Modular Embedding, you can put an AI chat component in your app to make it easier for your customers to get answers from data.`}{" "}
         <ExternalLink href="https://www.metabase.com/docs/latest/embedding/sdk/ai-chat">{t`Learn more`}</ExternalLink>
       </Text>
     </UpsellCard>
