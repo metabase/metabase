@@ -4,9 +4,10 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
+import { McpFeedbackButtons } from "./McpFeedbackButtons";
 import { McpQueryBar } from "./McpQueryBar";
 import { McpQuestionTitle } from "./McpQuestionTitle";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
@@ -27,15 +28,19 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { query, hostContext, app } = useMcpApp();
+  const { query, prompt, hostContext, app } = useMcpApp();
 
   const handleDrillThrough = useHandleMcpDrillThrough(app);
 
-  const { instanceUrl = "", sessionToken = "" } =
-    (window.metabaseConfig as {
-      instanceUrl: string;
-      sessionToken: string;
-    }) ?? {};
+  const {
+    instanceUrl = "",
+    sessionToken = "",
+    mcpSessionId = "",
+  } = (window.metabaseConfig as {
+    instanceUrl: string;
+    sessionToken: string;
+    mcpSessionId: string;
+  }) ?? {};
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -117,9 +122,26 @@ export function McpUiAppRoute() {
           py="lg"
           gap="sm"
         >
-          <Box px="lg" style={{ flexShrink: 0 }}>
-            <McpQuestionTitle />
-          </Box>
+          <Flex
+            px="lg"
+            align="center"
+            justify="space-between"
+            style={{ flexShrink: 0 }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <McpQuestionTitle />
+            </div>
+
+            <Flex align="center" gap="xs" style={{ flexShrink: 0 }}>
+              <McpFeedbackButtons
+                instanceUrl={instanceUrl}
+                sessionToken={sessionToken}
+                mcpSessionId={mcpSessionId}
+                prompt={prompt}
+                query={query}
+              />
+            </Flex>
+          </Flex>
 
           <Flex px="xs" flex={1} style={{ overflow: "hidden" }}>
             <SdkQuestion.QuestionVisualization height={visualizationHeight} />

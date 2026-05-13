@@ -1,5 +1,6 @@
 (ns metabase.mcp.api-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
@@ -218,7 +219,20 @@
           (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
           (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
           (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
-          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type])))))
+      (testing "construct_query exposes the optional user prompt"
+        (let [tools-by-name          (into {} (map (juxt :name identity)) tools)
+              construct-query-tool   (get tools-by-name "construct_query")
+              construct-query-schema (:inputSchema construct-query-tool)
+              prompt-schema          (or (get-in construct-query-schema [:properties "prompt"])
+                                         (get-in construct-query-schema [:properties :prompt]))
+              required-fields        (set (:required construct-query-schema))
+              reference              (slurp (io/resource "metabase/agent_api/construct_query.md"))]
+          (is (str/includes? (:description construct-query-tool) "include `\"prompt\""))
+          (is (not (contains? required-fields "prompt")))
+          (is (str/includes? (:description prompt-schema) "exact original message"))
+          (is (str/includes? reference "MCP clients should include it whenever they have the user's message"))
+          (is (str/includes? reference "{\"query_handle\": \"<uuid>\"}")))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -529,7 +543,8 @@
                   ;; Query construction + execution
                   construct-data (call-tool session-id "construct_query"
                                             {:source     {:type "table" :id orders-id}
-                                             :operations [["limit" 5]]})
+                                             :operations [["limit" 5]]
+                                             :prompt     "show 5 orders"})
                   _              (call-tool session-id "query"
                                             {:source     {:type "table" :id orders-id}
                                              :operations [["limit" 5]]})
@@ -539,7 +554,7 @@
                   ;; can clean up even if a later step throws.
                   question-data  (call-tool session-id "create_question"
                                             {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle (:query_handle construct-data))})
+                                             :query (mcp.session/read-handle session-id (:query_handle construct-data))})
                   _              (reset! question-id (:id question-data))
                   dash-data      (call-tool session-id "create_dashboard"
                                             {:name "Smoke Dashboard"})]
@@ -567,7 +582,8 @@
         (let [[session-id _] (initialize!)
               construct-data (call-tool session-id "construct_query"
                                         {:source     {:type "table" :id (mt/id :orders)}
-                                         :operations [["limit" 5]]})
+                                         :operations [["limit" 5]]
+                                         :prompt     "show 5 orders"})
               execute-data   (call-tool session-id "execute_query"
                                         {:query_handle (:query_handle construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
@@ -601,7 +617,21 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id}))))))
+                           {"mcp-session-id" session-id})))))
+
+  (testing "render_drill_through does not resolve a handle from another session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [attacker-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "No drill-through found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" attacker-session}))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"
@@ -625,6 +655,21 @@
                                              :arguments {:query_handle handle}})
                            {"mcp-session-id" session-id})))))
 
+  (testing "visualize_query includes the prompt stored with a construct_query handle"
+    (let [[session-id _] (initialize!)
+          construct-data (call-tool session-id "construct_query"
+                                    {:source     {:type "table" :id (mt/id :orders)}
+                                     :operations [["limit" 5]]
+                                     :prompt     "show 5 orders"})
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle construct-data)}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query  string?
+                                                     :prompt "show 5 orders"}}}}
+              response))))
+
   (testing "visualize_query asks for an argument when neither query nor handle is provided"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
@@ -643,7 +688,37 @@
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle (str (random-uuid))}})
-                           {"mcp-session-id" session-id}))))))
+                           {"mcp-session-id" session-id})))))
+
+  (testing "visualize_query does not resolve a query_handle from another session"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [attacker-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" attacker-session})))))
+
+  (testing "execute_query does not resolve a query_handle from another session"
+    (let [[owner-session _]    (initialize!)
+          [attacker-session _] (initialize!)
+          construct-data       (call-tool owner-session "construct_query"
+                                          {:source     {:type "table" :id (mt/id :orders)}
+                                           :operations [["limit" 5]]
+                                           :prompt     "show 5 orders"})
+          response             (mcp-request (jsonrpc-request "tools/call"
+                                                             {:name      "execute_query"
+                                                              :arguments {:query_handle (:query_handle construct-data)}})
+                                            {"mcp-session-id" attacker-session})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              response)))))
 
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 

@@ -154,22 +154,36 @@
    When `user-id` is non-nil, materializes the backing `core_session` so cleanup
    happens via cascade when the session row is reaped. When nil — e.g. agent flows
    that don't render an iframe — the row is stored without a `core_session_id` and
-   relies on explicit `delete!` for cleanup."
-  [session-id user-id encoded-query]
-  (let [core-session-id (when user-id
-                          (:id (get-or-create-embedding-session! session-id user-id)))
-        handle-id       (str (UUID/randomUUID))]
-    (t2/insert! :model/McpQueryHandle
-                {:id              handle-id
-                 :mcp_session_id  session-id
-                 :core_session_id core-session-id
-                 :encoded_query   encoded-query})
-    handle-id))
+   relies on explicit `delete!` for cleanup.
+
+   `prompt` is optional, but should be supplied for construct_query handles so
+   visualize_query can later return both the query and original user prompt to
+   the MCP iframe for feedback submission."
+  ([session-id user-id encoded-query]
+   (store-handle! session-id user-id encoded-query nil))
+  ([session-id user-id encoded-query prompt]
+   (let [core-session-id (when user-id
+                           (:id (get-or-create-embedding-session! session-id user-id)))
+         handle-id       (str (UUID/randomUUID))]
+     (t2/insert! :model/McpQueryHandle
+                 (cond-> {:id              handle-id
+                          :mcp_session_id  session-id
+                          :core_session_id core-session-id
+                          :encoded_query   encoded-query}
+                   prompt (assoc :prompt prompt)))
+     handle-id)))
 
 (defn read-handle
-  "Return the encoded query for `handle-id`, or nil if no row exists."
-  [handle-id]
-  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id))
+  "Return the encoded query for `handle-id` in `session-id`, or nil if no row exists."
+  [session-id handle-id]
+  (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle-id, :mcp_session_id session-id))
+
+(defn resolve-query-handle
+  "Return {:encoded_query ... :prompt ...} for `handle-id`, or nil if not found.
+   Used by visualize_query and execute_query to resolve construct_query handles."
+  [session-id handle-id]
+  (when-let [row (t2/select-one :model/McpQueryHandle :id handle-id, :mcp_session_id session-id)]
+    (select-keys row [:encoded_query :prompt])))
 
 (defn delete!
   "Delete the `core_session` backing this MCP session (if one was ever created)

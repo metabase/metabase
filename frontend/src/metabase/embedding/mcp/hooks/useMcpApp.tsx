@@ -10,11 +10,25 @@ import { useEffect, useState } from "react";
 
 interface McpAppState {
   query: string | null;
+
+  /**
+   * Original user prompt that triggered this visualization, retrieved
+   * from `construct_query`, e.g. "visualize orders with Metabase".
+   */
+  prompt: string | null;
+
   hostContext: McpUiHostContext | null;
   app: App | null;
 }
 
-type ToolArgument = { query?: string } | undefined;
+type VisualizeQueryToolInput = {
+  query?: string;
+};
+
+type VisualizeQueryToolResult = {
+  query?: string;
+  prompt?: string;
+};
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -32,6 +46,7 @@ function applyHostContext(ctx: McpUiHostContext) {
 
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -46,20 +61,26 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolinput = (params) => {
-        const { query } = (params.arguments as ToolArgument) ?? {};
+        const { query } =
+          (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
 
         if (query) {
           setQuery(query);
+          setPrompt(null);
         }
       };
 
       // Fallback: ontoolinput may be missed if the tool returns instantly
       // (notification sent before the app finishes connecting).
+      // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
-        const { query } = (params.structuredContent as ToolArgument) ?? {};
+        const { query, prompt } =
+          (params.structuredContent as VisualizeQueryToolResult | undefined) ??
+          {};
 
         if (query) {
           setQuery(query);
+          setPrompt(prompt ?? null);
         }
       };
     },
@@ -77,5 +98,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, hostContext, app };
+  return { query, prompt, hostContext, app };
 }

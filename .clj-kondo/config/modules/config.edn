@@ -1185,7 +1185,6 @@
            metabase.mcp.init}
    :uses #{agent-api
            api
-           api-scope
            app-db
            config
            llm
@@ -1258,6 +1257,7 @@
               settings
               slackbot
               sql-tools
+              store-api
               sync
               system
               task

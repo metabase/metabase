@@ -4,8 +4,9 @@
 ## passes through to the agent so the LLM never carries the encoded query.
 
 databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
-      id: v61.2026-04-24T00:00:00
+      id: v62.2026-04-24T00:00:00
       author: crisptrutski
       comment: Create mcp_query_handle table for MCP query payloads
       changes:
@@ -47,7 +48,7 @@ databaseChangeLog:
             tableName: mcp_query_handle
 
   - changeSet:
-      id: v61.2026-04-24T00:00:01
+      id: v62.2026-04-24T00:00:01
       author: crisptrutski
       comment: Index mcp_query_handle.mcp_session_id for delete-by-session cleanup
       changes:
@@ -63,7 +64,7 @@ databaseChangeLog:
             indexName: idx_mcp_query_handle_mcp_session_id
 
   - changeSet:
-      id: v61.2026-04-24T00:00:02
+      id: v62.2026-04-24T00:00:02
       author: crisptrutski
       comment: Index mcp_query_handle.core_session_id for the FK
       changes:
@@ -79,7 +80,7 @@ databaseChangeLog:
             indexName: idx_mcp_query_handle_core_session_id
 
   - changeSet:
-      id: v61.2026-04-24T00:00:03
+      id: v62.2026-04-24T00:00:03
       author: crisptrutski
       comment: FK from mcp_query_handle.core_session_id to core_session, cascade on delete
       changes:

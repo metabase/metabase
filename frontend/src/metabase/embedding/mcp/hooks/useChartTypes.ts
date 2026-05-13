@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector";
+import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 

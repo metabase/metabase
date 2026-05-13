@@ -109,18 +109,18 @@
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
    it too — but log a warning so we can track how often this antipattern fires.
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
-  [tool-name arguments]
+  [session-id tool-name arguments]
   (cond
     (:query_handle arguments)
-    (if-let [encoded (mcp.session/read-handle (:query_handle arguments))]
-      (-> arguments (dissoc :query_handle) (assoc :query encoded))
+    (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query_handle arguments))]
+      (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
       ::handle-not-found)
 
     (mcp.session/valid-id? (:query arguments))
     (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                    tool-name)
-        (if-let [encoded (mcp.session/read-handle (:query arguments))]
-          (assoc arguments :query encoded)
+        (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle session-id (:query arguments))]
+          (assoc arguments :query encoded_query)
           ::handle-not-found))
 
     :else
@@ -129,11 +129,12 @@
 (defn- make-store-construct-query-result
   "Build a body-transform fn for construct_query. Stores the base64 payload server-side
    under the calling MCP session and returns {:query_handle uuid} instead of {:query base64},
-   so the LLM carries a short opaque UUID rather than the full base64 string."
+   so the LLM carries a short opaque UUID rather than the full base64 string.
+   Also stores the optional prompt with the handle, used for submitting feedback on visualizations."
   [session-id user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      {:query_handle (mcp.session/store-handle! session-id user-id encoded)}
+      {:query_handle (mcp.session/store-handle! session-id user-id encoded (:prompt body))}
       body)))
 
 ;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
@@ -272,7 +273,7 @@
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
         (let [arguments (if (tools-accepting-query-handle tool-name)
-                          (resolve-query-arg tool-name arguments)
+                          (resolve-query-arg session-id tool-name arguments)
                           arguments)]
           (if (= arguments ::handle-not-found)
             (error-content "Query handle not found. The query may have expired — try running construct_query again.")
