@@ -6,10 +6,10 @@ import * as Urls from "metabase/urls";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
-import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
+import { HelpMenu } from "../../components/HelpMenu";
 
+import { DatabaseSection } from "./DatabaseSection";
 import { SetupSection } from "./SetupSection";
-import { WorkspaceDatabaseList } from "./WorkspaceDatabaseList";
 import { WorkspaceHeader } from "./WorkspaceHeader";
 
 type WorkspacePageParams = {
@@ -68,9 +68,9 @@ function WorkspacePageBody({
 }: WorkspacePageBodyProps) {
   return (
     <PageContainer data-testid="workspace-editor">
-      <WorkspaceHeader workspace={workspace} actions={<WorkspaceHelpMenu />} />
+      <WorkspaceHeader workspace={workspace} actions={<HelpMenu />} />
       <Stack gap="3.5rem">
-        <WorkspaceDatabaseList
+        <DatabaseSection
           workspace={workspace}
           availableDatabases={availableDatabases}
         />

@@ -16,7 +16,7 @@ import type {
   WorkspaceInstance,
 } from "metabase-types/api";
 
-import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
+import { HelpMenu } from "../../components/HelpMenu";
 
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
@@ -81,7 +81,7 @@ function WorkspaceInstancePageBody({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspace`}</DataStudioBreadcrumbs>
         }
-        actions={<WorkspaceHelpMenu />}
+        actions={<HelpMenu />}
         py={0}
       />
       <Stack gap="3.5rem">

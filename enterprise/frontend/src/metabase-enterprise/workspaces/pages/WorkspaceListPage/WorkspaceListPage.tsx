@@ -9,11 +9,11 @@ import { Group, Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { WorkspaceHelpMenu } from "../../components/WorkspaceHelpMenu";
+import { HelpMenu } from "../../components/HelpMenu";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
-import { WorkspaceSection } from "./WorkspaceSection";
+import { WorkspaceItem } from "./WorkspaceItem";
 
 export function WorkspaceListPage() {
   const {
@@ -68,7 +68,7 @@ function WorkspaceListPageBody({
           hasWorkspaces && (
             <Group gap="sm">
               <NewWorkspaceButton />
-              <WorkspaceHelpMenu />
+              <HelpMenu />
             </Group>
           )
         }
@@ -77,7 +77,7 @@ function WorkspaceListPageBody({
       {hasWorkspaces ? (
         <Stack gap="lg">
           {workspaces.map((workspace) => (
-            <WorkspaceSection
+            <WorkspaceItem
               key={workspace.id}
               workspace={workspace}
               availableDatabases={availableDatabases}
