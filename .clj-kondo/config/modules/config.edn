@@ -1356,8 +1356,7 @@
 
   mq
   {:team "UX West"
-   :api  #{metabase.mq.core
-           metabase.mq.init}
+   :api  #{metabase.mq.init}
    :uses #{analytics-interface
            app-db
            models
