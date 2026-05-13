@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Badge,
   Box,
   Checkbox,
   Group,
@@ -12,66 +11,31 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import type {
-  IntrospectorEntityType,
-  IntrospectorRow,
-  TransformLastRun,
-  TransformTargetTable,
-} from "../types";
+import type { IntrospectorEntityType, IntrospectorRow } from "../types";
 
 import { ConditionBadges } from "./ConditionBadges";
+import { reasonFlagColor } from "./reasons";
 
-const STATUS_COLOR: Record<string, "error" | "warning" | "success" | "brand"> =
-  {
-    failed: "error",
-    timeout: "error",
-    canceled: "warning",
-    succeeded: "success",
-  };
-
-function LastRunCell({ lastRun }: { lastRun: TransformLastRun | null }) {
-  if (!lastRun) {
+function ReasonsCell({ reasons }: { reasons: IntrospectorRow["reasons"] }) {
+  const list = reasons ?? [];
+  if (!list.length) {
     return (
       <Text size="sm" c="text-secondary">
         —
       </Text>
     );
   }
-  const color = STATUS_COLOR[lastRun.status] ?? "brand";
-  const ended = lastRun.end_time ?? lastRun.start_time;
   return (
     <Stack gap={2}>
-      <Badge color={color} variant="light">
-        {lastRun.status}
-      </Badge>
-      {ended && (
-        <Text size="xs" c="text-secondary">
-          {new Date(ended).toLocaleString()}
+      {list.map((r, i) => (
+        <Text key={`${r.code}-${i}`} size="xs" c="text-secondary">
+          <Text component="span" fw={600} c={reasonFlagColor(r.flag)}>
+            {r.code}
+          </Text>
+          {" — "}
+          {r.detail}
         </Text>
-      )}
-    </Stack>
-  );
-}
-
-function TargetTableCell({
-  table,
-}: {
-  table: TransformTargetTable | null | undefined;
-}) {
-  if (!table) {
-    return (
-      <Text size="sm" c="text-secondary">
-        —
-      </Text>
-    );
-  }
-  const qualified = table.schema ? `${table.schema}.${table.name}` : table.name;
-  return (
-    <Stack gap={2}>
-      <Text size="sm" ff="monospace">
-        {qualified}
-      </Text>
-      {!table.active && <Text size="xs" c="error">{t`inactive`}</Text>}
+      ))}
     </Stack>
   );
 }
@@ -104,7 +68,12 @@ const cellStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderBottom: "1px solid var(--mb-color-border)",
   textAlign: "left",
-  verticalAlign: "middle",
+  verticalAlign: "top",
+  // Hard-wrap inside fixed-width cells so long names / reasons grow the row
+  // vertically instead of forcing a horizontal scrollbar. Same trick the
+  // TransformsTable uses.
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
 };
 
 const headStyle: React.CSSProperties = {
@@ -114,7 +83,7 @@ const headStyle: React.CSSProperties = {
   textTransform: "uppercase",
   letterSpacing: "0.04em",
   color: "var(--mb-color-text-secondary)",
-  fontWeight: 500,
+  fontWeight: 600,
 };
 
 export function ContentTable({
@@ -139,164 +108,152 @@ export function ContentTable({
     );
   }
 
-  const isTransforms = entityType === "transforms";
-
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-      <thead>
-        <tr>
-          <th style={{ ...headStyle, width: 32 }}>
-            <Checkbox
-              checked={!!isAllSelected}
-              onChange={onToggleSelectAll}
-              aria-label={t`Select all`}
-            />
-          </th>
-          <th style={headStyle}>{t`Name`}</th>
-          <th style={headStyle}>{t`Status`}</th>
-          {isTransforms ? (
-            <>
-              <th style={headStyle}>{t`Target table`}</th>
-              <th style={headStyle}>{t`Last run`}</th>
-            </>
-          ) : (
-            <>
-              <th style={headStyle}>{t`Collection`}</th>
-              <th style={headStyle}>{t`Last used`}</th>
-            </>
-          )}
-          <th style={{ ...headStyle, width: 140 }} />
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const isSelected = selectedIds.has(row.id);
-          const reasons = row.reasons ?? [];
-          return (
-            <tr
-              key={row.id}
-              style={
-                isSelected
-                  ? { background: "var(--mb-color-bg-light)" }
-                  : undefined
-              }
-            >
-              <td style={cellStyle}>
-                <Checkbox
-                  checked={isSelected}
-                  onChange={() => onToggleSelect(row.id)}
-                  aria-label={t`Select row`}
-                />
-              </td>
-              <td style={cellStyle}>
-                <Stack gap={2}>
-                  <Text fw={500}>{row.name}</Text>
-                  {row.description && (
-                    <Text size="xs" c="text-secondary" lineClamp={1}>
-                      {row.description}
+    <Box>
+      {/* `tableLayout: fixed` + colgroup widths pin the columns so long text
+          wraps vertically inside its cell — no horizontal scroll. Mirrors
+          TransformsTable so all three tabs share the same visual rhythm. */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          tableLayout: "fixed",
+        }}
+      >
+        <colgroup>
+          <col style={{ width: 36 }} />
+          {/* Name — narrow on purpose so long names wrap, leaving room for
+              the Reasons column to the right. */}
+          <col style={{ width: "18%" }} />
+          <col style={{ width: 132 }} />
+          <col style={{ width: "14%" }} />
+          <col style={{ width: 108 }} />
+          {/* Reasons — gets the remaining flex. */}
+          <col />
+          {/* Actions: Open + (deps?) + Trash. */}
+          <col style={{ width: 116 }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={headStyle}>
+              <Checkbox
+                checked={!!isAllSelected}
+                onChange={onToggleSelectAll}
+                aria-label={t`Select all`}
+              />
+            </th>
+            <th style={headStyle}>{t`Name`}</th>
+            <th style={headStyle}>{t`Status`}</th>
+            <th style={headStyle}>{t`Collection`}</th>
+            <th style={headStyle}>{t`Last used`}</th>
+            <th style={headStyle}>{t`Reasons`}</th>
+            <th style={headStyle} />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const isSelected = selectedIds.has(row.id);
+            return (
+              <tr
+                key={row.id}
+                style={
+                  isSelected
+                    ? { background: "var(--mb-color-bg-light)" }
+                    : undefined
+                }
+              >
+                <td style={cellStyle}>
+                  <Checkbox
+                    checked={isSelected}
+                    onChange={() => onToggleSelect(row.id)}
+                    aria-label={t`Select row`}
+                  />
+                </td>
+                <td style={cellStyle}>
+                  <Stack gap={2}>
+                    <Text fw={600} c="brand">
+                      {row.name}
                     </Text>
-                  )}
-                  {isTransforms && reasons.length > 0 && (
-                    <Stack gap={2} mt={4}>
-                      {reasons.map((r, i) => (
-                        <Text
-                          key={`${r.code}-${i}`}
-                          size="xs"
-                          c="text-secondary"
-                        >
-                          <Text component="span" c="error" fw={500}>
-                            {r.code}
-                          </Text>
-                          {": "}
-                          {r.detail}
-                        </Text>
-                      ))}
-                    </Stack>
-                  )}
-                </Stack>
-              </td>
-              <td style={cellStyle}>
-                <ConditionBadges row={row} />
-              </td>
-              {isTransforms ? (
-                <>
-                  <td style={cellStyle}>
-                    <TargetTableCell table={row.target_table ?? null} />
-                  </td>
-                  <td style={cellStyle}>
-                    <LastRunCell lastRun={row.last_run ?? null} />
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td style={cellStyle}>
-                    {row.collection_name ? (
-                      <Group gap={4} wrap="nowrap">
-                        <Icon name="folder" size={12} c="text-secondary" />
-                        <Text
-                          size="sm"
-                          c="text-secondary"
-                          lineClamp={1}
-                          title={row.collection_name}
-                        >
-                          {row.collection_name}
-                        </Text>
-                      </Group>
-                    ) : (
-                      <Text size="sm" c="text-secondary">
-                        {t`(Root)`}
+                    {row.description && (
+                      <Text size="xs" c="text-secondary" lineClamp={2}>
+                        {row.description}
                       </Text>
                     )}
-                  </td>
-                  <td style={cellStyle}>
+                  </Stack>
+                </td>
+                <td style={cellStyle}>
+                  <ConditionBadges row={row} />
+                </td>
+                <td style={cellStyle}>
+                  {row.collection_name ? (
+                    <Group gap={4} wrap="nowrap">
+                      <Icon name="folder" size={12} c="text-secondary" />
+                      <Text
+                        size="sm"
+                        c="text-secondary"
+                        lineClamp={1}
+                        title={row.collection_name}
+                      >
+                        {row.collection_name}
+                      </Text>
+                    </Group>
+                  ) : (
                     <Text size="sm" c="text-secondary">
-                      {formatDate(row.last_used_at)}
+                      {t`(Root)`}
                     </Text>
-                  </td>
-                </>
-              )}
-              <td style={cellStyle}>
-                <Group gap="xs" justify="flex-end">
-                  <Tooltip label={t`Open`}>
-                    <ActionIcon
-                      component="a"
-                      href={onOpen(row)}
-                      target="_blank"
-                      variant="subtle"
-                      aria-label={t`Open`}
-                    >
-                      <Icon name="external" />
-                    </ActionIcon>
-                  </Tooltip>
-                  {row.is_broken ? (
-                    <Tooltip label={t`Open dependency graph`}>
+                  )}
+                </td>
+                <td style={cellStyle}>
+                  <Text size="sm" c="text-secondary">
+                    {formatDate(row.last_used_at)}
+                  </Text>
+                </td>
+                <td style={cellStyle}>
+                  <ReasonsCell reasons={row.reasons} />
+                </td>
+                <td style={cellStyle}>
+                  <Group gap="xs" justify="flex-end" wrap="nowrap">
+                    <Tooltip label={t`Open`}>
                       <ActionIcon
                         component="a"
-                        href={onOpenDeps(row)}
+                        href={onOpen(row)}
                         target="_blank"
                         variant="subtle"
-                        aria-label={t`Open dependency graph`}
+                        aria-label={t`Open`}
                       >
-                        <Icon name="link" />
+                        <Icon name="external" />
                       </ActionIcon>
                     </Tooltip>
-                  ) : null}
-                  <Tooltip label={t`Send to Trash`}>
-                    <ActionIcon
-                      variant="subtle"
-                      color="error"
-                      onClick={() => onTrash(row)}
-                      aria-label={t`Send to Trash`}
-                    >
-                      <Icon name="trash" />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                    {row.is_broken ? (
+                      <Tooltip label={t`Open dependency graph`}>
+                        <ActionIcon
+                          component="a"
+                          href={onOpenDeps(row)}
+                          target="_blank"
+                          variant="subtle"
+                          aria-label={t`Open dependency graph`}
+                        >
+                          <Icon name="link" />
+                        </ActionIcon>
+                      </Tooltip>
+                    ) : null}
+                    <Tooltip label={t`Send to Trash`}>
+                      <ActionIcon
+                        variant="subtle"
+                        color="error"
+                        onClick={() => onTrash(row)}
+                        aria-label={t`Send to Trash`}
+                      >
+                        <Icon name="trash" />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Box>
   );
 }

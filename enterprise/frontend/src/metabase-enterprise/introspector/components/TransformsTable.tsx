@@ -13,10 +13,13 @@ import {
 } from "metabase/ui";
 
 import type {
+  IntrospectorReason,
   IntrospectorRow,
   TransformLastRun,
   TransformTargetTable,
 } from "../types";
+
+import { reasonFlagColor } from "./reasons";
 
 interface Props {
   rows: IntrospectorRow[];
@@ -169,11 +172,7 @@ function LastRunCell({ lastRun }: { lastRun: TransformLastRun | null }) {
   );
 }
 
-function ReasonsCell({
-  reasons,
-}: {
-  reasons: { code: string; detail: string }[];
-}) {
+function ReasonsCell({ reasons }: { reasons: IntrospectorReason[] }) {
   if (!reasons.length) {
     return (
       <Text size="sm" c="text-secondary">
@@ -185,7 +184,7 @@ function ReasonsCell({
     <Stack gap={2}>
       {reasons.map((r, i) => (
         <Text key={`${r.code}-${i}`} size="xs" c="text-secondary">
-          <Text component="span" fw={600} c="text-primary">
+          <Text component="span" fw={600} c={reasonFlagColor(r.flag)}>
             {r.code}
           </Text>
           {" — "}

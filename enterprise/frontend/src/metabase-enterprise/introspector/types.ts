@@ -16,17 +16,17 @@ export type IntrospectorEntityType = "cards" | "dashboards" | "transforms";
 export type TransformsFlagFilter = "all" | "broken" | "stale" | "unreferenced";
 
 /**
- * Per-row reason for the Transforms tab. Populated by the backend for any transform
- * whose `is_broken = 1`. Multiple reasons can be present on the same transform
- * (e.g. target table dropped *and* analysis-finding errors).
+ * Per-row reason rendered under the row name. Backend populates one or more
+ * reasons explaining *why* the row tripped each flag. Multiple reasons can be
+ * present on the same row (e.g. a broken card that is also stale).
  *
- * Matches `docs/developers-guide/transforms-admin-cleanup-spike.md` — the spike's
- * `flag` field is always `"broken"` in v1 since `:stale` for transforms is the same
- * as `:unreferenced` here and contributes no reasons.
+ * `flag` aligns with the column-level `is_broken` / `is_stale` / `is_unreferenced`
+ * bits. `code` is a stable identifier (FE may pick icons or copy off it). `detail`
+ * is the human-readable text from the backend; the FE renders it verbatim.
  */
-export interface TransformReason {
-  flag: "broken";
-  code: "analysis-finding-error" | "target-table-missing" | "latest-run-failed";
+export interface IntrospectorReason {
+  flag: "broken" | "stale" | "unreferenced";
+  code: string;
   detail: string;
 }
 
@@ -95,8 +95,12 @@ export interface IntrospectorRow {
   creator_id?: number;
   created_at?: string;
   updated_at?: string;
-  // Transforms tab extras — empty/null on cards & dashboards.
-  reasons?: TransformReason[];
+  /**
+   * Per-row reasons explaining each flag. Populated by the backend for all
+   * three entity types — broken reasons sourced from `analysis_finding_error`;
+   * stale + unreferenced reasons synthesised from the row's flag columns.
+   */
+  reasons?: IntrospectorReason[];
   target_table?: TransformTargetTable | null;
   last_run?: TransformLastRun | null;
   creator?: TransformCreator | null;

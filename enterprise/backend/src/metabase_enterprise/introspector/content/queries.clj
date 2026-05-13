@@ -245,6 +245,92 @@
               :asc)]
     [[col dir]]))
 
+;;; -------------------------------- per-row reasons -----------------------------------
+;;
+;; Each row in the introspector carries up to three flags (`:is_broken`, `:is_stale`,
+;; `:is_unreferenced`). The FE shows a stack of `{:flag :code :detail}` reasons under
+;; the row name to explain *why* a row landed in each bucket. Broken reasons come from
+;; `analysis_finding_error`; stale and unreferenced reasons are synthesised in-process
+;; from the federated row's flag columns (no extra DB hit).
+
+(defn- analysis-finding-error-reasons
+  "Returns `entity-id → [{:flag :code :detail} …]` for broken-signal rows sourced from
+  `analysis_finding_error`. Each error row contributes one reason.
+
+  `entity-type-str` is the `analyzed_entity_type` value to filter on
+  (`\"card\"`, `\"dashboard\"`, or `\"transform\"`)."
+  [entity-type-str entity-ids]
+  (if-not (seq entity-ids)
+    {}
+    (let [rows (t2/query
+                {:select [[:afe.analyzed_entity_id :id]
+                          [:afe.error_type :error_type]
+                          [:afe.error_detail :error_detail]]
+                 :from   [[:analysis_finding_error :afe]]
+                 :where  [:and
+                          [:= :afe.analyzed_entity_type (h2x/literal entity-type-str)]
+                          [:in :afe.analyzed_entity_id (vec entity-ids)]]})]
+      (reduce (fn [m {:keys [id error_type error_detail]}]
+                (let [detail (cond
+                               (and (seq error_type) (seq error_detail))
+                               (str error_type ": " error_detail)
+                               (seq error_type)   error_type
+                               (seq error_detail) error_detail
+                               :else              "Analysis finding reported an error.")]
+                  (update m id (fnil conj [])
+                          {:flag   "broken"
+                           :code   "analysis-finding-error"
+                           :detail detail})))
+              {} rows))))
+
+(defn- format-last-used
+  "Render a `last_used_at`-style timestamp as a yyyy-MM-dd string, or nil if missing.
+  `value` may be a `java.time.OffsetDateTime` (from JDBC) or any java.time temporal
+  Java time can derive a LocalDate from."
+  [value]
+  (when value
+    (try
+      (str (t/local-date value))
+      (catch Throwable _ (str value)))))
+
+(defn- not-used-detail
+  "Human-readable detail for a card/dashboard stale reason."
+  [last-used-at]
+  (if-let [d (format-last-used last-used-at)]
+    (str "Not used since " d ".")
+    "Never used."))
+
+(defn- attach-content-reasons
+  "Decorate card or dashboard rows with `:reasons`. Fans out the `analysis_finding_error`
+  query for broken rows; derives stale + unreferenced reasons in-process from the
+  federated row's flag columns.
+
+  `entity-type-str` selects between the card and dashboard wording for the unreferenced
+  reason — the structural shape of the reason list is identical."
+  [entity-type-str rows]
+  (let [broken-ids   (mapv :id (filter #(pos? (or (:is_broken %) 0)) rows))
+        broken-by-id (analysis-finding-error-reasons entity-type-str broken-ids)
+        unref-detail (case entity-type-str
+                       "card"      "Nothing in the dependency graph references this card."
+                       "dashboard" "Nothing in the dependency graph references this dashboard."
+                       "Nothing in the dependency graph references this entity.")]
+    (mapv (fn [{:keys [id last_used_at is_stale is_broken is_unreferenced] :as row}]
+            (let [reasons (cond-> []
+                            (pos? (or is_broken 0))
+                            (into (get broken-by-id id))
+
+                            (pos? (or is_stale 0))
+                            (conj {:flag   "stale"
+                                   :code   "not-used-since"
+                                   :detail (not-used-detail last_used_at)})
+
+                            (pos? (or is_unreferenced 0))
+                            (conj {:flag   "unreferenced"
+                                   :code   "no-incoming-dependencies"
+                                   :detail unref-detail}))]
+              (assoc row :reasons reasons)))
+          rows)))
+
 ;;; -------------------------------------- cards --------------------------------------
 
 (defn cards-federated-query
@@ -331,9 +417,10 @@
       (assoc :select [[:%count.* :total]])))
 
 (defn fetch-cards
-  "Run the federated Cards query and return `{:rows ... :total ...}`."
+  "Run the federated Cards query and return `{:rows ... :total ...}`. Rows are decorated
+  with `:reasons` so the UI can render per-flag explanations matching the Transforms tab."
   [opts]
-  {:rows  (t2/query (cards-federated-query opts))
+  {:rows  (attach-content-reasons "card" (t2/query (cards-federated-query opts)))
    :total (-> (t2/query (cards-total opts)) first :total)})
 
 ;;; ------------------------------------ dashboards ------------------------------------
@@ -406,9 +493,10 @@
       (assoc :select [[:%count.* :total]])))
 
 (defn fetch-dashboards
-  "Run the federated Dashboards query and return `{:rows ... :total ...}`."
+  "Run the federated Dashboards query and return `{:rows ... :total ...}`. Rows are decorated
+  with `:reasons` so the UI can render per-flag explanations matching the Transforms tab."
   [opts]
-  {:rows  (t2/query (dashboards-federated-query opts))
+  {:rows  (attach-content-reasons "dashboard" (t2/query (dashboards-federated-query opts)))
    :total (-> (t2/query (dashboards-total opts)) first :total)})
 
 ;;; ------------------------------------ transforms ------------------------------------
@@ -625,18 +713,9 @@
   (if-not (seq transform-ids)
     {}
     (let [ids                 (vec transform-ids)
-          ;; `analysis_finding_error` references entities directly via (analyzed_entity_type,
-          ;; analyzed_entity_id) — there is no FK back to `analysis_finding`. Combine the
-          ;; error rows for this transform into individual reasons.
-          analysis-f          (future
-                                (t2/query
-                                 {:select [[:afe.analyzed_entity_id :transform_id]
-                                           [:afe.error_type :error_type]
-                                           [:afe.error_detail :error_detail]]
-                                  :from   [[:analysis_finding_error :afe]]
-                                  :where  [:and
-                                           [:= :afe.analyzed_entity_type (h2x/literal "transform")]
-                                           [:in :afe.analyzed_entity_id ids]]}))
+          ;; Reuse the shared analysis-finding-error reader so cards, dashboards,
+          ;; and transforms all hit the same SQL path.
+          analysis-f          (future (analysis-finding-error-reasons "transform" ids))
           target-missing-f    (future
                                 ;; Only report target-missing as a *reason* for
                                 ;; rows where it actually contributes to broken,
@@ -661,24 +740,12 @@
                                   :where  [:and
                                            [:= :rn [:inline 1]]
                                            [:= :status (h2x/literal "failed")]]}))
-          analysis-rows       @analysis-f
+          analysis-reasons    @analysis-f
           target-missing-rows @target-missing-f
           latest-failed-rows  @latest-failed-f
           push                (fn [m id reason]
                                 (update m id (fnil conj []) reason))]
-      (as-> {} reasons
-        (reduce (fn [m {:keys [transform_id error_type error_detail]}]
-                  (let [detail (cond
-                                 (and (seq error_type) (seq error_detail))
-                                 (str error_type ": " error_detail)
-                                 (seq error_type)   error_type
-                                 (seq error_detail) error_detail
-                                 :else              "Analysis finding reported an error.")]
-                    (push m transform_id
-                          {:flag   "broken"
-                           :code   "analysis-finding-error"
-                           :detail detail})))
-                reasons analysis-rows)
+      (as-> analysis-reasons reasons
         (reduce (fn [m {:keys [id]}]
                   (push m id
                         {:flag   "broken"
