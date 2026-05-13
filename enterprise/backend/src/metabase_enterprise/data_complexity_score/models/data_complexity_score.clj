@@ -30,10 +30,14 @@
           score-with-calculated-at))
 
 (defn record-score!
-  "Persist one append-only Data Complexity Score snapshot."
-  [fingerprint score]
+  "Persist one append-only Data Complexity Score snapshot.
+
+  `source` discriminates the row's provenance — `\"appdb\"` for cron / API / CLI-from-appdb runs,
+  or `\"representation:<digest>\"` for CLI runs that scored a representation directory."
+  [fingerprint source score]
   (let [id (t2/insert-returning-pk! :model/DataComplexityScore
                                     {:fingerprint fingerprint
+                                     :source      source
                                      :score_data  score})]
     (if id
       (score-with-calculated-at (t2/select-one :model/DataComplexityScore :id id))

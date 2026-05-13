@@ -1,0 +1,48 @@
+## Add `source` column to data_complexity_score so we can distinguish rows produced from the live
+## appdb (cron, API, CLI --source appdb) from rows produced by the CLI scoring a representation
+## directory (CLI --source representation --write-to-appdb true).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+  - changeSet:
+      id: v61.2026-05-13T10:00:00
+      author: christruter
+      comment: Add source column to data_complexity_score as nullable so we can backfill before enforcing NOT NULL
+      changes:
+        - addColumn:
+            tableName: data_complexity_score
+            columns:
+              - column:
+                  name: source
+                  type: varchar(255)
+                  remarks: Provenance of this score — "appdb" for cron/API/CLI-from-appdb, or "representation:<digest>" for CLI runs that scored a representation directory.
+      rollback:
+        - dropColumn:
+            tableName: data_complexity_score
+            columnName: source
+
+  - changeSet:
+      id: v61.2026-05-13T10:00:01
+      author: christruter
+      comment: Backfill existing data_complexity_score rows with source=appdb — pre-CLI, all rows came from cron/API
+      changes:
+        - sql:
+            sql: UPDATE data_complexity_score SET source = 'appdb' WHERE source IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE data_complexity_score SET source = NULL
+
+  - changeSet:
+      id: v61.2026-05-13T10:00:02
+      author: christruter
+      comment: Enforce NOT NULL on data_complexity_score.source now that it is backfilled
+      changes:
+        - addNotNullConstraint:
+            tableName: data_complexity_score
+            columnName: source
+            columnDataType: varchar(255)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: data_complexity_score
+            columnName: source
+            columnDataType: varchar(255)

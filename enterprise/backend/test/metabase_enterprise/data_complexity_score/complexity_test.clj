@@ -978,9 +978,9 @@
           fingerprint       "latest-score-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
-        (data-complexity-score/record-score! other-fingerprint {:meta {:label "other"}})
-        (data-complexity-score/record-score! fingerprint {:meta {:label "older"}})
-        (data-complexity-score/record-score! fingerprint {:meta {:label "newer"}})
+        (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
+        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
+        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
         (let [score (data-complexity-score/latest-score fingerprint)]
           (is (= "newer" (get-in score [:meta :label])))
           (is (some? (get-in score [:meta :calculated-at]))))
@@ -996,9 +996,11 @@
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] result)]
             (#'task.complexity-score/run-scoring! "persist-test-fp")
-            (let [{:keys [id fingerprint score_data]} (data-complexity-score/latest-entry "persist-test-fp")]
+            (let [{:keys [id fingerprint score_data source]} (data-complexity-score/latest-entry "persist-test-fp")]
               (is (= result score_data))
               (is (= "persist-test-fp" fingerprint))
+              (is (= "appdb" source)
+                  "cron-path rows must be stamped with source=\"appdb\"")
               (when before-id
                 (is (> id before-id)
                     "a new append-only snapshot should be written for each run")))))))))

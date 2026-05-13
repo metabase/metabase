@@ -112,12 +112,13 @@
       (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
                     task.complexity-score/current-fingerprint (constantly "api-test-fp")
                     complexity/complexity-scores              (fn [& _] sample-score)
-                    data-complexity-score/record-score!       (fn [fingerprint stored-score]
-                                                                (reset! persisted? [fingerprint stored-score])
+                    data-complexity-score/record-score!       (fn [fingerprint source stored-score]
+                                                                (reset! persisted? [fingerprint source stored-score])
                                                                 (with-sample-calculated-at stored-score))]
         (is (= (m.util/deep-snake-keys (with-sample-calculated-at sample-score))
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))
-        (is (= ["api-test-fp" sample-score] @persisted?))))))
+        (is (= ["api-test-fp" "appdb" sample-score] @persisted?)
+            "API recompute path must stamp source=\"appdb\"")))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-advances-last-fingerprint-on-snowplow-publish-test
   (testing "force recalculation mirrors the scheduled path's fingerprint gate — advance only when Snowplow accepted the event"

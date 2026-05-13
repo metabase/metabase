@@ -29,7 +29,9 @@
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.io File)))
+   (java.io File)
+   (java.nio.file Files)
+   (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
 
@@ -201,10 +203,36 @@
     (let [default (io/file dir "embeddings.json")]
       (if (.exists default) (json/decode (slurp default) false) {}))))
 
+;;; ------------------------------------------- directory digest -------------------------------------------
+
+(defn- sha256-bytes ^bytes [^bytes input]
+  (.digest (MessageDigest/getInstance "SHA-256") input))
+
+(defn- hex [^bytes bs]
+  (let [sb (StringBuilder. (* 2 (alength bs)))]
+    (dotimes [i (alength bs)]
+      (.append sb (format "%02x" (bit-and (aget bs i) 0xff))))
+    (.toString sb)))
+
+(defn dir-digest
+  "Stable SHA-256 over the file contents of `dir`. Two directories with byte-identical files at the
+  same relative paths produce the same digest. Used as the `<digest>` part of the `source` column
+  on `data_complexity_score` rows when the CLI scores a representation directory."
+  [dir]
+  (let [dir-file (io/file dir)
+        root     (.toPath dir-file)
+        entries  (->> (file-seq dir-file)
+                      (filter #(.isFile ^File %))
+                      (map (fn [^File f]
+                             [(str (.relativize root (.toPath f)))
+                              (hex (sha256-bytes (Files/readAllBytes (.toPath f))))]))
+                      (sort-by first))]
+    (hex (sha256-bytes (.getBytes (pr-str entries) "UTF-8")))))
+
 ;;; ------------------------------------------- public entry point -------------------------------------------
 
 (defn load-dir
-  "Load a serdes export and return `{:library :universe :embedder}` for the complexity scorer.
+  "Load a serdes export and return `{:library :universe :embedder :digest}` for the complexity scorer.
 
   Filters mirror the live appdb scorer:
     - Universe Cards : `type ∈ {metric model}`, not archived
@@ -243,4 +271,5 @@
                             (mapv ->table-entity (filter library-table? tables))))
      :universe (vec (concat (mapv ->card-entity  (filter universe-card?  cards))
                             (mapv ->table-entity (filter universe-table? tables))))
-     :embedder (embedders/file-embedder embeddings)}))
+     :embedder (embedders/file-embedder embeddings)
+     :digest   (dir-digest dir-file)}))
