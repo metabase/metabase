@@ -84,23 +84,31 @@ body::before {
 .docs-shell {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 220px;
-  gap: 48px;
+  grid-template-rows: auto 1fr;
+  column-gap: 48px;
+  row-gap: 20px;
   max-width: var(--shell-max);
   margin: 0 auto;
   padding: 24px 24px 64px;
 }
+.docs-shell > .docs-sidebar { grid-row: 1 / span 2; }
+.docs-shell > .docs-topbar { grid-column: 2 / 4; grid-row: 1; }
+.docs-shell > article.docs-content { grid-column: 2; grid-row: 2; }
+.docs-shell > .docs-rail { grid-column: 3; grid-row: 2; }
 
 @media (max-width: 1199px) {
   .docs-shell {
     grid-template-columns: 226px minmax(0, 1fr);
-    gap: 40px;
+    column-gap: 40px;
   }
   .docs-rail { display: none; }
+  .docs-shell > .docs-topbar { grid-column: 2 / 3; }
 }
 
 @media (max-width: 991px) {
   .docs-shell { grid-template-columns: minmax(0, 1fr); }
   .docs-sidebar { display: none; }
+  .docs-shell > .docs-topbar { grid-column: 1 / 2; }
 }
 
 /* ---------- Left sidebar ---------- */
@@ -188,13 +196,48 @@ body::before {
   transform: rotate(90deg);
 }
 
-/* ---------- Top bar / breadcrumbs ---------- */
+/* ---------- Top bar (flex row: breadcrumbs left, What's new + search right) ---------- */
 .docs-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 8px;
+}
+.docs-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.docs-whats-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 16px 11px 13px;
+  border-radius: 6px;
+  background: var(--blue-95);
+  border: 1px solid var(--blue-90);
+  color: var(--blue-60);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.docs-whats-new:hover { background: #d8e9fa; color: var(--blue-40); }
+.docs-whats-new img { width: 17px; height: 17px; }
+@media (max-width: 1200px) {
+  .docs-whats-new { display: none; }
+}
+.docs-topbar-right #inkeep {
+  min-width: 220px;
+}
+
+.docs-breadcrumbs {
   font-size: 14px;
   color: var(--neutral-60);
 }
-.docs-topbar ol {
+.docs-breadcrumbs ol {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -202,9 +245,9 @@ body::before {
   flex-wrap: wrap;
   gap: 6px;
 }
-.docs-topbar li + li::before { content: "›"; margin-right: 6px; color: var(--neutral-80); }
-.docs-topbar a { color: var(--neutral-60); text-decoration: none; }
-.docs-topbar a:hover { color: var(--blue-60); }
+.docs-breadcrumbs li + li::before { content: "›"; margin-right: 6px; color: var(--neutral-80); }
+.docs-breadcrumbs a { color: var(--neutral-60); text-decoration: none; }
+.docs-breadcrumbs a:hover { color: var(--blue-60); }
 
 /* ---------- Main article ---------- */
 article.docs-content {
@@ -421,20 +464,21 @@ article.docs-content td code { background: var(--neutral-95); }
 }
 
 /* ---------- Right sidebar (on this page) ---------- */
+/* The rail itself isn't sticky — it stretches to the article column's height
+   and lets its two children stick independently (TOC to viewport top, feedback
+   widget to viewport bottom). That way the widget stays anchored to the same
+   screen position as the user scrolls, instead of moving with the rail. */
 .docs-rail {
-  position: sticky;
-  top: 16px;
-  align-self: start;
-  height: calc(100vh - 96px);
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: 24px;
   padding-top: 8px;
   font-size: 14px;
 }
 .docs-toc {
-  flex: 1 1 auto;
-  min-height: 0;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
 }
 .docs-toc::before {
@@ -463,7 +507,12 @@ article.docs-content td code { background: var(--neutral-95); }
 
 /* ---------- Feedback widget ---------- */
 .feedback-widget {
-  flex: 0 0 auto;
+  position: sticky;
+  bottom: 16px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--neutral-90);
+  background: var(--neutral-98);
   display: flex;
   flex-direction: column;
   gap: 12px;

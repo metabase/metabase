@@ -27,12 +27,21 @@ const breadcrumbs = trail.map((p, i) => {
 });
 ---
 
-{breadcrumbs.length > 0 && (
-  <nav class="docs-topbar" aria-label="Breadcrumb">
-    <ol>
-      {breadcrumbs.map((b) => (
-        <li>{b.href ? <a href={b.href}>{b.label}</a> : <span>{b.label}</span>}</li>
-      ))}
-    </ol>
-  </nav>
-)}
+<div class="docs-topbar">
+  {breadcrumbs.length > 0 && (
+    <nav class="docs-breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        {breadcrumbs.map((b) => (
+          <li>{b.href ? <a href={b.href}>{b.label}</a> : <span>{b.label}</span>}</li>
+        ))}
+      </ol>
+    </nav>
+  )}
+  <div class="docs-topbar-right">
+    <a class="docs-whats-new" href="https://www.metabase.com/releases">
+      <img src={`${base}/images/icons/stars.svg`} alt="" aria-hidden="true" />
+      <span>What's new</span>
+    </a>
+    <div id="inkeep"></div>
+  </div>
+</div>
