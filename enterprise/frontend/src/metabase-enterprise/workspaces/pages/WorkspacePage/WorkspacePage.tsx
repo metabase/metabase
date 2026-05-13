@@ -67,7 +67,7 @@ function WorkspacePageBody({
   availableDatabases,
 }: WorkspacePageBodyProps) {
   return (
-    <PageContainer data-testid="workspace-editor">
+    <PageContainer data-testid="workspace-page">
       <WorkspaceHeader workspace={workspace} actions={<HelpMenu />} />
       <Stack gap="3.5rem">
         <DatabaseSection

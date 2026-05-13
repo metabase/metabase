@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
@@ -20,8 +19,9 @@ export function SetupSection({ workspace }: SetupSectionProps) {
       <Group p="lg" justify="space-between" align="center">
         <Text maw="40rem">{description}</Text>
         <Button
-          component={Link}
-          to={`/api/ee/workspace-manager/${workspace.id}/config`}
+          component="a"
+          href={`/api/ee/workspace-manager/${workspace.id}/config`}
+          download={CONFIG_FILENAME}
           leftSection={<FixedSizeIcon name="download" />}
         >
           {t`Download ${CONFIG_FILENAME}`}

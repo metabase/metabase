@@ -75,7 +75,7 @@ function WorkspaceInstancePageBody({
   const databasesInfo = getDatabasesInfo(workspace, databases, remappings);
 
   return (
-    <PageContainer data-testid="workspace-instance">
+    <PageContainer data-testid="workspace-instance-page">
       <PaneHeader
         title={<Title order={3}>{workspace.name}</Title>}
         breadcrumbs={

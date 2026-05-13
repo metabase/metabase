@@ -59,7 +59,7 @@ function WorkspaceListPageBody({
   const hasWorkspaces = workspaces.length > 0;
 
   return (
-    <PageContainer data-testid="workspace-list">
+    <PageContainer data-testid="workspace-list-page">
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>

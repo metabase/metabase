@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -65,10 +66,26 @@ type NewDatabaseFormValues = {
   input_schemas: string[];
 };
 
-const NEW_DATABASE_SCHEMA = Yup.object({
-  database_id: Yup.number().nullable().required(Errors.required),
-  input_schemas: Yup.array().of(Yup.string().required()).required(),
-});
+function getValidationSchema(availableDatabases: Database[]) {
+  return Yup.object({
+    database_id: Yup.number().nullable().required(Errors.required),
+    input_schemas: Yup.array()
+      .of(Yup.string().required())
+      .when("database_id", {
+        is: (databaseId: DatabaseId | null | undefined) => {
+          if (databaseId == null) {
+            return false;
+          }
+          const database = availableDatabases.find(
+            (db) => db.id === databaseId,
+          );
+          return database != null && hasFeature(database, "schemas");
+        },
+        then: (schema) => schema.min(1, Errors.required).required(),
+        otherwise: (schema) => schema.required(),
+      }),
+  });
+}
 
 type NewDatabaseFormProps = {
   workspace: Workspace;
@@ -90,6 +107,11 @@ function NewDatabaseForm({
     input_schemas: [],
   };
 
+  const validationSchema = useMemo(
+    () => getValidationSchema(availableDatabases),
+    [availableDatabases],
+  );
+
   const handleSubmit = async (values: NewDatabaseFormValues) => {
     if (values.database_id == null) {
       return;
@@ -105,7 +127,7 @@ function NewDatabaseForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_DATABASE_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       {({ values, setFieldValue }) => {

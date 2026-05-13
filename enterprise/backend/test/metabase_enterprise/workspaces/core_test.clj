@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -71,6 +72,16 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"input_schemas is required"
              (ws/add-database! (:id ws) (mt/id) []))))))
+
+  (testing "input not required when database does not support :schemas (e.g. MySQL)"
+    (when (workspaces.tu/driver-loadable? :mysql)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :mysql}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws  (ws/create-workspace! {:name "MySQL Add" :creator_id (mt/user->id :crowberto)})
+                ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                      (ws/add-database! (:id ws) db-id []))]
+            (is (= 1 (count (:databases ws'))))
+            (is (= [] (:input_schemas (first (:databases ws'))))))))))
 
   (testing "duplicate database throws 409"
     (mt/with-model-cleanup [:model/Workspace]

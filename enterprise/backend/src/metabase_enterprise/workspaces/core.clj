@@ -205,12 +205,15 @@
       (throw (ex-info "Workspace not found"
                       {:status-code 404 :workspace_id workspace-id}))))
 
-(defn- assert-input-present!
-  "Throw 400 if `input-schemas` is empty. At least one source schema required."
-  [input-schemas]
-  (when (empty? input-schemas)
-    (throw (ex-info "input_schemas is required: at least one source schema must be specified"
-                    {:status-code 400}))))
+(defn- assert-input-schemas-when-supported!
+  "Throw 400 if the database supports the `:schemas` feature and `input-schemas` is empty.
+   Databases without schemas (e.g. MySQL) accept an empty `input-schemas`."
+  [database-id input-schemas]
+  (when-let [db (t2/select-one :model/Database :id database-id)]
+    (when (and (driver/database-supports? (:engine db) :schemas db)
+               (empty? input-schemas))
+      (throw (ex-info "input_schemas is required: at least one source schema must be specified"
+                      {:status-code 400 :database_id database-id})))))
 
 (defn- find-wsd
   "Find the WorkspaceDatabase for a given workspace + database, or throw 404."
@@ -245,7 +248,7 @@
    Returns the updated workspace, hydrated."
   [workspace-id database-id input-schemas]
   (let [ws (assert-workspace-exists workspace-id)]
-    (assert-input-present! input-schemas)
+    (assert-input-schemas-when-supported! database-id input-schemas)
     (when (some #(= database-id (:database_id %)) (:databases ws))
       (throw (ex-info "Database already in workspace"
                       {:status-code 409 :workspace_id workspace-id :database_id database-id})))
@@ -269,7 +272,7 @@
   [workspace-id database-id input-schemas]
   (let [ws  (assert-workspace-exists workspace-id)
         wsd (find-wsd ws database-id)]
-    (assert-input-present! input-schemas)
+    (assert-input-schemas-when-supported! database-id input-schemas)
     (when (= :provisioned (:status wsd))
       (provisioning/deprovision-single! (:id wsd)))
     (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
