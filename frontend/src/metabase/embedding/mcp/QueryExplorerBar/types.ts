@@ -2,9 +2,8 @@ import type {
   DatePickerUnit,
   DatePickerValue,
 } from "metabase/querying/common/types";
-import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { TemporalUnit } from "metabase-types/api";
+import type { IconName, TemporalUnit } from "metabase-types/api";
 
 export type QueryExplorerBarChartType = {
   type: string;

@@ -2,8 +2,8 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import type { IconName } from "metabase/ui";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   McpFeedbackModal,
