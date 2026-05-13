@@ -1,4 +1,10 @@
 .wrap {
+  /* The diff content is white-space: pre — without these the long lines
+     push the card past its container instead of producing a horizontal
+     scrollbar inside the diff. */
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-sm);
   background: var(--mb-color-background-secondary);

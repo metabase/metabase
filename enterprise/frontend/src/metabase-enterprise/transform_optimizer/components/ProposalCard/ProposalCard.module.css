@@ -1,10 +1,18 @@
 .card {
+  width: 100%;
+  /* Let the card shrink inside a flex/grid parent so its child SQL
+     blocks (white-space: pre) can clip+scroll instead of dragging the
+     whole card past the container edge. */
+  min-width: 0;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-background-primary);
 }
 
 .codeBlock {
+  display: block;
+  width: 100%;
+  min-width: 0;
   max-height: 320px;
   overflow: auto;
   font-size: 12px;

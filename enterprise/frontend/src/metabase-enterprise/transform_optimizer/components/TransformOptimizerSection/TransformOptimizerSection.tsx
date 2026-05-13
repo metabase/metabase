@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
 import {
   Alert,
   Box,
@@ -38,7 +36,6 @@ type Props = {
 };
 
 export function TransformOptimizerSection({ transform, readOnly }: Props) {
-  const dispatch = useDispatch();
   const currentSql = getNativeSql(transform);
   const { state, start, abort, dismissProposal } = useOptimizerStream({
     transformId: transform.id,
@@ -104,7 +101,11 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
             created.length === 1
               ? t`New transform "${leaf.name}" created`
               : t`${created.length} new transforms created — leaf: "${leaf.name}"`,
-            () => dispatch(push(Urls.transform(leaf.id))),
+            // Open in a new tab so the user keeps the optimizer context
+            // (the proposals list, the source transform) visible while
+            // inspecting the generated transform.
+            () =>
+              window.open(Urls.transform(leaf.id), "_blank", "noopener,noreferrer"),
             t`Open`,
           );
         } else {
@@ -123,7 +124,6 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
       sendErrorToast,
       sendSuccessToast,
       dismissProposal,
-      dispatch,
     ],
   );
 

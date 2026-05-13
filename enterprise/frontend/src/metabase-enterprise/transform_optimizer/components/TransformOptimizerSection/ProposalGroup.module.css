@@ -1,4 +1,9 @@
 .group {
+  /* Without these, a step's white-space: pre SQL drives the grid track
+     (and therefore .group) to min-content width, dragging the whole
+     pipeline past the page. */
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--mb-color-border);
   border-radius: 12px;
   background: var(--mb-color-bg-light, var(--mb-color-bg-white));
@@ -14,13 +19,24 @@
 
 .pipeline {
   /* Each card in a multi-step pipeline gets a subtle vertical connector
-   * via this nested grid so the user reads top-to-bottom as one flow. */
+   * via this nested grid so the user reads top-to-bottom as one flow.
+   *
+   * `minmax(0, 1fr)` is the key bit: a default grid auto-track sizes to
+   * its widest child's min-content, which for white-space: pre SQL is
+   * the longest unbroken line. The 0 lower bound lets the track shrink
+   * below that and forces the inner code blocks to use their own
+   * overflow: auto instead. */
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
 .step {
   position: relative;
+  /* Grid items default to min-width: auto (= content). Forcing 0 keeps
+     a wide card from blowing out the grid track even if the track were
+     auto-sized. Defense in depth alongside the minmax(0, 1fr) above. */
+  min-width: 0;
 }
 
 .step::before {
