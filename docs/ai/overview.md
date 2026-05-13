@@ -34,7 +34,7 @@ See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/comp
 
 **Best for: asking ad-hoc, ephemeral questions; combining data from Metabase with data from other tools.**
 
-Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP server's main functionality is designed to for answering in-the-moment questions like "hey btw what's our q3 revenue?". The MCP server is also useful when combined with other MCP servers. for eFample, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
+Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP server's main functionality is designed to for answering in-the-moment questions like "hey btw what's our q3 revenue?" The MCP server is also useful when combined with other MCP servers. For example, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
 
 Compared to the built-in Metabot, MCP server has somewhat restricted functionality (for example, it can't generate code or built transforms for now). See [the ever-expanding list of MCP server tools](mcp.md#available-tools).
 
