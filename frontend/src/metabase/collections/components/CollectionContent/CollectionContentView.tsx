@@ -1,14 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
+import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { Api, useListCollectionItemsQuery } from "metabase/api";
+import {
+  Api,
+  useDeleteCollectionMutation,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
@@ -37,8 +41,8 @@ import {
   useToast,
 } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -83,6 +87,7 @@ export const CollectionContentView = ({
   visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const dispatch = useDispatch();
+  const [deleteCollection] = useDeleteCollectionMutation();
 
   const { data: pinnedItemsData, isLoading: loading } =
     useListCollectionItemsQuery({
@@ -241,7 +246,6 @@ export const CollectionContentView = ({
 
   const pinnedItems = list && !isRootTrashCollection(collection) ? list : [];
   const hasPinnedItems = pinnedItems.length > 0;
-  const actionId = { id: collectionId };
 
   return (
     <CollectionRoot {...dropzoneProps}>
@@ -271,9 +275,13 @@ export const CollectionContentView = ({
           onMove={({ id }) =>
             setCollection({ model: "collection", id: collectionId }, { id })
           }
-          onDeletePermanently={() =>
-            dispatch(deletePermanently(Collections.actions.delete(actionId)))
-          }
+          onDeletePermanently={async () => {
+            await deleteCollection({ id: collectionId }).unwrap();
+            dispatch(push("/trash"));
+            dispatch(
+              addUndo({ message: t`This item has been permanently deleted.` }),
+            );
+          }}
         />
       )}
 

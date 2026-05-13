@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
@@ -19,10 +18,8 @@ import type {
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { connect } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
@@ -59,19 +56,7 @@ export interface CreateCollectionFormOwnProps {
   showAuthorityLevelPicker?: boolean;
 }
 
-interface CreateCollectionFormDispatchProps {
-  handleCreateCollection: (
-    collection: CreateCollectionProperties,
-  ) => Promise<Collection>;
-}
-
-type Props = CreateCollectionFormOwnProps &
-  CreateCollectionFormDispatchProps &
-  WithRouterProps;
-
-const mapDispatchToProps = {
-  handleCreateCollection: Collections.actions.create,
-};
+type Props = CreateCollectionFormOwnProps & WithRouterProps;
 
 function CreateCollectionForm({
   collectionId,
@@ -189,7 +174,4 @@ function CreateCollectionForm({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(null, mapDispatchToProps),
-)(CreateCollectionForm);
+export default withRouter(CreateCollectionForm);
