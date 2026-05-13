@@ -5,6 +5,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -221,8 +222,17 @@
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                            :engine  driver/*driver*}]
-      (let [query    {:database (:id tmp-db)
-                      :type     :native
-                      :native   {:query "SELECT 1"}}
-            response (mt/user-http-request :crowberto :post 400 "dataset" query)]
-        (is (= "unable-to-acquire-connection" (:error_type response)))))))
+      ;; It's not straightforward to trigger a `.getConnection` error for some drivers (e.g. sqlite)
+      ;; so just mock the exception. Also need to mock this h2 method so that the query doesn't fail
+      ;; before it gets to `do-with-resolved-connection-data-source`.
+      (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                    sql-jdbc.execute/do-with-resolved-connection-data-source
+                    (fn [driver db-or-id-or-spec options]
+                      (reify javax.sql.DataSource
+                        (getConnection [_]
+                          (throw (java.sql.SQLException. "connection error")))))]
+        (let [query    {:database (:id tmp-db)
+                        :type     :native
+                        :native   {:query "SELECT 1"}}
+              response (mt/user-http-request :crowberto :post 400 "dataset" query)]
+          (is (= "unable-to-acquire-connection" (:error_type response))))))))
