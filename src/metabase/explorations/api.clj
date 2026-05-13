@@ -308,17 +308,18 @@
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
   [:map
-   [:id                    ms/PositiveInt]
-   [:exploration_id        ms/PositiveInt]
-   [:prompt                {:optional true} [:maybe :string]]
-   [:position              ms/IntGreaterThanOrEqualToZero]
-   [:started_at            {:optional true} [:maybe :any]]
-   [:metrics               {:optional true} [:maybe [:sequential :map]]]
-   [:dimensions            {:optional true} [:maybe [:sequential :map]]]
-   [:timelines             {:optional true} [:maybe [:sequential :map]]]
-   [:queries               {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
-   [:groups                {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
-   [:documents             {:optional true} [:maybe [:sequential ::ExplorationDocument]]]])
+   [:id                         ms/PositiveInt]
+   [:exploration_id             ms/PositiveInt]
+   [:prompt                     {:optional true} [:maybe :string]]
+   [:position                   ms/IntGreaterThanOrEqualToZero]
+   [:started_at                 {:optional true} [:maybe :any]]
+   [:auto_insights_document_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:metrics                    {:optional true} [:maybe [:sequential :map]]]
+   [:dimensions                 {:optional true} [:maybe [:sequential :map]]]
+   [:timelines                  {:optional true} [:maybe [:sequential :map]]]
+   [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
+   [:groups                     {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
+   [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]])
 
 (mr/def ::ExplorationQueryStreamResponse
   "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),

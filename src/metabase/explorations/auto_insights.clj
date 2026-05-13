@@ -183,13 +183,16 @@
   exploration POST endpoint so the FE sidebar shows it immediately; the
   later `write-document!` in this namespace updates it in place."
   [thread-id creator-id]
-  (first
-   (t2/insert-returning-instances! :model/Document
-                                   {:name                  auto-doc-name
-                                    :document              (placeholder-pm-doc)
-                                    :content_type          prose-mirror/prose-mirror-content-type
-                                    :creator_id            creator-id
-                                    :exploration_thread_id thread-id})))
+  (let [doc (first
+             (t2/insert-returning-instances! :model/Document
+                                             {:name                  auto-doc-name
+                                              :document              (placeholder-pm-doc)
+                                              :content_type          prose-mirror/prose-mirror-content-type
+                                              :creator_id            creator-id
+                                              :exploration_thread_id thread-id}))]
+    (t2/update! :model/ExplorationThread thread-id
+                {:auto_insights_document_id (:id doc)})
+    doc))
 
 (defn- find-placeholder-doc
   "Look up the Automatic Insights document for `thread-id`. Returns nil when
