@@ -1,11 +1,10 @@
 import type { Location } from "history";
 import { useMemo } from "react";
 
-import { collectionApi } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -18,75 +17,41 @@ export type UseInitialCollectionIdProps = {
   params?: { collectionId?: Collection["id"]; slug?: string };
 };
 
-// Collections are loaded into two places during the entity-system → RTK migration:
-// the legacy `state.entities.collections` slice via `Collections.actions.fetch`,
-// `Collections.load` HOC, etc.) and the RTK Query cache (via `useGetCollectionQuery`).
-// We read from both so this hook works regardless of which path loaded the collection.
-//
-// TODO: Once collections are exclusively RTK-loaded, the entity-state branch can be dropped.
-function selectCollectionFromCache(
-  state: State,
-  id: Collection["id"],
-): Collection | undefined {
-  const fromEntities = state.entities?.collections?.[id] as
-    | Collection
-    | undefined;
-  if (fromEntities) {
-    return fromEntities;
-  }
-  const queryState = collectionApi.endpoints.getCollection.select({ id })(
-    state,
-  );
-  if (queryState?.status === "fulfilled") {
-    return queryState.data as Collection | undefined;
-  }
-  return undefined;
-}
+const collectionIdParam = (id: Collection["id"] | undefined | null) =>
+  id != null ? { id } : skipToken;
 
 // Picks the collection ID a "create new X" form should default to, given a set of route/prop hints.
-//
-// TODO: Once collections are exclusively RTK-loaded, this can become a wrapper around `useGetCollectionQuery`
-// with explicit loading states.
 export function useInitialCollectionId({
   collectionId,
   location,
   params,
 }: UseInitialCollectionIdProps = {}): CollectionId | null {
-  const fromCollectionId = useSelector((state) =>
-    collectionId != null
-      ? selectCollectionFromCache(state, collectionId)
-      : undefined,
+  const { data: fromCollectionId } = useGetCollectionQuery(
+    collectionIdParam(collectionId),
   );
-
-  const fromNavParam = useSelector((state) =>
-    params?.collectionId != null
-      ? selectCollectionFromCache(state, params.collectionId)
-      : undefined,
+  const { data: fromNavParam } = useGetCollectionQuery(
+    collectionIdParam(params?.collectionId),
   );
 
   const idFromSlug =
     params?.slug && location && Urls.isCollectionPath(location.pathname)
       ? Urls.extractCollectionId(params.slug)
       : undefined;
-  const fromSlug = useSelector((state) =>
-    idFromSlug != null
-      ? selectCollectionFromCache(state, idFromSlug)
-      : undefined,
+  const { data: fromSlug } = useGetCollectionQuery(
+    collectionIdParam(idFromSlug),
   );
 
   const idFromQuery = location?.query?.collectionId as
     | Collection["id"]
     | undefined;
-  const fromQuery = useSelector((state) =>
-    idFromQuery != null
-      ? selectCollectionFromCache(state, idFromQuery)
-      : undefined,
+  const { data: fromQuery } = useGetCollectionQuery(
+    collectionIdParam(idFromQuery),
   );
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
-  const rootCollection = useSelector((state) =>
-    selectCollectionFromCache(state, ROOT_COLLECTION.id),
-  );
+  const { data: rootCollection } = useGetCollectionQuery({
+    id: ROOT_COLLECTION.id,
+  });
 
   return useMemo(() => {
     const candidates = [

@@ -127,6 +127,7 @@ function CreateCollectionForm({
   return (
     <FormProvider
       initialValues={initialValues}
+      enableReinitialize
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={handleSubmit}
     >
