@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
+import { useDispatch } from "metabase/redux";
 import {
   Anchor,
   Badge,
@@ -22,6 +23,7 @@ import * as Urls from "metabase/urls";
 import {
   type BulkOptimizeDoneEntry,
   type BulkOptimizeStatusResponse,
+  optimizerApi,
   useBulkOptimizeStatusQuery,
 } from "../../api";
 import type { Proposal, ProposalSeverity } from "../../types";
@@ -45,6 +47,7 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
     pollingInterval,
     skip: !opened,
   });
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!opened) {
@@ -54,6 +57,38 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
     const stillRunning = (data?.pending ?? []).length > 0;
     setPollingInterval(stillRunning ? POLL_MS : 0);
   }, [opened, data]);
+
+  // The detail page's TransformOptimizerSection reads from the optimize
+  // endpoint's RTK Query cache. The bulk run populated the BE proposal
+  // cache (so verify / accept work) but didn't touch the FE cache —
+  // navigating from here would land on the trigger button and force a
+  // re-analysis. Seed the FE cache before navigation so the section
+  // hydrates straight into "done" with the bulk proposals.
+  const seedOptimizeCache = useCallback(
+    (entry: BulkOptimizeDoneEntry) => {
+      dispatch(
+        optimizerApi.util.upsertQueryData(
+          "optimize",
+          { transformId: entry.transform.id, analyze: false },
+          {
+            transform: {
+              id: entry.transform.id,
+              name: entry.transform.name,
+              source_database_id: entry.transform.source_database_id,
+            },
+            // The bulk endpoint doesn't return the compiled SQL — the
+            // section doesn't read from this field, only the proposals
+            // array, so null is safe.
+            sql: null,
+            summary: entry.summary,
+            proposals: entry.proposals,
+            optimization_degree: entry.optimization_degree,
+          },
+        ),
+      );
+    },
+    [dispatch],
+  );
 
   const total = data?.total ?? 0;
   const doneEntries = Object.values(data?.done ?? {});
@@ -102,6 +137,7 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
                   <TransformResultCard
                     key={entry.transform.id}
                     entry={entry}
+                    onOpen={() => seedOptimizeCache(entry)}
                   />
                 ))
               )}
@@ -160,7 +196,13 @@ const SEVERITY_COLOR: Record<ProposalSeverity, string> = {
   low: "text-secondary",
 };
 
-function TransformResultCard({ entry }: { entry: BulkOptimizeDoneEntry }) {
+function TransformResultCard({
+  entry,
+  onOpen,
+}: {
+  entry: BulkOptimizeDoneEntry;
+  onOpen: () => void;
+}) {
   const { transform, summary, proposals, optimization_degree } = entry;
   const isOptimized = optimization_degree === 100;
 
@@ -173,6 +215,7 @@ function TransformResultCard({ entry }: { entry: BulkOptimizeDoneEntry }) {
               component={Link}
               to={Urls.transformRun(transform.id)}
               fw="bold"
+              onClick={onOpen}
             >
               {transform.name}
             </Anchor>
@@ -201,7 +244,12 @@ function TransformResultCard({ entry }: { entry: BulkOptimizeDoneEntry }) {
               ))}
             </Stack>
             <Group justify="flex-end">
-              <Anchor component={Link} to={Urls.transformRun(transform.id)} fz="sm">
+              <Anchor
+                component={Link}
+                to={Urls.transformRun(transform.id)}
+                fz="sm"
+                onClick={onOpen}
+              >
                 {t`Open transform to verify / accept →`}
               </Anchor>
             </Group>
