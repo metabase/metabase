@@ -1,4 +1,4 @@
-import type { VisualizationSettings } from "metabase-types/api";
+import type { ClickBehavior, VisualizationSettings } from "metabase-types/api";
 
 /**
  * In modular embedding (react sdk and embed-js) we disable internal click behaviors
@@ -8,17 +8,37 @@ import type { VisualizationSettings } from "metabase-types/api";
 export function removeInternalClickBehaviors(
   computedSettings: VisualizationSettings,
 ) {
-  if (
-    computedSettings.click_behavior &&
-    computedSettings.click_behavior.type === "link" &&
-    computedSettings.click_behavior.linkType !== "url"
-  ) {
-    return {
-      ...computedSettings,
-      click_behavior: undefined,
-    };
+  let nextSettings = computedSettings;
+
+  if (isInternalLinkClickBehavior(computedSettings.click_behavior)) {
+    nextSettings = { ...nextSettings, click_behavior: undefined };
   }
-  return computedSettings;
+
+  if (computedSettings.column_settings) {
+    const columnSettings = Object.fromEntries(
+      Object.entries(computedSettings.column_settings).map(
+        ([key, settings]) => {
+          if (!isInternalLinkClickBehavior(settings.click_behavior)) {
+            return [key, settings];
+          }
+
+          return [key, { ...settings, click_behavior: undefined }];
+        },
+      ),
+    );
+
+    nextSettings = { ...nextSettings, column_settings: columnSettings };
+  }
+
+  return nextSettings;
+}
+
+function isInternalLinkClickBehavior(clickBehavior: ClickBehavior | undefined) {
+  return (
+    clickBehavior?.type === "link" &&
+    "linkType" in clickBehavior &&
+    clickBehavior.linkType !== "url"
+  );
 }
 
 /**
