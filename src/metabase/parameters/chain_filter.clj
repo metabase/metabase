@@ -65,6 +65,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
@@ -367,8 +368,7 @@
 
 (mu/defn- add-joins :- ::lib.schema/query
   "Add joins to the MBQL `query` we're generating. The Field for which we are returning values is the \"source Field\",
-  and the Table it belongs to is the source Table; `field-ids` is a set of Fields belonging to Tables other than the
-  source Table.
+  and the Table it belongs to is the source Table; `joins` is a sequence of FK hops to add.
 
   When we generate joins, we must determine the other Tables we must join against so that we have access to the other
   Fields. The relationship between these other Tables and the source Table may go in either direction, i.e. the source
@@ -379,49 +379,77 @@
     -- or
     source_table.pk = other_table.fk
 
-  Since we're not sure which way the relationship goes, `resolve-fk-id` fetches all possible relationships between the
-  two Tables and we generate the appropriate join against the other Table.
+  Joins are added with the default `:fields :all` shape; [[tighten-join-projections]] narrows each join's inner-stage
+  `:fields` as a post-pass once the full query has been built."
+  [query           :- ::lib.schema/query
+   source-table-id :- ::lib.schema.id/table
+   joins]
+  (reduce
+   (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
+     (let [lhs-field (lib.metadata/field query lhs-field-id)
+           rhs-field (lib.metadata/field query rhs-field-id)
+           rhs-table (lib.metadata/table query rhs-table-id)
+           join      (-> (lib/join-clause rhs-table)
+                         (lib/with-join-alias (joined-table-alias rhs-table-id))
+                         (lib/with-join-conditions [(lib/=
+                                                     (cond-> lhs-field
+                                                       (not= lhs-table-id source-table-id)
+                                                       (lib/with-join-alias (joined-table-alias lhs-table-id)))
+                                                     (-> rhs-field
+                                                         (lib/with-join-alias (joined-table-alias rhs-table-id))))]))]
+       (log/tracef "Adding join against %s\n%s"
+                   (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
+       (lib/join query join)))
+   query
+   joins))
 
-  `selected-field-ids` is the set of joined-Table Field IDs actually referenced by the outer query (currently:
-  constraint filter Fields on joined Tables). For each join, we pre-populate the join's inner stage `:fields` with
-  refs to those Fields plus the join-condition RHS column. This makes
-  [[metabase.query-processor.middleware.add-implicit-clauses/should-add-implicit-fields?]] short-circuit (it skips
-  stages that already have `:fields`), so the QP doesn't blow the projection up to every column on the source Table."
-  [query              :- ::lib.schema/query
-   source-table-id    :- ::lib.schema.id/table
-   joins
-   selected-field-ids :- [:maybe [:set ::lib.schema.id/field]]]
-  (let [;; for each joined Table, the Fields its inner stage must expose: those used by the outer query
-        ;; (`selected-field-ids`) plus any Field that another join uses as its LHS (which means the join references it
-        ;; via this Table's alias and so the inner stage must project it).
-        field-ids-by-table (reduce (fn [m {{:keys [table field]} :lhs}]
-                                     (cond-> m
-                                       (not= table source-table-id)
-                                       (update table (fnil conj []) field)))
-                                   (group-by field/field-id->table-id selected-field-ids)
-                                   joins)]
-    (reduce
-     (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
-       (let [lhs-field      (lib.metadata/field query lhs-field-id)
-             rhs-field      (lib.metadata/field query rhs-field-id)
-             rhs-table      (lib.metadata/table query rhs-table-id)
-             rhs-join-alias (joined-table-alias rhs-table-id)
-             inner-fields   (mapv #(lib.metadata/field query %)
-                                  (distinct (cons rhs-field-id (get field-ids-by-table rhs-table-id))))
-             inner-query    (lib/with-fields (lib/query query rhs-table) inner-fields)
-             join           (-> (lib/join-clause inner-query)
-                                (lib/with-join-alias rhs-join-alias)
-                                (lib/with-join-conditions [(lib/=
-                                                            (cond-> lhs-field
-                                                              (not= lhs-table-id source-table-id)
-                                                              (lib/with-join-alias (joined-table-alias lhs-table-id)))
-                                                            (-> rhs-field
-                                                                (lib/with-join-alias rhs-join-alias)))]))]
-         (log/tracef "Adding join against %s\n%s"
-                     (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
-         (lib/join query join)))
-     query
-     joins)))
+(defn- referenced-field-ids-by-join-alias
+  "Walk an MBQL query and return `{join-alias #{field-id ...}}` — the set of Field IDs the query references via each
+  `:join-alias` anywhere outside the join's own inner stage (refs inside the inner subquery have no `:join-alias` and
+  so don't contribute)."
+  [query]
+  (let [acc (volatile! {})]
+    (walk/postwalk
+     (fn [x]
+       (when (and (vector? x) (= :field (first x)) (= 3 (count x)))
+         (let [opts (nth x 1)
+               id   (nth x 2)]
+           (when (and (map? opts) (string? (:join-alias opts)) (integer? id))
+             (vswap! acc update (:join-alias opts) (fnil conj #{}) id))))
+       x)
+     query)
+    @acc))
+
+(mu/defn- tighten-join-projections :- ::lib.schema/query
+  "After the full chain-filter pipeline has built the query, narrow each join's inner-stage `:fields` to the Field IDs
+  the rest of the query actually references through that join's alias. This is what makes
+  [[metabase.query-processor.middleware.add-implicit-clauses/should-add-implicit-fields?]] short-circuit — once the
+  inner stage has explicit `:fields`, the middleware won't expand it to every column on the joined Table.
+
+  Running this as a post-pass instead of computing the field set up front means any clause builder downstream of
+  [[add-joins]] (e.g. [[schema.metadata-queries/add-required-filters-if-needed]] adding partition filters on
+  BigQuery-partitioned joined Tables) automatically contributes to the projection — its references are visible in the
+  finished MBQL when we walk it."
+  [query :- ::lib.schema/query]
+  (if-let [joins (not-empty (get-in query [:stages 0 :joins]))]
+    (let [refs (referenced-field-ids-by-join-alias query)]
+      (assoc-in
+       query
+       [:stages 0 :joins]
+       (mapv
+        (fn [a-join]
+          (let [a-alias      (lib/current-join-alias a-join)
+                field-ids    (get refs a-alias #{})
+                rhs-table-id (get-in a-join [:stages 0 :source-table])
+                rhs-table    (lib.metadata/table query rhs-table-id)
+                field-mds    (mapv #(lib.metadata/field query %) field-ids)
+                inner-query  (lib/with-fields (lib/query query rhs-table) field-mds)]
+            (-> (lib/join-clause inner-query)
+                (lib/with-join-fields :none)
+                (lib/with-join-alias a-alias)
+                (lib/with-join-conditions (lib/join-conditions a-join)))))
+        joins)))
+    query))
 
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
@@ -438,25 +466,18 @@
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
-  (let [database-id        (field/field-id->database-id field-id)
-        mp                 (lib-be/application-database-metadata-provider database-id)
-        source-table-id    (field/field-id->table-id field-id)
-        joins              (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
-                                                             original-field-id (conj original-field-id)))
-        joined-table-ids   (set (map #(get-in % [:rhs :table]) joins))
-        on-joined-table?   (fn [a-field-id]
-                             (contains? joined-table-ids (field/field-id->table-id a-field-id)))
-        selected-field-ids (cond-> (into #{}
-                                         (comp (map :field-id) (filter on-joined-table?))
-                                         constraints)
-                             (and original-field-id (on-joined-table? original-field-id))
-                             (conj original-field-id))
-        field              (lib.metadata/field mp field-id)
-        original-field     (when original-field-id
-                             (let [original-table-id (field/field-id->table-id original-field-id)]
-                               (cond-> (lib.metadata/field mp original-field-id)
-                                 (not= source-table-id original-table-id)
-                                 (lib/with-join-alias (joined-table-alias original-table-id)))))]
+  (let [database-id      (field/field-id->database-id field-id)
+        mp               (lib-be/application-database-metadata-provider database-id)
+        source-table-id  (field/field-id->table-id field-id)
+        joins            (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
+                                                           original-field-id (conj original-field-id)))
+        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
+        field            (lib.metadata/field mp field-id)
+        original-field   (when original-field-id
+                           (let [original-table-id (field/field-id->table-id original-field-id)]
+                             (cond-> (lib.metadata/field mp original-field-id)
+                               (not= source-table-id original-table-id)
+                               (lib/with-join-alias (joined-table-alias original-table-id)))))]
     (when original-field-id
       (log/tracef "Finding values of %s, remapped from %s."
                   (name-for-logging :model/Field field-id)
@@ -465,11 +486,10 @@
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                   (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
     (-> (lib/query mp (lib.metadata/table mp source-table-id))
-        (lib/with-fields [field])
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)
-        (add-joins source-table-id joins selected-field-ids)
+        (add-joins source-table-id joins)
         (cond-> original-field (->
                                 ;; don't return rows that don't have values for the original Field. e.g. if
                                 ;; venues.category_id is remapped to categories.name and we do a search with query
@@ -489,7 +509,8 @@
                                 (lib/order-by field))
                 (not original-field) (lib/breakout field))
         (add-filters source-table-id joined-table-ids constraints)
-        schema.metadata-queries/add-required-filters-if-needed)))
+        schema.metadata-queries/add-required-filters-if-needed
+        tighten-join-projections)))
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 

@@ -588,25 +588,6 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
-(deftest ^:parallel chain-filter-mbql-query-projects-only-needed-fields-test
-  (testing "chain-filter-mbql-query keeps the source-stage `:fields` and each join's inner-stage `:fields` tight"
-    (testing "without FK remapping"
-      (let [query (#'chain-filter/chain-filter-mbql-query (mt/id :categories :name) nil nil)]
-        (is (= 1 (count (lib/fields query))))
-        (is (empty? (lib/joins query)))))
-    (testing "with FK remapping"
-      (let [query (#'chain-filter/chain-filter-mbql-query
-                   (mt/id :categories :name)
-                   nil
-                   {:original-field-id (mt/id :venues :category_id)})]
-        (is (= 1 (count (lib/fields query))))
-        (is (seq (lib/joins query)))
-        (doseq [a-join (lib/joins query)]
-          (is (= :none (lib/join-fields a-join)))
-          ;; Pre-populated by `add-joins` so the implicit-fields middleware doesn't expand the inner
-          ;; subquery's projection to every column on the joined Table.
-          (is (= 1 (count (:fields (first (:stages a-join)))))))))))
-
 ;;; ------------ Structural invariant: tight inner-stage :fields per join (GHY-3586) ------------
 ;;;
 ;;; The fix narrows each chain-filter join's inner subquery to project only those columns the
@@ -751,6 +732,36 @@
     (doseq [{:keys [label build]} projection-scenarios]
       (testing label
         (check-tight-projections! (build))))))
+
+(deftest ^:sequential chain-filter-preserves-required-partition-filter-on-joined-table-test
+  ;; `add-required-filters-if-needed` runs at the END of `chain-filter-mbql-query`, after joins
+  ;; are built. For tables that require partition filters (currently BigQuery partitioned
+  ;; tables), it adds a `[:> partition-col <epoch>]` clause referencing the joined Table's
+  ;; partition column via the join alias.
+  ;;
+  ;; On master, `visible-columns` includes joined-Table columns (default `:fields :all`), so the
+  ;; partition field resolves and the filter is added. A fix that narrows the join's projection
+  ;; up front — and doesn't account for filters added later — silently elides the partition
+  ;; filter, because the joined-Table column it would reference is no longer in
+  ;; `visible-columns`. That's a behavior regression on BigQuery: the partition filter master
+  ;; would have emitted is missing from the SQL.
+  ;;
+  ;; This test pins the contract: after the full chain-filter pipeline runs, the joined-Table
+  ;; alias must reference the partition column. Any fix shape that drops the filter or fails to
+  ;; project the column will fail this test.
+  (mt/dataset test-data
+    (let [venues-id     (mt/id :venues)
+          partition-fid (mt/id :venues :price)
+          venues-alias  (str "table_" venues-id)]
+      (mt/with-temp-vals-in-db :model/Table venues-id {:database_require_filter true}
+        (mt/with-temp-vals-in-db :model/Field partition-fid {:database_partitioned true}
+          (let [q    (mbql-for (mt/id :categories :name)
+                               (mt/id :venues :category_id)
+                               nil)
+                refs (get (field-refs-by-join-alias q) venues-alias)]
+            (is (contains? refs partition-fid)
+                (str "expected refs on " venues-alias " to include " partition-fid
+                     " (venues.price); got " refs))))))))
 
 ;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
