@@ -196,6 +196,7 @@ export interface ExplorationThread {
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
   documents?: ExplorationDocument[];
+  auto_insights_document_id?: DocumentId | null;
   groups?: ExplorationQueryGroup[] | null;
 }
 

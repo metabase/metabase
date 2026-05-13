@@ -12,5 +12,3 @@ export function isInterestingDimension(dimension: MetricDimension): boolean {
 export const TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
 
 export const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
-
-export const AUTO_INSIGHTS_DOCUMENT_NAME = "Automatic Insights"; //todo should this be translated?

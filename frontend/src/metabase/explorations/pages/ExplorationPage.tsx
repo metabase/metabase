@@ -14,7 +14,6 @@ import { Box, Group } from "metabase/ui";
 import type {
   DocumentId,
   Exploration,
-  ExplorationDocument,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryGroupId,
@@ -25,14 +24,16 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import { ExplorationDocument as ExplorationDocumentComponent } from "../components/ExplorationDocument";
+import {
+  ExplorationDocument as ExplorationDocumentComponent,
+  type ExplorationDocumentWithIsAutoInsights,
+} from "../components/ExplorationDocument";
 import { ExplorationSidebar } from "../components/ExplorationSidebar";
 import { ExplorationGroupVisualization } from "../components/ExplorationVisualization";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
-import { AUTO_INSIGHTS_DOCUMENT_NAME } from "../constants";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -221,7 +222,7 @@ export function ExplorationPage({
         continue;
       }
       const autoDoc = thread.documents?.find(
-        (d) => d.name === AUTO_INSIGHTS_DOCUMENT_NAME,
+        (d) => d.id === thread.auto_insights_document_id,
       );
       if (!autoDoc) {
         continue;
@@ -243,22 +244,6 @@ export function ExplorationPage({
       });
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
-
-  const documentIdToDocument: Map<DocumentId, ExplorationDocument> =
-    useMemo(() => {
-      return new Map(
-        exploration?.threads?.flatMap(
-          (thread) =>
-            thread.documents?.map((document) => [document.id, document]) ?? [],
-        ) ?? [],
-      );
-    }, [exploration]);
-
-  const selectedDocument = useMemo(() => {
-    return selectedEntityId?.type === "document"
-      ? documentIdToDocument.get(selectedEntityId.id)
-      : undefined;
-  }, [selectedEntityId, documentIdToDocument]);
 
   const groupIdToGroupAndQueries: Map<
     ExplorationQueryGroupId,
@@ -364,6 +349,29 @@ export function ExplorationPage({
     },
     [dispatch, location.pathname, location.search],
   );
+
+  const documentIdToDocument: Map<
+    DocumentId,
+    ExplorationDocumentWithIsAutoInsights
+  > = useMemo(() => {
+    return new Map(
+      (exploration?.threads ?? []).flatMap((thread) =>
+        (thread.documents ?? []).map((document) => [
+          document.id,
+          {
+            ...document,
+            isAutoInsights: document.id === thread.auto_insights_document_id,
+          },
+        ]),
+      ),
+    );
+  }, [exploration]);
+
+  const selectedDocument = useMemo(() => {
+    return selectedEntityId?.type === "document"
+      ? documentIdToDocument.get(selectedEntityId.id)
+      : undefined;
+  }, [selectedEntityId, documentIdToDocument]);
 
   const isCommentsSidebarOpen = Boolean(children);
 

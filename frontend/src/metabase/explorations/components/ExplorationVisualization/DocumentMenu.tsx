@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
@@ -23,6 +23,8 @@ interface DocumentMenuProps {
   display?: CardDisplayType;
   vizSettings?: VisualizationSettings;
 }
+
+import { getDocumentsForDocumentMenu } from "./utils";
 
 export function DocumentMenu({
   explorationQuery,
@@ -101,7 +103,10 @@ export function DocumentMenu({
     explorationThread.exploration_id,
   ]);
 
-  const { documents = [] } = explorationThread;
+  const documents = useMemo(
+    () => getDocumentsForDocumentMenu(explorationThread),
+    [explorationThread],
+  );
 
   return (
     <Menu position="bottom-end">
