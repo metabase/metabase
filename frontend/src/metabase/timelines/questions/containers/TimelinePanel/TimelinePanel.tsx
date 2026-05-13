@@ -1,28 +1,39 @@
 import type { ComponentProps } from "react";
 
+import { useGetCollectionQuery } from "metabase/api";
 import { useSetArchive } from "metabase/common/hooks";
-import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import type { State } from "metabase/redux/store";
-import type { TimelineEvent } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import TimelinePanel from "../../components/TimelinePanel";
 
-interface TimelinePanelProps {
-  collectionId?: number;
-}
+type InnerProps = ComponentProps<typeof TimelinePanel>;
 
-const collectionProps = {
-  id: (state: State, props: TimelinePanelProps) => {
-    return props.collectionId ?? ROOT_COLLECTION.id;
-  },
+type TimelinePanelContainerProps = Omit<InnerProps, "collection"> & {
+  collectionId?: CollectionId | null;
 };
 
-function TimelinePanelContainer(props: ComponentProps<typeof TimelinePanel>) {
+function TimelinePanelContainer({
+  collectionId,
+  ...props
+}: TimelinePanelContainerProps) {
   const archive = useSetArchive();
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId == null ? ROOT_COLLECTION.id : collectionId,
+  });
   const onArchiveEvent = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
-  return <TimelinePanel {...props} onArchiveEvent={onArchiveEvent} />;
+  if (!collection) {
+    return null;
+  }
+  return (
+    <TimelinePanel
+      {...props}
+      collection={collection}
+      onArchiveEvent={onArchiveEvent}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(TimelinePanelContainer);
+export default TimelinePanelContainer;
