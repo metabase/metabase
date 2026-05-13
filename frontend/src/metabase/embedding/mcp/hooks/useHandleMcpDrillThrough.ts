@@ -1,6 +1,7 @@
 import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useCallback } from "react";
 
+import * as Urls from "metabase/urls";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -33,6 +34,12 @@ const isStayDrill = (drillName: string | undefined) =>
     (prefix) => drillName === prefix || drillName.startsWith(`${prefix}.`),
   );
 
+const isClaudeHost = (app: App) => {
+  const hostVersion = app.getHostVersion();
+
+  return hostVersion?.name.toLowerCase().includes("claude");
+};
+
 type DrillThroughHandler = (
   params: { drillName?: string; nextCard: Card },
   defaultNavigate: () => Promise<void>,
@@ -48,6 +55,19 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
 
       const { instanceUrl, sessionToken, mcpSessionId } =
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+      if (isClaudeHost(app)) {
+        if (!instanceUrl) {
+          await defaultNavigate();
+          return;
+        }
+
+        await app.openLink({
+          url: instanceUrl + Urls.serializedQuestion(nextCard),
+        });
+
+        return;
+      }
 
       if (!instanceUrl || !sessionToken || !mcpSessionId) {
         await defaultNavigate();

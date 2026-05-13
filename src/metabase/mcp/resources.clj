@@ -220,8 +220,12 @@
  :visualize-query
  {:name        "visualize_query"
   :description (str "Visualize a previously constructed query as an interactive chart or table. "
-                    "This renders the final answer in the UI. Do not call execute_query after "
-                    "visualize_query; showing the visualization is enough.")
+                    "Use this for prompts that ask to show, display, visualize, plot, chart, "
+                    "or present results, for example: `Show me customers in Metabase`, "
+                    "`Show me orders by month`, `Display revenue by region`, or "
+                    "`Visualize active users over time`. This renders the final answer in the UI. "
+                    "Do not call execute_query after visualize_query; showing the visualization "
+                    "is enough.")
   ;; Both fields are optional rather than expressing "at least one of" via a top-level `anyOf`.
   ;; This is because some MCP clients, e.g. the MCP inspector (mcpjam) rejects top-level combinators.
   ;; The response-fn enforces the at-least-one contract at runtime.
