@@ -9,6 +9,7 @@
     "node": ">=22",
     "bun": ">=1.0.0"
   },
+  "trustedDependencies": ["cypress", "esbuild"],
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.10.1",
