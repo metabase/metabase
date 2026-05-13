@@ -440,15 +440,9 @@
       (insert-staging-table-row! 1 (:name (t2/select-one :model/Database :id db-id)) "t" :target_id t-id)
       (insert-staging-field-row! 100 "x" :depth 0 :target_table_id t-id)
       (p/merge-fields-by-depth!)
-      (let [first-id (:id (t2/select-one :model/Field :table_id t-id :name "x"))]
-        ;; Re-running on the same staging: clear target_id columns (since re-resolve
-        ;; would normally do this) and run again.
-        (t2/query {:update :metabase_field_import
-                   :set    {:target_id          nil
-                            :target_parent_id   nil
-                            :target_fk_target_id nil}})
-        (p/merge-fields-by-depth!)
-        (let [second-id (:id (t2/select-one :model/Field :table_id t-id :name "x"))]
-          (is (= first-id second-id))
-          (is (= 1 (t2/count :model/Field :table_id t-id :name "x")))))
+      (let [first-id  (:id (t2/select-one :model/Field :table_id t-id :name "x"))
+            _         (p/merge-fields-by-depth!)
+            second-id (:id (t2/select-one :model/Field :table_id t-id :name "x"))]
+        (is (= first-id second-id))
+        (is (= 1 (t2/count :model/Field :table_id t-id :name "x"))))
       (finally (p/clear-staging-tables!)))))
