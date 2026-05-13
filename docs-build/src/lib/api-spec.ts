@@ -28,9 +28,14 @@ export function hasApiSpec(): boolean {
 }
 
 export function readApiSpec(): unknown {
+  // Skip the read entirely (and any warning) when the spec just isn't
+  // generated yet — that's the expected dev-mode state. Only warn when
+  // the file exists but won't parse, which is a real authoring problem.
+  if (!hasApiSpec()) return STUB_API_SPEC;
   try {
     return JSON.parse(fs.readFileSync(API_JSON_PATH, "utf8"));
-  } catch {
+  } catch (err) {
+    console.warn(`Could not parse ${API_JSON_PATH}: ${err}`);
     return STUB_API_SPEC;
   }
 }

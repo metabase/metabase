@@ -44,6 +44,28 @@ export function findTrail(
   return null;
 }
 
+// Resolve a nav page's `url` field to a usable href:
+//   - external (http/https) and /learn/* links pass through unchanged
+//   - everything else is treated as a docs-relative path and prefixed with `base`
+// Returns undefined when the page has no url (group label).
+export function hrefForPage(p: NavPage, base: string): string | undefined {
+  if (!p.url) return undefined;
+  if (/^https?:\/\//.test(p.url) || p.url.startsWith("/learn/")) return p.url;
+  return base + "/" + p.url.replace(/^\/+/, "");
+}
+
+// True when a nav page's `url` corresponds to the current page's `slug`.
+// External and /learn/* links are never "current" — those leave the docs.
+export function urlMatchesSlug(
+  url: string | undefined,
+  slug: string,
+): boolean {
+  if (!url) return false;
+  if (/^https?:/.test(url) || url.startsWith("/learn/")) return false;
+  const norm = (s: string) => s.replace(/^\/+|\/+$/g, "");
+  return norm(url) === norm(slug);
+}
+
 function walk(
   pages: NavPage[],
   slug: string,
@@ -51,18 +73,11 @@ function walk(
 ): NavPage[] | null {
   for (const page of pages) {
     const here = [...trail, page];
-    if (urlMatches(page.url, slug)) return here;
+    if (urlMatchesSlug(page.url, slug)) return here;
     if (page.pages) {
       const found = walk(page.pages, slug, here);
       if (found) return found;
     }
   }
   return null;
-}
-
-function urlMatches(url: string | undefined, slug: string): boolean {
-  if (!url) return false;
-  const a = url.replace(/^\/+|\/+$/g, "");
-  const b = slug.replace(/^\/+|\/+$/g, "");
-  return a === b;
 }

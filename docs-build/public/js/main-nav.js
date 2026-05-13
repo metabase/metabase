@@ -1,30 +1,18 @@
 function initMainNav() {
-  const productButton = document.getElementById("product-nav-button-desktop");
-  const featuresButton = document.getElementById("features-nav-button-desktop");
-  const resourcesButton = document.getElementById(
-    "resources-nav-button-desktop",
-  );
+  const buttons = [
+    document.getElementById("product-nav-button-desktop"),
+    document.getElementById("features-nav-button-desktop"),
+    document.getElementById("resources-nav-button-desktop"),
+  ];
 
-  productButton.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-      productButton.classList.toggle("open");
-      resourcesButton.classList.remove("open");
-      featuresButton.classList.remove("open");
-    }
-  });
-  resourcesButton.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-      resourcesButton.classList.toggle("open");
-      productButton.classList.remove("open");
-      featuresButton.classList.remove("open");
-    }
-  });
-  featuresButton.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-      featuresButton.classList.toggle("open");
-      productButton.classList.remove("open");
-      resourcesButton.classList.remove("open");
-    }
+  buttons.forEach((btn) => {
+    btn.addEventListener("keydown", function(e) {
+      if (e.key !== "Enter") return;
+      btn.classList.toggle("open");
+      buttons
+        .filter((b) => b !== btn)
+        .forEach((b) => b.classList.remove("open"));
+    });
   });
 }
 

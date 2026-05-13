@@ -47,6 +47,8 @@
 
   --shell-max: 1280px;
   --topbar-height: 57px;
+  --shell-padding-x: 24px;
+  --sidebar-width: 240px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -70,7 +72,7 @@ body::before {
   top: 0;
   left: 0;
   bottom: 0;
-  width: calc(max(0px, (100vw - var(--shell-max)) / 2) + 24px + 240px);
+  width: calc(max(0px, (100vw - var(--shell-max)) / 2) + var(--shell-padding-x) + var(--sidebar-width));
   background: var(--white);
   z-index: -1;
   pointer-events: none;
@@ -83,13 +85,13 @@ body::before {
 /* ---------- Page layout ---------- */
 .docs-shell {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 220px;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 220px;
   grid-template-rows: auto 1fr;
   column-gap: 48px;
   row-gap: 20px;
   max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 24px 24px 64px;
+  padding: 24px var(--shell-padding-x) 64px;
 }
 .docs-shell > .docs-sidebar { grid-row: 1 / span 2; }
 .docs-shell > .docs-topbar { grid-column: 2 / 4; grid-row: 1; }

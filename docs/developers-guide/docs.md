@@ -259,7 +259,10 @@ What was dropped from the snapshot:
    awk '/<header /,/<\/header>/' _site/pricing/index.html > /tmp/header-snap.html
    awk '/<footer /,/<\/footer>/' _site/pricing/index.html > /tmp/footer-snap.html
    ```
-4. Run the cleanup script to strip the dynamic blog block, the promo countdown, and the Mailchimp validation scripts (it lives at `docs-build/scripts/clean-snapshots.py` if you've kept the helper around — otherwise re-derive from this section).
+4. Diff the freshly extracted `header-snap.html` and `footer-snap.html` against the committed `docs-build/src/data/header-snapshot.html` and `docs-build/src/data/footer-snapshot.html`. The committed snapshots have already had the following stripped — apply the same removals to your fresh copy before swapping it in:
+   - The dynamic "Recent Blog Posts" `{% for post in site.recent-posts %}` loop in the Resources flyout. Replace it with a single `<a href="/blog">Blog</a>` link so the snapshot doesn't go stale page-by-page.
+   - The promo-banner countdown `<script>` that loads `/js/events/datetime.js`.
+   - The Mailchimp `<script src="//s3.amazonaws.com/.../mc-validate.js">` and the inline jQuery `noConflict` snippet directly under the newsletter form. The form still POSTs to Mailchimp; HTML5 validation handles the email field.
 5. Re-extract the chrome CSS rules from `_site/css/styles.css` using the selector allowlist documented at the top of `docs-build/src/styles/chrome.css`, and prepend the MB-Logo block from `_site/css/main.css`.
 
 ## Search bar (Inkeep)

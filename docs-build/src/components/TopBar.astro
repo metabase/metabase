@@ -1,29 +1,22 @@
 ---
-import { findTrail } from "../lib/nav";
+import { hrefForPage } from "../lib/nav";
+import type { NavPage } from "../lib/nav";
 
 interface Props {
-  currentSlug: string;
-  title: string;
+  trail: NavPage[];
 }
 
-const { currentSlug, title } = Astro.props;
-const trail = findTrail(currentSlug) ?? [];
-
+const { trail } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // Build breadcrumb items. The last item is the current page (no link).
-// Intermediate items link only when they have a URL.
+// Intermediate items link only when the page has a url (group labels don't).
 const breadcrumbs = trail.map((p, i) => {
   const isLast = i === trail.length - 1;
-  let href: string | undefined;
-  if (!isLast && p.url) {
-    if (p.url.startsWith("/learn/") || /^https?:/.test(p.url)) {
-      href = p.url;
-    } else {
-      href = base + "/" + p.url.replace(/^\/+/, "");
-    }
-  }
-  return { label: p.navName ?? p.name, href };
+  return {
+    label: p.navName ?? p.name,
+    href: isLast ? undefined : hrefForPage(p, base),
+  };
 });
 ---
 
