@@ -722,6 +722,42 @@ describe("RemoteSyncSettingsForm", () => {
     });
   });
 
+  describe("DevInstanceUpsell", () => {
+    it("should show the upsell when not a dev instance and upsell has not been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Need a dedicated sandbox?"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show the upsell when it has been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: true });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated sandbox?"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the upsell when it is a dev instance", async () => {
+      setup({ isDevInstance: true, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated sandbox?"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("collections to sync section", () => {
     it("should display collections section in admin variant when read-write mode is selected during initial setup", async () => {
       setup({
