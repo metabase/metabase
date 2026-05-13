@@ -1,0 +1,11 @@
+.value {
+  display: inline;
+}
+
+.hoverable {
+  cursor: pointer;
+}
+
+.hoverable:hover {
+  color: var(--mb-color-brand);
+}

@@ -7,14 +7,31 @@ import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { useMantineTheme } from "metabase/ui";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 
-import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
+import S from "./ScalarValue.module.css";
 import { findSize, getMaxFontSize } from "./utils";
 
+// Tall enough to contain Unicode subscript/superscript descenders like `₂` in
+// `tCO₂e`. Mantine's `--mantine-line-height` is 1.22 in Metabase, which
+// shears the bottom of `₂` (metabase#72443).
+const DEFAULT_LINE_HEIGHT = 1.5;
+
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot data-testid="scalar-root">{children}</ScalarRoot>
+  <Flex
+    pos="relative"
+    direction="column"
+    wrap="wrap"
+    justify="center"
+    align="center"
+    flex={1}
+    w="100%"
+    h="100%"
+    data-testid="scalar-root"
+  >
+    {children}
+  </Flex>
 );
 
 interface ScalarValueProps {
@@ -71,15 +88,20 @@ export const ScalarValue = ({
   ]);
 
   return (
-    <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
-      lineHeight={numberTheme?.value?.lineHeight}
+    <Box
+      component="h1"
+      className={cx(
+        DashboardS.ScalarValue,
+        QueryBuilderS.ScalarValue,
+        S.value,
+        !disableHover && S.hoverable,
+      )}
+      fz={fontSize}
+      lh={numberTheme?.value?.lineHeight ?? DEFAULT_LINE_HEIGHT}
       data-testid="scalar-value"
-      color={color}
-      disableHover={disableHover}
+      style={{ color }}
     >
       {value ?? t`null`}
-    </ScalarValueWrapper>
+    </Box>
   );
 };

@@ -92,6 +92,23 @@ describe("Scalar", () => {
     // as the ScalarValue component handles sizing to fit
     expect(styles.textOverflow).not.toBe("ellipsis");
   });
+
+  it("uses a line-height that fits Unicode subscript descenders (metabase#72443)", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(344)}
+        rawSeries={series(344)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+    const lh = window.getComputedStyle(
+      screen.getByTestId("scalar-value"),
+    ).lineHeight;
+    expect(parseFloat(lh)).toBeGreaterThanOrEqual(1.5);
+  });
 });
 
 describe("scalar viz settings", () => {
