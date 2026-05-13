@@ -37,7 +37,10 @@ export function PythonTransformEditor({
     useTestPythonTransform(source);
 
   useEffect(() => {
-    onDryRunErrorChange?.(executionResult?.error?.message);
+    const errMsg = [executionResult?.error?.message, executionResult?.logs]
+      .filter((x) => !!x)
+      .join("\n\n");
+    onDryRunErrorChange?.(errMsg);
     return () => onDryRunErrorChange?.(undefined);
   }, [executionResult, onDryRunErrorChange]);
 
