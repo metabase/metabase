@@ -44,8 +44,19 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
   const [verify, verifyResult] = useVerifyProposalMutation();
   const [accept, acceptResult] = useAcceptProposalMutation();
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
+  // Tracks whether the user has explicitly clicked Re-analyze in this
+  // mount. Once true, we trust the in-session optimize state over the
+  // persisted `transform.optimized` flag. Without this, navigating to a
+  // YOLO'd transform would see `transform.optimized=true` AND a stale
+  // optimize-endpoint cache populated by the bulk run; we want the
+  // banner (persisted verdict) to win until the user asks for a fresh
+  // analysis.
+  const [hasUserReAnalyzed, setHasUserReAnalyzed] = useState(false);
 
-  const handleStart = useCallback(() => start(), [start]);
+  const handleStart = useCallback(() => {
+    setHasUserReAnalyzed(true);
+    start();
+  }, [start]);
 
   const handleVerify = useCallback(
     async (proposal: Proposal) => {
@@ -133,13 +144,17 @@ export function TransformOptimizerSection({ transform, readOnly }: Props) {
   const isInSessionOptimized =
     isDone && state.optimizationDegree === 100 && state.proposals.length === 0;
   // Render the Sonic banner whenever the optimizer's verdict — either
-  // persisted on the transform from a prior run, or from this session — is
-  // "fully optimized" and there's nothing currently in flight to contradict
-  // it. Re-analyze flips it back if the new run finds proposals.
+  // persisted on the transform from a prior run/YOLO, or from this
+  // session — is "fully optimized." When the persisted flag says we're
+  // done, the banner *overrides* any stale proposals sitting in the
+  // optimize endpoint's cache (e.g. seeded by a bulk run that the user
+  // then YOLO'd). The user has to click Re-analyze to opt into a fresh
+  // run; that flips `hasUserReAnalyzed` and lets the in-session state
+  // take over.
   const showOptimizedBanner =
     !isLoading &&
-    state.proposals.length === 0 &&
-    (isInSessionOptimized || transform.optimized === true);
+    (isInSessionOptimized ||
+      (transform.optimized === true && !hasUserReAnalyzed));
   const canTrigger = !isLoading;
 
   return (
