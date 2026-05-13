@@ -26,6 +26,24 @@
 (def ^:private scratch-schema "transform_optimizer_verify")
 (def ^:private sample-limit 10)
 
+;; A "table-ref" in this namespace is `{:schema "..." :table "..."}`. The
+;; slow side may be either a fresh scratch materialisation (when the
+;; transform hasn't run yet, or has been edited since) or the live target
+;; table (when we can reuse the last run's output). The fast side is
+;; always materialised in scratch.
+
+(def ^:private scratch-slow-ref {:schema scratch-schema :table "slow"})
+(def ^:private scratch-fast-ref {:schema scratch-schema :table "fast"})
+
+(defn- safe-ident? [s]
+  (boolean (and s (re-matches #"[A-Za-z0-9_]+" s))))
+
+(defn- safe-table-spec? [{:keys [schema table]}]
+  (and (safe-ident? schema) (safe-ident? table)))
+
+(defn- table-ref ^String [{:keys [schema table]}]
+  (str schema "." table))
+
 ;; ---------------------------------------------------------------------------
 ;; Connection / SQL helpers
 
@@ -39,27 +57,31 @@
     (when (.next rs) (.getObject rs 1))))
 
 (defn- materialize!
-  "Drop+create `scratch.<table>` as the result of `select-sql`, timing the
-  wall clock around the CREATE TABLE. Returns `{:ms :row-count}`."
-  [^Connection conn table select-sql]
-  (exec! conn (str "DROP TABLE IF EXISTS " scratch-schema "." table))
-  (let [t0    (System/nanoTime)
-        ddl   (str "CREATE TABLE " scratch-schema "." table " AS " select-sql)
-        _     (exec! conn ddl)
-        ms    (/ (- (System/nanoTime) t0) 1e6)
-        rows  (scalar conn (str "SELECT count(*) FROM " scratch-schema "." table))]
-    {:ms ms :row-count rows}))
+  "Drop+create the table referenced by `ref` as the result of `select-sql`,
+  timing the wall clock around the CREATE TABLE. Returns `{:ms :row-count}`."
+  [^Connection conn ref select-sql]
+  (let [tref (table-ref ref)]
+    (exec! conn (str "DROP TABLE IF EXISTS " tref))
+    (let [t0    (System/nanoTime)
+          ddl   (str "CREATE TABLE " tref " AS " select-sql)
+          _     (exec! conn ddl)
+          ms    (/ (- (System/nanoTime) t0) 1e6)
+          rows  (scalar conn (str "SELECT count(*) FROM " tref))]
+      {:ms ms :row-count rows})))
+
+(defn- count-rows [^Connection conn ref]
+  (scalar conn (str "SELECT count(*) FROM " (table-ref ref))))
 
 ;; ---------------------------------------------------------------------------
 ;; Column / schema compatibility
 
 (defn- column-info
-  "Return `[[col-name pg-type-name] …]` for `<scratch>.<table>` in ordinal
-  order, used for schema compatibility checks before the row comparison."
-  [^Connection conn table]
+  "Return `[[col-name pg-type-name] …]` for `ref` in ordinal order, used for
+  schema compatibility checks before the row comparison."
+  [^Connection conn {:keys [schema table]}]
   (let [sql (str "SELECT column_name, data_type "
                  "FROM information_schema.columns "
-                 "WHERE table_schema = '" scratch-schema "' "
+                 "WHERE table_schema = '" schema "' "
                  "  AND table_name   = '" table "' "
                  "ORDER BY ordinal_position")]
     (with-open [stmt (.createStatement conn)
@@ -89,10 +111,15 @@
 
 (def ^:private diff-sql-template
   "SELECT count(*) AS c FROM (
-     (SELECT * FROM %s.slow EXCEPT ALL SELECT * FROM %s.fast)
+     (SELECT * FROM %s EXCEPT ALL SELECT * FROM %s)
      UNION ALL
-     (SELECT * FROM %s.fast EXCEPT ALL SELECT * FROM %s.slow)
+     (SELECT * FROM %s EXCEPT ALL SELECT * FROM %s)
    ) d")
+
+(defn- diff-count [^Connection conn slow-ref fast-ref]
+  (let [slow (table-ref slow-ref)
+        fast (table-ref fast-ref)]
+    (long (scalar conn (format diff-sql-template slow fast fast slow)))))
 
 (defn- row->vec [^ResultSet rs col-count]
   (loop [i 1, out []]
@@ -104,14 +131,14 @@
   "When the row counts differ, fetch a small sample from each direction so
   the UI can show a 'rows that are in slow but not fast / vice versa' diff.
   Capped at `sample-limit` rows per direction."
-  [^Connection conn]
+  [^Connection conn slow-ref fast-ref]
   (with-open [stmt (.createStatement conn)]
-    (let [sql-only-in-slow (format
-                            "(SELECT * FROM %s.slow EXCEPT ALL SELECT * FROM %s.fast) LIMIT %d"
-                            scratch-schema scratch-schema sample-limit)
-          sql-only-in-fast (format
-                            "(SELECT * FROM %s.fast EXCEPT ALL SELECT * FROM %s.slow) LIMIT %d"
-                            scratch-schema scratch-schema sample-limit)
+    (let [slow (table-ref slow-ref)
+          fast (table-ref fast-ref)
+          sql-only-in-slow (format "(SELECT * FROM %s EXCEPT ALL SELECT * FROM %s) LIMIT %d"
+                                   slow fast sample-limit)
+          sql-only-in-fast (format "(SELECT * FROM %s EXCEPT ALL SELECT * FROM %s) LIMIT %d"
+                                   fast slow sample-limit)
           collect (fn [sql]
                     (with-open [^ResultSet rs (.executeQuery stmt sql)]
                       (let [md       (.getMetaData rs)
@@ -188,15 +215,60 @@
       :else nil)))
 
 ;; ---------------------------------------------------------------------------
+;; Reusing the live target table as the "slow" side
+;;
+;; If the transform has already run successfully and hasn't been edited
+;; since that run started, the live target table is byte-identical to what
+;; rerunning `slow-sql` would produce — modulo source-data drift, which we
+;; can't detect cheaply and accept as a known limitation. Reusing it saves
+;; the full slow-SQL execution, which for many transforms is the dominant
+;; cost of verify. We also surface the original run's wall-clock as
+;; `slow_duration_ms` so the speedup number is meaningful.
+
+(defn- last-successful-run [transform-id]
+  (t2/select-one :model/TransformRun
+                 :transform_id transform-id
+                 :status :succeeded
+                 {:order-by [[:start_time :desc]]}))
+
+(defn- run-duration-ms [{:keys [start_time end_time]}]
+  (when (and start_time end_time)
+    (let [s (transforms-base.u/->instant start_time)
+          e (transforms-base.u/->instant end_time)]
+      (.toMillis (java.time.Duration/between s e)))))
+
+(defn- transform-unchanged-since-run? [transform run]
+  (let [tu (some-> transform :updated_at transforms-base.u/->instant)
+        rs (some-> run :start_time transforms-base.u/->instant)]
+    (boolean (and tu rs (not (.isAfter tu rs))))))
+
+(defn- target-ref [transform]
+  (let [{:keys [schema name]} (:target transform)]
+    {:schema schema :table name}))
+
+(defn- reusable-target-ref
+  "Returns the target table-ref to reuse as the slow side, or nil. Only
+  reused when (a) the transform has a successful last run, (b) it hasn't
+  been edited since that run started, and (c) the identifiers are safe."
+  [transform]
+  (when-let [run (last-successful-run (:id transform))]
+    (when (transform-unchanged-since-run? transform run)
+      (let [ref (target-ref transform)]
+        (when (safe-table-spec? ref)
+          {:ref ref :run run})))))
+
+;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn- ensure-scratch-schema! [^Connection conn]
   (exec! conn (str "CREATE SCHEMA IF NOT EXISTS " scratch-schema)))
 
 (defn- cleanup! [^Connection conn]
+  ;; Only drop the scratch tables — never the live target, even if we
+  ;; pointed `slow-ref` at it.
   (try
-    (exec! conn (str "DROP TABLE IF EXISTS " scratch-schema ".slow"))
-    (exec! conn (str "DROP TABLE IF EXISTS " scratch-schema ".fast"))
+    (exec! conn (str "DROP TABLE IF EXISTS " (table-ref scratch-slow-ref)))
+    (exec! conn (str "DROP TABLE IF EXISTS " (table-ref scratch-fast-ref)))
     (catch Exception e
       (log/warn e "transform-optimizer verify: scratch cleanup failed"))))
 
@@ -239,29 +311,38 @@
     (when-let [{:keys [error detail]} (static-check driver-kw slow-sql fast-sql proposal)]
       (throw (ex-info detail {:status-code 422 :error error})))
 
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver-kw db-id nil
-     (fn [^Connection conn]
-       (try
-         (ensure-scratch-schema! conn)
-         (let [slow-stats (materialize! conn "slow" slow-sql)
-               fast-stats (materialize! conn "fast" fast-sql)
-               slow-cols  (column-info conn "slow")
-               fast-cols  (column-info conn "fast")
-               mismatch   (schema-match slow-cols fast-cols)]
-           (if mismatch
-             (throw (ex-info (:detail mismatch) (assoc mismatch :status-code 422)))
-             (let [diff-count (scalar conn (format diff-sql-template
-                                                   scratch-schema scratch-schema
-                                                   scratch-schema scratch-schema))
-                   equivalent? (zero? (long diff-count))
-                   speedup     (when (pos? (:ms fast-stats))
-                                 (double (/ (:ms slow-stats) (:ms fast-stats))))]
-               {:equivalent       equivalent?
-                :slow_duration_ms (long (:ms slow-stats))
-                :fast_duration_ms (long (:ms fast-stats))
-                :speedup          speedup
-                :diff_rows        (long diff-count)
-                :sample_diff      (when-not equivalent? (diff-sample conn))})))
-         (finally
-           (cleanup! conn)))))))
+    (let [reuse (reusable-target-ref transform)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver-kw db-id nil
+       (fn [^Connection conn]
+         (try
+           (ensure-scratch-schema! conn)
+           (let [slow-ref   (if reuse (:ref reuse) scratch-slow-ref)
+                 slow-stats (if reuse
+                              {:ms        (run-duration-ms (:run reuse))
+                               :row-count (count-rows conn slow-ref)}
+                              (materialize! conn scratch-slow-ref slow-sql))
+                 fast-stats (materialize! conn scratch-fast-ref fast-sql)
+                 slow-cols  (column-info conn slow-ref)
+                 fast-cols  (column-info conn scratch-fast-ref)
+                 mismatch   (schema-match slow-cols fast-cols)]
+             (if mismatch
+               (throw (ex-info (:detail mismatch) (assoc mismatch :status-code 422)))
+               (let [diff-rows   (diff-count conn slow-ref scratch-fast-ref)
+                     equivalent? (zero? diff-rows)
+                     slow-ms     (some-> (:ms slow-stats) long)
+                     fast-ms     (long (:ms fast-stats))
+                     speedup     (when (and slow-ms (pos? fast-ms))
+                                   (double (/ slow-ms fast-ms)))]
+                 (cond-> {:equivalent       equivalent?
+                          :slow_duration_ms slow-ms
+                          :fast_duration_ms fast-ms
+                          :speedup          speedup
+                          :diff_rows        diff-rows
+                          :slow_source      (if reuse "transform_run" "materialized")
+                          :sample_diff      (when-not equivalent?
+                                              (diff-sample conn slow-ref scratch-fast-ref))}
+                   reuse
+                   (assoc :slow_run_id (:id (:run reuse)))))))
+           (finally
+             (cleanup! conn))))))))
