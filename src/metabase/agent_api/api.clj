@@ -471,9 +471,9 @@
 (defn- decode-continuation-token
   "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
    The token is client-supplied, so sanity-check the pagination ints to turn
-   garbage into a 400 rather than a downstream 500. This is robustness, not a
-   security boundary — a caller can always issue a fresh program to run any
-   query they want."
+   garbage into a 400 rather than a downstream 500. Permission re-validation on
+   the embedded query happens in [[check-token-query-permissions!]] — a token
+   doesn't grant access the bearer wouldn't otherwise have."
   [token]
   (let [decoded (-> token u/decode-base64 json/decode+kw)
         {:keys [limit page]} (:pagination decoded)]
@@ -550,14 +550,29 @@
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
+(defn- check-token-query-permissions!
+  "Re-validate query permissions on the continuation-token path.
+
+  The token body is client-supplied and could in principle name a different source table than
+  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
+  change between pages). The QP middleware would catch this at execution time, but running
+  the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
+  streaming response just to abort."
+  [query-map]
+  (when-let [table-id (get-in query-map [:stages 0 :source-table])]
+    (when (int? table-id)
+      (api/query-check :model/Table table-id))))
+
 (defn- initial-page-state
   "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
    shape. A fresh request body is evaluated through the representations pipeline and the
    total-row budget is derived from the resolved query's `:limit`; a continuation token
-   carries that state from a prior response."
+   carries that state from a prior response (and re-validates query permissions, since the
+   token is client-supplied and per-user permissions can change between pages)."
   [body]
   (if-let [token (:continuation_token body)]
     (let [{:keys [query pagination]} (decode-continuation-token token)]
+      (check-token-query-permissions! query)
       {:query query :total-limit (:limit pagination) :page (:page pagination)})
     (let [live-query (evaluate-external-query-to-live-query body)]
       {:query       (lib/prepare-for-serialization live-query)

@@ -120,11 +120,16 @@
   current user. Agent-authored representations run inside an authenticated request/tool
   context, so every card lookup (source-card, metric aggregation, etc.) goes through the
   normal `api/read-check` path. Unknown ids still return nil so the resolver can produce its
-  existing `:unknown-card` agent error."
+  existing `:unknown-card` agent error.
+
+  Gated on `serdes.resolve/entity-id?` for the same reason as
+  [[resolve.mp/app-db-content-store]]: a malformed (non-NanoID) `source-card:` value from the
+  LLM would otherwise trigger a full Card-table scan via `find-by-identity-hash`."
   (reify resolve.mp/ContentStore
     (card-by-entity-id [_ entity-id]
-      (some-> (serdes/lookup-by-id 'Card entity-id)
-              api/read-check))))
+      (when (serdes.resolve/entity-id? entity-id)
+        (some-> (serdes/lookup-by-id 'Card entity-id)
+                api/read-check)))))
 
 (defn- check-first-stage-source-table-query-permissions!
   "Ensure the current user can query the table named by `stages[0].source-table`.
@@ -222,9 +227,9 @@
   Existing statuses are preserved (notably permission 403s, which callers should normally
   avoid wrapping in the first place)."
   [^clojure.lang.ExceptionInfo e]
-  (let [data (assoc (or (ex-data e) {}) :agent-error? true)
-        data (cond-> data
-               (nil? (:status-code data)) (assoc :status-code 400))]
+  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+        data   (cond-> base
+                 (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
 (defn execute-representations-query

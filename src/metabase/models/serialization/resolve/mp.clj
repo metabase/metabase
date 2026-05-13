@@ -353,10 +353,16 @@
 (def app-db-content-store
   "Default [[ContentStore]] backed by the Metabase application database via
   `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
-  different store implementation when running without one (checker, isolated tests)."
+  different store implementation when running without one (checker, isolated tests).
+
+  Gated on [[resolve/entity-id?]]: `serdes/lookup-by-id` falls through to a full Card-table
+  scan via `find-by-identity-hash` for non-NanoID strings. LLM-authored `source-card:` values
+  are untrusted, so anything that isn't a 21-char NanoID short-circuits to `nil` and the
+  caller surfaces `:unknown-card`."
   (reify ContentStore
     (card-by-entity-id [_ entity-id]
-      (serdes/lookup-by-id 'Card entity-id))))
+      (when (resolve/entity-id? entity-id)
+        (serdes/lookup-by-id 'Card entity-id)))))
 
 ;;; ============================================================
 ;;; Resolver implementations
@@ -445,7 +451,11 @@
   agent-facing error here instead."
   [metadata-provider content-store entity-id]
   (let [current-db-id (:id (lib.metadata/database metadata-provider))
-        card          (card-by-entity-id content-store entity-id)]
+        card          (card-by-entity-id content-store entity-id)
+        ;; Card may come from a Toucan2 row (snake_case) or a `lib.metadata` map (kebab-case);
+        ;; mirror the defensive read in `export-card-by-id` so the test-side content stores can
+        ;; return either shape without breaking the cross-database guard.
+        card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
       (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` with `entity-type: question` or `entity-type: model` and the card''s numeric id first, then copy the exact `portable_entity_id` from the response into `source-card:`."
@@ -455,16 +465,16 @@
                        :error        :unknown-card
                        :entity-id    entity-id}))
 
-      (not= (:database_id card) current-db-id)
+      (not= card-db-id current-db-id)
       (throw (ex-info (tru "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
                            (pr-str entity-id)
-                           (pr-str (:database_id card))
+                           (pr-str card-db-id)
                            (pr-str current-db-id))
                       {:agent-error?     true
                        :status-code      400
                        :error            :cross-database-card
                        :entity-id        entity-id
-                       :card-database-id (:database_id card)
+                       :card-database-id card-db-id
                        :expected-database current-db-id}))
 
       :else
