@@ -52,6 +52,9 @@ describe("Embed flow > forward and backward navigation", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Select a dashboard to embed")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("embed-browse-entity-button"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));

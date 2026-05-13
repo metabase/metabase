@@ -11,7 +11,7 @@ import {
 
 import {
   getEmbedSidebar,
-  getRecentItemCards,
+  getResourceSelectorButton,
   visitNewEmbedPage,
 } from "./helpers";
 
@@ -52,8 +52,9 @@ describe(suiteTitle, () => {
       cy.findByText("Next").click();
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
-      cy.log("first dashboard should be selected by default");
-      getRecentItemCards().first().should("have.attr", "data-selected", "true");
+      cy.log("a default dashboard is preselected");
+      getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
+
       cy.findByText("Next").click();
     });
 
@@ -86,19 +87,18 @@ describe(suiteTitle, () => {
       cy.log(
         "recently created dashboard should be selected by default (EMB-1179)",
       );
-      getRecentItemCards()
-        .should("have.length", 2)
-        .first()
-        .should("contain", SECOND_DASHBOARD_NAME)
-        .should("have.attr", "data-selected", "true");
+      getResourceSelectorButton().should("contain", SECOND_DASHBOARD_NAME);
 
-      cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
-      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+      cy.log("a different dashboard can be selected via the picker");
+      getResourceSelectorButton().click();
+    });
 
-      cy.log("a different dashboard can be selected");
+    H.entityPickerModal().within(() => {
       cy.findByText(FIRST_DASHBOARD_NAME).click();
+    });
 
-      getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
+    getEmbedSidebar().within(() => {
+      getResourceSelectorButton().should("contain", FIRST_DASHBOARD_NAME);
     });
 
     cy.log("selected dashboard should be shown in the preview");
@@ -138,18 +138,18 @@ describe(suiteTitle, () => {
       cy.findByText("Select a chart to embed").should("be.visible");
 
       cy.log("first question should be selected by default");
-      getRecentItemCards()
-        .should("have.length", 2)
-        .first()
-        .should("have.attr", "data-selected", "true");
+      getResourceSelectorButton().should("contain", FIRST_QUESTION_NAME);
 
-      cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
-      cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
+      cy.log("a different question can be selected via the picker");
+      getResourceSelectorButton().click();
+    });
 
-      cy.log("second question can be selected");
+    H.entityPickerModal().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).click();
+    });
 
-      getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
+    getEmbedSidebar().within(() => {
+      getResourceSelectorButton().should("contain", SECOND_QUESTION_NAME);
 
       cy.findByText("Next").click();
 
@@ -175,22 +175,25 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
-      cy.findByTestId("embed-browse-entity-button").click();
+      getResourceSelectorButton().click();
     });
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
-      cy.findByText("Our analytics").click();
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
+
+      // The picker opens on "Recent items" by default. Navigate via the
+      // root sidebar to disambiguate from any matching recent entries.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findByText(SECOND_DASHBOARD_NAME)
+        .click();
     });
 
-    cy.log("dashboard is added to the top of recents list and selected");
+    cy.log("button reflects the newly selected dashboard");
     getEmbedSidebar().within(() => {
-      getRecentItemCards()
-        .should("have.length", 2)
-        .first()
-        .should("contain", SECOND_DASHBOARD_NAME)
-        .should("have.attr", "data-selected", "true");
+      getResourceSelectorButton().should("contain", SECOND_DASHBOARD_NAME);
     });
 
     cy.wait("@dashboard");
@@ -205,7 +208,7 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
       cy.findByText("Next").click();
-      cy.findByTestId("embed-browse-entity-button").click();
+      getResourceSelectorButton().click();
     });
 
     H.entityPickerModal().within(() => {
@@ -214,13 +217,9 @@ describe(suiteTitle, () => {
       cy.findByText(FIRST_QUESTION_NAME).click();
     });
 
-    cy.log("question is added to the top of recents list and selected");
+    cy.log("button reflects the newly selected question");
     getEmbedSidebar().within(() => {
-      getRecentItemCards()
-        .should("have.length", 1)
-        .first()
-        .should("contain", FIRST_QUESTION_NAME)
-        .should("have.attr", "data-selected", "true");
+      getResourceSelectorButton().should("contain", FIRST_QUESTION_NAME);
 
       cy.findByText("Next").click();
     });
@@ -248,20 +247,26 @@ describe(suiteTitle, () => {
       cy.findByText("Browser").click();
       cy.findByText("Next").click();
       cy.findByText("Select a collection to embed").should("be.visible");
-      cy.findByTestId("embed-browse-entity-button").click();
+      getResourceSelectorButton().click();
     });
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").should("be.visible");
-      cy.findByText("First collection").click();
+
+      // The picker opens on "Recent items" by default. Navigate via the
+      // root sidebar to disambiguate from any matching recent entries.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findByText("First collection")
+        .click();
       cy.findByText("Select").click();
     });
 
-    cy.log("collection is added to recents list");
+    cy.log("button reflects the newly selected collection");
     getEmbedSidebar().within(() => {
-      getRecentItemCards()
-        .should("contain", "First collection")
-        .should("have.attr", "data-selected", "true");
+      getResourceSelectorButton().should("contain", "First collection");
     });
 
     cy.log("collection is shown in the breadcrumbs and preview");
@@ -272,87 +277,6 @@ describe(suiteTitle, () => {
         .should("be.visible");
 
       cy.findByText("Second collection").should("be.visible");
-    });
-  });
-
-  describe("when there is no recent activity", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/activity/recents?*", {
-        recents: [],
-      }).as("emptyRecentItems");
-
-      // The embed wizard calls the search API to find recently created
-      // dashboards. Without this, the snapshot's admin-owned dashboards
-      // would be returned and selected as the default.
-      cy.log("simulate that there are no recently created dashboards");
-      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
-        "emptySearch",
-      );
-
-      visitNewEmbedPage();
-      cy.wait("@emptyRecentItems");
-    });
-
-    it("can open a picker from the dashboard empty state", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByText("Next").click();
-
-        cy.log("shows the empty state for missing recent dashboards");
-        cy.findByTestId("embed-recent-item-card").should("not.exist");
-        cy.findByText("No recent dashboards").should("be.visible");
-        cy.findByText(/You haven't visited any dashboards recently/).should(
-          "be.visible",
-        );
-
-        cy.findByText(/search for dashboards/).click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a dashboard").should("be.visible");
-      });
-    });
-
-    it("can open a picker from the chart empty state", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByText("Chart").click();
-        cy.findByText("Next").click();
-
-        cy.log("shows the empty state for missing recent questions");
-        cy.findByTestId("embed-recent-item-card").should("not.exist");
-        cy.findByText("No recent charts").should("be.visible");
-        cy.findByText(/You haven't visited any charts recently/).should(
-          "be.visible",
-        );
-
-        cy.findByText(/search for charts/).click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a chart").should("be.visible");
-      });
-    });
-
-    it("can open a collection picker from browser empty state", () => {
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-      });
-
-      embedModalEnableEmbedding();
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Browser").click();
-        cy.findByText("Next").click();
-
-        cy.log("shows empty state for missing recent collections");
-        cy.findByTestId("embed-recent-item-card").should("not.exist");
-        cy.findByText("No recent collections").should("be.visible");
-
-        cy.findByTitle("Browse collections").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a collection").should("be.visible");
-      });
     });
   });
 });
@@ -403,18 +327,13 @@ describe("recently created dashboards", () => {
       cy.findByText("Select a dashboard to embed").should("be.visible");
 
       cy.log(
-        "recently created dashboard should show up even though it was never viewed",
+        "the recently created x-ray dashboard should be the default selection",
       );
       const XRAY_DASHBOARD_NAME = "A look at Orders";
-      cy.findByText(XRAY_DASHBOARD_NAME, { timeout: 10_000 }).should(
-        "be.visible",
+      getResourceSelectorButton({ timeout: 10_000 }).should(
+        "contain",
+        XRAY_DASHBOARD_NAME,
       );
-
-      cy.log("the x-ray dashboard should be selected by default");
-      getRecentItemCards()
-        .first()
-        .should("contain", XRAY_DASHBOARD_NAME)
-        .should("have.attr", "data-selected", "true");
     });
   });
 });
