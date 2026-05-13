@@ -29,8 +29,12 @@
   - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)
   - 8: Capture textual source-entity-name on missing-column errors when the
        referenced table doesn't resolve to a Metabase id (POC: surfaces the
-       offending `schema.table` in the admin Introspector's Reasons column)."
-  8)
+       offending `schema.table` in the admin Introspector's Reasons column).
+  - 9: Multi-source attribution — when extract-source-entity sees several
+       candidate tables for the same column ref (joins/CTEs), persist the
+       comma-joined candidate list under source-entity-name with type
+       :unknown. Rendered as `in any of \\`a\\`, \\`b\\`, \\`c\\`` in the UI."
+  9)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.

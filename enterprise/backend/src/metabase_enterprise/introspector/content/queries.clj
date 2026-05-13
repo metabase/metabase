@@ -302,19 +302,40 @@
                                "$1: ")]
       (str/trim deduped))))
 
+(defn- format-source-clause
+  "Render the `in X` fragment of a humanised reason, given a source name and
+  whether that name describes multiple candidate sources (a comma-joined
+  list emitted by `enrich-error` when the parser saw several candidate
+  tables for the same column reference).
+
+  Returns nil when there's no source name to render."
+  [source-name multi?]
+  (when (seq source-name)
+    (if multi?
+      ;; Multi: pre-format every candidate with backticks so the sentence
+      ;; reads cleanly even when the list is long.
+      (->> (str/split source-name #",\s*")
+           (map #(str "`" % "`"))
+           (str/join ", ")
+           (str " in any of "))
+      (str " in `" source-name "`"))))
+
 (defn- humanize-error-detail
-  "Translate `(error_type, error_detail, source-name)` into a single human-readable
-  sentence. `source-name` is the resolved name of the row's
-  `analysis_finding_error.source_entity_*` reference (a `schema.table` or card
-  name) — or nil if the analyzer couldn't attribute the error to a specific
-  source. We do **not** invent sources by enumerating the entity's declared
-  dependencies; if the analyzer didn't pin the error to a table, we say so
-  honestly rather than presenting a speculative list (cf. transform 1189
-  where every dep table actually has the column the analyzer flagged)."
-  [error-type error-detail source-name]
+  "Translate `(error_type, error_detail, source-name, multi?)` into a single
+  human-readable sentence.
+
+  `source-name` is the resolved name of the row's `source_entity_*` reference
+  (a `schema.table` or card name) — or nil if the analyzer couldn't attribute
+  the error to a specific source. `multi?` is true when the name is a
+  comma-joined list of candidate tables (the parser saw several and couldn't
+  narrow down).
+
+  We do **not** invent sources by enumerating the entity's declared
+  dependencies — every fragment comes from what the analyzer itself recorded."
+  [error-type error-detail source-name multi?]
   (let [detail (some-> error-detail str/trim not-empty)
         col    (some-> detail (str/replace #"[`\"]" ""))
-        in-src (when (seq source-name) (str " in `" source-name "`"))]
+        in-src (format-source-clause source-name multi?)]
     (case error-type
       "missing-column"
       (cond
@@ -401,7 +422,14 @@
                 (let [resolved (when (and source_entity_type source_entity_id)
                                  (get source-name [source_entity_type source_entity_id]))
                       src      (or resolved source_entity_name)
-                      detail   (humanize-error-detail error_type error_detail src)]
+                      ;; `:source_entity_type = "unknown"` is the
+                      ;; multi-source signal from `enrich-error` — pair it
+                      ;; with the comma-joined candidate list in
+                      ;; `source_entity_name` so the UI says "in any of …".
+                      multi?   (and (= source_entity_type "unknown")
+                                    (seq source_entity_name))
+                      detail   (humanize-error-detail error_type error_detail
+                                                      src multi?)]
                   (update m id (fnil conj [])
                           {:flag   "broken"
                            :code   "analysis-finding-error"

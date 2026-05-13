@@ -131,18 +131,34 @@
      metadata-providerable
      query)))
 
+(defn- drop-empty-transform-query
+  "Some transforms (notably Python ones that have round-tripped through an
+  older schema) carry a stray `{}` at `:source.query`. The Malli schema
+  for `::lib.schema/query` requires `:lib/type` + `:stages` so the empty
+  map fails the output validator for `transforms`. Drop it before
+  validation — a properly-shaped Lib query is left untouched."
+  [transform]
+  (cond-> transform
+    (and (contains? (:source transform) :query)
+         (empty? (get-in transform [:source :query])))
+    (update :source dissoc :query)))
+
 (mu/defn transform :- [:maybe ::lib.schema.metadata/transform]
   "Gets a Transform by ID, or nil if it does not exist."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    transform-id          :- :int]
   (some-> (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id)
-          (m/update-existing-in [:source :query] normalize-query metadata-providerable)))
+          (m/update-existing-in [:source :query] normalize-query metadata-providerable)
+          drop-empty-transform-query))
 
 (mu/defn transforms :- [:maybe [:sequential ::lib.schema.metadata/transform]]
   "Gets all Transforms"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (->> (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable))
-       (map #(m/update-existing-in % [:source :query] normalize-query metadata-providerable))
+       (map (fn [t]
+              (-> t
+                  (m/update-existing-in [:source :query] normalize-query metadata-providerable)
+                  drop-empty-transform-query)))
        not-empty))
 
 (mu/defn setting :- any?

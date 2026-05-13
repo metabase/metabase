@@ -116,7 +116,10 @@
    Returns:
    - {:kind :table, :spec table-spec} for a single real table source
    - {:kind :card, :card-id N} for a single card placeholder source (only when card-placeholders?)
-   - :multiple for ambiguous sources (multiple sources of any kind)
+   - {:kind :multiple, :table-specs [...table-specs...]} for ambiguous sources where
+     the parser saw several `:all-columns` sources. `:table-specs` captures every
+     non-card table-spec the parser identified — used downstream to name the
+     candidate sources in the Reasons UI even when we can't pin the column to one.
    - nil otherwise (no recognizable sources, or not a :single-column spec)"
   [card-placeholders? col-spec]
   (let [card-id-fn (if card-placeholders?
@@ -136,7 +139,9 @@
               {:kind :card, :card-id (first cards)}
               (and (empty? cards) (= 1 (count tables)))
               {:kind :table, :spec (:table (first tables))}
-              :else :multiple))
+              :else
+              {:kind        :multiple
+               :table-specs (mapv :table tables)}))
 
           :else
           (let [source   (first all-col-sources)
@@ -218,9 +223,20 @@
             nil ;; column is valid, suppress error
             (assoc error :source-entity-type :card :source-entity-id card-id)))
 
-        ;; Multiple/ambiguous sources
-        (= source :multiple)
-        (assoc error :source-entity-type :unknown)
+        ;; Multiple ambiguous sources — record the candidate table list as a
+        ;; comma-joined textual name so the Reasons UI can still surface
+        ;; *which* tables the parser was looking at. We can't pin the missing
+        ;; column to one, but "any of `a`, `b`, `c`" is much more useful than
+        ;; "couldn't attribute".
+        (and (map? source) (= (:kind source) :multiple))
+        (let [names (->> (:table-specs source)
+                         (keep table-spec->name)
+                         distinct)]
+          (if (seq names)
+            (assoc error
+                   :source-entity-type :unknown
+                   :source-entity-name (str/join ", " names))
+            (assoc error :source-entity-type :unknown)))
 
         ;; nil — unknown structure, leave unenriched for fallback
         :else error))))
@@ -246,9 +262,28 @@
                   (check-fields used-fields)
                   (check-fields returned-fields)))))
 
+(defn- multi-source-attribution
+  "Build a `{:source-entity-type :unknown :source-entity-name \"a, b, c\"}`
+  map from a seq of `table-spec`s, naming each candidate source.
+  Returns nil when no names can be derived."
+  [table-specs]
+  (let [names (->> table-specs
+                   (keep (fn [spec]
+                           (cond
+                             (int? (:table spec)) nil
+                             :else                (table-spec->name spec))))
+                   distinct)]
+    (when (seq names)
+      {:source-entity-type :unknown
+       :source-entity-name (str/join ", " names)})))
+
 (defn- fallback-enrich
   "Second-pass enrichment for errors that validate-with-sources couldn't attribute
-   (e.g., subquery sources). Falls back to the table-count approach."
+   (e.g., subquery sources). Falls back to the table-count approach.
+
+   For the multi-table case we still record the candidate list as a joined
+   `source-entity-name` so the Reasons UI can name the tables the parser was
+   looking at, even though we can't pin the column to one."
   [driver compiled errors]
   (if (every? :source-entity-type errors)
     errors
@@ -265,10 +300,15 @@
                                          (resolve-table-id driver mp table-spec))]
                        {:source-entity-type :table
                         :source-entity-id   table-id}
-                       {:source-entity-type :unknown}))
+                       ;; Single but unresolved — preserve the textual name.
+                       (if-let [nm (table-spec->name table-spec)]
+                         {:source-entity-type :table
+                          :source-entity-name nm}
+                         {:source-entity-type :unknown})))
 
                    :else
-                   {:source-entity-type :unknown})]
+                   (or (multi-source-attribution tables)
+                       {:source-entity-type :unknown}))]
       (if source
         (into #{} (map (fn [error]
                          (if (or (:source-entity-type error)
@@ -295,9 +335,17 @@
     #{}
     (into #{}
           (comp
-           ;; Strip :unknown source attribution — consumers should not distinguish between
-           ;; "we tried and couldn't determine the source" vs "no source info available".
-           (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
+           ;; Strip :unknown source attribution when we have no extra info to
+           ;; carry — consumers shouldn't distinguish between "we tried and
+           ;; couldn't determine the source" vs "no source info available".
+           ;; Keep :source-entity-type :unknown + :source-entity-name when set,
+           ;; though — that's the multi-source candidate list, surfaced to the
+           ;; UI as "in any of …" rather than dropped on the floor.
+           (map (fn [e]
+                  (cond-> e
+                    (and (= :unknown (:source-entity-type e))
+                         (nil? (:source-entity-name e)))
+                    (dissoc :source-entity-type :source-entity-id))))
            ;; Remove errors referencing table placeholder names
            (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
           (if (has-substitutable-template-tags? query)
