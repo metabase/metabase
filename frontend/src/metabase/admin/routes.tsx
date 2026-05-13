@@ -48,7 +48,10 @@ import {
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { AISettingsPage } from "metabase/metabot/components/MetabotAdmin/AISettingsPage";
+import {
+  AISettingsPage,
+  McpSettingsPage,
+} from "metabase/metabot/components/MetabotAdmin/AISettingsPage";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
@@ -270,6 +273,7 @@ export const getRoutes = (
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
+            <Route key="mcp" path="mcp" component={McpSettingsPage} />
             <Route key="metabot" path=":metabotId" component={AISettingsPage} />
           </Route>
           <Route
