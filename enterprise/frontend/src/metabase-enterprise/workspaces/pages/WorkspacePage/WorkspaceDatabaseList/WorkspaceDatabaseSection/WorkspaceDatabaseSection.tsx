@@ -1,7 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { Button, Card, Group, Icon } from "metabase/ui";
+import { hasFeature } from "metabase/common/utils/database";
+import { ActionIcon, Card, Group, Icon, Menu } from "metabase/ui";
 import type {
   Database,
   Workspace,
@@ -15,47 +16,57 @@ import { UpdateWorkspaceDatabaseModal } from "../UpdateWorkspaceDatabaseModal";
 export type WorkspaceDatabaseSectionProps = {
   workspace: Workspace;
   workspaceDatabase: WorkspaceDatabase;
-  availableDatabases: Database[];
+  database: Database | undefined;
 };
 
 export function WorkspaceDatabaseSection({
   workspace,
   workspaceDatabase,
-  availableDatabases,
+  database,
 }: WorkspaceDatabaseSectionProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const { handleDelete, modalContent } = useDeleteWorkspaceDatabase({
-    availableDatabases,
+    database,
   });
+  const supportsSchemas = database != null && hasFeature(database, "schemas");
 
   return (
     <Card p="lg" shadow="none" withBorder>
       <Group justify="space-between" align="center" wrap="nowrap">
         <WorkspaceDatabaseInfo
           workspaceDatabase={workspaceDatabase}
-          availableDatabases={availableDatabases}
+          database={database}
         />
-        <Group gap="sm" wrap="nowrap">
-          <Button
-            aria-label={t`Edit database`}
-            leftSection={<Icon name="pencil" />}
-            onClick={open}
-          />
-          <Button
-            aria-label={t`Remove database`}
-            leftSection={<Icon name="trash" />}
-            onClick={() => handleDelete(workspace, workspaceDatabase)}
-          />
-        </Group>
+        <Menu>
+          <Menu.Target>
+            <ActionIcon size="sm" aria-label={t`Database actions`}>
+              <Icon name="ellipsis" />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {supportsSchemas && (
+              <Menu.Item
+                leftSection={<Icon name="pencil" />}
+                onClick={open}
+              >{t`Edit`}</Menu.Item>
+            )}
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={() => handleDelete(workspace, workspaceDatabase)}
+            >{t`Remove`}</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
-      <UpdateWorkspaceDatabaseModal
-        workspace={workspace}
-        workspaceDatabase={workspaceDatabase}
-        availableDatabases={availableDatabases}
-        opened={opened}
-        onUpdate={close}
-        onClose={close}
-      />
+      {database != null && (
+        <UpdateWorkspaceDatabaseModal
+          workspace={workspace}
+          workspaceDatabase={workspaceDatabase}
+          database={database}
+          opened={opened}
+          onUpdate={close}
+          onClose={close}
+        />
+      )}
       {modalContent}
     </Card>
   );

@@ -5,7 +5,10 @@ import type {
   WorkspaceInstance,
 } from "metabase-types/api";
 
-import type { DatabaseInfo } from "./types";
+export type DatabaseInfo = {
+  database: Database;
+  remappings: TableRemapping[];
+};
 
 export function getDatabasesInfo(
   workspace: WorkspaceInstance,

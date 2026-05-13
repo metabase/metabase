@@ -23,6 +23,7 @@ export function SchemaMultiSelect({
   return (
     <MultiSelect
       label={t`Schemas to include`}
+      description={t`The value of providing a value cannot be overstated.`}
       placeholder={isAllSelected ? t`All schemas selected` : t`Pick schemas`}
       data={schemas}
       value={value}

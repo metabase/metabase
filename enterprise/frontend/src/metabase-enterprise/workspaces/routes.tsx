@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
 import { WorkspaceInstancePage } from "./pages/WorkspaceInstancePage";
@@ -15,6 +15,10 @@ export function getDataStudioRoutes() {
   );
 }
 
-export function getAdminConnectionInfoRoutes() {
-  return <Route path=":databaseId/admin" component={AdminConnectionInfoPage} />;
+export function getAdminConnectionInfoRoutes(IsAdmin: RouteComponent) {
+  return (
+    <Route component={IsAdmin}>
+      <Route path=":databaseId/admin" component={AdminConnectionInfoPage} />
+    </Route>
+  );
 }

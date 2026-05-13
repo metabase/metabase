@@ -16,7 +16,7 @@ describe("WorkspaceDatabaseInfo", () => {
           database_id: POSTGRES.id,
           input_schemas: ["public", "analytics"],
         })}
-        availableDatabases={[POSTGRES]}
+        database={POSTGRES}
       />,
     );
 
@@ -25,14 +25,14 @@ describe("WorkspaceDatabaseInfo", () => {
     expect(screen.getByText("analytics")).toBeInTheDocument();
   });
 
-  it("falls back to a `Database <id>` label when the database is not in the list", () => {
+  it("falls back to a `Database <id>` label when the database is undefined", () => {
     renderWithProviders(
       <WorkspaceDatabaseInfo
         workspaceDatabase={createMockWorkspaceDatabase({
           database_id: 999,
           input_schemas: [],
         })}
-        availableDatabases={[POSTGRES]}
+        database={undefined}
       />,
     );
 

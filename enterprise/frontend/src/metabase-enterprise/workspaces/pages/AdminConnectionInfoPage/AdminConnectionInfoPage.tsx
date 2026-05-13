@@ -120,7 +120,7 @@ function getTitle(database: Database): string {
 }
 
 function getInitialValues(database: Database): DatabaseData {
-  const { password, ...details } = database.details ?? {};
+  const { password: _password, ...details } = database.details ?? {};
 
   return {
     ...database,

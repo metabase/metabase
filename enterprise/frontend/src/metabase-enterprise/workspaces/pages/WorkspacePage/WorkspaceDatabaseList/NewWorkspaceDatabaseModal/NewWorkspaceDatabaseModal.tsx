@@ -8,12 +8,19 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  Group,
+  Modal,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseId, Workspace } from "metabase-types/api";
 
-import { DatabaseSelect } from "../DatabaseSelect";
 import { SchemaMultiSelect } from "../SchemaMultiSelect";
 
 export type NewWorkspaceDatabaseModalProps = {
@@ -33,7 +40,7 @@ export function NewWorkspaceDatabaseModal({
 }: NewWorkspaceDatabaseModalProps) {
   return (
     <Modal
-      title={t`Add a database`}
+      title={t`Add a database to this workspace`}
       opened={opened}
       padding="xl"
       onClose={onClose}
@@ -52,11 +59,6 @@ export function NewWorkspaceDatabaseModal({
 type NewWorkspaceDatabaseFormValues = {
   database_id: DatabaseId | null;
   input_schemas: string[];
-};
-
-const INITIAL_VALUES: NewWorkspaceDatabaseFormValues = {
-  database_id: null,
-  input_schemas: [],
 };
 
 const NEW_WORKSPACE_DATABASE_SCHEMA = Yup.object({
@@ -79,6 +81,11 @@ function NewWorkspaceDatabaseForm({
 }: NewWorkspaceDatabaseFormProps) {
   const [createWorkspaceDatabase] = useCreateWorkspaceDatabaseMutation();
 
+  const initialValues: NewWorkspaceDatabaseFormValues = {
+    database_id: availableDatabases[0]?.id ?? null,
+    input_schemas: [],
+  };
+
   const handleSubmit = async (values: NewWorkspaceDatabaseFormValues) => {
     if (values.database_id == null) {
       return;
@@ -93,7 +100,7 @@ function NewWorkspaceDatabaseForm({
 
   return (
     <FormProvider
-      initialValues={INITIAL_VALUES}
+      initialValues={initialValues}
       validationSchema={NEW_WORKSPACE_DATABASE_SCHEMA}
       onSubmit={handleSubmit}
     >
@@ -108,9 +115,9 @@ function NewWorkspaceDatabaseForm({
           <Form>
             <Stack gap="lg">
               <Text>
-                {t`Provisioning will create a temporary schema and user in the database, grant the user read access to the selected schemas, and write access to the new schema.`}
+                {t`This will create a temporary schema and user in this database, grant that user read access to the schemas you select, and write access to the temporary schema.`}
               </Text>
-              <DatabaseSelect
+              <DatabaseRadioGroup
                 databases={availableDatabases}
                 value={values.database_id}
                 onChange={(databaseId) => {
@@ -130,15 +137,44 @@ function NewWorkspaceDatabaseForm({
               <FormErrorMessage />
               <Group justify="flex-end">
                 <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Provision database`}
-                  variant="filled"
-                />
+                <FormSubmitButton label={t`Add database`} variant="filled" />
               </Group>
             </Stack>
           </Form>
         );
       }}
     </FormProvider>
+  );
+}
+
+type DatabaseRadioGroupProps = {
+  databases: Database[];
+  value: DatabaseId | null;
+  onChange: (databaseId: DatabaseId | null) => void;
+};
+
+function DatabaseRadioGroup({
+  databases,
+  value,
+  onChange,
+}: DatabaseRadioGroupProps) {
+  return (
+    <Radio.Group
+      label={t`Database`}
+      value={value != null ? String(value) : null}
+      onChange={(newValue) =>
+        onChange(newValue != null ? Number(newValue) : null)
+      }
+    >
+      <Stack>
+        {databases.map((database) => (
+          <Radio
+            key={database.id}
+            value={String(database.id)}
+            label={database.name}
+          />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 }

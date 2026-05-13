@@ -67,7 +67,9 @@ function WorkspaceListPageBody({
         }
         actions={
           <Group gap="sm">
-            <NewWorkspaceButton availableDatabases={availableDatabases} />
+            <NewWorkspaceButton
+              variant={hasWorkspaces ? "default" : "filled"}
+            />
             {hasWorkspaces && <WorkspaceHelpMenu />}
           </Group>
         }

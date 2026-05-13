@@ -4,10 +4,6 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
 import type { TableRemapping } from "metabase-types/api";
 
-export function getRows(remappings: TableRemapping[]): TableRemapping[] {
-  return remappings;
-}
-
 export function getColumns(): TreeTableColumnDef<TableRemapping>[] {
   return [getFromTableColumn(), getToTableColumn(), getCreatedAtColumn()];
 }

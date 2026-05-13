@@ -5,16 +5,13 @@ import type { Database, WorkspaceDatabase } from "metabase-types/api";
 
 export type WorkspaceDatabaseInfoProps = {
   workspaceDatabase: WorkspaceDatabase;
-  availableDatabases: Database[];
+  database: Database | undefined;
 };
 
 export function WorkspaceDatabaseInfo({
   workspaceDatabase,
-  availableDatabases,
+  database,
 }: WorkspaceDatabaseInfoProps) {
-  const database = availableDatabases.find(
-    (candidate) => candidate.id === workspaceDatabase.database_id,
-  );
   const databaseLabel =
     database?.name ?? t`Database ${workspaceDatabase.database_id}`;
 

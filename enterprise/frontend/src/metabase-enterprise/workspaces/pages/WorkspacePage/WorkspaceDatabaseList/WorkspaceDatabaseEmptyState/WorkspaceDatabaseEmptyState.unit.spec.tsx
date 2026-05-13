@@ -58,17 +58,11 @@ describe("WorkspaceDatabaseEmptyState", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Add database/ }));
 
-    await userEvent.click(await screen.findByLabelText("Database"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Postgres" }),
-    );
     await userEvent.click(screen.getByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Provision database" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
     await waitFor(() => {
       const request = fetchMock.callHistory.lastCall(

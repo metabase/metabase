@@ -65,17 +65,11 @@ describe("NewWorkspaceDatabaseModal", () => {
   it("can create a workspace database", async () => {
     const { onCreate, createdWorkspace } = setup();
 
-    await userEvent.click(screen.getByLabelText("Database"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Postgres" }),
-    );
     await userEvent.click(screen.getByLabelText("Schemas to include"));
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Provision database" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),

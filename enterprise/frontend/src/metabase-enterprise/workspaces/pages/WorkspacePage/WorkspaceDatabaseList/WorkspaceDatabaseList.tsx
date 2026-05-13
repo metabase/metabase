@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { Box, Stack, Text, Title } from "metabase/ui";
 import type { Database, Workspace } from "metabase-types/api";
 
+import { getDatabasesById } from "../../../utils";
+
 import { AddWorkspaceDatabaseButton } from "./AddWorkspaceDatabaseButton";
 import { WorkspaceDatabaseEmptyState } from "./WorkspaceDatabaseEmptyState";
 import { WorkspaceDatabaseSection } from "./WorkspaceDatabaseSection";
@@ -17,6 +19,7 @@ export function WorkspaceDatabaseList({
   workspace,
   availableDatabases,
 }: WorkspaceDatabaseListProps) {
+  const databaseById = getDatabasesById(availableDatabases);
   const selectableDatabases = getSelectableDatabases(
     availableDatabases,
     workspace.databases,
@@ -44,7 +47,7 @@ export function WorkspaceDatabaseList({
                 key={workspaceDatabase.database_id}
                 workspace={workspace}
                 workspaceDatabase={workspaceDatabase}
-                availableDatabases={availableDatabases}
+                database={databaseById.get(workspaceDatabase.database_id)}
               />
             ))}
           </Stack>

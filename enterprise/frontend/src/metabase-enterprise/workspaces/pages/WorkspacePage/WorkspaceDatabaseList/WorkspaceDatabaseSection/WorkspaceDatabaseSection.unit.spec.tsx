@@ -44,32 +44,40 @@ function setup() {
     <WorkspaceDatabaseSection
       workspace={WORKSPACE}
       workspaceDatabase={WORKSPACE.databases[0]}
-      availableDatabases={[TEST_DATABASE]}
+      database={TEST_DATABASE}
     />,
   );
 }
 
 describe("WorkspaceDatabaseSection", () => {
-  it("opens the edit modal when Edit is clicked", async () => {
+  it("opens the edit modal from the menu when Edit is clicked", async () => {
     setup();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Edit database" }),
+      screen.getByRole("button", { name: "Database actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Edit/ }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Edit database" }),
+      await screen.findByRole("heading", {
+        name: `Edit settings for ${TEST_DATABASE.name}`,
+      }),
     ).toBeInTheDocument();
   });
 
-  it("calls DELETE on the database after confirming", async () => {
+  it("calls DELETE on the database after confirming Remove", async () => {
     setup();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove database" }),
+      screen.getByRole("button", { name: "Database actions" }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: "Deprovision" }),
+      await screen.findByRole("menuitem", { name: /Remove/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove" }),
     );
 
     await waitFor(() => {

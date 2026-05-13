@@ -37,7 +37,7 @@ const TEST_DATABASE = createMockDatabase({
 type SetupOpts = {
   workspace?: Workspace;
   workspaceDatabase?: WorkspaceDatabase;
-  availableDatabases?: Database[];
+  database?: Database;
   updatedWorkspace?: Workspace;
 };
 
@@ -47,7 +47,7 @@ function setup({
     database_id: TEST_DATABASE.id,
     input_schemas: ["public"],
   }),
-  availableDatabases = [TEST_DATABASE],
+  database = TEST_DATABASE,
   updatedWorkspace = createMockWorkspace({
     databases: [
       createMockWorkspaceDatabase({
@@ -60,14 +60,14 @@ function setup({
   const onUpdate = jest.fn();
   const onClose = jest.fn();
 
-  setupDatabasesEndpoints(availableDatabases);
+  setupDatabasesEndpoints([TEST_DATABASE]);
   setupUpdateWorkspaceDatabaseEndpoint(updatedWorkspace, TEST_DATABASE.id);
 
   renderWithProviders(
     <UpdateWorkspaceDatabaseModal
       workspace={workspace}
       workspaceDatabase={workspaceDatabase}
-      availableDatabases={availableDatabases}
+      database={database}
       opened
       onUpdate={onUpdate}
       onClose={onClose}

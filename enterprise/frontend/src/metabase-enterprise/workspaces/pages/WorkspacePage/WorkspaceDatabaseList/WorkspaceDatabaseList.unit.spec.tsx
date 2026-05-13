@@ -48,17 +48,16 @@ function setup({
 }
 
 describe("WorkspaceDatabaseList", () => {
-  it("can open the add modal and pick a database", async () => {
+  it("can open the add modal and shows both databases as radio options", async () => {
     setup();
 
     await userEvent.click(screen.getByRole("button", { name: /Add database/ }));
 
-    await userEvent.click(await screen.findByLabelText("Database"));
     expect(
-      await screen.findByRole("option", { name: "Postgres" }),
+      await screen.findByRole("radio", { name: "Postgres" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Snowflake" }),
+      screen.getByRole("radio", { name: "Snowflake" }),
     ).toBeInTheDocument();
   });
 
@@ -77,12 +76,11 @@ describe("WorkspaceDatabaseList", () => {
       screen.getByRole("button", { name: /Add another database/ }),
     );
 
-    await userEvent.click(await screen.findByLabelText("Database"));
     expect(
-      await screen.findByRole("option", { name: "Snowflake" }),
+      await screen.findByRole("radio", { name: "Snowflake" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: "Postgres" }),
+      screen.queryByRole("radio", { name: "Postgres" }),
     ).not.toBeInTheDocument();
   });
 });

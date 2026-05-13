@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { hasFeature } from "metabase/common/utils/database";
 import {
   Form,
   FormErrorMessage,
@@ -16,13 +15,12 @@ import type {
   WorkspaceDatabase,
 } from "metabase-types/api";
 
-import { DatabaseSelect } from "../DatabaseSelect";
 import { SchemaMultiSelect } from "../SchemaMultiSelect";
 
 export type UpdateWorkspaceDatabaseModalProps = {
   workspace: Workspace;
   workspaceDatabase: WorkspaceDatabase;
-  availableDatabases: Database[];
+  database: Database;
   opened: boolean;
   onUpdate: (workspace: Workspace) => void;
   onClose: () => void;
@@ -31,14 +29,14 @@ export type UpdateWorkspaceDatabaseModalProps = {
 export function UpdateWorkspaceDatabaseModal({
   workspace,
   workspaceDatabase,
-  availableDatabases,
+  database,
   opened,
   onUpdate,
   onClose,
 }: UpdateWorkspaceDatabaseModalProps) {
   return (
     <Modal
-      title={t`Edit database`}
+      title={t`Edit settings for ${database.name}`}
       opened={opened}
       padding="xl"
       onClose={onClose}
@@ -47,7 +45,6 @@ export function UpdateWorkspaceDatabaseModal({
       <UpdateWorkspaceDatabaseForm
         workspace={workspace}
         workspaceDatabase={workspaceDatabase}
-        availableDatabases={availableDatabases}
         onUpdate={onUpdate}
         onClose={onClose}
       />
@@ -66,7 +63,6 @@ const UPDATE_WORKSPACE_DATABASE_SCHEMA = Yup.object({
 type UpdateWorkspaceDatabaseFormProps = {
   workspace: Workspace;
   workspaceDatabase: WorkspaceDatabase;
-  availableDatabases: Database[];
   onUpdate: (workspace: Workspace) => void;
   onClose: () => void;
 };
@@ -74,17 +70,10 @@ type UpdateWorkspaceDatabaseFormProps = {
 function UpdateWorkspaceDatabaseForm({
   workspace,
   workspaceDatabase,
-  availableDatabases,
   onUpdate,
   onClose,
 }: UpdateWorkspaceDatabaseFormProps) {
   const [updateWorkspaceDatabase] = useUpdateWorkspaceDatabaseMutation();
-
-  const selectedDatabase = availableDatabases.find(
-    (database) => database.id === workspaceDatabase.database_id,
-  );
-  const supportsSchemas =
-    selectedDatabase != null && hasFeature(selectedDatabase, "schemas");
 
   const initialValues: UpdateWorkspaceDatabaseFormValues = {
     input_schemas: workspaceDatabase.input_schemas,
@@ -109,26 +98,18 @@ function UpdateWorkspaceDatabaseForm({
         <Form>
           <Stack gap="lg">
             <Text>
-              {t`Reprovisioning will first delete the temporary user and schema, then recreate them with the new configuration.`}
+              {t`Changing these settings will first delete the temporary user and schema, then recreate them with your new settings.`}
             </Text>
-            <DatabaseSelect
-              databases={availableDatabases}
-              value={workspaceDatabase.database_id}
-              disabled
-              onChange={() => undefined}
+            <SchemaMultiSelect
+              databaseId={workspaceDatabase.database_id}
+              value={values.input_schemas}
+              onChange={(schemas) => setFieldValue("input_schemas", schemas)}
             />
-            {supportsSchemas && (
-              <SchemaMultiSelect
-                databaseId={workspaceDatabase.database_id}
-                value={values.input_schemas}
-                onChange={(schemas) => setFieldValue("input_schemas", schemas)}
-              />
-            )}
             <FormErrorMessage />
             <Group justify="flex-end">
               <Button onClick={onClose}>{t`Cancel`}</Button>
               <FormSubmitButton
-                label={t`Provision database`}
+                label={t`Save changes`}
                 variant="filled"
                 disabled={!dirty}
               />

@@ -9,12 +9,12 @@ import type {
 } from "metabase-types/api";
 
 export type DeleteWorkspaceDatabaseProps = {
-  availableDatabases: Database[];
+  database: Database | undefined;
   onSuccess?: () => void;
 };
 
 export function useDeleteWorkspaceDatabase({
-  availableDatabases,
+  database,
   onSuccess,
 }: DeleteWorkspaceDatabaseProps) {
   const { modalContent, show } = useConfirmation();
@@ -24,17 +24,12 @@ export function useDeleteWorkspaceDatabase({
     workspace: Workspace,
     workspaceDatabase: WorkspaceDatabase,
   ) => {
-    const database = availableDatabases.find(
-      (candidate) => candidate.id === workspaceDatabase.database_id,
-    );
-    const databaseLabel = database
-      ? database.name
-      : t`Database ${workspaceDatabase.database_id}`;
+    const databaseLabel = database ? database.name : t`database`;
 
     show({
-      title: t`Deprovision ${databaseLabel}?`,
-      message: t`This will delete the temporary user and schema from the database.`,
-      confirmButtonText: t`Deprovision`,
+      title: t`Remove ${databaseLabel} from this workspace?`,
+      message: t`This will delete the temporary user and schema from this database.`,
+      confirmButtonText: t`Remove`,
       confirmButtonProps: { color: "danger" },
       onConfirm: async () => {
         await deleteWorkspaceDatabase({

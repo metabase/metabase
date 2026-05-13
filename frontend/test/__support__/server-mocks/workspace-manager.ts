@@ -5,7 +5,7 @@ import type { DatabaseId, Workspace, WorkspaceId } from "metabase-types/api";
 const BASE_URL = "path:/api/ee/workspace-manager";
 
 export function setupListWorkspacesEndpoint(workspaces: Workspace[]) {
-  fetchMock.get(`${BASE_URL}/`, workspaces);
+  fetchMock.get(BASE_URL, workspaces);
 }
 
 export function setupGetWorkspaceEndpoint(workspace: Workspace) {
@@ -13,7 +13,7 @@ export function setupGetWorkspaceEndpoint(workspace: Workspace) {
 }
 
 export function setupCreateWorkspaceEndpoint(workspace: Workspace) {
-  fetchMock.post(`${BASE_URL}/`, workspace);
+  fetchMock.post(BASE_URL, workspace);
 }
 
 export function setupUpdateWorkspaceEndpoint(workspace: Workspace) {

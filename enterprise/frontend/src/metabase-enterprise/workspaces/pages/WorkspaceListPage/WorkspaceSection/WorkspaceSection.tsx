@@ -18,6 +18,7 @@ import type { Database, Workspace } from "metabase-types/api";
 
 import { WorkspaceDatabaseInfo } from "../../../components/WorkspaceDatabaseInfo";
 import { useDeleteWorkspace } from "../../../hooks";
+import { getDatabasesById } from "../../../utils";
 
 export type WorkspaceSectionProps = {
   workspace: Workspace;
@@ -28,6 +29,7 @@ export function WorkspaceSection({
   workspace,
   availableDatabases,
 }: WorkspaceSectionProps) {
+  const databaseById = getDatabasesById(availableDatabases);
   const hasDatabases = workspace.databases.length > 0;
 
   return (
@@ -38,7 +40,7 @@ export function WorkspaceSection({
             <Title order={4}>{workspace.name}</Title>
             <CreatorSection workspace={workspace} />
           </Stack>
-          <WorkspaceMenu workspace={workspace} />
+          <WorkspaceSectionMenu workspace={workspace} />
         </Group>
         {hasDatabases && (
           <>
@@ -48,7 +50,7 @@ export function WorkspaceSection({
                 <WorkspaceDatabaseInfo
                   key={workspaceDatabase.database_id}
                   workspaceDatabase={workspaceDatabase}
-                  availableDatabases={availableDatabases}
+                  database={databaseById.get(workspaceDatabase.database_id)}
                 />
               ))}
             </Stack>
@@ -76,11 +78,11 @@ function CreatorSection({ workspace }: CreatorSectionProps) {
   );
 }
 
-type WorkspaceMenuProps = {
+type WorkspaceSectionMenuProps = {
   workspace: Workspace;
 };
 
-function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
+function WorkspaceSectionMenu({ workspace }: WorkspaceSectionMenuProps) {
   const { handleDelete, modalContent } = useDeleteWorkspace();
 
   return (
