@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Button, FixedSizeIcon, Tooltip } from "metabase/ui";
 import type { Database, Workspace } from "metabase-types/api";
 
 import { NewWorkspaceDatabaseModal } from "../NewWorkspaceDatabaseModal";
@@ -28,7 +28,7 @@ export function AddWorkspaceDatabaseButton({
         <Button
           variant={isEmpty ? "filled" : "default"}
           disabled={!hasAvailableDatabases}
-          leftSection={<Icon name="add" />}
+          leftSection={<FixedSizeIcon name="add" />}
           onClick={open}
         >
           {isEmpty ? t`Add database` : t`Add another database`}

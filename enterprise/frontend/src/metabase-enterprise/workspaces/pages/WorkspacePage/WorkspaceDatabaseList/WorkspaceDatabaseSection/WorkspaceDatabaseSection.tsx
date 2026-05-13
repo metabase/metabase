@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/common/utils/database";
-import { ActionIcon, Card, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Card, FixedSizeIcon, Group, Menu } from "metabase/ui";
 import type {
   Database,
   Workspace,
@@ -40,18 +40,18 @@ export function WorkspaceDatabaseSection({
         <Menu>
           <Menu.Target>
             <ActionIcon size="sm" aria-label={t`Database actions`}>
-              <Icon name="ellipsis" />
+              <FixedSizeIcon name="ellipsis" />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
             {supportsSchemas && (
               <Menu.Item
-                leftSection={<Icon name="pencil" />}
+                leftSection={<FixedSizeIcon name="pencil" />}
                 onClick={open}
               >{t`Edit`}</Menu.Item>
             )}
             <Menu.Item
-              leftSection={<Icon name="trash" />}
+              leftSection={<FixedSizeIcon name="trash" />}
               onClick={() => handleDelete(workspace, workspaceDatabase)}
             >{t`Remove`}</Menu.Item>
           </Menu.Dropdown>

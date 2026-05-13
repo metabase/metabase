@@ -14,7 +14,7 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { AdminConnectionInfoSectionProps } from "metabase/plugins/oss/workspaces";
-import { Alert, Button, Group, Icon } from "metabase/ui";
+import { Alert, Button, FixedSizeIcon, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export function AdminConnectionInfoSection({
@@ -73,7 +73,7 @@ export function AdminConnectionInfoSection({
           <Alert
             variant="light"
             color="info"
-            icon={<Icon name="info" />}
+            icon={<FixedSizeIcon name="info" />}
             mb="md"
           >
             {t`Admin connection can't be enabled when Database Routing is enabled.`}

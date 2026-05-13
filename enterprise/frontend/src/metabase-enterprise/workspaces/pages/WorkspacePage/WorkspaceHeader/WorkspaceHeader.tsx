@@ -10,7 +10,7 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, FixedSizeIcon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
@@ -76,12 +76,12 @@ function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
       <Menu>
         <Menu.Target>
           <ActionIcon size="sm" aria-label={t`Workspace actions`}>
-            <Icon name="ellipsis" />
+            <FixedSizeIcon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<Icon name="trash" />}
+            leftSection={<FixedSizeIcon name="trash" />}
             onClick={() => handleDelete(workspace)}
           >
             {t`Delete`}

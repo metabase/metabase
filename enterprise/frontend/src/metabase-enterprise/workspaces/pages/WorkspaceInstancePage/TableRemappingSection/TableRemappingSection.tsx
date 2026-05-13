@@ -1,5 +1,5 @@
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
-import { Group, Icon } from "metabase/ui";
+import { FixedSizeIcon, Group } from "metabase/ui";
 import type { Database, TableRemapping } from "metabase-types/api";
 
 import { TableRemappingTable } from "./TableRemappingTable";
@@ -17,7 +17,7 @@ export function TableRemappingSection({
     <TitleSection
       label={
         <Group gap="sm" wrap="nowrap">
-          <Icon name="database" />
+          <FixedSizeIcon name="database" />
           {database.name}
         </Group>
       }

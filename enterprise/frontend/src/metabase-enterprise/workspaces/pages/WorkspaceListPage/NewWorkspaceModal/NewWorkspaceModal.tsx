@@ -8,7 +8,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Button, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
@@ -26,12 +26,11 @@ export function NewWorkspaceModal({
 }: NewWorkspaceModalProps) {
   return (
     <Modal
-      title={t`New workspace`}
+      title={t`Create a workspace`}
       opened={opened}
       padding="xl"
       onClose={onClose}
     >
-      <FocusTrap.InitialFocus />
       <NewWorkspaceForm onCreate={onCreate} onClose={onClose} />
     </Modal>
   );

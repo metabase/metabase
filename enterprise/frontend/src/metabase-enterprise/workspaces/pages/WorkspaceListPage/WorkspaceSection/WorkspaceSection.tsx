@@ -5,8 +5,8 @@ import {
   ActionIcon,
   Card,
   Divider,
+  FixedSizeIcon,
   Group,
-  Icon,
   Menu,
   Stack,
   Text,
@@ -90,26 +90,26 @@ function WorkspaceSectionMenu({ workspace }: WorkspaceSectionMenuProps) {
       <Menu>
         <Menu.Target>
           <ActionIcon size="sm" aria-label={t`Workspace actions`}>
-            <Icon name="ellipsis" />
+            <FixedSizeIcon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
             component="a"
             href={`/api/ee/workspace-manager/${workspace.id}/config`}
-            leftSection={<Icon name="download" />}
+            leftSection={<FixedSizeIcon name="download" />}
           >
             {t`Download config.yml`}
           </Menu.Item>
           <Menu.Item
             component={Link}
             to={Urls.workspace(workspace.id)}
-            leftSection={<Icon name="pencil" />}
+            leftSection={<FixedSizeIcon name="pencil" />}
           >
             {t`Edit`}
           </Menu.Item>
           <Menu.Item
-            leftSection={<Icon name="trash" />}
+            leftSection={<FixedSizeIcon name="trash" />}
             onClick={() => handleDelete(workspace)}
           >
             {t`Delete`}

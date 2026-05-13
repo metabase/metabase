@@ -15,7 +15,7 @@ describe("NewWorkspaceButton", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add/ }));
 
     expect(
-      await screen.findByRole("heading", { name: "New workspace" }),
+      await screen.findByRole("heading", { name: "Create a workspace" }),
     ).toBeInTheDocument();
   });
 });

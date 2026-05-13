@@ -40,7 +40,7 @@ describe("WorkspaceListPage", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "New workspace" }),
+      await screen.findByRole("heading", { name: "Create a workspace" }),
     ).toBeInTheDocument();
   });
 

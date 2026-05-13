@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, FixedSizeIcon, Menu } from "metabase/ui";
 
 export function WorkspaceHelpMenu() {
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
@@ -17,7 +17,9 @@ export function WorkspaceHelpMenu() {
   return (
     <Menu>
       <Menu.Target>
-        <Button rightSection={<Icon name="chevrondown" />}>{t`Help`}</Button>
+        <Button
+          rightSection={<FixedSizeIcon name="chevrondown" />}
+        >{t`Help`}</Button>
       </Menu.Target>
       <Menu.Dropdown>
         {showFileBasedDevLink && (
@@ -26,7 +28,7 @@ export function WorkspaceHelpMenu() {
             to={fileBasedDevDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<Icon name="external" />}
+            leftSection={<FixedSizeIcon name="reference" />}
           >
             {t`File-based development`}
           </Menu.Item>
@@ -37,7 +39,7 @@ export function WorkspaceHelpMenu() {
             to={remoteSyncDocsUrl}
             target="_blank"
             rel="noreferrer"
-            leftSection={<Icon name="external" />}
+            leftSection={<FixedSizeIcon name="reference" />}
           >
             {t`Using remote sync`}
           </Menu.Item>

@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
-import { Button, Code, Group, Icon, Text } from "metabase/ui";
+import { Button, Code, FixedSizeIcon, Group, Text } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
 const CONFIG_FILENAME = "config.yml";
@@ -22,7 +22,7 @@ export function SetupSection({ workspace }: SetupSectionProps) {
         <Button
           component={Link}
           to={`/api/ee/workspace-manager/${workspace.id}/config`}
-          leftSection={<Icon name="download" />}
+          leftSection={<FixedSizeIcon name="download" />}
         >
           {t`Download ${CONFIG_FILENAME}`}
         </Button>
