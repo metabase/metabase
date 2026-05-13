@@ -1434,11 +1434,11 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is May 1–31, 2024",
+      "CREATED_AT is May 1–31, 2027",
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Jan 1 – Dec 31, 2024",
+      "CREATED_AT is Jan 1 – Dec 31, 2027",
     );
 
     H.assertQueryBuilderRowCount(520);
@@ -1512,7 +1512,7 @@ describe("issue 54108 - nested question broken out by day", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Oct 11, 2023",
+      "CREATED_AT is Oct 11, 2026",
     );
 
     H.assertQueryBuilderRowCount(6);

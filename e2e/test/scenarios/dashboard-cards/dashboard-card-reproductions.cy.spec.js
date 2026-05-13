@@ -1675,10 +1675,10 @@ describe("issue 63416", () => {
         expect(sheet["A1"].v).to.eq("Created At: Month");
         expect(sheet["B1"].v).to.eq("Count");
 
-        expect(sheet["A2"].v).to.eq("January, 2024");
+        expect(sheet["A2"].v).to.eq("January, 2027");
         expect(sheet["B2"].v).to.eq(113);
 
-        expect(sheet["A3"].v).to.eq("February, 2024");
+        expect(sheet["A3"].v).to.eq("February, 2027");
         expect(sheet["B3"].v).to.eq(87);
 
         H.assertSheetRowsCount(28)(sheet);
