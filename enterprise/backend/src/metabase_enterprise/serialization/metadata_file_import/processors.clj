@@ -581,16 +581,14 @@
 (defn- mark-rows-at-depth!
   "Tag every still-untagged staging row whose `source_parent_id` and
   `source_fk_target_id` (when non-NULL) reference rows that already have
-  `depth < d`.
-
-  The EXISTS subqueries select from `(SELECT source_id, depth FROM
-  metabase_field_import)` derived tables rather than from
-  `metabase_field_import` directly. MySQL forbids the latter inside an
-  UPDATE whose target is the same table; the derived-table wrap is the
-  portable workaround."
+  `depth < d`."
   [d]
-  (let [derived-staging {:select [:source_id :depth]
-                         :from   [:metabase_field_import]}]
+  ;; MySQL forbids referencing the UPDATE's target table directly inside a
+  ;; subquery; wrap in a derived table there. PG/H2 accept the direct form.
+  (let [staging-source (case (mdb/db-type)
+                         :mysql {:select [:source_id :depth]
+                                 :from   [:metabase_field_import]}
+                         :metabase_field_import)]
     (t2/query
      {:update :metabase_field_import
       :set    {:depth d}
@@ -599,7 +597,7 @@
                [:or
                 [:= :metabase_field_import.source_parent_id nil]
                 [:exists {:select [[[:inline 1]]]
-                          :from   [[derived-staging :p]]
+                          :from   [[staging-source :p]]
                           :where  [:and
                                    [:= :p.source_id :metabase_field_import.source_parent_id]
                                    [:not= :p.depth nil]
@@ -607,7 +605,7 @@
                [:or
                 [:= :metabase_field_import.source_fk_target_id nil]
                 [:exists {:select [[[:inline 1]]]
-                          :from   [[derived-staging :f]]
+                          :from   [[staging-source :f]]
                           :where  [:and
                                    [:= :f.source_id :metabase_field_import.source_fk_target_id]
                                    [:not= :f.depth nil]
@@ -738,38 +736,41 @@
   staging on `source_parent_id → source_id` and reading the parent's
   `target_id`. Pre-condition: all prior-depth staging rows have `target_id`
   resolved (the depth walk processes lower depths first, so this is
-  guaranteed when called in order).
-
-  The SET subquery selects from a `(SELECT source_id, target_id FROM
-  metabase_field_import)` derived table for MySQL same-table-in-UPDATE
-  portability."
+  guaranteed when called in order)."
   [d]
-  (t2/query
-   {:update :metabase_field_import
-    :set    {:target_parent_id
-             {:select [:p.target_id]
-              :from   [[{:select [:source_id :target_id]
-                         :from   [:metabase_field_import]} :p]]
-              :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
-    :where  [:and
-             [:= :metabase_field_import.depth d]
-             [:not= :metabase_field_import.source_parent_id nil]]}))
+  ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
+  (let [parent-source (case (mdb/db-type)
+                        :mysql {:select [:source_id :target_id]
+                                :from   [:metabase_field_import]}
+                        :metabase_field_import)]
+    (t2/query
+     {:update :metabase_field_import
+      :set    {:target_parent_id
+               {:select [:p.target_id]
+                :from   [[parent-source :p]]
+                :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
+      :where  [:and
+               [:= :metabase_field_import.depth d]
+               [:not= :metabase_field_import.source_parent_id nil]]})))
 
 (defn fill-target-fk-target-ids-at-depth!
   "Populate `target_fk_target_id` for depth-`d` staging rows by self-joining
-  staging on `source_fk_target_id → source_id`. Same MySQL same-table
-  workaround as [[fill-target-parent-ids-at-depth!]]."
+  staging on `source_fk_target_id → source_id`."
   [d]
-  (t2/query
-   {:update :metabase_field_import
-    :set    {:target_fk_target_id
-             {:select [:f.target_id]
-              :from   [[{:select [:source_id :target_id]
-                         :from   [:metabase_field_import]} :f]]
-              :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
-    :where  [:and
-             [:= :metabase_field_import.depth d]
-             [:not= :metabase_field_import.source_fk_target_id nil]]}))
+  ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
+  (let [fk-source (case (mdb/db-type)
+                    :mysql {:select [:source_id :target_id]
+                            :from   [:metabase_field_import]}
+                    :metabase_field_import)]
+    (t2/query
+     {:update :metabase_field_import
+      :set    {:target_fk_target_id
+               {:select [:f.target_id]
+                :from   [[fk-source :f]]
+                :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
+      :where  [:and
+               [:= :metabase_field_import.depth d]
+               [:not= :metabase_field_import.source_fk_target_id nil]]})))
 
 (defn resolve-target-field-ids-at-depth!
   "Set `target_id` for depth-`d` staging rows by natural-key match against
