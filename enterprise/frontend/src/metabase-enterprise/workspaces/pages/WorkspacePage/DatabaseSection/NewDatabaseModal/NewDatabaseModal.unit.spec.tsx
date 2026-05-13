@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCreateWorkspaceDatabaseEndpoint,
@@ -15,13 +16,26 @@ import {
 
 import { NewDatabaseModal } from "./NewDatabaseModal";
 
-const TEST_DATABASE = createMockDatabase({
+const POSTGRES_DATABASE = createMockDatabase({
   id: 10,
   name: "Postgres",
-  features: ["schemas"],
+  features: ["schemas", "workspace"],
   tables: [
     createMockTable({ id: 100, db_id: 10, schema: "public", name: "orders" }),
   ],
+});
+
+const MYSQL_DATABASE = createMockDatabase({
+  id: 20,
+  name: "MySQL",
+  features: ["workspace"],
+  tables: [createMockTable({ id: 200, db_id: 20, schema: "", name: "people" })],
+});
+
+const UNSUPPORTED_DATABASE = createMockDatabase({
+  id: 30,
+  name: "Unsupported",
+  features: ["schemas"],
 });
 
 type SetupOpts = {
@@ -32,11 +46,11 @@ type SetupOpts = {
 
 function setup({
   workspace = createMockWorkspace(),
-  availableDatabases = [TEST_DATABASE],
+  availableDatabases = [POSTGRES_DATABASE],
   createdWorkspace = createMockWorkspace({
     databases: [
       createMockWorkspaceDatabase({
-        database_id: TEST_DATABASE.id,
+        database_id: POSTGRES_DATABASE.id,
         input_schemas: ["public"],
       }),
     ],
@@ -69,6 +83,58 @@ describe("NewDatabaseModal", () => {
     await userEvent.click(
       await screen.findByRole("option", { name: "public" }),
     );
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
+    );
+  });
+
+  it("renders a single database as text without a radio group", () => {
+    setup({ availableDatabases: [POSTGRES_DATABASE] });
+
+    expect(screen.getByText("Postgres")).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("disables radios for databases that do not support workspaces", () => {
+    setup({ availableDatabases: [POSTGRES_DATABASE, UNSUPPORTED_DATABASE] });
+
+    expect(screen.getByRole("radio", { name: "Postgres" })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /Unsupported/ })).toBeDisabled();
+  });
+
+  it("requires at least one schema when the database supports schemas", async () => {
+    const { onCreate } = setup({ availableDatabases: [POSTGRES_DATABASE] });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add database" }));
+
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(
+      fetchMock.callHistory.lastCall(
+        "path:/api/ee/workspace-manager/1/database",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("allows submitting without schemas when the database does not support schemas", async () => {
+    const createdWorkspace = createMockWorkspace({
+      databases: [
+        createMockWorkspaceDatabase({
+          database_id: MYSQL_DATABASE.id,
+          input_schemas: [],
+        }),
+      ],
+    });
+    const { onCreate } = setup({
+      availableDatabases: [MYSQL_DATABASE],
+      createdWorkspace,
+    });
+
+    expect(
+      screen.queryByLabelText("Schemas to include"),
+    ).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Add database" }));
 
     await waitFor(() =>

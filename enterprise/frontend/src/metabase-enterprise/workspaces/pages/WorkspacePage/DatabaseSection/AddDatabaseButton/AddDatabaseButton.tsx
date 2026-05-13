@@ -22,7 +22,7 @@ export function AddDatabaseButton({
   const selectableDatabases = availableDatabases.filter(
     (database) => !selectedIds.has(database.id),
   );
-  const errorMessage = getErrorMessage(selectableDatabases);
+  const errorMessage = getErrorMessage(availableDatabases, selectableDatabases);
   const isDisabled = errorMessage != null;
   const isEmpty = workspace.databases.length === 0;
 
@@ -49,11 +49,17 @@ export function AddDatabaseButton({
   );
 }
 
-function getErrorMessage(databases: Database[]): string | undefined {
-  if (databases.length === 0) {
+function getErrorMessage(
+  availableDatabases: Database[],
+  selectableDatabases: Database[],
+): string | undefined {
+  if (availableDatabases.length === 0) {
+    return t`There are no databases available.`;
+  }
+  if (selectableDatabases.length === 0) {
     return t`There are no more databases available.`;
   }
-  if (!databases.some(supportsWorkspaces)) {
+  if (!selectableDatabases.some(supportsWorkspaces)) {
     return t`None of the remaining databases support workspaces.`;
   }
   return undefined;
