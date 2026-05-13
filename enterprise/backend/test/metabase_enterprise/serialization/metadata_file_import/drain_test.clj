@@ -30,19 +30,24 @@
       (thunk))))
 
 (defn- staging-tables
-  "Return the contents of `metabase_table_import` ordered by `source_id`."
+  "Return the contents of `metabase_table_import` ordered by `source_id`.
+  HoneySQL (not raw SQL) so the `schema` column is dialect-quoted correctly
+  on MySQL/MariaDB, where `SCHEMA` is a reserved word."
   []
-  (t2/query "SELECT source_id, source_db_id, db_name, schema, name, description, display_name, target_id
-             FROM metabase_table_import ORDER BY source_id"))
+  (t2/query {:select   [:source_id :source_db_id :db_name :schema :name
+                        :description :display_name :target_id]
+             :from     [:metabase_table_import]
+             :order-by [[:source_id :asc]]}))
 
 (defn- staging-fields
   "Return the contents of `metabase_field_import` ordered by `source_id`."
   []
-  (t2/query "SELECT source_id, source_table_id, source_parent_id, source_fk_target_id,
-                    name, base_type, database_type, effective_type, semantic_type,
-                    coercion_strategy, description, nfc_path,
-                    depth, target_id, target_table_id, target_parent_id, target_fk_target_id
-             FROM metabase_field_import ORDER BY source_id"))
+  (t2/query {:select   [:source_id :source_table_id :source_parent_id :source_fk_target_id
+                        :name :base_type :database_type :effective_type :semantic_type
+                        :coercion_strategy :description :nfc_path
+                        :depth :target_id :target_table_id :target_parent_id :target_fk_target_id]
+             :from     [:metabase_field_import]
+             :order-by [[:source_id :asc]]}))
 
 (defn- batch
   "Wrap rows in `[line-num row]` tuples as the parser would emit."
@@ -54,7 +59,7 @@
   variant. For tests that don't care which production path runs."
   [databases-by-source-id tbl-batch]
   (with-open [^Connection conn (.getConnection (mdb/data-source))
-              ^PreparedStatement ps (.prepareStatement conn p/tables-insert-sql)]
+              ^PreparedStatement ps (.prepareStatement conn (p/tables-insert-sql))]
     (p/drain-tables-batch-jdbc! ps databases-by-source-id tbl-batch)))
 
 (defn- drain-fields!
@@ -62,7 +67,7 @@
   variant. For tests that don't care which production path runs."
   [fld-batch]
   (with-open [^Connection conn (.getConnection (mdb/data-source))
-              ^PreparedStatement ps (.prepareStatement conn p/fields-insert-sql)]
+              ^PreparedStatement ps (.prepareStatement conn (p/fields-insert-sql))]
     (p/drain-fields-batch-jdbc! ps fld-batch)))
 
 ;;; ============================== process-databases! ==============================
@@ -277,8 +282,8 @@
             jdbc      (snapshot-after!
                        (fn []
                          (with-open [^Connection conn (.getConnection (mdb/data-source))
-                                     ^PreparedStatement tps (.prepareStatement conn p/tables-insert-sql)
-                                     ^PreparedStatement fps (.prepareStatement conn p/fields-insert-sql)]
+                                     ^PreparedStatement tps (.prepareStatement conn (p/tables-insert-sql))
+                                     ^PreparedStatement fps (.prepareStatement conn (p/fields-insert-sql))]
                            (p/drain-tables-batch-jdbc! tps equivalence-databases-by-source-id tbl-batch)
                            (p/drain-fields-batch-jdbc! fps fld-batch))))
             pg-copy   (snapshot-after!

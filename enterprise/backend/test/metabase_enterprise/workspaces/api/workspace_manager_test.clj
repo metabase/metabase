@@ -78,12 +78,19 @@
         (mt/with-model-cleanup [:model/Workspace]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Schemaless"})]
-            (is (=? {:databases [{:database_id db-id
-                                  :input_schemas empty?
-                                  :status "provisioned"}]}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace-manager/" ws-id "/database")
-                                          {:database_id db-id :input_schemas []})))))))))
+            (try
+              (is (=? {:databases [{:database_id db-id
+                                    :input_schemas empty?
+                                    :status "provisioned"}]}
+                      (mt/user-http-request :crowberto :post 200
+                                            (str "ee/workspace-manager/" ws-id "/database")
+                                            {:database_id db-id :input_schemas []})))
+              (finally
+                ;; Drop the workspace-database row before the `with-temp` rollback
+                ;; tries to delete the underlying Database -- the pre-delete hook
+                ;; refuses to delete a Database with active workspace_database rows.
+                (mt/user-http-request :crowberto :delete 200
+                                      (str "ee/workspace-manager/" ws-id "/database/" db-id))))))))))
 
 (deftest metadata-export-test
   (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"

@@ -838,6 +838,15 @@
                                          schema username))
               (.addBatch ^Statement stmt
                          ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              ;; `grant-workspace-read-access!` issues `ALTER DEFAULT PRIVILEGES IN SCHEMA <s>
+              ;; GRANT SELECT ON TABLES TO <iso-user>` on every input schema. Those default-priv
+              ;; entries are owned by the granting role (metabase_ci) but reference the iso-user;
+              ;; without an explicit REVOKE here, `DROP USER` fails with "cannot be dropped
+              ;; because some objects depend on it / privileges for default privileges on new
+              ;; relations belonging to user <grantor> in schema <input-schema>".
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
                                          schema username)))
             ;; Only revoke default privileges if both user and schema exist
             (when schema-exists

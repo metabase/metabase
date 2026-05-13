@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml])
   (:import
@@ -259,24 +260,31 @@
                                                 :output_namespace "WS_ALICE"}}}]
       (is (true? (advanced-config.file.workspace/valid-workspace-section? section))))
     (testing "loader expands stored output_namespace into {:db <details.db>, :schema <ns>}"
-      (mt/with-empty-h2-app-db!
-        (mt/with-temp [:model/Database {db-id :id} {:name "snowflake-prod" :engine :snowflake :details {:db "ANALYTICS"}}]
-          (advanced-config.file.workspace/apply-workspace-section!
-           {:name "ws"
-            :databases {:snowflake-prod {:input_schemas    ["PUBLIC"]
-                                         :output_namespace "WS_ALICE"}}})
-          (is (= {:db "ANALYTICS" :schema "WS_ALICE"} (ws/db-workspace-namespace db-id))
-              "reader returns the full {:db, :schema} namespace; :db comes from details"))))))
+      ;; `apply-workspace-section!` calls `engine-namespace-positions`, which routes
+      ;; through `driver/qualified-name-components` and triggers a driver-load. On the
+      ;; default Enterprise classpath the Snowflake driver isn't loaded; skip the
+      ;; round-trip half of this test when the driver isn't on the test classpath.
+      (when (workspaces.tu/driver-loadable? :snowflake)
+        (mt/with-empty-h2-app-db!
+          (mt/with-temp [:model/Database {db-id :id} {:name "snowflake-prod" :engine :snowflake :details {:db "ANALYTICS"}}]
+            (advanced-config.file.workspace/apply-workspace-section!
+             {:name "ws"
+              :databases {:snowflake-prod {:input_schemas    ["PUBLIC"]
+                                           :output_namespace "WS_ALICE"}}})
+            (is (= {:db "ANALYTICS" :schema "WS_ALICE"} (ws/db-workspace-namespace db-id))
+                "reader returns the full {:db, :schema} namespace; :db comes from details")))))))
 
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project from details, dataset from output_namespace"
-    (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
-        (advanced-config.file.workspace/apply-workspace-section!
-         {:name "ws"
-          :databases {:bq-prod {:input_schemas    ["core"]
-                                :output_namespace "ws_alice"}}})
-        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
+    ;; Same skip-rationale as snowflake-3-slot-section-test: driver-load required.
+    (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:bq-prod {:input_schemas    ["core"]
+                                  :output_namespace "ws_alice"}}})
+          (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
 ;;;
@@ -361,10 +369,16 @@
             (is (true? (advanced-config.file.workspace/valid-workspace-section? section))
                 (str driver " fixture must satisfy the section spec")))
           (testing "round-trips through apply-workspace-section! into the atom"
-            (mt/with-empty-h2-app-db!
-              (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
-                                                          :engine  (:engine expectations)
-                                                          :details (:details expectations)}]
-                (advanced-config.file.workspace/apply-workspace-section! section)
-                (is (= (:expanded-output expectations) (ws/db-workspace-namespace db-id))
-                    (str driver " atom output matches fixture"))))))))))
+            ;; The round-trip step requires the driver to be loadable because
+            ;; `apply-workspace-section!` -> `expand-output` -> `engine-namespace-positions`
+            ;; -> `driver/qualified-name-components` triggers driver-load. Skip drivers
+            ;; absent from the current classpath (e.g. Snowflake/BigQuery on the
+            ;; default Enterprise OSS run).
+            (when (workspaces.tu/driver-loadable? (:engine expectations))
+              (mt/with-empty-h2-app-db!
+                (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
+                                                            :engine  (:engine expectations)
+                                                            :details (:details expectations)}]
+                  (advanced-config.file.workspace/apply-workspace-section! section)
+                  (is (= (:expanded-output expectations) (ws/db-workspace-namespace db-id))
+                      (str driver " atom output matches fixture")))))))))))

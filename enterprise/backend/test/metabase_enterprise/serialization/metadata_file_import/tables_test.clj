@@ -25,9 +25,10 @@
          overrides))
 
 (defn- staging-rows-by-source-id []
+  ;; HoneySQL (not raw SQL) so `schema` is dialect-quoted correctly on MySQL.
   (into {} (map (juxt :source_id identity))
-        (t2/query "SELECT source_id, db_name, schema, name, description, target_id
-                   FROM metabase_table_import")))
+        (t2/query {:select [:source_id :db_name :schema :name :description :target_id]
+                   :from   [:metabase_table_import]})))
 
 ;;; ============================== resolve-target-table-ids ==============================
 

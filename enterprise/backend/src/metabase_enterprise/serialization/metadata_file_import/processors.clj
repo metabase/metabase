@@ -162,16 +162,23 @@
 ;;; the t2/insert! + HoneySQL VALUES formatting overhead — measured ~15×
 ;;; slower per row than PG's COPY floor on multi-million-row drains.
 
-(def tables-insert-sql
+(defn tables-insert-sql
   "Parameterized INSERT for `metabase_table_import`. Column order matches the
-  `set*-batch!` parameter-binding order in [[drain-tables-batch-jdbc!]]."
+  `set*-batch!` parameter-binding order in [[drain-tables-batch-jdbc!]].
+
+  `schema` is a reserved word in MySQL/MariaDB; dialect-quoted via
+  `mdb/quote-for-application-db` so the same SQL builder works on PG / H2 /
+  MySQL."
+  []
   (str "INSERT INTO metabase_table_import"
-       " (source_id, source_db_id, db_name, schema, name, description, display_name)"
+       " (source_id, source_db_id, db_name, " (mdb/quote-for-application-db "schema")
+       ", name, description, display_name)"
        " VALUES (?, ?, ?, ?, ?, ?, ?)"))
 
-(def fields-insert-sql
+(defn fields-insert-sql
   "Parameterized INSERT for `metabase_field_import`. Column order matches the
   `set*-batch!` parameter-binding order in [[drain-fields-batch-jdbc!]]."
+  []
   (str "INSERT INTO metabase_field_import"
        " (source_id, source_table_id, source_parent_id, source_fk_target_id,"
        "  name, base_type, database_type, effective_type, semantic_type,"
@@ -470,7 +477,13 @@
   rows PG cannot plan `NOT IN (subquery)` well (NULL-semantics force
   full-materialization of the inner set) and the query effectively
   never terminates. NOT EXISTS resolves to a proper anti-join via the
-  PK index on `source_id`, O(N log N) instead of O(N²)."
+  PK index on `source_id`, O(N log N) instead of O(N²).
+
+  The inner FROM is a `(SELECT source_id FROM ...)` derived table so the
+  predicate stays valid when used inside an UPDATE on
+  `metabase_field_import` — MySQL forbids referencing the UPDATE's target
+  table directly in a subquery; the derived-table wrap defeats that
+  restriction. PG/H2 inline the wrap away."
   [column-key]
   ;; Inner subquery aliased as `:s` so the unqualified column-key in
   ;; the inner WHERE has to qualify to the outer table — both tables
@@ -480,7 +493,8 @@
      [:not= column-key nil]
      [:not [:exists
             {:select [[[:inline 1]]]
-             :from   [[:metabase_field_import :s]]
+             :from   [[{:select [:source_id]
+                        :from   [:metabase_field_import]} :s]]
              :where  [:= :s.source_id outer-col]}]]]))
 
 (defn- orphan-count
@@ -569,27 +583,33 @@
   `source_fk_target_id` (when non-NULL) reference rows that already have
   `depth < d`."
   [d]
-  (t2/query
-   {:update :metabase_field_import
-    :set    {:depth d}
-    :where  [:and
-             [:= :metabase_field_import.depth nil]
-             [:or
-              [:= :metabase_field_import.source_parent_id nil]
-              [:exists {:select [[[:inline 1]]]
-                        :from   [[:metabase_field_import :p]]
-                        :where  [:and
-                                 [:= :p.source_id :metabase_field_import.source_parent_id]
-                                 [:not= :p.depth nil]
-                                 [:< :p.depth d]]}]]
-             [:or
-              [:= :metabase_field_import.source_fk_target_id nil]
-              [:exists {:select [[[:inline 1]]]
-                        :from   [[:metabase_field_import :f]]
-                        :where  [:and
-                                 [:= :f.source_id :metabase_field_import.source_fk_target_id]
-                                 [:not= :f.depth nil]
-                                 [:< :f.depth d]]}]]]}))
+  ;; MySQL forbids referencing the UPDATE's target table directly inside a
+  ;; subquery; wrap in a derived table there. PG/H2 accept the direct form.
+  (let [staging-source (case (mdb/db-type)
+                         :mysql {:select [:source_id :depth]
+                                 :from   [:metabase_field_import]}
+                         :metabase_field_import)]
+    (t2/query
+     {:update :metabase_field_import
+      :set    {:depth d}
+      :where  [:and
+               [:= :metabase_field_import.depth nil]
+               [:or
+                [:= :metabase_field_import.source_parent_id nil]
+                [:exists {:select [[[:inline 1]]]
+                          :from   [[staging-source :p]]
+                          :where  [:and
+                                   [:= :p.source_id :metabase_field_import.source_parent_id]
+                                   [:not= :p.depth nil]
+                                   [:< :p.depth d]]}]]
+               [:or
+                [:= :metabase_field_import.source_fk_target_id nil]
+                [:exists {:select [[[:inline 1]]]
+                          :from   [[staging-source :f]]
+                          :where  [:and
+                                   [:= :f.source_id :metabase_field_import.source_fk_target_id]
+                                   [:not= :f.depth nil]
+                                   [:< :f.depth d]]}]]]})))
 
 (defn- untagged-staging-row-count
   "Number of `metabase_field_import` rows still at `depth IS NULL`. Used as
@@ -718,29 +738,39 @@
   resolved (the depth walk processes lower depths first, so this is
   guaranteed when called in order)."
   [d]
-  (t2/query
-   {:update :metabase_field_import
-    :set    {:target_parent_id
-             {:select [:p.target_id]
-              :from   [[:metabase_field_import :p]]
-              :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
-    :where  [:and
-             [:= :metabase_field_import.depth d]
-             [:not= :metabase_field_import.source_parent_id nil]]}))
+  ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
+  (let [parent-source (case (mdb/db-type)
+                        :mysql {:select [:source_id :target_id]
+                                :from   [:metabase_field_import]}
+                        :metabase_field_import)]
+    (t2/query
+     {:update :metabase_field_import
+      :set    {:target_parent_id
+               {:select [:p.target_id]
+                :from   [[parent-source :p]]
+                :where  [:= :p.source_id :metabase_field_import.source_parent_id]}}
+      :where  [:and
+               [:= :metabase_field_import.depth d]
+               [:not= :metabase_field_import.source_parent_id nil]]})))
 
 (defn fill-target-fk-target-ids-at-depth!
   "Populate `target_fk_target_id` for depth-`d` staging rows by self-joining
   staging on `source_fk_target_id → source_id`."
   [d]
-  (t2/query
-   {:update :metabase_field_import
-    :set    {:target_fk_target_id
-             {:select [:f.target_id]
-              :from   [[:metabase_field_import :f]]
-              :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
-    :where  [:and
-             [:= :metabase_field_import.depth d]
-             [:not= :metabase_field_import.source_fk_target_id nil]]}))
+  ;; Same MySQL same-table-in-UPDATE workaround as [[mark-rows-at-depth!]].
+  (let [fk-source (case (mdb/db-type)
+                    :mysql {:select [:source_id :target_id]
+                            :from   [:metabase_field_import]}
+                    :metabase_field_import)]
+    (t2/query
+     {:update :metabase_field_import
+      :set    {:target_fk_target_id
+               {:select [:f.target_id]
+                :from   [[fk-source :f]]
+                :where  [:= :f.source_id :metabase_field_import.source_fk_target_id]}}
+      :where  [:and
+               [:= :metabase_field_import.depth d]
+               [:not= :metabase_field_import.source_fk_target_id nil]]})))
 
 (defn resolve-target-field-ids-at-depth!
   "Set `target_id` for depth-`d` staging rows by natural-key match against
