@@ -223,22 +223,38 @@ export function ExplicitSize<T>({
         );
       }
 
-      __updateSize = () => {
+      __updateSize = (entry?: ResizeObserverEntry) => {
         const element = this._getElement();
-        if (element) {
-          const { width, height } = element.getBoundingClientRect();
+        if (!element) {
+          return;
+        }
 
-          if (!width && !height) {
-            // cypress raises lots of errors in timeline trying to call setState
-            // on the unmounted element, so we're just ignoring
-            return;
-          }
+        // ResizeObserver delivers the new dimensions on the entry. Reading them
+        // is free — they were measured during the same frame's layout pass.
+        // Calling getBoundingClientRect() inside our throttled callback runs
+        // a frame later, when style has been re-invalidated by React renders
+        // happening in parallel; that forces a synchronous re-layout
+        // (~100ms+ with many charts on screen). Prefer the entry when present.
+        let width: number;
+        let height: number;
+        if (entry && entry.target === element) {
+          const box = entry.borderBoxSize?.[0];
+          width = box ? box.inlineSize : entry.contentRect.width;
+          height = box ? box.blockSize : entry.contentRect.height;
+        } else {
+          const rect = element.getBoundingClientRect();
+          width = rect.width;
+          height = rect.height;
+        }
 
-          if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height }, () =>
-              this.props?.onUpdateSize?.(),
-            );
-          }
+        if (!width && !height) {
+          // cypress raises lots of errors in timeline trying to call setState
+          // on the unmounted element, so we're just ignoring
+          return;
+        }
+
+        if (this.state.width !== width || this.state.height !== height) {
+          this.setState({ width, height }, () => this.props?.onUpdateSize?.());
         }
       };
       render() {

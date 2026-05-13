@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
@@ -723,18 +723,35 @@ export function getTimeSeriesXAxisModel(
   // ECharts, when selecting chart ticks, can use either the browser timezone or UTC when `useUTC` is true.
   // Although the dataset values are placed in the right place, ticks would look shifted based on where the user is from.
   // So as a workaround we enable useUTC option and shift all dates like they are in UTC timezone.
+  //
+  // For named IANA timezones, dayjs's .tz() goes through Date.prototype.toLocaleString, which is
+  // a slow native call (see https://github.com/iamkun/dayjs/issues/1236). On charts with many data
+  // points it dominates the axis-rendering cost. Cache the offset per UTC day so we can take the
+  // fast date.add(offsetMinutes, "minute") path on the second-and-later call for each day.
+  const OFFSET_CACHE_BUCKET_MS = 24 * 60 * 60 * 1000;
+  const offsetMinutesByUtcDay = new Map<number, number>();
+  const getCachedOffsetMinutes = (date: Dayjs): number => {
+    const dayKey = Math.floor(date.valueOf() / OFFSET_CACHE_BUCKET_MS);
+    const cached = offsetMinutesByUtcDay.get(dayKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const computed = date.tz(timezone).utcOffset();
+    offsetMinutesByUtcDay.set(dayKey, computed);
+    return computed;
+  };
+
+  // Safari doesn't support offset-based timezones (e.g., "+07:00") in the Date object,
+  // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
+  // when an offset is provided. Otherwise, we resolve the IANA offset via the cache above.
   const toEChartsAxisValue = (value: RowValue) => {
     const date = tryGetDate(value);
     if (!date) {
       return null;
     }
-
-    // Safari doesn't support offset-based timezones (e.g., "+07:00") in the Date object,
-    // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
-    // when an offset is provided. Otherwise, we use Day.js timezone conversion.
-    return offsetMinutes != null
-      ? date.add(offsetMinutes, "minute").format()
-      : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
+    const minutes =
+      offsetMinutes != null ? offsetMinutes : getCachedOffsetMinutes(date);
+    return date.add(minutes, "minute").format();
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);
