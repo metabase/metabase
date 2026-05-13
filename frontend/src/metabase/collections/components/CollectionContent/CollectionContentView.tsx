@@ -276,11 +276,19 @@ export const CollectionContentView = ({
             setCollection({ model: "collection", id: collectionId }, { id })
           }
           onDeletePermanently={async () => {
-            await deleteCollection({ id: collectionId }).unwrap();
-            dispatch(push("/trash"));
-            dispatch(
-              addUndo({ message: t`This item has been permanently deleted.` }),
-            );
+            try {
+              await deleteCollection({ id: collectionId }).unwrap();
+              dispatch(push("/trash"));
+              dispatch(
+                addUndo({ message: t`This item has been permanently deleted.` }),
+              );
+            } catch {
+              dispatch(
+                addUndo({
+                  message: t`There was an error permanently deleting this item.`,
+                }),
+              );
+            }
           }}
         />
       )}
