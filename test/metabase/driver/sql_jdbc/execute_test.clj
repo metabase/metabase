@@ -227,7 +227,7 @@
       ;; before it gets to `do-with-resolved-connection-data-source`.
       (with-redefs [h2/check-read-only-statements (fn [_query] nil)
                     sql-jdbc.execute/do-with-resolved-connection-data-source
-                    (fn [driver db-or-id-or-spec options]
+                    (fn [_driver _db-or-id-or-spec _options]
                       (reify javax.sql.DataSource
                         (getConnection [_]
                           (throw (java.sql.SQLException. "connection error")))))]
