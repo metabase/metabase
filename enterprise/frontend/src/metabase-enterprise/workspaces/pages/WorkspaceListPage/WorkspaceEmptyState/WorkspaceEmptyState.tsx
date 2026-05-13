@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Card,
-  Center,
   FixedSizeIcon,
   Group,
   Stack,
@@ -37,56 +36,54 @@ export function WorkspaceEmptyState() {
   };
 
   return (
-    <Center h="100%" pb="7rem">
-      <Card p="xl" maw="40rem" shadow="none" withBorder>
-        <Box p="md">
-          <Title
-            order={3}
-            mb="sm"
-          >{t`Isolated spaces for agents and developers`}</Title>
-          <Text c="text-secondary" mb="sm">
-            {t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
-          </Text>
-          <Text c="text-secondary" mb="md">
-            {
-              // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-              t`Create a workspace here, or with Metabase’s CLI. That will set up an isolated sandbox with a dedicated schema and database user in the data warehouse(s) you choose.`
-            }
-          </Text>
-          <Box pb="xl">
-            <Button variant="filled" onClick={open}>
-              {t`Create a workspace`}
-            </Button>
-          </Box>
-          {(showFileBasedDevLink || showRemoteSyncLink) && (
-            <Group pt="md" gap="sm" align="stretch">
-              {showFileBasedDevLink && (
-                <DocsLink
-                  title={t`File-based development`}
-                  description={t`How to use the CLI to develop content locally.`}
-                  link={fileBasedDevDocsUrl}
-                />
-              )}
-              {showRemoteSyncLink && (
-                <DocsLink
-                  title={t`Using remote sync`}
-                  description={
-                    // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
-                    t`How to sync and review Metabase content with git.`
-                  }
-                  link={remoteSyncDocsUrl}
-                />
-              )}
-            </Group>
-          )}
+    <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
+      <Box p="md">
+        <Title
+          order={3}
+          mb="sm"
+        >{t`Isolated spaces for agents and developers`}</Title>
+        <Text c="text-secondary" mb="sm">
+          {t`Develop and run transforms, and build your semantic layer without touching your production tables.`}
+        </Text>
+        <Text c="text-secondary" mb="md">
+          {
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
+            t`Create a workspace here, or with Metabase’s CLI. That will set up an isolated sandbox with a dedicated schema and database user in the data warehouse(s) you choose.`
+          }
+        </Text>
+        <Box pb="xl">
+          <Button variant="filled" onClick={open}>
+            {t`Create a workspace`}
+          </Button>
         </Box>
-        <NewWorkspaceModal
-          opened={opened}
-          onCreate={handleCreate}
-          onClose={close}
-        />
-      </Card>
-    </Center>
+        {(showFileBasedDevLink || showRemoteSyncLink) && (
+          <Group pt="md" gap="sm" align="stretch">
+            {showFileBasedDevLink && (
+              <DocsLink
+                title={t`File-based development`}
+                description={t`How to use the CLI to develop content locally.`}
+                link={fileBasedDevDocsUrl}
+              />
+            )}
+            {showRemoteSyncLink && (
+              <DocsLink
+                title={t`Using remote sync`}
+                description={
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- referring to the product name is intentional
+                  t`How to sync and review Metabase content with git.`
+                }
+                link={remoteSyncDocsUrl}
+              />
+            )}
+          </Group>
+        )}
+      </Box>
+      <NewWorkspaceModal
+        opened={opened}
+        onCreate={handleCreate}
+        onClose={close}
+      />
+    </Card>
   );
 }
 
@@ -106,8 +103,8 @@ function DocsLink({ title, description, link }: DocsLinkProps) {
       rel="noreferrer"
       p="md"
       bdrs="md"
-      flex="1 1 auto"
-      miw="15rem"
+      flex="1"
+      miw="16rem"
     >
       <Group gap="sm" wrap="nowrap" align="flex-start">
         <FixedSizeIcon c="brand" name="reference" />

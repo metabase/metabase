@@ -65,10 +65,12 @@ function WorkspaceListPageBody({
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
         actions={
-          <Group gap="sm">
-            <NewWorkspaceButton />
-            {hasWorkspaces && <WorkspaceHelpMenu />}
-          </Group>
+          hasWorkspaces && (
+            <Group gap="sm">
+              <NewWorkspaceButton />
+              <WorkspaceHelpMenu />
+            </Group>
+          )
         }
         py={0}
       />
