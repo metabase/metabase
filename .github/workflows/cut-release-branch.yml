@@ -136,6 +136,45 @@ jobs:
               throw err;
             }
 
+      # Log the cut on stats.metabase.com so the release timeline picks it up.
+      # timeline_id 14 = the major releases timeline.
+      - name: Create stats Timeline event
+        id: timeline
+        continue-on-error: true
+        env:
+          STATS_API_KEY: ${{ secrets.STATS_API_KEY }}
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const next = '${{ steps.preflight.outputs.next }}';
+            const name = `x.${next}.0`;
+
+            const res = await fetch('https://stats.metabase.com/api/timeline-event', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.STATS_API_KEY,
+              },
+              body: JSON.stringify({
+                name,
+                description: 'Beta',
+                timestamp: new Date().toISOString(),
+                timeline_id: 14,
+                icon: 'star',
+                timezone: 'US/Pacific',
+                time_matters: false,
+                archived: false,
+                source: 'collections',
+              }),
+            });
+
+            if (!res.ok) {
+              const body = await res.text();
+              throw new Error(`Timeline event creation failed (${res.status}): ${body}`);
+            }
+
+            console.log(`Created timeline event ${name}`);
+
       - name: Notify Slack
         uses: actions/github-script@v7
         env:
@@ -149,6 +188,7 @@ jobs:
             const sha = '${{ steps.cut.outputs.sha }}';
             const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
             const labelFailed = '${{ steps.label.outcome }}' === 'failure';
+            const timelineFailed = '${{ steps.timeline.outcome }}' === 'failure';
             const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
 
             const owner = context.repo.owner;
@@ -165,6 +205,9 @@ jobs:
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
               labelFailed
                 ? `:warning: Creating label \`Bug:v${next}\` failed — please create it manually: <https://github.com/${owner}/${repo}/labels|Repository labels>`
+                : null,
+              timelineFailed
+                ? `:warning: Logging the cut to the <https://stats.metabase.com|stats> release timeline failed — please add an \`x.${next}.0\` event manually.`
                 : null,
               needsReqs
                 ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
