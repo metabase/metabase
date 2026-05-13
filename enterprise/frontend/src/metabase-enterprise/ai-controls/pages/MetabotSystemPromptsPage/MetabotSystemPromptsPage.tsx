@@ -21,7 +21,7 @@ type SystemPromptPageProps = {
 
 function SystemPromptPage(props: SystemPromptPageProps) {
   const { title, description, settingKey } = props;
-  const { handleInputChange, handleBlur, inputValue } =
+  const { handleInputChange, handleFocus, handleBlur, inputValue } =
     useAdminSettingWithBlurInput(settingKey);
 
   return (
@@ -40,6 +40,7 @@ function SystemPromptPage(props: SystemPromptPageProps) {
         }}
         onBlur={handleBlur}
         onChange={(e) => handleInputChange(e.target.value)}
+        onFocus={handleFocus}
         placeholder={getPlaceholder()}
         value={inputValue || ""}
       />
@@ -50,14 +51,6 @@ function SystemPromptPage(props: SystemPromptPageProps) {
 const getPlaceholder = () => {
   return (
     t`# Here's a section` +
-    "\n" +
-    t`1. Do this` +
-    "\n" +
-    t`2. And this` +
-    "\n" +
-    t`3. And lastly, this` +
-    "\n\n" +
-    t`# Here's another section` +
     "\n" +
     t`1. Do this` +
     "\n" +

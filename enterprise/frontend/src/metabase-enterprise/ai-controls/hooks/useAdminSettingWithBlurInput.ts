@@ -21,6 +21,7 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
   const [inputValue, setInputValue] =
     useState<EnterpriseSettings[K]>(settingValue);
   const lastSavedRef = useRef<EnterpriseSettings[K] | undefined>(undefined);
+  const isFocusedRef = useRef(false);
 
   // `lastSavedRef.current === undefined` is the "not yet initialized" sentinel.
   useEffect(() => {
@@ -30,10 +31,16 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
     }
   }, [settingValue]);
 
-  const isDirty = inputValue !== lastSavedRef.current;
+  // Treat null/undefined/"" as equivalent so a stray onChange event (e.g.
+  // Mantine syncing a controlled input with `value={null}`) doesn't mark the
+  // setting dirty when the user hasn't actually changed anything.
+  const isDirty = (inputValue ?? "") !== (lastSavedRef.current ?? "");
 
   const save = useCallback(() => {
-    if (!isDirty) {
+    // Only save while the field is part of an active focus session: real user
+    // input always happens between focus and blur. Outside that window (unmount
+    // long after blur, stray onChange events), skip the save.
+    if (!isFocusedRef.current || !isDirty) {
       return;
     }
     lastSavedRef.current = inputValue;
@@ -53,8 +60,15 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
   // Browsers won't wait for async saves during unload, so prompt the user.
   useBeforeUnload(isDirty);
 
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true;
+  }, []);
+
   const handleBlur = useCallback(() => {
+    // Run save while still considered focused, then clear the flag so a later
+    // unmount won't save again.
     saveRef.current();
+    isFocusedRef.current = false;
   }, []);
 
   // Persist a pending edit on SPA navigation away.
@@ -67,6 +81,7 @@ export function useAdminSettingWithBlurInput<K extends EnterpriseSettingKey>(
   return {
     inputValue,
     handleInputChange: setInputValue,
+    handleFocus,
     handleBlur,
   };
 }
