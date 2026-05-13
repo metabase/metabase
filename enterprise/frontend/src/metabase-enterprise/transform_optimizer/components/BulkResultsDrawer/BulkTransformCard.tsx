@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
+import { useGetTransformQuery } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Anchor,
@@ -24,6 +25,7 @@ import {
 import type { Proposal } from "../../types";
 import { ProposalCard } from "../ProposalCard";
 import {
+  getNativeSql,
   groupProposalsByDependency,
   reportVerify,
   resolveDependencyNames,
@@ -33,6 +35,19 @@ import { ProposalGroup } from "../TransformOptimizerSection/ProposalGroup";
 
 type Props = {
   entry: BulkOptimizeDoneEntry;
+  /**
+   * Index names that have already been accepted somewhere in this bulk
+   * batch — index proposals matching one of these are auto-dismissed
+   * from this card so the user doesn't see the same `CREATE INDEX`
+   * twice across transforms that share a hot table.
+   */
+  acceptedIndexNames: Set<string>;
+  /**
+   * Called when this card accepts an index proposal so other cards can
+   * dedup against it. The `indexName` is `ddl_statement.index_name`,
+   * which the BE assigns at validation time.
+   */
+  onIndexAccepted: (indexName: string) => void;
 };
 
 /**
@@ -47,8 +62,18 @@ type Props = {
  *     hide them on the client so the card empties out naturally.
  *   - `busyProposalId` — which proposal's button should show a spinner.
  */
-export function BulkTransformCard({ entry }: Props) {
+export function BulkTransformCard({
+  entry,
+  acceptedIndexNames,
+  onIndexAccepted,
+}: Props) {
   const { transform, summary, proposals, optimization_degree } = entry;
+  // The bulk endpoint doesn't return the compiled SQL — fetch the full
+  // Transform object so ProposalCard can render a line-diff instead of
+  // the raw proposed body. RTK Query will hit the cache populated by the
+  // transforms list query without a network round-trip in the common case.
+  const { data: fullTransform } = useGetTransformQuery(transform.id);
+  const currentSql = fullTransform ? getNativeSql(fullTransform) : null;
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [verify, verifyResult] = useVerifyProposalMutation();
   const [accept, acceptResult] = useAcceptProposalMutation();
@@ -56,8 +81,21 @@ export function BulkTransformCard({ entry }: Props) {
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
 
   const visibleProposals = useMemo(
-    () => proposals.filter((p) => !dismissed.has(p.id)),
-    [proposals, dismissed],
+    () =>
+      proposals.filter((p) => {
+        if (dismissed.has(p.id)) {
+          return false;
+        }
+        // Drop any index proposal whose physical index has already been
+        // accepted by another card in this batch — accepting again would
+        // just hit `IF NOT EXISTS` and clutter the UI.
+        const idxName = p.ddl_statement?.index_name;
+        if (idxName && acceptedIndexNames.has(idxName)) {
+          return false;
+        }
+        return true;
+      }),
+    [proposals, dismissed, acceptedIndexNames],
   );
 
   const dismissOne = (id: string) =>
@@ -116,6 +154,14 @@ export function BulkTransformCard({ entry }: Props) {
     }
     for (const id of proposalIds) {
       dismissOne(id);
+      // Tell sibling cards this index is now installed so they drop their
+      // duplicate. Non-index proposals have no `index_name` so the check
+      // is a cheap no-op for rewrites / precomputes.
+      const accepted = proposals.find((p) => p.id === id);
+      const idxName = accepted?.ddl_statement?.index_name;
+      if (idxName) {
+        onIndexAccepted(idxName);
+      }
     }
   };
 
@@ -172,6 +218,7 @@ export function BulkTransformCard({ entry }: Props) {
                       <ProposalCard
                         key={proposal.id}
                         proposal={proposal}
+                        currentSql={currentSql}
                         dependencyNames={dependencyNames}
                         actions={{
                           accept: {

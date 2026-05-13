@@ -8,10 +8,10 @@ import {
   Box,
   Card,
   Divider,
-  Drawer,
   Group,
   Icon,
   Loader,
+  Modal,
   Progress,
   ScrollArea,
   Stack,
@@ -123,12 +123,45 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
   const pending = (data?.pending ?? []).length;
   const isRunning = pending > 0;
 
+  // Cross-card dedup for identical index proposals. The optimizer often
+  // emits the same `CREATE INDEX IF NOT EXISTS idx_events_customer_id …`
+  // across multiple transforms that reference the same hot table; once any
+  // one is accepted, the rest are no-ops. We key on `ddl_statement.index_name`
+  // which the BE assigns at validation time, so the comparison is stable
+  // across both `source-db` and `transform-target` targets.
+  const [acceptedIndexNames, setAcceptedIndexNames] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const handleIndexAccepted = useCallback((indexName: string) => {
+    setAcceptedIndexNames((prev) => {
+      if (prev.has(indexName)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(indexName);
+      return next;
+    });
+  }, []);
+  // Reset the dedup set when a fresh bulk run starts so previously accepted
+  // indexes don't pre-suppress the next batch.
+  useEffect(() => {
+    setAcceptedIndexNames(new Set());
+  }, [data?.started_at]);
+
   return (
-    <Drawer
+    <Modal
       opened={opened}
       onClose={onClose}
-      position="right"
-      size="lg"
+      centered
+      // The drawer used to be a side panel — wide enough for proposal
+      // cards but cramped for the SQL diffs. Centered modal at 80vw / 90vh
+      // gives breathing room for several proposals side by side.
+      size="80%"
+      // Outer chrome padding — Mantine applies this to the modal body
+      // including the title row, so the bolt icon / heading sit inside
+      // the same gutter as the content below. Inner sections then only
+      // need vertical spacing between siblings.
+      padding="xl"
       title={
         <Group gap="sm">
           <Icon name="bolt" />
@@ -137,25 +170,25 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
       }
     >
       {isLoading && !data ? (
-        <Group p="md" justify="center">
+        <Group justify="center" py="md">
           <Loader size="sm" />
         </Group>
       ) : total === 0 ? (
-        <Box p="md">
+        <Box>
           <Text c="text-secondary">
             {t`No bulk-optimize run has been kicked off yet.`}
           </Text>
         </Box>
       ) : (
-        <Stack gap="md">
+        <Stack gap="lg">
           <BulkProgressHeader
             data={data!}
             settled={settled}
             isRunning={isRunning}
           />
           <Divider />
-          <ScrollArea h="calc(100vh - 200px)" type="auto" offsetScrollbars>
-            <Stack p="md" gap="md">
+          <ScrollArea h="calc(90vh - 200px)" type="auto" offsetScrollbars>
+            <Stack gap="md" pr="md">
               {doneEntries.length === 0 && !isRunning ? (
                 <Text c="text-secondary">{t`No transforms completed yet.`}</Text>
               ) : (
@@ -163,6 +196,8 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
                   <BulkTransformCard
                     key={entry.transform.id}
                     entry={entry}
+                    acceptedIndexNames={acceptedIndexNames}
+                    onIndexAccepted={handleIndexAccepted}
                   />
                 ))
               )}
@@ -177,7 +212,7 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
           </ScrollArea>
         </Stack>
       )}
-    </Drawer>
+    </Modal>
   );
 }
 
@@ -195,7 +230,7 @@ function BulkProgressHeader({
   const failedCount = Object.keys(data.failed).length;
 
   return (
-    <Stack px="md" pt="md" gap="xs">
+    <Stack gap="xs">
       <Group justify="space-between" wrap="nowrap">
         <Text fw="bold">
           {isRunning

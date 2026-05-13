@@ -301,7 +301,7 @@ function TriggerButton({
  * declared opaque to TS — those fields exist on the wire but are hidden
  * from the type system.
  */
-function getNativeSql(transform: Transform): string | null {
+export function getNativeSql(transform: Transform): string | null {
   const source = transform.source as unknown as {
     type?: string;
     query?: {
