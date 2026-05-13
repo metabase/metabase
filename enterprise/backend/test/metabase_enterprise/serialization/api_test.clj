@@ -706,8 +706,13 @@
                   before-fields (t2/count :model/Field :table_id t-id)]
               (is (= {:queued true} (import-metadata! exported)))
               ;; The import endpoint hands the file off to an agent and returns
-              ;; immediately. Block until the agent has drained it.
+              ;; immediately. Block until the agent has drained it, then assert
+              ;; the agent didn't silently swallow an exception (without this
+              ;; check, the row-count assertions below would falsely pass on a
+              ;; failed re-import since nothing would have changed).
               (await @#'metadata-file-import/import-agent)
+              (is (= :ok (:status (:last-result @@#'metadata-file-import/import-state)))
+                  "agent finished the import successfully")
               (testing "no rows are added by re-importing the same payload"
                 (is (= before-tables (t2/count :model/Table :db_id db-id)))
                 (is (= before-fields (t2/count :model/Field :table_id t-id))))

@@ -88,8 +88,8 @@
   "Drive parser batches through JDBC `executeBatch` against per-staging-table
   `PreparedStatement`s. Portable across all app-db drivers."
   [^Connection conn ^File file matched-ids databases-by-source-id]
-  (with-open [^PreparedStatement tables-ps (.prepareStatement conn processors/tables-insert-sql)
-              ^PreparedStatement fields-ps (.prepareStatement conn processors/fields-insert-sql)]
+  (with-open [^PreparedStatement tables-ps (.prepareStatement conn (processors/tables-insert-sql))
+              ^PreparedStatement fields-ps (.prepareStatement conn (processors/fields-insert-sql))]
     (parsers/stream-keyed-arrays!
      file processors/import-batch-size
      {:databases (partial process-databases-batch! matched-ids databases-by-source-id)
