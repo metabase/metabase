@@ -22,6 +22,6 @@
     (swap! [_ f]
       (clojure.core/swap! *system* update k f))
     (swap! [_ f args]
-      (clojure.core/swap! *system* (fn [old-system] (apply update old-system k f args))))
+      (clojure.core/swap! *system* (fn sys-swap! [old-system] (apply update old-system k f args))))
     (alter-root [_ new-value]
-      (alter-var-root #'*system* (fn [old-system-atom] (atom (assoc @old-system-atom k new-value)))))))
+      (alter-var-root #'*system* (fn sys-alter-root [old-system-atom] (atom (assoc @old-system-atom k new-value)))))))
