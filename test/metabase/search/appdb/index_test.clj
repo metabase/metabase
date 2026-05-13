@@ -688,6 +688,33 @@
           (is (false? (.contains json-str ^CharSequence NUL)) "encoded JSON has no raw NUL")
           (is (false? (.contains json-str ^CharSequence FF))  "encoded JSON has no raw form feed"))))))
 
+(deftest reindex-survives-duplicate-most-recent-revisions-test
+  ;; Two `revision` rows with `most_recent = true` for the same card cause the spec's LEFT
+  ;; JOIN to produce two rows per card. Before this fix, the resulting duplicate (model, model_id)
+  ;; pair in one upsert batch tripped a unique constraint, failing the batch (and the whole reindex).
+  (when (search/supports-index?)
+    (with-index
+      (let [card-id (t2/select-one-pk :model/Card :name "Customer Satisfaction")
+            insert-rev! (fn []
+                          ;; Raw SQL to bypass the before/after-insert hooks that would normally
+                          ;; demote older revisions to most_recent=false.
+                          (t2/query {:insert-into [(t2/table-name :model/Revision)]
+                                     :values [{:model "Card"
+                                               :model_id card-id
+                                               :user_id (mt/user->id :rasta)
+                                               :object "{}"
+                                               :is_creation false
+                                               :is_reversion false
+                                               :most_recent true
+                                               :timestamp :%now}]}))]
+        (insert-rev!)
+        (insert-rev!)
+        (testing "two revision rows with most_recent=true exist for the card"
+          (is (= 2 (t2/count :model/Revision :model "Card" :model_id card-id :most_recent true))))
+        (testing "reindex completes and writes a single row for the card"
+          (search.engine/reindex! :search.engine/appdb {:in-place? true})
+          (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
+
 (deftest when-index-created
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
