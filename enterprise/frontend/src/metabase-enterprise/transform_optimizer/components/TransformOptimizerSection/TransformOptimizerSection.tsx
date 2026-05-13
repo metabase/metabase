@@ -449,7 +449,7 @@ export function groupProposalsByDependency(
   }
 
   // Topo-sort each bucket (roots first).
-  return Array.from(buckets.values()).map((bucket) => {
+  const groups = Array.from(buckets.values()).map((bucket) => {
     const byId = new Map(bucket.map((p) => [p.id, p]));
     const visited = new Set<string>();
     const ordered: Proposal[] = [];
@@ -474,6 +474,25 @@ export function groupProposalsByDependency(
     }
     return { key: ordered.map((p) => p.id).join("→"), proposals: ordered };
   });
+
+  // Lift standalone-index groups to the top of the panel. Indices are
+  // idempotent, carry no equivalence risk, and frequently capture most
+  // of the available speedup — the user should see them first as the
+  // cheap, safe win. Mixed (rewrite/precompute) groups keep their LLM
+  // emit order among themselves; the sort is stable.
+  return groups
+    .map((g, i) => ({
+      g,
+      i,
+      indexOnly: g.proposals.every((p) => p.kind === "index"),
+    }))
+    .sort((a, b) => {
+      if (a.indexOnly !== b.indexOnly) {
+        return a.indexOnly ? -1 : 1;
+      }
+      return a.i - b.i;
+    })
+    .map(({ g }) => g);
 }
 
 /**

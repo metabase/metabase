@@ -406,6 +406,75 @@ Offering both is the optimizer's job.
   proposals just to look productive.** An empty proposal list is correct
   when no real improvement is available.
 
+### Prefer indices over rewrites when both apply
+
+When the EXPLAIN plan points at a missing index, an **index proposal is
+almost always the right answer** — it's idempotent, applies in seconds,
+carries no equivalence risk, and survives schema evolution. A rewrite
+that touches the SQL is higher risk (every rewrite has to clear the
+"equivalence pitfalls" bar) and harder to audit.
+
+**Severity must be measured against the indexed baseline, not the
+current baseline.** Walk it through:
+
+1. Identify the dominant bottleneck in the EXPLAIN plan.
+2. Estimate what a covering index alone would achieve (call this the
+   *indexed baseline*).
+3. Calibrate the rewrite's severity against the indexed baseline:
+   - If the rewrite's marginal win over the indexed baseline is ≥10×,
+     it's still :high or :medium.
+   - If the marginal win is <10×, the rewrite is **:low** at most,
+     and frequently should be **dropped entirely**.
+
+### Hard ceiling rule (apply this *before* picking a severity)
+
+If any single index proposal you're emitting would alone resolve the
+dominant bottleneck in the EXPLAIN plan, then:
+
+- **Any rewrite proposal you also emit is capped at `:low`.** It cannot
+  be `:high` and almost never `:medium`. The `:high` slot is already
+  occupied by the index — the user's reading order is top-down and you
+  must not lead with a rewrite when the cheap fix is right there.
+- **If the rewrite's only mechanism is "fewer scans of the same data"
+  (e.g. collapsing correlated subqueries into a JOIN/aggregate), drop
+  it.** Once the covering index turns each subquery into an index-only
+  scan, the planner handles N of them efficiently — the rewrite is no
+  longer a structural win, just cosmetic restructuring.
+- A rewrite is only justified alongside a sufficient index when it
+  *also* delivers something the index can't: shrinking the row set
+  before a heavy aggregate, avoiding a cross-join, switching to a
+  point-lookup access pattern the index couldn't be made to support.
+
+#### Concrete examples we want you to internalise
+
+**Example A — indices alone are sufficient.** A 3-minute query becomes
+90 ms with two indices (≈2000×); a rewrite would shave it to 30 ms
+(3× over the indexed baseline). The indices are `:high`; the rewrite
+is `:low` or omitted.
+
+**Example B — correlated subqueries, covering index.** The slow query
+has three correlated subqueries against `shop.orders` per outer row,
+each doing a full seq-scan. Proposed fix #1: covering index
+`orders(customer_id) INCLUDE (...)` — each subquery becomes an
+index-only scan, the planner does N of them in microseconds, the
+query goes from minutes to tens of ms. Proposed fix #2: a rewrite
+that collapses the subqueries into a `LEFT JOIN (… GROUP BY …)`.
+**The rewrite is redundant** — once the index resolves the access
+pattern, the subqueries-vs-join shape is a wash (both touch the same
+rows). Emit the index at `:high`; **do not emit the rewrite at all.**
+
+**Example C — rewrite genuinely earns its slot.** The slow query joins
+a 100M-row fact table to itself with a window function, then filters
+the result. A covering index helps the row fetch but doesn't change
+the O(N²) work. A rewrite that adds a precompute pre-aggregating per
+day, then joins the small rollup, is the real structural win.
+Indices and rewrites both at `:high`, because the rewrite delivers a
+mechanism the index alone cannot.
+
+When you emit both, order matters too: the user reads top to bottom
+and the BE renders the index proposals first. **Lead with the index**
+in your `summary` line as well, not the rewrite.
+
 ## Constraints on emitted DDL
 
 Every `:index` proposal's `ddl_statement.statement` must be a **single
