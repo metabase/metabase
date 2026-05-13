@@ -120,7 +120,8 @@
     (collection/check-allowed-content :model/Transform new-collection))
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
-  (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
+  (let [source-changed? (some? (:source (t2/changes transform)))
+        target-changed? (or source-changed? (:target (t2/changes transform)))
         target-db-id    (when target-changed?
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
@@ -128,10 +129,13 @@
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
-             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))
-             ;; Source changed → any prior "fully optimized" judgment from the
-             ;; optimizer no longer applies. Re-run the optimizer to re-flag.
-             :optimized false)
+             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+
+      ;; Source actually changed in this update → any prior "fully optimized"
+      ;; verdict no longer applies. Gated on (t2/changes) so plain optimized-flag
+      ;; updates from optimize! aren't clobbered back to false.
+      source-changed?
+      (assoc :optimized false)
 
       target-changed?
       (assoc :target_db_id target-db-id)
