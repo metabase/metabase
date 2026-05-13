@@ -237,14 +237,15 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
     it("should use current user locale for string expressions", () => {
       cy.request("GET", "/api/user/current").then(({ body: user }) => {
-        cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
       });
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Wochentag",
-        value: "Freitag",
-        extraction: "Auszug Tag, Monat…",
+        option: "[zz] Day of week",
+        // dayjs has no en-ZZ locale, so it falls back to English day names
+        value: "Friday",
+        extraction: "[zz] Extract day, month…",
       });
     });
   });

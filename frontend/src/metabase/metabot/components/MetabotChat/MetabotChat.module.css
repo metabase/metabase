@@ -52,6 +52,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .messageContainerUser {
@@ -71,6 +72,7 @@
 .message {
   font-size: 0.875rem;
   line-height: 1.4 !important;
+  min-width: 0;
 }
 
 .messageUser {

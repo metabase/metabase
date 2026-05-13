@@ -1,6 +1,7 @@
 import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useMetabotName } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -24,6 +25,7 @@ interface ExtraItemProps extends DOMAttributes<HTMLButtonElement> {
 
 export interface MenuItem {
   icon: IconName;
+  iconUrl?: string;
   iconColor?: ColorName;
   label: string;
   description?: string;
@@ -55,7 +57,12 @@ export const MenuItemComponent = ({
       {item.model === "user" && <Avatar name={item.label} size={16} />}
 
       {item.model !== "user" && (
-        <Icon name={item.icon} size={16} c={item.iconColor || "inherit"} />
+        <EntityIcon
+          name={item.icon}
+          iconUrl={item.iconUrl}
+          size="1rem"
+          color={item.iconColor || "inherit"}
+        />
       )}
 
       <Stack gap={2} className={S.menuItemStack}>

@@ -3,6 +3,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -37,6 +38,16 @@
   :setter     :none
   :getter     (fn []
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
+
+(defsetting locked-meters
+  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  :encryption :no
+  :type       :json
+  :visibility :internal
+  :audit      :never
+  :export?    false
+  :default    {}
+  :doc        false)
 
 ;;; TODO - rename this to premium-features-token?
 (defsetting premium-embedding-token
@@ -293,14 +304,26 @@
   "Should we enable the Library?"
   :library)
 
+(defsetting security-center-disabled
+  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  :type             :boolean
+  :feature          :admin-security-center
+  :default          false
+  :visibility       :internal
+  :include-in-list? false
+  :audit            :never
+  :setter           :none
+  :export?          false)
+
 (define-premium-feature security-center-enabled?
   "True if the current instance has Security Center access.
    Requires the `:admin-security-center` feature flag, a non-trial subscription,
-   and a self-hosted instance."
+   a self-hosted instance, and the `security-center-disabled` setting to be unset."
   :admin-security-center
   :getter (fn []
             (and (has-feature? :admin-security-center)
                  (not (is-hosted?))
+                 (not (security-center-disabled))
                  (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
                  (or config/is-test? config/is-e2e?
                      (not= (mdb/db-type) :h2)))))
@@ -308,10 +331,6 @@
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
   :tenants)
-
-(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
-  "Should we allow users to use workspaces?"
-  :workspaces)
 
 (define-premium-feature enable-metabot-v3?
   "Should we allow users to use the Metabase-managed tiered AI provider?"
@@ -324,6 +343,17 @@
 (define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
   "Should we offer users the Metabase-managed AI provider?"
   :offer-metabase-ai-managed)
+
+(defenterprise enable-custom-viz?
+  "Should we enable custom visualizations? OSS falls back to `false`; the EE implementation checks the
+  `custom-viz-enabled` setting and the `:custom-viz` premium feature."
+  metabase-enterprise.custom-viz-plugin.settings
+  []
+  false)
+
+(define-premium-feature enable-data-complexity-score?
+  "Should we expose Data Complexity Score?"
+  :data-complexity-score)
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
@@ -345,6 +375,9 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :custom-viz                     (enable-custom-viz?)
+   :custom-viz-available           (has-feature? :custom-viz)
+   :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
@@ -384,7 +417,6 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 

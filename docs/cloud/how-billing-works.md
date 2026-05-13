@@ -92,7 +92,7 @@ Metabase offers annual invoicing for Pro plans (in addition to our Enterprise pl
 ### How invoicing works for Pro plans
 
 - After switching to billing via invoices, Metabase will send you an invoice via email for the amount due for that year, as well as payment instructions. Each year after that, you'll get an annual invoice billing you for the coming year.
-- **After receiving an invoice via email, you have 15 days to pay the invoice with ACH, wire transfer, or credit card**.
+- **After receiving an invoice via email, you have 30 days to pay the invoice with ACH, wire transfer, or credit card**.
 - If you add user accounts to your plan throughout the year, Metabase will bill these true-ups on a quarterly basis, with invoices for the prorated yearly cost of the additional user accounts (see [annual billing](#how-annual-billing-works)).
 - Payment can be done via Automated Clearing House (ACH) or wire transfer.
 - You can see a list of all of your invoices and their statuses in the **Billing** tab of your Metabase Store account.

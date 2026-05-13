@@ -6,8 +6,6 @@
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
-  bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
-                                             :exclusions  [junit/junit]}
   buddy/buddy-core                          {:mvn/version "1.12.0-430"          ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
                                                            org.bouncycastle/bcpkix-jdk15on
@@ -30,9 +28,6 @@
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
-  com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
-                                             :exclusions  [it.unimi.dsi/fastutil
-                                                           org.slf4j/slf4j-api]}
   com.clojure-goes-fast/jvm-alloc-rate-meter {:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
@@ -90,8 +85,6 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
-  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
-  io.netty/netty-codec-http2                {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -118,6 +111,8 @@
   net.thisptr/jackson-jq                        {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
+  org.apache.datasketches/datasketches-java     ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
+                                                {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.5"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.5"}              ; pinned: must match httpcore5 version
@@ -130,11 +125,11 @@
   {:mvn/version "2.25.4"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
   {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
-  org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
-  org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
+  org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+  org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.1"}
+  org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
   org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
@@ -150,7 +145,6 @@
   org.clojure/clojure                       {:mvn/version "1.12.3"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
-  org.clojure/core.match                    {:mvn/version "1.1.0"}
   org.clojure/core.memoize                  {:mvn/version "1.1.266"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.1.0"}              ; CSV parsing / generation
   org.clojure/data.xml                      {:mvn/version "0.2.0-alpha10"}      ; XML parsing / generation
@@ -181,7 +175,7 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.8"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.11"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -202,8 +196,13 @@
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   selmer/selmer                             {:mvn/version "1.12.70"}            ; Jinja-like templates for Clojure
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
-  software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
+  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"              ; AWS SDK v2 for S3
+                                             ;; Metabase uses only sync S3Client (Apache HttpClient) + S3Presigner;
+                                             ;; excluding the async Netty HTTP client removes all transitive netty
+                                             ;; from the main uberjar and avoids version conflicts with driver-bundled netty.
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
+  software.amazon.awssdk/sts                {:mvn/version "2.36.2"               ; Required for S3 client to use service account
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   techascent/tech.ml.dataset                {:mvn/version "8.003"}              ; Tabular data processing for chart statistics
@@ -253,13 +252,14 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.10.23"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
+    com.github.erosb/json-sKema  {:mvn/version "0.25.0"}                    ; validating MBQL JSON Schema
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
@@ -419,7 +419,11 @@
 
   ;; include EE source code.
   :ee
-  {:extra-paths ["enterprise/backend/src"]}
+  {:extra-paths ["enterprise/backend/src"]
+   ;; make sure these stay in lockstep with their respective modules
+   :extra-deps {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.9.0.25.07"}
+                com.vertica.jdbc/vertica-jdbc
+                ^:antq/exclude  {:mvn/version "23.4.0-0"}}}
 
   ;; Include EE tests.
   ;; for EE dev:   `clojure -X:dev:ee:ee-dev`
@@ -459,6 +463,7 @@
 
   :cljs
   {:extra-paths ["test"]
+   :jvm-opts    ["-Dmb.run.mode=dev"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}
@@ -518,7 +523,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2025.10.23"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
@@ -640,8 +645,8 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
-                                 ;; hard to clear on for lib.util.match macros, and disabling the linter just there
-                                 ;; doesn't seem to work
+                                 ;; hard to clear on for metabase.util.match macros, and disabling the linter just
+                                 ;; there doesn't seem to work
                                  :unused-meta-on-macro
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
@@ -659,10 +664,8 @@
   ;;
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
   :eastwood/test
-  {:exec-fn   metabase.linters.eastwood/eastwood
-   :exec-args {:source-paths ["test"
-                              "enterprise/backend/test"]
-               :linters      [:reflection]
+  {:exec-fn   metabase.linters.eastwood/eastwood-tests
+   :exec-args {:linters      [:reflection]
                :exclude-namespaces
                [;; byte/1 dispatch value trips up Eastwood's reader
                 metabase.test.http-client
@@ -711,7 +714,7 @@
                                    "resources/html-entities.edn"
                                    "resources/openapi/.*"
                                    "frontend/src/cljs"
-                                   "frontend/src/metabase/utils/urls\\.unit\\.spec\\.js$"
+                                   "frontend/src/metabase/urls\\.unit\\.spec\\.js$"
                                    "frontend/src/metabase/utils/formatting\\.unit\\.spec\\.js$"
                                    "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/channel/render/png_test.clj"

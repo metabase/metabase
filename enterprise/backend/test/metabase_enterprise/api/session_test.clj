@@ -25,6 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
+                              :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -61,10 +62,10 @@
                               :upload-management
                               :whitelabel
                               :collection-cleanup
+                              :custom-viz
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces
                               :writable-connection}
     (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
             :advanced_permissions           true
@@ -76,6 +77,7 @@
             :config_text_file               true
             :content_translation            true
             :content_verification           true
+            :data-complexity-score          true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
@@ -111,21 +113,24 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
+            :custom-viz                     true
+            :custom-viz-available           true
             :database_routing               true
             :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true
             :writable_connection            true}
-           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+           (mt/with-temporary-setting-values [custom-viz-enabled true]
+             (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))
 
 (deftest security-center-token-feature-test
   (testing "admin_security_center is true for self-hosted with the feature flag"
     (mt/with-premium-features #{:admin-security-center}
       (is (true? (:admin_security_center
                   (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
+
 ;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
 
 (deftest session-timeout-enforces-last-active-at-test

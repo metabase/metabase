@@ -38,7 +38,8 @@ describe("scenarios > admin > transforms", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -2468,7 +2469,7 @@ LIMIT
       getTransformsList()
         .findByText("Original Name")
         .closest('[role="row"]')
-        .findByRole("button", { name: "Collection menu" })
+        .findByRole("button", { name: "Collection options" })
         .click();
 
       H.popover().findByText("Edit collection details").click();
@@ -2518,7 +2519,7 @@ LIMIT
       getTransformsList()
         .findByText("Archive Me")
         .closest('[role="row"]')
-        .findByRole("button", { name: "Collection menu" })
+        .findByRole("button", { name: "Collection options" })
         .click();
 
       H.popover().findByText("Archive").click();
@@ -2531,7 +2532,9 @@ LIMIT
         cy.button("Archive").click();
       });
 
-      H.undoToast().findByText("Collection archived").should("be.visible");
+      H.undoToast()
+        .findByText('"Archive Me" has been archived')
+        .should("be.visible");
 
       cy.log("verify collection and its children are no longer visible");
       getTransformsList().within(() => {
@@ -2750,7 +2753,8 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   beforeEach(() => {
     H.restore("mysql-8");
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
@@ -2797,7 +2801,8 @@ describe("scenarios > admin > transforms > jobs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/transform-job").as("createJob");
@@ -2910,7 +2915,9 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       cy.log("open detail sidebar");
       cy.findAllByText("MBQL transform").first().click();
-      cy.findByRole("img", { name: "close icon" }).should("be.visible");
+      H.DataStudio.Runs.sidebar()
+        .findByRole("img", { name: "close icon" })
+        .should("be.visible");
       cy.findByRole("link", { name: "View this transform" })
         .should("be.visible")
         .should("have.attr", "href", "/data-studio/transforms/1");
@@ -3055,6 +3062,95 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
+  describe("active flag", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/transform-job/active").as(
+        "bulkUpdateJobActive",
+      );
+    });
+
+    it("can disable and re-enable jobs from the list, the detail page, and in bulk", () => {
+      H.createTransformJob({ name: "Job A" });
+      H.createTransformJob({ name: "Job B" });
+
+      visitJobListPage();
+
+      cy.log("disable Job A from the row menu — no navigation");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Disable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      H.undoToast().findByText("Job disabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      getJobRow("Job A").findByText("Disabled").should("be.visible");
+      cy.location("pathname").should("eq", "/data-studio/transforms/jobs");
+
+      cy.log("re-enable Job A from the row menu");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      H.undoToast().findByText("Job enabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      getJobRow("Job A").findByText("Disabled").should("not.exist");
+
+      cy.log("disable Job A from the detail page");
+      getJobRow("Job A").click();
+      H.DataStudio.Jobs.header().icon("ellipsis").click();
+      H.popover().findByText("Disable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      H.undoToast().findByText("Job disabled").should("be.visible");
+      H.undoToast().findByRole("img", { name: /close/i }).click();
+      H.DataStudio.Jobs.editor().findByText("Disabled").should("be.visible");
+
+      cy.log("re-enable Job A from the detail page");
+      H.DataStudio.Jobs.header().icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      H.DataStudio.Jobs.editor().findByText("Disabled").should("not.exist");
+
+      H.DataStudio.nav().findByRole("link", { name: "Jobs" }).click();
+
+      cy.log("bulk-disable: cancel from the modal does not fire the mutation");
+      openBulkActionsMenu();
+      H.popover().findByText("Disable all").click();
+      H.modal().button("Cancel").click();
+
+      cy.log(
+        "bulk-disable: confirming sends { active: false } and badges all rows",
+      );
+      openBulkActionsMenu();
+      H.popover().findByText("Disable all").click();
+      H.modal().button("Disable all").click();
+      cy.wait("@bulkUpdateJobActive")
+        .its("request.body")
+        .should("deep.equal", { active: false });
+      getJobRow("Job A").findByText("Disabled").should("be.visible");
+      getJobRow("Job B").findByText("Disabled").should("be.visible");
+
+      cy.log("mixed state: bulk menu shows both items, then bulk-re-enable");
+      getJobRow("Job A").icon("ellipsis").click();
+      H.popover().findByText("Re-enable").click();
+      cy.wait("@updateJob");
+      openBulkActionsMenu();
+      H.popover().within(() => {
+        cy.findByText("Disable all").should("be.visible");
+        cy.findByText("Re-enable all").should("be.visible").click();
+      });
+      cy.wait("@bulkUpdateJobActive")
+        .its("request.body")
+        .should("deep.equal", { active: true });
+      getJobRow("Job A").findByText("Disabled").should("not.exist");
+      getJobRow("Job B").findByText("Disabled").should("not.exist");
+    });
+  });
+
   describe("default jobs and tags", () => {
     it("should pre-create default jobs and tags", () => {
       const jobNames = ["Hourly job", "Daily job", "Weekly job", "Monthly job"];
@@ -3120,7 +3216,8 @@ describe("scenarios > admin > transforms > runs", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
@@ -3387,7 +3484,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getStartAtFilterWidget().click();
       H.popover().within(() => {
         cy.findByText("Relative date range…").click();
-        cy.findByText("Include today").click();
+        cy.findByLabelText("Include today").click();
         cy.button("Apply").click();
       });
       getStartAtFilterWidget()
@@ -3431,7 +3528,7 @@ describe("scenarios > admin > transforms > runs", () => {
       getEndAtFilterWidget().click();
       H.popover().within(() => {
         cy.findByText("Relative date range…").click();
-        cy.findByText("Include today").click();
+        cy.findByLabelText("Include today").click();
         cy.button("Apply").click();
       });
       getEndAtFilterWidget()
@@ -3554,7 +3651,8 @@ describe(
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
       H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       H.setPythonRunnerSettings();
@@ -3660,7 +3758,8 @@ describe("scenarios > admin > transforms", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
   });
 
   afterEach(() => {
@@ -3827,6 +3926,16 @@ function visitJobListPage() {
   return cy.visit("/data-studio/transforms/jobs");
 }
 
+function getJobRow(name: string) {
+  return H.DataStudio.Jobs.list()
+    .findAllByRole("row")
+    .filter(`:contains("${name}")`);
+}
+
+function openBulkActionsMenu() {
+  cy.findByLabelText("More job options").click();
+}
+
 function visitRunListPage() {
   return cy.visit("/data-studio/transforms/runs");
 }
@@ -3981,7 +4090,8 @@ describe("scenarios > data studio > transforms > permissions", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/transform").as("createTransform");

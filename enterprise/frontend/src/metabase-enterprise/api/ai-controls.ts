@@ -32,6 +32,20 @@ export const aiControlsApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: [listTag("ai-controls-permissions")],
     }),
+    enableAdvancedAIControlsPermissions: builder.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/ai-controls/permissions/advanced",
+      }),
+      invalidatesTags: [listTag("ai-controls-permissions")],
+    }),
+    disableAdvancedAIControlsPermissions: builder.mutation<void, void>({
+      query: () => ({
+        method: "DELETE",
+        url: "/api/ee/ai-controls/permissions/advanced",
+      }),
+      invalidatesTags: [listTag("ai-controls-permissions")],
+    }),
     getAIControlsInstanceLimit: builder.query<MetabotInstanceLimit, void>({
       query: () => ({
         method: "GET",
@@ -95,6 +109,8 @@ export const aiControlsApi = EnterpriseApi.injectEndpoints({
 export const {
   useGetAIControlsGroupPermissionsQuery,
   useUpdateAIControlsGroupPermissionsMutation,
+  useEnableAdvancedAIControlsPermissionsMutation,
+  useDisableAdvancedAIControlsPermissionsMutation,
   useGetAIControlsInstanceLimitQuery,
   useUpdateAIControlsInstanceLimitMutation,
   useGetAIControlsGroupLimitsQuery,

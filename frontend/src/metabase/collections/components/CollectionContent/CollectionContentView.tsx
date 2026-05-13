@@ -6,6 +6,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { Api, useListCollectionItemsQuery } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
@@ -29,14 +31,15 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
-import { useToast } from "metabase/common/hooks";
+import {
+  useSetArchive,
+  useSetCollection,
+  useToast,
+} from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
-import { Search } from "metabase/entities/search";
-import type { State } from "metabase/redux/store";
+import { useDispatch } from "metabase/redux";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
-import { useDispatch } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -54,7 +57,7 @@ import { getComposedDragProps } from "./utils";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
-const CollectionContentViewInner = ({
+export const CollectionContentView = ({
   databases,
   bookmarks,
   collection,
@@ -62,8 +65,6 @@ const CollectionContentViewInner = ({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  list,
-  loading,
   uploadFile,
   uploadsEnabled,
   canCreateUploadInDb,
@@ -76,13 +77,22 @@ const CollectionContentViewInner = ({
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
   isAdmin: boolean;
-  list: CollectionItem[] | undefined;
-  loading: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canCreateUploadInDb: boolean;
   visibleColumns?: CollectionContentTableColumn[];
 }) => {
+  const dispatch = useDispatch();
+
+  const { data: pinnedItemsData, isLoading: loading } =
+    useListCollectionItemsQuery({
+      id: collectionId,
+      pinned_state: "is_pinned",
+      sort_column: "name",
+      sort_direction: "asc",
+    });
+
+  const list = pinnedItemsData?.data;
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,
@@ -135,7 +145,8 @@ const CollectionContentViewInner = ({
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
-  const dispatch = useDispatch();
+  const archive = useSetArchive();
+  const setCollection = useSetCollection();
   const [sendToast] = useToast();
 
   const visibleColumnsMap = useMemo(
@@ -254,12 +265,11 @@ const CollectionContentViewInner = ({
           canRestore={collection.can_restore}
           canDelete={collection.can_delete}
           onUnarchive={async () => {
-            const input = { ...actionId, name: collection.name };
-            await dispatch(Collections.actions.setArchived(input, false));
-            await dispatch(Bookmarks.actions.invalidateLists());
+            await archive({ id: collectionId, model: "collection" }, false);
+            dispatch(Api.util.invalidateTags([listTag("bookmark")]));
           }}
           onMove={({ id }) =>
-            dispatch(Collections.actions.setCollection(actionId, { id }))
+            setCollection({ model: "collection", id: collectionId }, { id })
           }
           onDeletePermanently={() =>
             dispatch(deletePermanently(Collections.actions.delete(actionId)))
@@ -331,14 +341,3 @@ const CollectionContentViewInner = ({
     </CollectionRoot>
   );
 };
-
-export const CollectionContentView = Search.loadList({
-  query: (_state: State, { collectionId }: { collectionId: CollectionId }) => ({
-    collection: collectionId,
-    pinned_state: "is_pinned",
-    sort_column: "name",
-    sort_direction: "asc",
-  }),
-  loadingAndErrorWrapper: false,
-  wrapped: true,
-})(CollectionContentViewInner);

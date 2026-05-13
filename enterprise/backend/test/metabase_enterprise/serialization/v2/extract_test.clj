@@ -22,6 +22,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
   (round-trip-test/add-to-baseline!))
@@ -2632,6 +2634,34 @@
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
 
+(deftest custom-viz-plugin-test
+  (mt/with-empty-h2-app-db!
+    (t2/delete! :model/CustomVizPlugin)
+    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
+                                                               :identifier   "test-plugin"
+                                                               :status       :active
+                                                               :manifest     "{}"
+                                                               :bundle       (.getBytes "pretend tgz bytes" "UTF-8")
+                                                               :bundle_hash  "deadbeef"}]
+      ;; Uncomment to regenerate baseline:
+      ;; (round-trip-test/add-to-baseline!)
+      (testing "custom viz plugin extraction"
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+          (is (=? {:serdes/meta [{:model "CustomVizPlugin"
+                                  :id    "test-plugin"}]
+                   :display_name "Test Plugin"
+                   :identifier   "test-plugin"
+                   :manifest     {}
+                   :bundle_hash  "deadbeef"
+                   :bundle       string?
+                   :created_at   string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :status)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))
+
 (deftest ^:parallel export-parameters-sorts-by-id-test
   (let [params [{:id "zebra" :name "Z param" :type :category}
                 {:id "alpha" :name "A param" :type :category}
@@ -2776,3 +2806,35 @@
         (let [ser (ts/extract-one "Channel" http-id)]
           (is (= [{:label "channels"} {:label "HTTP Channel" :key "HTTP Channel"}]
                  (serdes/storage-path ser {}))))))))
+
+(deftest embedding-theme-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/EmbeddingTheme
+                       {light-id  :id
+                        light-eid :entity_id}
+                       {:name "Light"
+                        :settings {}}
+
+                       :model/EmbeddingTheme
+                       {_dark-id  :id
+                        dark-eid :entity_id}
+                       {:name "Dark"
+                        :settings {}}]
+      (testing "embedding theme extracts correctly"
+        (let [ser (serdes/extract-one "EmbeddingTheme" {} (t2/select-one :model/EmbeddingTheme :id light-id))]
+          (is (=? {:serdes/meta [{:model "EmbeddingTheme"
+                                  :id    light-eid
+                                  :label "light"}]
+                   :entity_id  light-eid
+                   :name       "Light"
+                   :settings   {}
+                   :created_at string?
+                   :updated_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (testing "embedding themes have no dependencies"
+            (is (empty? (serdes/dependencies ser))))))
+
+      (testing "all embedding themes are extracted"
+        (is (= #{light-eid dark-eid}
+               (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))

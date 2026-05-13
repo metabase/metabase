@@ -56,7 +56,6 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -68,7 +67,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
@@ -78,6 +76,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -338,7 +337,9 @@
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity :name))
+  (maybe-labeled model-name entity #(if (string? (:name %))
+                                      (:name %)
+                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
@@ -628,6 +629,36 @@
 
 (defmethod required :default [_ _]
   nil)
+
+;;; # Metadata Export
+
+(defmulti metadata-query
+  "Returns a reducible row stream for `model` for the metadata export endpoint.
+  `opts` carries caller context (e.g. `:user-info`, section flags, id allow-lists).
+  Implementations return rows with raw numeric ids — joins for portable identifiers
+  are intentionally avoided so the queries stay simple."
+  {:arglists '([model opts])}
+  (fn [model _opts] model))
+
+(defmulti metadata-query-filter
+  "Returns a HoneySQL where predicate that restricts rows of `model` qualified by
+  table `alias`. Used to compose `WHERE` and `JOIN ... ON` clauses across model
+  hierarchies (e.g. the field query reuses the database/table filters)."
+  {:arglists '([model alias opts])}
+  (fn [model _alias _opts] model))
+
+(defmulti metadata-query-format
+  "Reshapes a raw query row produced by [[metadata-query]] into the JSON shape emitted
+  by the metadata export endpoint. The default drops nil-valued keys via
+  [[metabase.util/remove-nils]]; overrides do JSON decoding or column-derived
+  adjustments and rely on the same nil-pruning to keep optional keys out of the
+  response."
+  {:arglists '([model row])}
+  (fn [model _row] model))
+
+(defmethod metadata-query-format :default
+  [_model row]
+  (u/remove-nils row))
 
 ;;; # Import Process
 ;;; Deserialization is split into two stages, mirroring serialization. They are called *ingestion* and *loading*.
@@ -1174,7 +1205,7 @@
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
   [x]
   (set
-   (lib.util.match/match-many x
+   (match/match-many x
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
      uuid)))
 
@@ -1211,7 +1242,7 @@
 
 (defn- export-mbql-ref
   [mbql]
-  (lib.util.match/replace-lite (normalize-mbql-ref mbql)
+  (match/replace (normalize-mbql-ref mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (export-mbql-map opts) (*export-field-fk* id)]
@@ -1290,7 +1321,7 @@
 
 (defn- import-mbql-update-refs
   [entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
@@ -1322,7 +1353,7 @@
     [:measure (*import-fk* entity-id 'Measure)]))
 
 (defn- import-mbql-update-maps [x]
-  (lib.util.match/replace-lite x
+  (match/replace x
     (m :guard map?)
     (import-mbql-map m)))
 
@@ -1352,30 +1383,37 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (match entity
-    [:field     (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    ["field"    (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    [:metric    (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    ["metric"   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    [:segment   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    ["segment"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    [:measure   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
-    ["measure"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+  (match/match-one entity
+    [#{:field "field"} (opts :guard map?) (id :guard vector?)]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
+     (opts :guard map?)
+     (field :guard portable-id?)]
+    (into #{[{:model (case tag
+                       (:metric "metric") "Card"
+                       (:segment "segment") "Segment"
+                       (:measure "measure") "Measure")
+              :id field}]}
+          (mbql-deps-map opts))
+
     ;; legacy (MBQL 4) refs
-    [:field     (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    ["field"    (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
-    [:metric    (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    ["metric"   (id :guard portable-id?)] #{[{:model "Card" :id id}]}
-    [:segment   (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    ["segment"  (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
-    [:measure   (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    ["measure"  (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
-    :else (reduce #(cond
-                     (map? %2)    (into %1 (mbql-deps-map %2))
-                     (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else %1)
-                  #{}
-                  entity)))
+    [#{:field "field" :field-id "field-id"} (id :guard vector?) opts]
+    (into #{(field->path id)} (mbql-deps-map opts))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
+    #{[{:model (case tag
+                 (:metric "metric") "Card"
+                 (:segment "segment") "Segment"
+                 (:measure "measure") "Measure")
+        :id field}]}
+
+    _ (reduce #(cond
+                 (map? %2)    (into %1 (mbql-deps-map %2))
+                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 :else %1)
+              #{}
+              entity)))
 
 (defn- mbql-deps-map [m]
   (into #{}
@@ -1660,7 +1698,7 @@
                      id))}))))
 
 (defn- import-visualizations [entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-visualizations opts) (*import-field-fk* fully-qualified-name)]
 
@@ -1673,13 +1711,7 @@
     [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations opts)]
 
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]
-
-    (_ :guard map?)
-    (m/map-vals import-visualizations &match)
-
-    (_ :guard vector?)
-    (mapv import-visualizations &match)))
+    [:field-id (*import-field-fk* fully-qualified-name)]))
 
 (defn- import-column-settings [settings]
   (when settings

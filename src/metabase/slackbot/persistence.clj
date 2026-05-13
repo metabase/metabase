@@ -5,22 +5,50 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private history-message-types
-  "Message types to include in history sent to ai-service."
+(def ^:private legacy-history-block-types
+  "Legacy AI-SDK-message `:_type` values that carry tool history."
   #{"TOOL_CALL" "TOOL_RESULT"})
 
-(defn- normalize-history-message
-  "Keep only ai-service schema fields, keywordize role."
-  [msg]
-  (-> (select-keys msg [:role :content :tool_calls :tool_call_id])
+(defn- legacy-block->history-message
+  "Legacy AI-SDK-message block: keep history-relevant fields, keywordize role."
+  [block]
+  (-> (select-keys block [:role :content :tool_calls :tool_call_id])
       (update :role keyword)))
 
+(defn- native-tool-input->history-message
+  "Native `tool-input` block → AI-SDK-message with a single `:tool_calls` entry."
+  [block]
+  {:role       :assistant
+   :tool_calls [{:id        (:id block)
+                 :name      (:function block)
+                 :arguments (:arguments block)}]})
+
+(defn- native-tool-output->history-message
+  "Native `tool-output` block → AI-SDK `tool` message. Only the `:output`
+  string is needed for history replay."
+  [block]
+  {:role         :tool
+   :tool_call_id (:id block)
+   :content      (get-in block [:result :output])})
+
+(defn- block->history-message
+  "Dispatch a single stored `:data` block to an AI-SDK-message map, or nil to
+  skip. Handles both legacy slackbot blocks (`:_type \"TOOL_CALL\"` /
+  `\"TOOL_RESULT\"`) and native agent-loop blocks (`:type \"tool-input\"` /
+  `\"tool-output\"`). Text blocks are skipped — assistant text still comes
+  from Slack's copy of the thread."
+  [block]
+  (cond
+    (legacy-history-block-types (:_type block)) (legacy-block->history-message block)
+    (= "tool-input" (:type block))              (native-tool-input->history-message block)
+    (= "tool-output" (:type block))             (native-tool-output->history-message block)
+    :else                                       nil))
+
 (defn- extract-history-messages
-  "Filter and normalize stored message data for history."
+  "Walk `(:data message)` in insertion order and emit AI-SDK-message maps for
+  history replay. Preserves adjacency of tool calls and their tool results."
   [message]
-  (->> (:data message)
-       (filter #(history-message-types (:_type %)))
-       (mapv normalize-history-message)))
+  (into [] (keep block->history-message) (:data message)))
 
 (defn message-history
   "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."

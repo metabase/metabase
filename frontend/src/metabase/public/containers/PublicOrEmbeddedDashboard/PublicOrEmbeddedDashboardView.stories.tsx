@@ -14,15 +14,15 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";

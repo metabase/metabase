@@ -18,7 +18,7 @@ const BASIC_ACTION_ORDER_BY_NAME = BASIC_ACTION_ORDER.reduce<
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
-  searchTerm: string,
+  hasSearchTerm: boolean,
 ): (string | PaletteActionImpl)[] => {
   const groupedResults = _.groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
@@ -35,7 +35,7 @@ export const processResults = (
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  if (searchTerm.trim().length === 0) {
+  if (!hasSearchTerm) {
     return [...recent];
   }
 

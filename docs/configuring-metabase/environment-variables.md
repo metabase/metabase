@@ -71,6 +71,15 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
+### `MB_AI_FEATURES_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
+- [Configuration file name](./config-file.md): `ai-features-enabled`
+
+Whether AI features are enabled.
+
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -101,13 +110,24 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help us improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
@@ -370,6 +390,17 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 ID of dashboard to use as a homepage.
 
+### `MB_CUSTOM_VIZ_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-viz-enabled`.
+- [Configuration file name](./config-file.md): `custom-viz-enabled`
+
+Should custom visualizations be enabled for this instance?
+
 ### `MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`
 
 - Type: boolean
@@ -564,6 +595,15 @@ SMTP username.
 - [Configuration file name](./config-file.md): `email-smtp-username-override`
 
 Custom SMTP server username.
+
+### `MB_EMBEDDED_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+
+Whether Metabot is enabled for embedding.
 
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
@@ -1152,6 +1192,22 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ANTHROPIC_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-key`
+
+The Anthropic API Key.
+
+### `MB_LLM_METABOT_PROVIDER`
+
+- Type: string
+- Default: `anthropic/claude-sonnet-4-6`
+- [Configuration file name](./config-file.md): `llm-metabot-provider`
+
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
 - Type: boolean
@@ -1218,6 +1274,15 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 - [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
+- [Configuration file name](./config-file.md): `metabot-enabled`
+
+Whether Metabot is enabled for regular usage.
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
@@ -1438,6 +1503,14 @@ Whether to automatically import from the remote git repository. Only applies if 
 
 If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
 ### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
 
 - Type: integer
@@ -1454,6 +1527,14 @@ Time-to-live in seconds for the remote changes check cache. Default is 60 second
 
 The maximum amount of time a remote sync task will be given to complete.
 
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
 ### `MB_REMOTE_SYNC_TRANSFORMS`
 
 - Type: boolean
@@ -1461,6 +1542,22 @@ The maximum amount of time a remote sync task will be given to complete.
 - [Configuration file name](./config-file.md): `remote-sync-transforms`
 
 Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `read-only`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :read-write or :read-only.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1948,6 +2045,13 @@ Client Secret for your Slack app.
 - [Configuration file name](./config-file.md): `slack-connect-enabled`
 
 Is Slack Connect authentication configured and enabled?
+
+### `MB_SLACK_CONNECT_SIGNING_SECRET_VERSION`
+
+- Type: integer
+- Default: `0`
+
+Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.
 
 ### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
 
@@ -2549,6 +2653,15 @@ Default: `"plugins"`
 Path of the "plugins" directory, which is used to store the Metabase database drivers. The user who is running Metabase should have permission to write to the directory. When running the JAR, the default directory is `plugins`, created in the same location as the JAR file. When running Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
+
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
 ### `MB_QP_CACHE_BACKEND`
 

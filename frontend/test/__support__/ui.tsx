@@ -1,5 +1,5 @@
 import { Global } from "@emotion/react";
-import type { Reducer, Store } from "@reduxjs/toolkit";
+import type { Middleware, Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
@@ -10,7 +10,6 @@ import {
 } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { KBarProvider } from "kbar";
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
@@ -19,12 +18,15 @@ import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
+import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
+import { PUT } from "metabase/api/legacy-client";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
@@ -33,8 +35,6 @@ import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import { PUT } from "metabase/utils/api";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";
@@ -204,7 +204,7 @@ export function getTestStoreAndWrapper({
   const store = getStore(
     reducers,
     initialState,
-    storeMiddleware,
+    storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => {
@@ -331,7 +331,7 @@ function MaybeKBar({
   if (!hasKBar) {
     return children;
   }
-  return <KBarProvider>{children}</KBarProvider>;
+  return <AppKBarProvider>{children}</AppKBarProvider>;
 }
 
 function MaybeDNDProvider({

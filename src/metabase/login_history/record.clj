@@ -16,7 +16,8 @@
   [history-record]
   (when (and (login-history.settings/send-email-on-first-login-from-new-device)
              (login-history/first-login-on-this-device? history-record)
-             (not (login-history/first-login-ever? history-record)))
+             (not (login-history/first-login-ever? history-record))
+             (not (login-history/too-many-new-device-emails-recently? (:user_id history-record))))
     ;; if there's an existing open connection (and there seems to be one, but I'm not 100% sure why) we can't try to use
     ;; it across threads since it can close at any moment! So unbind it so the future can get its own thread.
     (binding [t2.conn/*current-connectable* nil]

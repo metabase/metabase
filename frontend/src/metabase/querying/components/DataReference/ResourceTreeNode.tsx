@@ -9,7 +9,7 @@ import {
 } from "./NodeList";
 import S from "./ResourceTreeNode.module.css";
 
-export const ResourceTreeNode = <TData = unknown,>({
+export const ResourceTreeNode = <TData = unknown>({
   item,
   depth,
   isExpanded,

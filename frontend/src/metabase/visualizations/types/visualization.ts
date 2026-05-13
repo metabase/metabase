@@ -65,11 +65,15 @@ export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type Extent = [number, number];
 
+export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
+
 export interface RenderingContext {
   getColor: ColorGetter;
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
+  /** Defaults to "light" when not provided. */
+  colorScheme?: "light" | "dark";
 
   theme: VisualizationTheme;
 }
@@ -605,7 +609,9 @@ export type VisualizationDefinition = {
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
+  iconUrl?: string;
   hasEmptyState?: boolean;
+  isDev?: boolean; // is custom viz in dev mode
 
   maxMetricsSupported?: number;
   maxDimensionsSupported?: number;

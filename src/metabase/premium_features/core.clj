@@ -55,6 +55,8 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-custom-viz?
+  enable-data-complexity-score?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
@@ -86,12 +88,13 @@
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
-  enable-workspaces?
   enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  locked-meters
   premium-embedding-token
+  security-center-disabled
   security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?

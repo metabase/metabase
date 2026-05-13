@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameters,
   EmbeddingType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import type {
   BaseEntityId,
   CardDisplayType,
@@ -29,7 +29,12 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, VisualizationSettings } from "./card";
+import type {
+  Card,
+  CardId,
+  ColumnSettings,
+  VisualizationSettings,
+} from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
@@ -133,10 +138,20 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
+
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+  column_settings?: Record<string, ColumnSettings>;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

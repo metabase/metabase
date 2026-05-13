@@ -1,0 +1,25 @@
+{
+  "name": "__CUSTOM_VIZ_NAME__",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node pack.mjs",
+    "dev": "vite build --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@metabase/custom-viz": "__CUSTOM_VIZ_VERSION__",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@types/tar-stream": "3.1.4",
+    "@vitejs/plugin-react": "5.2.0",
+    "tar-stream": "3.1.8",
+    "typescript": "5.9.3",
+    "vite": "8.0.0"
+  }
+}

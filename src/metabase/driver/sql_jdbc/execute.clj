@@ -63,7 +63,7 @@
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
-    [:write? {:optional true} [:maybe :boolean]]
+    [:write? {:optional true, :default false} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
     ;; true if called from table-rows-sample-query
     [:sample? {:optional true} [:maybe :boolean]]
@@ -246,7 +246,7 @@
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
   metabase-enterprise.impersonation.driver
-  [_ _ _])
+  [_driver _conn _database])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
 (defn set-best-transaction-level!
@@ -567,13 +567,16 @@
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
-  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
+  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid. Match the
+  ;; classification used in [[execute-reducible-query]] below: such errors should surface to the
+  ;; user as :invalid-query (HTTP 4xx with the underlying database message), not :driver
+  ;; (HTTP 5xx "We're experiencing server issues"). See #71637.
   (doto (try
           (prepared-statement driver conn sql params)
           (catch Throwable e
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
-                             :type   driver-api/qp.error-type.driver
+                             :type   driver-api/qp.error-type.invalid-query
                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
@@ -814,12 +817,13 @@
                   ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
                   ;;       It should be removed afterwards!
                     (when-not (= :vertica driver)
-                      (try (.cancel stmt)
+                      (try (when-not (.isClosed stmt)
+                             (.cancel stmt))
                            (catch SQLFeatureNotSupportedException _
                              (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                         (name driver)))
-                           (catch Throwable _
-                             (log/warn "Statement cancelation failed.")))))))))))))
+                           (catch Throwable e
+                             (log/info e "Statement cancelation failed.")))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

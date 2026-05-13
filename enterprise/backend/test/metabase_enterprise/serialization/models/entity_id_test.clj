@@ -16,6 +16,8 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{:model/Channel
+    ;; CustomVizPlugins have unique identifiers.
+    :model/CustomVizPlugin
     ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
@@ -49,6 +51,7 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
@@ -59,10 +62,12 @@
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotFeedback
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
+    :model/MetabotSourceFeedback
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -121,20 +126,7 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models here as Workspace was present. I believe
-    ;; going forward all of that will be available for export. We should revisit this later in the project.
-    :model/Workspace
-    :model/WorkspaceInput
-    :model/WorkspaceInputExternal
-    :model/WorkspaceInputTransform
-    :model/WorkspaceLog
-    :model/WorkspaceMerge
-    :model/WorkspaceMergeTransform
-    :model/WorkspaceGraph
-    :model/WorkspaceOutput
-    :model/WorkspaceOutputExternal
-    :model/WorkspaceTransform})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

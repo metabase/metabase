@@ -5,8 +5,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import type { Card } from "metabase-types/api";
 
 interface MetricActivityTimelineProps {
