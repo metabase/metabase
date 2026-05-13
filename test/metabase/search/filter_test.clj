@@ -170,21 +170,12 @@
                   {:filter-items-in-personal-collection "exclude"
                    :current-user-id                     1}
                   :search_index.collection_id)]
-      (is (= :or (first clause)))
-      (let [and-form (nth clause 2)]
-        (is (= :and (first and-form)))
-        ;; The personal_owner_id IS NULL guard, plus a single :not [:exists ...] anti-join.
-        (is (= 3 (count and-form)))
-        (let [not-form (nth and-form 2)]
-          (is (= :not (first not-form)))
-          (is (= :exists (first (second not-form))))))))
+      (is (=? [:or any? [:and any? [:not [:exists any?]]]]
+              clause)))))
   (testing "the \"only\" branch uses a single EXISTS subquery rather than one :like clause per personal collection"
     (let [clause (search.filter/personal-collections-where-clause
                   {:filter-items-in-personal-collection "only"
                    :current-user-id                     1}
                   :search_index.collection_id)]
-      (is (= :or (first clause)))
-      ;; Two disjuncts: top-level-personal-collection guard, and a single :exists for descendants.
-      (is (= 3 (count clause)))
-      (let [exists-form (nth clause 2)]
-        (is (= :exists (first exists-form)))))))
+      (is (=? [:or any? [:exists any]]
+              clause))))))
