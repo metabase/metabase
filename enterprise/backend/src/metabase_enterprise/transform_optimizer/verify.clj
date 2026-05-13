@@ -26,20 +26,14 @@
 (def ^:private scratch-schema "transform_optimizer_verify")
 (def ^:private sample-limit 10)
 
-;; A "table-ref" in this namespace is `{:schema "..." :table "..."}`. The
-;; slow side may be either a fresh scratch materialisation (when the
-;; transform hasn't run yet, or has been edited since) or the live target
-;; table (when we can reuse the last run's output). The fast side is
-;; always materialised in scratch.
+;; A "table-ref" in this namespace is `{:schema "..." :table "..."}`. Both
+;; sides of the comparison are always materialised into the scratch schema
+;; under one MVCC snapshot — we used to also support reusing the live
+;; target table as the slow side, but source-data drift between the last
+;; run and now made that path unsafe (false-positive `equivalent: false`).
 
 (def ^:private scratch-slow-ref {:schema scratch-schema :table "slow"})
 (def ^:private scratch-fast-ref {:schema scratch-schema :table "fast"})
-
-(defn- safe-ident? [s]
-  (boolean (and s (re-matches #"[A-Za-z0-9_]+" s))))
-
-(defn- safe-table-spec? [{:keys [schema table]}]
-  (and (safe-ident? schema) (safe-ident? table)))
 
 (defn- table-ref ^String [{:keys [schema table]}]
   (str schema "." table))
@@ -68,9 +62,6 @@
           ms    (/ (- (System/nanoTime) t0) 1e6)
           rows  (scalar conn (str "SELECT count(*) FROM " tref))]
       {:ms ms :row-count rows})))
-
-(defn- count-rows [^Connection conn ref]
-  (scalar conn (str "SELECT count(*) FROM " (table-ref ref))))
 
 ;; ---------------------------------------------------------------------------
 ;; Column / schema compatibility
@@ -215,49 +206,6 @@
       :else nil)))
 
 ;; ---------------------------------------------------------------------------
-;; Reusing the live target table as the "slow" side
-;;
-;; If the transform has already run successfully and hasn't been edited
-;; since that run started, the live target table is byte-identical to what
-;; rerunning `slow-sql` would produce — modulo source-data drift, which we
-;; can't detect cheaply and accept as a known limitation. Reusing it saves
-;; the full slow-SQL execution, which for many transforms is the dominant
-;; cost of verify. We also surface the original run's wall-clock as
-;; `slow_duration_ms` so the speedup number is meaningful.
-
-(defn- last-successful-run [transform-id]
-  (t2/select-one :model/TransformRun
-                 :transform_id transform-id
-                 :status :succeeded
-                 {:order-by [[:start_time :desc]]}))
-
-(defn- run-duration-ms [{:keys [start_time end_time]}]
-  (when (and start_time end_time)
-    (let [s (transforms-base.u/->instant start_time)
-          e (transforms-base.u/->instant end_time)]
-      (.toMillis (java.time.Duration/between s e)))))
-
-(defn- transform-unchanged-since-run? [transform run]
-  (let [tu (some-> transform :updated_at transforms-base.u/->instant)
-        rs (some-> run :start_time transforms-base.u/->instant)]
-    (boolean (and tu rs (not (.isAfter tu rs))))))
-
-(defn- target-ref [transform]
-  (let [{:keys [schema name]} (:target transform)]
-    {:schema schema :table name}))
-
-(defn- reusable-target-ref
-  "Returns the target table-ref to reuse as the slow side, or nil. Only
-  reused when (a) the transform has a successful last run, (b) it hasn't
-  been edited since that run started, and (c) the identifiers are safe."
-  [transform]
-  (when-let [run (last-successful-run (:id transform))]
-    (when (transform-unchanged-since-run? transform run)
-      (let [ref (target-ref transform)]
-        (when (safe-table-spec? ref)
-          {:ref ref :run run})))))
-
-;; ---------------------------------------------------------------------------
 ;; Public API
 
 (defn- ensure-scratch-schema! [^Connection conn]
@@ -311,38 +259,60 @@
     (when-let [{:keys [error detail]} (static-check driver-kw slow-sql fast-sql proposal)]
       (throw (ex-info detail {:status-code 422 :error error})))
 
-    (let [reuse (reusable-target-ref transform)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver-kw db-id nil
-       (fn [^Connection conn]
-         (try
-           (ensure-scratch-schema! conn)
-           (let [slow-ref   (if reuse (:ref reuse) scratch-slow-ref)
-                 slow-stats (if reuse
-                              {:ms        (run-duration-ms (:run reuse))
-                               :row-count (count-rows conn slow-ref)}
-                              (materialize! conn scratch-slow-ref slow-sql))
-                 fast-stats (materialize! conn scratch-fast-ref fast-sql)
-                 slow-cols  (column-info conn slow-ref)
-                 fast-cols  (column-info conn scratch-fast-ref)
-                 mismatch   (schema-match slow-cols fast-cols)]
-             (if mismatch
-               (throw (ex-info (:detail mismatch) (assoc mismatch :status-code 422)))
-               (let [diff-rows   (diff-count conn slow-ref scratch-fast-ref)
-                     equivalent? (zero? diff-rows)
-                     slow-ms     (some-> (:ms slow-stats) long)
-                     fast-ms     (long (:ms fast-stats))
-                     speedup     (when (and slow-ms (pos? fast-ms))
-                                   (double (/ slow-ms fast-ms)))]
-                 (cond-> {:equivalent       equivalent?
-                          :slow_duration_ms slow-ms
-                          :fast_duration_ms fast-ms
-                          :speedup          speedup
-                          :diff_rows        diff-rows
-                          :slow_source      (if reuse "transform_run" "materialized")
-                          :sample_diff      (when-not equivalent?
-                                              (diff-sample conn slow-ref scratch-fast-ref))}
-                   reuse
-                   (assoc :slow_run_id (:id (:run reuse)))))))
-           (finally
-             (cleanup! conn))))))))
+    ;; `:write? true` tells Metabase's connection helper not to mark the
+    ;; connection read-only — without it the CREATE TABLE AS / DROP TABLE
+    ;; statements fail with "cannot execute … in a read-only transaction".
+    ;; The framework also flips auto-commit off for write connections so
+    ;; we can run the materialise pair inside one transaction.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver-kw db-id {:write? true}
+     (fn [^Connection conn]
+       (try
+         ;; Schema creation lives outside the snapshot transaction —
+         ;; CREATE SCHEMA IF NOT EXISTS is idempotent and we don't want a
+         ;; lingering snapshot-level lock on system catalogs.
+         (.setAutoCommit conn true)
+         (ensure-scratch-schema! conn)
+         ;; Now open the snapshot. Both materialises see the same MVCC view
+         ;; of the source — without this, inserts/updates landing between
+         ;; the slow and fast CREATE TABLE AS calls would diverge the row
+         ;; sets and verify would report false-positive `equivalent: false`.
+         ;; We previously tried to reuse the live target table as the slow
+         ;; side (cached from the last successful run) but that has the
+         ;; same problem on a longer timescale: source data drift between
+         ;; the cached run and now. Always materialise both fresh inside
+         ;; one snapshot.
+         (.setAutoCommit conn false)
+         (exec! conn "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+         (let [slow-stats (materialize! conn scratch-slow-ref slow-sql)
+               fast-stats (materialize! conn scratch-fast-ref fast-sql)
+               slow-cols  (column-info conn scratch-slow-ref)
+               fast-cols  (column-info conn scratch-fast-ref)
+               mismatch   (schema-match slow-cols fast-cols)]
+           (.commit conn)
+           (.setAutoCommit conn true)
+           (if mismatch
+             (throw (ex-info (:detail mismatch) (assoc mismatch :status-code 422)))
+             (let [diff-rows   (diff-count conn scratch-slow-ref scratch-fast-ref)
+                   equivalent? (zero? diff-rows)
+                   slow-ms     (long (:ms slow-stats))
+                   fast-ms     (long (:ms fast-stats))
+                   speedup     (when (pos? fast-ms)
+                                 (double (/ slow-ms fast-ms)))]
+               {:equivalent       equivalent?
+                :slow_duration_ms slow-ms
+                :fast_duration_ms fast-ms
+                :speedup          speedup
+                :diff_rows        diff-rows
+                :slow_source      "materialized"
+                :sample_diff      (when-not equivalent?
+                                    (diff-sample conn
+                                                 scratch-slow-ref
+                                                 scratch-fast-ref))})))
+         (finally
+           ;; Best-effort: roll back anything still open and put the
+           ;; connection back into auto-commit mode before cleanup so the
+           ;; DROPs aren't trapped in a half-committed transaction.
+           (try (.rollback conn) (catch Exception _))
+           (try (.setAutoCommit conn true) (catch Exception _))
+           (cleanup! conn)))))))
