@@ -50,11 +50,11 @@ pip3 install pydub
 # Replicate token — sign up at replicate.com, set in your shell rc
 export REPLICATE_API_TOKEN=r8_...
 
-# Voice reference for cloning — one-time. Record 5-10s of clean speech.
-# Use any mic (built-in is fine for a POC; external mic gives better clone quality).
+# Voice reference for cloning — one-time. ~12s of clean natural speech, mono 22kHz.
+# Use any mic (built-in is fine; external mic gives better clone quality).
+# See Phase 4 → "Reference audio" for format details and tuning knobs.
 mkdir -p ~/tmp
-sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 8     # macOS: brew install sox
-# Or: QuickTime → File → New Audio Recording → save → export as WAV
+sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 12     # macOS: brew install sox
 ```
 
 ### Optional: EE tokens
@@ -103,7 +103,8 @@ Draft `tmp/demo-storyboard.md` from the discovery. Keep it small — 5–8 beats
 **Output:** tmp/demo-videos/feature.mp4
 **Boot mode:** e2e
 **EE tokens needed:** <yes|no>
-**Voice ref:** ~/tmp/voice-ref.wav   <!-- optional; overrides REPLICATE_TTS_REF_AUDIO for this recording -->
+**Voice ref:** ~/tmp/voice-ref.wav   <!-- optional; overrides REPLICATE_TTS_REF_AUDIO -->
+**Voice tuning:** exaggeration=0.5 cfg_weight=0.5 temperature=0.8 seed=0   <!-- optional; Chatterbox knobs -->
 
 ## Beats
 
@@ -410,25 +411,102 @@ Read `tmp/demo-videos/feature.cues.json`. For each cue, call Replicate to synthe
 
 **Default model:** `resemble-ai/chatterbox` — SOTA open-source voice cloning. Wins blind tests vs ElevenLabs 63% of the time for naturalness. Zero-shot cloning from ~5 seconds of reference audio. Emotion control. ~$0.0006/cue.
 
-**Reference audio:** the cloned voice. Record a 5–10 second WAV of yourself reading anything (a sentence from a book is fine) and save to `~/tmp/voice-ref.wav`. The skill picks it up automatically. Override path with `REPLICATE_TTS_REF_AUDIO=/path/to/sample.wav`.
+**Reference audio (the voice clone source):**
+- Record a clean sample of yourself reading anything natural (a book paragraph works well).
+- **Format:** WAV or MP3, mono, **22 kHz** sample rate or higher, **8–20 seconds** of speech.
+- **Avoid:** background noise, music, multiple speakers, gaps of silence, breathy/whispered delivery — Chatterbox imitates whatever's in the sample.
+- Save to `~/tmp/voice-ref.wav` (default) or set `REPLICATE_TTS_REF_AUDIO=/path/to/sample.wav`.
 
 ```bash
-# One-time: record a reference sample with macOS's QuickTime, Voice Memos, or sox
-# Aim for ~5-10s of clean speech, 22kHz+, mono
-ls ~/tmp/voice-ref.wav || echo "Record a 5-10s WAV at ~/tmp/voice-ref.wav"
+# Record with sox (recommended; fast + correct format out of the box):
+brew install sox
+sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 12
+
+# Or QuickTime → New Audio Recording → save as .m4a → convert with ffmpeg:
+ffmpeg -i ~/Desktop/sample.m4a -ar 22050 -ac 1 ~/tmp/voice-ref.wav
 ```
 
+**Chatterbox tuning knobs** — defaults work for narration; tweak per recording via env vars or the storyboard:
+
+| Knob | Range | Default | Effect |
+|---|---|---|---|
+| `REPLICATE_TTS_EXAGGERATION` | 0.25–2.0 | 0.5 | Higher = more dramatic delivery. >1.0 starts sounding theatrical. <0.4 is flat/monotone. |
+| `REPLICATE_TTS_CFG_WEIGHT` | 0.2–1.0 | 0.5 | Higher = closer to the reference voice (less generic). Trade-off with naturalness. |
+| `REPLICATE_TTS_TEMPERATURE` | 0.05–5.0 | 0.8 | Higher = more variation between cues. Lower = more consistent tone. |
+| `REPLICATE_TTS_SEED` | int | 0 (random) | Set a fixed integer for reproducible output across runs. |
+
 **Alternative models** (override with `REPLICATE_TTS_MODEL=owner/name`):
-- `minimax/speech-2.8-hd` — proprietary, also great quality, similar 5s cloning, 32+ languages
+- `minimax/speech-2.8-hd` — proprietary, similar 5s cloning, 32+ languages
 - `elevenlabs/v3` — best multilingual (70+ languages), proprietary, pricier
 - `lucataco/xtts-v2` — older but proven, multilingual
-- `jaaari/kokoro-82m` — preset voices only (no cloning), but fastest/cheapest if you don't need a personal voice
+- `jaaari/kokoro-82m` — preset voices only (no cloning), fastest/cheapest
+
+### Quick voice preview
+
+Before running the full demo, synthesize one short sample to confirm the clone sounds right. Cheap (~$0.001), takes ~5s.
+
+Write `tmp/voice-preview.mjs`:
+
+```javascript
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { homedir } from "os";
+import { join, basename } from "path";
+
+const TOKEN = process.env.REPLICATE_API_TOKEN;
+if (!TOKEN) { console.error("REPLICATE_API_TOKEN not set"); process.exit(1); }
+
+const REF_PATH = process.env.REPLICATE_TTS_REF_AUDIO || join(homedir(), "tmp/voice-ref.wav");
+if (!existsSync(REF_PATH)) { console.error(`Reference not found: ${REF_PATH}`); process.exit(1); }
+
+// 1. Upload reference WAV → Replicate file URL
+const fd = new FormData();
+fd.append("content", new Blob([readFileSync(REF_PATH)], { type: "audio/wav" }), basename(REF_PATH));
+const up = await fetch("https://api.replicate.com/v1/files", {
+  method: "POST", headers: { "Authorization": `Token ${TOKEN}` }, body: fd,
+});
+const upJson = await up.json();
+const audioUrl = upJson.urls?.get;
+if (!audioUrl) { console.error("Upload failed:", upJson); process.exit(1); }
+console.log("Reference uploaded:", audioUrl);
+
+// 2. Synthesize a sample line with the clone
+const text = process.argv[2] || "Hi, this is a quick preview of my cloned voice for the demo.";
+const res = await fetch("https://api.replicate.com/v1/models/resemble-ai/chatterbox/predictions", {
+  method: "POST",
+  headers: { "Authorization": `Token ${TOKEN}`, "Content-Type": "application/json", "Prefer": "wait" },
+  body: JSON.stringify({ input: {
+    prompt: text, audio_prompt: audioUrl,
+    exaggeration: +(process.env.REPLICATE_TTS_EXAGGERATION ?? 0.5),
+    cfg_weight:   +(process.env.REPLICATE_TTS_CFG_WEIGHT   ?? 0.5),
+    temperature:  +(process.env.REPLICATE_TTS_TEMPERATURE  ?? 0.8),
+  }}),
+});
+const pred = await res.json();
+const outUrl = Array.isArray(pred.output) ? pred.output[0] : pred.output;
+const buf = Buffer.from(await (await fetch(outUrl)).arrayBuffer());
+writeFileSync("tmp/voice-preview.wav", buf);
+console.log("Preview: tmp/voice-preview.wav");
+```
+
+```bash
+node tmp/voice-preview.mjs                                # default sample line
+node tmp/voice-preview.mjs "Today I'm walking through…"   # custom line
+open tmp/voice-preview.wav                                # listen
+```
+
+If the preview sounds off:
+- **Robotic / generic** → bump `REPLICATE_TTS_CFG_WEIGHT=0.7` (more reference-like)
+- **Flat / monotone** → bump `REPLICATE_TTS_EXAGGERATION=0.7`
+- **Inconsistent between runs** → drop `REPLICATE_TTS_TEMPERATURE=0.5` and set `REPLICATE_TTS_SEED=42`
+- **Still wrong** → re-record the reference (longer sample, cleaner audio, more natural delivery)
+
+### Full TTS run
 
 Write `tmp/tts.mjs`:
 
 ```javascript
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { join, basename } from "path";
 import { homedir } from "os";
 
 const TOKEN = process.env.REPLICATE_API_TOKEN;
@@ -437,60 +515,84 @@ if (!TOKEN) { console.error("REPLICATE_API_TOKEN not set"); process.exit(1); }
 const MODEL = process.env.REPLICATE_TTS_MODEL || "resemble-ai/chatterbox";
 const REF_PATH = process.env.REPLICATE_TTS_REF_AUDIO || join(homedir(), "tmp/voice-ref.wav");
 
-// Voice cloning models need a reference audio file. Encode as data URI.
-let refAudio = null;
-if (MODEL === "resemble-ai/chatterbox" || MODEL.includes("xtts") || MODEL.includes("minimax")) {
-  if (!existsSync(REF_PATH)) {
-    console.error(`Reference audio not found at ${REF_PATH}.`);
-    console.error("Record a 5-10s WAV of your voice and save it there, or set REPLICATE_TTS_REF_AUDIO.");
+// Chatterbox knobs (env-overridable, storyboard-overridable upstream)
+const KNOBS = {
+  exaggeration: +(process.env.REPLICATE_TTS_EXAGGERATION ?? 0.5),
+  cfg_weight:   +(process.env.REPLICATE_TTS_CFG_WEIGHT   ?? 0.5),
+  temperature:  +(process.env.REPLICATE_TTS_TEMPERATURE  ?? 0.8),
+  seed:         +(process.env.REPLICATE_TTS_SEED         ?? 0),
+};
+
+// Upload the reference WAV once → URL reused for all cues.
+// More reliable than data-URI; faster (one small upload instead of N).
+async function uploadReference(path) {
+  if (!existsSync(path)) {
+    console.error(`Reference audio not found at ${path}.`);
+    console.error("Record a sample with `sox -d -r 22050 -c 1 ~/tmp/voice-ref.wav trim 0 12`.");
     process.exit(1);
   }
-  const buf = readFileSync(REF_PATH);
-  refAudio = `data:audio/wav;base64,${buf.toString("base64")}`;
+  const fd = new FormData();
+  fd.append("content", new Blob([readFileSync(path)], { type: "audio/wav" }), basename(path));
+  const res = await fetch("https://api.replicate.com/v1/files", {
+    method: "POST", headers: { "Authorization": `Token ${TOKEN}` }, body: fd,
+  });
+  const j = await res.json();
+  if (!j.urls?.get) throw new Error(`Reference upload failed: ${JSON.stringify(j)}`);
+  return j.urls.get;
+}
+
+let audioUrl = null;
+if (MODEL === "resemble-ai/chatterbox" || MODEL.includes("xtts") || MODEL.includes("minimax")) {
+  audioUrl = await uploadReference(REF_PATH);
+  console.log("Reference uploaded:", audioUrl);
 }
 
 // Per-model input shape. Add new model keys here.
 function buildInput(text) {
   if (MODEL === "resemble-ai/chatterbox") {
-    return { prompt: text, audio_prompt: refAudio, exaggeration: 0.5, cfg_weight: 0.5 };
+    return { prompt: text, audio_prompt: audioUrl, ...KNOBS };
   }
-  if (MODEL.includes("xtts")) {
-    return { text, speaker: refAudio, language: "en" };
-  }
-  if (MODEL.includes("minimax")) {
-    return { text, voice_clone_audio: refAudio };
-  }
+  if (MODEL.includes("xtts"))   return { text, speaker: audioUrl, language: "en" };
+  if (MODEL.includes("minimax")) return { text, voice_clone_audio: audioUrl };
   // Preset-voice models (kokoro, etc.)
-  const VOICE = process.env.REPLICATE_TTS_VOICE || "af_bella";
-  return { text, voice: VOICE };
+  return { text, voice: process.env.REPLICATE_TTS_VOICE || "af_bella" };
 }
 
 const cues = JSON.parse(readFileSync("tmp/demo-videos/feature.cues.json", "utf8"));
 const AUDIO_DIR = "tmp/audio";
 mkdirSync(AUDIO_DIR, { recursive: true });
 
-async function ttsOne(text, idx) {
-  const start = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
-    method: "POST",
-    headers: { "Authorization": `Token ${TOKEN}`, "Content-Type": "application/json", "Prefer": "wait" },
-    body: JSON.stringify({ input: buildInput(text) }),
-  });
-  const pred = await start.json();
-  if (pred.error) throw new Error(`TTS ${idx}: ${pred.error}`);
+async function ttsOne(text, idx, attempt = 1) {
+  try {
+    const start = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+      method: "POST",
+      headers: { "Authorization": `Token ${TOKEN}`, "Content-Type": "application/json", "Prefer": "wait" },
+      body: JSON.stringify({ input: buildInput(text) }),
+    });
+    const pred = await start.json();
+    if (pred.error) throw new Error(`TTS ${idx}: ${pred.error}`);
 
-  let final = pred;
-  while (final.status !== "succeeded" && final.status !== "failed") {
-    await new Promise((r) => setTimeout(r, 1000));
-    final = await (await fetch(final.urls.get, { headers: { "Authorization": `Token ${TOKEN}` } })).json();
+    let final = pred;
+    while (final.status !== "succeeded" && final.status !== "failed") {
+      await new Promise((r) => setTimeout(r, 1000));
+      final = await (await fetch(final.urls.get, { headers: { "Authorization": `Token ${TOKEN}` } })).json();
+    }
+    if (final.status === "failed") throw new Error(`TTS ${idx} failed: ${final.error}`);
+
+    const outUrl = Array.isArray(final.output) ? final.output[0] : final.output;
+    const buf = Buffer.from(await (await fetch(outUrl)).arrayBuffer());
+    const path = join(AUDIO_DIR, `clip-${idx + 1}.wav`);
+    writeFileSync(path, buf);
+    return path;
+  } catch (e) {
+    if (attempt < 3) {
+      const wait = attempt === 1 ? 1000 : 3000;
+      console.warn(`cue ${idx + 1} retry ${attempt}: ${e.message}`);
+      await new Promise((r) => setTimeout(r, wait));
+      return ttsOne(text, idx, attempt + 1);
+    }
+    throw e;
   }
-  if (final.status === "failed") throw new Error(`TTS ${idx} failed: ${final.error}`);
-
-  const audioUrl = Array.isArray(final.output) ? final.output[0] : final.output;
-  const audioRes = await fetch(audioUrl);
-  const buf = Buffer.from(await audioRes.arrayBuffer());
-  const path = join(AUDIO_DIR, `clip-${idx + 1}.wav`);
-  writeFileSync(path, buf);
-  return path;
 }
 
 // Run in parallel — typical demo is 5-8 cues, all done in ~15s
@@ -502,7 +604,7 @@ console.log("Clips:", paths);
 node tmp/tts.mjs
 ```
 
-**Retry on 429/5xx:** wrap `ttsOne` with three-attempt exponential backoff (1s, 3s, 9s). If all three fail for a cue, fall back to `say -o tmp/audio/clip-N.aiff …` (macOS) + convert with `ffmpeg`, and log a warning so the user knows that clip is mixed-quality.
+**Retry behavior is built in** — three attempts with 1s, 3s backoff. After three failures the script throws; if you want a graceful `say` fallback for individual cues, wrap the final `await Promise.all` to catch and substitute.
 
 ### Stitch with pydub
 
