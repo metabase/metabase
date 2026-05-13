@@ -18,7 +18,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -146,6 +147,18 @@
   [_route-params _query-params]
   (or (get @bulk-jobs api/*current-user-id*)
       {:total 0 :pending [] :done {} :failed {}}))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/mark-optimized"
+  "Flip `transform.optimized = true` for `transform-id`. The bulk-drawer
+  YOLO flow calls this after accepting every proposal for a transform —
+  the user has decided this transform is done, so we persist that
+  verdict without re-running the LLM. The before-update hook on
+  Transform clears the flag again the next time the source is edited."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/Transform id)
+  (t2/update! :model/Transform id {:optimized true})
+  {:id id :optimized true})
 
 ;; ---------------------------------------------------------------------------
 ;; Verify endpoint

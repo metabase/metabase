@@ -362,38 +362,47 @@ you do not emit it.
 different optimization approaches both apply to the same query, emit
 **both** as separate proposals so the user can choose. Examples:
 
-- **A covering index *and* a precompute split.** A covering index can
-  make a single query fast; a precompute split makes *every* future
-  query against the same fact table fast and survives 10× more data.
-  These are different trade-offs — propose both, let the user pick.
 - **A rewrite *and* a supporting index.** Each can be accepted alone;
   together they multiply. Per "one proposal = one change," that's two
   proposals with no `depends_on` between them.
-- **Different precompute granularities.** Daily rollup vs hourly rollup
-  vs raw incremental — if more than one fits the question being asked,
-  emit them as separate proposals at appropriate severities.
+- **A targeted rewrite *and* a covering index.** When the rewrite
+  reshapes the query (different join, eliminated subquery) AND an
+  index resolves the access pattern, emit both — the user can accept
+  one or both.
 
 What "don't pad" *does* mean: don't propose a `:low` rewrite that won't
 materially help, and don't restate the same optimization in two slightly
 different syntactic forms. Two proposals must be *meaningfully*
 different.
 
-### Strong hint: ALWAYS consider a precompute when …
+### Do not propose precomputes by default
 
-You should emit at least one `:precompute` proposal — even alongside a
-faster-to-accept index proposal — whenever the slow query matches any of
-these patterns:
+`:precompute` proposals split one transform into N — the materialised
+rollup runs on its own schedule, then the leaf rewrite reads from it.
+That sounds like it saves work, but for transforms (which run on a
+fixed schedule, not on every dashboard view), **the rollup itself
+still has to run** end-to-end on each refresh, and now there's an
+extra transform to maintain. **In practice the precomputed pipeline
+is slower overall than the original** — you're paying the same
+fact-table scan, plus the rollup write, plus the join in the leaf.
 
-| Pattern | Why precompute helps |
+Default to **no precompute proposals**. The only situation where a
+precompute is a net win is when the leaf will be read *much* more
+often than the rollup is materialised — and that's a property of the
+*caller* (a dashboard hit live, a downstream query) not the transform
+itself. Since you can't see that from the EXPLAIN plan, you can't
+make that call.
+
+If you find yourself reaching for a precompute, **emit a `:rewrite`
+or `:index` instead**. They deliver the same access-pattern win
+without forking the schedule. Examples:
+
+| Tempting precompute | Use this instead |
 |---|---|
-| `COUNT(DISTINCT …)` over a fact table > 1M rows | The distinct hash is memory-bound; pre-rolling to per-day distinct sets shrinks the working set by 1–2 orders of magnitude. |
-| Same fact table scanned by two or more CTEs / subqueries | Each precompute holds a single-purpose aggregate; the final query joins compact tables instead of re-scanning the fact. |
-| Cohort/retention/funnel patterns (cohort_month × activity_month, signup→event×, etc.) | The cohort dimension is small (≤ #customers); precompute it once, join repeatedly. |
-| Time-window aggregates on streams (events, logs) | A daily/hourly rollup is incrementally maintainable; the consumer query reads ~365 rows instead of millions. |
-
-If the user accepts only the index, fine — they got a quick win. If
-they accept only the precompute, fine — they got a structural win.
-Offering both is the optimizer's job.
+| Per-day rollup of an events fact table | Covering index on `(date_trunc('day', occurred_at), …)`. |
+| Cohort dimension precompute joined repeatedly | Rewrite that wraps the cohort calc in a single CTE inside the same transform. |
+| `COUNT(DISTINCT)` per group precompute | Covering index on `(group_key, distinct_col)` so the scan is index-only. |
+| Same fact table scanned by N CTEs | Single CTE that aggregates once + a covering index on the join key. |
 
 ## Severity rubric
 

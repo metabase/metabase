@@ -1,0 +1,114 @@
+/* YOLO marquee — rainbow gradient sweeping behind the button label, plus a
+   gentle pulse on the border so the call-to-action is impossible to miss
+   in a list of "regular" accordion rows. Mantine's Button paints its bg
+   via the `--button-bg` custom prop on the root element, so we override
+   that with our animated gradient. */
+.yoloButton {
+  --button-bg: linear-gradient(
+    90deg,
+    #ff5e5b,
+    #ffae42,
+    #fff15c,
+    #50fa7b,
+    #5eb1ff,
+    #d970ff,
+    #ff5e5b
+  );
+  background-size: 300% 100%;
+  animation:
+    yoloMarquee 2.5s linear infinite,
+    yoloPulse 1.4s ease-in-out infinite,
+    yoloBlink 3s linear infinite;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+@keyframes yoloMarquee {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+@keyframes yoloPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0.5),
+      0 0 12px 2px rgba(255, 100, 200, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(255, 255, 255, 0.15),
+      0 0 18px 6px rgba(100, 200, 255, 0.5);
+  }
+}
+
+/* Coin explosion — fixed-position overlay that briefly rains coins from
+   the centre of the screen outward and downward. Each coin reads its own
+   trajectory from CSS vars set inline so we can randomise per-coin without
+   needing N keyframe definitions. */
+.coinExplosion {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.coin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 32px;
+  line-height: 1;
+  animation: coinFly 1.8s var(--coin-delay, 0s) cubic-bezier(0.15, 0.7, 0.4, 1)
+    forwards;
+}
+
+@keyframes coinFly {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.4);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(-50%, -50%)
+      translate(calc(var(--coin-tx) * 0.4), calc(var(--coin-ty) * 0.4))
+      rotate(calc(var(--coin-rot) * 0.4)) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--coin-tx), var(--coin-ty))
+      rotate(var(--coin-rot)) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* Flashing rainbow — never hides the button. We rotate the hue of the
+   whole element through 360° and dip the brightness/opacity slightly in
+   sync, so the rainbow gradient continuously shifts colors while the
+   label stays readable. */
+@keyframes yoloBlink {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) saturate(1.4) brightness(1.05);
+    opacity: 1;
+  }
+  25% {
+    filter: hue-rotate(90deg) saturate(1.8) brightness(1.15);
+    opacity: 0.92;
+  }
+  50% {
+    filter: hue-rotate(180deg) saturate(1.4) brightness(1);
+    opacity: 1;
+  }
+  75% {
+    filter: hue-rotate(270deg) saturate(1.8) brightness(1.15);
+    opacity: 0.92;
+  }
+}

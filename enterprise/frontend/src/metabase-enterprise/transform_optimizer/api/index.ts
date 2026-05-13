@@ -238,6 +238,20 @@ export const optimizerApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/transform-optimizer/bulk-optimize/status",
       }),
     }),
+    markOptimized: builder.mutation<
+      { id: number; optimized: true },
+      { transformId: number }
+    >({
+      query: ({ transformId }) => ({
+        method: "POST",
+        url: `/api/ee/transform-optimizer/${transformId}/mark-optimized`,
+      }),
+      invalidatesTags: (_data, error, { transformId }) =>
+        invalidateTags(error, [
+          idTag("transform", transformId),
+          listTag("transform"),
+        ]),
+    }),
   }),
 });
 
@@ -250,4 +264,5 @@ export const {
   useDropTargetIndexMutation,
   useBulkOptimizeMutation,
   useBulkOptimizeStatusQuery,
+  useMarkOptimizedMutation,
 } = optimizerApi;

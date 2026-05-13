@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
@@ -9,6 +16,7 @@ import {
   Anchor,
   Badge,
   Box,
+  Button,
   Divider,
   Group,
   Icon,
@@ -22,13 +30,19 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { useMetadataToasts } from "metabase/metadata/hooks";
+
 import {
+  type AcceptMode,
   type BulkOptimizeDoneEntry,
   type BulkOptimizeStatusResponse,
   optimizerApi,
+  useAcceptProposalMutation,
   useBulkOptimizeStatusQuery,
+  useMarkOptimizedMutation,
 } from "../../api";
 
+import S from "./BulkResultsDrawer.module.css";
 import { BulkTransformCard } from "./BulkTransformCard";
 
 type RowStatus = "running" | "queued" | "done" | "failed";
@@ -177,6 +191,123 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
     setAcceptedIndexNames(new Set());
   }, [data?.started_at]);
 
+  // YOLO accept: iterate every done entry and accept its proposals in one
+  // pass. Replace mode when there's a rewrite (source swap in place,
+  // precomputes become siblings, indices run inline); New mode otherwise.
+  // Sequential so per-transform failures surface as discrete toasts.
+  const [accept, { isLoading: isAccepting }] = useAcceptProposalMutation();
+  // After every successful YOLO accept on a transform we also flip its
+  // `optimized` flag. The accept itself replaces the source, which the
+  // before-update hook treats as "must re-verify" by clearing the flag —
+  // markOptimized writes it back to true because the user has made an
+  // explicit "I'm done with this one" decision via YOLO.
+  const [markOptimized] = useMarkOptimizedMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const [yoloAcceptedIds, setYoloAcceptedIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    setYoloAcceptedIds(new Set());
+  }, [data?.started_at]);
+
+  // Coin explosion: incremented each time YOLO is fired. The mounted
+  // overlay keyed on this value runs its CSS animation once and then
+  // unmounts via a 2s timeout. Keying ensures back-to-back YOLO clicks
+  // restart the animation cleanly instead of letting React reuse the
+  // already-played overlay.
+  const [coinKey, setCoinKey] = useState<number | null>(null);
+
+  const handleYolo = useCallback(async () => {
+    setCoinKey(Date.now());
+    setTimeout(() => setCoinKey(null), 2000);
+    let successCount = 0;
+    let failCount = 0;
+    for (const entry of doneEntries) {
+      if (yoloAcceptedIds.has(entry.transform.id)) {
+        continue;
+      }
+      const visible = entry.proposals.filter((p) => {
+        const idxName = p.ddl_statement?.index_name;
+        return !(idxName && acceptedIndexNames.has(idxName));
+      });
+      if (visible.length === 0) {
+        continue;
+      }
+      const hasRewrite = visible.some((p) => p.kind === "rewrite");
+      const mode: AcceptMode = hasRewrite ? "replace" : "new";
+      const proposalIds = visible.map((p) => p.id);
+      const { data: result, error } = await accept({
+        transformId: entry.transform.id,
+        proposalIds,
+        mode,
+      });
+      if (error || !result) {
+        failCount += 1;
+        sendErrorToast(t`YOLO failed on "${entry.transform.name}"`);
+        continue;
+      }
+      successCount += 1;
+      // Mirror the per-card cross-batch dedup: tell siblings about every
+      // index we just installed so they don't re-issue duplicate CREATE
+      // INDEX statements.
+      for (const p of visible) {
+        const idxName = p.ddl_statement?.index_name;
+        if (idxName) {
+          handleIndexAccepted(idxName);
+        }
+      }
+      // Flip the persisted `optimized` flag so the transform's list-page
+      // row shows the Sonic gif right away. We swallow errors here —
+      // the accept already landed; failing to mark optimized is cosmetic.
+      try {
+        await markOptimized({ transformId: entry.transform.id });
+      } catch (_) {
+        // ignore — accept succeeded, the user can re-optimize later
+      }
+      setYoloAcceptedIds((prev) => {
+        const next = new Set(prev);
+        next.add(entry.transform.id);
+        return next;
+      });
+    }
+    if (successCount > 0) {
+      sendSuccessToast(
+        c("YOLO toast — N succeeded, M failed")
+          .t`YOLO done: ${successCount} accepted${failCount > 0 ? `, ${failCount} failed` : ""}.`,
+      );
+      // Close the modal once the batch lands so the user sees the toast
+      // confirm against the transforms list (with newly-flipped Sonic
+      // gifs) rather than the now-stale drawer. Small delay lets the
+      // coin explosion finish playing before the modal goes away.
+      setTimeout(onClose, 700);
+    }
+  }, [
+    accept,
+    doneEntries,
+    acceptedIndexNames,
+    yoloAcceptedIds,
+    handleIndexAccepted,
+    markOptimized,
+    sendErrorToast,
+    sendSuccessToast,
+    onClose,
+  ]);
+
+  // Eligible-for-YOLO count: done entries with at least one proposal still
+  // visible after cross-card dedup, that haven't already been YOLO'd.
+  const yoloableCount = useMemo(() => {
+    return doneEntries.reduce((acc, entry) => {
+      if (yoloAcceptedIds.has(entry.transform.id)) {
+        return acc;
+      }
+      const has = entry.proposals.some((p) => {
+        const idxName = p.ddl_statement?.index_name;
+        return !(idxName && acceptedIndexNames.has(idxName));
+      });
+      return has ? acc + 1 : acc;
+    }, 0);
+  }, [doneEntries, acceptedIndexNames, yoloAcceptedIds]);
+
   // Stable ordering for the accordion. The BE status response gives us
   // `pending` in submission order and `done`/`failed` as unordered maps
   // keyed by insertion-order — which is *completion* order, not submission
@@ -264,7 +395,7 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
       // need vertical spacing between siblings.
       padding="xl"
       title={
-        <Group gap="sm">
+        <Group gap="sm" wrap="nowrap">
           <Icon name="bolt" />
           <Text fw="bold">{t`Bulk optimization`}</Text>
         </Group>
@@ -294,7 +425,7 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
             }
           />
           <Divider />
-          <ScrollArea h="calc(90vh - 200px)" type="auto" offsetScrollbars>
+          <ScrollArea h="calc(90vh - 280px)" type="auto" offsetScrollbars>
             <Box pr="md">
               {rows.length === 0 ? (
                 <Text c="text-secondary">{t`No transforms in this batch yet.`}</Text>
@@ -324,8 +455,30 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
               )}
             </Box>
           </ScrollArea>
+          {!isRunning && yoloableCount > 0 && (
+            <Group justify="center" pt="md">
+              <Tooltip
+                label={t`Accept every visible proposal across all transforms in one go. Rewrites replace the source in place; indices run immediately.`}
+                multiline
+                w={280}
+              >
+                <Button
+                  className={S.yoloButton}
+                  size="xl"
+                  loading={isAccepting}
+                  onClick={handleYolo}
+                  leftSection={<Icon name="bolt" size={20} />}
+                  px="xl"
+                >
+                  {c("YOLO accept-all button label, {0} is a count")
+                    .t`YOLO — accept all (${yoloableCount})`}
+                </Button>
+              </Tooltip>
+            </Group>
+          )}
         </Stack>
       )}
+      {coinKey != null && <CoinExplosion key={coinKey} />}
     </Modal>
   );
 }
@@ -544,5 +697,50 @@ function FailureBody({
         </Text>
       </Stack>
     </Group>
+  );
+}
+
+/**
+ * Coin shower triggered when the user fires YOLO. We pre-generate 60 coins
+ * each with a randomised polar trajectory + delay so the burst feels
+ * organic — pure CSS animation from there; React only owns mount/unmount.
+ *
+ * Mounted under the Modal which itself portals to the document root, so
+ * the position-fixed overlay covers the full viewport regardless of the
+ * surrounding layout.
+ */
+function CoinExplosion() {
+  const coins = useMemo(() => {
+    return Array.from({ length: 60 }, (_, i) => {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 220 + Math.random() * 420;
+      const tx = Math.cos(angle) * dist;
+      // Bias the spread upward — feels more like an explosion than a splash.
+      const ty = Math.sin(angle) * dist - 120;
+      const rot = (Math.random() - 0.5) * 720;
+      const delay = Math.random() * 0.25;
+      return { id: i, tx, ty, rot, delay };
+    });
+  }, []);
+
+  return (
+    <Box className={S.coinExplosion} aria-hidden="true">
+      {coins.map((c) => (
+        <span
+          key={c.id}
+          className={S.coin}
+          style={
+            {
+              "--coin-tx": `${c.tx}px`,
+              "--coin-ty": `${c.ty}px`,
+              "--coin-rot": `${c.rot}deg`,
+              "--coin-delay": `${c.delay}s`,
+            } as CSSProperties
+          }
+        >
+          🪙
+        </span>
+      ))}
+    </Box>
   );
 }
