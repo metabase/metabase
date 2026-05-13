@@ -33,6 +33,7 @@
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -180,7 +181,7 @@
    Databases without schemas (e.g. MySQL) accept an empty `input-schemas`."
   [database-id input-schemas]
   (when-let [db (t2/select-one :model/Database :id database-id)]
-    (when (and (driver/database-supports? (:engine db) :schemas db)
+    (when (and (driver.u/supports? (:engine db) :schemas db)
                (empty? input-schemas))
       (throw (ex-info "input_schemas is required: at least one source schema must be specified"
                       {:status-code 400 :database_id database-id})))))

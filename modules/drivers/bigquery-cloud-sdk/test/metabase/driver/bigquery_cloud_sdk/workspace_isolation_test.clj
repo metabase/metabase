@@ -29,15 +29,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.workspace-test-util :as bq.util]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
+   (com.google.auth.oauth2 ServiceAccountCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
-    BigQuery$DatasetOption
     BigQuery$JobOption
     Dataset
     FieldValueList

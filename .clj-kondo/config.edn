@@ -190,6 +190,10 @@
      metabase.lib-metric.ast.plan/validate-arithmetic-ast!
      metabase-enterprise.workspaces.isolation/ensure-database-isolation!
      metabase-enterprise.workspaces.test-util/create-ready-ws!
+     metabase-enterprise.workspaces.core/clear-instance-workspace!
+     metabase-enterprise.workspaces.core/set-instance-workspace!
+     metabase.workspaces.core/clear-instance-workspace!
+     metabase.workspaces.core/set-instance-workspace!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!

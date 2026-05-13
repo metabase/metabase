@@ -33,14 +33,12 @@
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
-   (com.google.cloud Identity Role)
    (com.google.cloud.bigquery
     Acl Acl$Role Acl$User
     BigQuery
     BigQuery$DatasetDeleteOption
     BigQuery$DatasetListOption
     BigQuery$DatasetOption
-    BigQuery$IAMOption
     BigQuery$JobOption
     BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
@@ -1406,28 +1404,6 @@
         (.update client updated-dataset
                  ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetOption;"
                  (into-array BigQuery$DatasetOption []))))))
-
-(defn- ws-has-table-iam-binding?
-  "Check if a table IAM policy already has a binding for the given role and identity."
-  [^com.google.cloud.Policy policy ^Role role ^Identity identity]
-  (let [bindings (.getBindings policy)
-        identity-set (clojure.core/get bindings role)]
-    (and identity-set (.contains ^java.util.Set identity-set identity))))
-
-(defn- ws-grant-table-read-access!
-  "Grant read access on a specific table to a service account using table-level IAM."
-  [^BigQuery client ^TableId table-id ^String service-account-email]
-  (log/debugf "Granting read access on table %s to %s" table-id service-account-email)
-  (let [current-policy (.getIamPolicy client table-id (into-array BigQuery$IAMOption []))
-        role           (Role/of "roles/bigquery.dataViewer")
-        sa-identity    (Identity/serviceAccount service-account-email)]
-    ;; Only add if not already granted
-    (when-not (ws-has-table-iam-binding? current-policy role sa-identity)
-      (let [updated-policy (-> current-policy
-                               (.toBuilder)
-                               (.addIdentity role sa-identity (into-array Identity []))
-                               (.build))]
-        (.setIamPolicy client table-id updated-policy (into-array BigQuery$IAMOption []))))))
 
 (defmethod driver/init-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]

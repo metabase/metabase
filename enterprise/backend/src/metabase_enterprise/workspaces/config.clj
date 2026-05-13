@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -28,7 +28,7 @@
       {:dataset-filters-type     "inclusion"
        :dataset-filters-patterns patterns}
 
-      (driver/database-supports? engine :schemas db)
+      (driver.u/supports? engine :schemas db)
       {:schema-filters-type     "inclusion"
        :schema-filters-patterns patterns}
 

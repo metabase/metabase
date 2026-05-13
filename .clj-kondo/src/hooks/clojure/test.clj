@@ -186,5 +186,7 @@
   {:node node})
 
 (defn use-fixtures [{:keys [node config]}]
-  (warn-about-disallowed-parallel-forms node config)
+  ;; Mirror `deftest`'s lookup: `:parallel/safe` / `:parallel/unsafe` whitelists
+  ;; live under `[:linters :metabase/validate-deftest]`, not at top level.
+  (warn-about-disallowed-parallel-forms node (get-in config [:linters :metabase/validate-deftest]))
   {:node node})

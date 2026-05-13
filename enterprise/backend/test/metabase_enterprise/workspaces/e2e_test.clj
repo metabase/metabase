@@ -17,8 +17,12 @@
    Driver branches: JDBC drivers (Postgres/MySQL/SQL Server/Snowflake/Redshift/
    ClickHouse) seed tables via `jdbc/execute!` and probe via `jdbc/query` against
    an `admin-spec` JDBC db-spec. BigQuery uses the BigQuery Java API via
-   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` — same deftest body,
-   parallel `bq-*` helpers, dispatched at call sites on `admin-driver`."
+   `metabase.driver.bigquery-cloud-sdk.workspace-test-util`, loaded at call time
+   through `requiring-resolve` -- that test ns lives under
+   `modules/drivers/bigquery-cloud-sdk/test/` and isn't on every test-runner
+   classpath, so a static `:require` would fail at compile time on non-BQ runs.
+   The deftest body stays driver-agnostic via the `case admin-driver` dispatch
+   inside each helper below."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -48,19 +52,11 @@
   []
   (subs (str (random-uuid)) 0 8))
 
-;; BQ helpers live under `modules/drivers/bigquery-cloud-sdk/test/` and aren't
-;; on the enterprise test classpath by default. Lazy-load at call time so the
-;; rest of this ns (and other-driver test runs) don't require the BQ test sources.
-(defn- bq-util
-  "Resolve `sym` (an unqualified symbol) in `metabase.driver.bigquery-cloud-sdk.workspace-test-util`,
-   requiring the ns on first call. Throws if the BQ driver test classpath isn't loaded."
-  [sym]
-  (requiring-resolve (symbol "metabase.driver.bigquery-cloud-sdk.workspace-test-util" (name sym))))
-
 (def workspaces-supported-drivers
   "Drivers covered by the full e2e. JDBC drivers go through `jdbc/execute!`+
    `jdbc/query`; `:bigquery-cloud-sdk` goes through the BQ Java API via
-   `bq.util`. Each helper below dispatches on driver.
+   `metabase.driver.bigquery-cloud-sdk.workspace-test-util` (loaded lazily via
+   `requiring-resolve`). Each helper below dispatches on driver.
 
    The `workspace-full-e2e-test` exercises this whole set. The smaller
    `native-transform-references-prior-canonical-output-test` deliberately runs on
@@ -100,7 +96,7 @@
    this driver."
   [driver admin-details]
   (case driver
-    :bigquery-cloud-sdk ((bq-util 'admin-client) admin-details)
+    :bigquery-cloud-sdk ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/admin-client) admin-details)
     (sql-jdbc.conn/connection-details->spec driver admin-details)))
 
 (defn- qualified-table-sql
@@ -110,7 +106,7 @@
   [driver admin-details schema table]
   (case driver
     :bigquery-cloud-sdk (format "`%s.%s.%s`"
-                                ((bq-util 'project-id) admin-details) schema table)
+                                ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details) schema table)
     (sql.u/quote-name driver :table schema table)))
 
 (defn- create-table-tail
@@ -129,8 +125,8 @@
   (case driver
     :bigquery-cloud-sdk
     (let [qual (qualified-table-sql driver admin-details schema table)]
-      ((bq-util 'execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
-      ((bq-util 'execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)))
+      ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
+      ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES (1, 'a'), (2, 'b'), (3, 'c')" qual)))
 
     (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
           text-type (sql.tx/field-base-type->sql-type driver :type/Text)
@@ -149,8 +145,8 @@
     (case driver
       :bigquery-cloud-sdk
       (do
-        ((bq-util 'execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
-        ((bq-util 'execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES %s" qual values)))
+        ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/execute!) admin-warehouse (format "CREATE TABLE %s (id INT64, v STRING)" qual))
+        ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/execute!) admin-warehouse (format "INSERT INTO %s (id, v) VALUES %s" qual values)))
 
       (let [int-type  (sql.tx/field-base-type->sql-type driver :type/Integer)
             text-type (sql.tx/field-base-type->sql-type driver :type/Text)
@@ -184,9 +180,9 @@
   [driver admin-warehouse admin-details schema]
   (case driver
     :mysql              nil
-    :bigquery-cloud-sdk ((bq-util 'create-dataset!) admin-warehouse
-                                                    ((bq-util 'project-id) admin-details)
-                                                    schema)
+    :bigquery-cloud-sdk ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/create-dataset!) admin-warehouse
+                                                                                                                     ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)
+                                                                                                                     schema)
     ;; ClickHouse calls its top level a "database" — `CREATE SCHEMA` is a
     ;; syntax error there. Same drop counterpart in `drop-canonical-schema!`.
     :clickhouse (jdbc/execute! admin-warehouse
@@ -207,31 +203,13 @@
     :clickhouse (jdbc/execute! admin-warehouse
                                [(format "DROP DATABASE IF EXISTS %s"
                                         (sql.u/quote-name driver :schema schema))])
-    :bigquery-cloud-sdk (try ((bq-util 'drop-dataset!) admin-warehouse
-                                                       ((bq-util 'project-id) admin-details)
-                                                       schema)
+    :bigquery-cloud-sdk (try ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/drop-dataset!) admin-warehouse
+                                                                                                                        ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)
+                                                                                                                        schema)
                              (catch Throwable _ nil))
     (jdbc/execute! admin-warehouse
                    [(format "DROP SCHEMA IF EXISTS %s CASCADE"
                             (sql.u/quote-name driver :schema schema))])))
-
-(defn- list-warehouse-tables-in-schema
-  "Return the set of table names currently in `schema` on the warehouse. Used by
-   the post-test `describe-database` assertions to confirm tables in the iso
-   schema don't bleed into app-db Table rows on MySQL (where `:model/Table.schema`
-   is null and we can't compare on schema directly)."
-  [driver admin-warehouse admin-details schema]
-  (case driver
-    :bigquery-cloud-sdk (->> ((bq-util 'list-tables) admin-warehouse
-                                                     ((bq-util 'project-id) admin-details)
-                                                     schema)
-                             (map :table)
-                             set)
-    (->> (jdbc/query admin-warehouse
-                     ["SELECT table_name FROM information_schema.tables WHERE table_schema = ?"
-                      schema])
-         (map :table_name)
-         set)))
 
 (defn- read-canonical-rows
   "Read all rows from `(schema.table)` on the warehouse via admin perms,
@@ -240,9 +218,9 @@
   [driver admin-warehouse admin-details schema table]
   (case driver
     :bigquery-cloud-sdk
-    (->> ((bq-util 'query) admin-warehouse
-                           (format "SELECT id, v FROM %s ORDER BY id"
-                                   (qualified-table-sql driver admin-details schema table)))
+    (->> ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/query) admin-warehouse
+                                                                                            (format "SELECT id, v FROM %s ORDER BY id"
+                                                                                                    (qualified-table-sql driver admin-details schema table)))
          (map (fn [{:keys [id v]}] [(Long/parseLong id) v]))
          set)
 
@@ -303,9 +281,9 @@
             ;; lean on Metabase sync to surface it. If this fails, the problem is in
             ;; the test-side DDL, not workspace code.
                 (let [warehouse-tables (case admin-driver
-                                         :bigquery-cloud-sdk ((bq-util 'list-tables) admin-spec
-                                                                                     ((bq-util 'project-id) admin-details)
-                                                                                     main-schema)
+                                         :bigquery-cloud-sdk ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/list-tables) admin-spec
+                                                                                                                                                      ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)
+                                                                                                                                                      main-schema)
                                          ;; No LIMIT/TOP — the source table is seeded with 3
                                          ;; rows above (`create-source-table!`); the assertion
                                          ;; below only needs >= 1 row, and avoiding `LIMIT`
