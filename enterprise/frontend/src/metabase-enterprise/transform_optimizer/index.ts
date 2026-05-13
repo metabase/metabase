@@ -1,6 +1,7 @@
 import { PLUGIN_TRANSFORM_OPTIMIZER } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { FindSlowTool } from "./components/FindSlowTool";
 import { TransformOptimizerSection } from "./components/TransformOptimizerSection";
 
 export function initializePlugin() {
@@ -10,5 +11,6 @@ export function initializePlugin() {
   if (hasPremiumFeature("transforms-python")) {
     PLUGIN_TRANSFORM_OPTIMIZER.isEnabled = true;
     PLUGIN_TRANSFORM_OPTIMIZER.RunPageSection = TransformOptimizerSection;
+    PLUGIN_TRANSFORM_OPTIMIZER.FindSlowTool = FindSlowTool;
   }
 }

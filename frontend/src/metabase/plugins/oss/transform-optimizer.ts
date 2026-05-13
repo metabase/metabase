@@ -7,14 +7,27 @@ export type TransformOptimizerRunPageSectionProps = {
   readOnly?: boolean;
 };
 
+export type FindSlowToolProps = {
+  thresholdSec: number | undefined;
+  onThresholdChange: (sec: number | undefined) => void;
+  /**
+   * The transform ids that currently match the threshold. The "Hammer
+   * time" button POSTs these to the bulk-optimize endpoint. Empty when
+   * no threshold is set OR no transform's last_run survives the filter.
+   */
+  matchingTransformIds: number[];
+};
+
 export type TransformOptimizerPlugin = {
   isEnabled: boolean;
   RunPageSection: ComponentType<TransformOptimizerRunPageSectionProps> | null;
+  FindSlowTool: ComponentType<FindSlowToolProps> | null;
 };
 
 const getDefaultPlugin = (): TransformOptimizerPlugin => ({
   isEnabled: false,
   RunPageSection: null,
+  FindSlowTool: null,
 });
 
 export const PLUGIN_TRANSFORM_OPTIMIZER = getDefaultPlugin();

@@ -58,6 +58,96 @@
                     :retryable (boolean (:retryable data))}})))))
 
 ;; ---------------------------------------------------------------------------
+;; Bulk optimize
+;;
+;; The FE sends a list of transform ids ("the slow ones, per your filter")
+;; and we kick off a single background thread that runs `optimize!`
+;; sequentially for each. Sequential — not pmap — because each call is an
+;; LLM round-trip and we don't want to pile concurrent calls against the
+;; Anthropic API on a hackathon-grade rate limit.
+;;
+;; Job state is held in-memory per-user: the FE polls `/bulk-optimize/status`
+;; while the drawer is open and shows each transform's proposals as they
+;; land. The per-user proposal cache is populated alongside so verify and
+;; accept endpoints work on bulk results without re-running the optimizer.
+
+(defonce ^:private bulk-jobs
+  ;; user-id -> {:total N
+  ;;             :pending [ids]
+  ;;             :done    {id -> {:summary :proposals :optimization_degree :transform}}
+  ;;             :failed  {id -> error-message}
+  ;;             :started_at instant}
+  (atom {}))
+
+(defn- init-bulk-job! [user-id ids]
+  (swap! bulk-jobs assoc user-id
+         {:total      (count ids)
+          :pending    (vec ids)
+          :done       {}
+          :failed     {}
+          :started_at (java.time.Instant/now)}))
+
+(defn- record-success! [user-id id result]
+  (swap! bulk-jobs update user-id
+         (fn [job]
+           (-> job
+               (update :pending (fn [ps] (vec (remove #{id} ps))))
+               (assoc-in [:done id]
+                         (select-keys result [:summary :proposals
+                                              :optimization_degree :transform]))))))
+
+(defn- record-failure! [user-id id err-msg]
+  (swap! bulk-jobs update user-id
+         (fn [job]
+           (-> job
+               (update :pending (fn [ps] (vec (remove #{id} ps))))
+               (assoc-in [:failed id] err-msg)))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/bulk-optimize"
+  "Run the optimizer in the background against every transform id in
+  `transform_ids`. Returns immediately with the count accepted. The FE
+  polls `/bulk-optimize/status` for progress and the per-transform
+  results."
+  [_route-params
+   _query-params
+   body :- [:map [:transform_ids [:sequential ms/PositiveInt]]]]
+  (let [ids       (vec (distinct (:transform_ids body)))
+        ;; Permission-check each transform up front (404/403 surfaced
+        ;; synchronously); only the ids the user can read end up in the
+        ;; background queue.
+        readable  (vec (keep #(try (api/read-check :model/Transform %) %
+                                   (catch Exception _ nil))
+                             ids))
+        user-id   api/*current-user-id*]
+    (init-bulk-job! user-id readable)
+    (when (seq readable)
+      (future
+        (doseq [id readable]
+          (try
+            (let [result (opt.core/optimize! id)]
+              ;; Mirror the per-transform endpoint: cache proposals so the
+              ;; existing verify / accept endpoints can resolve them by id
+              ;; without re-running the optimizer.
+              (opt.cache/put-all! user-id id (:proposals result))
+              (record-success! user-id id result))
+            (catch Exception e
+              (log/warnf e "bulk-optimize: optimize! failed for transform-id=%s (user-id=%s)"
+                         id user-id)
+              (record-failure! user-id id (or (ex-message e) "unknown error")))))))
+    {:started       (count readable)
+     :transform_ids readable}))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/bulk-optimize/status"
+  "Current state of the calling user's most recent bulk-optimize run.
+  Returns an empty job shape (`{:total 0 …}`) when the user has never
+  triggered a bulk run in this process. Safe to poll on an interval."
+  [_route-params _query-params]
+  (or (get @bulk-jobs api/*current-user-id*)
+      {:total 0 :pending [] :done {} :failed {}}))
+
+;; ---------------------------------------------------------------------------
 ;; Verify endpoint
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}

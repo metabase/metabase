@@ -1,5 +1,5 @@
 import { EnterpriseApi } from "metabase-enterprise/api";
-import { idTag, invalidateTags } from "metabase-enterprise/api/tags";
+import { idTag, invalidateTags, listTag } from "metabase-enterprise/api/tags";
 
 import type {
   DdlExecutionStatus,
@@ -92,6 +92,36 @@ export type AcceptResponse =
 export type ListIndexesResponse = {
   transform: { id: number; target: unknown };
   indexes: TargetIndex[];
+};
+
+export type BulkOptimizeResponse = {
+  started: number;
+  transform_ids: number[];
+};
+
+/**
+ * One transform's result inside a bulk-optimize job — mirrors the shape of
+ * `OptimizeResponse` minus the `sql` field (we don't surface SQL in the
+ * drawer; users drill into the detail page if they want it).
+ */
+export type BulkOptimizeDoneEntry = {
+  transform: {
+    id: number;
+    name: string;
+    source_database_id: number;
+    optimized?: boolean;
+  };
+  summary: string | null;
+  proposals: Proposal[];
+  optimization_degree: number;
+};
+
+export type BulkOptimizeStatusResponse = {
+  total: number;
+  pending: number[];
+  done: Record<string, BulkOptimizeDoneEntry>;
+  failed: Record<string, string>;
+  started_at?: string;
 };
 
 export const optimizerApi = EnterpriseApi.injectEndpoints({
@@ -187,6 +217,27 @@ export const optimizerApi = EnterpriseApi.injectEndpoints({
           idTag("transform-optimizer-indexes", transformId),
         ]),
     }),
+    bulkOptimize: builder.mutation<
+      BulkOptimizeResponse,
+      { transformIds: number[] }
+    >({
+      query: ({ transformIds }) => ({
+        method: "POST",
+        url: "/api/ee/transform-optimizer/bulk-optimize",
+        body: { transform_ids: transformIds },
+      }),
+      // The optimizer flips transform.optimized as each analysis lands.
+      // Invalidate the transform list so the UI re-fetches and the gif
+      // appears on transforms that the bulk pass marked optimized.
+      invalidatesTags: (_data, error) =>
+        invalidateTags(error, [listTag("transform")]),
+    }),
+    bulkOptimizeStatus: builder.query<BulkOptimizeStatusResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/transform-optimizer/bulk-optimize/status",
+      }),
+    }),
   }),
 });
 
@@ -197,4 +248,6 @@ export const {
   useAcceptProposalMutation,
   useListTargetIndexesQuery,
   useDropTargetIndexMutation,
+  useBulkOptimizeMutation,
+  useBulkOptimizeStatusQuery,
 } = optimizerApi;

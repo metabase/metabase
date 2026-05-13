@@ -25,7 +25,11 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORM_OPTIMIZER,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -87,6 +91,22 @@ const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
 };
 
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
+
+function getLastRunDurationMs(transform: {
+  last_run?: { start_time: string; end_time: string | null } | null;
+}): number | null {
+  const run = transform.last_run;
+  if (!run?.start_time || !run.end_time) {
+    return null;
+  }
+  const start = Date.parse(run.start_time);
+  const end = Date.parse(run.end_time);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return null;
+  }
+  const diff = end - start;
+  return diff >= 0 ? diff : null;
+}
 const globalFilterFn = (
   row: { original: TreeNode },
   _columnId: string,
@@ -114,6 +134,12 @@ export const TransformListPage = ({
     Urls.extractEntityId(location.query?.collectionId) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Threshold (in seconds) for the optional "find slow" filter — only
+  // transforms whose `last_run` duration is at least this many seconds
+  // appear in the tree. `undefined` means no threshold (show everything).
+  const [slowThresholdSec, setSlowThresholdSec] = useState<number | undefined>(
+    undefined,
+  );
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -147,8 +173,39 @@ export const TransformListPage = ({
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
 
+  // Transforms whose last_run wall-clock duration meets `slowThresholdSec`.
+  // We do this client-side: the transforms list endpoint already hydrates
+  // last_run, so an extra request isn't needed. In-progress runs (no
+  // end_time) are excluded — we can only score runs that finished.
+  const matchingSlowTransformIds = useMemo(() => {
+    if (slowThresholdSec == null) {
+      return [];
+    }
+    const minMs = slowThresholdSec * 1000;
+    return (transforms ?? []).reduce<number[]>((acc, t) => {
+      const ms = getLastRunDurationMs(t);
+      if (ms != null && ms >= minMs) {
+        acc.push(t.id);
+      }
+      return acc;
+    }, []);
+  }, [slowThresholdSec, transforms]);
+
+  const visibleTransforms = useMemo(() => {
+    if (slowThresholdSec == null) {
+      return transforms;
+    }
+    const matching = new Set(matchingSlowTransformIds);
+    return (transforms ?? []).filter((t) => matching.has(t.id));
+  }, [transforms, matchingSlowTransformIds, slowThresholdSec]);
+
   const treeData = useMemo(() => {
-    const data = buildTreeData(collections, transforms);
+    // When the slow filter is on, hide collections — show a flat list of
+    // matching transforms so the user can scan the hits directly.
+    const data = buildTreeData(
+      slowThresholdSec == null ? collections : [],
+      visibleTransforms,
+    );
 
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
@@ -171,8 +228,9 @@ export const TransformListPage = ({
     collections,
     hasPythonTransformsFeature,
     shouldShowPythonTransformsUpsell,
-    transforms,
+    slowThresholdSec,
     transformsDatabases.length,
+    visibleTransforms,
   ]);
 
   const defaultExpanded = useMemo(
@@ -318,7 +376,9 @@ export const TransformListPage = ({
   const hasNoResults = !hasNoData && treeTableInstance.rows.length === 0;
 
   const emptyMessage = hasNoData
-    ? t`No transforms yet`
+    ? slowThresholdSec != null
+      ? t`No transforms took at least ${slowThresholdSec}s on their last run.`
+      : t`No transforms yet`
     : hasNoResults && searchQuery
       ? t`No transforms found`
       : null;
@@ -343,6 +403,13 @@ export const TransformListPage = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {PLUGIN_TRANSFORM_OPTIMIZER.FindSlowTool && (
+            <PLUGIN_TRANSFORM_OPTIMIZER.FindSlowTool
+              thresholdSec={slowThresholdSec}
+              onThresholdChange={setSlowThresholdSec}
+              matchingTransformIds={matchingSlowTransformIds}
+            />
+          )}
           {transformsDatabases.length > 0 && (
             <>
               <CreateTransformMenu />
