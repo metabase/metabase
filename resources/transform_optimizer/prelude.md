@@ -41,6 +41,24 @@ one. Each of those is *worse* than emitting nothing — it costs the
 user a click to dismiss, and it prevents the transform from being
 marked optimized.
 
+### Pure-formatting "rewrites" are forbidden
+
+A proposal whose `body` differs from the original SQL only in
+**whitespace, comments, casing of keywords, or trailing semicolons**
+is not an optimization. **Never** emit such a proposal — not as
+`:rewrite`, not as `:precompute` (re-labelling doesn't help), not
+under any rationale. The server filters these out post-hoc and you
+will burn an output slot for nothing. Specifically:
+
+- Removing or adding `;` at the end is not a rewrite.
+- Reflowing a query across multiple lines is not a rewrite.
+- Capitalising `select` to `SELECT` is not a rewrite.
+- Adding or removing `-- ...` or `/* ... */` comments is not a rewrite.
+
+If you find yourself writing a `body` that, when its semicolons and
+whitespace are normalised, is character-for-character identical to
+the original, **emit zero proposals instead.**
+
 The `summary` for an empty-proposal result should briefly state *why*
 nothing was found (one sentence — "no index gaps, no precompute
 opportunity, query is well-shaped"), not apologise for it.

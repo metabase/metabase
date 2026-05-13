@@ -19,6 +19,7 @@
   is a placeholder (`call-llm-stub`) we replace in Phase 2 with the actual
   Metabot deftool wiring."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.transform-optimizer.context :as context]
    [metabase-enterprise.transform-optimizer.ddl.parse :as ddl.parse]
    [metabase-enterprise.transform-optimizer.llm :as llm]
@@ -105,18 +106,53 @@
                  (not ok?)   (assoc :validation :rejected
                                     :rejection  (select-keys r [:reason :detail]))))))))
 
+(defn- normalize-sql
+  "Textual normalisation for no-op detection: strip SQL comments (line +
+  block), strip trailing semicolons, lower-case, collapse all whitespace
+  runs to a single space, trim. Two SQL strings that normalise to the
+  same value differ only in formatting / punctuation / casing — i.e.
+  there's no real rewrite to ship."
+  [sql]
+  (some-> sql
+          (str/replace #"(?s)/\*.*?\*/" "")  ; block comments
+          (str/replace #"--[^\n]*" "")       ; line comments
+          (str/replace #";+\s*$" "")         ; trailing semicolon(s)
+          str/lower-case
+          (str/replace #"\s+" " ")
+          str/trim))
+
+(defn- noop-rewrite?
+  "True when the proposal carries a `body` that, after normalisation, is
+  textually identical to the original transform's SQL. This is the
+  semicolon / whitespace / comment-only \"rewrite\" anti-pattern — the
+  LLM sometimes emits these as wrapper proposals despite the prelude."
+  [original-norm proposal]
+  (when-let [body-norm (normalize-sql (:body proposal))]
+    (= body-norm original-norm)))
+
 (defn finalise-proposals
   "Server-side cleanup applied to a raw proposal set from the LLM:
 
-   1. Validate the single DDL statement on each `:index` proposal against
+   1. Drop proposals whose body is textually equivalent to the original
+      (cosmetic-only rewrites — strip comments / semicolons / whitespace
+      and compare).
+   2. Validate the single DDL statement on each `:index` proposal against
       the CREATE-INDEX allowlist and tag with
       `:validation = :accepted | :rejected`.
-   2. Compute the deterministic optimization_degree.
+   3. Compute the deterministic optimization_degree from what's left.
 
    Returns the response payload exactly as the UI consumes it."
   [proposals ctx]
-  (let [allowed (pair-set ctx)
-        cleaned (mapv #(validate-proposal-ddl % allowed) proposals)]
+  (let [allowed       (pair-set ctx)
+        original-norm (normalize-sql (:sql ctx))
+        noop?         (partial noop-rewrite? original-norm)
+        dropped       (filterv noop? proposals)
+        kept          (remove noop? proposals)
+        cleaned       (mapv #(validate-proposal-ddl % allowed) kept)]
+    (when (seq dropped)
+      (log/infof "transform-optimizer: dropped %d cosmetic-only proposal(s): %s"
+                 (count dropped)
+                 (pr-str (mapv :id dropped))))
     {:optimization_degree (scoring/optimization-degree cleaned)
      :proposals           cleaned}))
 
