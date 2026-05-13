@@ -32,8 +32,36 @@ const isExpanded = expandedNames.has(page.name);
 const hasChildren = !!page.pages?.length;
 ---
 
-<li class:list={[{ expanded: isExpanded }]}>
-  {href ? (
+<li class:list={[{ "has-children": hasChildren, expanded: isExpanded }]}>
+  {hasChildren ? (
+    <div class="nav-row">
+      {href ? (
+        <a href={href} class:list={[{ selected: isSelected }]}>{label}</a>
+      ) : (
+        <span class="docs-sidebar-group-label">{label}</span>
+      )}
+      <button
+        type="button"
+        class="docs-sidebar-toggle"
+        aria-expanded={isExpanded ? "true" : "false"}
+        aria-label={`Toggle ${label}`}
+      >
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 4 10 8 6 12"></polyline>
+        </svg>
+      </button>
+    </div>
+  ) : href ? (
     <a href={href} class:list={[{ selected: isSelected }]}>{label}</a>
   ) : (
     <span class="docs-sidebar-group-label">{label}</span>
