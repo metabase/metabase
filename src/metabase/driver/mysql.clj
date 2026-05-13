@@ -1297,8 +1297,7 @@
   (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
         user             (driver.u/workspace-isolation-user-name workspace)
         password         (driver.u/random-workspace-password)
-        escaped-password (sql.u/escape-sql password :ansi)
-        bound-db         (-> database :details :db)]
+        escaped-password (sql.u/escape-sql password :ansi)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
                        (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
@@ -1306,23 +1305,11 @@
                        (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
                                user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql (cond-> [;; Create the isolated database
-                               (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                               user-sql
-                               ;; Grant all privileges on the isolated database
-                               (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]
-                        ;; Workspace child instances open connections through the canonical
-                        ;; Database row, whose `:details.db` is the bound database. MySQL's
-                        ;; JDBC driver issues an implicit `USE <bound-db>` at connect time,
-                        ;; and the server refuses (ER_DBACCESS_DENIED_ERROR / 1044) unless
-                        ;; the user has *some* privilege row covering that db. `GRANT USAGE`
-                        ;; is the MySQL synonym for "no privileges": it inserts a row in
-                        ;; `mysql.db` so the implicit `USE` succeeds, while granting zero
-                        ;; data access (SELECT/INSERT/etc. on the bound db remain denied
-                        ;; until `grant-workspace-read-access!` adds them explicitly).
-                        (seq bound-db)
-                        (conj (format "GRANT USAGE ON %s.* TO `%s`@'%%'"
-                                      (sql.u/quote-name :mysql :schema bound-db) user)))]
+          (doseq [sql [;; Create the isolated database
+                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                       user-sql
+                       ;; Grant all privileges on the isolated database
+                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
             (.addBatch ^Statement stmt ^String sql))
           (.executeBatch ^Statement stmt))))
     {:schema           db-name

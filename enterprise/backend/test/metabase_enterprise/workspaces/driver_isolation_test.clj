@@ -56,26 +56,61 @@
                     (walk (.getCause t) seen')))))]
     (walk t #{})))
 
+(defn- reuse-bound-db-as-input?
+  "Drivers where the workspace input namespace IS the bound database, i.e. the
+   `:details.db` of the canonical `Database` row. MySQL has no schema-within-DB,
+   so the only shipping workspace config (see `workspace_config_mysql.yml`) lists
+   the bound DB as the input namespace. The driver-isolation tests mirror that
+   shape: source tables live in the bound DB; `grant-workspace-read-access!`
+   grants `SELECT ON <bound-db>.*`; the JDBC handshake's DB-access check finds
+   the resulting `mysql.db` row and lets the iso user connect with the bound
+   DB as the default.
+
+   For these drivers we skip `create-input-namespace-sql` (the bound DB already
+   exists) and `drop-input-namespace-sqls` (we don't own the bound DB, only the
+   per-run tables inside it -- caller cleans those up explicitly)."
+  [driver]
+  (= driver :mysql))
+
+(defn- input-namespace-name
+  "Resolve the input-namespace name for a per-run test.
+   - On `reuse-bound-db-as-input?` drivers (MySQL): return the bound DB.
+     `fresh-name` is ignored; source tables go in the bound DB with random
+     per-run suffixes so they don't collide.
+   - On schema-having drivers: return `fresh-name` -- a freshly-created schema
+     inside the bound DB, which the caller will create + drop. Fresh schemas
+     are required on Redshift specifically because `public` has `CREATE`
+     granted to `PUBLIC` by default, breaking the input-deny contract."
+  [driver database fresh-name]
+  (if (reuse-bound-db-as-input? driver)
+    (-> database :details :db)
+    fresh-name))
+
 (defn- create-input-namespace-sql
   "DDL to create a fresh per-run input namespace (a schema for schema'd drivers,
-   a database for schema-less ones like MySQL/ClickHouse). We always use a
-   freshly-created namespace rather than the driver's default (`public`/`dbo`)
-   because Redshift's `public` has `CREATE` granted to `PUBLIC` by default —
-   any USAGE-granted user can create tables there, breaking the input-deny
-   contract regardless of how we revoke from the workspace user. A fresh
-   namespace has no implicit PUBLIC grants."
+   a database for schema-less ones like MySQL/ClickHouse)."
   [driver namespace-name]
   (case driver
     (:postgres :redshift :snowflake) (str "CREATE SCHEMA \"" namespace-name "\"")
     :sqlserver                       (str "CREATE SCHEMA [" namespace-name "]")
     (:mysql :clickhouse)             (str "CREATE DATABASE `" namespace-name "`")))
 
+(defn- maybe-create-input-namespace!
+  "Create the per-run input namespace UNLESS the caller is using the bound DB as
+   the input (the `reuse-bound-db-as-input?` path on MySQL) -- in which case the
+   namespace already exists and is owned by the test DB, not by us."
+  [admin-spec driver database namespace-name]
+  (when-not (and (reuse-bound-db-as-input? driver)
+                 (= namespace-name (-> database :details :db)))
+    (jdbc/execute! admin-spec [(create-input-namespace-sql driver namespace-name)])))
+
 (defn- drop-input-namespace-sqls
   "DDL to drop the per-run input namespace and any tables left in it. Schema'd
    drivers with CASCADE (postgres/redshift/snowflake) and database-as-namespace
    drivers (mysql/clickhouse) take a single statement; SQL Server has no DROP
    SCHEMA CASCADE so each source table has to be dropped explicitly first.
-   `table-names` may be a single name or a sequence — the cross-workspace test
+
+   `table-names` may be a single name or a sequence -- the cross-workspace test
    creates more than one source table in the same input namespace."
   [driver namespace-name table-names]
   (let [tables (if (sequential? table-names) table-names [table-names])]
@@ -86,6 +121,22 @@
                                           (str "DROP TABLE [" namespace-name "].[" t "]"))
                                         [(str "DROP SCHEMA [" namespace-name "]")])
       (:mysql :clickhouse)             [(str "DROP DATABASE `" namespace-name "`")])))
+
+(defn- maybe-drop-input-namespace!
+  "Issue `drop-input-namespace-sqls` UNLESS the caller is using the bound DB
+   as the input (the `reuse-bound-db-as-input?` path on MySQL) -- in which
+   case we don't own the bound DB and only need to drop the per-run tables
+   inside it. Errors are swallowed per-statement so we keep cleaning up after
+   a partial-failure run."
+  [admin-spec driver database namespace-name table-names]
+  (let [tables (if (sequential? table-names) table-names [table-names])]
+    (if (and (reuse-bound-db-as-input? driver)
+             (= namespace-name (-> database :details :db)))
+      (doseq [t tables]
+        (try (jdbc/execute! admin-spec [(str "DROP TABLE IF EXISTS `" namespace-name "`.`" t "`")])
+             (catch Throwable _ nil)))
+      (doseq [sql (drop-input-namespace-sqls driver namespace-name table-names)]
+        (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil))))))
 
 (defn- list-namespaces-sql
   "SQL that enumerates the namespaces visible to the connecting user. JDBC
@@ -294,7 +345,7 @@
             ;; (`(mt/db)`), so anything we create has to be uniquely named or
             ;; it'll collide with leftover state from a prior failed run.
             run-id       (random-suffix)
-            in-schema    (str "mb_iso_in_" run-id)
+            in-schema    (input-namespace-name driver database (str "mb_iso_in_" run-id))
             src-name     (str "ws_iso_src_" run-id)
             sneaky-name  (str "ws_iso_sneaky_" run-id)
             out-name     (str "ws_iso_out_" run-id)
@@ -311,7 +362,7 @@
                                       {:schema           (driver.u/workspace-isolation-namespace-name workspace)
                                        :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
           (let [init-result     (driver/init-workspace-isolation! driver database workspace)
@@ -354,7 +405,7 @@
                     ungranted-tbl  (str "ws_iso_secret_" run-id)
                     ungranted-fq   (qualify driver ungranted-ns ungranted-tbl)]
                 (try
-                  (jdbc/execute! admin-spec [(create-input-namespace-sql driver ungranted-ns)])
+                  (maybe-create-input-namespace! admin-spec driver database ungranted-ns)
                   (jdbc/execute! admin-spec [(str "CREATE TABLE " ungranted-fq " (id INT, secret VARCHAR(8))"
                                                   (create-table-tail driver))])
                   (jdbc/execute! admin-spec [(str "INSERT INTO " ungranted-fq " VALUES (1, 'hidden')")])
@@ -362,8 +413,7 @@
                                       (str "SELECT * FROM " ungranted-fq)
                                       :select-ungranted-namespace)
                   (finally
-                    (doseq [sql (drop-input-namespace-sqls driver ungranted-ns ungranted-tbl)]
-                      (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))
+                    (maybe-drop-input-namespace! admin-spec driver database ungranted-ns ungranted-tbl)))))
             (testing "workspace user has full read+write access to its own output schema"
               (jdbc/execute! user-spec [(str "CREATE TABLE " out " (id INT, v VARCHAR(8))" (create-table-tail driver))])
               (jdbc/execute! user-spec [(str "INSERT INTO " out " VALUES (1, 'a')")])
@@ -426,8 +476,7 @@
                    (log/warnf t "destroy-workspace-isolation! failed for %s during test cleanup"
                               driver)))
             ;; Then drop the input namespace.
-            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)))))))
 
 (deftest ^:synchronized cross-workspace-isolation-perms-test
   ;; Exercises *mutual* isolation between two workspaces on the same database — the
@@ -438,7 +487,16 @@
   ;;
   ;; BigQuery isolation works through GCP IAM rather than SQL grants — see
   ;; `cross-workspace-isolation-perms-bigquery-test` for its sibling.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;;
+  ;; MySQL/MariaDB excluded: the test premise requires two distinct workspace input
+  ;; namespaces on the same Database row, but MySQL has no schema layer -- the only
+  ;; shipping config (`workspace_config_mysql.yml`) lists the bound DB as the input,
+  ;; so two workspaces on the same Database row would necessarily share input
+  ;; namespace. Cross-Database isolation across two separate MySQL servers is a
+  ;; different scenario from what this test asserts.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:mysql}))
     (testing "two workspaces on the same database are mutually isolated"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -477,8 +535,8 @@
                                       {:schema           (driver.u/workspace-isolation-namespace-name ws-b)
                                        :database_details {:user (driver.u/workspace-isolation-user-name ws-b)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema-a)])
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema-b)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema-a)
+          (maybe-create-input-namespace! admin-spec driver database in-schema-b)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema-a src-a-name)
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-a src-a-name)
@@ -567,9 +625,8 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for ws-B on %s during cross-workspace test cleanup"
                               driver)))
-            (doseq [sql (concat (drop-input-namespace-sqls driver in-schema-a src-a-name)
-                                (drop-input-namespace-sqls driver in-schema-b src-b-name))]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema-a src-a-name)
+            (maybe-drop-input-namespace! admin-spec driver database in-schema-b src-b-name)))))))
 
 (deftest ^:synchronized init-handles-pre-existing-namespace-test
   ;; The output-namespace name init creates is *deterministic* from `workspace.id`
@@ -594,7 +651,7 @@
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
-            in-schema    (str "mb_iso_in_" run-id)
+            in-schema    (input-namespace-name driver database (str "mb_iso_in_" run-id))
             src-name     (str "ws_iso_src_" run-id)
             out-name     (str "ws_iso_out_" run-id)
             src          (qualify driver in-schema src-name)
@@ -605,12 +662,12 @@
                                       {:schema           out-schema
                                        :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
           ;; Pre-create the output namespace at exactly the name init will target,
           ;; before init runs.
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver out-schema)])
+          (maybe-create-input-namespace! admin-spec driver database out-schema)
           (let [init-result     (driver/init-workspace-isolation! driver database workspace)
                 ws-with-details (merge workspace init-result)
                 _               (reset! ws-state ws-with-details)
@@ -637,12 +694,10 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during collision test cleanup"
                               driver)))
-            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)
             ;; Belt-and-suspenders: if destroy didn't clean up the (originally pre-
             ;; created, then taken-over) output namespace, drop it directly.
-            (doseq [sql (drop-input-namespace-sqls driver out-schema [])]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+            (maybe-drop-input-namespace! admin-spec driver database out-schema [])))))))
 
 (deftest ^:synchronized grant-accumulation-test
   ;; Pins the *additive* contract of `grant-workspace-read-access!`: each call
@@ -663,7 +718,7 @@
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
-            in-schema    (str "mb_iso_in_" run-id)
+            in-schema    (input-namespace-name driver database (str "mb_iso_in_" run-id))
             src-a-name   (str "ws_iso_src_a_" run-id)
             src-b-name   (str "ws_iso_src_b_" run-id)
             src-a        (qualify driver in-schema src-a-name)
@@ -674,7 +729,7 @@
                                       {:schema           (driver.u/workspace-isolation-namespace-name workspace)
                                        :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-a " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
@@ -712,8 +767,7 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during grant-accumulation test cleanup"
                               driver)))
-            (doseq [sql (drop-input-namespace-sqls driver in-schema [src-a-name src-b-name])]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema [src-a-name src-b-name])))))))
 
 ;; --- cross-database isolation -----------------------------------------------
 ;; Workspace tests above all live within a single `(mt/db)` database. Snowflake,
@@ -783,7 +837,7 @@
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
-            in-schema    (str "mb_iso_in_" run-id)
+            in-schema    (input-namespace-name driver database (str "mb_iso_in_" run-id))
             src-name     (str "ws_iso_src_" run-id)
             other-db     (str "mb_iso_otherdb_" run-id)
             secret-tbl   (str "secret_" run-id)
@@ -794,7 +848,7 @@
                                        :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))
             second-db-created? (atom false)]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " (qualify driver in-schema src-name)
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           ;; Provision a second database, create a `secret` table in it, populate.
@@ -817,8 +871,7 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during cross-database test cleanup"
                               driver)))
-            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)
             (when @second-db-created?
               (try (jdbc/execute! admin-spec [(drop-second-db-sql driver other-db)])
                    (catch Throwable t
@@ -894,7 +947,7 @@
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
-            in-schema    (str "mb_iso_in_" run-id)
+            in-schema    (input-namespace-name driver database (str "mb_iso_in_" run-id))
             src-name     (str "ws_iso_src_" run-id)
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
@@ -904,7 +957,7 @@
                                       {:schema           ws-fragment
                                        :database_details {:user (driver.u/workspace-isolation-user-name workspace)}}))]
         (try
-          (jdbc/execute! admin-spec [(create-input-namespace-sql driver in-schema)])
+          (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (let [init-result     (driver/init-workspace-isolation! driver database workspace)
                 ws-with-details (merge workspace init-result)]
@@ -933,5 +986,4 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during public-grant test cleanup"
                               driver)))
-            (doseq [sql (drop-input-namespace-sqls driver in-schema src-name)]
-              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))))))))
+            (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)))))))
