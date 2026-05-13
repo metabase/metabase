@@ -1,0 +1,164 @@
+name: Release 1b - Auto Release
+run-name: Auto ${{ inputs.kind || 'release' }} ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Major Metabase version (e.g. 45, 52, 68)"
+        type: number
+        required: true
+      kind:
+        description: "Release kind"
+        type: choice
+        required: true
+        options:
+          - patch
+          - minor
+      override_sha:
+        description: DANGEROUSLY allow releasing from this commit sha, regardless of the state of CI (can be empty)
+        type: string
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 21 * * 1-5" # patch: every weekday at 21:00 UTC (4 pm EST / 5 pm EDT)
+    - cron: "0 13 * * 2"   # minor: every Tuesday at 13:00 UTC (8 am EST / 9 am EDT)
+
+jobs:
+  auto-release-trigger:
+    # Forks never run on schedule. For scheduled runs, the matching kind's kill
+    # switch must be on.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.repository == 'metabase/metabase' && (
+        (github.event.schedule == '0 21 * * 1-5' && vars.ENABLE_AUTO_PATCH == 'true') ||
+        (github.event.schedule == '0 13 * * 2'  && vars.ENABLE_AUTO_MINOR == 'true')
+      ))
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Trigger auto-release
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const {
+              getLatestGreenCommit,
+              getNextVersion,
+              hasCommitBeenReleased,
+              sendAutoReleaseFailureMessage,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            // Mirrors the cron strings in the schedule block above.
+            const SCHEDULE_KIND = {
+              '0 21 * * 1-5': 'patch',
+              '0 13 * * 2': 'minor',
+            };
+
+            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
+            const lastRelease = currentRelease - 1;
+            const AUTO_RELEASE_VERSIONS = [lastRelease, currentRelease];
+
+            async function release({ kind, majorVersion, overrideSha }) {
+              const nextVersion = await getNextVersion({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                majorVersion,
+                kind,
+              });
+
+              const releaseCommit = overrideSha || await getLatestGreenCommit({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: `release-x.${majorVersion}.x`,
+              });
+
+              const hasBeenReleased = await hasCommitBeenReleased({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: releaseCommit,
+                majorVersion: Number(majorVersion),
+              });
+
+              console.log({ kind, majorVersion, nextVersion, releaseCommit, hasBeenReleased });
+
+              if (nextVersion && releaseCommit && !hasBeenReleased) {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'tag-for-release.yml',
+                  ref: 'refs/heads/master',
+                  inputs: {
+                    commit: releaseCommit,
+                    version: nextVersion,
+                    kind,
+                  }
+                }).catch(console.error);
+                return;
+              }
+
+              const reason = !nextVersion
+                ? 'no-next-version'
+                : !releaseCommit
+                  ? 'no-green-commit'
+                  : 'already-released';
+
+              console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason}`);
+
+              await sendAutoReleaseFailureMessage({
+                channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+                kind,
+                majorVersion,
+                reason,
+                runId: '${{ github.run_id }}',
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              }).catch(console.error);
+            }
+
+            if (context.eventName === 'workflow_dispatch') {
+              const inputVersion = Number(context.payload.inputs.version);
+              const kind = String(context.payload.inputs.kind ?? '');
+
+              if (Number.isNaN(inputVersion)) {
+                throw new Error(`Invalid version number: ${context.payload.inputs.version}`);
+              }
+              if (kind !== 'patch' && kind !== 'minor') {
+                throw new Error(`Invalid kind: ${kind}`);
+              }
+
+              const overrideSha = String(context.payload?.inputs?.override_sha ?? '').trim();
+              const isValidOverride = overrideSha.length === 40;
+
+              if (!isValidOverride && overrideSha.length > 0) {
+                throw new Error(`Invalid override SHA provided: ${overrideSha}`);
+              }
+
+              await release({
+                kind,
+                majorVersion: inputVersion,
+                overrideSha: isValidOverride ? overrideSha : undefined,
+              });
+            } else {
+              const kind = SCHEDULE_KIND[context.payload.schedule];
+              if (!kind) {
+                throw new Error(`Unrecognized schedule: ${context.payload.schedule}`);
+              }
+              await Promise.all(
+                AUTO_RELEASE_VERSIONS.map(majorVersion =>
+                  release({ kind, majorVersion })
+                )
+              );
+            }
