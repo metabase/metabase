@@ -1,4 +1,3 @@
-import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,7 +10,6 @@ import {
 } from "metabase/api";
 import type { Dispatch, GetState, ReduxAction } from "metabase/redux/store";
 import { CollectionSchema } from "metabase/schema";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -101,22 +99,6 @@ export const Collections = createEntity({
         dispatch,
         collectionApi.endpoints.deleteCollection,
       ),
-  },
-
-  selectors: {
-    getExpandedCollectionsById: createSelector(
-      [
-        (state) => Collections.selectors.getList(state),
-        getUserPersonalCollectionId,
-        (_state, props) => props?.collectionFilter,
-      ],
-      (collections, currentUserPersonalCollectionId, collectionFilter) =>
-        getExpandedCollectionsById(
-          collections || [],
-          currentUserPersonalCollectionId,
-          collectionFilter,
-        ),
-    ),
   },
 
   getAnalyticsMetadata(
