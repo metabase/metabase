@@ -59,7 +59,7 @@ type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
   permissionEditor: PermissionEditorType | null;
-  collection: Collection | null;
+  collection: Collection | undefined;
   navigateToItem: (item: any) => void;
   updateCollectionPermission: (params: UpdateCollectionPermissionParams) => any;
   isDirty: boolean;
