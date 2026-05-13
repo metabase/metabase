@@ -410,7 +410,6 @@
                                   (distinct (cons rhs-field-id (get field-ids-by-table rhs-table-id))))
              inner-query    (lib/with-fields (lib/query query rhs-table) inner-fields)
              join           (-> (lib/join-clause inner-query)
-                                (lib/with-join-fields :none)
                                 (lib/with-join-alias rhs-join-alias)
                                 (lib/with-join-conditions [(lib/=
                                                             (cond-> lhs-field
