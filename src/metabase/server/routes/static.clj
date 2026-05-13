@@ -61,7 +61,7 @@
                      parse-accept-encoding)
         quality  (or (get accepted encoding)
                      (get accepted :*))]
-    (> quality 0.0)))
+    (pos? quality)))
 
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
