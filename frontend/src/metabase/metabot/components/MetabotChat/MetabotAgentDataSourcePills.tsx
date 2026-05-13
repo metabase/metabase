@@ -14,6 +14,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import {
+  getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
 } from "metabase/common/utils/source-location";
@@ -406,7 +407,7 @@ const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
       iconName={iconName}
       label={card?.name}
       location={{
-        parts: getCollectionLocationParts(card.collection?.name),
+        parts: [getCollectionLocationLabel(card.collection?.name)],
       }}
       messageId={messageId}
       source={{
