@@ -379,7 +379,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
         data: feature
           ? [
               {
-                key: cols[dimensionIndex].name,
+                key: cols[dimensionIndex].display_name,
                 value: getFeatureKey(feature, { lowerCase: false }),
                 col: cols[dimensionIndex],
               },
@@ -398,7 +398,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
         },
       ],
       data: row.map((value, index) => ({
-        key: cols[index].name,
+        key: cols[index].display_name,
         value:
           index === dimensionIndex
             ? feature != null
