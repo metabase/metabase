@@ -146,6 +146,70 @@
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
 
+(def ^:private legacy-library-root-entity-ids
+  {:library         "librarylibrarylibrary"
+   :library-data    "librarylibrarydatadat"
+   :library-metrics "librarylibrarymetrics"})
+
+(defn- exactly-one-row
+  [description rows]
+  (case (count rows)
+    0 (do
+        (log/infof "Skipping legacy Library root entity ID backfill: no %s found" description)
+        nil)
+    1 (first rows)
+    (do
+      (log/warnf "Skipping legacy Library root entity ID backfill: found multiple %s rows" description)
+      nil)))
+
+(defn- canonical-entity-id-owned-by-another-row?
+  [collection-id entity-id]
+  (t2/exists? :collection
+              :entity_id entity-id
+              :id [:not= collection-id]))
+
+(defn- backfill-legacy-library-root-entity-id!
+  [{:keys [id entity_id]} canonical-entity-id]
+  (cond
+    (= entity_id canonical-entity-id)
+    :already-canonical
+
+    (canonical-entity-id-owned-by-another-row? id canonical-entity-id)
+    (do
+      (log/warnf "Skipping legacy Library root entity ID backfill for collection %d: canonical entity_id already exists"
+                 id)
+      :conflict)
+
+    :else
+    (do
+      (t2/update! :collection id {:entity_id canonical-entity-id})
+      :updated)))
+
+(defn- legacy-library-root-candidate
+  []
+  (exactly-one-row
+   "root Library collection"
+   (t2/select :collection
+              :type "library"
+              :location "/")))
+
+(defn- legacy-library-section-root-candidate
+  [library-id collection-type]
+  (exactly-one-row
+   (format "%s collection directly under Library" collection-type)
+   (t2/select :collection
+              :type collection-type
+              :location (str "/" library-id "/"))))
+
+(defn- backfill-legacy-library-root-entity-ids!
+  []
+  (when-let [{library-id :id, :as library} (legacy-library-root-candidate)]
+    (backfill-legacy-library-root-entity-id! library (:library legacy-library-root-entity-ids))
+    (doseq [[collection-type canonical-entity-id] [["library-data" (:library-data legacy-library-root-entity-ids)]
+                                                   ["library-metrics" (:library-metrics legacy-library-root-entity-ids)]]]
+      (when-let [section-root (legacy-library-section-root-candidate library-id collection-type)]
+        (backfill-legacy-library-root-entity-id! section-root canonical-entity-id)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2213,3 +2277,6 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillLegacyLibraryRootCollectionEntityIds
+  (backfill-legacy-library-root-entity-ids!))

@@ -1,0 +1,14 @@
+## Backfill canonical entity IDs for legacy Library root collections
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-13T12:00:00
+      author: andsalves
+      comment: Backfill canonical entity IDs for legacy Library root collections
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BackfillLegacyLibraryRootCollectionEntityIds
+      rollback:
+        - empty: {}
