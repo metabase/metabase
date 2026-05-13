@@ -30,7 +30,7 @@ export function EmbeddedMetabotUpsell() {
       maxWidth="initial"
     >
       <Text lh="lg">
-        {t`Make it easier for your customers to get answers from data. With the Modular embedding SDK, you can embed an AI assistant in your app to let your customers ask questions about your data in plain English.`}{" "}
+        {t`Make it easier for your customers to get answers from data. Embed an AI assistant in your app with Modular embedding to let your customers ask questions about your data in plain English.`}{" "}
         <ExternalLink href="https://www.metabase.com/docs/latest/embedding/sdk/ai-chat">{t`Learn more`}</ExternalLink>
       </Text>
     </UpsellCard>
