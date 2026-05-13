@@ -1,5 +1,6 @@
 .value {
   display: inline;
+  color: var(--scalar-value-color, inherit);
 }
 
 .hoverable {
