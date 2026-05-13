@@ -20,8 +20,9 @@ export const getEmbedSidebar = () =>
     .first()
     .within(() => cy.findByRole("complementary"));
 
-export const getRecentItemCards = () =>
-  cy.findAllByTestId("embed-recent-item-card");
+export const getResourceSelectorButton = (
+  options?: Partial<Cypress.Timeoutable>,
+) => cy.findByTestId("embed-browse-entity-button", options);
 
 export const visitNewEmbedPage = (
   { waitForResource } = { waitForResource: true },
@@ -132,8 +133,16 @@ export const navigateToEntitySelectionStep = (
     });
 
     entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findAllByText(options.resourceName).first().click();
+      // The picker opens on the "Recent items" tab by default. Scope each
+      // navigation step to its column to disambiguate when the target also
+      // appears in the recents list.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findAllByText(options.resourceName)
+        .first()
+        .click();
 
       // Collection picker requires an explicit confirmation.
       if (experience === "browser") {
