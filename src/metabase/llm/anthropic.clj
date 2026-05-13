@@ -53,6 +53,22 @@
          first
          :input)))
 
+(defn- extract-text
+  "Extract the first text block from an Anthropic messages response."
+  [response-body]
+  (->> (:content response-body)
+       (filter #(= "text" (:type %)))
+       first
+       :text))
+
+(defn- build-plain-request-body
+  "Build request body for a plain text (no tool forcing) Anthropic messages call."
+  [{:keys [model system messages]}]
+  (cond-> {:model      model
+           :max_tokens (llm.settings/llm-max-tokens)
+           :messages   messages}
+    system (assoc :system system)))
+
 (defn- handle-api-error
   "Handle HTTP errors from Anthropic API."
   [exception]
@@ -108,6 +124,43 @@
             body        (:body response)
             usage       (:usage body)]
         {:result      (extract-tool-input body)
+         :duration-ms duration-ms
+         :usage       {:model      model
+                       :prompt     (:input_tokens usage)
+                       :completion (:output_tokens usage)}})
+      (catch Exception e
+        (handle-api-error e)))))
+
+(defn text-completion
+  "Send a plain text chat completion to Anthropic (no tool forcing).
+   Returns a map with:
+   - :result      - The model's text response as a string
+   - :usage       - Map with :model, :prompt (input tokens), :completion (output tokens)
+   - :duration-ms - Request duration in milliseconds
+
+   Options:
+   - :model    - Model to use (default: configured model)
+   - :system   - System prompt
+   - :messages - Vector of {:role :content} maps"
+  [{:keys [model system messages]}]
+  (let [model      (or model (llm.settings/llm-anthropic-model))
+        request    {:model    model
+                    :system   system
+                    :messages messages}
+        start-time (u/start-timer)]
+    (try
+      (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
+            response (http/post url
+                                {:headers            (build-request-headers (get-api-key-or-throw))
+                                 :body               (json/encode (build-plain-request-body request))
+                                 :as                 :json
+                                 :content-type       :json
+                                 :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                 :connection-timeout (llm.settings/llm-connection-timeout-ms)})
+            duration-ms (u/since-ms start-time)
+            body        (:body response)
+            usage       (:usage body)]
+        {:result      (extract-text body)
          :duration-ms duration-ms
          :usage       {:model      model
                        :prompt     (:input_tokens usage)
