@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import {
   Anchor,
-  Badge,
   Box,
   Card,
   Divider,
@@ -26,7 +25,8 @@ import {
   optimizerApi,
   useBulkOptimizeStatusQuery,
 } from "../../api";
-import type { Proposal, ProposalSeverity } from "../../types";
+
+import { BulkTransformCard } from "./BulkTransformCard";
 
 // Poll every 2s while a job is in flight. Once everything is settled the
 // query stays mounted (so the drawer keeps showing results) but pollingInterval
@@ -61,9 +61,11 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
   // The detail page's TransformOptimizerSection reads from the optimize
   // endpoint's RTK Query cache. The bulk run populated the BE proposal
   // cache (so verify / accept work) but didn't touch the FE cache —
-  // navigating from here would land on the trigger button and force a
-  // re-analysis. Seed the FE cache before navigation so the section
-  // hydrates straight into "done" with the bulk proposals.
+  // navigating to ANY of the bulk-analysed transforms would otherwise
+  // land on the trigger button and force a re-analysis. Seed every
+  // completed entry into the FE cache as soon as it lands, regardless
+  // of whether the user later clicks through the drawer or arrives at
+  // the transform via some other route (list page, deep link).
   const seedOptimizeCache = useCallback(
     (entry: BulkOptimizeDoneEntry) => {
       dispatch(
@@ -89,6 +91,30 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
     },
     [dispatch],
   );
+
+  // Seed every entry that's appeared in `data.done` since the last poll.
+  // Tracked through a ref so re-renders triggered by polling don't keep
+  // dispatching identical upserts (RTK would no-op them, but it's wasted
+  // work and clutters DevTools).
+  const seededIdsRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!data?.done) {
+      return;
+    }
+    for (const entry of Object.values(data.done)) {
+      if (!seededIdsRef.current.has(entry.transform.id)) {
+        seededIdsRef.current.add(entry.transform.id);
+        seedOptimizeCache(entry);
+      }
+    }
+  }, [data?.done, seedOptimizeCache]);
+
+  // Reset the dedup set when a fresh bulk run kicks off — `started_at`
+  // changes per POST /bulk-optimize and is the cleanest "this is a new
+  // batch" signal we have without threading a job id everywhere.
+  useEffect(() => {
+    seededIdsRef.current = new Set();
+  }, [data?.started_at]);
 
   const total = data?.total ?? 0;
   const doneEntries = Object.values(data?.done ?? {});
@@ -134,10 +160,9 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
                 <Text c="text-secondary">{t`No transforms completed yet.`}</Text>
               ) : (
                 doneEntries.map((entry) => (
-                  <TransformResultCard
+                  <BulkTransformCard
                     key={entry.transform.id}
                     entry={entry}
-                    onOpen={() => seedOptimizeCache(entry)}
                   />
                 ))
               )}
@@ -186,101 +211,6 @@ function BulkProgressHeader({
             .t`${failedCount} failed — see below.`}
         </Text>
       )}
-    </Stack>
-  );
-}
-
-const SEVERITY_COLOR: Record<ProposalSeverity, string> = {
-  high: "error",
-  medium: "warning",
-  low: "text-secondary",
-};
-
-function TransformResultCard({
-  entry,
-  onOpen,
-}: {
-  entry: BulkOptimizeDoneEntry;
-  onOpen: () => void;
-}) {
-  const { transform, summary, proposals, optimization_degree } = entry;
-  const isOptimized = optimization_degree === 100;
-
-  return (
-    <Card withBorder p="md" radius="md">
-      <Stack gap="sm">
-        <Group justify="space-between" wrap="nowrap" align="flex-start">
-          <Stack gap={2} miw={0} style={{ flex: 1 }}>
-            <Anchor
-              component={Link}
-              to={Urls.transformRun(transform.id)}
-              fw="bold"
-              onClick={onOpen}
-            >
-              {transform.name}
-            </Anchor>
-            {summary && (
-              <Text c="text-secondary" fz="sm">
-                {summary}
-              </Text>
-            )}
-          </Stack>
-          <Badge
-            color={isOptimized ? "success" : "brand"}
-            variant={isOptimized ? "light" : "filled"}
-          >
-            {isOptimized
-              ? t`Fully optimized`
-              : c("Proposal count badge in bulk results")
-                  .t`${proposals.length} suggestion(s)`}
-          </Badge>
-        </Group>
-        {proposals.length > 0 && (
-          <>
-            <Divider />
-            <Stack gap="xs">
-              {proposals.map((p) => (
-                <ProposalRow key={p.id} proposal={p} />
-              ))}
-            </Stack>
-            <Group justify="flex-end">
-              <Anchor
-                component={Link}
-                to={Urls.transformRun(transform.id)}
-                fz="sm"
-                onClick={onOpen}
-              >
-                {t`Open transform to verify / accept →`}
-              </Anchor>
-            </Group>
-          </>
-        )}
-      </Stack>
-    </Card>
-  );
-}
-
-function ProposalRow({ proposal }: { proposal: Proposal }) {
-  const severityColor = SEVERITY_COLOR[proposal.severity];
-  return (
-    <Stack gap={2}>
-      <Group gap="xs" wrap="nowrap">
-        <Badge color={severityColor} variant="light" size="sm">
-          {proposal.severity}
-        </Badge>
-        <Badge variant="default" size="sm">
-          {proposal.kind}
-        </Badge>
-        <Text fw="bold" fz="sm">
-          {proposal.name}
-        </Text>
-        <Text c="text-secondary" fz="xs">
-          ({proposal.expected_speedup})
-        </Text>
-      </Group>
-      <Text c="text-secondary" fz="sm">
-        {proposal.rationale}
-      </Text>
     </Stack>
   );
 }

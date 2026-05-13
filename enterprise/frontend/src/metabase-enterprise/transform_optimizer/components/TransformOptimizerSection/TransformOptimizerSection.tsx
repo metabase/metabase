@@ -355,7 +355,10 @@ function getNativeSql(transform: Transform): string | null {
  * silently accept the rewrite alongside, which is not what the user
  * asked for.
  */
-function topoOrderForAccept(target: Proposal, available: Proposal[]): string[] {
+export function topoOrderForAccept(
+  target: Proposal,
+  available: Proposal[],
+): string[] {
   if (target.kind === "index" && target.ddl_statement?.target === "source-db") {
     return [target.id];
   }
@@ -403,7 +406,7 @@ type ProposalGroupShape = {
  * Components are returned in input order of their first-seen proposal,
  * which preserves the LLM's emit order across the panel.
  */
-function groupProposalsByDependency(
+export function groupProposalsByDependency(
   proposals: Proposal[],
 ): ProposalGroupShape[] {
   // Union-find over the undirected depends_on graph.
@@ -481,7 +484,7 @@ function groupProposalsByDependency(
  * reference missing proposals so the user will see an explicit error
  * if it matters.
  */
-function resolveDependencyNames(
+export function resolveDependencyNames(
   proposal: Proposal,
   available: Proposal[],
 ): Array<{ id: string; name: string }> {
@@ -497,7 +500,7 @@ function resolveDependencyNames(
     .filter((x): x is { id: string; name: string } => x !== null);
 }
 
-function reportVerify(
+export function reportVerify(
   data: VerifyResponse | undefined,
   ok: ReturnType<typeof useMetadataToasts>["sendSuccessToast"],
   fail: ReturnType<typeof useMetadataToasts>["sendErrorToast"],
