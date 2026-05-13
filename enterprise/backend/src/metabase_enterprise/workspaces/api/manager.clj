@@ -26,11 +26,11 @@
 (def ^:private AddDatabaseParams
   [:map {:closed true}
    [:database_id   ms/PositiveInt]
-   [:input_schemas [:sequential {:min 1} ms/NonBlankString]]])
+   [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private UpdateDatabaseParams
   [:map {:closed true}
-   [:input_schemas [:sequential {:min 1} ms/NonBlankString]]])
+   [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}

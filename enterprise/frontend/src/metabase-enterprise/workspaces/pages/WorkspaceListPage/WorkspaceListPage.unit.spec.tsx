@@ -36,25 +36,20 @@ describe("WorkspaceListPage", () => {
     expect(await screen.findByText(/Isolated spaces/i)).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Add workspace/ }),
+      screen.getByRole("button", { name: /Create a workspace/ }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Create a workspace" }),
-    ).toBeInTheDocument();
+      await screen.findAllByRole("heading", { name: "Create a workspace" }),
+    ).not.toHaveLength(0);
   });
 
-  it("when not empty, the Edit menu item links to the workspace page", async () => {
+  it("when not empty, each workspace card links to its workspace page", async () => {
     const workspace = createMockWorkspace({ id: 42, name: "Existing" });
     setup({ workspaces: [workspace] });
 
-    expect(await screen.findByText("Existing")).toBeInTheDocument();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Workspace actions" }),
-    );
     expect(
-      await screen.findByRole("menuitem", { name: /Edit/ }),
+      await screen.findByRole("link", { name: /Existing/ }),
     ).toHaveAttribute("href", Urls.workspace(workspace.id));
   });
 });

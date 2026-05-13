@@ -71,6 +71,20 @@
                     (mt/user-http-request :crowberto :delete 200
                                           (str "ee/workspace-manager/" ws-id "/database/" (mt/id)))))))))))
 
+(deftest add-database-without-schemas-feature-test
+  (testing "POST /:id/database accepts an empty :input_schemas list for drivers that support workspaces but not the `:schemas` feature (e.g. MySQL)"
+    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+      (mt/with-model-cleanup [:model/Workspace]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :mysql :details {}}]
+          (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Schemaless"})]
+            (is (=? {:databases [{:database_id db-id
+                                  :input_schemas empty?
+                                  :status "provisioned"}]}
+                    (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace-manager/" ws-id "/database")
+                                          {:database_id db-id :input_schemas []})))))))))
+
 (deftest metadata-export-test
   (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
