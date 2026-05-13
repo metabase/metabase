@@ -171,11 +171,11 @@
                    :current-user-id                     1}
                   :search_index.collection_id)]
       (is (=? [:or any? [:and any? [:not [:exists any?]]]]
-              clause)))))
+              clause))))
   (testing "the \"only\" branch uses a single EXISTS subquery rather than one :like clause per personal collection"
     (let [clause (search.filter/personal-collections-where-clause
                   {:filter-items-in-personal-collection "only"
                    :current-user-id                     1}
                   :search_index.collection_id)]
-      (is (=? [:or any? [:exists any]]
-              clause))))))
+      (is (=? [:or any? [:exists any?]]
+              clause)))))
