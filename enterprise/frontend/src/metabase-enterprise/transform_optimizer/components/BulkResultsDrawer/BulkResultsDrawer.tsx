@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
+import { useListTransformsQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
 import {
   Anchor,
@@ -119,9 +120,21 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
   const total = data?.total ?? 0;
   const doneEntries = Object.values(data?.done ?? {});
   const failedEntries = Object.entries(data?.failed ?? {});
+  const pendingIds = data?.pending ?? [];
   const settled = doneEntries.length + failedEntries.length;
-  const pending = (data?.pending ?? []).length;
-  const isRunning = pending > 0;
+  const isRunning = pendingIds.length > 0;
+
+  // The transforms list is almost always cached by the parent
+  // TransformListPage, so this is a no-network lookup in practice. We use
+  // it to render each pending row by name rather than by bare id.
+  const { data: transforms } = useListTransformsQuery({});
+  const transformNameById = useMemo(() => {
+    const out = new Map<number, string>();
+    for (const t of transforms ?? []) {
+      out.set(t.id, t.name);
+    }
+    return out;
+  }, [transforms]);
 
   // Cross-card dedup for identical index proposals. The optimizer often
   // emits the same `CREATE INDEX IF NOT EXISTS idx_events_customer_id …`
@@ -185,6 +198,12 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
             data={data!}
             settled={settled}
             isRunning={isRunning}
+            currentName={
+              isRunning
+                ? transformNameById.get(pendingIds[0]) ??
+                  t`Transform #${pendingIds[0]}`
+                : null
+            }
           />
           <Divider />
           <ScrollArea h="calc(90vh - 200px)" type="auto" offsetScrollbars>
@@ -200,6 +219,12 @@ export function BulkResultsDrawer({ opened, onClose }: BulkResultsDrawerProps) {
                     onIndexAccepted={handleIndexAccepted}
                   />
                 ))
+              )}
+              {pendingIds.length > 0 && (
+                <PendingSection
+                  pendingIds={pendingIds}
+                  nameById={transformNameById}
+                />
               )}
               {failedEntries.map(([id, message]) => (
                 <FailureCard
@@ -220,10 +245,12 @@ function BulkProgressHeader({
   data,
   settled,
   isRunning,
+  currentName,
 }: {
   data: BulkOptimizeStatusResponse;
   settled: number;
   isRunning: boolean;
+  currentName: string | null;
 }) {
   const total = data.total;
   const value = total > 0 ? (settled / total) * 100 : 0;
@@ -231,12 +258,22 @@ function BulkProgressHeader({
 
   return (
     <Stack gap="xs">
-      <Group justify="space-between" wrap="nowrap">
-        <Text fw="bold">
-          {isRunning
-            ? c("Bulk-optimize progress, X of Y").t`Analyzing ${settled} / ${total}`
-            : c("Bulk-optimize complete, X of Y").t`Done — ${settled} / ${total}`}
-        </Text>
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Stack gap={2} miw={0}>
+          <Text fw="bold">
+            {isRunning
+              ? c("Bulk-optimize progress, X of Y")
+                  .t`Analyzing ${settled} / ${total}`
+              : c("Bulk-optimize complete, X of Y")
+                  .t`Done — ${settled} / ${total}`}
+          </Text>
+          {isRunning && currentName && (
+            <Text c="text-secondary" fz="sm">
+              {c("Bulk-optimize header subline naming the transform in flight")
+                .t`Currently analyzing: ${currentName}`}
+            </Text>
+          )}
+        </Stack>
         {isRunning && <Loader size="xs" />}
       </Group>
       <Progress value={value} animated={isRunning} />
@@ -246,6 +283,51 @@ function BulkProgressHeader({
             .t`${failedCount} failed — see below.`}
         </Text>
       )}
+    </Stack>
+  );
+}
+
+/**
+ * Tail of the modal body — one compact row per pending transform. The
+ * BE processes sequentially in submission order so the first id is the
+ * one in flight (Loader + "Analyzing"); the rest are queued.
+ */
+function PendingSection({
+  pendingIds,
+  nameById,
+}: {
+  pendingIds: number[];
+  nameById: Map<number, string>;
+}) {
+  return (
+    <Stack gap="xs">
+      {pendingIds.map((id, index) => {
+        const name = nameById.get(id) ?? t`Transform #${id}`;
+        const isCurrent = index === 0;
+        return (
+          <Card
+            key={id}
+            withBorder
+            p="sm"
+            radius="md"
+            bg={isCurrent ? "bg-light" : undefined}
+          >
+            <Group gap="sm" wrap="nowrap">
+              {isCurrent ? (
+                <Loader size="xs" />
+              ) : (
+                <Icon name="clock" c="text-secondary" />
+              )}
+              <Text fw={isCurrent ? "bold" : undefined} miw={0} truncate>
+                {name}
+              </Text>
+              <Text c="text-secondary" fz="sm" ml="auto">
+                {isCurrent ? t`Analyzing…` : t`Queued`}
+              </Text>
+            </Group>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }
