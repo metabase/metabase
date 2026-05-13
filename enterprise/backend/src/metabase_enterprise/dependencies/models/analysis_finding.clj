@@ -33,8 +33,14 @@
   - 9: Multi-source attribution — when extract-source-entity sees several
        candidate tables for the same column ref (joins/CTEs), persist the
        comma-joined candidate list under source-entity-name with type
-       :unknown. Rendered as `in any of \\`a\\`, \\`b\\`, \\`c\\`` in the UI."
-  9)
+       :unknown. Rendered as `in any of \\`a\\`, \\`b\\`, \\`c\\`` in the UI.
+  - 10: Force-rerun bump after the lib.metadata/transforms Malli fix.
+        v9 was stamped on rows whose analysis blew up inside the (then
+        broken) transforms validator — every transform analysis emitted a
+        single \"Invalid output: …\" row instead of real findings. The
+        Malli fix prevents new such rows, but those v9 rows are stuck
+        until version > 9 forces them to re-analyze."
+  10)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
