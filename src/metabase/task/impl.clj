@@ -129,6 +129,7 @@
                            (log/infof "Finished resetting ERROR-state Quartz triggers in %s"
                                       (u/format-milliseconds (u/since-ms timer))))
                          (catch InterruptedException _
+                           (.interrupt (Thread/currentThread))
                            (log/info "Quartz trigger error-state reset interrupted"))
                          (catch Throwable e
                            (log/error e "Error resetting ERROR-state Quartz triggers")))))

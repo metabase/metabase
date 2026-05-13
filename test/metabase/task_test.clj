@@ -169,31 +169,35 @@
     (let [trigger-keys (mapv #(TriggerKey. (str "tk-" %)) (range 50))
           processed    (atom [])
           worker-info  (atom nil)
-          done         (promise)
-          ;; A mock Scheduler that records each resetTriggerFromErrorState call and simulates a
-          ;; slow JDBC round trip so we can tell sync from async.
+          ready        (promise) ; delivered by worker once it has entered getTriggerKeys
+          gate         (promise) ; awaited by worker before it returns from getTriggerKeys
+          done         (promise) ; delivered by worker after the final reset call
+          ;; Mock Scheduler that lets us deterministically observe the worker mid-flight: it
+          ;; parks inside getTriggerKeys until the test releases the gate, so we can assert
+          ;; the main thread already returned with no reset work yet performed.
           mock-scheduler
           (proxy [Scheduler] []
             (getTriggerKeys [_matcher]
-              ;; Capture thread metadata from inside the background worker before any work happens.
               (let [t (Thread/currentThread)]
                 (reset! worker-info {:name (.getName t), :daemon? (.isDaemon t)}))
+              (deliver ready :ready)
+              @gate
               (java.util.HashSet. ^java.util.Collection trigger-keys))
             (resetTriggerFromErrorState [tk]
-              (Thread/sleep 5)
               (swap! processed conj tk)
               (when (= (count @processed) (count trigger-keys))
-                (deliver done :all-processed))))
-          start-ns (System/nanoTime)
-          _        (#'task.impl/reset-errored-triggers! mock-scheduler)
-          elapsed-ms (/ (- (System/nanoTime) start-ns) 1e6)]
-      (testing "function returns immediately (well under the 50 * 5ms = 250ms of synchronous work)"
-        (is (< elapsed-ms 100)
-            (format "reset-errored-triggers! took %.1fms; expected to return immediately" elapsed-ms)))
+                (deliver done :all-processed))))]
+      (#'task.impl/reset-errored-triggers! mock-scheduler)
+      (testing "function returns before the worker does any reset work"
+        (is (= :ready (deref ready 5000 :timeout))
+            "worker thread should have entered getTriggerKeys")
+        (is (empty? @processed)
+            "no triggers should have been reset yet — worker is parked at the gate"))
+      (testing "worker thread is a daemon with the expected name"
+        (is (= {:name "quartz-error-trigger-reset", :daemon? true}
+               @worker-info)))
+      (deliver gate :go)
       (testing "background thread completes the sweep"
         (is (= :all-processed (deref done 5000 :timeout))))
       (testing "every trigger key was processed"
-        (is (= (set trigger-keys) (set @processed))))
-      (testing "worker thread is a daemon with the expected name"
-        (is (= {:name "quartz-error-trigger-reset", :daemon? true}
-               @worker-info))))))
+        (is (= (set trigger-keys) (set @processed)))))))
