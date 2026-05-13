@@ -987,6 +987,31 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
 
+(deftest ^:sequential latest-score-filters-by-source-test
+  (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
+    ;; The CLI's representation mode writes under the same `task.complexity-score/current-fingerprint`
+    ;; as the cron/API so that an admin re-running the cron after a CLI scoring still benefits from
+    ;; the fingerprint short-circuit. Provenance is encoded in `source` ("appdb" vs
+    ;; "representation:<digest>"). Read paths that should only surface authoritative rows must pass
+    ;; the source filter — otherwise the most-recent representation row would shadow the appdb row.
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "latest-score-source-test/shared"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
+        (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
+        (is (= "representation-row"
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+            "no source filter → newest row wins, regardless of provenance")
+        (is (= "appdb-row"
+               (get-in (data-complexity-score/latest-score fingerprint "appdb") [:meta :label]))
+            "source=\"appdb\" must skip past the newer representation-tagged row")
+        (is (= "representation-row"
+               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
+            "and an explicit representation source still resolves its own row")
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
+
 (deftest ^:sequential run-scoring-persists-latest-score-snapshot-test
   (testing "every successful computation persists a fresh snapshot for the overview endpoint"
     (mt/initialize-if-needed! :db)

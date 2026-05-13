@@ -102,7 +102,10 @@
   (api/check-superuser)
   (if force-recalculation?
     (force-recalculate-score!)
-    (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint))
+    ;; Filter by source="appdb" so a CLI run that scored a representation directory (which
+    ;; shares the cron's fingerprint by design — see `record-score!`) can't shadow the
+    ;; authoritative appdb-derived row. The `source` column is the discriminator.
+    (api/check-404 (some-> (data-complexity-score/latest-score (task.complexity-score/current-fingerprint) "appdb")
                            m.util/deep-snake-keys)
                    (tru "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."))))
 

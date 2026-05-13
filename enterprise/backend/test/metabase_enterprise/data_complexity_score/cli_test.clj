@@ -363,8 +363,20 @@
         (is (zero? @advance-calls))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
-  (testing "dir-digest produces the same value for the same content and changes when content changes"
+  (testing "dir-digest produces the same value for the same content"
     (let [d1 (#'representation/dir-digest representation-fixture-dir)
           d2 (#'representation/dir-digest representation-fixture-dir)]
       (is (= d1 d2) "two calls against the same dir must produce the same digest")
-      (is (re-matches #"[0-9a-f]{64}" d1) "digest must be a 64-char lowercase hex string (SHA-256)"))))
+      (is (re-matches #"[0-9a-f]{64}" d1) "digest must be a 64-char lowercase hex string (SHA-256)")))
+  (testing "dir-digest changes when file content changes — guards against a constant-digest regression"
+    ;; A regression that made `dir-digest` return a fixed value (e.g. `(hex (sha-256 (pr-str [])))`)
+    ;; would pass the stability assertion above. Mutating a single byte in a single file must change
+    ;; the digest.
+    (let [tmp-dir (empty-tmp-dir "dir-digest-")
+          target  (io/file tmp-dir "marker.txt")]
+      (spit target "original")
+      (let [before (#'representation/dir-digest (.getAbsolutePath tmp-dir))]
+        (spit target "originalX")
+        (let [after (#'representation/dir-digest (.getAbsolutePath tmp-dir))]
+          (is (not= before after)
+              "appending a byte to a file must change the digest"))))))

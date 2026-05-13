@@ -31,7 +31,8 @@
   (:import
    (java.io File)
    (java.nio.file Files)
-   (java.security MessageDigest)))
+   (java.nio.file OpenOption)
+   (java.security DigestInputStream MessageDigest)))
 
 (set! *warn-on-reflection* true)
 
@@ -214,6 +215,19 @@
       (.append sb (format "%02x" (bit-and (aget bs i) 0xff))))
     (.toString sb)))
 
+(def ^:private ^"[Ljava.nio.file.OpenOption;" no-open-options
+  (make-array OpenOption 0))
+
+(defn- sha256-file-hex
+  "SHA-256 of a file's bytes, streamed in 8 KiB chunks so even multi-megabyte exports
+  (e.g. embeddings.json) don't materialize the whole file in memory."
+  [^File f]
+  (let [md  (MessageDigest/getInstance "SHA-256")
+        buf (byte-array 8192)]
+    (with-open [^DigestInputStream is (DigestInputStream. (Files/newInputStream (.toPath f) no-open-options) md)]
+      (while (not= -1 (.read is buf))))
+    (hex (.digest md))))
+
 (defn dir-digest
   "Stable SHA-256 over the file contents of `dir`. Two directories with byte-identical files at the
   same relative paths produce the same digest. Used as the `<digest>` part of the `source` column
@@ -225,7 +239,7 @@
                       (filter #(.isFile ^File %))
                       (map (fn [^File f]
                              [(str (.relativize root (.toPath f)))
-                              (hex (sha256-bytes (Files/readAllBytes (.toPath f))))]))
+                              (sha256-file-hex f)]))
                       (sort-by first))]
     (hex (sha256-bytes (.getBytes (pr-str entries) "UTF-8")))))
 
