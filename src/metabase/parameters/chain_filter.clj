@@ -390,6 +390,7 @@
            rhs-field (lib.metadata/field query rhs-field-id)
            rhs-table (lib.metadata/table query rhs-table-id)
            join      (-> (lib/join-clause rhs-table)
+                         (lib/with-join-fields :none)
                          (lib/with-join-alias (joined-table-alias rhs-table-id))
                          (lib/with-join-conditions [(lib/=
                                                      (cond-> lhs-field
@@ -438,6 +439,7 @@
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                   (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
     (-> (lib/query mp (lib.metadata/table mp source-table-id))
+        (lib/with-fields [field])
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)
