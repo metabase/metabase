@@ -8,6 +8,7 @@
   the dependency_status table."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
@@ -21,7 +22,8 @@
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -142,11 +144,19 @@
 
 (declare schedule-run!)
 
+(defn- log-job-start
+  [^JobExecutionContext ctx]
+  (let [scheduler (.getScheduler ctx)
+        job-key (.getKey (.getJobDetail ctx))
+        job-class (.getSimpleName (.getJobClass (.getJobDetail ctx)))
+        active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
+    (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
+
 (task/defjob
   ^{:doc "Backfill the dependency table."
     org.quartz.DisallowConcurrentExecution true}
-  BackfillDependencies [ctx]
-  (log/info "Executing BackfillDependencies job...")
+  BackfillDependencies [^JobExecutionContext ctx]
+  (log-job-start ctx)
   (let [full-batch-selected? (backfill-dependencies!)
         retries? (has-pending-retries?)]
     (if (or full-batch-selected?
