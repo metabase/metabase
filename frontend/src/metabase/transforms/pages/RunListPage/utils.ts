@@ -24,6 +24,8 @@ export function getParsedParams(
     "start-time": startTime,
     "end-time": endTime,
     "run-methods": runMethods,
+    "min-duration-ms": minDurationMs,
+    "max-duration-ms": maxDurationMs,
     "sort-column": sortColumn,
     "sort-direction": sortDirection,
   } = location.query;
@@ -43,6 +45,8 @@ export function getParsedParams(
     runMethods: Urls.parseListParam(runMethods, (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
     ),
+    minDurationMs: Urls.parseNumberParam(minDurationMs),
+    maxDurationMs: Urls.parseNumberParam(maxDurationMs),
     sortColumn: Urls.parseEnumParam(sortColumn, TRANSFORM_RUN_SORT_COLUMNS),
     sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
   };
@@ -55,7 +59,9 @@ export function hasFilterOptions(options: TransformRunFilterOptions) {
     options.transformTagIds != null ||
     options.startTime != null ||
     options.endTime != null ||
-    options.runMethods != null
+    options.runMethods != null ||
+    options.minDurationMs != null ||
+    options.maxDurationMs != null
   );
 }
 
@@ -69,6 +75,8 @@ export function getFilterOptions(
     startTime: params.startTime,
     endTime: params.endTime,
     runMethods: params.runMethods,
+    minDurationMs: params.minDurationMs,
+    maxDurationMs: params.maxDurationMs,
   };
 }
 

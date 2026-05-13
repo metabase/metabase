@@ -286,6 +286,8 @@ export type ListTransformRunsRequest = {
   "start-time"?: string;
   "end-time"?: string;
   "run-methods"?: TransformRunMethod[];
+  "min-duration-ms"?: number;
+  "max-duration-ms"?: number;
   "sort-column"?: TransformRunSortColumn;
   "sort-direction"?: SortDirection;
 } & PaginationRequest;

@@ -14,6 +14,8 @@ export type TransformRunFilterOptions = {
   startTime?: string;
   endTime?: string;
   runMethods?: TransformRunMethod[];
+  minDurationMs?: number;
+  maxDurationMs?: number;
 };
 
 export type TransformRunSortOptions = {

@@ -72,6 +72,8 @@ export function RunListPage({ location }: RunListPageProps) {
       "start-time": params.startTime,
       "end-time": params.endTime,
       "run-methods": params.runMethods,
+      "min-duration-ms": params.minDurationMs,
+      "max-duration-ms": params.maxDurationMs,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
     },

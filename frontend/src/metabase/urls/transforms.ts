@@ -101,6 +101,8 @@ export type TransformRunListParams = {
   startTime?: string;
   endTime?: string;
   runMethods?: TransformRunMethod[];
+  minDurationMs?: number;
+  maxDurationMs?: number;
   sortColumn?: TransformRunSortColumn;
   sortDirection?: SortDirection;
 };
@@ -113,6 +115,8 @@ export function transformRunList({
   startTime,
   endTime,
   runMethods,
+  minDurationMs,
+  maxDurationMs,
   sortColumn,
   sortDirection,
 }: TransformRunListParams = {}) {
@@ -138,6 +142,12 @@ export function transformRunList({
   runMethods?.forEach((runMethod) => {
     searchParams.append("run-methods", runMethod);
   });
+  if (minDurationMs != null) {
+    searchParams.set("min-duration-ms", String(minDurationMs));
+  }
+  if (maxDurationMs != null) {
+    searchParams.set("max-duration-ms", String(maxDurationMs));
+  }
   if (sortColumn != null) {
     searchParams.set("sort-column", sortColumn);
   }

@@ -210,6 +210,8 @@
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
+    [:min-duration-ms {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+    [:max-duration-ms {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
     [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params

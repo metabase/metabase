@@ -193,10 +193,23 @@
     :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
     nil))
 
+(defn- duration-ms-sql
+  "Raw SQL fragment that evaluates to (end_time - start_time) in milliseconds
+  for the current appdb driver. Returns NULL when end_time is NULL, so
+  in-progress runs are excluded from any duration filter."
+  []
+  (case (mdb/db-type)
+    :postgres "EXTRACT(EPOCH FROM (end_time - start_time)) * 1000"
+    :mysql    "TIMESTAMPDIFF(MICROSECOND, start_time, end_time) / 1000"
+    :h2       "DATEDIFF('MILLISECOND', start_time, end_time)"))
+
 (defn- paged-runs-where-clause
   "Builds a `:where` clause for transform runs from the given filter parameters."
-  [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses user-id]}]
-  (let [where-cond (cond-> []
+  [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses
+           min-duration-ms max-duration-ms user-id]}]
+  (let [duration-expr (when (or (some? min-duration-ms) (some? max-duration-ms))
+                        [:raw (duration-ms-sql)])
+        where-cond (cond-> []
                      (some? start-time)
                      (conj (timestamp-constraint :start_time start-time))
 
@@ -221,6 +234,12 @@
                      (and (= (first statuses) "started")
                           (nil? (next statuses)))
                      (conj [:= :is_active true])
+
+                     (some? min-duration-ms)
+                     (conj [:>= duration-expr [:inline (long min-duration-ms)]])
+
+                     (some? max-duration-ms)
+                     (conj [:<= duration-expr [:inline (long max-duration-ms)]])
 
                      (some? user-id)
                      (conj [:= :user_id user-id]))]

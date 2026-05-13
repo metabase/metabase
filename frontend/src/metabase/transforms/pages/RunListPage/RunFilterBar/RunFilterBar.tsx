@@ -13,6 +13,7 @@ import type {
 
 import type { TransformRunFilterOptions } from "../types";
 
+import { DurationFilterWidget } from "./DurationFilterWidget";
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TagFilterWidget } from "./TagFilterWidget";
@@ -61,6 +62,16 @@ export function RunFilterBar({
     onFilterOptionsChange({ ...filterOptions, runMethods });
   };
 
+  const handleDurationChange = ({
+    minDurationMs,
+    maxDurationMs,
+  }: {
+    minDurationMs: number | undefined;
+    maxDurationMs: number | undefined;
+  }) => {
+    onFilterOptionsChange({ ...filterOptions, minDurationMs, maxDurationMs });
+  };
+
   return (
     <Group>
       <TransformFilterWidget
@@ -88,6 +99,11 @@ export function RunFilterBar({
       <RunMethodFilterWidget
         runMethods={filterOptions.runMethods ?? []}
         onChange={handleRunMethodsChange}
+      />
+      <DurationFilterWidget
+        minDurationMs={filterOptions.minDurationMs}
+        maxDurationMs={filterOptions.maxDurationMs}
+        onChange={handleDurationChange}
       />
       <TagFilterWidget
         label={t`Tags`}
